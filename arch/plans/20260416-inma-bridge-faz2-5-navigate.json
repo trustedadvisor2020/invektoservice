@@ -1,0 +1,147 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "slug": "20260416-inma-bridge-faz2-5-navigate",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-04-16T13:30:00Z",
+  "updated_at": "2026-04-16T13:45:00Z",
+  "plan": {
+    "summary": "INMA Faz 2.5 - inma:navigate postMessage handling. Parent INMA 'Invekto icinde /settings sayfasina git' dedigi zaman Dashboard React Router navigate cagrisi yapilir. Scope cok kucuk (~20-30 satir, 4 dosya): inmaBridge.ts onMessage switch'e 'inma:navigate' case + onNavigate callback, App.tsx useNavigate + api.isAuthenticated gate + INV-INT-109 log. Path string, / prefix zorunlu, // engelli (protocol-relative). Unauth durumda reddet+log, queue YOK. Faz 2 Bridge pattern'ini korur.",
+    "q_intent": "Faz 2'de 'inma:navigate' intentional_exclusions'taydi. Faz 2.5 ayri paket olarak ac: INMA menusunden Invekto sayfalarina tek-tikla gecis; tam embed deneyimi.",
+    "interview_notes": "AskUserQuestion 4 cevap: (1) path string format ({type:'inma:navigate', path:'/settings'}). (2) Tum authenticated route'lar (explicit whitelist YOK; postMessage origin whitelist + auth zaten savunma katmani). (3) Unauth durumda reddet + INV-INT-109 log, queue YOK (Q tercih: basit). (4) inmaBridge.ts extend (mevcut switch'e case ekle + onNavigate callback; Faz 1 pattern'ine uygun).",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Parent INMA postMessage {type:'inma:navigate', path:'/settings'} gonderdiginde: (a) origin whitelist kontrolu (mevcut) gecer, (b) path 'string' tipinde + '/' ile baslayan + '//' ile baslamayan, (c) api.isAuthenticated()=true, (d) React Router navigate('/settings') cagrilir, (e) kullanici /app/settings sayfasina gider (basename='/app' otomatik uygulanir).",
+        "verified": false
+      },
+      {
+        "id": "AC2",
+        "criterion": "Path validasyon hatalari: data.path undefined/non-string -> console.warn INV-INT-109 detail='invalid_path' + callback SKIP. data.path '/' ile baslamiyor (ornegin 'https://evil.com' veya 'settings') -> ayni log + SKIP. data.path '//' ile basliyor (protocol-relative URL, open redirect) -> ayni log + SKIP. Hicbir durumda navigate cagrilmaz.",
+        "verified": false
+      },
+      {
+        "id": "AC3",
+        "criterion": "Auth gate: inma:navigate geldi, path valid, ama api.isAuthenticated()=false (token yok veya expired) -> console.warn INV-INT-109 detail='unauthenticated' + navigate SKIP. Queue YOK (Q karar); parent tekrar gondermeli. ProtectedRoute'un kendi login redirect'i tetiklenmez (cunku navigate hic cagrilmadi).",
+        "verified": false
+      },
+      {
+        "id": "AC4",
+        "criterion": "InmaInboundMessage union'a { type: 'inma:navigate'; path: string } variant eklenir. InmaBridgeCallbacks interface'ine optional `onNavigate?: (path: string) => void` eklenir. Mevcut onReady/onLogout/onAuthError DOKUNULMAZ; eski init() callsite'lari (callbacks={}) hala calisir (additive).",
+        "verified": false
+      },
+      {
+        "id": "AC5",
+        "criterion": "App.tsx mevcut inmaBridge.init({onReady,onLogout}) callsite'ina onNavigate callback eklenir: (path) => { if (!api.isAuthenticated()) { log+skip } else navigate(path) }. useNavigate hook App component icinde cagrilir (BrowserRouter descendant basename='/app'). Mevcut useEffect cleanup return KORUNUR.",
+        "verified": false
+      },
+      {
+        "id": "AC6",
+        "criterion": "arch/errors.md ve inmaErrors.ts'de INV-INT-109 NAVIGATE_REJECTED kayitli. description='navigate postMessage rejected (invalid path or unauthenticated)'. user_message TR. inmaErrorMessage(INMA_ERRORS.NAVIGATE_REJECTED, detail) pattern mevcut helper ile calisir."
+      },
+      {
+        "id": "AC7",
+        "criterion": "Faz 2 davranisi DEGISMEZ: inma:auth/refresh/logout switch case'leri DOKUNULMAZ, inmaBootstrap DOKUNULMAZ, useAuth DOKUNULMAZ, InmaConnectionStatus DOKUNULMAZ. Sadece switch'e 1 yeni case + 1 type variant + 1 callback optional field. ~20-30 satir toplam diff."
+      }
+    ]
+  },
+  "gr_list": [
+    { "id": "GR-1", "description": "inmaErrors.ts: INMA_ERRORS sabit map'ine NAVIGATE_REJECTED: 'INV-INT-109' + INMA_ERROR_DESCRIPTIONS record'una 'INV-INT-109': 'navigate postMessage rejected (invalid path or unauthenticated)' ekle. Diger kodlar DOKUNULMAZ." },
+    { "id": "GR-2", "description": "arch/errors.md: INMA Bridge bolumune INV-INT-109 kayit (description + user_message TR). INV-INT-107/108'in hemen altina (109 zincirin sonu; 110+ Zoho)." },
+    { "id": "GR-3", "description": "inmaBridge.ts: InmaInboundMessage union'a { type: 'inma:navigate'; path: string } variant + InmaBridgeCallbacks'e onNavigate?: (path:string)=>void optional field + onMessage switch'e 'inma:navigate' case: path !== string || !startsWith('/') || startsWith('//') -> console.warn inmaErrorMessage(INMA_ERRORS.NAVIGATE_REJECTED, 'invalid_path') + return; else callbacks.onNavigate?.(path) + return." },
+    { "id": "GR-4", "description": "App.tsx: import api + useNavigate; App component icinde const navigate = useNavigate() + inmaBridge.init({...mevcut, onNavigate: (path) => { if (!api.isAuthenticated()) { console.warn inmaErrorMessage(NAVIGATE_REJECTED, 'unauthenticated'); return; } navigate(path); }}). Mevcut useEffect cleanup return KORUNUR. useEffect deps: [] (navigate stable ref v6+)." }
+  ],
+  "allowed_files": [
+    "src/Invekto.Backend/Dashboard/src/inma/inmaErrors.ts",
+    "src/Invekto.Backend/Dashboard/src/inma/inmaBridge.ts",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "arch/errors.md",
+    "arch/plans/20260416-inma-bridge-faz2-5-navigate.json"
+  ],
+  "files_changed": [
+    "src/Invekto.Backend/Dashboard/src/inma/inmaErrors.ts",
+    "src/Invekto.Backend/Dashboard/src/inma/inmaBridge.ts",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "arch/errors.md",
+    "arch/plans/20260416-inma-bridge-faz2-5-navigate.json"
+  ],
+  "git_diff": { "stats": { "insertions": 31, "deletions": 3, "files_count": 4, "note": "plan JSON diff additive, not counted in code changes" } },
+  "build": { "status": "PASS", "errors": 0, "warnings": 17, "warnings_note": "all pre-existing, unrelated to Faz 2.5" },
+  "verification_questions": [
+    { "id": "Q1", "question": "inmaBridge.ts InmaInboundMessage union'a { type: 'inma:navigate'; path: string } variant eklendi mi? InmaBridgeCallbacks.onNavigate optional `?` isaretli mi (breaking change yok)?", "category": "Contracts" },
+    { "id": "Q2", "question": "onMessage switch 'inma:navigate' case'inde 3 validasyon var mi: typeof data.path==='string' + data.path.startsWith('/') + !data.path.startsWith('//')? Invalid durumda console.warn + return; callback call edilmiyor mu?", "category": "Auth" },
+    { "id": "Q3", "question": "App.tsx onNavigate callback'i api.isAuthenticated()=false ise console.warn INV-INT-109 'unauthenticated' + navigate CAGRILMIYOR mu? Queue YOK?", "category": "Auth" },
+    { "id": "Q4", "question": "useNavigate hook App component icinde cagriliyor mu (main.tsx BrowserRouter descendant, basename='/app')? Mevcut useEffect cleanup return korunuyor mu?", "category": "Lifecycle" },
+    { "id": "Q5", "question": "arch/errors.md ve inmaErrors.ts'de INV-INT-109 NAVIGATE_REJECTED kayitli mi (INV-INT-108'in hemen altina, 110+ Zoho'yu bozmadan)?", "category": "ErrorCodes" },
+    { "id": "Q6", "question": "Faz 2 davranisi (inma:auth/refresh/logout switch case'leri + inmaBootstrap + useAuth + InmaConnectionStatus) SIFIR degisiklik mi? Yeni inma:navigate case oncesi case'ler dokunulmamis mi?", "category": "Contracts" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Backend/Dashboard/src/inma/inmaBootstrap.ts (Faz 2 kurumsal, dokunma)",
+      "src/Invekto.Backend/Dashboard/src/inma/inmaSession.ts (Faz 1 contract, dokunma)",
+      "src/Invekto.Backend/Dashboard/src/inma/InmaConnectionStatus.tsx (Faz 2, dokunma)",
+      "src/Invekto.Backend/Dashboard/src/inma/inmaApiClient.ts (Faz 1, dokunma)",
+      "src/Invekto.Backend/Dashboard/src/inma/index.ts (yeni export YOK - inmaBridge + INMA_ERRORS zaten export'lu)",
+      "src/Invekto.Backend/Dashboard/src/hooks/useAuth.ts (Faz 2, dokunma)",
+      "src/Invekto.Backend/Dashboard/src/components/Layout.tsx (Faz 2, dokunma)",
+      "src/Invekto.Backend/Dashboard/src/lib/api.ts (consume-only)"
+    ],
+    "non_goals": [
+      "Route whitelist (explicit allow-list) - Q tercih: yok, auth gate yeterli",
+      "Queue mechanism (pending navigation store) - Q tercih: yok, parent retry eder",
+      "Named route id mapping (symbolic id -> path) - Q tercih: path string direkt",
+      "Query string/search params destegi - MVP scope disi",
+      "Back/forward history management - native browser history yeterli",
+      "Parent'a navigation complete bildirimi (inma:navigated) - Faz 3 backlog",
+      "Route change animation/transition"
+    ],
+    "intentional_exclusions": [
+      "Path uzunluk limiti (>2048 char gibi) - gereksiz, React Router kendi kabul eder",
+      "URL-encode validation - navigate string'i React Router'a veriyor, o parse ediyor",
+      "javascript: / data: scheme blocking - path '/' ile baslamali kurali zaten block eder"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "Yok - inmaBridge.ts switch case sync if-else kontrol; App.tsx callback sync if-else kontrol. Ne postMessage parse (mevcut onMessage'da zaten) ne navigate (React Router) exception atmaz."
+    ],
+    "user_facing_errors": [
+      "Yok - rejection sessiz (console.warn sadece). UI overlay YOK (Faz 2 InmaConnectionStatus sadece bootstrap error icin). Parent INMA'nin kendi UX'i kullaniciyi yonlendirir."
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Rejection INV-INT-109 code + console.warn ile loglanir; silent degil. Overlay gostermeme kasitli (Q karar): unauth durumu zaten kullanicinin gorecegi LoginPage ile self-evident, ek overlay gurultu."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "INMA menusunde 'Invekto Ayarlar' linki tiklandiginda kullanici manuel olarak Dashboard'da ayarlar sayfasini bulmak zorundaydi.",
+      "suggestion": "Parent INMA postMessage('inma:navigate',{path:'/settings'}) gonderir, Dashboard dogrudan yonlendirir.",
+      "aha_moment": "INMA tabi = Invekto tabi; tek click ile istenen sayfa, iframe scroll yok."
+    },
+    {
+      "category": "SECURITY",
+      "user_pain": "Parent INMA kotu niyetli veri gonderseydi (path='//evil.com/phish' protocol-relative URL) React Router evil.com'a yonlendirebilirdi.",
+      "suggestion": "Input validation: path string + '/' prefix zorunlu + '//' prefix blocked (open redirect guard).",
+      "aha_moment": "Origin whitelist + auth gate + path validation = 3 defans katmani. Protocol-relative attack imkansiz."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Faz 2'de plan 60-80 satirdi; Faz 2.5 'daha kapsamli navigation framework' yapma cazibesi var (queue + named routes + back-stack).",
+      "suggestion": "MVP scope: path string + auth gate + reject. 20-30 satir.",
+      "aha_moment": "YAGNI. Queue ihtiyaci ortaya ciktiginda Faz 3'te eklenir; su an parent retry yeterli."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "iteration": 1,
+    "iter_0_blocking": [
+      "CQ3: PLAN_OUTDATED - plan JSON kendisi allowed_files'ta yoktu (clerical)"
+    ],
+    "iter_1_fixes": [
+      "Plan JSON'un kendisi allowed_files + files_changed listelerine eklendi"
+    ],
+    "iter_1_result": "ALL 12 CQ gates PASS + all 7 CoVe questions PASS, 0 blocking issues"
+  }
+}

@@ -1,6 +1,8 @@
-import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet, useNavigate } from 'react-router-dom';
 import { lazy, Suspense, useEffect } from 'react';
-import { inmaBridge, inmaBootstrap } from './inma';
+import { inmaBridge, inmaBootstrap, INMA_ERRORS } from './inma';
+import { inmaErrorMessage } from './inma/inmaErrors';
+import { api } from './lib/api';
 import { useAuth } from './hooks/useAuth';
 import { Layout } from './components/Layout';
 import { LoginPage } from './pages/LoginPage';
@@ -72,12 +74,21 @@ function TenantDashboardPage() {
 }
 
 export default function App() {
+  const navigate = useNavigate();
   useEffect(() => {
     const dispose = inmaBridge.init({
       onReady: () => { void inmaBootstrap.run(); },
       onLogout: () => inmaBootstrap.clear(),
+      onNavigate: (path) => {
+        if (!api.isAuthenticated()) {
+          console.warn(inmaErrorMessage(INMA_ERRORS.NAVIGATE_REJECTED, 'unauthenticated'));
+          return;
+        }
+        navigate(path);
+      },
     });
     return dispose;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
     <Routes>

@@ -560,6 +560,9 @@ errors:
   - code: INV-INT-108
     description: Welcome endpoint fetch failed after INMA bootstrap (non-critical; session stays active)
     user_message: Karşılama bilgileri yüklenemedi.
+  - code: INV-INT-109
+    description: inma:navigate postMessage rejected (invalid path or unauthenticated session; no queue, parent must retry)
+    user_message: Yönlendirme reddedildi.
 
   # Zoho OAuth (INV-INT-110+) — Adim 2 backend integration
   - code: INV-INT-110

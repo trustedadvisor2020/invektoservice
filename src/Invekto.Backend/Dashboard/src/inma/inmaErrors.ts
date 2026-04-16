@@ -8,6 +8,7 @@ export const INMA_ERRORS = {
   HTTP_REQUEST_FAILED: 'INV-INT-106',
   EXCHANGE_FAILED: 'INV-INT-107',
   WELCOME_FAILED: 'INV-INT-108',
+  NAVIGATE_REJECTED: 'INV-INT-109',
 } as const;
 
 export type InmaErrorCode = typeof INMA_ERRORS[keyof typeof INMA_ERRORS];
@@ -22,6 +23,7 @@ const INMA_ERROR_DESCRIPTIONS: Record<InmaErrorCode, string> = {
   'INV-INT-106': 'HTTP request failed after refresh retry',
   'INV-INT-107': 'INMA -> INSE token exchange failed',
   'INV-INT-108': 'welcome endpoint fetch failed (non-critical)',
+  'INV-INT-109': 'navigate postMessage rejected (invalid path or unauthenticated)',
 };
 
 export function inmaErrorMessage(code: InmaErrorCode, detail?: string): string {

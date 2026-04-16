@@ -12,12 +12,14 @@ type InmaInboundMessage =
   | { type: 'inma:auth'; accessToken: string; apiBaseUrl: string }
   | { type: 'inma:refresh-response'; accessToken: string }
   | { type: 'inma:refresh-error'; reason?: string }
-  | { type: 'inma:logout' };
+  | { type: 'inma:logout' }
+  | { type: 'inma:navigate'; path: string };
 
 export interface InmaBridgeCallbacks {
   onReady?: () => void;
   onLogout?: () => void;
   onAuthError?: (reason: string) => void;
+  onNavigate?: (path: string) => void;
 }
 
 interface PendingRefresh {
@@ -134,6 +136,16 @@ class InmaBridgeImpl {
         session.clear();
         this.failPendingRefresh(INMA_ERRORS.BRIDGE_DISPOSED);
         this.callbacks.onLogout?.();
+        return;
+      }
+      case 'inma:navigate': {
+        // Input validation: path must be absolute local ('/foo') but not protocol-relative ('//evil.com').
+        // Auth check is delegated to the onNavigate callback (App.tsx) where auth context lives.
+        if (typeof data.path !== 'string' || !data.path.startsWith('/') || data.path.startsWith('//')) {
+          console.warn(inmaErrorMessage(INMA_ERRORS.NAVIGATE_REJECTED, 'invalid_path'));
+          return;
+        }
+        this.callbacks.onNavigate?.(data.path);
         return;
       }
     }
