@@ -197,3 +197,46 @@ Detay teknik dokümantasyon (INSE iç):
 ---
 
 **Son Not:** Önceki "INMA public key paylaşımı" talebi (UP0.2 backlog) **tamamen iptal edilmiştir**. Bu pattern uzun vadede daha sürdürülebilir, daha güvenli ve INMA tarafına ek koordinasyon yükü getirmiyor.
+
+---
+
+## EK: `/api/v1/inma/nav` — Seçenek C Implementasyonu (2026-04-17)
+
+INMA Angular dinamik menü implementasyonunuzu aldık. Backend tarafı bu çağrıyı destekleyecek şekilde deploy edildi (commit `c0536f9`, Backend redeploy 20:10 UTC).
+
+**Yapılan değişiklikler:**
+
+1. **CORS Policy `InmaNavCors`** aktif, sadece `/api/v1/inma/nav` endpoint'i için:
+   - Origins: `https://app.wapcrm.net`, `https://developer.wapcrm.net`, `http://localhost:4200`
+   - Methods: `GET` (sadece read)
+   - Headers: any (Bearer + standart preflight)
+   - `AllowCredentials = false` (Angular HttpClient Bearer header explicit gönderir)
+
+2. **JwtAuth middleware whitelist'inden çıkarıldı** — endpoint kendi auth gate'ini çalıştırır.
+
+3. **Endpoint INMA JWT'yi welcome introspection ile validate eder:**
+   - INSE JWT (Dashboard React) → JwtValidator (local signature verify, fast path)
+   - INMA JWT (Angular) → InmaTokenIntrospector (welcome `/api/invekto/welcome` + 5dk cache)
+   - Her ikisi de aynı `ExtractTenantFromBearer` helper üzerinden geçer
+
+**Hata davranışı (Angular fallback için):**
+
+| Senaryo | Status | Body |
+|---------|--------|------|
+| Token geçerli | 200 | `{ sections: [...] }` |
+| Token expired/invalid (welcome 401) | 401 | `INV-AUTH-001` veya `INV-AUTH-002` envelope |
+| INMA welcome unreachable (network/timeout) | 503 | `INV-AUTH-008` envelope |
+| Bearer header missing | 401 | `INV-AUTH-002` envelope |
+| Origin CORS dışı | (preflight reddedilir) | Browser CORS error |
+
+**Test edebileceksiniz:**
+
+```http
+GET https://ai.invekto.com/api/v1/inma/nav
+Authorization: Bearer <INMA JWT>
+Origin: https://developer.wapcrm.net (veya http://localhost:4200)
+```
+
+Beklenen: 200 + `{ sections: [...] }` Lucide kebab-case icon string'leri ile.
+
+**Not:** License/yetki filtresi henüz aktif değil (full tenant set döner). Tenant'a göre özelleştirilmiş menü backlog'da — ilerleyen pakette eklenecek. Şimdilik Angular tarafının Material Icons mapping + fallback menü implementasyonu yeterli.
