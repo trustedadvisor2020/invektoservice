@@ -145,6 +145,12 @@ public sealed class ZohoBlueprintClient : IZohoBlueprintClient
             var url = apiBase + "/crm/v6/Leads/" + Uri.EscapeDataString(leadId) + "/actions/blueprint";
             using var response = await SendWithAuthAsync(tenantId, HttpMethod.Get, url, content: null, ct).ConfigureAwait(false);
 
+            // TEMP [ZOHO-BP-RAW] diagnostic: log EVERY response (status + body head) BEFORE routing logic.
+            var rawBody = response.Content is null
+                ? string.Empty
+                : await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            Console.WriteLine($"[ZOHO-BP-RAW] tenant={tenantId} lead={leadId} status={(int)response.StatusCode} len={rawBody.Length} head={Truncate(rawBody, 500)}");
+
             // 204/404 for this specific lead just means no transitions available from its state; continue.
             if (response.StatusCode == HttpStatusCode.NoContent || response.StatusCode == HttpStatusCode.NotFound)
                 continue;
@@ -154,12 +160,11 @@ public sealed class ZohoBlueprintClient : IZohoBlueprintClient
             // lead. Continue to next sample. Any OTHER 400 body is still a hard failure.
             if (response.StatusCode == HttpStatusCode.BadRequest)
             {
-                var errorBody = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                if (errorBody.Contains("RECORD_NOT_IN_PROCESS", StringComparison.Ordinal))
+                if (rawBody.Contains("RECORD_NOT_IN_PROCESS", StringComparison.Ordinal))
                     continue;
                 throw new InvalidOperationException(
                     ZohoErrorCodes.SyncInfrastructureError +
-                    $": Zoho blueprint returned 400 for tenant {tenantId} lead {leadId}. Body: {errorBody}");
+                    $": Zoho blueprint returned 400 for tenant {tenantId} lead {leadId}. Body: {rawBody}");
             }
 
             if (!response.IsSuccessStatusCode)
@@ -168,7 +173,7 @@ public sealed class ZohoBlueprintClient : IZohoBlueprintClient
             BlueprintResponseWire? wire;
             try
             {
-                wire = await response.Content.ReadFromJsonAsync<BlueprintResponseWire>(cancellationToken: ct).ConfigureAwait(false);
+                wire = JsonSerializer.Deserialize<BlueprintResponseWire>(rawBody);
             }
             catch (JsonException ex)
             {
@@ -178,8 +183,14 @@ public sealed class ZohoBlueprintClient : IZohoBlueprintClient
                     ex);
             }
 
-            if (wire?.Blueprint is null) continue;
-            foreach (var t in ExtractTransitions(wire.Blueprint))
+            if (wire?.Blueprint is null)
+            {
+                Console.WriteLine($"[ZOHO-BP-RAW] tenant={tenantId} lead={leadId} PARSE_FAIL wire.Blueprint=null (shape mismatch?)");
+                continue;
+            }
+            var extracted = ExtractTransitions(wire.Blueprint);
+            Console.WriteLine($"[ZOHO-BP-RAW] tenant={tenantId} lead={leadId} extracted_count={extracted.Count}");
+            foreach (var t in extracted)
                 aggregated[t.TransitionId] = t;  // dedupe by id; later wins (same id == same transition)
         }
 

@@ -44,8 +44,9 @@
 | G7 | Hangfire Migration | Scheduler → Hangfire (PG storage, queue-per-service, strangler) | [Detay](g7-hangfire.md) | Faz 1 IN_PROGRESS | 13 Nis | - |
 | ZOHO-3C | Zoho Adim 3 P3-C | Super-admin cross-tenant ops dashboard (/api/ops/zoho/* + UI) | 4 endpoint + SPA /ops/zoho | DONE | 17 Nis | iter 3, PASS |
 | ZOHO-4 | Zoho Adim 4 | Stage Mapping editor (module transitions + dry-run test + connection gate) | 2 Int + 3 Backend + editable UI | DONE | 17 Nis | iter 1, PASS |
+| ZOHO-P4.2 | Zoho P4.2 | OAUTH_SCOPE_MISMATCH investigation + UX fix + metadata path removal | [Detay](zoho-p42-oauth-scope-investigation.md) | INVESTIGATED | 17 Nis | - |
 
-**Toplam:** 31 paket (25 done, 0 in-progress, 5 planned, 1 pending) | 50+ GR + RI-100+ task
+**Toplam:** 32 paket (25 done, 0 in-progress, 5 planned, 2 pending) | 50+ GR + RI-100+ task
 
 ## Mikroservis Port Haritasi
 
