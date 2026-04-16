@@ -1,0 +1,154 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "slug": "20260416-inma-nav-api-tr-labels",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-04-16T17:20:00Z",
+  "updated_at": "2026-04-16T17:20:00Z",
+  "plan": {
+    "summary": "INMA (WapCRM Angular parent shell) iframe disindaki outer sidebar'i Invekto feature surface'i ile ayni gosteriyor ama Ingilizce hardcoded labellarla (Home/Flow Builder/Template Gallery/... vs.). Q istedigi: INMA takimi bizden TR metadata ceksin. Yeni endpoint `GET /api/v1/inma/nav` tenant-JWT korumali, hardcoded TR nav response donuyor (4 section x 14 item: Calisma Alani/Pazarlama/Analiz/Sistem). Ops-only items exclude; license filtering bu fazda YAPILMIYOR (tum tenant items gider, INMA kendi UI'sinda filtrelemez); icon names lucide-react kebab-case (INMA kendi library'sine mapleyecek). 1 yeni Shared DTO dosyasi (3 sealed record) + Program.cs 1 yeni endpoint + UseJwtAuth prefix whitelist genisletme.",
+    "q_intent": "Dış WapCRM nav'daki başlıkları türkçe yap. Q seçimi: (seçenek 2) Biz /api/v1/inma/nav endpoint'i açalım, INMA bunu çağırıp label'lari çeksin. 3 interview sorusu: (1) ops-only hic gitmeyecek, (2) icon text isim, (3) bu fazda hepsi gitsin lisanslamayi sonra.",
+    "interview_notes": "Q onayli 3 karar: ops-items exclude at source; icon=lucide text name; no feature gating this phase. Dis nav Angular INMA kodunda hardcoded — bu endpoint'i INMA takimi tukettigi an Ingilizce yerine TR dönecek. Welcome endpoint 503 problemi ayri konu (ApiBaseUrl config + mevcut bypass).",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "GET /api/v1/inma/nav tenant-JWT korumali (UseJwtAuth prefix'e eklenmis). Anonymous veya gecersiz JWT = 401. Gecerli tenant JWT = 200 + InmaNavResponse JSON.",
+        "verified": false
+      },
+      {
+        "id": "AC2",
+        "criterion": "Response sections 4 adet: workspace (4 item) + marketing (4 item) + analytics (3 item) + system (3 item) = 14 tenant item. Ops-only items (Firmalar, Loglar, Mesajlar, Hangfire, vb.) hic donulmuyor — hardcoded listede yoklar.",
+        "verified": false
+      },
+      {
+        "id": "AC3",
+        "criterion": "Tum Turkce labellar: Calisma Alani/Pazarlama/Analiz/Sistem + Ana Sayfa/Akis Olusturucu/Sablon Galerisi/Bilgi Bankasi/Kampanyalar/Pazarlama/Yorum Kurtarma/Randevular/Akis Izleme/Analizler/Gelir Analizi/Entegrasyonlar/Kurulum Sihirbazi/Ayarlar. Icon names lucide kebab-case: layout-dashboard, git-branch, layout-template, book-open, megaphone, star, shield-alert, calendar-days, activity, bar-chart-3, trending-up, link-2, rocket, settings.",
+        "verified": false
+      },
+      {
+        "id": "AC4",
+        "criterion": "Shared DTO namespace Invekto.Shared.Contracts.Inma.Dtos: InmaNavResponse, InmaNavSection, InmaNavItem — hepsi sealed + IReadOnlyList + JsonPropertyName snake-ish camelCase lowercase. Additive — hicbir breaking change yok, mevcut Shared tuketicileri etkilenmez."
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/Contracts/Inma/Dtos/InmaNavDtos.cs",
+    "src/Invekto.Backend/Program.cs",
+    "arch/plans/20260416-inma-nav-api-tr-labels.json",
+    "arch/plans/diffs/20260416-inma-nav-api-tr-labels.diff"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/Contracts/Inma/Dtos/InmaNavDtos.cs", "change": "new Shared DTO: InmaNavResponse + InmaNavSection + InmaNavItem sealed records", "is_new": true },
+    { "path": "src/Invekto.Backend/Program.cs", "change": "GET /api/v1/inma/nav endpoint (hardcoded TR response) + UseJwtAuth prefix whitelist extension", "is_new": false },
+    { "path": "arch/plans/20260416-inma-nav-api-tr-labels.json", "change": "plan JSON", "is_new": true },
+    { "path": "arch/plans/diffs/20260416-inma-nav-api-tr-labels.diff", "change": "full diff for Codex audit (gitignored)", "is_new": true }
+  ],
+  "git_diff": {
+    "stats": { "insertions": 110, "deletions": 1, "files_count": 2 },
+    "full_path": "arch/plans/diffs/20260416-inma-nav-api-tr-labels.diff"
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-04-16T17:15:00Z",
+    "duration_ms": 33000,
+    "output_tail": "17 Warning(s) 0 Error(s) Time Elapsed 00:00:32.92",
+    "services": ["Invekto.Shared", "Invekto.Backend (+all others rebuilt transitively)"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Endpoint tenant-JWT ile mi guvenceli? UseJwtAuth prefix listesine /api/v1/inma/nav eklenmis mi + JwtAuthMiddleware valid JWT yoksa 401 donuyor mu (anonymous bypass yok)? Welcome endpoint pattern ile tutarli mi?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q2",
+      "question": "Ops-only items (Firmalar/Loglar/Mesajlar/Hangfire/Lisanslama/Zoho Yonetim/Sablon Sistemi/Veri Besleme/Intent Yonetimi/RI Sablonlari/WebChat/Onboarding Rehberi) response'ta hic goruluyor mu? 14 tenant item disinda hicbirisi gelmemesi zorunlu.",
+      "category": "Data"
+    },
+    {
+      "id": "Q3",
+      "question": "InmaNavResponse/Section/Item DTO'lari additive mi (breaking change yok, eski Shared tuketicileri etkilenmez)? sealed + IReadOnlyList + JsonPropertyName doğru pattern mi (mevcut WapCrmMessage.cs pattern'i ile tutarli mi)?",
+      "category": "Contracts"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Diger mikro servisler (ChatAnalysis, Automation, vb.) — endpoint sadece Backend'de",
+      "Layout.tsx (Dashboard ic sidebar) — iframe hide fix zaten yapildi, degistirilmez",
+      "INMA Angular kodu — bizim repo'da degil, cross-team, bu paket disinda"
+    ],
+    "non_goals": [
+      "Feature/license gating (Q explicit: bu fazda hepsi gitsin, sonraya)",
+      "i18n (sadece TR bu fazda; `?lang=en` fallback ileride)",
+      "Dinamik nav (tenant-specific custom sections) — hardcoded response yeterli",
+      "Icon SVG delivery — text name yeterli (Q secti a)",
+      "Welcome endpoint 503 fix — ayri konu (ApiBaseUrl + INMA signature bypass ile ilgili)"
+    ],
+    "intentional_exclusions": [
+      "Ops-only items (12 adet) — Q istegi ile listeye hic girmedi",
+      "Onboarding Rehberi (/onboarding-guide) — opsOnly flag'li Layout.tsx'te, tenant gorunmez"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Endpoint hardcoded static response donduruyor — runtime fail path yok. Serialize hatasi .NET Results.Ok() default JsonSerializer tarafindan handle edilir (500 response); DB/network call yok."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "INMA iframe disindaki sidebar'da Ingilizce 'Home/Flow Builder/Knowledge Base' gibi labellar var, Turkce konusan tenant icin kafa karistirici.",
+      "suggestion": "Backend Turkce nav metadata sunuyor, INMA consume edince kullanici tum nav'i native dilinde goruyor.",
+      "aha_moment": "Kullanici WapCRM'e girip Invekto feature'larini direkt Turkce basliklarla taniyor."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "INMA Angular kodunda hardcoded nav list'i var; yeni Invekto feature geldiginde INMA takimi elle label eklemek zorunda.",
+      "suggestion": "Tek kaynak: bizim endpoint. Yeni feature Invekto tarafindan eklendiginde nav otomatik guncellenir, INMA deploy gerektirmez.",
+      "aha_moment": "Feature launch'unda INMA tarafi kod degisikligi olmadan yeni menu itemi goruluyor."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Cross-team spec change'leri (INMA-Invekto arasi) her iletisim iterasyonu aliyor.",
+      "suggestion": "Contract tek commit'te dondurulmus, INMA takimi endpointi konsumee edip bitirir; geri iletisim bos.",
+      "aha_moment": "INMA takimi endpoint'i gorur gormez production'a alabilir."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Ingilizce nav kullanicilarda 'bu ne demek?' support ticketlari yaratiyor (Yorum Kurtarma vs Comment Rescue).",
+      "suggestion": "Turkce nav + lucide icon eslestirmesi ile semantik netlik saglanir.",
+      "aha_moment": "Support ticket hacmi 'menu anlamadim' kategorisinde dustugunu gorduk."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "License filtering henuz yok; tenant lisanssiz feature'a tiklasa endpoint 403 donuyor ama kullanici link goruyor.",
+      "suggestion": "Sonraki faz: InseFeatures claim ile backend filtreleme, response'ta sadece licensed items. Phase-2 enhancement deklare edildi.",
+      "aha_moment": "Tenant sadece kendi paketindeki feature'lari goruyor, yanlis tiklama + 403 UX kotusu kaybolur."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-16T17:25:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-16T17:25:00Z",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS" }, "CQ2": { "result": "PASS" },
+      "CQ3": { "result": "PASS" }, "CQ4": { "result": "PASS" },
+      "CQ5": { "result": "PASS" }, "CQ6": { "result": "PASS" },
+      "CQ7": { "result": "PASS" }, "CQ8": { "result": "PASS" }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS" },
+      "Q2": { "result": "PASS" },
+      "Q3": { "result": "PASS" }
+    },
+    "blocking_issues": [],
+    "iteration": 0,
+    "escalation_required": false
+  }
+}

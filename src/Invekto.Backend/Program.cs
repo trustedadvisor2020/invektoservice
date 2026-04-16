@@ -444,7 +444,7 @@ foreach (var ip in webhookIps)
 if (jwtValidator != null)
 {
     var jwtLogger = app.Services.GetRequiredService<JsonLinesLogger>();
-    app.UseJwtAuth(jwtValidator, jwtLogger, webhookIpSet, "/api/v1/webhook/", "/api/v1/automation/", "/api/v1/outbound/", "/api/v1/flow-builder/flows/", "/api/v1/flow-builder/monitor/", "/api/v1/flow-builder/wizard/", "/api/v1/attribution/", "/api/v1/leads", "/api/v1/onboarding/", "/api/v1/zoho/");
+    app.UseJwtAuth(jwtValidator, jwtLogger, webhookIpSet, "/api/v1/webhook/", "/api/v1/automation/", "/api/v1/outbound/", "/api/v1/flow-builder/flows/", "/api/v1/flow-builder/monitor/", "/api/v1/flow-builder/wizard/", "/api/v1/attribution/", "/api/v1/leads", "/api/v1/onboarding/", "/api/v1/zoho/", "/api/v1/inma/nav");
 }
 
 // Enable static file serving for Dashboard UI (wwwroot/)
@@ -6914,6 +6914,72 @@ app.MapPost("/api/v1/inma/auth/refresh", async (HttpContext ctx, IHttpClientFact
 });
 
 // Akis 6: Welcome proxy — INMA welcome endpoint'ine proxy yapar
+// ============================================
+// INMA NAV METADATA (tenant-facing)
+// ============================================
+// Serves localized (TR) navigation metadata so the INMA/WapCRM parent shell
+// can render an outer sidebar that mirrors the Invekto feature surface.
+// Tenant-only: ops items are intentionally excluded at the source. Feature
+// licensing filtering is deferred — this phase returns the full tenant set.
+// Icon strings are lucide-react kebab-case identifiers; consumer maps them.
+app.MapGet("/api/v1/inma/nav", (HttpContext ctx) =>
+{
+    var navResponse = new InmaNavResponse
+    {
+        Sections =
+        [
+            new InmaNavSection
+            {
+                Id = "workspace",
+                Label = "Çalışma Alanı",
+                Items =
+                [
+                    new InmaNavItem { Id = "home",            Label = "Ana Sayfa",         Path = "/",                    Icon = "layout-dashboard" },
+                    new InmaNavItem { Id = "flow-builder",    Label = "Akış Oluşturucu",   Path = "/flow-builder",        Icon = "git-branch" },
+                    new InmaNavItem { Id = "flow-templates",  Label = "Şablon Galerisi",   Path = "/flow-templates",      Icon = "layout-template" },
+                    new InmaNavItem { Id = "knowledge",       Label = "Bilgi Bankası",     Path = "/knowledge",           Icon = "book-open" },
+                ]
+            },
+            new InmaNavSection
+            {
+                Id = "marketing",
+                Label = "Pazarlama",
+                Items =
+                [
+                    new InmaNavItem { Id = "campaigns",       Label = "Kampanyalar",       Path = "/campaigns",           Icon = "megaphone" },
+                    new InmaNavItem { Id = "marketing",       Label = "Pazarlama",         Path = "/marketing",           Icon = "star" },
+                    new InmaNavItem { Id = "rescue",          Label = "Yorum Kurtarma",    Path = "/rescue",              Icon = "shield-alert" },
+                    new InmaNavItem { Id = "appointments",    Label = "Randevular",        Path = "/appointments",        Icon = "calendar-days" },
+                ]
+            },
+            new InmaNavSection
+            {
+                Id = "analytics",
+                Label = "Analiz",
+                Items =
+                [
+                    new InmaNavItem { Id = "flow-monitor",         Label = "Akış İzleme",   Path = "/flow-monitor",         Icon = "activity" },
+                    new InmaNavItem { Id = "analytics",            Label = "Analizler",     Path = "/analytics",            Icon = "bar-chart-3" },
+                    new InmaNavItem { Id = "revenue-intelligence", Label = "Gelir Analizi", Path = "/revenue-intelligence", Icon = "trending-up" },
+                ]
+            },
+            new InmaNavSection
+            {
+                Id = "system",
+                Label = "Sistem",
+                Items =
+                [
+                    new InmaNavItem { Id = "integrations",    Label = "Entegrasyonlar",    Path = "/integrations",        Icon = "link-2" },
+                    new InmaNavItem { Id = "onboarding",      Label = "Kurulum Sihirbazı", Path = "/onboarding",          Icon = "rocket" },
+                    new InmaNavItem { Id = "settings",        Label = "Ayarlar",           Path = "/settings",            Icon = "settings" },
+                ]
+            }
+        ]
+    };
+
+    return Results.Ok(navResponse);
+});
+
 app.MapGet("/api/v1/inma/welcome", async (HttpContext ctx, IHttpClientFactory httpClientFactory, JsonLinesLogger jsonLogger) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
