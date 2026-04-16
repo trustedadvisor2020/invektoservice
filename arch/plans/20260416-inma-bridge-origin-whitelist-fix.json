@@ -1,0 +1,76 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "slug": "20260416-inma-bridge-origin-whitelist-fix",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-04-16T14:20:00Z",
+  "updated_at": "2026-04-16T14:20:00Z",
+  "plan": {
+    "summary": "INMA Bridge origin whitelist fix. Prod whitelist yanlis yapilandirilmisti: ['https://app.invekto.com'] (bizim kendi iframe domain'imiz). INMA takimi debug log'larindan teyit etti: parent Angular 'http://localhost:4200' (gelistirme) ve 'https://app.wapcrm.net' (prod'da) origin'inden gonderiyor. Prod whitelist INMA takiminin verdigi sekilde degistirildi: ['https://app.wapcrm.net', 'https://developer.wapcrm.net', 'http://localhost:4200']. 3 satir degisim + yorum.",
+    "q_intent": "INMA Faz 2 deploy edildi (fc2d0df), Angular tarafi inma:auth gonderiyor ama React bridge sessizce dusuruyordu cunku origin check FAIL. Debug log (aba45b5) INMA takimina gonderildi, onlar receivedOrigin=localhost:4200 oldugunu bildirdi. Bu paket kok neden fix.",
+    "interview_notes": "INMA takimi fix snippet'ini dogrudan verdi: prod ve dev whitelist araydigi origin'leri icermeli. localhost:4200 prod'da geciyor cunku gelistirme sirasinda INMA iframe test ediyor (tactical; ileride cikarilabilir).",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Prod build (import.meta.env.PROD=true) INMA_ALLOWED_ORIGINS = ['https://app.wapcrm.net', 'https://developer.wapcrm.net', 'http://localhost:4200']. Dev build = ['https://developer.wapcrm.net', 'http://localhost:4200']. 'https://app.invekto.com' (bizim kendi domain'imiz) whitelist'ten KALDIRILDI.",
+        "verified": false
+      },
+      {
+        "id": "AC2",
+        "criterion": "Angular parent postMessage 'inma:auth' gonderdikten sonra (localhost:4200'den), React iframe bridge handleMessage ORIGIN REJECTED log atmaz; inma:auth validated log akisi + session.setAuth + onReady + inmaBootstrap.run + exchangeInmaToken success -> useAuth onUpdated -> Dashboard LoginPage gostermeden route'a duser.",
+        "verified": false
+      },
+      {
+        "id": "AC3",
+        "criterion": "Hicbir kod davranisi degismedi disinda origin whitelist. Faz 1/2/2.5 mantigi (postMessage handler, bootstrap, useAuth listener, InmaConnectionStatus) DOKUNULMADI. Debug log'lar (aba45b5) KORUNDU — bu paket sadece whitelist array mutation."
+      }
+    ]
+  },
+  "gr_list": [
+    { "id": "GR-1", "description": "inmaBridge.ts: INMA_ALLOWED_ORIGINS prod kolunu ['app.wapcrm.net', 'developer.wapcrm.net', 'localhost:4200'] olarak degistir + yorum ekle (BIZIM vs PARENT domain ayrimi)." }
+  ],
+  "allowed_files": [
+    "src/Invekto.Backend/Dashboard/src/inma/inmaBridge.ts",
+    "arch/plans/20260416-inma-bridge-origin-whitelist-fix.json"
+  ],
+  "files_changed": [
+    "src/Invekto.Backend/Dashboard/src/inma/inmaBridge.ts",
+    "arch/plans/20260416-inma-bridge-origin-whitelist-fix.json"
+  ],
+  "git_diff": { "stats": { "insertions": 6, "deletions": 3, "files_count": 1 } },
+  "build": { "status": "PASS", "errors": 0, "warnings": 17, "warnings_note": "all pre-existing" },
+  "verification_questions": [
+    { "id": "Q1", "question": "Prod whitelist ['https://app.wapcrm.net', 'https://developer.wapcrm.net', 'http://localhost:4200'] 3 deger iceriyor mu? 'https://app.invekto.com' KALDIRILDI mi?", "category": "Auth" },
+    { "id": "Q2", "question": "Dev whitelist degismedi mi ['https://developer.wapcrm.net', 'http://localhost:4200'])?", "category": "Auth" },
+    { "id": "Q3", "question": "Diger kod davranisi (switch case'leri, bootstrap, useAuth listener) SIFIR degisiklik mi? Sadece whitelist array mutation?", "category": "Contracts" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Tum Dashboard dosyalari haric inmaBridge.ts",
+      "Arch doc (errors.md gibi) — bu fix yeni error code aciklamiyor"
+    ],
+    "non_goals": [
+      "localhost:4200 prod'dan cikarma - INMA takimi tactical istedi, ileride ayri paket",
+      "Regex tabanli whitelist - gereksiz karmasiklik",
+      "Runtime config'ten whitelist okuma - prod redeploy gerektirir zaten"
+    ],
+    "intentional_exclusions": []
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Whitelist reject path'i ZATEN [inma-debug] warn log veriyor (aba45b5 commit'i)."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "INMA Faz 2 prod'a deploy edildi ama iframe LoginPage gosteriyordu. Kok neden anlasilmaz gibiydi.",
+      "suggestion": "Debug log'lar ilk redeploy ile ORIGIN REJECTED path'ini ortaya cikardi. Sessiz reject yoktu artik.",
+      "aha_moment": "Silent reject + debug log 2-stage diagnosis: once log ekle, sonra kok neden bul, sonra fix. Fire-and-forget fix degil."
+    }
+  ],
+  "verdict": { "status": "PASS", "iteration": 0, "iter_0_result": "12/12 CQ PASS, 3/3 CoVe PASS, 0 blocking" }
+}

@@ -1,8 +1,11 @@
 import { useInmaSession } from './inmaSession';
 import { INMA_ERRORS, inmaErrorMessage, type InmaErrorCode } from './inmaErrors';
 
+// Parent INMA portal'inin origin'i. 'app.invekto.com' BIZIM kendi iframe domain'imiz olup
+// whitelist'te olmamalidir; parent INMA prod'da 'app.wapcrm.net' uzerinden gonderir.
+// localhost:4200 prod'da da whitelisted - INMA takimi gelistirme sirasinda embed testi icin.
 const INMA_ALLOWED_ORIGINS: ReadonlyArray<string> = import.meta.env.PROD
-  ? ['https://app.invekto.com']
+  ? ['https://app.wapcrm.net', 'https://developer.wapcrm.net', 'http://localhost:4200']
   : ['https://developer.wapcrm.net', 'http://localhost:4200'];
 
 const INMA_API_BASE_URL_REGEX = /^https:\/\/[a-z0-9-]+\.wapcrm\.net\/?$/;
