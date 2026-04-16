@@ -45,8 +45,15 @@
 | ZOHO-3C | Zoho Adim 3 P3-C | Super-admin cross-tenant ops dashboard (/api/ops/zoho/* + UI) | 4 endpoint + SPA /ops/zoho | DONE | 17 Nis | iter 3, PASS |
 | ZOHO-4 | Zoho Adim 4 | Stage Mapping editor (module transitions + dry-run test + connection gate) | 2 Int + 3 Backend + editable UI | DONE | 17 Nis | iter 1, PASS |
 | ZOHO-P4.2 | Zoho P4.2 | OAUTH_SCOPE_MISMATCH investigation + UX fix + metadata path removal | [Detay](zoho-p42-oauth-scope-investigation.md) | INVESTIGATED | 17 Nis | - |
+| FEAT-WTP | Welcome Template Pack | Tenant N welcome + M FAQ intent, deterministik A/B rotation, locale-aware | [Spec](../arch/features/welcome-template-pack.md) | DRAFT | 16 Nis | - |
+| FEAT-MCC | Multi-City Campaign | Tenant campaign JSONB (cities, dates, locations) + flow substitution + active window guard | [Spec](../arch/features/multi-city-campaign.md) | DRAFT | 16 Nis | - |
+| FEAT-LIW | Lead Intake Webhook | Generic POST /leads/intake + field map + duplicate merge + WA direct entry | [Spec](../arch/features/lead-intake-webhook.md) | DRAFT | 16 Nis | - |
+| FEAT-VCP | Video Consultation Provider | IVideoConsultProvider + GoogleMeetMock + GoogleMeet prod + ICS + reminders | [Spec](../arch/features/video-consultation-provider.md) | DRAFT | 16 Nis | - |
+| FEAT-EFS | Event Follow-Up Sequence | N-stage drip sequence + Hangfire scheduled + A/B control + 4 trigger | [Spec](../arch/features/event-followup-sequence.md) | DRAFT | 16 Nis | - |
+| FEAT-TFM | Tenant Field Mapping | INMA 10-field semantic overlay (JSONB + resolver + validation + flow/template integration) | [Spec](../arch/features/tenant-field-mapping.md) | DRAFT | 16 Nis | - |
+| DENT-PILOT | Dent Adavista Pilot | Generic feature'lari tuketen ilk tenant konfigurasyonu (46 template, 5 field, 3-stage nurture) | [Detay](../DentAdavista/plan/README.md) | BLOCKED (UP0 + FEAT-*) | 16 Nis | - |
 
-**Toplam:** 32 paket (25 done, 0 in-progress, 5 planned, 2 pending) | 50+ GR + RI-100+ task
+**Toplam:** 40 paket (25 done, 0 in-progress, 5 planned, 2 pending, 6 feature DRAFT, 1 pilot blocked) | 50+ GR + RI-100+ task
 
 ## Mikroservis Port Haritasi
 

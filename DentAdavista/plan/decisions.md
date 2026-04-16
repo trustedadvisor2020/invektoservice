@@ -1,18 +1,24 @@
-# Kararlar (2026-04-13, Q onaylı)
+# Kararlar
 
-| # | Konu | Karar | Sonuç |
+> **Ilk karar seti:** 2026-04-13 Q-onayli. Kapsam pilot-bagimsiz platform feature'lari + Dent pilot konfigurasyonu ikiye ayrildi: 2026-04-16 refactor (B paketi).
+
+## Ana Kararlar (kilitli)
+
+| # | Konu | Karar | Sonuc |
 |---|------|-------|-------|
-| 1 | Custom Fields | **REVİZE: INMA'nın mevcut 10 tenant custom field'ını kullan** | G4 iptal, 4-5g kazanç |
-| 2 | Flow Wait State | **A — `flow_execution_state` tablosu (persistent)** | FlowEngineV2 refactor, M efor (2-3g), Faz 5'te |
-| 3 | Scheduler | **A — Hangfire migration** | `ReminderSchedulerService` kaldırılır, L efor (5-7g), Faz 5 öncesi |
-| 4 | Multi-channel | **INMA üzerinden WA + IG + Telegram (Email YOK)** | `IMessageChannel` + `InmaAdapter` (single adapter, 3 kanal), M efor (3g) |
-| 5 | INMA Send | **Swagger doğrulandı** — endpoint'ler hazır, 5050 tenant'ta canlı |
+| 1 | Custom Fields | **INMA'nin mevcut 10 tenant custom field'ini kullan** | G4 iptal; generic semantic overlay feature'a donusturuldu ([`arch/features/tenant-field-mapping.md`](../../arch/features/tenant-field-mapping.md)) |
+| 2 | Flow Wait State | `flow_execution_state` persistent tablosu | G6 DONE 2026-04-13 |
+| 3 | Scheduler | Hangfire migration | G7 Faz 1-5 DONE 2026-04-13/14 |
+| 4 | Multi-channel | INMA uzerinden WA + IG + Telegram (Email YOK) | INMA adapter pattern |
+| 5 | INMA Send | Swagger dogrulandi, endpoint'ler hazir (tenant 5050 canli) | Outbound WA write YASAK DEGIL (mesajlasma); INMA lisans okumasi hala READONLY |
+| 6 | Unified Platform | INMA-INSE tek native platform (SSO + tenant sync + shared data + feature flags) | UP0 paketleri 2026-04-13'ten baslayarak devam |
+| 7 | Feature-Pilot ayrimi | 2026-04-16 B paketi: 6 generic feature spec ([`arch/features/`](../../arch/features/)) + Dent pilot checklist | Pilot tenant-bagimsiz feature'lari tuketecek; "Gunes" pilot kod adi |
 
-## INMA Endpoint Haritası (Faz 2 için)
+## INMA Endpoint Haritasi
 
-| İhtiyaç | INMA Endpoint |
+| Ihtiyac | INMA Endpoint |
 |---------|--------------|
-| Outbound mesaj başlat | `POST /api/chatsv3/start-chat` (ChatV3VM) |
+| Outbound mesaj baslat | `POST /api/chatsv3/start-chat` (ChatV3VM) |
 | Outbound v3 alternatif | `POST /api/chatsv3/start-chat-v3` (ChartStartControlVM) |
 | Kanal listesi (WA/IG/Telegram) | `GET /api/chatsv3/getcompanychannels` |
 | Telefondan chat bul | `GET /api/chatsv3/find-chat-by-phonenumber/{id}` |
@@ -23,40 +29,44 @@
 
 **Auth:** `X-CIB-SecretKey` (mevcut `WapCrmClient.cs` pattern).
 
-**Açık soru:** Inbound webhook? Swagger görünen listede webhook endpoint yok — INMA **polling** mi kullanıyor, yoksa ayrı dokümantasyonda mı? `WapCrmClient` nasıl inbound alıyor → Faz 2'de verify.
+**Acik soru:** Inbound webhook? Swagger'da webhook endpoint yok — INMA polling mi, ayri dokumantasyon mi? Mevcut `WapCrmClient` inbound akisi verify edilecek.
 
-## Revize Efor Tahmini
+## Unified Platform Kararlari (UP0/UP1/UP2)
 
-| Paket | Süre | Not |
-|-------|------|-----|
-| G3 (Template rotation) | 1-2g | Faz 3 öncesi |
-| G6 (Flow state) | 2-3g | Faz 5 öncesi |
-| G7 (Hangfire) | 5-7g | Faz 5 öncesi, tüm cron'lar migrate |
-| G2 (Multi-channel) | 3g | Faz 2 içinde |
-| ~~G4~~ | **İPTAL** | INMA'nın 10 field'ı kullanılacak |
-| G8 (EN locale test) | <1g | Faz 3 içinde |
-| **Toplam gap fix** | **~15-20g** | |
-| Faz 0-9 orijinal | 9g | |
-| **GRAND TOTAL** | **~22-28 iş günü** | |
+| Faz | Item | Durum |
+|-----|------|-------|
+| UP0.1 | INMA DTO contract reorg (Shared) | DONE 2026-04-13 |
+| UP0.1b | DTO consolidation (webhook types) | DONE 2026-04-15 |
+| UP0.2 | SSO dogrulama + role map | **BLOCKED** — INMA JWT public key bekliyor (asymmetric RS256 verify) |
+| UP0.3 | Tenant lifecycle handler (event-driven) | BLOCKED — INMA `tenant.created` event bekliyor |
+| UP0.4 | Bidirectional sync (shared bus) | PENDING |
+| UP0.5 | `IInmaSendClient` outbound | PARTIAL — J1/J4 bekliyor |
+| UP0.6 | Feature flag service | DONE 2026-04-13 |
+| UP1 | Embedded UI / feature surfacing | BACKLOG |
+| UP2 | Audit/notification / unified WebSocket | BACKLOG |
 
-**Önemli:** Hangfire + Custom fields + Multi-channel = **platform yatırımı**, sadece Dent'e ait değil. Pilot sonrası diğer tüm tenantlar faydalanır.
+**Detay:** [`arch/platform/inma-inse-unification/`](../../arch/platform/inma-inse-unification/)
 
-## Unified Platform Kararı (2026-04-13 — paradigma şifti)
+## Blueprint Sync (Zoho)
 
-INMA + INSE **tek native platform**. Dent pilot bu çerçevede. Detay: [unified-platform-architecture.md](unified-platform-architecture.md).
+- **Pipeline status alani:** `leads.pipeline_status` VARCHAR(30) — **INSE'de**, INMA'da degil
+- **Event map:** `LeadStatusEventMap.Map(pipeline_status -> zoho_event)` Backend'de
+- **Sync yonu:** INSE -> Zoho (Blueprint transition). INMA pipeline kavramina dokunmaz.
+- **Field mapping vs pipeline:** Farkli kavramlar. `pipeline_status` = CRM-standart lifecycle; field mapping (INMA custom_1..10) = tenant domain vocabulary.
 
-**P0 (Dent için şart, ~12-15g):**
-- SSO (INMA token → INSE)
-- Unified tenant (`CompanyCode` = `tenant_id`)
-- Bidirectional sync (webhook var, shared bus v2)
-- Shared data layer (INMA contacts + INSE extensions)
-- Feature flag / license merkez INMA'da
-- Contract discipline (Invekto.Shared her iki tarafta)
+## Gap Fix Durumu
 
-**P1 (UX, v1.1):** Embedded UI · feature surfacing · unified admin · shared domain
-**P2 (v2):** Audit/notification · unified WebSocket
+| Gap | Durum | Detay |
+|-----|-------|-------|
+| G3 (Template rotation) | DONE 2026-04-14 | `ITemplateRotationService` Shared'da |
+| G6 (Flow state persistence) | DONE 2026-04-13 | `flow_execution_state` tablosu |
+| G7 (Hangfire) | DONE 2026-04-13/14 | Faz 1-5 + deploy HEALTHY |
+| G4 (Custom fields) | IPTAL | INMA 10 field kullanilacak (feature spec ile overlay) |
+| G2 (Multi-channel) | PENDING | INMA adapter, pilot oncesi |
+| G8 (EN locale test) | PENDING | Feature spec AC-4 icinde |
 
-## Paralel Yapılabilir
-- G3, G7, G4 bağımsız — paralel dev mümkün
-- G2 Faz 2 içinde, Faz 1 ile paralel değil (tenant lazım)
-- G6 Faz 5'e girmeden önce tamamlanmalı
+## Paralel Yapilabilir
+
+- 6 generic feature spec'in implement'i bagimsiz paketler — birbirine zincirli degil
+- Pilot checklist ilerleyisi, feature implement'i tamamlandigi kadar aktivite kazaninr
+- UP0.2/0.3/0.5 INMA-ekibi bagimlili — Dent pilot critical path
