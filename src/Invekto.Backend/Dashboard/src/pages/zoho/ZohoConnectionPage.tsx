@@ -1,6 +1,6 @@
 // Adim 3 Paket 3-B2: Zoho baglanti sayfasi (status + Bagla/Kes).
 import { useEffect, useState } from 'react';
-import { Link2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Link2, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { useZohoStore } from '../../stores/zoho-store';
 import { api } from '../../lib/api';
 import { Card, CardTitle } from '../../components/ui/Card';
@@ -21,34 +21,45 @@ export function ZohoConnectionPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [disconnectBusy, setDisconnectBusy] = useState(false);
   const [connectBusy, setConnectBusy] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<{ kind: 'ok' | 'warn' | 'err'; text: string } | null>(null);
 
   useEffect(() => {
     void loadConnection();
   }, [loadConnection]);
 
   const handleConnect = async () => {
+    setStatusMessage(null);
     setConnectBusy(true);
     try {
       const res = await api.createZohoConnectUrl();
       window.location.href = res.authorizeUrl;
     } catch (err) {
       setConnectBusy(false);
-      alert(err instanceof Error ? err.message : '[INV-INT-FE-004] Zoho baglanti URL alinamadi. Birkac saniye sonra tekrar deneyin.');
+      setStatusMessage({
+        kind: 'err',
+        text: err instanceof Error && err.message
+          ? err.message
+          : '[INV-INT-FE-004] Zoho baglanti URL alinamadi. Birkac saniye sonra tekrar deneyin.',
+      });
     }
   };
 
   const handleDisconnect = async () => {
+    setStatusMessage(null);
     setDisconnectBusy(true);
     try {
       const { tokenRevoked } = await disconnect();
       setModalOpen(false);
-      alert(
-        tokenRevoked
-          ? '[INV-INT-FE-007] Zoho baglantisi kesildi ve refresh token iptal edildi. Tekrar baglanmak icin "Zoho\'ya Baglan" butonunu kullanin.'
-          : '[INV-INT-FE-008] Zoho baglantisi yerel olarak kesildi. Refresh token iptal edilemedi — Zoho hesabinizda Ayarlar > Baglanti Izinleri\'nden uygulamayi manuel kaldirmaniz onerilir.',
-      );
+      setStatusMessage(tokenRevoked
+        ? { kind: 'ok',   text: '[INV-INT-FE-007] Zoho baglantisi kesildi ve refresh token iptal edildi. Tekrar baglanmak icin "Zoho\'ya Baglan" butonunu kullanin.' }
+        : { kind: 'warn', text: '[INV-INT-FE-008] Zoho baglantisi yerel olarak kesildi. Refresh token iptal edilemedi — Zoho hesabinizda Ayarlar > Baglanti Izinleri\'nden uygulamayi manuel kaldirmaniz onerilir.' });
     } catch (err) {
-      alert(err instanceof Error ? err.message : '[INV-INT-FE-005] Baglanti kesilemedi. Birkac dakika sonra tekrar deneyin.');
+      setStatusMessage({
+        kind: 'err',
+        text: err instanceof Error && err.message
+          ? err.message
+          : '[INV-INT-FE-005] Baglanti kesilemedi. Birkac dakika sonra tekrar deneyin.',
+      });
     } finally {
       setDisconnectBusy(false);
     }
@@ -85,6 +96,31 @@ export function ZohoConnectionPage() {
           Tenant'inizin Zoho CRM hesabiyla OAuth 2.0 uzerinden guvenli baglantisi.
         </p>
       </div>
+
+      {statusMessage && (
+        <div className={`flex items-start justify-between gap-2 rounded-lg px-4 py-3 mb-4 text-sm ${
+          statusMessage.kind === 'ok'
+            ? 'bg-green-50 border border-green-200 text-green-800'
+            : statusMessage.kind === 'warn'
+              ? 'bg-yellow-50 border border-yellow-200 text-yellow-800'
+              : 'bg-red-50 border border-red-200 text-red-700'
+        }`}>
+          <div className="flex items-start gap-2">
+            {statusMessage.kind === 'ok'
+              ? <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+              : <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />}
+            <span>{statusMessage.text}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setStatusMessage(null)}
+            aria-label="Kapat"
+            className="text-current/70 hover:text-current shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {connected ? (
         <Card>

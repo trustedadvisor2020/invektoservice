@@ -225,6 +225,10 @@ public sealed class ZohoTokenProvider : IZohoTokenProvider
             throw new InvalidOperationException(
                 "INV-INT-114: Zoho token response missing access_token. Verify scopes are not empty in appsettings Zoho:<REGION>:Scopes.");
 
+        // Diagnostic: log prefix + scope returned from Zoho (scope may differ from requested after consent).
+        Console.WriteLine(
+            $"[ZOHO-DIAG] token refresh OK: access_token_prefix={(wire.AccessToken.Length >= 8 ? wire.AccessToken.Substring(0, 8) : wire.AccessToken)} api_domain={wire.ApiDomain} expires_in={wire.ExpiresIn} scope={wire.Scope}");
+
         return new ZohoTokenResponse(
             AccessToken:      wire.AccessToken,
             RefreshToken:     wire.RefreshToken,

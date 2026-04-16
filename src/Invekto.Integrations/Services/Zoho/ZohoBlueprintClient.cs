@@ -6,6 +6,7 @@
 // Auth: access_token via IZohoTokenProvider; 401 -> InvalidateCache + retry once.
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -78,8 +79,8 @@ public sealed class ZohoBlueprintClient : IZohoBlueprintClient
                 ex);
         }
 
-        var transitions = wire?.Blueprint?.Count > 0
-            ? ExtractTransitions(wire.Blueprint[0])
+        var transitions = wire?.Blueprint is not null
+            ? ExtractTransitions(wire.Blueprint)
             : Array.Empty<ZohoBlueprintTransition>();
 
         if (transitions.Count == 0)
@@ -110,39 +111,77 @@ public sealed class ZohoBlueprintClient : IZohoBlueprintClient
         }
 
         var apiBase = await GetApiBaseAsync(tenantId, ct).ConfigureAwait(false);
-        var url = apiBase + "/crm/v6/settings/blueprint?module=Leads";
 
-        using var response = await SendWithAuthAsync(tenantId, HttpMethod.Get, url, content: null, ct).ConfigureAwait(false);
+        // Primary: metadata-based enum via /settings/blueprint (requires ZohoCRM.settings.ALL scope).
+        // Returns the complete blueprint graph (all transitions regardless of state).
+        var metadataTransitions = await TryGetBlueprintMetadataAsync(tenantId, apiBase, ct).ConfigureAwait(false);
+        if (metadataTransitions is { Count: > 0 })
+        {
+            _cache.Set(cacheKey, metadataTransitions, CacheTtl);
+            return (metadataTransitions, FromCache: false);
+        }
 
-        if (response.StatusCode == HttpStatusCode.NoContent || response.StatusCode == HttpStatusCode.NotFound)
+        // Fallback: sample one lead per distinct Lead_Status; aggregate record-level transitions.
+        // Misses transitions from states with no leads — metadata path is preferred when scope allows.
+        var sampleLeadIds = await GetSampleLeadsPerStateAsync(tenantId, apiBase, ct).ConfigureAwait(false);
+
+        if (sampleLeadIds.Count == 0)
             throw new InvalidOperationException(
                 ZohoErrorCodes.BlueprintNotConfigured +
-                $": Zoho Leads Blueprint not configured for tenant {tenantId}. Activate a Blueprint on the Leads module in Zoho Setup -> Automation -> Blueprint.");
+                $": Zoho Leads modulunde hic kayit yok (tenant {tenantId}). Stage mapping editorunu kullanmak icin en az 1 lead olmali.");
 
-        if (!response.IsSuccessStatusCode)
-            throw await BuildHttpFailureAsync(response, "GET settings/blueprint", tenantId, ct).ConfigureAwait(false);
-
-        BlueprintResponseWire? wire;
-        try
+        var aggregated = new Dictionary<string, ZohoBlueprintTransition>(StringComparer.Ordinal);
+        foreach (var leadId in sampleLeadIds)
         {
-            wire = await response.Content.ReadFromJsonAsync<BlueprintResponseWire>(cancellationToken: ct).ConfigureAwait(false);
-        }
-        catch (JsonException ex)
-        {
-            throw new InvalidOperationException(
-                ZohoErrorCodes.SyncInfrastructureError +
-                $": Zoho settings/blueprint response was not valid JSON for tenant {tenantId}.",
-                ex);
+            var url = apiBase + "/crm/v6/Leads/" + Uri.EscapeDataString(leadId) + "/actions/blueprint";
+            using var response = await SendWithAuthAsync(tenantId, HttpMethod.Get, url, content: null, ct).ConfigureAwait(false);
+
+            // 204/404 for this specific lead just means no transitions available from its state; continue.
+            if (response.StatusCode == HttpStatusCode.NoContent || response.StatusCode == HttpStatusCode.NotFound)
+                continue;
+
+            // 400 RECORD_NOT_IN_PROCESS: lead exists but isn't in the blueprint process (hasn't been
+            // triggered into it). Not an error for aggregation — just means no transitions from that
+            // lead. Continue to next sample. Any OTHER 400 body is still a hard failure.
+            if (response.StatusCode == HttpStatusCode.BadRequest)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                if (errorBody.Contains("RECORD_NOT_IN_PROCESS", StringComparison.Ordinal))
+                    continue;
+                throw new InvalidOperationException(
+                    ZohoErrorCodes.SyncInfrastructureError +
+                    $": Zoho blueprint returned 400 for tenant {tenantId} lead {leadId}. Body: {errorBody}");
+            }
+
+            if (!response.IsSuccessStatusCode)
+                throw await BuildHttpFailureAsync(response, "GET Leads/{id}/actions/blueprint", tenantId, ct).ConfigureAwait(false);
+
+            BlueprintResponseWire? wire;
+            try
+            {
+                wire = await response.Content.ReadFromJsonAsync<BlueprintResponseWire>(cancellationToken: ct).ConfigureAwait(false);
+            }
+            catch (JsonException ex)
+            {
+                throw new InvalidOperationException(
+                    ZohoErrorCodes.SyncInfrastructureError +
+                    $": Zoho blueprint response was not valid JSON for tenant {tenantId} (lead {leadId}).",
+                    ex);
+            }
+
+            if (wire?.Blueprint is null) continue;
+            foreach (var t in ExtractTransitions(wire.Blueprint))
+                aggregated[t.TransitionId] = t;  // dedupe by id; later wins (same id == same transition)
         }
 
-        var transitions = wire?.Blueprint?.Count > 0
-            ? ExtractTransitions(wire.Blueprint[0])
-            : Array.Empty<ZohoBlueprintTransition>();
+        var transitions = (IReadOnlyList<ZohoBlueprintTransition>)aggregated.Values
+            .OrderBy(t => t.NextState ?? t.Name, StringComparer.Ordinal)
+            .ToList();
 
         if (transitions.Count == 0)
             throw new InvalidOperationException(
                 ZohoErrorCodes.BlueprintNotConfigured +
-                $": Zoho Blueprint has no transitions for Leads module (tenant {tenantId}). Verify the Blueprint definition.");
+                $": Zoho Blueprint'ten transition alinamadi (tenant {tenantId}). {sampleLeadIds.Count} farkli state'teki lead denenmesine ragmen blueprint aktif degil olabilir — Zoho Setup -> Automation -> Blueprint kontrolu yapin.");
 
         _cache.Set(cacheKey, transitions, CacheTtl);
         return (transitions, FromCache: false);
@@ -183,6 +222,151 @@ public sealed class ZohoBlueprintClient : IZohoBlueprintClient
 
         // Invalidate cached transitions for this lead: available set changes after a transition commits.
         _cache.Remove(CacheKey(tenantId, zohoLeadId));
+    }
+
+    /// <summary>
+    /// Adim 4 follow-up: Metadata-based blueprint enum. Calls /settings/layouts to get layout_id,
+    /// then /settings/blueprint?module=Leads&layout_id=X to get FULL blueprint graph (all transitions,
+    /// state-independent). Requires ZohoCRM.settings.ALL scope. Returns null on scope mismatch / 4xx /
+    /// shape mismatch so caller can fallback to record-level aggregation.
+    /// </summary>
+    private async Task<IReadOnlyList<ZohoBlueprintTransition>?> TryGetBlueprintMetadataAsync(
+        int tenantId, string apiBase, CancellationToken ct)
+    {
+        // Step 1: discover first Leads layout id.
+        string? layoutId = null;
+        try
+        {
+            var layoutsUrl = apiBase + "/crm/v6/settings/layouts?module=Leads";
+            using var layoutsResp = await SendWithAuthAsync(tenantId, HttpMethod.Get, layoutsUrl, content: null, ct).ConfigureAwait(false);
+            if (!layoutsResp.IsSuccessStatusCode)
+            {
+                var errorBody = await layoutsResp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                Console.WriteLine($"[ZOHO-META] layouts FAIL {(int)layoutsResp.StatusCode}: {Truncate(errorBody, 300)}");
+                return null;
+            }
+            var layoutsWire = await layoutsResp.Content.ReadFromJsonAsync<LayoutsResponseWire>(cancellationToken: ct).ConfigureAwait(false);
+            layoutId = layoutsWire?.Layouts?.FirstOrDefault(l => !string.IsNullOrEmpty(l.Id))?.Id;
+            Console.WriteLine($"[ZOHO-META] layouts OK: layout_id={layoutId}");
+        }
+        catch (JsonException ex) { Console.WriteLine($"[ZOHO-META] layouts JsonException: {ex.Message}"); return null; }
+        if (string.IsNullOrEmpty(layoutId)) { Console.WriteLine("[ZOHO-META] no layout_id returned"); return null; }
+
+        // Step 2: fetch blueprint metadata for that layout.
+        string body;
+        try
+        {
+            var url = apiBase + "/crm/v6/settings/blueprint?module=Leads&layout_id=" + Uri.EscapeDataString(layoutId);
+            using var resp = await SendWithAuthAsync(tenantId, HttpMethod.Get, url, content: null, ct).ConfigureAwait(false);
+            body = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            Console.WriteLine($"[ZOHO-META] settings/blueprint status={(int)resp.StatusCode} bodyLen={body.Length} bodyHead={Truncate(body, 300)}");
+            if (!resp.IsSuccessStatusCode) return null;
+        }
+        catch (HttpRequestException ex) { Console.WriteLine($"[ZOHO-META] blueprint HttpRequestException: {ex.Message}"); return null; }
+        catch (TaskCanceledException ex) { Console.WriteLine($"[ZOHO-META] blueprint TaskCanceledException: {ex.Message}"); return null; }
+
+        // settings/blueprint can return `blueprints: [{transitions:[...]}]` (array) OR
+        // `blueprint: {transitions:[...]}` (single, like record API). Parse both shapes.
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var aggregated = new Dictionary<string, ZohoBlueprintTransition>(StringComparer.Ordinal);
+
+            if (root.TryGetProperty("blueprints", out var blueprintsArr) && blueprintsArr.ValueKind == System.Text.Json.JsonValueKind.Array)
+            {
+                foreach (var bp in blueprintsArr.EnumerateArray())
+                    CollectTransitionsFromElement(bp, aggregated);
+            }
+            else if (root.TryGetProperty("blueprint", out var blueprintEl))
+            {
+                if (blueprintEl.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    foreach (var bp in blueprintEl.EnumerateArray())
+                        CollectTransitionsFromElement(bp, aggregated);
+                else if (blueprintEl.ValueKind == System.Text.Json.JsonValueKind.Object)
+                    CollectTransitionsFromElement(blueprintEl, aggregated);
+            }
+
+            if (aggregated.Count == 0) return null;
+            return aggregated.Values
+                .OrderBy(t => t.NextState ?? t.Name, StringComparer.Ordinal)
+                .ToList();
+        }
+        catch (System.Text.Json.JsonException) { return null; }
+    }
+
+    private static string Truncate(string s, int max) =>
+        string.IsNullOrEmpty(s) ? string.Empty : (s.Length <= max ? s : s.Substring(0, max));
+
+    private static void CollectTransitionsFromElement(
+        System.Text.Json.JsonElement bp,
+        Dictionary<string, ZohoBlueprintTransition> sink)
+    {
+        if (!bp.TryGetProperty("transitions", out var transitions) ||
+            transitions.ValueKind != System.Text.Json.JsonValueKind.Array) return;
+
+        foreach (var t in transitions.EnumerateArray())
+        {
+            var id = t.TryGetProperty("id", out var idEl) && idEl.ValueKind == System.Text.Json.JsonValueKind.String ? idEl.GetString() : null;
+            if (string.IsNullOrEmpty(id)) continue;
+            var name = t.TryGetProperty("name", out var nameEl) && nameEl.ValueKind == System.Text.Json.JsonValueKind.String ? nameEl.GetString() : id;
+            string? nextState = null;
+            if (t.TryGetProperty("next_field_value", out var nfv) && nfv.ValueKind == System.Text.Json.JsonValueKind.String)
+                nextState = nfv.GetString();
+            else if (t.TryGetProperty("next_transition_state", out var nts) &&
+                     nts.ValueKind == System.Text.Json.JsonValueKind.Object &&
+                     nts.TryGetProperty("name", out var ntsName) &&
+                     ntsName.ValueKind == System.Text.Json.JsonValueKind.String)
+                nextState = ntsName.GetString();
+            sink[id] = new ZohoBlueprintTransition(id, name ?? id, nextState);
+        }
+    }
+
+    // Fallback helper (kept for when /settings/blueprint unavailable):
+    /// <summary>
+    /// Adim 4: Sample one lead id per distinct Lead_Status value (max 50 leads fetched).
+    /// Returns up to N lead ids (one per unique state) so blueprint aggregation can discover all transitions.
+    /// Returns empty list if module has no leads.
+    /// </summary>
+    private async Task<IReadOnlyList<string>> GetSampleLeadsPerStateAsync(int tenantId, string apiBase, CancellationToken ct)
+    {
+        var url = apiBase + "/crm/v6/Leads?per_page=50&fields=id,Lead_Status";
+        using var response = await SendWithAuthAsync(tenantId, HttpMethod.Get, url, content: null, ct).ConfigureAwait(false);
+
+        if (response.StatusCode == HttpStatusCode.NoContent || response.StatusCode == HttpStatusCode.NotFound)
+            return Array.Empty<string>();
+
+        if (!response.IsSuccessStatusCode)
+            throw await BuildHttpFailureAsync(response, "GET Leads?per_page=50", tenantId, ct).ConfigureAwait(false);
+
+        LeadsListWire? wire;
+        try
+        {
+            wire = await response.Content.ReadFromJsonAsync<LeadsListWire>(cancellationToken: ct).ConfigureAwait(false);
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidOperationException(
+                ZohoErrorCodes.SyncInfrastructureError +
+                $": Zoho Leads list response was not valid JSON for tenant {tenantId}.",
+                ex);
+        }
+
+        if (wire?.Data is null || wire.Data.Count == 0)
+            return Array.Empty<string>();
+
+        // Group by Lead_Status (null-safe); pick first lead per distinct state. Leads without a state
+        // also contribute one sample (blueprint pre-start transitions may exist).
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var result = new List<string>();
+        foreach (var lead in wire.Data)
+        {
+            if (string.IsNullOrEmpty(lead.Id)) continue;
+            var stateKey = lead.LeadStatus ?? "__null__";
+            if (!seen.Add(stateKey)) continue;
+            result.Add(lead.Id);
+        }
+        return result;
     }
 
     private async Task<string> GetApiBaseAsync(int tenantId, CancellationToken ct)
@@ -255,8 +439,16 @@ public sealed class ZohoBlueprintClient : IZohoBlueprintClient
 
         if (body.Length > 512) body = body.Substring(0, 512);
 
+        // Diagnostic: for 401/403 Zoho often returns empty body; dump ALL response headers.
+        var hdrParts = new List<string>();
+        foreach (var h in response.Headers)
+            hdrParts.Add(h.Key + "=" + string.Join("|", h.Value));
+        foreach (var h in response.Content.Headers)
+            hdrParts.Add(h.Key + "=" + string.Join("|", h.Value));
+        var hdr = hdrParts.Count > 0 ? $" Headers: {{{string.Join("; ", hdrParts)}}}" : string.Empty;
+
         return new InvalidOperationException(
-            $"INV-INT-125: Zoho API {op} returned {(int)response.StatusCode} {response.ReasonPhrase} (tenant {tenantId}). Body: {body}");
+            $"INV-INT-125: Zoho API {op} returned {(int)response.StatusCode} {response.ReasonPhrase} (tenant {tenantId}). Body: {body}{hdr}");
     }
 
     private static string CacheKey(int tenantId, string leadId) =>
@@ -271,15 +463,17 @@ public sealed class ZohoBlueprintClient : IZohoBlueprintClient
         foreach (var t in bp.Transitions)
         {
             if (string.IsNullOrEmpty(t.Id)) continue;
-            list.Add(new ZohoBlueprintTransition(t.Id, t.Name ?? t.Id, t.NextTransitionState?.Name));
+            list.Add(new ZohoBlueprintTransition(t.Id, t.Name ?? t.Id, t.NextFieldValue ?? t.NextTransitionState?.Name));
         }
         return list;
     }
 
     // Wire contracts — Zoho Blueprint API response shape (v6).
+    // GET /Leads/{id}/actions/blueprint returns `blueprint` as SINGLE OBJECT, not an array.
+    // (Confirmed via live Zoho response on dev edition: {"blueprint":{"process_info":{...},"transitions":[...]}}.)
     private sealed class BlueprintResponseWire
     {
-        [JsonPropertyName("blueprint")] public List<BlueprintWire>? Blueprint { get; set; }
+        [JsonPropertyName("blueprint")] public BlueprintWire? Blueprint { get; set; }
     }
 
     private sealed class BlueprintWire
@@ -287,11 +481,38 @@ public sealed class ZohoBlueprintClient : IZohoBlueprintClient
         [JsonPropertyName("transitions")] public List<TransitionWire>? Transitions { get; set; }
     }
 
+    // Adim 4: Zoho v6 /crm/v6/settings/layouts?module=Leads response shape.
+    private sealed class LayoutsResponseWire
+    {
+        [JsonPropertyName("layouts")] public List<LayoutWire>? Layouts { get; set; }
+    }
+
+    private sealed class LayoutWire
+    {
+        [JsonPropertyName("id")]   public string? Id { get; set; }
+        [JsonPropertyName("name")] public string? Name { get; set; }
+    }
+
+    // Adim 4: Zoho v6 /crm/v6/Leads?per_page=1&fields=id response shape (sample lead).
+    private sealed class LeadsListWire
+    {
+        [JsonPropertyName("data")] public List<LeadIdWire>? Data { get; set; }
+    }
+
+    private sealed class LeadIdWire
+    {
+        [JsonPropertyName("id")]          public string? Id { get; set; }
+        [JsonPropertyName("Lead_Status")] public string? LeadStatus { get; set; }
+    }
+
     private sealed class TransitionWire
     {
         [JsonPropertyName("id")]                     public string? Id { get; set; }
         [JsonPropertyName("name")]                   public string? Name { get; set; }
         [JsonPropertyName("next_transitions")]       public List<TransitionWire>? NextTransitions { get; set; }
+        // Zoho v6 returns next_field_value as a direct string on the transition object
+        // (see live response; legacy NextTransitionState.name kept for back-compat but usually absent).
+        [JsonPropertyName("next_field_value")]       public string? NextFieldValue { get; set; }
         [JsonPropertyName("next_transition_state")]  public NextStateWire? NextTransitionState { get; set; }
     }
 
