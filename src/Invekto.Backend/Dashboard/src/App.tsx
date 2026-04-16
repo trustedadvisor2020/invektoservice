@@ -76,11 +76,20 @@ function TenantDashboardPage() {
 export default function App() {
   const navigate = useNavigate();
   useEffect(() => {
+    console.log('[inma-debug] App.useEffect mounting inmaBridge with all callbacks');
     const dispose = inmaBridge.init({
-      onReady: () => { void inmaBootstrap.run(); },
-      onLogout: () => inmaBootstrap.clear(),
+      onReady: () => {
+        console.log('[inma-debug] App onReady callback -> inmaBootstrap.run()');
+        void inmaBootstrap.run();
+      },
+      onLogout: () => {
+        console.log('[inma-debug] App onLogout callback -> inmaBootstrap.clear()');
+        inmaBootstrap.clear();
+      },
       onNavigate: (path) => {
-        if (!api.isAuthenticated()) {
+        const authed = api.isAuthenticated();
+        console.log('[inma-debug] App onNavigate callback', { path, isAuthenticated: authed });
+        if (!authed) {
           console.warn(inmaErrorMessage(INMA_ERRORS.NAVIGATE_REJECTED, 'unauthenticated'));
           return;
         }
