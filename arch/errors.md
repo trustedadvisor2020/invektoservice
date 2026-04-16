@@ -561,8 +561,8 @@ errors:
     description: INMA -> INSE token exchange failed (postMessage bootstrap, Faz 2)
     user_message: Oturum açılamadı; lütfen tekrar deneyin.
   - code: INV-INT-108
-    description: Welcome endpoint fetch failed after INMA bootstrap (non-critical; session stays active)
-    user_message: Karşılama bilgileri yüklenemedi.
+    description: (DEPRECATED 2026-04-17) Welcome endpoint fetch failed after INMA bootstrap. Removed because welcome metadata is already returned by the exchange response — extra getWelcome call was redundant and produced misleading 401 noise post-exchange. Code number reserved (do not reuse).
+    user_message: (deprecated)
   - code: INV-INT-109
     description: inma:navigate postMessage rejected (invalid path or unauthenticated session; no queue, parent must retry)
     user_message: Yönlendirme reddedildi.

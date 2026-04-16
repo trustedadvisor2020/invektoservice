@@ -1,0 +1,173 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260417-inma-bootstrap-welcome-cleanup",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-04-17T00:50:00+03:00",
+  "updated_at": "2026-04-17T01:05:00+03:00",
+  "status_log": [
+    {"status": "PLANNING", "at": "2026-04-17T00:50:00+03:00", "note": "Plan after Q chose Option A (FE cleanup)"},
+    {"status": "IN_PROGRESS", "at": "2026-04-17T00:55:00+03:00", "note": "3 file changes + arch/errors.md deprecated marker"},
+    {"status": "REVIEW", "at": "2026-04-17T01:00:00+03:00", "note": "TS typecheck clean + Codex submitted"},
+    {"status": "DONE", "at": "2026-04-17T01:05:00+03:00", "note": "Codex iter 0 PASS — 12/12 CQ + 2/2 CoVe, 0 blocking"}
+  ],
+  "plan": {
+    "summary": "Dashboard React inmaBootstrap.run() exchange başarısı sonrasında redundant api.getWelcome() çağrısı yapıyordu — pre-existing 'non-critical diagnostic' kod (welcome metadata zaten exchange response'unda mevcut). Backend welcome proxy endpoint'i Bearer'ı INMA upstream'a forward ediyor, post-exchange Bearer = INSE JWT olduğu için INMA upstream 401 döndürüyor → frontend 'INV-INT-108 welcome failed (non-critical)' diagnostic kod set ediyor + console.warn log'u. UX etkisi yok ama log gürültüsü INMA takımını ApiBaseUrl prod fix sonrası endişeye sevk etti. Cleanup: getWelcome çağrısı silinir + dead code (setDiagnosticCode action, WELCOME_FAILED constant) temizlenir + arch/errors.md INV-INT-108 deprecated comment.",
+    "q_intent": "Q seçim 'a' = FE temizlik. INMA takımının log endişesi sonra. useAuth.ts'deki getWelcome çağrıları DOKUNULMAZ (INSE login flow farklı session pattern).",
+    "interview_notes": "MINIMUM scope: sadece L68-74 silinebilir; CLEAN scope: tüm dead code (setDiagnosticCode, WELCOME_FAILED, INV-INT-108). CLEAN tercih edildi — partial cleanup gelecekte 'bu nereden kaldı?' karışıklığı yaratır. arch/errors.md INV-INT-108 entry KORUNUR ama '(deprecated 2026-04-17)' işaretlenir — kod numarası boşa çıkmasın diye dokümante kalır. Backend welcome proxy endpoint /api/v1/inma/welcome KORUNUR (useAuth.ts INSE login flow'u + INMA team rapor doc'unda referans). Tüketici kalktıktan sonra welcome proxy başka bir cleanup paketinde değerlendirilir.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "inmaBootstrap.ts L68-74: api.getWelcome().catch(...) bloğu tamamen silinir. Exchange başarısı sonrası direkt INMA_SESSION_UPDATED_EVENT dispatch edilir (mevcut L76-77 davranışı korunur).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC2",
+        "criterion": "inmaBootstrap.ts dead code temizliği: InmaBootstrapStore.setDiagnosticCode (L15 + L22-23) tamamen silinir — başka tüketici yok (grep verified). lastCode field korunur (EXCHANGE_FAILED hala kullanır L60).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC3",
+        "criterion": "inmaErrors.ts dead code temizliği: WELCOME_FAILED constant (L10) ve INMA_ERROR_DESCRIPTIONS L25 entry silinir. Diğer kodlar dokunulmaz.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC4",
+        "criterion": "arch/errors.md INV-INT-108 entry korunur (numara reservation), description'a '(deprecated 2026-04-17 — frontend getWelcome cleanup)' işareti eklenir. Backend kullanmıyor, kod numarası gelecekte reuse edilmesin diye dokümante kalır.",
+        "verified": false,
+        "verification_note": null
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Dashboard/src/inma/inmaBootstrap.ts",
+    "src/Invekto.Backend/Dashboard/src/inma/inmaErrors.ts",
+    "arch/errors.md",
+    "arch/plans/20260417-inma-bootstrap-welcome-cleanup.json"
+  ],
+  "files_changed": [
+    {"path": "src/Invekto.Backend/Dashboard/src/inma/inmaBootstrap.ts", "change": "Removed: api.getWelcome() catch block (L68-74) + setDiagnosticCode store action + interface property. Comment notes welcome metadata is already in exchange response.", "is_new": false},
+    {"path": "src/Invekto.Backend/Dashboard/src/inma/inmaErrors.ts", "change": "Removed: WELCOME_FAILED constant + INV-INT-108 description map entry. Inline comment marks the slot as removed (number reserved in arch/errors.md).", "is_new": false},
+    {"path": "arch/errors.md", "change": "INV-INT-108 entry: description prefixed with (DEPRECATED 2026-04-17) + reuse warning; user_message stub. Number reserved.", "is_new": false},
+    {"path": "arch/plans/20260417-inma-bootstrap-welcome-cleanup.json", "change": "Plan JSON (this file).", "is_new": true}
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "290ef9c278a1776c4f2d27916f184137a71d307b9ceb6738a5e6bbe83eda3bef",
+    "full_path": "arch/plans/diffs/20260417-inma-bootstrap-welcome-cleanup.diff",
+    "stats": { "insertions": 153, "deletions": 14, "files_count": 4 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "cd src/Invekto.Backend/Dashboard && npx tsc --noEmit",
+    "timestamp": "2026-04-17T00:55:00+03:00",
+    "duration_ms": null,
+    "output_tail": "tsc --noEmit clean (no output).",
+    "error_summary": null,
+    "services": ["Invekto.Backend (Dashboard SPA only)"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "useAuth.ts L40 + L174 getWelcome() çağrıları DOKUNULMUYOR — bunlar INSE login flow'unda ayrı session pattern (Bearer = INSE JWT, welcome proxy genelde başarılı çünkü tenant zaten INSE-authenticated). Sadece inmaBootstrap.ts L68 INMA SSO post-exchange çağrısı silinir. Side effect yok.",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q2",
+      "question": "Welcome metadata kaybı YOK: Exchange response'u (api.exchangeInmaToken() L49) FullName + Lang + InseFeatures + tenant_id + user_id zaten döndürüyor. inmaBootstrap.ts L51 'newSession: api.getSession()' log'u doğruluyor. getWelcome() sadece duplicate diagnostic — silmek iş kaybı değil.",
+      "category": "Data"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "useAuth.ts L40 + L174 getWelcome çağrıları — INSE login flow farklı session pattern, dokunulmaz",
+      "Backend Program.cs welcome proxy endpoint /api/v1/inma/welcome — useAuth.ts hâlâ tüketiyor, korunur",
+      "INSE-STYLE-GUIDE.md, arch/platform/inma-inse-unification/inma-team-kickoff-brief.md (Q'nun pre-existing WIP)"
+    ],
+    "non_goals": [
+      "Welcome proxy endpoint'inin INSE JWT için intelligent forwarding (lokal cache vs upstream forward — backlog)",
+      "useAuth.ts INSE login flow getWelcome cleanup (ayrı session pattern, ayrı paket)",
+      "Backend INV-INT-108 ErrorCodes constant ekleme (zaten yok, sadece arch/errors.md'de)",
+      "INMA team notice doc güncellemesi (cleanup deploy sonrası ayrı update)"
+    ],
+    "intentional_exclusions": [
+      "arch/errors.md INV-INT-108 entry SİLİNMEZ — numara reservation korunur ki gelecekte reuse edilmesin (deprecated comment yeterli).",
+      "setDiagnosticCode action store interface'ten silinir ama lastCode field korunur (EXCHANGE_FAILED L60 hâlâ set ediyor).",
+      "InmaBootstrapStore type definition güncellenir — setDiagnosticCode property kaldırılır."
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Cleanup dead code removal — yeni runtime davranışı eklenmedi. Exchange catch path (L54-63) korunur, error scenarios aynı."
+  },
+  "aha_moments": [
+    {
+      "category": "SUPPORT",
+      "user_pain": "Dashboard console'unda her INMA SSO girişinden sonra '[inma-debug] getWelcome FAILED (non-critical)' + '[inmaBootstrap] welcome fetch failed (INV-INT-108)' log'u gözüküyordu. Destek/INMA takımı bunu gerçek hata sanıp ApiBaseUrl prod fix sonrası bile 'sorun var' geri bildirimi yaptı.",
+      "suggestion": "Redundant getWelcome çağrısı silinir → log gürültüsü kaybolur → console temiz, gerçek hatalar görünür kalır.",
+      "aha_moment": "INMA takımı SSO testi yaparken console temiz → yanılgı yok. Destek 'INV-INT-108 ne demek?' sorgulaması bitirildi."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Welcome metadata exchange response'unda zaten gelir — ama getWelcome ek HTTP round-trip yapıyordu (Backend → INMA upstream). Her INMA SSO girişinde fazladan 1 HTTP call.",
+      "suggestion": "Çağrıyı sil → exchange single-call self-sufficient (FullName/Lang/InseFeatures session response'undan).",
+      "aha_moment": "INMA SSO girişi ~50ms hızlanır (1 ek HTTP cycle yok). Backend log temizlenir (welcome proxy çağrısı azalır)."
+    },
+    {
+      "category": "UX",
+      "user_pain": "InmaConnectionStatus overlay diagnostic code göstermiyor (welcome non-critical) ama lastCode set ediliyordu — gelecekte yanlışlıkla overlay tetiklenirse INV-INT-108 misleading mesaj gösterilebilirdi.",
+      "suggestion": "setDiagnosticCode action + WELCOME_FAILED constant silinir → store interface temiz, lastCode sadece blocking error path'lerinden set edilir.",
+      "aha_moment": "Geleceğin developer'ı 'lastCode neyi temsil eder?' sorusuna net cevap verir: gerçek session error (EXCHANGE_FAILED), non-critical diagnostic kavramı zaten silindi."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "inmaErrors.ts'de WELCOME_FAILED constant duruyor ama hiçbir yerde tüketici yok — yeni developer 'bu kod ne zaman set edilir?' diye arıyor, bulamıyor → kafa karışıklığı.",
+      "suggestion": "Cleanup ile constant + description silinir; arch/errors.md'de '(deprecated)' yorumu numara reservation amacıyla korunur.",
+      "aha_moment": "Codebase grep'te WELCOME_FAILED yok → başka kullanım yok → temiz state. arch/errors.md tarihsel kayıt."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Backend `/api/v1/inma/welcome` proxy endpoint'i her INMA SSO girişinde tetikleniyordu — boşuna network bandwidth (Backend → testapi.wapcrm.net + 401 response).",
+      "suggestion": "Frontend cleanup ile endpoint çağrı sayısı önemli ölçüde düşer (sadece useAuth.ts INSE login flow'undan tetiklenir).",
+      "aha_moment": "Production INMA welcome upstream call rate düşer → Backend HTTP outbound trafik azalır → testapi.wapcrm.net rate limit baremine yer açılır."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-17T01:05:00+03:00",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-17T01:05:00+03:00",
+    "raw_text": "Iter 0 PASS — 12/12 CQ + 2/2 CoVe, 0 blocking. Tightly scoped LOW-risk cleanup. gpt-5.4.",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "Non-blocking diagnostic only removed; arch/errors.md INV-INT-108 deprecated, traceability korunur" },
+      "CQ2": { "result": "PASS", "evidence": "Diagnostic-only catch removed; no new silent path" },
+      "CQ3": { "result": "PASS", "evidence": "4 file scope match" },
+      "CQ4": { "result": "PASS", "evidence": "Duplicate welcome-fetch removed; useAuth.ts ayrı bağlam dokunulmadı" },
+      "CQ5": { "result": "PASS", "evidence": "Frontend module convention + arch/errors.md update" },
+      "CQ6": { "result": "PASS", "evidence": "Redundant network call kaldırıldı" },
+      "CQ7": { "result": "PASS", "evidence": "No new TODO/HACK/FIXME" },
+      "CQ8": { "result": "PASS", "evidence": "Internal store interface only; no external contract change" },
+      "CQ9": { "result": "PASS", "evidence": "Auth flow visible behavior unchanged" },
+      "CQ10": { "result": "PASS", "evidence": "State 'authenticated' + INMA_SESSION_UPDATED_EVENT korunur" },
+      "CQ11": { "result": "PASS", "evidence": "No DB changes" },
+      "CQ12": { "result": "PASS", "evidence": "INV-INT-108 deprecated explicit + reuse warning" }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "useAuth.ts dokunulmadı; sadece inmaBootstrap.ts post-exchange diagnostic catch silindi" },
+      "Q2": { "result": "PASS", "reasoning": "Welcome metadata exchange response'unda; comment doğrular; no state-population kaybı" }
+    },
+    "blocking_issues": [],
+    "iteration": 0,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}

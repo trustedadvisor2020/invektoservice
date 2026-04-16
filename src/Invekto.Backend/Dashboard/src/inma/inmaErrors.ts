@@ -7,7 +7,8 @@ export const INMA_ERRORS = {
   INVALID_API_BASE_URL: 'INV-INT-105',
   HTTP_REQUEST_FAILED: 'INV-INT-106',
   EXCHANGE_FAILED: 'INV-INT-107',
-  WELCOME_FAILED: 'INV-INT-108',
+  // INV-INT-108 (WELCOME_FAILED) removed 2026-04-17 — getWelcome diagnostic call dropped.
+  // Code number reserved in arch/errors.md (deprecated), not reused.
   NAVIGATE_REJECTED: 'INV-INT-109',
 } as const;
 
@@ -22,7 +23,6 @@ const INMA_ERROR_DESCRIPTIONS: Record<InmaErrorCode, string> = {
   'INV-INT-105': 'parent sent invalid apiBaseUrl (regex mismatch)',
   'INV-INT-106': 'HTTP request failed after refresh retry',
   'INV-INT-107': 'INMA -> INSE token exchange failed',
-  'INV-INT-108': 'welcome endpoint fetch failed (non-critical)',
   'INV-INT-109': 'navigate postMessage rejected (invalid path or unauthenticated)',
 };
 

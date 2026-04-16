@@ -12,15 +12,12 @@ interface InmaBootstrapStore {
   state: InmaBootstrapState;
   lastCode: InmaErrorCode | null;
   setState: (state: InmaBootstrapState, lastCode?: InmaErrorCode | null) => void;
-  setDiagnosticCode: (code: InmaErrorCode) => void;
 }
 
 export const useInmaBootstrap = create<InmaBootstrapStore>((set) => ({
   state: 'idle',
   lastCode: null,
   setState: (state, lastCode = null) => set({ state, lastCode }),
-  // Non-blocking diagnostic (welcome failure) — state sabit kalir, lastCode raporlanir.
-  setDiagnosticCode: (code) => set({ lastCode: code }),
 }));
 
 class InmaBootstrapImpl {
@@ -65,13 +62,9 @@ class InmaBootstrapImpl {
     console.log('[inma-debug] bootstrap state -> authenticated');
     useInmaBootstrap.getState().setState('authenticated');
 
-    api.getWelcome().catch((err) => {
-      // Non-critical: session state='authenticated' kalir, sadece diagnostic kod
-      // raporlanir (INV-INT-108) — InmaConnectionStatus arıza overlay'i tetiklenmez.
-      console.warn('[inma-debug] getWelcome FAILED (non-critical)', err);
-      useInmaBootstrap.getState().setDiagnosticCode(INMA_ERRORS.WELCOME_FAILED);
-      console.warn(`[inmaBootstrap] welcome fetch failed (${INMA_ERRORS.WELCOME_FAILED}):`, err);
-    });
+    // Welcome metadata (FullName/Lang/InseFeatures) is already returned by exchangeInmaToken
+    // above — no extra getWelcome() call needed. Removed 2026-04-17 (was non-critical
+    // diagnostic-only and produced misleading 401 noise after exchange).
 
     console.log('[inma-debug] dispatching window event', { event: INMA_SESSION_UPDATED_EVENT });
     window.dispatchEvent(new CustomEvent(INMA_SESSION_UPDATED_EVENT));
