@@ -194,6 +194,76 @@ public class TenantRegistryRepository
             CreatedAt = reader.GetDateTime(5),
         };
     }
+
+    /// <summary>
+    /// Lazy auto-provision (UP0.3, planned in migration 009 NOTE): resolve INSE int
+    /// tenant_id from opaque INMA CompanyCode string. Creates a new tenant_registry
+    /// row with nextval('tenant_registry_auto_id_seq') on first login. Race-safe
+    /// via partial unique uq_tenant_registry_inma_code + ON CONFLICT DO NOTHING.
+    /// Caller (Program.cs exchange/login/ExtractTenantFromBearer) invokes this after
+    /// InmaTokenIntrospector welcome-endpoint introspection succeeds.
+    /// </summary>
+    public virtual async Task<int> ResolveOrCreateByInmaCodeAsync(
+        string inmaCode,
+        string displayName,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(inmaCode))
+            throw new ArgumentException("inmaCode is required (pre-validated by caller)", nameof(inmaCode));
+
+        var trimmedCode = inmaCode.Trim();
+        // tenant_name NOT NULL — fall back to the code itself when INMA omits FullName.
+        var tenantName = string.IsNullOrWhiteSpace(displayName) ? trimmedCode : displayName.Trim();
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+
+        // Fast path: existing tenant by inma_code.
+        await using (var selectCmd = new NpgsqlCommand(
+            "SELECT tenant_id FROM tenant_registry WHERE inma_code = @code LIMIT 1", conn))
+        {
+            selectCmd.Parameters.AddWithValue("code", trimmedCode);
+            var existing = await selectCmd.ExecuteScalarAsync(ct);
+            if (existing is int existingId)
+                return existingId;
+        }
+
+        // Insert path: nextval() + ON CONFLICT DO NOTHING via partial-index inference.
+        // `(inma_code) WHERE inma_code IS NOT NULL` matches partial UNIQUE INDEX
+        // uq_tenant_registry_inma_code (migration 009). ON CONSTRAINT requires an
+        // actual UNIQUE/EXCLUDE CONSTRAINT; a bare UNIQUE INDEX must be targeted
+        // by inference clause. Concurrent first-logins: only one row inserted
+        // (unique index); losers get NULL from RETURNING and re-SELECT the winner.
+        await using (var insertCmd = new NpgsqlCommand(@"
+            INSERT INTO tenant_registry (tenant_id, tenant_name, inma_code, is_active)
+            VALUES (nextval('tenant_registry_auto_id_seq'), @name, @code, true)
+            ON CONFLICT (inma_code) WHERE inma_code IS NOT NULL DO NOTHING
+            RETURNING tenant_id", conn))
+        {
+            insertCmd.Parameters.AddWithValue("name", tenantName);
+            insertCmd.Parameters.AddWithValue("code", trimmedCode);
+            var inserted = await insertCmd.ExecuteScalarAsync(ct);
+            if (inserted is int insertedId)
+            {
+                _logger.SystemInfo($"tenant auto-provisioned: inma_code={trimmedCode} tenant_id={insertedId}");
+                return insertedId;
+            }
+        }
+
+        // Race: a concurrent insert won; re-SELECT to fetch the winner's tenant_id.
+        await using (var reselectCmd = new NpgsqlCommand(
+            "SELECT tenant_id FROM tenant_registry WHERE inma_code = @code LIMIT 1", conn))
+        {
+            reselectCmd.Parameters.AddWithValue("code", trimmedCode);
+            var winner = await reselectCmd.ExecuteScalarAsync(ct);
+            if (winner is int winnerId)
+                return winnerId;
+        }
+
+        // Should never happen — insert conflict but row not found on re-select (serialization
+        // gap or wrong partial-index predicate). Caller maps to INV-AUTH-009 500.
+        throw new InvalidOperationException(
+            $"Tenant resolve/create failed after conflict fallback (inma_code={trimmedCode})");
+    }
 }
 
 /// <summary>

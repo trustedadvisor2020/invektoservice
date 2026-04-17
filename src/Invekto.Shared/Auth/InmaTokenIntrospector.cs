@@ -116,12 +116,12 @@ public sealed class InmaTokenIntrospector
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogWarning(ex, "[INMA-INTROSPECT] tenant={TenantId} result=transport_fail", context.TenantId);
+            _logger.LogWarning(ex, "[INMA-INTROSPECT] company_code={CompanyCode} result=transport_fail", context.CompanyCode);
             return new IntrospectResult(null, "INV-AUTH-008", "INMA introspection unavailable (network)", false);
         }
         catch (TaskCanceledException ex) when (ex.CancellationToken != ct)
         {
-            _logger.LogWarning("[INMA-INTROSPECT] tenant={TenantId} result=transport_timeout", context.TenantId);
+            _logger.LogWarning("[INMA-INTROSPECT] company_code={CompanyCode} result=transport_timeout", context.CompanyCode);
             return new IntrospectResult(null, "INV-AUTH-008", "INMA introspection unavailable (timeout)", false);
         }
 
@@ -129,19 +129,19 @@ public sealed class InmaTokenIntrospector
         {
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
-                _logger.LogInformation("[INMA-INTROSPECT] tenant={TenantId} result=welcome_401", context.TenantId);
+                _logger.LogInformation("[INMA-INTROSPECT] company_code={CompanyCode} result=welcome_401", context.CompanyCode);
                 return new IntrospectResult(null, "INV-AUTH-001", "INMA token expired or invalid", false);
             }
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("[INMA-INTROSPECT] tenant={TenantId} result=welcome_fail status={Status}",
-                    context.TenantId, (int)response.StatusCode);
+                _logger.LogWarning("[INMA-INTROSPECT] company_code={CompanyCode} result=welcome_fail status={Status}",
+                    context.CompanyCode, (int)response.StatusCode);
                 return new IntrospectResult(null, "INV-AUTH-008",
                     $"INMA introspection unavailable (HTTP {(int)response.StatusCode})", false);
             }
 
-            _logger.LogDebug("[INMA-INTROSPECT] tenant={TenantId} result=welcome_ok cached_for=5min", context.TenantId);
+            _logger.LogDebug("[INMA-INTROSPECT] company_code={CompanyCode} result=welcome_ok cached_for=5min", context.CompanyCode);
             _cache.Set(cacheKey, context, CacheTtl);
             return new IntrospectResult(context, null, null, false);
         }
@@ -159,6 +159,8 @@ public sealed class InmaTokenIntrospector
         return "inma:tk:" + Convert.ToHexString(hashBytes, 0, 8).ToLowerInvariant();
     }
 
+    private const int CompanyCodeMaxLength = 100;
+
     private static InmaTokenContext? ParseClaims(string token)
     {
         var handler = new JwtSecurityTokenHandler();
@@ -172,11 +174,17 @@ public sealed class InmaTokenIntrospector
         if (jwt.ValidTo != DateTime.MinValue && jwt.ValidTo < DateTime.UtcNow.AddSeconds(-60))
             throw new ArgumentException("Token expired (local exp claim)");
 
-        // TenantId: inma 'CompanyCode' claim (= our tenant_id). Fallback to 'CompanyId'.
-        var tenantClaim = jwt.Claims.FirstOrDefault(c => c.Type == "CompanyCode")?.Value
-                          ?? jwt.Claims.FirstOrDefault(c => c.Type == "CompanyId")?.Value;
-        if (string.IsNullOrEmpty(tenantClaim) || !int.TryParse(tenantClaim, out var tenantId) || tenantId <= 0)
-            throw new ArgumentException("Missing or invalid CompanyCode/CompanyId claim");
+        // CompanyCode: inma 'CompanyCode' claim (fallback: 'CompanyId'). OPAQUE STRING —
+        // 5050 happens to be numeric ("5050") but DentAdavista is "dentadavista". Do NOT
+        // int-parse here; translation to INSE int tenant_id is the caller's responsibility
+        // via TenantRegistryRepository.ResolveOrCreateByInmaCodeAsync. Length cap matches
+        // tenant_registry.inma_code VARCHAR(100).
+        var companyCode = (jwt.Claims.FirstOrDefault(c => c.Type == "CompanyCode")?.Value
+                           ?? jwt.Claims.FirstOrDefault(c => c.Type == "CompanyId")?.Value)?.Trim();
+        if (string.IsNullOrEmpty(companyCode))
+            throw new ArgumentException("Missing or empty CompanyCode/CompanyId claim");
+        if (companyCode.Length > CompanyCodeMaxLength)
+            throw new ArgumentException($"CompanyCode exceeds max length {CompanyCodeMaxLength}");
 
         var userIdClaim = jwt.Claims.FirstOrDefault(c => c.Type == NameIdentifierClaim)?.Value
                           ?? jwt.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
@@ -203,7 +211,7 @@ public sealed class InmaTokenIntrospector
 
         return new InmaTokenContext
         {
-            TenantId = tenantId,
+            CompanyCode = companyCode,
             UserId = userId,
             Role = role,
             FullName = fullName,

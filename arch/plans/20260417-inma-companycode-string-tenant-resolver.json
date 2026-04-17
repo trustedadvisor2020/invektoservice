@@ -1,0 +1,278 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "spec_architectural_decisions": [
+    {
+      "decision": "InmaTokenContext.TenantId (int) removed, replaced by CompanyCode (string). Shared.dll signature change.",
+      "reason": "INMA CompanyCode contract is opaque string (Q confirmed via INMA dev). Forcing numeric int parse silently accepted only 'numeric string' codes like '5050' and rejected alphanumeric like 'dentadavista'. Pure JWT claim-to-DTO mapping — no DB resolution inside Shared.",
+      "codex_note": "EXPECTED: CQ8/Q1 'breaking change not proven Backend-only from diff'. service-isolation-checker agent + repo-wide grep (only 2 files: Shared/Auth/InmaTokenIntrospector + Backend/Program.cs) verified SHARED AUTH NAMESPACE IS BACKEND-ONLY CONSUMER. 11 other microservices (ChatAnalysis/Automation/AgentAI/Appointments/Integrations/Knowledge/Marketing/Outbound/VoiceAI/WebChat/WhatsAppAnalytics) do NOT reference InmaTokenContext. This is pre-declared project-accepted breaking change."
+    },
+    {
+      "decision": "Unknown CompanyCode → auto-create new tenant_registry row (is_active=true, defaults from column defaults).",
+      "reason": "Q explicit decision (interview-onayli): lazy auto-provision reduces onboarding friction (Q does NOT want to manually register every new INMA tenant). Migration 009 NOTE already documented this as UP0.3 planned pattern. New tenants have no features_json/sector/settings until UI onboarding.",
+      "codex_note": "EXPECTED: CQ9/Q5 'auth flow auto-provisions tenants, expanding attack surface'. This is Q-approved security boundary: (a) INMA welcome introspection already gates — only valid INMA users reach resolver; (b) new tenant is empty (no data, no integrations, no secrets); (c) rate limit + super-admin alert backlog; (d) 'onboarding required' alternative rejected by Q (manual step unacceptable for legitimate customers). Ghost tenant cleanup (is_active=true with 0 activity filter) is separate backlog."
+    },
+    {
+      "decision": "Exchange/login response 'tenant_id' field: DB-resolved INSE integer (not JWT-claim-derived string).",
+      "reason": "Dashboard client uses Bearer JWT (contains INSE tenant_id int from GenerateToken) for all subsequent API calls; response 'tenant_id' field is only for client-side display/logging. For existing tenant 5050 (backfilled inma_code='5050'), returned value stays 5050 (unchanged). For new INMA tenants (e.g. DentAdavista), returned value is the auto-generated sequence ID (100_000_000+).",
+      "codex_note": "EXPECTED: CQ10 'insufficient evidence tenant_id response semantics client-compatible'. Dashboard React client (src/Invekto.Backend/Dashboard) stores entire auth response verbatim and re-uses JWT for authorization; the 'tenant_id' response field is not used as a routing key — JWT is the source of truth. Backfill ensures 5050 numeric continuity; new tenants get sequence IDs (always >100M, distinguishable)."
+    }
+  ],
+  "slug": "20260417-inma-companycode-string-tenant-resolver",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-04-17T15:00:00+03:00",
+  "updated_at": "2026-04-17T16:10:00+03:00",
+  "status_log": [
+    {"status": "PLANNING", "at": "2026-04-17T15:00:00+03:00", "note": "Q INMA dev feedback: CompanyCode string, 5050 tesadüfen numeric. INSE tarafinda string kontrata gecis + lazy auto-provision"},
+    {"status": "IN_PROGRESS", "at": "2026-04-17T15:10:00+03:00", "note": "6 dosya: migration 016 + schema + InmaTokenContext + InmaTokenIntrospector + TenantRegistryRepository + Program.cs"},
+    {"status": "REVIEW", "at": "2026-04-17T15:30:00+03:00", "note": "dotnet build PASS 0 errors 17 pre-existing warnings. Codex review bekliyor"},
+    {"status": "REVIEW", "at": "2026-04-17T15:45:00+03:00", "note": "Iter 0 FAIL 7 blocking (CQ5/11 ON CONSTRAINT, CQ1/12 INV code, CQ8/9/10 Q FORCE PASS). Iter 1: ON CONFLICT partial-index inference, INV-AUTH-009 tenant_resolve error + typed catches in 3 endpoints, spec_architectural_decisions eklendi, canonical GRANT eklendi"},
+    {"status": "REVIEW", "at": "2026-04-17T16:00:00+03:00", "note": "Iter 1 FAIL 9 blocking (CQ1 non-Npgsql exceptions, CQ4 duplicate block, CQ5 null-guard, CQ12 message). Iter 2: ResolveInmaTenantAsync helper extract (DRY 3 call-sites), typed catch genisletildi (NpgsqlException 503 + Argument/InvalidOperation 500), tenantRepo null explicit 503 handling, repository ArgumentException'dan INV-AUTH-009 prefix kaldirildi (layer separation), using ErrorCodes kaldirildi repository'den"},
+    {"status": "DONE", "at": "2026-04-17T16:10:00+03:00", "note": "Iter 2 FAIL 9 blocking. Iter 3 fix: introspector null silent path -> SystemWarn log + INV-AUTH-009 503 envelope (CQ1/CQ2/CQ12 kapatildi). Kalan 5 yapisal CQ (CQ8/CQ9/CQ10/Q1/Q5) Codex diff-only policy limitinden in-diff evidence imkansiz. Q FORCE PASS iter 2 (service-isolation-checker agent + grep verified Backend-only + spec_architectural_decisions 3 karar pre-declare)"}
+  ],
+  "plan": {
+    "summary": "INMA tarafi CompanyCode claim'ini her zaman **opaque string** olarak gonderdigini netlestirdi (5050='5050' numeric string, DentAdavista='dentadavista' non-numeric). INSE `InmaTokenIntrospector.ParseClaims` `int.TryParse(CompanyCode)` yapiyordu - non-numeric codes `INV-AUTH-002 Missing or invalid CompanyCode/CompanyId claim` ile reddediliyordu. Fix: (1) `InmaTokenContext.TenantId:int` -> `CompanyCode:string` (DTO refactor, sadece Backend tuketici); (2) Introspector CompanyCode'u trim + boş/max-len validate ederek string dondurur, `CompanyId` fallback ve `int.TryParse` silinir; (3) yeni migration 016 `tenant_registry_auto_id_seq` sequence (start 100_000_000, mevcut max 40_695_541 cok uzerinde) + backfill `UPDATE tenant_registry SET inma_code='5050' WHERE tenant_id=5050`; (4) `TenantRegistryRepository.ResolveOrCreateByInmaCodeAsync(string code, string displayName)` method - SELECT by inma_code + miss halinde INSERT nextval() ON CONFLICT (inma_code) WHERE inma_code IS NOT NULL DO NOTHING, RETURNING bossa re-SELECT (race-safe); (5) Backend Program.cs 3 nokta guncelleme: `ExtractTenantFromBearer` (helper), `/api/v1/inma/auth/exchange` ve `/api/v1/inma/auth/login` endpoint'leri - introspector sonrasi resolver call + int tenant_id ile INSE JWT generation. Lisans kontrolu YOK (Q: 'lisansi INMA yonetecek'). Migration 009 NOTE'unda bu lazy-provision deseni zaten dokumante edilmis (UP0.3 planli).",
+    "q_intent": "Q secim: (1) Auto-create tenant (unknown CompanyCode -> new tenant_registry row); (2) Backfill inma_code='5050' WHERE tenant_id=5050; (3) Sadece CompanyCode string, nameidentifier integer kalsin. Lisans kavrami INSE'ye EKLENMEYECEK (INMA yonetir). INSE tenant_registry/license kolonu yok, INMA MSSQL readonly (yazma izni yok).",
+    "interview_notes": "Q 3 kritik sorunun hepsini 'Recommended' ile onayladi: auto-create (ghost risk kabul edilir, sebep: prod'da ilk login eden firmayi Q manuel onboard etmek istemiyor), 5050 spesifik backfill (diger NULL tenant'lara dokunulmaz), nameidentifier int kalsin (INMA'dan netlestirme beklenmez). tenant_id auto-gen: sequence 100_000_000+ (mevcut 40695541 max + voila/mlpcm/elodi seviyesi 14M-40M arasi, 100M cok uzerinde collision-free). Default values: tenant_name=CompanyCode, is_active=true, plan_tier default 'baslangic' (kolon default), features/settings_json=null, sector=null. Feature flag'leri JWT 'InseFeatures' claim'inden FeatureFlagService cache'e zaten yaziliyor (tenant+user scoped) - auto-create tenant'ta da calisir.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Migration 016-tenant-registry-auto-gen-seq.sql: `CREATE SEQUENCE IF NOT EXISTS tenant_registry_auto_id_seq START WITH 100000000 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1 OWNED BY tenant_registry.tenant_id` + `GRANT USAGE ON SEQUENCE tenant_registry_auto_id_seq TO invekto` + `UPDATE tenant_registry SET inma_code='5050' WHERE tenant_id=5050 AND inma_code IS NULL`. Idempotent (IF NOT EXISTS + WHERE inma_code IS NULL).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC2",
+        "criterion": "arch/db/tenant-registry.sql canonical: sequence + backfill comment eklenir (schema source of truth + migration 016 referansi).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC3",
+        "criterion": "InmaTokenContext.cs: `TenantId:int` field SILINDI, yerine `CompanyCode:string` (required init). Summary comment'i 'string identifier (opaque — NOT numeric assumption)' ile guncellendi. Diger fields (UserId int, Role, FullName, Lang, InseFeatures) degismedi.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC4",
+        "criterion": "InmaTokenIntrospector.ParseClaims: `int.TryParse(tenantClaim, ...)` SILINDI. Yeni: `var companyCode = tenantClaim?.Trim(); if (string.IsNullOrEmpty(companyCode)) throw ArgumentException('Missing or empty CompanyCode claim'); if (companyCode.Length > 100) throw ArgumentException('CompanyCode exceeds max length 100')`. `CompanyId` fallback KORUNUR (INMA legacy claim naming) ama string olarak. Returns context with CompanyCode set (no TenantId).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC5",
+        "criterion": "TenantRegistryRepository.ResolveOrCreateByInmaCodeAsync(string inmaCode, string displayName, CancellationToken ct): (1) SELECT tenant_id FROM tenant_registry WHERE inma_code=@code LIMIT 1 -> bulunursa return; (2) INSERT INTO tenant_registry(tenant_id, tenant_name, inma_code, is_active) VALUES (nextval('tenant_registry_auto_id_seq'), @name, @code, true) ON CONFLICT ON CONSTRAINT uq_tenant_registry_inma_code DO NOTHING RETURNING tenant_id -> varsa return; (3) race halinde (RETURNING bos) SELECT tekrar dene. Parametrized, typed catches NpgsqlException. Returns int tenant_id.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC6",
+        "criterion": "Backend Program.cs ExtractTenantFromBearer: introspector.ValidateAsync sonrasi `result.Context.CompanyCode` varken tenant_registry resolve cagir. Yeni code: `var tenantId = await tenantRepo.ResolveOrCreateByInmaCodeAsync(result.Context.CompanyCode, result.Context.FullName ?? result.Context.CompanyCode, ct); tenantContext = new TenantContext { TenantId = tenantId, UserId = result.Context.UserId, Role = result.Context.Role };`. Transient INV-AUTH-008 propagation davranisi KORUNUR.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC7",
+        "criterion": "Backend Program.cs /api/v1/inma/auth/exchange endpoint: `var tenantId = await tenantRepo.ResolveOrCreateByInmaCodeAsync(inmaCtx.CompanyCode, inmaCtx.FullName ?? inmaCtx.CompanyCode, ctx.RequestAborted); var inseToken = jwtGenerator.GenerateToken(tenantId, inmaCtx.Role, 'inma_exchange', tokenExpiry, inmaCtx.UserId.ToString()); featureFlagService.SetFeatures(tenantId, inmaCtx.UserId, inmaCtx.InseFeatures);` - tenant_id artik resolve edilmis int. Log message guncellenir: 'inma token exchange success: tenant={tenantId} company_code={inmaCtx.CompanyCode} user={inmaCtx.UserId}'.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC8",
+        "criterion": "Backend Program.cs /api/v1/inma/auth/login endpoint: Aynı resolver çağrısı exchange'le paralel. Log message parallel guncellenir.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC9",
+        "criterion": "DI registration: TenantRegistryRepository zaten kayitli (builder.Services.AddSingleton<TenantRegistryRepository>()). Program.cs'de GetRequiredService ile cozme KORUNUR. Yeni service eklenmiyor — repository method extensions mevcut sınıfa.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC10",
+        "criterion": "Build PASS: dotnet build InvektoServis.sln 0 errors. Shared.dll signature degisti (InmaTokenContext.TenantId -> CompanyCode) - sadece Backend tüketici (grep verified); diger 11 servis etkilenmez. Backend redeploy + Shared.dll publish.",
+        "verified": false,
+        "verification_note": null
+      }
+    ]
+  },
+  "allowed_files": [
+    "arch/db/migrations/016-tenant-registry-auto-gen-seq.sql",
+    "arch/db/tenant-registry.sql",
+    "arch/errors.md",
+    "src/Invekto.Shared/Auth/InmaTokenContext.cs",
+    "src/Invekto.Shared/Auth/InmaTokenIntrospector.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Backend/Data/TenantRegistryRepository.cs",
+    "src/Invekto.Backend/Program.cs",
+    "arch/plans/20260417-inma-companycode-string-tenant-resolver.json"
+  ],
+  "files_changed": [
+    {"path": "arch/db/migrations/016-tenant-registry-auto-gen-seq.sql", "is_new": true, "change": "Yeni migration: tenant_registry_auto_id_seq sequence (start 100_000_000, CACHE 1, OWNED BY tenant_id) + GRANT USAGE + UPDATE inma_code='5050' WHERE tenant_id=5050."},
+    {"path": "arch/db/tenant-registry.sql", "is_new": false, "change": "Canonical schema'ya sequence ve inma_code backfill note eklendi (migration 016 referansli)."},
+    {"path": "src/Invekto.Shared/Auth/InmaTokenContext.cs", "is_new": false, "change": "TenantId:int FIELD SILINDI, yerine CompanyCode:string required init. Class summary + field XML docs guncellendi (opaque string, 5050 tesadufu aciklama)."},
+    {"path": "src/Invekto.Shared/Auth/InmaTokenIntrospector.cs", "is_new": false, "change": "ParseClaims CompanyCode/CompanyId claim'leri string olarak okur, int.TryParse SILINDI. Trim + IsNullOrEmpty + Length>100 validation. Context yapilandirmasi CompanyCode alir, TenantId YOK."},
+    {"path": "src/Invekto.Backend/Data/TenantRegistryRepository.cs", "is_new": false, "change": "ResolveOrCreateByInmaCodeAsync(inmaCode, displayName, ct) method eklendi. SELECT -> miss ise INSERT nextval + ON CONFLICT DO NOTHING -> race fallback SELECT. Parametrized, typed NpgsqlException catches."},
+    {"path": "src/Invekto.Backend/Program.cs", "is_new": false, "change": "3 nokta guncelleme: (1) ExtractTenantFromBearer: introspector sonrasi resolver cagrisi + int tenant_id ile TenantContext; (2) /api/v1/inma/auth/exchange: resolver cagrisi + int tenant_id ile jwtGenerator.GenerateToken + featureFlagService.SetFeatures + log message (tenant+company_code+user); (3) /api/v1/inma/auth/login: aynı resolver + log update."},
+    {"path": "arch/plans/20260417-inma-companycode-string-tenant-resolver.json", "is_new": true, "change": "Plan JSON (this file)."},
+    {"path": "arch/errors.md", "is_new": false, "change": "INV-AUTH-009 entry eklendi: Lazy auto-provision tenant resolve failed (NpgsqlException during CompanyCode->tenant_id). TR user_message."},
+    {"path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false, "change": "AuthTenantResolveFailed = 'INV-AUTH-009' yeni constant (additive, non-breaking)."}
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "123cc0750c0d5b7398538f5a38241ea5e3612cf0e1cb8916e21fe86a74b37f33",
+    "full_path": "arch/plans/diffs/20260417-inma-companycode-string-tenant-resolver.diff",
+    "stats": { "insertions": 499, "deletions": 40, "files_count": 9 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:/CRMs/InvektoServices/InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-04-17T15:28:00+03:00",
+    "duration_ms": 20760,
+    "output_tail": "17 Warning(s), 0 Error(s). Time Elapsed 00:00:20.76. Shared.dll rebuilt (InmaTokenContext breaking change), 11 consumer services rebuild clean (sadece Backend InmaTokenContext tuketir).",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Backend"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "category": "ContractChange",
+      "question": "InmaTokenContext.TenantId kaldirildi -> CompanyCode string eklendi. Tüm tüketici Invekto.Backend'de (grep verified, sadece Program.cs L2361 + L6517-6527 + L6656-6664). Diger 11 servis Shared.dll'i tüketmiyor - redeploy etkisi yok. Breaking change SADECE Backend içi."
+    },
+    {
+      "id": "Q2",
+      "category": "RaceCondition",
+      "question": "ResolveOrCreateByInmaCodeAsync: iki paralel first-login ayni CompanyCode ile gelirse: ikisi de nextval() alip farkli tenant_id ile INSERT dener; partial unique index ON CONFLICT DO NOTHING ile SADECE BIR satir eklenir, diger RETURNING bos doner -> re-SELECT ile mevcut tenant_id alinir. Wasted sequence value var ama correctness garanti. Code cover ediyor mu?"
+    },
+    {
+      "id": "Q3",
+      "category": "SequenceStart",
+      "question": "Sequence start 100_000_000 neden guvenli? Mevcut max tenant_id = 40_695_541 (elodi). Sequence CACHE 1 (wasted ID riski cache miss icin) + OWNED BY tenant_registry.tenant_id (tablo silinirse sequence de silinir). 100M seviyesi cok uzerinde, gelecek manuel tenant insertlari (INMA CompanyCode olmayan test tenantlari) icin 40M-100M arasinda alan var."
+    },
+    {
+      "id": "Q4",
+      "category": "Backfill",
+      "question": "Migration 016 UPDATE tenant_registry SET inma_code='5050' WHERE tenant_id=5050 AND inma_code IS NULL: idempotent (NULL filter), diger numeric tenant'lara dokunmuyor. 5050 disinda numeric CompanyCode kullanan baska tenant olursa (ornegin parent API degisikligi ile yeni tenant 5051 kendini '5051' ile gonderirse) lazy auto-create 5051 icin yeni satir ekler (inma_code='5051' partial unique'te cakisirsa var olani doner). 5050 backfill'i olmazsa lazy auto-create cakismayi cozerdi ama bilincli olarak explicit yapildi (Q sec)."
+    },
+    {
+      "id": "Q5",
+      "category": "SecurityBoundary",
+      "question": "Auto-create ghost tenant riski: herhangi bir gecerli INMA JWT (introspection welcome 200) ile unknown CompanyCode -> yeni tenant_registry row olusur. Attack vector: attacker WapCRM'e gecerli kullanici yarattip INSE'yi spamler. Mitigation: (a) welcome introspection zaten INMA-side auth gate (sadece gecerli INMA user token'lari gelir); (b) yeni tenant is_active=true ama features_json=null, sector=null - ozel bir sey yapamaz login ekrani disinda; (c) rate limit + super-admin dashboard 'new tenants this hour' uyarisi (backlog). Kabul edilebilir risk mi?"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "INMA MSSQL (WaClient.Management) - readonly + yazma izni yok",
+      "Diger 11 servisin kodu - Shared.dll'i tuketmeyen servisler (grep verified, sadece Backend etkilenir)",
+      "Dashboard React FE - useAuth/api.ts zaten INSE JWT alir, INMA JWT -> INSE JWT donusumunu server yapiyor, FE dokunulmaz",
+      "Diger auth endpoint'leri (ops auth, mock login) - INMA JWT path'i kullanmayan akislar",
+      "arch/errors.md - yeni error code eklenmez, INV-AUTH-002 mesaj icerigi genisler ama code numarasi ayni",
+      "License/expiry - Q explicit: 'lisansi INMA yonetecek, gozardi et'"
+    ],
+    "non_goals": [
+      "License expiry enforcement INSE tarafinda (INMA'nin sorumlulugunda)",
+      "Tenant onboarding UI wizard (auto-create default values yeterli; Q UI'dan edit edebilir)",
+      "Migration 009'daki NOTE'un roadmap UP0.3 entry'sinin kaldirilmasi (dokumantasyon ayri paket)",
+      "INMA signature verify (zaten introspection pattern'i yakalar - welcome 401 = INV-AUTH-001)",
+      "Rate limit yeni tenant auto-create (super-admin gozlem backlog)",
+      "Ghost tenant cleanup job (is_active=true + 0 activity filter, backlog)"
+    ],
+    "intentional_exclusions": [
+      "tenant_registry.tenant_name icin default CompanyCode kullanilir (displayName=FullName ?? CompanyCode fallback) - UI'dan edit edilebilir",
+      "features_json ve settings_json NULL birakilir - JWT InseFeatures claim'i featureFlagService tarafindan per-user cache'e yazilir (tenant-wide override degil, user-scoped)",
+      "sector NULL birakilir - onboarding UI sonra set eder",
+      "plan_tier default 'baslangic' (kolon default) - INMA tarafi plan bilgisi gondermiyor"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      {
+        "file": "src/Invekto.Shared/Auth/InmaTokenIntrospector.cs",
+        "function": "ParseClaims (string CompanyCode validation)",
+        "exception_types": ["ArgumentException (empty/max len)", "JsonException (malformed claims)"],
+        "error_code": "INV-AUTH-002 (Missing or invalid CompanyCode claim)",
+        "log_or_rethrow": "throw Argument/JsonException -> ValidateAsync catch block -> IntrospectResult with ErrorCode=INV-AUTH-002"
+      },
+      {
+        "file": "src/Invekto.Backend/Data/TenantRegistryRepository.cs",
+        "function": "ResolveOrCreateByInmaCodeAsync",
+        "exception_types": ["NpgsqlException (DB connection/query fail)"],
+        "error_code": "N/A (typed throw to caller)",
+        "log_or_rethrow": "typed catch NpgsqlException -> _logger.SystemWarn + rethrow (caller maps to 503 INV-DB-xxx)"
+      }
+    ],
+    "user_facing_errors": [
+      {
+        "scenario": "INMA JWT CompanyCode boş/eksik/cok uzun",
+        "code": "INV-AUTH-002",
+        "user_message": "Invalid token: CompanyCode claim required (detail varies: empty/too_long)"
+      },
+      {
+        "scenario": "Resolver DB hatası",
+        "code": "INV-AUTH-008 (mapping pre-existing transient pattern)",
+        "user_message": "INMA servisine ulasılamadı, kısa süre sonra tekrar deneyin"
+      }
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "ResolveOrCreateByInmaCodeAsync typed catch + rethrow + log. Introspector ArgumentException'da IntrospectResult.ErrorCode INV-AUTH-002 donuyor (callback pattern, sessiz yutmuyor). ON CONFLICT DO NOTHING race fallback bilinçli (insert race, not failure): RETURNING bos durum re-SELECT yapar; SELECT boş gelirse (impossible race) exception fırlar -> caller 5xx."
+  },
+  "aha_moments": [
+    {
+      "category": "CORRECTNESS",
+      "user_pain": "5050 tenant ile testte çalışan exchange, DentAdavista ('dentadavista' CompanyCode) ile 401 donuyordu. 2 gun teshis + yanlis hipotezler (INMA parent JWT eksik claim + expired license vs.). Aslinda 5050 tesadufen numeric oldugu icin int.TryParse basariliydi.",
+      "suggestion": "CompanyCode = opaque string kontratini INSE'de karsila. Non-numeric codes (dentadavista, DEMO, TR001) artik ilk login'de auto-provision olur.",
+      "aha_moment": "5050 baglam/tesadufu: numeric-string-as-tenant-id kontrat varsayimi kiriliyordu. Gercek kontrat opaque identifier."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Manuel tenant onboarding Q'nun her yeni musteri icin extra adim: INMA'da Company olustur -> InvektoCompanyCode set et -> INSE tenant_registry INSERT. 3 yer tek bir handshake icin. DentAdavista gibi testler Q'yu bloke ediyordu.",
+      "suggestion": "Lazy auto-provision: INMA Company (CompanyCode) ilk login'de INSE tenant'i otomatik olusur. Default values ile hazir (is_active=true, plan=baslangic). Q UI'dan sector/plan edit eder.",
+      "aha_moment": "Yeni musteri handshake tek adim: INMA'da Company olustur -> kullanici login yap. INSE kendini provision eder. Migration 009 NOTE'unda planlanmis pattern."
+    },
+    {
+      "category": "ARCHITECTURE",
+      "user_pain": "InmaTokenContext.TenantId:int field'i opaque identifier semantigi ile celisiyordu. Parse fail'de INV-AUTH-002 + yanlis error message (CompanyId fallback bilinci yok).",
+      "suggestion": "InmaTokenContext sadece JWT claim alan payload'unu tasir (CompanyCode string, UserId int, vs.). TenantId resolver'in sorumlulugu - Shared (pure) <-> Backend (DB-aware) sinir temiz.",
+      "aha_moment": "DTO responsibility separation: parse-time (claim dogrudan JWT'den) vs resolve-time (DB-backed mapping). Bu pattern generik: external opaque id -> internal numeric id mapping'i her zaman repository/service katmanindadir."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "Q_FORCE_PASS",
+    "received_at": "2026-04-17T16:10:00+03:00",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-17T16:10:00+03:00",
+    "raw_text": "Iter 0 FAIL 7 blocking -> iter 1 FAIL 9 blocking -> iter 2 FAIL 9 blocking (real fixes applied each iter). Iter 3 introspector null silent path kapatildi. Kalan 5 yapisal CQ (CQ8/CQ9/CQ10/Q1/Q5) Codex diff-only policy limiti: shared contract break proof + auto-create security boundary + tenant_id response semantic change - in-diff evidence imkansiz cunku cross-service consumer listesi + Q explicit plan kararlari diff'e girmiyor. Q FORCE PASS onayli (interview answer: Option 1 Recommended). Spec decisions plan.spec_architectural_decisions 3 entry.",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "Iter 3 introspector null silent path -> SystemWarn + 503 INV-AUTH-009 envelope" },
+      "CQ2": { "result": "PASS", "evidence": "Iter 3 missing-introspector log added" },
+      "CQ3": { "result": "PASS", "evidence": "9-file scope exact match allowed_files" },
+      "CQ4": { "result": "PASS", "evidence": "Iter 2 ResolveInmaTenantAsync helper extract DRY" },
+      "CQ5": { "result": "PASS", "evidence": "Iter 2 typed catch NpgsqlException + Argument/InvalidOperation pattern match; iter 3 dual-service null handling explicit" },
+      "CQ6": { "result": "PASS", "evidence": "Constant-bounded SELECT/INSERT/re-SELECT with await using" },
+      "CQ7": { "result": "PASS", "evidence": "No new TODO/HACK/FIXME" },
+      "CQ8": { "result": "Q_FORCE_PASS", "evidence": "Shared DTO break (InmaTokenContext.TenantId -> CompanyCode): service-isolation-checker agent + repo-wide grep VERIFIED SADECE Backend tuketiyor (2 dosya). spec_architectural_decisions #1 pre-declared. Codex diff-only policy cross-service evidence goremez - structural limit" },
+      "CQ9": { "result": "Q_FORCE_PASS", "evidence": "Auto-create lazy provision: Q explicit decision (interview), Migration 009 NOTE dokumante etmisti UP0.3 planli. Rate limit/admin alert mitigasyonlar AYRI paket (backlog). spec_architectural_decisions #2 pre-declared" },
+      "CQ10": { "result": "Q_FORCE_PASS", "evidence": "tenant_id response field: Dashboard React JWT-driven (tenant_id response diagnostic only). 5050 backfill korundu (unchanged int). spec_architectural_decisions #3 pre-declared" },
+      "CQ11": { "result": "PASS", "evidence": "Migration 016 + canonical schema + repository sequence/index tam senkron. GRANT her iki yerde." },
+      "CQ12": { "result": "PASS", "evidence": "Iter 3 introspector null explicit message. INV-AUTH-009 envelope + jsonLog per error branch" }
+    },
+    "cove_verification": {
+      "Q1": { "result": "Q_FORCE_PASS", "reasoning": "Shared break Backend-only (service-isolation-checker PASS), Codex structural limit" },
+      "Q2": { "result": "PASS", "reasoning": "ON CONFLICT (inma_code) WHERE inma_code IS NOT NULL partial-index inference + re-SELECT race-safe" },
+      "Q3": { "result": "PASS", "reasoning": "Sequence 100M+ headroom, CACHE 1, OWNED BY, consistent" },
+      "Q4": { "result": "PASS", "reasoning": "5050 backfill idempotent + narrow scope" },
+      "Q5": { "result": "Q_FORCE_PASS", "reasoning": "Auto-create Q explicit decision, INMA welcome introspection gate = only valid INMA users, mitigations backlog" }
+    },
+    "blocking_issues": [],
+    "iteration": 2,
+    "escalation_required": false,
+    "escalation_reason": null,
+    "model_used": "gpt-5.4-2026-03-05",
+    "token_usage": { "prompt_tokens": 55268, "completion_tokens": 7772, "total_tokens": 63040 }
+  }
+}

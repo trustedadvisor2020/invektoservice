@@ -84,6 +84,7 @@ public static class ErrorCodes
 
     // INMA token introspection (INV-AUTH-008+) — welcome-endpoint check
     public const string AuthInmaIntrospectionUnavailable = "INV-AUTH-008"; // Welcome endpoint network/transport fail
+    public const string AuthTenantResolveFailed = "INV-AUTH-009";          // Lazy auto-provision tenant lookup/insert failure (CompanyCode → tenant_id)
 
     // Backward-compat aliases (pre-GR-1.9 names, do not use in new code)
     public const string AuthForbidden = AuthTokenInvalid;

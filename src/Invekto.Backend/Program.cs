@@ -2334,6 +2334,41 @@ app.MapGet("/api/v1/dashboard/analytics/summary", async (HttpContext ctx, Analyt
 //   Failure != null  → caller should return failure verbatim (e.g. 503 INV-AUTH-008 transient outage)
 //   Failure == null + Tenant == null → caller should return its own 401 with appropriate message
 //   Failure == null + Tenant != null → success
+// Shared helper: resolve INMA CompanyCode (opaque string) → INSE int tenant_id via lazy
+// auto-provision. Maps repository exceptions to the standard INV-AUTH-009 envelope so
+// every caller (ExtractTenantFromBearer + /api/v1/inma/auth/exchange + /api/v1/inma/auth/login)
+// shares one error mapping point. Typed catches: NpgsqlException (transient, 503),
+// ArgumentException + InvalidOperationException (programmer/data-shape errors, 500).
+async Task<(int TenantId, IResult? Failure)> ResolveInmaTenantAsync(
+    HttpContext ctx,
+    TenantRegistryRepository tenantRepo,
+    InmaTokenContext inmaCtx,
+    string requestId)
+{
+    try
+    {
+        var tenantId = await tenantRepo.ResolveOrCreateByInmaCodeAsync(
+            inmaCtx.CompanyCode, inmaCtx.FullName, ctx.RequestAborted);
+        return (tenantId, null);
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        var jsonLog = ctx.RequestServices.GetService<JsonLinesLogger>();
+        jsonLog?.SystemWarn($"[{ErrorCodes.AuthTenantResolveFailed}] tenant resolve DB failure: company_code={inmaCtx.CompanyCode} error={ex.Message}");
+        return (0, Results.Json(
+            ErrorResponse.Create(ErrorCodes.AuthTenantResolveFailed, "Tenant provision hatasi, kisa sure sonra tekrar deneyin.", requestId),
+            statusCode: 503));
+    }
+    catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+    {
+        var jsonLog = ctx.RequestServices.GetService<JsonLinesLogger>();
+        jsonLog?.SystemWarn($"[{ErrorCodes.AuthTenantResolveFailed}] tenant resolve logic failure: company_code={inmaCtx.CompanyCode} error={ex.Message}");
+        return (0, Results.Json(
+            ErrorResponse.Create(ErrorCodes.AuthTenantResolveFailed, "Tenant provision dogrulamasi basarisiz, yetkili destek ile iletisime gecin.", requestId),
+            statusCode: 500));
+    }
+}
+
 async Task<(TenantContext? Tenant, IResult? Failure)> ExtractTenantFromBearer(HttpContext ctx)
 {
     var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
@@ -2353,19 +2388,45 @@ async Task<(TenantContext? Tenant, IResult? Failure)> ExtractTenantFromBearer(Ht
     if (tenantContext == null)
     {
         var introspector = ctx.RequestServices.GetService<InmaTokenIntrospector>();
-        if (introspector != null)
+        var tenantRepo = ctx.RequestServices.GetService<TenantRegistryRepository>();
+        if (introspector == null)
         {
-            var result = await introspector.ValidateAsync(token, ctx.RequestAborted);
-            if (result.Context != null)
-            {
-                tenantContext = new TenantContext { TenantId = result.Context.TenantId, UserId = result.Context.UserId, Role = result.Context.Role };
-            }
-            else if (result.ErrorCode == ErrorCodes.AuthInmaIntrospectionUnavailable)
-            {
-                // Transient INMA outage → propagate as 503 (uniform with /api/v1/inma/auth/* endpoints).
-                var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
-                return (null, MapInmaIntrospectError(result.ErrorCode, result.Detail, requestId));
-            }
+            // INMA introspector DI missing: production misconfiguration (expected registered
+            // in Program.cs startup). Log + return 503 so the 401 fallthrough cannot mask a
+            // broken auth layer. Dev-mode INSE-only deployments that intentionally skip
+            // introspector should branch on this same signal before reaching Path B.
+            var missingIntrospectorRequestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+            var jsonLog = ctx.RequestServices.GetService<JsonLinesLogger>();
+            jsonLog?.SystemWarn($"[{ErrorCodes.AuthTenantResolveFailed}] InmaTokenIntrospector not registered - INSE JWT rejected but INMA path unavailable");
+            return (null, Results.Json(
+                ErrorResponse.Create(ErrorCodes.AuthTenantResolveFailed, "INMA dogrulama yapilandirilamamis, yetkili destek ile iletisime gecin.", missingIntrospectorRequestId),
+                statusCode: 503));
+        }
+        if (tenantRepo == null)
+        {
+            // Misconfiguration: repository not registered. Fail explicitly rather than silently skip.
+            var missingRepoRequestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+            var jsonLog = ctx.RequestServices.GetService<JsonLinesLogger>();
+            jsonLog?.SystemWarn($"[{ErrorCodes.AuthTenantResolveFailed}] TenantRegistryRepository not registered");
+            return (null, Results.Json(
+                ErrorResponse.Create(ErrorCodes.AuthTenantResolveFailed, "Tenant provision hatasi, kisa sure sonra tekrar deneyin.", missingRepoRequestId),
+                statusCode: 503));
+        }
+
+        var result = await introspector.ValidateAsync(token, ctx.RequestAborted);
+        if (result.Context != null)
+        {
+            // CompanyCode is opaque string — resolve to INSE int tenant_id (lazy auto-provision).
+            var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+            var (tenantId, resolveFailure) = await ResolveInmaTenantAsync(ctx, tenantRepo, result.Context, requestId);
+            if (resolveFailure != null) return (null, resolveFailure);
+            tenantContext = new TenantContext { TenantId = tenantId, UserId = result.Context.UserId, Role = result.Context.Role };
+        }
+        else if (result.ErrorCode == ErrorCodes.AuthInmaIntrospectionUnavailable)
+        {
+            // Transient INMA outage → propagate as 503 (uniform with /api/v1/inma/auth/* endpoints).
+            var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+            return (null, MapInmaIntrospectError(result.ErrorCode, result.Detail, requestId));
         }
     }
 
@@ -6479,7 +6540,7 @@ app.MapGet("/api/ops/tenants/{id}/license", async (HttpContext ctx, int id, Json
 // Akis 1: inma JWT -> inse JWT exchange (URL token flow)
 // inma'dan gelen ?accesstoken= parametresi bu endpoint'e gonderilir.
 // Validation: InmaTokenIntrospector welcome-endpoint check (signature verify YASAK — see class docs).
-app.MapPost("/api/v1/inma/auth/exchange", async (HttpContext ctx, IHttpClientFactory httpClientFactory, JsonLinesLogger jsonLogger, IFeatureFlagService featureFlagService) =>
+app.MapPost("/api/v1/inma/auth/exchange", async (HttpContext ctx, IHttpClientFactory httpClientFactory, JsonLinesLogger jsonLogger, IFeatureFlagService featureFlagService, TenantRegistryRepository tenantRepo) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
 
@@ -6513,18 +6574,24 @@ app.MapPost("/api/v1/inma/auth/exchange", async (HttpContext ctx, IHttpClientFac
             return MapInmaIntrospectError(introspectExResult.ErrorCode, introspectExResult.Detail, requestId);
         }
 
+        // CompanyCode (opaque string) → INSE int tenant_id. Shared helper maps repository
+        // exceptions to the standard INV-AUTH-009 envelope (503 for NpgsqlException,
+        // 500 for Argument/InvalidOperation — see ResolveInmaTenantAsync).
+        var (tenantId, resolveFailure) = await ResolveInmaTenantAsync(ctx, tenantRepo, inmaCtx, requestId);
+        if (resolveFailure != null) return resolveFailure;
+
         var tokenExpiry = TimeSpan.FromHours(8);
         var inseToken = jwtGenerator.GenerateToken(
-            inmaCtx.TenantId, inmaCtx.Role, "inma_exchange", tokenExpiry, inmaCtx.UserId.ToString());
+            tenantId, inmaCtx.Role, "inma_exchange", tokenExpiry, inmaCtx.UserId.ToString());
 
         // UP0.6: server-side feature flag cache (5dk TTL). Subsequent requests check flags without re-decoding the inma JWT.
-        featureFlagService.SetFeatures(inmaCtx.TenantId, inmaCtx.UserId, inmaCtx.InseFeatures);
+        featureFlagService.SetFeatures(tenantId, inmaCtx.UserId, inmaCtx.InseFeatures);
 
-        jsonLogger.StepInfo($"inma token exchange success: tenant={inmaCtx.TenantId} user={inmaCtx.UserId}", requestId);
+        jsonLogger.StepInfo($"inma token exchange success: tenant={tenantId} company_code={inmaCtx.CompanyCode} user={inmaCtx.UserId}", requestId);
         return Results.Ok(new
         {
             token = inseToken,
-            tenant_id = inmaCtx.TenantId,
+            tenant_id = tenantId,
             user_id = inmaCtx.UserId,
             role = inmaCtx.Role,
             full_name = inmaCtx.FullName,
@@ -6544,7 +6611,7 @@ app.MapPost("/api/v1/inma/auth/exchange", async (HttpContext ctx, IHttpClientFac
 
 // Akis 2: firma + kullanici + parola -> inma login -> inse JWT
 // inse login ekranindan kullanici inma credentials ile giris yapar.
-app.MapPost("/api/v1/inma/auth/login", async (HttpContext ctx, IHttpClientFactory httpClientFactory, JsonLinesLogger jsonLogger, IFeatureFlagService featureFlagService) =>
+app.MapPost("/api/v1/inma/auth/login", async (HttpContext ctx, IHttpClientFactory httpClientFactory, JsonLinesLogger jsonLogger, IFeatureFlagService featureFlagService, TenantRegistryRepository tenantRepo) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
 
@@ -6652,15 +6719,19 @@ app.MapPost("/api/v1/inma/auth/login", async (HttpContext ctx, IHttpClientFactor
             return MapInmaIntrospectError(introspectLoginResult.ErrorCode, introspectLoginResult.Detail, requestId);
         }
 
-        // UP0.6: server-side feature flag cache (5dk TTL) populated from the inma token claim.
-        featureFlagService.SetFeatures(inmaCtx.TenantId, inmaCtx.UserId, inmaCtx.InseFeatures);
+        // CompanyCode (opaque string) → INSE int tenant_id via shared helper.
+        var (tenantId, resolveFailure) = await ResolveInmaTenantAsync(ctx, tenantRepo, inmaCtx, requestId);
+        if (resolveFailure != null) return resolveFailure;
 
-        jsonLogger.StepInfo($"inma login success: tenant={inmaCtx.TenantId} user={inmaCtx.UserId}", requestId);
+        // UP0.6: server-side feature flag cache (5dk TTL) populated from the inma token claim.
+        featureFlagService.SetFeatures(tenantId, inmaCtx.UserId, inmaCtx.InseFeatures);
+
+        jsonLogger.StepInfo($"inma login success: tenant={tenantId} company_code={inmaCtx.CompanyCode} user={inmaCtx.UserId}", requestId);
         return Results.Ok(new
         {
             token = inmaToken,
             refresh_token = inmaRefreshToken ?? string.Empty,
-            tenant_id = inmaCtx.TenantId,
+            tenant_id = tenantId,
             user_id = inmaCtx.UserId,
             role = inmaCtx.Role,
             full_name = inmaCtx.FullName,

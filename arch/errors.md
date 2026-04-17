@@ -218,6 +218,9 @@ errors:
   - code: INV-AUTH-008
     description: INMA welcome endpoint introspection unavailable (network/transport fail; Backend cannot reach INMA API to validate token)
     user_message: INMA servisine ulaşılamadı, kısa süre sonra tekrar deneyin.
+  - code: INV-AUTH-009
+    description: Lazy auto-provision tenant resolve failed (PostgreSQL NpgsqlException during CompanyCode→tenant_id lookup/insert). Introduced 2026-04-17 (migration 016) to map opaque INMA CompanyCode string to INSE integer tenant_id via tenant_registry.inma_code.
+    user_message: Tenant provision hatasi, kisa sure sonra tekrar deneyin.
 
   # ── AT — Automation (GR-1.1) ──
   - code: INV-AT-001
