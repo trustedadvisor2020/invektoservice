@@ -849,26 +849,26 @@ class OpsApiClient {
   }
 
   private async runInmaExchange(token: string): Promise<void> {
-    try {
-      const response = await fetch('/api/v1/inma/auth/exchange', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token }),
-      });
+    // Throws on HTTP error OR network failure. Callers (inmaBootstrap, useAuth,
+    // doRefresh, executeWithRefresh) each handle rejection explicitly — silent
+    // swallow previously masked 401s as "SUCCESS" and left a stale raw INMA JWT
+    // in localStorage, producing a bogus authenticated session downstream.
+    const response = await fetch('/api/v1/inma/auth/exchange', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    });
 
-      if (!response.ok) {
-        console.warn('[api] INMA token exchange failed:', response.status);
-        return;
-      }
-
-      const data: InmaAuthResponse = await response.json();
-
-      // Replace primary token with INSE JWT so all API calls (including
-      // FlowBuilder endpoints protected by JwtAuthMiddleware) work correctly.
-      this.storeTokens(data.token, data.refresh_token ?? '');
-    } catch (err) {
-      console.warn('[api] INMA token exchange failed:', err);
+    if (!response.ok) {
+      console.warn('[api] INMA token exchange failed:', response.status);
+      throw new Error(`INMA token exchange failed: HTTP ${response.status}`);
     }
+
+    const data: InmaAuthResponse = await response.json();
+
+    // Replace primary token with INSE JWT so all API calls (including
+    // FlowBuilder endpoints protected by JwtAuthMiddleware) work correctly.
+    this.storeTokens(data.token, data.refresh_token ?? '');
   }
 
   // --- inma auth calls ---
@@ -1022,7 +1022,14 @@ class OpsApiClient {
     // with the wrong issuer → 401. After a successful exchange the CompanyCode
     // claim is gone, so this branch is a single-shot retry.
     if (this.isInmaSession() && this.getDecodedToken()?.CompanyCode) {
-      await this.exchangeInmaToken();
+      try {
+        await this.exchangeInmaToken();
+      } catch (err) {
+        // Preserve fall-through to INV-AU-001/002 classification below.
+        // Bootstrap/useAuth handle their own exchange rejection paths;
+        // this interceptor only mediates the retry window.
+        console.warn('[api] executeWithRefresh: exchange retry failed, falling through', err);
+      }
       if (!this.getDecodedToken()?.CompanyCode) {
         response = await doFetch();
         if (response.status !== 401) return response;

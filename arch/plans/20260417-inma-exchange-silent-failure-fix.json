@@ -1,0 +1,225 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260417-inma-exchange-silent-failure-fix",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-04-17T14:15:00+03:00",
+  "updated_at": "2026-04-17T14:35:00+03:00",
+  "status_log": [
+    {"status": "PLANNING", "at": "2026-04-17T14:15:00+03:00", "note": "Q production console'da exchange 401 -> SUCCESS yanilsamasini rapor etti; interview sonrasi FE silent failure fix + api.ts audit karari"},
+    {"status": "IN_PROGRESS", "at": "2026-04-17T14:22:00+03:00", "note": "3 kod degisikligi: api.ts runInmaExchange throw + executeWithRefresh try/catch, useAuth.ts 2 useEffect .catch"},
+    {"status": "REVIEW", "at": "2026-04-17T14:30:00+03:00", "note": "tsc --noEmit clean + vite build 7.62s PASS; Codex review bekliyor"},
+    {"status": "DONE", "at": "2026-04-17T14:35:00+03:00", "note": "Codex iter 0 PASS \u2014 12/12 CQ + 4/4 CoVe, 0 blocking (gpt-5.4)"}
+  ],
+  "plan": {
+    "summary": "Dashboard React api.ts runInmaExchange fonksiyonu /api/v1/inma/auth/exchange 401 aldiginda hatayi sessizce yutuyor (try/catch + console.warn + return). Caller exchangeInmaToken await'in hatasiz resolve ettigini goruyor, inmaBootstrap.run() 'SUCCESS' logluyor + state='authenticated' yapiyor, useAuth 'isAuthenticated:true' donduruyor — ama raw INMA JWT localStorage'da stale kaliyor, sonraki her API cagrisi INV-AUTH-002 Invalid token signature ile 401 donuyor (Backend JwtValidator INSE-only). Fix: (1) runInmaExchange HTTP error veya network error durumunda Error throw eder, storeTokens sadece basarida cagrilir; (2) executeWithRefresh attempt-2 icindeki exchange call'u try/catch ile sarilir ki mevcut INV-AU-001/002 fall-through hata siniflandirmasi korunur; (3) useAuth.ts L38 (URL SSO) ve L58 (auto-mount) fire-and-forget .then() zincirlerine .catch eklenir — unhandled promise rejection olmasini onler + removeTokens ile stale token temizler.",
+    "q_intent": "Q secim '3' = hem FE fix hem backend verify. Backend verify tamamlandi (ApiBaseUrl prod config dogru 'https://testapi.wapcrm.net'; bugunku 401'lerin gercek sebebi INV-AUTH-002 Missing/invalid CompanyCode claim — parent'in gonderdigi JWT bizim sorumluluk disinda). FE fix kapsami = api.ts icindeki silent failure pattern + cagrilarin throw'a hazir hale gelmesi.",
+    "interview_notes": "Q 3 soruya 3 'Recommended' cevap verdi: (1) FE fix shape = Throw Error + status (simplest, mevcut contract korunur); (2) Backend verify = Prod appsettings oku + parent JWT issuer karsilastir (tamamlandi, config DOGRU - config degisikligi gerek YOK); (3) Audit scope = api.ts icindeki TUM silent failure'lar. Audit sonucu: runInmaExchange tek 'silent SUCCESS' bug'i. getDecodedToken/getWelcome/doRefresh zaten explicit null/false return eden graceful-degradation kontratlari (silent success degil, explicit signal). exchangeInmaToken (wrapper) ve bootstrap.run catch'i dogru dizilmis — sadece runInmaExchange throw etmeye baslayinca zincir calisiyor. executeWithRefresh attempt-2 defensively try/catch almali cunku mevcut INV-AU-001/002 fall-through beklentisi var — exchange throw'unu yutmazsak exchange'in Error mesaji caller'a propagate olur (current fall-through davranisi degisir).",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "api.ts runInmaExchange: !response.ok icin 'throw new Error(`INMA token exchange failed: HTTP ${status}`)'. Network error'lar icin try/catch SILINIR; fetch exception'lari caller'a propagate eder. storeTokens sadece response.ok ve data.token var iken cagrilir.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC2",
+        "criterion": "api.ts executeWithRefresh attempt-2 (L1024-1030): exchangeInmaToken() call'u try/catch icinde. Catch body bos DEGIL — en az 1 console.warn log (silent failure lesson 535). Mevcut fall-through davranisi korunur: exchange basarisiz ise CompanyCode claim hala mevcut, L1033 non-INMA / L1039 INMA error throw yollari calismaya devam eder.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC3",
+        "criterion": "useAuth.ts L38 (URL SSO useEffect): api.exchangeInmaToken().then(...) zincirine .catch eklenir. Catch body: console.warn + api.removeTokens + setIsAuthenticated(false) + setError('Oturum dogrulanamadi'). Silent rejection yok.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC4",
+        "criterion": "useAuth.ts L58 (auto-mount useEffect): api.exchangeInmaToken().then(...) zincirine .catch eklenir. Catch body: console.warn + api.removeTokens + setIsAuthenticated(false) + setSession(null). Stale raw INMA JWT otomatik temizlenir.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC5",
+        "criterion": "Mevcut davranis korunur: doRefresh L972 exchangeInmaToken() call'u zaten outer try/catch (L975-978) icinde — fix sonrasi exchange throw'u catch edilir, 'token refresh failed' loglanir, 'return false' donulur. inmaBootstrap.run L54-60 catch'i zaten removeTokens + EXCHANGE_FAILED set ediyor — dokunulmaz. loginWithInma L168 zaten outer try/catch icinde — dokunulmaz.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC6",
+        "criterion": "TypeScript typecheck: tsc --noEmit clean. Fonksiyon imzasi degismez (exchangeInmaToken hala Promise<void>), sadece reject path aktive olur. mevcut await/then cagrilari TS acisindan gecerli.",
+        "verified": false,
+        "verification_note": null
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/hooks/useAuth.ts",
+    "arch/plans/20260417-inma-exchange-silent-failure-fix.json"
+  ],
+  "files_changed": [
+    {"path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "change": "runInmaExchange: silent try/catch + !response.ok sessiz return kaldirildi; HTTP error -> throw Error; network error'lar caller'a propagate. executeWithRefresh attempt-2: exchangeInmaToken() try/catch ile sarildi + console.warn (fall-through korunur).", "is_new": false},
+    {"path": "src/Invekto.Backend/Dashboard/src/hooks/useAuth.ts", "change": "L38 URL SSO useEffect + L58 auto-mount useEffect: exchangeInmaToken().then() zincirlerine .catch eklendi (console.warn + removeTokens + state cleanup). Unhandled promise rejection onlendi; stale raw INMA JWT temizlenir.", "is_new": false},
+    {"path": "arch/plans/20260417-inma-exchange-silent-failure-fix.json", "change": "Plan JSON (this file).", "is_new": true}
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "d8453d23e686c8a2684e874aa3e7a2ccdbb6f1fe159b71c35844e560c2e85b0d",
+    "full_path": "arch/plans/diffs/20260417-inma-exchange-silent-failure-fix.diff",
+    "stats": { "insertions": 250, "deletions": 24, "files_count": 3 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "cd src/Invekto.Backend/Dashboard && npx tsc --noEmit && npx vite build",
+    "timestamp": "2026-04-17T14:28:00+03:00",
+    "duration_ms": 7620,
+    "output_tail": "tsc --noEmit clean (no output). vite built in 7.62s. Only warning = pre-existing chunk size (index-BK8QZPVe.js 932kB + flow-templates 772kB).",
+    "error_summary": null,
+    "services": ["Invekto.Backend (Dashboard SPA only)"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "runInmaExchange throw ettiginde, mevcut bootstrap.run L44-60 try/catch'i exception'i yakalayip api.removeTokens() + setState('error', EXCHANGE_FAILED) yapiyor mu? (Evet — inmaBootstrap.ts L54-60 zaten bu pattern icin tasarlanmis, session-memory L19 iter 1 fix'te eklenmis).",
+      "category": "ErrorPropagation"
+    },
+    {
+      "id": "Q2",
+      "question": "executeWithRefresh attempt-2 fall-through: exchange throw etse bile try/catch ile yutulunca CompanyCode claim hala mevcut, L1026 kosulu false olur, response orijinal 401 kalir ve L1032-1039 INV-AU-001/002 throw zinciri calisir. Mevcut davranisla birebir ayni — sadece artik catch-body'de log var (silent failure lesson 535).",
+      "category": "BehaviorPreservation"
+    },
+    {
+      "id": "Q3",
+      "question": "useAuth L38 + L58 .catch eklendiginde infinite re-render olur mu? HAYIR — useEffect deps array bos ([]), bir kez calisir. setIsAuthenticated(false) state degistirse bile useEffect yeniden cagrilmaz (deps=[] sabit). Tek risk: removeTokens sonrasi isAuthenticated state'i yeni render'da false — normal logout davranisi, infinite loop YOK.",
+      "category": "ReactLifecycle"
+    },
+    {
+      "id": "Q4",
+      "question": "fetch network error (ornegin TCP reset, DNS fail) artik propagate oluyor — caller'lar TypeError: Failed to fetch gibi browser-native exception'lari goruyor. bootstrap/doRefresh/login/useAuth hepsi .catch veya try/catch icinde. Unhandled rejection riski yok.",
+      "category": "NetworkFailure"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Backend/Program.cs /api/v1/inma/auth/exchange endpoint'i - backend dokunulmaz (ApiBaseUrl prod config dogru, 401'ler INMA-side JWT sorunu)",
+      "src/Invekto.Shared/Auth/InmaTokenIntrospector.cs - dokunulmaz (CompanyCode claim check dogru calisiyor)",
+      "appsettings.Production.json - config degisikligi yok (ApiBaseUrl zaten 'https://testapi.wapcrm.net')",
+      "arch/errors.md - yeni error code eklenmez (mevcut INV-INT-107 EXCHANGE_FAILED kullaniliyor)",
+      "inmaBootstrap.ts - L44-60 catch zaten dogru pattern, dokunulmaz",
+      "doRefresh L952-979 - outer try/catch zaten exchange throw'unu yakalayacak, dokunulmaz",
+      "loginWithInma L155-187 - outer try/catch zaten exchange throw'unu yakalayacak, dokunulmaz"
+    ],
+    "non_goals": [
+      "Backend INMA JWT CompanyCode claim hata UX'i (INMA takimi tarafindan duzeltilecek)",
+      "arch/errors.md yeni frontend error code (mevcut INV-INT-107 yeterli)",
+      "API retry logic ekleme (cagiri icinmis zamanli logic backlog)",
+      "Welcome endpoint silent failure (gecmis pakette ele alindi, bu paket sadece exchange)",
+      "Production deploy (Codex PASS sonrasi Q karari; shared.dll degisimi yok -> Dashboard SPA only deploy)"
+    ],
+    "intentional_exclusions": [
+      "getDecodedToken L731-741 catch(err) return null - DOCUMENTED graceful degradation (callers null check yapar); silent success degil, explicit null signal. Dokunulmaz.",
+      "getWelcome L925 if (!response.ok) return null - DOCUMENTED diagnostic-only contract; callers null check yapar. Dokunulmaz.",
+      "doRefresh L963 if (!response.ok) return false / L975-978 catch return false - DOCUMENTED explicit signal; executeWithRefresh handleRefresh() return value'yu kullanir. Dokunulmaz."
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      {
+        "file": "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+        "function": "runInmaExchange",
+        "exception_types": ["HTTP !ok (throw Error)", "fetch native exceptions (propagate)"],
+        "error_code": "INV-INT-107 (frontend INMA_ERRORS.EXCHANGE_FAILED set by caller inmaBootstrap)",
+        "log_or_rethrow": "throw Error with HTTP status in message"
+      },
+      {
+        "file": "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+        "function": "executeWithRefresh",
+        "exception_types": ["exchange throw (caught to preserve fall-through)"],
+        "error_code": "INV-INT-107 caught silently, fall-through produces INV-AU-001/002 downstream",
+        "log_or_rethrow": "console.warn + fall-through"
+      },
+      {
+        "file": "src/Invekto.Backend/Dashboard/src/hooks/useAuth.ts",
+        "function": "useEffect L33 (URL SSO)",
+        "exception_types": ["exchange promise rejection"],
+        "error_code": "INV-INT-107",
+        "log_or_rethrow": "console.warn + removeTokens + setError + setIsAuthenticated(false)"
+      },
+      {
+        "file": "src/Invekto.Backend/Dashboard/src/hooks/useAuth.ts",
+        "function": "useEffect L54 (auto-mount)",
+        "exception_types": ["exchange promise rejection"],
+        "error_code": "INV-INT-107",
+        "log_or_rethrow": "console.warn + removeTokens + setIsAuthenticated(false) + setSession(null)"
+      }
+    ],
+    "user_facing_errors": [
+      {
+        "scenario": "URL SSO flow exchange 401 (parent JWT CompanyCode eksik)",
+        "code": "INV-INT-107 (via EXCHANGE_FAILED)",
+        "user_message": "Oturum dogrulanamadi (useAuth.ts setError)"
+      }
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Tum yeni catch bloklarinda en az 1 console.warn + state/token cleanup var. Lesson 535 (silent postMessage reject) + lesson 2026-03-27 (empty catch body Codex CQ2 FAIL) disiplini uygulandi. executeWithRefresh attempt-2 try/catch'i NIYET OLARAK behavior-preserving (fall-through) ama yine de log birakir."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Production console'da exchangeInmaToken 'SUCCESS' + 'isAuthenticated:true' loglaniyordu ama gercekte 401 aldi, raw INMA JWT stale kaldi. Kullanici login ekraninda 'authenticated' gorunur + sonraki her API cagrisi sessizce 401 -> UI beyaz sayfa / donuyor. Teshisi 20 dakika aldi cunku log'lar yalan soyluyordu.",
+      "suggestion": "runInmaExchange throw eder -> bootstrap.run catch'i zaten removeTokens + error state yapiyor -> kullanici hemen 'INMA oturumu dogrulanamadi' gorur. Log'lar gercegi soyler.",
+      "aha_moment": "'SUCCESS' logu goruldugunde gercekten basari demek. Tek yer exchange - tek truth source."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "INMA takimi test ederken parent JWT'de CompanyCode eksik gonderdi. Bizim console: 'SUCCESS' logu. Kullanici/Q teshisi icin 6 dakika log okudu. Backend log'u ise INV-AUTH-002 + [INMA-INTROSPECT] 'Missing or invalid CompanyCode' diyordu — FE-BE log desenleri celisiyordu.",
+      "suggestion": "FE exchange fail hizli visible olur (bootstrap.run error state + InmaConnectionStatus overlay). INMA takimi kendi JWT payload'unu hemen test eder.",
+      "aha_moment": "FE-BE log parity: Backend [INMA-INTROSPECT] fail -> FE [api] INMA token exchange failed: HTTP 401 -> bootstrap state=error. Teshis zinciri seffaf."
+    },
+    {
+      "category": "TRUST",
+      "user_pain": "React StrictMode double-mount + async fire-and-forget kombinasyonu birden fazla unhandled promise rejection yaratabilir. Dev'de console.error spam, prod'da invisible.",
+      "suggestion": "useAuth.ts L38 + L58 .catch eklenmesi + removeTokens cleanup ile stale token temizligi deterministic.",
+      "aha_moment": "Chrome DevTools 'Errors' tab temiz. Kalan log'lar gercek user-action kaynakli."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "MCP_CODEX",
+    "received_at": "2026-04-17T14:35:00+03:00",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-17T14:35:00+03:00",
+    "raw_text": "Iter 0 PASS \u2014 12/12 CQ + 4/4 CoVe, 0 blocking. gpt-5.4. 12932 tokens. Summary: 'The diff cleanly removes the identified silent failure path, adds explicit rejection handling at the affected fire-and-forget call sites, and stays within declared low-risk scope. No policy, tenant, schema, or contract regressions are evident.'",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "api.ts:860-862 throw specific error; useAuth.ts:40-47 rejection handling + setError; useAuth.ts:71-78 auto-exchange cleanup" },
+      "CQ2": { "result": "PASS", "evidence": "runInmaExchange broad swallow removed; executeWithRefresh:1026-1032 preserves fall-through with console.warn; useAuth .catch prevents dropped rejections" },
+      "CQ3": { "result": "PASS", "evidence": "3-file scope exact match with allowed_files" },
+      "CQ4": { "result": "PASS", "evidence": "Context-specific handlers for 2 distinct startup flows; no inappropriate abstraction" },
+      "CQ5": { "result": "PASS", "evidence": "Dashboard SPA only; preserves async/promise style + existing state mgmt" },
+      "CQ6": { "result": "PASS", "evidence": "No loops/batching/retries added; useEffect single-shot; single retry path preserved" },
+      "CQ7": { "result": "PASS", "evidence": "No new TODO/HACK/FIXME" },
+      "CQ8": { "result": "PASS", "evidence": "Signatures unchanged; contract shape preserved; rejection activated" },
+      "CQ9": { "result": "PASS", "evidence": "FE-only; aligns FE with backend exchange semantics; no isolation violations" },
+      "CQ10": { "result": "PASS", "evidence": "Clear auth error; bogus authenticated UI prevented" },
+      "CQ11": { "result": "PASS", "evidence": "No DB/schema/SQL/DTO changes" },
+      "CQ12": { "result": "PASS", "evidence": "Specific thrown message + HTTP status; actionable user-visible error; no empty catch bodies" }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "runInmaExchange now throws; bootstrap catch path L44-60 unchanged -> propagation intact" },
+      "Q2": { "result": "PASS", "reasoning": "executeWithRefresh try/catch logs only; CompanyCode unchanged on fail -> branch skipped -> 401 flows into INV-AU-001/002 classification" },
+      "Q3": { "result": "PASS", "reasoning": "useEffect deps=[] unchanged; state updates rerender only, no effect rerun; no recursive trigger" },
+      "Q4": { "result": "PASS", "reasoning": "Fetch errors propagate outward; useAuth + executeWithRefresh + bootstrap + doRefresh + login all have handlers; no unhandled rejection path" }
+    },
+    "blocking_issues": [],
+    "iteration": 0,
+    "escalation_required": false,
+    "escalation_reason": null,
+    "model_used": "gpt-5.4-2026-03-05",
+    "token_usage": { "prompt_tokens": 11176, "completion_tokens": 1756, "total_tokens": 12932 }
+  }
+}

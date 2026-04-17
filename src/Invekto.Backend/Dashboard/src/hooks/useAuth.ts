@@ -34,8 +34,18 @@ export function useAuth() {
     if (!urlTokenHandled) return;
 
     if (session) {
-      // Exchange INMA JWT for INSE JWT so FlowBuilder endpoints can validate token
-      api.exchangeInmaToken().then(() => setSession(api.getSession()));
+      // Exchange INMA JWT for INSE JWT so FlowBuilder endpoints can validate token.
+      // Rejection = backend rejected the raw INMA JWT (e.g. missing CompanyCode);
+      // clear stale tokens so a stale raw-INMA session cannot masquerade as authenticated.
+      api.exchangeInmaToken()
+        .then(() => setSession(api.getSession()))
+        .catch(err => {
+          console.warn('[useAuth] URL SSO exchange failed:', err);
+          api.removeTokens();
+          setIsAuthenticated(false);
+          setSession(null);
+          setError('INMA oturumu dogrulanamadi');
+        });
 
       api.getWelcome()
         .then(data => setWelcomeData(data))
@@ -55,10 +65,19 @@ export function useAuth() {
     if (urlTokenHandled) return; // URL SSO effect handles this separately
     if (!isAuthenticated || !session) return;
 
-    api.exchangeInmaToken().then(() => {
-      const updated = api.getSession();
-      if (updated) setSession(updated);
-    });
+    api.exchangeInmaToken()
+      .then(() => {
+        const updated = api.getSession();
+        if (updated) setSession(updated);
+      })
+      .catch(err => {
+        // Stored token is raw INMA JWT and backend rejected it (e.g. expired
+        // or malformed claim). Clear so the UI cannot keep a bogus session.
+        console.warn('[useAuth] auto-exchange failed, clearing stale token:', err);
+        api.removeTokens();
+        setIsAuthenticated(false);
+        setSession(null);
+      });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
