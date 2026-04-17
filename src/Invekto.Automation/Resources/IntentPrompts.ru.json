@@ -1,0 +1,10 @@
+{
+  "greeting": "Zdravstvuyte! Chtoby pomoch' vam, mogu uznat' vashe imya?",
+  "name_retry": "Ya ne rasslyshal vashe imya. Mogli by vy napisat' ego eshche raz?",
+  "intent_ask": "{name}, chem ya mogu vam pomoch'?",
+  "confirm": "{name}, vy imeli v vidu: {summary}?",
+  "clarify_low": "{name}, mogli by vy rasskazat' chut' podrobnee?",
+  "denied": "Ponyal, {name}. S chem imenno ya mogu vam pomoch'?",
+  "max_attempts_reached": "Ya peredayu vas kollege. My svyazhemsya s vami v blizhayshee vremya.",
+  "off_hours_redirect": "Seychas ne rabochee vremya. My otvetim vam kak mozhno skoree."
+}

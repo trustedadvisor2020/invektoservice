@@ -7657,6 +7657,104 @@ app.MapGet("/api/v1/translate/languages", (HttpContext ctx) =>
     return Results.Ok(TranslationService.SupportedLanguages);
 });
 
+// HFM-2: POST /ops/translation/warmup — pre-populate translation cache for a tenant
+// before pilot go-live. Ops-level auth (X-Ops-Key / Basic) — intentional cross-tenant
+// admin endpoint (see plan JSON intentional_exclusions). Body: tenantId + texts[] + locales[].
+// Fans out TranslationService.TranslateBatchAsync per locale and aggregates counters.
+// Per-locale failures use documented INV-BE-09x codes; the audit log captures the
+// resolved ops actor identity (X-Ops-Key or Basic) so cross-tenant calls are traceable.
+app.MapPost("/ops/translation/warmup", async (HttpContext ctx, TranslationService translationService, JsonLinesLogger log) =>
+{
+    if (!ValidateOpsAuth(ctx))
+        return Results.Json(new { error = ErrorCodes.AuthUnauthorized, message = "Ops auth required." }, statusCode: 401);
+
+    var actor = ResolveOpsIdentity(ctx);
+
+    WarmupRequest? body;
+    try
+    {
+        body = await ctx.Request.ReadFromJsonAsync<WarmupRequest>();
+    }
+    catch (JsonException ex)
+    {
+        return Results.Json(new { error = ErrorCodes.BackendTranslationWarmupInvalidPayload, message = $"Invalid JSON: {ex.Message}" }, statusCode: 400);
+    }
+
+    if (body == null || body.TenantId <= 0 || body.Texts == null || body.Texts.Count == 0 || body.Locales == null || body.Locales.Count == 0)
+        return Results.Json(new { error = ErrorCodes.BackendTranslationWarmupInvalidPayload, message = "tenantId (>0), texts[] (non-empty), locales[] (non-empty) are all required." }, statusCode: 400);
+
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    var totalCacheHits = 0;
+    var totalApiCalls = 0;
+    var totalTranslated = 0;
+    var failedCount = 0;
+    var perLocale = new Dictionary<string, object>();
+
+    foreach (var rawLocale in body.Locales)
+    {
+        var normalized = LanguageDetector.Normalize(rawLocale);
+        if (string.IsNullOrEmpty(normalized))
+        {
+            failedCount++;
+            log.SystemWarn($"[{ErrorCodes.BackendTranslationWarmupInvalidLocale}] invalid locale actor={actor} tenant={body.TenantId} raw={rawLocale}");
+            perLocale[rawLocale] = new { error = ErrorCodes.BackendTranslationWarmupInvalidLocale };
+            continue;
+        }
+
+        var batch = new BatchTranslateRequest
+        {
+            TargetLanguage = normalized,
+            Messages = body.Texts.Select((t, i) => new BatchTranslateItem
+            {
+                Id = $"warmup-{i}",
+                Text = t
+            }).ToList()
+        };
+
+        try
+        {
+            var result = await translationService.TranslateBatchAsync(body.TenantId, batch, ctx.RequestAborted);
+            totalCacheHits += result.CacheHits;
+            totalApiCalls += result.ApiCalls;
+            totalTranslated += result.Translations.Count;
+            perLocale[normalized] = new { cacheHits = result.CacheHits, apiCalls = result.ApiCalls, count = result.Translations.Count };
+        }
+        catch (HttpRequestException ex)
+        {
+            failedCount++;
+            log.SystemError($"[{ErrorCodes.BackendTranslationWarmupHttpFailure}] actor={actor} tenant={body.TenantId} locale={normalized} http error: {ex.Message}");
+            perLocale[normalized] = new { error = ErrorCodes.BackendTranslationWarmupHttpFailure };
+        }
+        catch (InvalidOperationException ex)
+        {
+            failedCount++;
+            log.SystemError($"[{ErrorCodes.BackendTranslationWarmupInvalidState}] actor={actor} tenant={body.TenantId} locale={normalized} invalid state: {ex.Message}");
+            perLocale[normalized] = new { error = ErrorCodes.BackendTranslationWarmupInvalidState };
+        }
+        catch (OperationCanceledException)
+        {
+            failedCount++;
+            log.SystemWarn($"[{ErrorCodes.BackendTranslationWarmupCancelled}] actor={actor} tenant={body.TenantId} cancelled mid-warmup locale={normalized}");
+            perLocale[normalized] = new { error = ErrorCodes.BackendTranslationWarmupCancelled };
+            break;
+        }
+    }
+
+    sw.Stop();
+    log.SystemInfo($"[translation-warmup] actor={actor} tenant={body.TenantId} translated={totalTranslated} cacheHits={totalCacheHits} apiCalls={totalApiCalls} failed={failedCount} locales={body.Locales.Count} durationMs={sw.ElapsedMilliseconds}");
+
+    return Results.Ok(new
+    {
+        tenantId = body.TenantId,
+        translatedCount = totalTranslated,
+        cacheHits = totalCacheHits,
+        apiCalls = totalApiCalls,
+        failedCount,
+        durationMs = sw.ElapsedMilliseconds,
+        perLocale
+    });
+});
+
 // Adim 3 Paket 3-B1: Zoho Dashboard proxy endpoints (UI -> Backend -> Integrations).
 app.MapZohoProxyEndpoints();
 
@@ -7812,6 +7910,16 @@ app.MapGet("/", (HttpContext ctx) => Results.Redirect($"/app/{ctx.Request.QueryS
 
 logger.SystemInfo($"Backend starting on port {ServiceConstants.BackendPort}");
 app.Run();
+
+// HFM-2: payload for POST /ops/translation/warmup. Kept local because the endpoint is
+// ops-only; callers either post JSON directly or rely on future Invekto.Shared DTO if
+// this contract gets a second consumer.
+public sealed class WarmupRequest
+{
+    public int TenantId { get; set; }
+    public List<string> Texts { get; set; } = new();
+    public List<string> Locales { get; set; } = new();
+}
 
 // Required for integration tests
 namespace Invekto.Backend { public partial class Program { } }

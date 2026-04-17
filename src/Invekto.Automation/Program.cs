@@ -99,6 +99,17 @@ builder.Services.AddSingleton<FlowEngine>();
 builder.Services.AddSingleton<Invekto.Shared.Services.ITemplateRotationService,
     Invekto.Shared.Services.HashBasedTemplateRotationService>();
 
+// HFM-1: chunk planner (stateless jittered schedule)
+builder.Services.AddSingleton<Invekto.Shared.Services.IMessageChunkPlanner,
+    Invekto.Shared.Services.MessageChunkPlanner>();
+
+// HFM-2: intent prompt loader (embedded resources, 10 locales)
+builder.Services.AddSingleton<IntentPromptLoader>();
+
+// HFM-2: translation hop client (HTTP → Backend /api/v1/translate, graceful degrade).
+// Registered AFTER JwtGenerator bootstrap (below); factory resolves lazily at first use.
+// Typed HttpClient ensures per-instance lifecycle and avoids socket exhaustion.
+
 // Register v2 node handlers (IMP-1: Strategy Pattern)
 builder.Services.AddSingleton<INodeHandler, TriggerStartHandler>();
 builder.Services.AddSingleton<INodeHandler, MessageTextHandler>();
@@ -167,6 +178,25 @@ builder.Services.AddScoped<RescueFollowUpJob>();
 // PKT-6A: Register JwtGenerator for service-to-service auth
 var jwtGenerator = new JwtGenerator(jwtSettings);
 builder.Services.AddSingleton(jwtGenerator);
+
+// HFM-2: translation hop to Backend /api/v1/translate.
+// Named HttpClient keeps socket lifecycle; the real per-request 5s cap lives in
+// TranslationHopClient (CancellationTokenSource). Graceful degrade on any failure.
+var backendBaseUrl = builder.Configuration["Backend:BaseUrl"] ?? "http://localhost:5000";
+builder.Services.AddHttpClient(nameof(TranslationHopClient), client =>
+{
+    client.BaseAddress = new Uri(backendBaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+builder.Services.AddSingleton<TranslationHopClient>(sp =>
+{
+    var factory = sp.GetRequiredService<IHttpClientFactory>();
+    return new TranslationHopClient(
+        factory.CreateClient(nameof(TranslationHopClient)),
+        sp.GetRequiredService<JwtGenerator>(),
+        sp.GetRequiredService<JsonLinesLogger>(),
+        backendBaseUrl);
+});
 
 // PKT-6A: Register KnowledgeIntentClient (typed HttpClient with 3s timeout)
 var knowledgeBaseUrl = builder.Configuration["Knowledge:BaseUrl"] ?? "http://localhost:7104";

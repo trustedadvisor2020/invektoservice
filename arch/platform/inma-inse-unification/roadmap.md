@@ -16,10 +16,16 @@ Bu paket bitmeden Dent pilotu başlamaz.
 - [ ] Role map: INMA role → INSE permission matrix
 - [ ] Logout bridge: INMA logout → INSE session invalidate
 
-### UP0.3 — Unified Tenant (S, 1-2g)
-- [ ] `CompanyCode` = INSE `tenant_id` (migration: string'e çevir)
-- [ ] INMA firma create event → INSE auto-provision (webhook event type `tenant.created`)
-- [ ] INSE tenant tablosunda `inma_company_code` kolonu + unique constraint
+### UP0.3 — Unified Tenant (S, 1-2g) — **Lazy Provisioning IN-PROGRESS**
+- [x] INSE `tenant_registry.inma_code VARCHAR(100)` + unique partial index (migration `009-tenant-inma-code.sql`, 2026-04-01)
+- [x] `tenant_registry_auto_id_seq` sequence (START 100_000_000) — lazy auto-provision için fresh tenant_id kaynağı (migration `016-tenant-registry-auto-gen-seq.sql`, 2026-04-17)
+- [x] Tenant 5050 backfill (`inma_code='5050'`) — 016 migration içinde
+- [ ] **Lazy provisioning login akışında (IN-PROGRESS, şu an yazılıyor):** `InmaTokenIntrospector` welcome 200 + `tenant_registry` miss → `nextval('tenant_registry_auto_id_seq')` ile fresh tenant_id + `INSERT ... ON CONFLICT (inma_code) DO NOTHING`
+  - Seed: default flow + default template pack + feature flags (token claim `InseFeatures`'ten)
+  - **INMA-bağımsız** — `tenant.created` event, bulk import, tenant list export — **hiçbiri gerekli değil**
+- [ ] `tenant.updated` / `tenant.deactivated` event handler (UP1 scope — feature flag değişikliği + deactivate cascade)
+
+> **2026-04-17 kararı:** J10 (tenant list export) + `tenant.created` webhook + bulk SQL backfill — **üçü de İPTAL**. Login-time lazy provisioning tek path. INMA'dan bu konuda hiçbir şey istenmiyor.
 
 ### UP0.4 — Domain & UX (M, 4-5g)
 - [ ] Reverse proxy (nginx): `app.invekto.com/` → INMA Angular, `/ai/*` → INSE React
@@ -47,9 +53,12 @@ Bu paket bitmeden Dent pilotu başlamaz.
 Detay + brief: [inma-team-kickoff-brief.md](inma-team-kickoff-brief.md)
 - [ ] **J1** Template variable render (`{{name}}` substitution on send)
 - [ ] **J2** Contact `opted_out` flag + API
-- [ ] **J4** Bulk send endpoint
-- [ ] **J5** SSO JWT public key
-- [ ] (Event bus for tenant.created → UP0.3'e girer)
+- [ ] **J-HSM** Template `meta_approval_status` / `meta_category` alanları mevcut template listesi endpoint response'una eklensin
+- [ ] **J-WND** Contact `last_inbound_at` alanı mevcut contact endpoint response'una eklensin (24h window state)
+- [ ] **J4** Bulk send endpoint — **Opsiyonel/Backlog** (2026-04-17, pilot kritik değil; INSE tarafı Hangfire+throttle queue ile 200 lead'i yönetir). Scale (1000+ hedef) tetiklediğinde aktive edilir.
+- [x] **J5** SSO JWT public key — **İPTAL** (introspection pattern ile çözüldü, 2026-04-16 `bfd57ae`)
+- [x] **J10** Tenant list export — **İPTAL** (2026-04-17, lazy provisioning ile UP0.3 çözüldü, reconciliation gereksiz)
+- [x] `tenant.created` webhook — **İPTAL** (2026-04-17, lazy provisioning UP0.3'ü çözdü)
 
 ## P1 — UX Polish (~5-8g, v1.1)
 
@@ -116,6 +125,6 @@ UP0.8 Joint APIs (INMA ekibi — paralel başlasın) ──→      │
 
 ## Kritik Bağımlılık: INMA Ekibi
 
-P0'ın **UP0.2 (SSO public key), UP0.3 (tenant.created event), UP0.8 (J1, J2, J4)** adımları INMA ekibine bağlı.
+P0'ın **UP0.8 (J1 template render, J2 opted_out, J-HSM template approval status, J-WND 24h window)** adımları INMA ekibine bağlı. UP0.2 (J5) introspection ile çözüldü; UP0.3 lazy provisioning (migration 016 IN-PROGRESS) ile INMA-bağımsız; J10 + tenant.created event + J4 bulk-send — hepsi iptal/opsiyonel.
 - **Action:** INMA ekibiyle **kickoff meeting** — bu 4 maddeyi onlara anlat, sprint planla
 - Paralel: INSE tarafında bağımsız (UP0.1, 0.4, 0.6, 0.7) ilerle

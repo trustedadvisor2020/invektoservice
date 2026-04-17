@@ -1,0 +1,184 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260417-j2-opt-out-inse-sync",
+  "risk": "MEDIUM",
+  "status": "PLANNING",
+  "created_at": "2026-04-17T13:25:00+03:00",
+  "updated_at": "2026-04-17T13:25:00+03:00",
+  "plan": {
+    "summary": "J2 INSE-side: WA 'STOP' yazan lead'in opt-out state'ini INMA contacts.opted_out'a sync eden outbox-based push layer. INSE source of truth (mevcut OptOutManager/ConsentManager altyapisi), INMA'ya en-iyi-cabayla eventual consistency. Interface + NoOp + Http impl strategy ile J2 endpoint teslim olmadan pilot'a engel olmaz (NoOp aktif = enqueue edilir ama push skip). J2 teslim olunca config flip + outbox drain geriye donuk gonderir. Dent pilot AC: STOP sonrasi Marketing/Utility bloke, Transactional (appointment confirm) gecer.",
+    "q_intent": "j2 için plan yap — bizim taraf planı yaz. inma için de ayrı bir plan yaz. Dent volume ufak ama knowhow var. Pilot'a onem veriyorum. Adavistanin yapmak istedigini gerceklestirmek istiyorum (yani gercek saha deneyimi, cogu firma icin referans yapi).",
+    "interview_notes": "Mevcut INSE opt-out altyapisi zaten guclu: OptOutManager (STOP keyword detect, IsOptedOutAsync, ProcessIncomingMessageAsync), ConsentManager (marketing consent + IsUtilityEvent event-level kategorizasyon), TriggerProcessor (opt-out check -> 409 + consent check -> 403), BroadcastOrchestrator (batch filter). `MessageCategory` enum TAM REFACTOR DEGIL — mevcut IsUtilityEvent(event_name) pattern'i event-level kategoriyi zaten cozuyor (utility event listesi ConsentManager'da). Transactional ayrim icin minimal extension: `ConsentManager.IsTransactionalEvent(event_name)` helper (appointment_confirmed_*, meeting_link_sent_*, reminder_*, offer_sent_* gibi). J2 endpoint teslim belirsiz -> Interface + NoOp (default) + Http impl; config `InmaAuth:OptOutSync:Mode = NoOp|Http`. Outbox table tenant-scoped (GR-3.26 mirror), retry-bounded (max 5 attempt exponential backoff), status enum (pending/processed/failed/skipped_noop). Hangfire recurring job 1dk interval, batch 50. INMA->INSE yon BU PAKET ICINDE DEGIL (UP0.7 webhook genisletme, ayri paket). Dent pilot icin INSE->INMA yeterli (Gunes STOP detect eder, INMA admin manuel opt-out nadir).",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Invekto.Shared/Contracts/Inma/ altinda IInmaContactOptOutClient interface: `Task<OptOutSyncResult> PushOptOutAsync(string companyCode, string phoneE164, string reason, string source, CancellationToken ct)` ve `Task<OptOutSyncResult> PushOptInAsync(...)`. OptOutSyncResult = { bool Success, string? ErrorCode, string? RawError, int StatusCode }. NoOpInmaContactOptOutClient (default): her zaman Success=false, ErrorCode='INV-OB-021-SKIPPED-NOOP', StatusCode=0 (enqueue outbox'ta kalacak, job gecici olarak 'skipped_noop' olarak isaretler). HttpInmaContactOptOutClient (J2 aktif): INMA PATCH /api/contacts/{phone}/opt-out + X-CIB-SecretKey header + 5s timeout.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC2",
+        "criterion": "arch/db/migrations/017-inma-optout-outbox.sql: `inma_optout_outbox` table (tenant_id INT NOT NULL, phone VARCHAR(32) NOT NULL, event_type VARCHAR(16) NOT NULL CHECK IN ('opt_out','opt_in'), reason VARCHAR(100), source VARCHAR(32), status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK IN ('pending','processed','failed','skipped_noop'), attempts INT NOT NULL DEFAULT 0, last_error TEXT, created_at TIMESTAMPTZ DEFAULT NOW(), attempted_at TIMESTAMPTZ, processed_at TIMESTAMPTZ). Index: (tenant_id, status, created_at) partial WHERE status='pending'. Unique: (tenant_id, phone, event_type, created_at) — idempotency at enqueue. Partition/cleanup: 90g sonra processed/skipped_noop rows archive (out of scope, doc note).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC3",
+        "criterion": "OutboundRepository.cs: yeni methodlar `EnqueueOptOutSyncAsync(tenantId, phone, eventType, reason, source, ct)` (INSERT), `FetchPendingOutboxBatchAsync(limit=50, ct)` (SELECT FOR UPDATE SKIP LOCKED, status='pending' AND attempts<5), `MarkOutboxProcessedAsync(id, ct)`, `MarkOutboxFailedAsync(id, errorCode, rawError, ct)` (attempts++, status='failed' if attempts>=5 else keeps 'pending'), `MarkOutboxSkippedNoOpAsync(id, ct)`. Thread-safe Postgres patterns; PP-006 uyumu.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC4",
+        "criterion": "OptOutManager.ProcessIncomingMessageAsync: STOP keyword tespit + AddOptOutAsync basarili -> hemen _repository.EnqueueOptOutSyncAsync(tenantId, phone, 'opt_out', reason='Keyword: STOP', source='whatsapp', ct). Manuel opt-out (admin UI'dan POST /api/v1/optout gelecek) icin OptOutEndpoint de ayni enqueue cagirir (source='manual_admin'). Opt-in paralel: yeni RemoveOptOutAsync + EnqueueOptOutSyncAsync event_type='opt_in'. Testlerde OptOutTests.cs + ConsentTests.cs mevcut — additive, existing davranis bozulmaz.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC5",
+        "criterion": "Yeni InmaOptOutSyncJob (Invekto.Outbound/Services/InmaOptOutSyncJob.cs) Hangfire recurring job (every 1 min, cron '* * * * *'). Akis: fetch pending batch (50) -> her row icin IInmaContactOptOutClient.PushOptOutAsync/PushOptInAsync -> Success ise MarkOutboxProcessedAsync, NoOp mode (StatusCode=0, ErrorCode contains SKIPPED-NOOP) ise MarkOutboxSkippedNoOpAsync, Fail ise MarkOutboxFailedAsync (exponential backoff implicit: attempts<5 pending kalir, sonraki tick tekrar denenir). Concurrent execution guard: [DisableConcurrentExecution(timeoutInSeconds:300)]. Program.cs'te RecurringJob.AddOrUpdate + DI registration (IInmaContactOptOutClient as NoOpInmaContactOptOutClient default, config 'Http' ise HttpInmaContactOptOutClient).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC6",
+        "criterion": "ConsentManager.IsTransactionalEvent(string eventType) yeni static helper — event isimleri prefix-match: 'appointment_confirmed_*', 'appointment_reminder_*', 'meeting_link_sent_*', 'offer_sent_*', 'payment_receipt_*'. TriggerProcessor.ProcessTriggerAsync: eger IsTransactionalEvent(event) TRUE ise opt-out check BYPASS (audit log: 'opt-out bypassed for transactional event') + consent check zaten utility ile paralel islenir. BroadcastOrchestrator broadcast zaten marketing default (bypass YOK) — degisiklik yok. Dent AC: 'Day 7 STOP sonrasi Day 14 marketing drip bloke, appointment_confirmed_en gecer' integration test.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC7",
+        "criterion": "arch/errors.md + Invekto.Shared.Constants.ErrorCodes: yeni INV-OB-021 (InmaOptOutSyncPending - outbox'ta bekliyor), INV-OB-022 (InmaOptOutSyncFailed - max attempts), INV-OB-023 (InmaOptOutSyncSkippedNoOp - NoOp mode). appsettings.json: InmaAuth:OptOutSync:Mode = 'NoOp' (default) | 'Http', InmaAuth:OptOutSync:BatchSize = 50, InmaAuth:OptOutSync:MaxAttempts = 5.",
+        "verified": false,
+        "verification_note": null
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/Contracts/Inma/IInmaContactOptOutClient.cs",
+    "src/Invekto.Shared/Contracts/Inma/NoOpInmaContactOptOutClient.cs",
+    "src/Invekto.Shared/Contracts/Inma/HttpInmaContactOptOutClient.cs",
+    "src/Invekto.Shared/Contracts/Inma/OptOutSyncResult.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Outbound/Data/OutboundRepository.cs",
+    "src/Invekto.Outbound/Services/OptOutManager.cs",
+    "src/Invekto.Outbound/Services/ConsentManager.cs",
+    "src/Invekto.Outbound/Services/TriggerProcessor.cs",
+    "src/Invekto.Outbound/Services/InmaOptOutSyncJob.cs",
+    "src/Invekto.Outbound/Program.cs",
+    "src/Invekto.Outbound/appsettings.json",
+    "src/Invekto.Outbound/appsettings.Development.json",
+    "src/Invekto.Outbound/appsettings.Production.json",
+    "arch/db/migrations/017-inma-optout-outbox.sql",
+    "arch/errors.md",
+    "tests/InvektoServis.Tests/Outbound/OptOutTests.cs",
+    "tests/InvektoServis.Tests/Outbound/InmaOptOutSyncJobTests.cs"
+  ],
+  "files_changed": [],
+  "git_diff": {
+    "stats": {
+      "insertions": 0,
+      "deletions": 0,
+      "files_count": 0
+    }
+  },
+  "build": {
+    "status": null
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Outbox idempotency: ayni tenant+phone+event_type icin art arda iki STOP mesaji gelirse (ornegin network retry) duplicate INSERT engellenir mi? UNIQUE constraint (tenant_id, phone, event_type, created_at) saniye granulaliteli — 1 saniye icinde iki stop mesaji olursa?",
+      "category": "Data"
+    },
+    {
+      "id": "Q2",
+      "question": "NoOp mode'da outbox'ta biriken row'lar J2 teslim edildiginde config 'Http'e flip edildiginde nasil drain edilecek? skipped_noop status olanlar re-process icin pending'e geri mi alinir, yoksa manuel script mi?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q3",
+      "question": "Transactional bypass guvenligi: kotu niyetli tenant configuration 'transactional' event prefix'li bir template yaratirsa STOP kullanicisina bile gonderebilir mi? Event name prefix match INV-OB-021 gibi compliance/audit log'u tetikler mi?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q4",
+      "question": "Hangfire [DisableConcurrentExecution] 300s timeout — 50 row batch + 5s timeout/row = worst case 250s, margin yeterli mi? Timeout durumunda row'lar 'attempted_at' set olmus ama status hala 'pending' — next tick'te dogru davranis?",
+      "category": "Process/Policy"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Invekto.Backend/* (bu paket Outbound servisine ozgu — OptOut altyapisi Outbound'da)",
+      "INMA->INSE webhook inbound handler (ayri paket UP0.7 genislemesi)",
+      "MessageCategory enum full refactor (mevcut IsUtilityEvent pattern yeterli, minimal IsTransactionalEvent extension)",
+      "Dashboard UI (INMA contact opt-out paneli INMA tarafi)"
+    ],
+    "non_goals": [
+      "INMA contact UI opt-out'un INSE'ye sync'i (UP0.7 ikinci paket)",
+      "INMA J2 endpoint implementasyonu (ayri plan: inma-plan-j2-opted-out.md)",
+      "MessageCategory enum class (mevcut event-name prefix pattern tercih)",
+      "Bulk opt-out import (CSV upload gibi ozellikler pilot disi)",
+      "90g sonra outbox archival (ayri cleanup job paketi)",
+      "Business-initiated akis WA HSM template guard (J-HSM/J-WND bagimli ayri paket — adavista-full-stack-breakdown.md)",
+      "24h window state check outbound helper (J-WND bagimli ayri paket)"
+    ],
+    "intentional_exclusions": [
+      "Webhook signature verification INSE tarafinda (zaten X-CIB-SecretKey mevcut pattern)",
+      "J2 Http client icin circuit breaker (NoOp default + exponential retry yeterli, Polly eklenirse ayri enhancement)",
+      "Outbox max_attempts exceeded sonrasi alert (monitoring dashboard ayri paket)",
+      "Opt-in paralel akis audit (opt-out akisi aynen mirror)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "InmaOptOutSyncJob.ExecuteAsync: HttpRequestException + TaskCanceledException + JsonException per-row (loop devam etsin)",
+      "HttpInmaContactOptOutClient.PushOptOutAsync: 401/403/404/5xx ayri ayri handle",
+      "OptOutManager.ProcessIncomingMessageAsync: EnqueueOptOutSyncAsync fail ederse INSE opt-out STILL succeed (outbox enqueue best-effort, log error)"
+    ],
+    "user_facing_errors": [
+      "API'den kullaniciya donulmuyor — outbox sync arka plan. INSE opt-out zaten INSE'de sync (mevcut davranis korunur)."
+    ],
+    "silent_failure_risk": true,
+    "silent_failure_explanation": "Outbox enqueue fail ederse kullanici INSE'de opt-out oldu sayilir ama INMA'ya push olmaz. Dent pilot icin kabul edilebilir cunku INSE bloke edecek (outbound check INSE'de). Riski azaltmak icin: (a) JsonLinesLogger.SystemError ile loglanir, (b) Hangfire job ayni row'u eventual consistency ile yakalar (next message gelirse tekrar trigger), (c) J2 ileride delivered edildiginde monitoring dashboard pending outbox count gosterir."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Musteri STOP yazdi ama 1 hafta sonra yeni kampanyada yine mesaj aldi cunku INMA tarafindaki contact flag'i guncellenmemisti",
+      "suggestion": "Outbox pattern + Hangfire drain + NoOp/Http mode flip — J2 hazir olana kadar kayip olmadan bekler, hazir olunca otomatik drain",
+      "aha_moment": "Musteri STOP yazar, Gunes 'Unsubscribed' der, bir hafta sonra baska tenant kampanyasinda da musteriye 'No, thanks' butonu otomatik gelir (INMA contact flag universal oldugunda)"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Dent koordinatoru opt-out olan kisilere yanlislikla randevu onayi gondermek istiyor ama sistem blokleyecek saniyor",
+      "suggestion": "IsTransactionalEvent bypass — appointment_confirmed_* ve meeting_link_sent_* opt-out'u bypass eder (compliance uyumlu, musteri randevusuna gelebilsin)",
+      "aha_moment": "Koordinator Sarah'ya STOP sonrasi randevu confirm mesaji gonderir, mesaj gider, audit log 'opt-out bypassed for transactional event' yazar — compliance'i ihlal etmeden operasyon surer"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "INMA J2 teslim olmayana kadar Dent pilot'u bekleyemeyiz — Adavista Irlanda'da 2 haftada canli",
+      "suggestion": "NoOp client default — pilot INMA bagimsiz basliyor, outbox'ta push-pending queue birikiyor, J2 gelince config flip + drain",
+      "aha_moment": "Q config'te 'NoOp' -> 'Http' degistirir, 24 saatte 47 birikmis opt-out INMA'ya push eder, Dent koordinatoru panelde tum contact flag'leri senkron gorur — pilot kesintisiz"
+    },
+    {
+      "category": "UX",
+      "user_pain": "Gunes bir lead'e 'You've been unsubscribed' dedi ama Day 14 drip yine gitti cunku follow-up job opt-out state'i race condition'da kacirdi",
+      "suggestion": "Mevcut IsOptedOutAsync zaten job execution basinda check (G-pattern), opt-in da ayni kontrole tabi + event-followup-sequence.md AC-4 ile ayni davranis",
+      "aha_moment": "Lead STOP yazdiktan 5dk sonra Day 14 job tetiklenir, OptOutManager check -> true, job audit 'skipped_opted_out' yazar ve hic mesaj gitmez — drip sessiz ama guvenli"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Yeni tenant onboarding'de 'Sizin opt-out sisteminiz GDPR uyumlu mu?' sorusu alindiginda 'evet' diyemiyoruz — INMA tarafi senkron degildi",
+      "suggestion": "INSE outbox ile INMA contact flag eventual consistency + audit trail per-row (reason, source, attempted_at) — GDPR Article 21 kanita uyumlu",
+      "aha_moment": "Potential tenant demo'da Q 'STOP yazin' der, sales person WhatsApp'tan STOP, 30sn icinde INMA contact panel 'Opted out - reason: Keyword STOP - source: whatsapp' gosterir, audit trail tam"
+    }
+  ],
+  "verdict": {
+    "status": null,
+    "iteration": 0
+  }
+}

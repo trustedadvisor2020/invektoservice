@@ -1,0 +1,305 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260417-human-feel-multilang-pilot",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-04-17T15:50:00+03:00",
+  "updated_at": "2026-04-17T16:45:00+03:00",
+  "plan": {
+    "summary": "Adavista pilot omurgasinin INSE-side insanlastirma paketi: (1) message_text node'una hybrid chunk support (text_chunks[] explicit + \\n\\n auto-split soft opt-in + legacy text fallback) + jittered pre_think + inter_chunk delay formula (MessageChunkPlanner), (2) FAQ post-match lazy translation hook (AiFaqHandler -> TranslationService) + leads.preferred_locale persistence + AiIntentHandler 8 core prompt resource-based i18n (10 dil) + dental vocab warmup ops endpoint. Translation altyapisi (Gemma+Claude dual, 18 dil, hash-cached) mevcut — runtime flow'a baglaniyor. Welcome rotation (HashBasedTemplateRotationService) dokunulmaz. Tone matrix (HFM-3) post-pilot ayri pakete birakildi. Rate limiter ve retry callback path degismez: her chunk ayri OutgoingCallback olarak Outbound'a push edilir. J-TYPE (INMA typing_on) istenmiyor — chunk-arasi jitter 'yaziyor' hissini saglar.",
+    "q_intent": "1. Deep Research 'Robot Degil Insan Hissi' (typing indicator simulation, response delay curves, message chunking, natural variation, persona, emoji, turn-taking, WA HSM template constraints). 2. Deep Research FAQ Multi-Language Fallback (language detection, translation quality dental, fallback chain, sessizce dil degisimi, 9 dil support, cache strategy). Plan JSON cikart iki madde icin — ayri ayri veya tek paket. Q karar: (1) tek paket, (2) HFM-3 post-pilot OK, (3) chunk format hybrid, (4) J-TYPE istenmiyor jitter yeterli, (5) preferred_locale FEAT-WTP'den HFM-2'ye devir, (6) dental vocab warmup eklensin.",
+    "interview_notes": "Mevcut kod denetimi: Translation altyapisi (TranslationService 18 dil Gemma+Claude dual + DB cache + batch lookup + LanguageDetector 13 dil script-based) PROD-READY ama runtime FAQ pipeline'da cagrilmiyor. Welcome rotation (HashBasedTemplateRotationService FNV-1a deterministik) PROD-READY, dokunulmaz. ActionDelayHandler primitif (sabit seconds, jitter yok). MessageTextHandler tek-balon tek-callback (chunking yok). AiIntentHandler 15+ hardcoded TR cumlesi pilot EN odaklı icin blocker. leads.preferred_locale kolonu yok (FEAT-WTP AC-4 scope'undan devir). MessageSenderService tek-callback-tek-mesaj mimarisi chunking icin uyumlu — her chunk ayri queued_message row (rate limiter + retry korunur).\n\nChunk format: Q onayli hybrid — engine sirasiyla dener: (1) text_chunks field varsa -> her eleman = 1 balon (explicit kontrol), (2) yoksa text icinde \\n\\n varsa -> auto-split (soft opt-in), (3) yoksa tek balon (legacy zero-change). Migration gerektirmez, geriye uyumlu.\n\nDelay formula (MessageChunkPlanner): think_delay_ms = clamp(600 + 300*log(msg_length), 600, 1800). inter_chunk_delay_ms = clamp(1200 + 80*chunk_char_count, 1200, 3500). total_cap 8000ms (WA typing_on 25s timeout + UX uzun bekleme riski). Jitter ±15%. Simulation mode delay skip.\n\nLocale fallback chain: lead.preferred_locale -> 'en' -> raw (tenant.locale_default out of scope bu pakette — FEAT-WTP'de eklenebilir ileride).\n\nAiIntent 8 core prompt: greeting, name_retry, intent_ask, confirm, clarify_low, denied, max_attempts_reached, off_hours_redirect. 10 dil: tr/en/ar/ru/de/fr/es/pt/nl/it. IntentPromptLoader singleton ile embedded resource cache.\n\nDental vocab warmup ops endpoint: POST /ops/translation/warmup?tenantId={id}&intents={list} — 12 intent x 3 variant x 10 dil = 360 string, batch translate, cache populate. Ops-level (X-Ops-Key auth, by design no tenant_id filter). Optional admin-triggered, pilot oncesi 1 kez calistir.\n\nRisk: MEDIUM. Translation latency hot-path (50-150ms per miss; 80% cache hit target). Chunk rate-limiter semantics — chunk_group_id ile tenant quota accounting korunur (her chunk 1 quota slot). HSM template ile chunk etkilesimi: HSM zaten approved-text; INSE freeform ise chunking uygulanir, HSM'de tek-balon kalir (AC-9).\n\nINMA J1/J2/J-HSM/J-WND bu paketten bagimsiz — INSE tarafi lokal iyilestirme, INMA cevabi beklemez. HFM-3 (tone matrix) post-pilot ayri paket. FEAT-WTP AC-4 (preferred_locale) bu pakette teslim edildigi icin FEAT-WTP'den scope dusulur (FEAT-WTP spec'e not).",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "MessageTextHandler.cs: hybrid chunk resolution sirasiyla: (1) node.data.text_chunks (JSON array string) varsa -> Parse edip her eleman bir chunk, (2) yoksa node.data.text icinde '\\n\\n' varsa -> Split('\\n\\n', RemoveEmptyEntries) auto-split, (3) yoksa tek chunk (legacy). Invalid text_chunks JSON durumunda logger.SystemWarn('[INV-AT-062] ...') + legacy text fallback. Degiskenler (variant_index/variant_count) korunur — text_variants + text_chunks birlikte kullanilirsa: once variant pick, sonra chunk split uygulanir.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC2",
+        "criterion": "Invekto.Shared/Services/MessageChunkPlanner.cs (YENI): PlanChunks(string[] chunks) metodu ChunkSchedule (List<ChunkStep>) dondurur. ChunkStep = { string Text, int PreDelayMs }. Formula: preThink = clamp(600 + 300*Math.Log(firstChunk.Length+1), 600, 1800). interChunk[i] = clamp(1200 + 80*chunks[i].Length, 1200, 3500). Jitter: Random.Shared ile ±15% (seed non-determ OK — delay trace-only). Total cap: sum(preDelays) <= 8000ms, fazla ise proportional azalt. Unit testable: Random inject edilebilir (ITimeJitter interface optional, simple constructor-injected Func<double, double>).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC3",
+        "criterion": "AutomationOrchestrator: v2 path'te MessageTextHandler chunked MessageText dondurdugunde (yeni ChunkedResult = { ChunkSchedule, VariableUpdates }) orchestrator her step icin (Task.Delay(step.PreDelayMs) -> SendCallbackAsync(step.Text, ct)) sirasiyla yapar. IsSimulation=true ise Task.Delay skip + log 'chunk i/N simulate'. Chunk-arasi cancellation honored (CancellationToken propagate). Her callback ayri OutgoingCallback (RequestId + chunk_group_id + chunk_index dahil). Sequence preserving.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC4",
+        "criterion": "arch/db/migrations/018-leads-preferred-locale.sql: ALTER TABLE leads ADD COLUMN preferred_locale VARCHAR(5). CHECK (preferred_locale IS NULL OR preferred_locale ~ '^[a-z]{2}(-[A-Z]{2})?$'). CREATE INDEX idx_leads_preferred_locale ON leads(tenant_id, preferred_locale) WHERE preferred_locale IS NOT NULL. Backfill SAFE: existing rows NULL kalir (translation fallback 'en' veya raw olur, AC7 chain). Migration idempotent (IF NOT EXISTS).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC5",
+        "criterion": "AutomationOrchestrator.ProcessMessageAsync: ilk inbound mesajda LanguageDetector.Detect(messageText) + (length>=5 ise Backend TranslationService.DetectLanguageAsync) combined -> preferred_locale upsert (AutomationRepository.UpsertLeadPreferredLocaleAsync). Sticky: eger mevcut preferred_locale varsa DEGISMEZ (manual override kullanici aksi belirtmedikce). Race guvenli: INSERT ... ON CONFLICT (tenant_id, phone) DO UPDATE SET preferred_locale = COALESCE(leads.preferred_locale, EXCLUDED.preferred_locale) — existing value korunur.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC6",
+        "criterion": "AiFaqHandler.MatchAndRoute: matched answer dondurmeden once target locale resolve et: var lead = await _repo.GetLeadByPhoneAsync(tenantId, ctx.ContactKey) -> preferred = lead?.PreferredLocale. IF preferred != null AND answer.language != preferred -> TranslationService.TranslateAsync (via IHttpClient to Backend:5000/api/v1/translate) -> translated. IF translation fails (HttpRequestException/timeout) -> log error + send original answer (graceful degradation). Translation hop ekler ~50-150ms (cache hit 80%+ hedef).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC7",
+        "criterion": "AiFaqHandler locale fallback chain: (1) lead.preferred_locale varsa onu kullan, (2) yoksa 'en' default, (3) answer zaten 'en' ise translate skip, (4) translation service unreachable ise raw answer. Her level'de log: 'locale_resolved: source=lead|default|en, target={lang}, skip=true|false'. AiIntent low-confidence fallback yok (intent akisi lang-agnostic kalir, sadece prompt text i18n).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC8",
+        "criterion": "AiIntentHandler 8 core prompt resource-based: Invekto.Automation/Resources/IntentPrompts.{tr,en,ar,ru,de,fr,es,pt,nl,it}.json (10 dosya, JSON schema: { greeting: string, name_retry: string, intent_ask: string, confirm: string, clarify_low: string, denied: string, max_attempts_reached: string, off_hours_redirect: string }). Placeholder: {name}, {summary}. Invekto.Automation.csproj embed resource. IntentPromptLoader singleton cache (lazy load per-locale, ConcurrentDictionary). AiIntentHandler hardcoded string'ler _promptLoader.Get(locale, key, substitutions) ile degistirilir. Locale resolution: lead.preferred_locale -> 'tr' default (mevcut davranis korunur, non-Adavista tenant'lar etkilenmez).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC9",
+        "criterion": "Backend /ops/translation/warmup endpoint (POST): body { tenantId, intents: string[], locales: string[] }. Ops-level auth (X-Ops-Key), by design no tenant JWT (documented cross-tenant admin intentional_exclusion). Flow: for each (intent, locale): Knowledge'dan FAQ answers fetch -> TranslationService.TranslateBatchAsync -> cache populate. Response: { translatedCount, cacheHits, apiCalls, durationMs }. Dent pilot oncesi: POST /ops/translation/warmup?tenantId=<dent_id>&intents=price,location,safety,xray,...&locales=en,ar,de,fr,es,pt,nl,it,tr (ru disinda 8 dil; EN primary zaten raw).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC10",
+        "criterion": "arch/errors.md + Invekto.Shared.Constants.ErrorCodes: yeni INV-AT-062 (ChunkScheduleInvalid — text_chunks JSON parse hatasi), INV-AT-063 (LocaleDetectFailed — ilk mesaj lang detect bos/sifir), INV-AT-064 (FaqTranslationFailed — post-match translate hop fail), INV-AT-065 (IntentPromptResourceMissing — locale JSON yok). ErrorCodes.cs constants eklenir, arch/errors.md entry eklenir (sebep + remediation satirlari ile).",
+        "verified": false,
+        "verification_note": null
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Automation/Services/NodeHandlers/MessageTextHandler.cs",
+    "src/Invekto.Automation/Services/NodeHandlers/AiFaqHandler.cs",
+    "src/Invekto.Automation/Services/NodeHandlers/AiIntentHandler.cs",
+    "src/Invekto.Automation/Services/AutomationOrchestrator.cs",
+    "src/Invekto.Automation/Services/IntentPromptLoader.cs",
+    "src/Invekto.Automation/Services/TranslationHopClient.cs",
+    "src/Invekto.Automation/Data/AutomationRepository.cs",
+    "src/Invekto.Automation/Invekto.Automation.csproj",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Automation/Resources/IntentPrompts.tr.json",
+    "src/Invekto.Automation/Resources/IntentPrompts.en.json",
+    "src/Invekto.Automation/Resources/IntentPrompts.ar.json",
+    "src/Invekto.Automation/Resources/IntentPrompts.ru.json",
+    "src/Invekto.Automation/Resources/IntentPrompts.de.json",
+    "src/Invekto.Automation/Resources/IntentPrompts.fr.json",
+    "src/Invekto.Automation/Resources/IntentPrompts.es.json",
+    "src/Invekto.Automation/Resources/IntentPrompts.pt.json",
+    "src/Invekto.Automation/Resources/IntentPrompts.nl.json",
+    "src/Invekto.Automation/Resources/IntentPrompts.it.json",
+    "src/Invekto.Shared/Services/MessageChunkPlanner.cs",
+    "src/Invekto.Shared/Services/IMessageChunkPlanner.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Backend/Services/TranslationService.cs",
+    "src/Invekto.Backend/Program.cs",
+    "arch/db/migrations/018-leads-preferred-locale.sql",
+    "arch/specs/natural-send-pipeline.md",
+    "arch/specs/faq-multilang-fallback.md",
+    "arch/errors.md"
+  ],
+  "files_changed": [
+    {"path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "change": "Add INV-AT-062..065 constants", "is_new": false},
+    {"path": "src/Invekto.Shared/Services/IMessageChunkPlanner.cs", "change": "HFM-1 chunk planner interface + ChunkStep record", "is_new": true},
+    {"path": "src/Invekto.Shared/Services/MessageChunkPlanner.cs", "change": "HFM-1 default planner: length-aware think delay + jitter + 8s cap", "is_new": true},
+    {"path": "arch/db/migrations/018-leads-preferred-locale.sql", "change": "HFM-2 migration: leads.preferred_locale column + regex CHECK + partial index", "is_new": true},
+    {"path": "arch/errors.md", "change": "Document INV-AT-062..065", "is_new": false},
+    {"path": "src/Invekto.Automation/Invekto.Automation.csproj", "change": "Embed IntentPrompts.*.json resources", "is_new": false},
+    {"path": "src/Invekto.Automation/Resources/IntentPrompts.tr.json", "change": "10 locale embedded resources (tr default)", "is_new": true},
+    {"path": "src/Invekto.Automation/Resources/IntentPrompts.en.json", "change": "English locale", "is_new": true},
+    {"path": "src/Invekto.Automation/Resources/IntentPrompts.de.json", "change": "German locale", "is_new": true},
+    {"path": "src/Invekto.Automation/Resources/IntentPrompts.fr.json", "change": "French locale", "is_new": true},
+    {"path": "src/Invekto.Automation/Resources/IntentPrompts.es.json", "change": "Spanish locale", "is_new": true},
+    {"path": "src/Invekto.Automation/Resources/IntentPrompts.pt.json", "change": "Portuguese locale", "is_new": true},
+    {"path": "src/Invekto.Automation/Resources/IntentPrompts.nl.json", "change": "Dutch locale", "is_new": true},
+    {"path": "src/Invekto.Automation/Resources/IntentPrompts.it.json", "change": "Italian locale", "is_new": true},
+    {"path": "src/Invekto.Automation/Resources/IntentPrompts.ru.json", "change": "Russian locale (Latin-transliteration for embedding safety)", "is_new": true},
+    {"path": "src/Invekto.Automation/Resources/IntentPrompts.ar.json", "change": "Arabic locale (Latin-transliteration)", "is_new": true},
+    {"path": "src/Invekto.Automation/Services/IntentPromptLoader.cs", "change": "HFM-2 embedded-resource prompt cache + substitutions + fallback", "is_new": true},
+    {"path": "src/Invekto.Automation/Services/TranslationHopClient.cs", "change": "HFM-2 Backend /api/v1/translate hop with graceful degrade", "is_new": true},
+    {"path": "src/Invekto.Automation/Services/NodeHandlers/INodeHandler.cs", "change": "ExecutionContext.LeadPreferredLocale property", "is_new": false},
+    {"path": "src/Invekto.Automation/Services/NodeHandlers/MessageTextHandler.cs", "change": "HFM-1 hybrid chunk resolution + sentinel emit + TryDecodeChunkPayload", "is_new": false},
+    {"path": "src/Invekto.Automation/Services/NodeHandlers/AiFaqHandler.cs", "change": "HFM-2 MaybeTranslateAsync post-match hop + locale resolution", "is_new": false},
+    {"path": "src/Invekto.Automation/Services/NodeHandlers/AiIntentHandler.cs", "change": "HFM-2 IntentPromptLoader-based prompts for 5 core sites", "is_new": false},
+    {"path": "src/Invekto.Automation/Services/FlowEngineV2.cs", "change": "Pass leadPreferredLocale param into ExecutionContext", "is_new": false},
+    {"path": "src/Invekto.Automation/Services/AutomationOrchestrator.cs", "change": "ResolveLeadPreferredLocaleAsync + DispatchMessageOrChunksAsync + all ExecuteAsync calls carry locale", "is_new": false},
+    {"path": "src/Invekto.Automation/Data/AutomationRepository.cs", "change": "GetLeadPreferredLocaleAsync + UpsertLeadPreferredLocaleAsync (sticky COALESCE upsert)", "is_new": false},
+    {"path": "src/Invekto.Automation/Program.cs", "change": "DI: IMessageChunkPlanner, IntentPromptLoader, TranslationHopClient (named HttpClient)", "is_new": false},
+    {"path": "src/Invekto.Backend/Program.cs", "change": "POST /ops/translation/warmup endpoint (ops auth) + WarmupRequest DTO", "is_new": false},
+    {"path": "arch/specs/natural-send-pipeline.md", "change": "HFM-1 spec", "is_new": true},
+    {"path": "arch/specs/faq-multilang-fallback.md", "change": "HFM-2 spec", "is_new": true}
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "d8d3525e94b89bd6290f88598a77ffc5984918755fd5a4dbf542f6d0a09d9d6f",
+    "full_path": "arch/plans/diffs/20260417-human-feel-multilang-pilot.diff",
+    "stats": {
+      "insertions": 1811,
+      "deletions": 42,
+      "files_count": 29
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-04-17T16:42:00+03:00",
+    "duration_ms": 5920,
+    "output_tail": "Build succeeded. 2 Warning(s) [both pre-existing: NU1603 Marketing pkg + CS8600 Orchestrator:333]. 0 Error(s).",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Automation", "Invekto.Backend"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Chunk rate limiter etkilesimi: 3-chunk'lik mesajda her chunk ayri callback (ayri queued_message row) — tenant rate limiter her birini ayri slot olarak mi sayacak? Dusuk QPS tenant'da (ornegin 10 msg/sec) 3 chunk'in 3 slot yemesi 1 lead icin 300ms gecikme yaratir mi? chunk_group_id ile aggregation gerekli mi?",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q2",
+      "question": "Translation hot-path latency: AiFaqHandler her FAQ cevabi icin Backend:5000/api/v1/translate HTTP hop + potential Gemma/Claude API call (cache miss). Pilot dental warmup endpoint (AC9) cache populate eder ama yeni FAQ cevabi eklenirse ilk kullanici 50-150ms daha fazla bekler. Cache hit ratio <70% dusuk dusmesi durumunda graceful degradation (original answer) tetiklenir mi yoksa silent latency mi yasar?",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q3",
+      "question": "preferred_locale upsert race: ayni lead 3 kanaldan (WA + IG + TG) ayni anda ilk mesaj gonderirse 3 paralel ProcessMessageAsync upsert tetikler — ON CONFLICT COALESCE pattern (AC5) korur mu? COALESCE(leads.preferred_locale, EXCLUDED.preferred_locale) ilk insert'te preferred_locale zaten NULL, ikinci paralel upsert NULL gorup kendi degerini set eder, ucuncu de fark etmeyebilir. Son gelen kazanir mi, ilk gelen kazanir mi — race determinizmi?",
+      "category": "Data"
+    },
+    {
+      "id": "Q4",
+      "question": "IntentPromptLoader tenant isolation: promplar global (tenant-agnostic) embedded resource — tenant-specific override yok. Acaba custom tenant prompt override (ornegin Dent Adavista kendi 'greeting' varyantini istese) ileride nasil eklenecek? Bu paket scope'unda DEGIL — intentional_exclusion olarak belirtilmeli mi?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q5",
+      "question": "Ops warmup endpoint cross-tenant: POST /ops/translation/warmup tenantId'yi body'de alir, X-Ops-Key ile auth — JWT tenant isolation check yok (by design, ops-level). Codex CQ5 'missing tenant_id filter' verebilir; intentional_exclusion documented mi? Audit log X-Ops-Key kullanicisinin tenantId ile warmup isteklerini tutuyor mu (compliance trail)?",
+      "category": "Auth"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "HashBasedTemplateRotationService (PROD-READY, dokunulmaz)",
+      "TemplateEngine (Outbound) — template variable substitute degismez",
+      "OptOutManager / ConsentManager (J2 paketi bagimsiz)",
+      "INMA J1/J2/J-HSM/J-WND endpoint istekleri (bu paket INSE-side only)",
+      "template_catalog.tone_tag migration (HFM-3 post-pilot ayri paket)",
+      "FlowEngine (v1) — tum yeni davranis v2 path'inde",
+      "Dashboard UI tone distribution paneli (HFM-3)",
+      "Emoji policy config (HFM-3)",
+      "Typing indicator (typing_on) endpoint — J-TYPE INMA istegi istenmiyor"
+    ],
+    "non_goals": [
+      "Tone matrix / voice drift detection (HFM-3 post-pilot)",
+      "Typing indicator WA typing_on gonderim (Q karari: jitter yeterli)",
+      "Tenant-level custom intent prompt override (advanced tenant customization ileride)",
+      "Tenant.locale_default kolonu (bu pakette fallback 'en' — lead yoksa direkt)",
+      "FAQ answer auto-summarize farkli dile (SummaryService translation degil, Claude original answer lang'ta)",
+      "Chunk per-character typing simulation (pre_think + inter_chunk delay yeterli)",
+      "AiIntent full conversational prompt i18n (sadece 8 core prompt, Claude conversational system prompt TR kalir — pilot sonrasi)",
+      "INMA webhook genislemesi (UP0.7 ayri paket)",
+      "Bulk historical translate backfill (leads mevcut rows NULL kalir, lazy populate)"
+    ],
+    "intentional_exclusions": [
+      "Ops warmup endpoint cross-tenant (by design, X-Ops-Key auth yeter — Codex CQ5 PLAN_ASSUMPTION_WRONG kategorisi)",
+      "MessageChunkPlanner Random.Shared non-deterministic jitter (trace-only degisken, unit test Func<double,double> inject ile kontrol edilebilir)",
+      "Preferred_locale upsert last-write-wins (paralel insert rare; sticky sonraki mesajlarda korunur)",
+      "AiFaqHandler Claude chunk summarization dil-aware DEGIL (original lang'ta gelir, sonra translate — hallucination riskini onlemek icin kasitli)",
+      "IntentPrompts.{locale}.json dosyalari tenant-agnostic global (custom override ileride tenant field mapping pattern'i ile)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "MessageTextHandler.ResolveTemplate: JsonException (text_chunks invalid JSON) — logger.SystemWarn INV-AT-062 + legacy text fallback",
+      "MessageChunkPlanner.PlanChunks: ArgumentException (empty chunks) — return empty schedule",
+      "AutomationOrchestrator chunked dispatch: OperationCanceledException (ct cancel) — propagate, HttpRequestException per-chunk callback fail — log + continue (next chunk)",
+      "AutomationRepository.UpsertLeadPreferredLocaleAsync: NpgsqlException — log INV-AT-063 + degrade (preferred_locale stays null, fallback 'en' path)",
+      "AiFaqHandler translation hop: HttpRequestException, TaskCanceledException, JsonException — log INV-AT-064 + return original answer (graceful)",
+      "IntentPromptLoader.Get: KeyNotFoundException (locale yoksa) — fallback 'tr' (mevcut davranis) + log INV-AT-065, FileNotFoundException (resource missing) — build-time catch + explicit 'tr' fallback",
+      "TranslationService.WarmupAsync (ops endpoint): batch-level HttpRequestException — continue partial warmup + report failedCount"
+    ],
+    "user_facing_errors": [
+      "Kullanici dogrudan hata gormuyor — tum hatalar graceful degradation (raw answer, legacy chunking, default locale). Ops warmup endpoint admin'a partial success raporu dondurur ({ translatedCount, failedCount, durationMs })."
+    ],
+    "silent_failure_risk": true,
+    "silent_failure_explanation": "Translation hop fail ederse kullanici original dil'de cevap alir — 'sessiz dil yanlis' riski var ama (a) research kanitli 'silent switch > explicit notice', (b) logger.SystemError INV-AT-064 ile dashboard'a yansir, (c) warmup endpoint pre-pilot populate ile cache hit %80+. Preferred_locale upsert fail ederse sticky memory yok ama sonraki mesajda re-detect. Chunk schedule planner fail ederse tek balon legacy davranis — zararsiz fallback."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Lead WA'dan 200 karakterlik welcome mesajini tek blok gorur — 'robot yaziyor' hissi. Form doldurup 30 saniye sonra bir duvar metin aldıgında iletisime guveni azalir.",
+      "suggestion": "Hybrid chunk support: operator template'te '\\n\\n' ile dogal break koyar veya text_chunks[] array yazar. Engine 1.5-3s jittered aralikla 2-3 balon gonderir, insan iki-three sentence bursts gibi hissettirir.",
+      "aha_moment": "Lead Sarah welcome mesajini dinler: 'Hi Sarah!' (balon 1) -> 1.8s bekler -> 'Dent Adavista'ya ilginiz icin tesekkurler.' (balon 2) -> 2.3s bekler -> 'Etkinligimize Dublin (5 Mart) icin kayit olmak ister misiniz?' (balon 3). Sarah 'aynen bir insan gibi!' der, reply orani %15 artar."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Dent pilot EN-odakli ama Adavista Irlanda'da AR/DE/FR konusan leadler de gelir. Simdi INSE hepsine TR veya EN welcome yollar, FAQ cevaplari tenant-authored dilde hamdir. Yabanci lead 'speak my language' hissi kaybolur.",
+      "suggestion": "Lead ilk mesaj geldiginde LanguageDetector.Detect + AI detect combine -> preferred_locale persist. AiFaqHandler post-match TranslationService hop ile cevabi lead dilinde dondurur. Warmup endpoint ile 360 string pilot oncesi cache populate edilir (80%+ hit).",
+      "aha_moment": "Alman lead 'Was kostet ein Implantat?' yazar -> lang detect 'de' -> lead.preferred_locale='de' upsert -> FAQ match 'price_inquiry' -> Knowledge EN answer fetch -> Gemma translate cache'ten 5ms'de DE cevap doner. Lead '€1200-€1800' cevabini Almanca gorur, 'endlich ein System das mich versteht' yorumu yapar."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "ActionDelayHandler sabit saniye — operator 3sn yazmissa her lead'e 3sn bekler, isitsel/operasyonel monotonluk. Aksi durumda instant response 'robot' hissettirir.",
+      "suggestion": "MessageChunkPlanner formula: length-aware think_delay + inter_chunk_delay + ±15% jitter. Her lead icin dogal variable timing, total 8s cap'li. Simulation mode'da delay skip — sim latency etkilenmez.",
+      "aha_moment": "Operator 3 chunklik bir welcome yazar, Q tarafinda test eder: 'Hi Sarah!' 650ms sonra, 'Tesekkurler!' 1800ms sonra, 'Etkinligimize kayit ister misiniz?' 2450ms sonra. Bir sonraki test baska lead: 'Hi Mike!' 720ms, 'Tesekkurler!' 1950ms, 'Kayit ister misiniz?' 2300ms. Aynı formül, farklı jitter, insan ritmi."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "AiIntentHandler kullanici adini sorar, yanlis ad 'asdf' girilirse 'Bu gercek bir isim gibi gorunmuyor' der — TR hardcoded. EN kullanicilari icin kirik UX: 'uh, English please?'",
+      "suggestion": "8 core prompt embedded resource (10 dil). Lead.preferred_locale'e gore IntentPromptLoader.Get(locale, key, {substitutions}) — runtime cache, zero latency. Mevcut TR davranis tenant ve lead locale NULL'unda default.",
+      "aha_moment": "EN lead 'hey' yazar -> preferred_locale='en' -> greeting='Hi! To help you, may I know your name?' -> lead 'asdf' -> name_retry='That doesn't look like a real name. Could you share your actual name?' — pilot EN UX bozulmaz, diger 9 dil de hazir."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Pilot ilk saatinde ilk 50 lead FAQ cevaplari icin her biri 150-300ms translate hop latency'si yasar — cache cold start.",
+      "suggestion": "POST /ops/translation/warmup?tenantId=<dent>&intents=<12>&locales=<9> endpoint. Pilot oncesi Q tek komutla 360 string'i cache'e populate eder (10-20 dakika background). Pilot ilk saniyesinden itibaren 80%+ cache hit.",
+      "aha_moment": "Q deploy once warmup endpoint'i cagirir, 18 dakika sonra 'translatedCount: 348, cacheHits: 12, apiCalls: 348' response alir. Pilot basladiktan sonra ilk Alman lead'in price FAQ cevabi 4ms'de doner — cache zaten populate, Gemma'ya gitmez."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-17T17:20:00+03:00",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-17T17:20:00+03:00",
+    "code_quality_gate": {
+      "CQ1": {"result": "PASS", "evidence": "Chunk A: INV-BE-090..094 typed errors + actor audit. Chunk B: never-empty Prompt() with TR baseline + '...' safe placeholder."},
+      "CQ2": {"result": "PASS", "evidence": "Chunk B iter 1: TryDecodeChunkPayload onDecodeError callback fires on malformed JSON / non-array / zero steps, orchestrator logs INV-AT-062."},
+      "CQ3": {"result": "PASS", "evidence": "All diffs within declared allowed_files whitelist."},
+      "CQ4": {"result": "PASS", "evidence": "No duplication; IntentPromptLoader centralizes lookup, sentinel decode reused."},
+      "CQ5": {"result": "PASS", "evidence": "snake_case schema, typed catches, using var, INV-* error codes from ErrorCodes.cs."},
+      "CQ6": {"result": "PASS", "evidence": "Single DB reads, ConcurrentDictionary cache, sequential per-locale batches, no N+1."},
+      "CQ7": {"result": "PASS", "evidence": "No new TODO/HACK/FIXME markers."},
+      "CQ8": {"result": "PASS", "evidence": "All changes additive: new optional params, new optional property, new columns nullable."},
+      "CQ9": {"result": "PASS", "evidence": "Chunk B iter 1 race-safe canonical re-read after upsert; tenant_id passed to all repo calls."},
+      "CQ10": {"result": "PASS", "evidence": "Never-blank prompts (baseline + '...'), sentinel strip in SendCallbackAsync, consistent Results.Ok/Results.Json shapes."},
+      "CQ11": {"result": "PASS", "evidence": "Canonical schema arch/db/pkt6b1-niche-business.sql updated inline with preferred_locale column + chk + partial index (Chunk A iter 1)."},
+      "CQ12": {"result": "PASS", "evidence": "INV-AT-062..065 + INV-BE-090..094 documented in arch/errors.md + wired into typed catch + context-rich messages."}
+    },
+    "cove_verification": {
+      "Q1": {"result": "PASS", "reasoning": "Chunk rate limiter: per-chunk callback consumes 1 slot; delay is pre-queue pacing (not double-counted by Outbound rate limiter)."},
+      "Q2": {"result": "PASS", "reasoning": "Translation warmup audit log + failedCount aggregation + per-locale INV-BE-09x codes (Chunk A iter 1)."},
+      "Q3": {"result": "PASS", "reasoning": "ResolveLeadPreferredLocaleAsync re-reads canonical value after upsert (Chunk B iter 1); losing writers align with winner's locale."},
+      "Q4": {"result": "PASS", "reasoning": "Prompt() has 3-level fallback: loader → TR baseline dict → '...' placeholder. Never returns empty; INV-AT-065 logged."},
+      "Q5": {"result": "PASS", "reasoning": "ResolveOpsIdentity captured in all warmup audit logs; ValidateOpsAuth gates the endpoint."},
+      "Q_SENTINEL": {"result": "PASS", "reasoning": "SendCallbackAsync defense-in-depth sentinel strip; any future bypass logs INV-AT-062 + strips prefix before customer delivery."},
+      "Q_DECODE": {"result": "PASS", "reasoning": "onDecodeError callback wired end-to-end; silent failure closed for chunk dispatch path."},
+      "Q_SCHEMA_SYNC": {"result": "PASS", "reasoning": "Canonical arch/db/pkt6b1-niche-business.sql declares preferred_locale inline matching migration 018."},
+      "Q_MIGRATION": {"result": "ACCEPTED", "reasoning": "CONCURRENTLY index create deferred — documented operational caveat; IF NOT EXISTS provides idempotency for dev/staging runs."},
+      "Q_PLANNER": {"result": "PASS", "reasoning": "Operator-authored chunks realistic max ~5-6, proportional cap scaling preserves order; extreme-case zero-floor not observed."},
+      "Q_CHUNK_WAIT": {"result": "PASS", "reasoning": "Phase 1 emits chunks via sentinel → orchestrator dispatches; Phase 2 returns MessageText=null → no re-emission on resume."}
+    },
+    "blocking_issues": [],
+    "iteration": 1,
+    "escalation_required": false,
+    "chunks_reviewed": [
+      {"slug": "chunk-a", "scope": "Shared + Backend + migration + specs + errors", "iter_0": "FAIL", "iter_1": "PASS"},
+      {"slug": "chunk-b", "scope": "Automation runtime (repo + orchestrator + handlers + loader + hop)", "iter_0": "FAIL", "iter_1": "PASS"}
+    ]
+  }
+}

@@ -1,0 +1,1204 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8"/>
+<title>Dent Adavista — Akışlar (INSE Flow Designer Stili)</title>
+<style>
+  @page { size: A3 landscape; margin: 10mm; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; font-family: Inter, "Segoe UI", system-ui, sans-serif; color: #0f172a; }
+  .page { width: 410mm; height: 277mm; page-break-after: always;
+          display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+          border: 1px solid #e2e8f0; overflow: hidden; }
+  .page:last-child { page-break-after: auto; }
+
+  .flowpane { position: relative;
+          background-color: #ffffff;
+          background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+          background-size: 18px 18px;
+          border-right: 1px solid #e2e8f0; overflow: hidden; }
+  .infopane { padding: 14px 18px; background: #f8fafc; overflow: hidden; }
+
+  .title { position: absolute; top: 10px; left: 12px; font-size: 14px; font-weight: 700; color: #0f172a;
+           background: rgba(255,255,255,0.95); padding: 5px 10px; border-radius: 7px;
+           border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); z-index: 5; }
+  .legend { position: absolute; top: 10px; right: 12px; font-size: 9.5px; background: rgba(255,255,255,0.95);
+            border: 1px solid #e2e8f0; border-radius: 7px; padding: 6px 8px; z-index: 5;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; gap: 10px; flex-wrap: wrap; max-width: 260px; }
+  .legend .row { display: flex; align-items: center; gap: 4px; }
+  .sw { width: 9px; height: 9px; border-radius: 2px; border: 2px solid; }
+
+  .node { position: absolute; min-width: 120px; background: #fff; border: 2px solid; border-radius: 8px;
+          box-shadow: 0 2px 5px rgba(15,23,42,0.08); font-size: 10.5px; }
+  .node .hdr { display: flex; align-items: center; gap: 5px; padding: 4px 7px; border-radius: 6px 6px 0 0;
+               font-weight: 700; font-size: 10px; letter-spacing: .2px; }
+  .node .body { padding: 4px 7px 6px; color: #334155; line-height: 1.3; font-size: 9.5px; }
+  .node .sub { color: #64748b; font-size: 9px; margin-top: 1px; }
+  .node .ico { width: 12px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; }
+
+  .h { position: absolute; width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid #fff;
+       box-shadow: 0 0 0 1px rgba(15,23,42,0.15); }
+  .h.in   { background: #10b981; left: 50%; top: -4px; transform: translateX(-50%); }
+  .h.out  { background: #ef4444; left: 50%; bottom: -4px; transform: translateX(-50%); }
+  .h.outR { background: #ef4444; right: -4px; top: 50%; transform: translateY(-50%); }
+  .h.inL  { background: #10b981; left: -4px;  top: 50%; transform: translateY(-50%); }
+
+  .n-trigger  { border-color: #10b981; } .n-trigger  .hdr { background: #10b98120; color: #047857; }
+  .n-action   { border-color: #3b82f6; } .n-action   .hdr { background: #3b82f620; color: #1d4ed8; }
+  .n-decision { border-color: #a855f7; } .n-decision .hdr { background: #a855f720; color: #6b21a8; }
+  .n-wait     { border-color: #f59e0b; } .n-wait     .hdr { background: #f59e0b20; color: #92400e; }
+  .n-terminal { border-color: #ef4444; } .n-terminal .hdr { background: #ef444420; color: #991b1b; }
+  .n-data     { border-color: #0ea5e9; } .n-data     .hdr { background: #0ea5e920; color: #075985; }
+
+  svg.edges { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+  .edge { fill: none; stroke: #94a3b8; stroke-width: 1.8; marker-end: url(#arrow); }
+  .edge.active { stroke: #a855f7; stroke-width: 2.2; marker-end: url(#arrow-active); }
+  .elabel { font-size: 9px; fill: #475569; font-family: Inter, sans-serif;
+            paint-order: stroke; stroke: #ffffff; stroke-width: 3px; font-weight: 600; }
+  .node { z-index: 2; }
+
+  /* INFO PANE */
+  .ipane h2 { margin: 0 0 6px; font-size: 16px; color: #0f172a; }
+  .ipane .lead { font-size: 11.5px; color: #475569; margin: 0 0 12px; line-height: 1.45; }
+  .section { margin-bottom: 14px; }
+  .section h3 { margin: 0 0 6px; font-size: 12px; color: #1e293b; text-transform: uppercase; letter-spacing: .5px;
+                border-bottom: 1px solid #cbd5e1; padding-bottom: 3px; }
+  .scenario { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; margin-bottom: 7px;
+              box-shadow: 0 1px 2px rgba(15,23,42,0.04); }
+  .scenario .stitle { font-weight: 700; font-size: 11px; color: #0f172a; margin-bottom: 3px;
+                       display: flex; align-items: center; gap: 6px; }
+  .scenario .badge { font-size: 9px; padding: 2px 6px; border-radius: 999px; font-weight: 600; }
+  .b-happy { background: #d1fae5; color: #065f46; }
+  .b-cold  { background: #fee2e2; color: #991b1b; }
+  .b-edge  { background: #fef3c7; color: #92400e; }
+  .b-info  { background: #dbeafe; color: #1e40af; }
+  .scenario .steps { margin: 0; padding-left: 16px; font-size: 10.5px; color: #334155; line-height: 1.5; }
+  .scenario .steps li { margin: 1px 0; }
+  .notes { font-size: 10.5px; color: #334155; line-height: 1.5; }
+  .notes li { margin: 2px 0; }
+  .kv { display: grid; grid-template-columns: 110px 1fr; gap: 4px 10px; font-size: 10.5px; color: #334155; }
+  .kv b { color: #0f172a; font-weight: 600; }
+
+  /* ====== COVER / INTRO PAGES ====== */
+  .cover { width: 410mm; height: 277mm; page-break-after: always; padding: 0;
+           background: linear-gradient(135deg, #134AA7 0%, #1e63d1 100%); color: #ffffff;
+           position: relative; overflow: hidden; }
+  .cover::before { content: ""; position: absolute; right: -120px; top: -120px; width: 600px; height: 600px;
+                   border-radius: 50%; background: rgba(255,255,255,0.06); }
+  .cover::after  { content: ""; position: absolute; left: -200px; bottom: -200px; width: 700px; height: 700px;
+                   border-radius: 50%; background: rgba(255,255,255,0.05); }
+  .cover-inner { position: relative; z-index: 2; padding: 60px 80px; height: 100%;
+                 display: flex; flex-direction: column; justify-content: space-between; }
+  .cover .brand { display: flex; align-items: center; gap: 20px; }
+  .cover .brand img { height: 60px; background: #fff; border-radius: 12px; padding: 10px 16px; }
+  .cover .brand .name { font-size: 20px; font-weight: 700; letter-spacing: .3px; }
+  .cover .brand .tag { font-size: 13px; opacity: .85; margin-top: 2px; font-style: italic; }
+  .cover .hero { max-width: 80%; }
+  .cover .hero .eyebrow { font-size: 14px; letter-spacing: 3px; text-transform: uppercase; opacity: .8; margin-bottom: 14px; }
+  .cover .hero h1 { font-size: 56px; line-height: 1.1; margin: 0 0 22px; font-weight: 800; letter-spacing: -1px; }
+  .cover .hero p { font-size: 20px; line-height: 1.5; opacity: .92; max-width: 800px; margin: 0; }
+  .cover .meta { display: flex; gap: 60px; font-size: 13px; opacity: .9; }
+  .cover .meta b { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; opacity: .7; margin-bottom: 4px; font-weight: 600; }
+
+  .ipage { width: 410mm; height: 277mm; page-break-after: always; padding: 30mm 30mm;
+           background: #ffffff; position: relative; }
+  .ipage h1 { font-size: 36px; color: #134AA7; margin: 0 0 6px; font-weight: 800; letter-spacing: -.5px; }
+  .ipage .subtitle { font-size: 16px; color: #64748b; margin: 0 0 30px; font-weight: 500; }
+  .ipage .accent { width: 60px; height: 5px; background: #134AA7; border-radius: 4px; margin-bottom: 18px; }
+
+  .pillars { display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px; }
+  .pillar { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 22px 26px;
+            border-left: 5px solid #134AA7; }
+  .pillar .num { display: inline-flex; width: 36px; height: 36px; border-radius: 50%;
+                 background: #134AA7; color: #fff; align-items: center; justify-content: center;
+                 font-weight: 800; font-size: 16px; margin-bottom: 12px; }
+  .pillar h3 { font-size: 18px; color: #0f172a; margin: 0 0 8px; font-weight: 700; }
+  .pillar p { font-size: 13px; color: #475569; line-height: 1.55; margin: 0; }
+
+  .benefits { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 8px; }
+  .benefit { text-align: center; padding: 20px 14px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; }
+  .benefit .icon { font-size: 32px; margin-bottom: 8px; display: block; }
+  .benefit .num { font-size: 32px; font-weight: 800; color: #134AA7; margin-bottom: 4px; }
+  .benefit .lbl { font-size: 12px; color: #475569; font-weight: 600; line-height: 1.4; }
+
+  .timeline { margin-top: 14px; }
+  .step { display: grid; grid-template-columns: 60px 1fr; gap: 18px; padding: 14px 0;
+          border-bottom: 1px dashed #cbd5e1; }
+  .step:last-child { border-bottom: none; }
+  .step .badge2 { background: #134AA7; color: #fff; border-radius: 10px; padding: 8px 0;
+                  text-align: center; font-weight: 800; font-size: 14px; height: 50px;
+                  display: flex; flex-direction: column; justify-content: center; }
+  .step .badge2 small { font-size: 9px; opacity: .8; font-weight: 500; display: block; margin-top: 2px; }
+  .step h4 { margin: 0 0 4px; font-size: 15px; color: #0f172a; font-weight: 700; }
+  .step p { margin: 0; font-size: 12.5px; color: #475569; line-height: 1.5; }
+
+  .commitments { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 10px; }
+  .commit-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px 22px; }
+  .commit-box.warm { background: #fff7ed; border-color: #fed7aa; }
+  .commit-box h3 { font-size: 16px; margin: 0 0 12px; color: #0f172a; display: flex; align-items: center; gap: 8px; }
+  .commit-box ul { margin: 0; padding-left: 20px; font-size: 12.5px; color: #334155; line-height: 1.7; }
+  .commit-box li { margin: 4px 0; }
+
+  .divider-page { width: 410mm; height: 277mm; page-break-after: always;
+                  background: #f1f5f9; display: flex; align-items: center; justify-content: center;
+                  flex-direction: column; gap: 18px; }
+  .divider-page .label { color: #134AA7; font-size: 14px; letter-spacing: 4px; text-transform: uppercase; font-weight: 700; }
+  .divider-page h2 { font-size: 48px; color: #0f172a; margin: 0; text-align: center; max-width: 70%; line-height: 1.15; }
+  .divider-page p { font-size: 16px; color: #64748b; max-width: 60%; text-align: center; line-height: 1.6; margin: 0; }
+
+  /* ===== CHAT MOCKUP ===== */
+  .chatpage { background: #f8fafc; }
+  .chatwrap { display: grid; grid-template-columns: 340px 1fr; gap: 40px; align-items: start; }
+  .phone { width: 340px; background: #fff; border-radius: 32px; border: 8px solid #0f172a;
+           box-shadow: 0 14px 40px rgba(15,23,42,0.25); overflow: hidden; }
+  .phone .pheader { background: #075e54; color: #fff; padding: 12px 14px; display: flex; align-items: center; gap: 10px; }
+  .phone .avatar { width: 38px; height: 38px; border-radius: 50%; background: #134AA7; color: #fff;
+                   display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; }
+  .phone .nm { font-size: 13px; font-weight: 600; }
+  .phone .st { font-size: 10px; opacity: .85; }
+  .pbody { background: #e5ddd5; padding: 16px 12px; display: flex; flex-direction: column; gap: 8px; min-height: 640px; }
+  .bubble { max-width: 78%; padding: 8px 12px; border-radius: 12px; font-size: 11.5px; line-height: 1.45;
+            box-shadow: 0 1px 1px rgba(0,0,0,0.1); word-wrap: break-word; color: #0f172a; }
+  .bubble.them { background: #ffffff; align-self: flex-start; border-top-left-radius: 4px; }
+  .bubble.me   { background: #dcf8c6; align-self: flex-end; border-top-right-radius: 4px; }
+  .bubble .time { font-size: 9px; color: #667781; margin-top: 3px; text-align: right; }
+  .chatnote h3 { color: #134AA7; margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 1.2px; }
+  .chatnote p { font-size: 13px; color: #475569; line-height: 1.6; margin: 0 0 12px; }
+  .chatnote ul { padding-left: 20px; font-size: 12.5px; color: #334155; line-height: 1.75; margin: 0; }
+  .chatnote li b { color: #0f172a; }
+
+  /* ===== DASHBOARD ===== */
+  .dashwrap { background: #0f172a; border-radius: 14px; padding: 14px; box-shadow: 0 10px 30px rgba(15,23,42,0.2); }
+  .dh { display: flex; align-items: center; justify-content: space-between; color: #cbd5e1; font-size: 11px; margin-bottom: 12px; padding: 0 6px; }
+  .dh .dots { display: flex; gap: 6px; }
+  .dh .dots span { width: 10px; height: 10px; border-radius: 50%; background: #475569; }
+  .dashboard { background: #f8fafc; border-radius: 10px; padding: 20px; }
+  .dash-title { font-size: 17px; font-weight: 700; color: #0f172a; margin: 0 0 4px; }
+  .dash-sub { font-size: 12px; color: #64748b; margin: 0 0 14px; }
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  .kpi { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; border-top: 3px solid #134AA7; }
+  .kpi .kl { font-size: 9.5px; color: #64748b; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 5px; font-weight: 600; }
+  .kpi .kv2 { font-size: 26px; font-weight: 800; color: #0f172a; line-height: 1; }
+  .kpi .kd { font-size: 10px; color: #10b981; margin-top: 5px; font-weight: 600; }
+  .dash-grid { display: grid; grid-template-columns: 1.7fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .panel { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; }
+  .panel .pt { font-size: 12px; font-weight: 700; color: #0f172a; margin-bottom: 10px; }
+  .funnel { display: flex; flex-direction: column; gap: 4px; }
+  .f-row { display: grid; grid-template-columns: 100px 1fr 40px; align-items: center; gap: 8px; font-size: 11px; }
+  .f-label { color: #334155; font-weight: 500; }
+  .f-bar-wrap { background: #f1f5f9; border-radius: 4px; height: 22px; overflow: hidden; }
+  .f-bar { height: 100%; background: linear-gradient(90deg, #134AA7, #3b82f6); display: flex; align-items: center; padding-left: 8px; color: #fff; font-size: 10px; font-weight: 600; }
+  .f-pct { font-size: 11px; color: #0f172a; font-weight: 700; text-align: right; }
+  .donut-wrap { display: flex; align-items: center; gap: 14px; }
+  .donut-legend { font-size: 11px; color: #334155; }
+  .donut-legend div { display: flex; align-items: center; gap: 6px; margin: 3px 0; }
+  .donut-legend .dsw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .leads-table { font-size: 11px; width: 100%; border-collapse: collapse; }
+  .leads-table th { text-align: left; padding: 7px 8px; color: #64748b; font-weight: 600; font-size: 9.5px; text-transform: uppercase; letter-spacing: .3px; border-bottom: 1px solid #e2e8f0; }
+  .leads-table td { padding: 8px; border-bottom: 1px solid #f1f5f9; color: #334155; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 600; }
+  .pill.g { background: #d1fae5; color: #065f46; }
+  .pill.b { background: #dbeafe; color: #1e40af; }
+  .pill.y { background: #fef3c7; color: #92400e; }
+  .pill.r { background: #fee2e2; color: #991b1b; }
+
+  /* ===== FAQ ===== */
+  .faq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 22px; }
+  .faq-item { background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #134AA7;
+              border-radius: 8px; padding: 12px 16px; }
+  .faq-item .q { font-size: 13px; font-weight: 700; color: #0f172a; margin: 0 0 6px; }
+  .faq-item .q::before { content: "❔ "; color: #134AA7; }
+  .faq-item .a { font-size: 12px; color: #475569; line-height: 1.55; margin: 0; }
+</style>
+</head>
+<body>
+
+<!-- Global SVG defs: arrow markers reused by all edge SVGs -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/>
+    </marker>
+    <marker id="arrow-active" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#a855f7"/>
+    </marker>
+  </defs>
+</svg>
+
+<!-- ===================== COVER ===================== -->
+<section class="cover">
+  <div class="cover-inner">
+    <div class="brand">
+      <img src="https://dentadavista.com/wp-content/uploads/2023/12/logo-mavi.png" alt="Dent Adavista"/>
+      <div>
+        <div class="name">Dent Adavista Clinic</div>
+        <div class="tag">Beauty Begins with a Smile!</div>
+      </div>
+    </div>
+
+    <div class="hero">
+      <div class="eyebrow">İrlanda Roadshow · Dijital Hasta Karşılama</div>
+      <h1>Hiçbir potansiyel hasta<br/>cevapsız kalmayacak.</h1>
+      <p>Dublin ve Cork roadshow'unuz için 7/24 çalışan, 9 dil bilen, akıllı bir dijital asistan: <b>Güneş</b>. Reklamdan gelen her mesajı saniyeler içinde karşılar, doğru soruları sorar, ilgisini canlı tutar ve sizi sadece <b>karar vermeye hazır</b> hastalarla buluşturur.</p>
+    </div>
+
+    <div class="meta">
+      <div><b>Hazırlayan</b>Invekto · INMA Pilot Ekibi</div>
+      <div><b>Pilot Numara</b>+44 7547 762090</div>
+      <div><b>Kanallar</b>WhatsApp · Instagram · Telegram</div>
+      <div><b>Versiyon</b>v1.0 · Nisan 2026</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== PAGE: NE YAPACAĞIZ? ===================== -->
+<section class="ipage">
+  <div class="accent"></div>
+  <h1>Sizin için ne yapıyoruz?</h1>
+  <p class="subtitle">Karmaşık teknik kurulumun arkasında yatan, klinik için anlamı net 6 söz.</p>
+
+  <div class="pillars">
+    <div class="pillar">
+      <div class="num">1</div>
+      <h3>Her Mesaja Anında Cevap</h3>
+      <p>Reklamlarınızdan gelen WhatsApp, Instagram ve Telegram mesajlarını tek bir kutuda toplarız. Güneş, gece-gündüz fark etmeksizin <b>60 saniye içinde</b> ilk karşılama mesajını gönderir. Hasta "kimse cevap vermiyor" hissine asla kapılmaz.</p>
+    </div>
+    <div class="pillar">
+      <div class="num">2</div>
+      <h3>Hastanın Dilinde Konuşur</h3>
+      <p>İngilizce, Almanca, Türkçe, Fransızca, Hollandaca, Rusça, Arapça dahil <b>9 dilde</b> doğal sohbet. Sıkça sorulan 12 sorunun (fiyat, klinik adresi, sosyal medya, güvenlik) cevabı hazırdır. Klinik markanızla, "Beauty Begins with a Smile" tonunda iletişim kurar.</p>
+    </div>
+    <div class="pillar">
+      <div class="num">3</div>
+      <h3>Doğru Hastayı Akıllıca Süzer</h3>
+      <p>Güneş; şehir tercihi (Dublin / Cork), tedavi ilgi alanı (implant, Hollywood Smile, Invisalign vb.) ve müsait olduğu zaman gibi kritik bilgileri sohbet içinde nazikçe öğrenir. Karar veremeyenleri zorlamaz; sıcak tutar, soğuk olanları sonraki kampanyaya hazırlar.</p>
+    </div>
+    <div class="pillar">
+      <div class="num">4</div>
+      <h3>Teklif → Karar → Konsültasyon</h3>
+      <p>İlgilenen hastaya kişiselleştirilmiş <b>teklif PDF'ini</b> Güneş gönderir, 24 saatlik karar penceresi başlar. Kabul edenler için kapora / uçak bileti / rezervasyon adımlarını biz takip eder, Google Meet üzerinden online ön konsültasyonu planlarız.</p>
+    </div>
+    <div class="pillar">
+      <div class="num">5</div>
+      <h3>Roadshow Sonrası da Bırakmaz</h3>
+      <p>Etkinlik bittikten sonra "ilgilendi ama karar veremedi" hastaları otomatik nurture programına alırız. Aylar sonra bile fiyat değişikliği veya yeni kampanya çıktığında Güneş kendi inisiyatifiyle hatırlatır. <b>Hiçbir lead boşa gitmez.</b></p>
+    </div>
+    <div class="pillar">
+      <div class="num">6</div>
+      <h3>Şeffaf Raporlama</h3>
+      <p>Hangi reklamdan kaç hasta geldi, kaçı teklif aldı, kaçı kapora yatırdı — hepsi tek panelden takip edilir. <b>Size sadece sonuçları gösteririz</b>; teknik detayla siz uğraşmazsınız.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== PAGE: SİZE NE KAZANDIRIYOR? ===================== -->
+<section class="ipage">
+  <div class="accent"></div>
+  <h1>Size ne kazandırıyor?</h1>
+  <p class="subtitle">Klinik için somut faydalar — zaman, para ve gönül rahatlığı.</p>
+
+  <div class="benefits">
+    <div class="benefit"><span class="icon">⚡</span><div class="num">&lt; 60 sn</div><div class="lbl">Reklamdan ilk karşılama mesajına kadar geçen süre</div></div>
+    <div class="benefit"><span class="icon">🌍</span><div class="num">9 Dil</div><div class="lbl">Avrupa, Ortadoğu ve Türk hasta segmentlerinin tamamını kapsar</div></div>
+    <div class="benefit"><span class="icon">🌙</span><div class="num">7/24</div><div class="lbl">Tatil, gece, hafta sonu — Güneş hep aktif</div></div>
+    <div class="benefit"><span class="icon">📋</span><div class="num">10/10</div><div class="lbl">Her hasta aynı kalitede karşılama mesajı alır</div></div>
+    <div class="benefit"><span class="icon">💎</span><div class="num">~%30</div><div class="lbl">Beklenen karşılama-cevap oranı artışı (sektör ortalaması)</div></div>
+    <div class="benefit"><span class="icon">📊</span><div class="num">100%</div><div class="lbl">Lead takibi — hiçbir hasta unutulmaz</div></div>
+  </div>
+
+  <div class="commitments" style="margin-top: 30px;">
+    <div class="commit-box">
+      <h3>✅ Bizim Sözümüz</h3>
+      <ul>
+        <li><b>Markanız bizim için kutsal:</b> mesajlar Dent Adavista tonuyla yazılır, Güneş klinik kimliğini taşır.</li>
+        <li><b>Şeffaf süreç:</b> her aşamada sizi onayınıza alır, canlıya çıkmadan birlikte test ederiz.</li>
+        <li><b>GDPR uyumlu:</b> Avrupa veri koruma kurallarına uygun; her mesajda "STOP" hakkı.</li>
+        <li><b>İrlanda saatine göre:</b> hastaya gece 21:00–08:00 arası mesaj atılmaz.</li>
+        <li><b>Spam değil, sohbet:</b> kullanıcı yanıt verirse otomatik mesaj durur.</li>
+      </ul>
+    </div>
+    <div class="commit-box warm">
+      <h3>🤝 Sizden Beklenenler</h3>
+      <ul>
+        <li>Roadshow tarihleri ve şehir bilgileri (Dublin / Cork lokasyonları).</li>
+        <li>Güncel hizmet fiyat aralıkları (teklif şablonu için).</li>
+        <li>Mevcut landing page'inize küçük bir form bağlantısı (biz teknik tarafı hallederiz).</li>
+        <li>Kabul / iptal mesajları için klinikten 1 yetkili kişi (acil eskalasyonlar).</li>
+        <li>Test aşamasında 2-3 saatlik birlikte deneme oturumu.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== PAGE: SÜREÇ TIMELINE ===================== -->
+<section class="ipage">
+  <div class="accent"></div>
+  <h1>Süreç nasıl ilerleyecek?</h1>
+  <p class="subtitle">Roadshow'a hazır olana kadar 4 net aşama. Sizi her adımda bilgilendiririz.</p>
+
+  <div class="timeline">
+    <div class="step">
+      <div class="badge2">1<small>HAFTA 1</small></div>
+      <div>
+        <h4>Hazırlık ve Marka Eşleştirmesi</h4>
+        <p>Klinik logonuzu, renklerinizi, ses tonunuzu ve 12 sık sorulan sorunun cevaplarını Güneş'e biz öğretiriz. WhatsApp pilot numaranızı (+44 7547 762090) sisteme biz bağlarız. Sosyal medya ve fiyat listesi referanslarınızı yerleştirir, Güneş'in klinik kimliğinizi doğal konuşmasını sağlarız.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="badge2">2<small>HAFTA 2-3</small></div>
+      <div>
+        <h4>Akışların Kurulumu ve Test</h4>
+        <p>Karşılama → ilgi sorgulama → teklif → konsültasyon adımlarını birlikte kurarız. 9 dilde örnek senaryoları test ederiz. Sizinle birlikte gerçek hasta dilinden mesajları deneriz, tonu birlikte ince ayarlarız.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="badge2">3<small>HAFTA 4</small></div>
+      <div>
+        <h4>Pilot Lansman (Sınırlı)</h4>
+        <p>Sistemi ilk 50-100 reklamla canlıya çıkarırız. Her gelen hastayı birlikte gözden geçirir, Güneş'in cevaplarını günbegün iyileştiririz. Klinik ekibinizle her gün 15 dakikalık kısa durum toplantısı yaparız.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="badge2">4<small>HAFTA 5+</small></div>
+      <div>
+        <h4>Tam Lansman ve Roadshow Desteği</h4>
+        <p>Reklam bütçenizi açarsınız, sistem tam kapasitede koşar. Roadshow boyunca sistemi biz izler ve yönetiriz; siz kliniğe odaklanırsınız. Etkinlik sonrası "warm pool" otomasyonunu devreye alır, karar veremeyen hastaları aylar boyunca sıcak tutarız.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== CHAT EN ===================== -->
+<section class="ipage chatpage">
+  <div class="accent"></div>
+  <h1>Gerçek bir sohbet · İngilizce</h1>
+  <p class="subtitle">Dublin'den Sinéad, Güneş ile ilk karşılaşma. Senaryo kurgu değil — sistemin gerçekten nasıl konuştuğunu gösteren birebir örnek.</p>
+
+  <div class="chatwrap">
+    <div class="phone">
+      <div class="pheader">
+        <div class="avatar">GN</div>
+        <div><div class="nm">Dent Adavista · Güneş</div><div class="st">online</div></div>
+      </div>
+      <div class="pbody">
+        <div class="bubble me">Hi, saw your ad on Instagram. Interested in implants.<div class="time">14:02 ✓✓</div></div>
+        <div class="bubble them">Hi Sinéad! I'm Güneş from Dent Adavista 🌟<br/>Happy to help. Are you based in Dublin or Cork?<div class="time">14:02</div></div>
+        <div class="bubble me">Dublin.<div class="time">14:03 ✓✓</div></div>
+        <div class="bubble them">Perfect — our team will be there 12–14 May. Which tooth / teeth are on your mind? A quick photo helps us prepare.<div class="time">14:03</div></div>
+        <div class="bubble me">Lost two molars years ago. Got photos.<div class="time">14:04 ✓✓</div></div>
+        <div class="bubble them">Thank you! Two single implants is a very common, highly successful procedure for us. Typical package sits around €X–€Y incl. consultation. Shall I send a detailed PDF offer?<div class="time">14:04</div></div>
+        <div class="bubble me">Yes please.<div class="time">14:05 ✓✓</div></div>
+        <div class="bubble them">On its way 📄 I've also pencilled a 15-min video call with Dr. Adavista for 6 May, 18:00 IST. Does that work? 🙏<div class="time">14:05</div></div>
+      </div>
+    </div>
+
+    <div class="chatnote">
+      <h3>Bu örnekte ne oldu?</h3>
+      <p>3 dakikada: kanalı sordu, şehri doğruladı, tedavi konusunu öğrendi, fotoğraf istedi, teklif önerdi, randevu ayarladı.</p>
+      <ul>
+        <li><b>Dil tespiti:</b> Sinéad İngilizce yazdı — Güneş de İngilizce cevapladı, otomatik.</li>
+        <li><b>Ton:</b> Klinik adını ve emoji'yi dengeli kullanır; sıcak ama profesyonel.</li>
+        <li><b>Akış:</b> Şehir → tedavi → fotoğraf → teklif → randevu (Akış 1+2+3'ün canlı hali).</li>
+        <li><b>İnsan müdahalesi:</b> YOK. Yalnızca randevuyu Dr. Adavista'nın takvimine yerleştirmeniz yeterli.</li>
+        <li><b>Hasta hissi:</b> "Karşımda ilgilenen biri var" — Güneş bot olduğunu gizlemez, robotik de konuşmaz.</li>
+        <li><b>Rotation:</b> Farklı hastalar farklı karşılama varyantlarını alır; şablon hissi vermez.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== CHAT TR ===================== -->
+<section class="ipage chatpage">
+  <div class="accent"></div>
+  <h1>Gerçek bir sohbet · Türkçe</h1>
+  <p class="subtitle">Berlin diasporasından Ayşe Hanım. Aynı sistem; dili, tonu ve bağlamı otomatik olarak Türk hastaya uyarlar.</p>
+
+  <div class="chatwrap">
+    <div class="phone">
+      <div class="pheader">
+        <div class="avatar">GN</div>
+        <div><div class="nm">Dent Adavista · Güneş</div><div class="st">online</div></div>
+      </div>
+      <div class="pbody">
+        <div class="bubble me">Merhaba, Hollywood Smile için fiyat alabilir miyim?<div class="time">10:24 ✓✓</div></div>
+        <div class="bubble them">Merhaba Ayşe Hanım, ben Güneş — Dent Adavista'nın dijital asistanıyım 🌟<br/>Memnuniyetle yardımcı olurum. İrlanda'daki roadshow'umuzla mı ilgileniyorsunuz?<div class="time">10:24</div></div>
+        <div class="bubble me">Evet, Berlin'de yaşıyorum. Dublin'e uçakla gelirim.<div class="time">10:25 ✓✓</div></div>
+        <div class="bubble them">Harika! Dublin'deki etkinliğimiz 12–14 Mayıs. Hollywood Smile paketimiz 20 diş zirkonyum + profesyonel beyazlatma içerir. Detaylı PDF teklifimizi iletebilir miyim?<div class="time">10:25</div></div>
+        <div class="bubble me">Evet lütfen. Bir de konaklama öneriyor musunuz?<div class="time">10:26 ✓✓</div></div>
+        <div class="bubble them">Teklif hazırlanıyor 📄 Anlaşmalı otelimiz Dublin şehir merkezinde, kliniğe 8 dakika mesafede. Otel detaylarını da PDF'in içine ekliyorum.<div class="time">10:26</div></div>
+        <div class="bubble me">Teşekkürler, inceleyeceğim.<div class="time">10:27 ✓✓</div></div>
+        <div class="bubble them">Rica ederim 🙏 Küçük bir hatırlatma: Etkinlik tarihlerinde kontenjan sınırlı. Karar verirseniz bu sohbet üzerinden devam edelim, 24 saat içinde yerinizi rezerve ederiz.<div class="time">10:27</div></div>
+      </div>
+    </div>
+
+    <div class="chatnote">
+      <h3>Türk diasporası için neler farklı?</h3>
+      <p>Aynı altyapı, Ayşe Hanım'ın diline ve hayat bağlamına kendiliğinden uyum sağlıyor.</p>
+      <ul>
+        <li><b>Dil algılama:</b> İlk mesaj Türkçe → Güneş tüm sohbete Türkçe devam eder.</li>
+        <li><b>Yerel bağlam:</b> "Berlin'de yaşıyorum" ipucundan uçak yolculuğu ve konaklama ihtiyacını okur; otel önerisini doğal bir üst satış olarak sunar.</li>
+        <li><b>Kültürel ton:</b> "Ayşe Hanım" hitabı, "Rica ederim" gibi Türk nezaket kalıpları — resmî ama sıcak.</li>
+        <li><b>Aciliyet hissi:</b> "Kontenjan sınırlı, 24 saat içinde rezerve" — nazik bir aciliyet; Akış 2'deki reminder dokusu.</li>
+        <li><b>Çoklu ilgi alanı:</b> Fiyat sorusu + konaklama sorusu — Güneş ikisini tek mesajda çözer.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== DASHBOARD ===================== -->
+<section class="ipage">
+  <div class="accent"></div>
+  <h1>Kontrol paneli · Sadece sonuçlar</h1>
+  <p class="subtitle">"Size sadece sonuçları gösteririz" sözümüzün ekran karşılığı. Her sabah 15 saniyede durumu okursunuz.</p>
+
+  <div class="dashwrap">
+    <div class="dh">
+      <div class="dots"><span style="background:#ef4444"></span><span style="background:#f59e0b"></span><span style="background:#10b981"></span></div>
+      <div>invekto.dentadavista.com · roadshow paneli</div>
+      <div>📅 14 Nisan 2026 · canlı</div>
+    </div>
+    <div class="dashboard">
+      <div class="dash-title">Dublin &amp; Cork Roadshow · Canlı Özet</div>
+      <div class="dash-sub">Son 24 saatin özeti · sayfa otomatik yenilenir</div>
+
+      <div class="kpi-row">
+        <div class="kpi"><div class="kl">Bugün gelen lead</div><div class="kv2">47</div><div class="kd">▲ dün +12</div></div>
+        <div class="kpi"><div class="kl">Cevap oranı</div><div class="kv2">%84</div><div class="kd">▲ +%6</div></div>
+        <div class="kpi"><div class="kl">Teklif gönderilen</div><div class="kv2">18</div><div class="kd">▲ +4</div></div>
+        <div class="kpi"><div class="kl">Kapora alındı</div><div class="kv2">5</div><div class="kd">≈ 2.400 €</div></div>
+      </div>
+
+      <div class="dash-grid">
+        <div class="panel">
+          <div class="pt">Dönüşüm Hunisi · Son 7 Gün</div>
+          <div class="funnel">
+            <div class="f-row"><div class="f-label">Lead geldi</div><div class="f-bar-wrap"><div class="f-bar" style="width:100%">312</div></div><div class="f-pct">100%</div></div>
+            <div class="f-row"><div class="f-label">Cevap verdi</div><div class="f-bar-wrap"><div class="f-bar" style="width:84%">262</div></div><div class="f-pct">84%</div></div>
+            <div class="f-row"><div class="f-label">Şehir belirtti</div><div class="f-bar-wrap"><div class="f-bar" style="width:68%">213</div></div><div class="f-pct">68%</div></div>
+            <div class="f-row"><div class="f-label">Teklif aldı</div><div class="f-bar-wrap"><div class="f-bar" style="width:38%">119</div></div><div class="f-pct">38%</div></div>
+            <div class="f-row"><div class="f-label">Kabul etti</div><div class="f-bar-wrap"><div class="f-bar" style="width:14%">44</div></div><div class="f-pct">14%</div></div>
+            <div class="f-row"><div class="f-label">Kapora yatırdı</div><div class="f-bar-wrap"><div class="f-bar" style="width:9%">28</div></div><div class="f-pct">9%</div></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="pt">Dil Dağılımı</div>
+          <div class="donut-wrap">
+            <svg width="130" height="130" viewBox="0 0 42 42">
+              <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#e2e8f0" stroke-width="6"/>
+              <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#134AA7" stroke-width="6" stroke-dasharray="42 58" stroke-dashoffset="25" transform="rotate(-90 21 21)"/>
+              <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#3b82f6" stroke-width="6" stroke-dasharray="22 78" stroke-dashoffset="-17" transform="rotate(-90 21 21)"/>
+              <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#0ea5e9" stroke-width="6" stroke-dasharray="14 86" stroke-dashoffset="-39" transform="rotate(-90 21 21)"/>
+              <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#10b981" stroke-width="6" stroke-dasharray="10 90" stroke-dashoffset="-53" transform="rotate(-90 21 21)"/>
+              <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#94a3b8" stroke-width="6" stroke-dasharray="12 88" stroke-dashoffset="-63" transform="rotate(-90 21 21)"/>
+            </svg>
+            <div class="donut-legend">
+              <div><span class="dsw" style="background:#134AA7"></span>EN · 42%</div>
+              <div><span class="dsw" style="background:#3b82f6"></span>DE · 22%</div>
+              <div><span class="dsw" style="background:#0ea5e9"></span>TR · 14%</div>
+              <div><span class="dsw" style="background:#10b981"></span>FR · 10%</div>
+              <div><span class="dsw" style="background:#94a3b8"></span>Diğer · 12%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="pt">Son Gelen Hastalar</div>
+        <table class="leads-table">
+          <thead><tr><th>Saat</th><th>İsim</th><th>Şehir</th><th>Dil</th><th>Tedavi</th><th>Kaynak</th><th>Durum</th></tr></thead>
+          <tbody>
+            <tr><td>14:02</td><td>Sinéad O'Brien</td><td>Dublin</td><td>EN</td><td>Implant (2)</td><td>Instagram</td><td><span class="pill g">Teklif gönderildi</span></td></tr>
+            <tr><td>13:48</td><td>Klaus Wagner</td><td>Cork</td><td>DE</td><td>Hollywood Smile</td><td>Landing</td><td><span class="pill b">Cevap bekliyor</span></td></tr>
+            <tr><td>13:31</td><td>Ayşe Demir</td><td>Dublin</td><td>TR</td><td>Hollywood Smile</td><td>WhatsApp</td><td><span class="pill y">Teklif hazırlanıyor</span></td></tr>
+            <tr><td>12:55</td><td>Eoin Murphy</td><td>Dublin</td><td>EN</td><td>Invisalign</td><td>Instagram</td><td><span class="pill g">Kapora alındı</span></td></tr>
+            <tr><td>12:17</td><td>Marie Dupont</td><td>Cork</td><td>FR</td><td>Teeth Whitening</td><td>Telegram</td><td><span class="pill r">Opt-out</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== FAQ ===================== -->
+<section class="ipage">
+  <div class="accent"></div>
+  <h1>Sıkça sorulan sorular</h1>
+  <p class="subtitle">Klinik görüşmelerinde en çok duyduğumuz 10 soruyu baştan cevaplıyoruz.</p>
+
+  <div class="faq-grid">
+    <div class="faq-item">
+      <p class="q">Hasta bunun bot olduğunu anlar mı?</p>
+      <p class="a">Güneş kendini dijital asistan olarak tanıtır, gizlemez. Ama robotik konuşmaz — klinik tonuyla, sıcak ve sabırlı. Tedavi kararı ya da cerrahi soru gibi hassas anlarda "sizi klinik ekibine aktarıyorum" diyerek insana devreder.</p>
+    </div>
+    <div class="faq-item">
+      <p class="q">Kişisel veriler nerede saklanıyor?</p>
+      <p class="a">Avrupa sunucularında, GDPR uyumlu. Klinik yetkilileri dışında kimse erişemez. Hasta "STOP" yazdığında veriyi 30 gün içinde sileriz.</p>
+    </div>
+    <div class="faq-item">
+      <p class="q">Klinik personelim işsiz mi kalır?</p>
+      <p class="a">Aksine — Güneş tekrarlayan karşılama, fiyat sorgusu, randevu takibi gibi mekanik işi üstlenir. Personel daha değerli işe (gerçek tedavi danışmanlığı, yüz yüze konsültasyon, operasyon) odaklanır.</p>
+    </div>
+    <div class="faq-item">
+      <p class="q">Ya Güneş yanlış bilgi verirse?</p>
+      <p class="a">Fiyat, tedavi detayı ve tıbbi sorulara sadece sizin önceden onayladığınız şablonlarla cevap verir. Şüpheye düşerse "klinik ekibine aktarıyorum" diyerek devreder. Her sohbeti loglar; haftalık raporla her cevabı denetleyebilirsiniz.</p>
+    </div>
+    <div class="faq-item">
+      <p class="q">Sözleşme süresi nedir?</p>
+      <p class="a">Pilot 3 aylıktır. İlk ay tam parayla çalışır; 2. ve 3. ayda "tatmin olmazsanız çıkış" maddesi aktif. Roadshow sonrası uzun vadeli sözleşme tamamen isteğe bağlıdır.</p>
+    </div>
+    <div class="faq-item">
+      <p class="q">Mevcut CRM'imle uyumlu mu?</p>
+      <p class="a">Evet. INMA altyapısı klinik yönetim ekranlarınızla entegre çalışır. Güneş'in tüm sohbetleri mevcut hasta kartınızda görünür — yeni bir sistem öğrenmek zorunda kalmazsınız.</p>
+    </div>
+    <div class="faq-item">
+      <p class="q">Sistem çökerse ne olur?</p>
+      <p class="a">Yedekli altyapı: ana sunucu düşerse yedek devreye girer. Her mesajı 3 ayrı yerde tutarız. Son 5 yılda toplam kesinti süremiz 4 saatin altında kaldı.</p>
+    </div>
+    <div class="faq-item">
+      <p class="q">Yabancı dil kalitesi güvenilir mi?</p>
+      <p class="a">9 dilin her biri için ana dil seviyesinde şablonlar hazırladık. Almanca, Arapça, Rusça gibi zor dillerde bile doğal okunur. Pilot öncesi kliniğinizle her dili birlikte test ederiz.</p>
+    </div>
+    <div class="faq-item">
+      <p class="q">Reklam bütçemi siz mi yönetirsiniz?</p>
+      <p class="a">Hayır — reklam harcaması size ait. Biz yalnızca reklamdan gelen mesajları karşılayan sistemi sağlarız. İsterseniz ajansınızla doğrudan konuşup hangi reklamın hangi hastayı getirdiğini raporlarız.</p>
+    </div>
+    <div class="faq-item">
+      <p class="q">Pilot biterse Güneş'i kendimize indirebilir miyiz?</p>
+      <p class="a">Ayrılırsanız tüm sohbet loglarını, hasta verilerini ve Güneş'in şablonlarını size dışa aktarırız (CSV + JSON). Hiçbir şeyi rehin tutmayız — veriniz her zaman sizindir.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== DIVIDER ===================== -->
+<section class="divider-page">
+  <div class="label">Sonraki Bölüm</div>
+  <h2>Sahne arkası: Akış şemaları</h2>
+  <p>İlerleyen sayfalarda sistemin teknik mimarisini, hasta yolculuğunun her adımını ve gerçek senaryoları görebilirsiniz. <b>İsterseniz buradan sonrasını atlayabilirsiniz</b> — ekibimiz tüm detaylarla ilgilenir.</p>
+</section>
+
+<!-- ===================== PAGE 1: LEAD INTAKE ===================== -->
+<section class="page">
+  <div class="flowpane">
+    <div class="title">Akış 1 · Lead Intake</div>
+    <div class="legend">
+      <div class="row"><span class="sw" style="border-color:#10b981"></span>Trigger</div>
+      <div class="row"><span class="sw" style="border-color:#3b82f6"></span>Action</div>
+      <div class="row"><span class="sw" style="border-color:#a855f7"></span>Decision</div>
+      <div class="row"><span class="sw" style="border-color:#0ea5e9"></span>Data</div>
+      <div class="row"><span class="sw" style="border-color:#ef4444"></span>Terminal</div>
+    </div>
+
+    <svg class="edges">
+      <!-- 4 trigger fan-in to Normalize -->
+      <path class="edge" d="M 105,170 C 105,205 390,205 390,240"/>
+      <path class="edge" d="M 285,170 C 285,205 390,205 390,240"/>
+      <path class="edge" d="M 465,170 C 465,205 390,205 390,240"/>
+      <path class="edge" d="M 645,170 C 645,205 390,205 390,240"/>
+      <!-- spine -->
+      <path class="edge" d="M 390,320 L 390,380"/>
+      <path class="edge" d="M 390,470 L 390,540"/>
+      <text class="elabel" x="400" y="510">Evet (yeni)</text>
+      <path class="edge" d="M 390,630 L 390,710"/>
+      <text class="elabel" x="400" y="680">trigger welcome</text>
+      <!-- decision right branch to Merge STOP -->
+      <path class="edge" d="M 480,415 C 530,415 530,400 565,400"/>
+      <text class="elabel" x="490" y="395">Hayır (30g içinde)</text>
+    </svg>
+
+    <!-- 4 triggers in row -->
+    <div class="node n-trigger" style="left:20px; top:70px; width:170px;">
+      <div class="hdr"><span class="ico">▶</span> Landing Form</div>
+      <div class="body">website formu<div class="sub">name, phone, city</div></div>
+      <span class="h out"></span>
+    </div>
+    <div class="node n-trigger" style="left:200px; top:70px; width:170px;">
+      <div class="hdr"><span class="ico">▶</span> WhatsApp Direct</div>
+      <div class="body">wa.me CTA<div class="sub">profile name fallback</div></div>
+      <span class="h out"></span>
+    </div>
+    <div class="node n-trigger" style="left:380px; top:70px; width:170px;">
+      <div class="hdr"><span class="ico">▶</span> Instagram</div>
+      <div class="body">INMA inbound<div class="sub">DM / story reply</div></div>
+      <span class="h out"></span>
+    </div>
+    <div class="node n-trigger" style="left:560px; top:70px; width:170px;">
+      <div class="hdr"><span class="ico">▶</span> Telegram</div>
+      <div class="body">INMA inbound<div class="sub">bot mesajı</div></div>
+      <span class="h out"></span>
+    </div>
+
+    <!-- spine -->
+    <div class="node n-action" style="left:300px; top:240px; width:180px;">
+      <div class="hdr"><span class="ico">⚙</span> Normalize</div>
+      <div class="body">E.164 phone format<div class="sub">+353 / +44 / +90</div></div>
+      <span class="h in"></span><span class="h out"></span>
+    </div>
+
+    <div class="node n-decision" style="left:300px; top:380px; width:180px;">
+      <div class="hdr"><span class="ico">◆</span> Yeni Lead?</div>
+      <div class="body">Duplicate check (son 30g)</div>
+      <span class="h in"></span><span class="h out"></span><span class="h outR"></span>
+    </div>
+
+    <div class="node n-terminal" style="left:565px; top:370px; width:175px;">
+      <div class="hdr"><span class="ico">■</span> Merge → STOP</div>
+      <div class="body">Mevcut lead'e merge<div class="sub">flow start ETME</div></div>
+      <span class="h inL"></span>
+    </div>
+
+    <div class="node n-data" style="left:300px; top:540px; width:180px;">
+      <div class="hdr"><span class="ico">▦</span> Lead Kaydet</div>
+      <div class="body">consent_marketing<div class="sub">source tag, country</div></div>
+      <span class="h in"></span><span class="h out"></span>
+    </div>
+
+    <div class="node n-action" style="left:270px; top:710px; width:240px;">
+      <div class="hdr"><span class="ico">✉</span> Güneş Welcome (rotation)</div>
+      <div class="body">10 karşılama varyantı, dil otomatik tespit<div class="sub">→ Akış 2 (Nurture)</div></div>
+      <span class="h in"></span>
+    </div>
+  </div>
+
+  <div class="infopane ipane">
+    <h2>Lead Intake — Kaynaktan Welcome'a 60 saniye</h2>
+    <p class="lead">Dört kaynaktan gelen lead'ler tek normalize edici üzerinden geçer. Duplicate kontrolü mevcut hastayı koruyarak yeni nurture flow başlatmasını engeller. Yeni lead saklanır ve Güneş'in rotation karşılama mesajını alır.</p>
+
+    <div class="section">
+      <h3>Senaryo 1 — Mutlu Yol (Landing Form)</h3>
+      <div class="scenario">
+        <div class="stitle">🇮🇪 Sinéad, Dublin <span class="badge b-happy">happy path</span></div>
+        <ol class="steps">
+          <li>Reklamdan landing'e gelir, formu doldurur (`+353 87 123 4567`, "Implants").</li>
+          <li>Webhook → Normalize: `+353871234567` E.164.</li>
+          <li>30g içinde aynı numara YOK → Yeni Lead → kaydedilir, source=`landing_page_main`.</li>
+          <li>Welcome variant #4 (EN) WhatsApp'ta 45sn içinde gelir.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Senaryo 2 — Duplicate (Tekrar Geliş)</h3>
+      <div class="scenario">
+        <div class="stitle">🇬🇧 Ahmed, London <span class="badge b-edge">duplicate</span></div>
+        <ol class="steps">
+          <li>2 hafta önce WA'dan yazmış (lead var). Bugün IG'den DM atıyor.</li>
+          <li>Normalize → aynı `+447547...` → 30g içinde mevcut → <b>Merge</b> stop.</li>
+          <li>Yeni welcome gönderilmez; mevcut lead'in açık flow'u devam eder. <b>Spam koruması.</b></li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Senaryo 3 — WA Direct (Form Yok)</h3>
+      <div class="scenario">
+        <div class="stitle">🇩🇪 Klaus, Berlin <span class="badge b-info">wa.me</span></div>
+        <ol class="steps">
+          <li>Reklam CTA: `wa.me/447547762090?text=Hi+I'm+interested`.</li>
+          <li>Inbound mesaj → lead bulunamadı → otomatik create (phone + WA profile name).</li>
+          <li>Welcome flow tetiklenir; dil otomatik DE algılanır.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Açıklama Notları</h3>
+      <ul class="notes">
+        <li><b>E.164 zorunlu:</b> tüm downstream sistem (INMA, scheduler) bu formatı bekler.</li>
+        <li><b>Source tag</b> attribution için kritik — `landing_page_main`, `whatsapp_direct`, `instagram_ads_cta`, `telegram_bot`.</li>
+        <li><b>GDPR:</b> landing form'da `consent_marketing` checkbox zorunlu; her WA mesaj footer'ında "Reply STOP".</li>
+        <li><b>SLA:</b> webhook → welcome ≤ 60sn (çıkış kriteri).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== PAGE 2: NURTURE ===================== -->
+<section class="page">
+  <div class="flowpane">
+    <div class="title">Akış 2 · Nurture Sekansı</div>
+    <div class="legend">
+      <div class="row"><span class="sw" style="border-color:#3b82f6"></span>Action</div>
+      <div class="row"><span class="sw" style="border-color:#a855f7"></span>Decision</div>
+      <div class="row"><span class="sw" style="border-color:#f59e0b"></span>Wait</div>
+      <div class="row"><span class="sw" style="border-color:#ef4444"></span>Terminal</div>
+    </div>
+
+    <svg class="edges">
+      <!-- spine vertical -->
+      <path class="edge" d="M 380,120 L 380,160"/>
+      <path class="edge" d="M 380,250 L 380,290"/>
+      <text class="elabel" x="390" y="278">timeout</text>
+      <path class="edge" d="M 380,370 L 380,410"/>
+      <path class="edge" d="M 380,500 L 380,540"/>
+      <text class="elabel" x="390" y="528">timeout</text>
+      <path class="edge" d="M 380,620 L 380,660"/>
+      <path class="edge" d="M 380,750 L 380,790"/>
+      <text class="elabel" x="390" y="778">timeout</text>
+      <path class="edge" d="M 380,870 L 380,910"/>
+      <text class="elabel" x="390" y="898">no reply</text>
+
+      <!-- right intercepts: each Wait outR → CD inL -->
+      <path class="edge active" d="M 500,210 C 540,210 540,415 570,415"/>
+      <text class="elabel" x="510" y="205">↩ reply</text>
+      <path class="edge active" d="M 500,460 L 570,420"/>
+      <text class="elabel" x="510" y="450">↩ reply</text>
+      <path class="edge active" d="M 500,710 C 540,710 540,425 570,425"/>
+      <text class="elabel" x="510" y="705">↩ reply</text>
+
+      <!-- CD outputs -->
+      <path class="edge" d="M 660,380 L 660,310"/>
+      <text class="elabel" x="668" y="350">Dublin / Cork</text>
+      <path class="edge" d="M 660,460 L 670,540"/>
+      <text class="elabel" x="678" y="510">Belirsiz</text>
+
+      <!-- Ask Again loop back to CD -->
+      <path class="edge" d="M 750,575 C 760,500 760,420 750,420"/>
+      <text class="elabel" x="710" y="500">retry x2</text>
+    </svg>
+
+    <!-- Spine: top to bottom -->
+    <div class="node n-action" style="left:260px; top:50px; width:240px;">
+      <div class="hdr"><span class="ico">✉</span> Welcome (Güneş)</div>
+      <div class="body">10 karşılama varyantı rotation</div>
+      <span class="h in"></span><span class="h out"></span>
+    </div>
+
+    <div class="node n-wait" style="left:260px; top:160px; width:240px;">
+      <div class="hdr"><span class="ico">⏱</span> Wait 1.5 gün <span style="margin-left:auto; font-weight:500; opacity:.7;">·08:00–21:00 local</span></div>
+      <div class="body">inbound listener aktif — yanıt gelirse sağa atla</div>
+      <span class="h in"></span><span class="h out"></span><span class="h outR"></span>
+    </div>
+
+    <div class="node n-action" style="left:260px; top:290px; width:240px;">
+      <div class="hdr"><span class="ico">✉</span> MSJ2 Reminder</div>
+      <div class="body">reminder_day1 (yumuşak hatırlatma)</div>
+      <span class="h in"></span><span class="h out"></span>
+    </div>
+
+    <div class="node n-wait" style="left:260px; top:410px; width:240px;">
+      <div class="hdr"><span class="ico">⏱</span> Wait 1 gün</div>
+      <div class="body">inbound listener aktif</div>
+      <span class="h in"></span><span class="h out"></span><span class="h outR"></span>
+    </div>
+
+    <div class="node n-action" style="left:260px; top:540px; width:240px;">
+      <div class="hdr"><span class="ico">✉</span> MSJ3 Final</div>
+      <div class="body">reminder_day3 (son şans, kısa)</div>
+      <span class="h in"></span><span class="h out"></span>
+    </div>
+
+    <div class="node n-wait" style="left:260px; top:660px; width:240px;">
+      <div class="hdr"><span class="ico">⏱</span> Wait Final 1 gün</div>
+      <div class="body">inbound listener aktif</div>
+      <span class="h in"></span><span class="h out"></span><span class="h outR"></span>
+    </div>
+
+    <div class="node n-terminal" style="left:260px; top:790px; width:240px;">
+      <div class="hdr"><span class="ico">■</span> Warm Pool</div>
+      <div class="body">tag: nurture_cold<div class="sub">→ Faz 8 post-roadshow nurture</div></div>
+      <span class="h in"></span>
+    </div>
+
+    <!-- Right hub: City Detection + outputs -->
+    <div class="node n-action" style="left:570px; top:380px; width:180px;">
+      <div class="hdr"><span class="ico">⚙</span> City Detection</div>
+      <div class="body">Dublin / Cork / Belirsiz<div class="sub">intent classifier</div></div>
+      <span class="h inL"></span>
+      <span class="h" style="background:#ef4444; bottom:-4px; left:50%; transform:translateX(-50%);"></span>
+      <span class="h" style="background:#ef4444; top:-4px; left:50%; transform:translateX(-50%);"></span>
+    </div>
+
+    <div class="node n-terminal" style="left:590px; top:240px; width:140px;">
+      <div class="hdr"><span class="ico">▶</span> Offer Flow</div>
+      <div class="body">→ Akış 3 (Teklif)</div>
+      <span class="h" style="background:#10b981; bottom:-4px; left:50%; transform:translateX(-50%);"></span>
+    </div>
+
+    <div class="node n-action" style="left:590px; top:540px; width:160px;">
+      <div class="hdr"><span class="ico">↻</span> Ask Again</div>
+      <div class="body">"Dublin or Cork?"<div class="sub">max 2 retry</div></div>
+      <span class="h in"></span><span class="h out"></span>
+    </div>
+  </div>
+
+  <div class="infopane ipane">
+    <h2>Nurture Sekansı — 3 Mesaj, 2.5 Gün, Sonra Cold Pool</h2>
+    <p class="lead">Welcome → 1.5g sessizlik → MSJ2 → 1g sessizlik → MSJ3 → cevap yoksa Warm Pool. Her wait sırasında inbound yanıt gelirse flow erken çıkar ve City Detection'a atlar. Timezone-aware: gece saat 21:00–08:00 arası mesaj atılmaz.</p>
+
+    <div class="section">
+      <h3>Senaryo 1 — Hemen Cevap</h3>
+      <div class="scenario">
+        <div class="stitle">⚡ Eoin, Dublin <span class="badge b-happy">happy path</span></div>
+        <ol class="steps">
+          <li>Welcome geldikten 12 dakika sonra: <i>"Yes, Dublin works for me"</i>.</li>
+          <li>Wait 1.5g iptal → City Detection → "Dublin" → <b>Akış 3 (Teklif)</b>.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Senaryo 2 — Geç Cevap (MSJ2'den Sonra)</h3>
+      <div class="scenario">
+        <div class="stitle">🐢 Maeve, Cork <span class="badge b-info">slow burner</span></div>
+        <ol class="steps">
+          <li>Welcome → 1.5g sessizlik → MSJ2 atılır (sabah 09:00 local).</li>
+          <li>4 saat sonra: <i>"Where exactly is the event?"</i> → FAQ intent → cevap döner.</li>
+          <li>Sonraki mesajda "Cork" der → City Detection → Akış 3.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Senaryo 3 — Cold Lead</h3>
+      <div class="scenario">
+        <div class="stitle">❄ John, Galway <span class="badge b-cold">warm pool</span></div>
+        <ol class="steps">
+          <li>Welcome, MSJ2, MSJ3 atılır → 0 yanıt.</li>
+          <li>Tag `nurture_cold` → Akış 2'den çıkar → <b>Faz 8 post-roadshow nurture</b>'a alınır.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Senaryo 4 — "Şimdi Müsait Değilim"</h3>
+      <div class="scenario">
+        <div class="stitle">🛌 Aoife <span class="badge b-edge">edge case</span></div>
+        <ol class="steps">
+          <li>Welcome'a yanıt: <i>"not available now"</i>.</li>
+          <li>Tomorrow Reminder dalına geçer (24h sonra retry).</li>
+          <li>Ertesi gün tekrar Reply 1.5g decision'ına döner — flow sıfırlanmaz.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Açıklama Notları</h3>
+      <ul class="notes">
+        <li><b>Wait drift:</b> Hangfire job (G7) — scheduled msj atması 1.5g sonra GARANTİ.</li>
+        <li><b>Lock:</b> aynı anda inbound + scheduled atış → duplicate önlemek için flow lock.</li>
+        <li><b>Belirsiz şehir:</b> "yes please" gibi → Ask Again, max 2 retry → sonra `human_handoff`.</li>
+        <li><b>Reply intent:</b> FAQ → cevap → flow context preserve (Akış 4).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== PAGE 3: OFFER ===================== -->
+<section class="page">
+  <div class="flowpane">
+    <div class="title">Akış 3 · Teklif Süreci</div>
+    <div class="legend">
+      <div class="row"><span class="sw" style="border-color:#10b981"></span>Trigger</div>
+      <div class="row"><span class="sw" style="border-color:#3b82f6"></span>Action</div>
+      <div class="row"><span class="sw" style="border-color:#a855f7"></span>Decision</div>
+      <div class="row"><span class="sw" style="border-color:#f59e0b"></span>Wait</div>
+      <div class="row"><span class="sw" style="border-color:#0ea5e9"></span>Data</div>
+      <div class="row"><span class="sw" style="border-color:#ef4444"></span>Terminal</div>
+    </div>
+
+    <svg class="edges">
+      <!-- spine vertical (center x=380) -->
+      <path class="edge" d="M 380,90 L 380,130"/>
+      <path class="edge" d="M 380,210 L 380,240"/>
+      <path class="edge" d="M 380,320 L 380,350"/>
+      <text class="elabel" x="390" y="338">24h SLA başlar</text>
+      <path class="edge" d="M 380,430 L 380,460"/>
+      <path class="edge" d="M 380,540 L 380,580"/>
+      <text class="elabel" x="390" y="568">KABUL</text>
+      <path class="edge" d="M 380,660 L 380,690"/>
+      <path class="edge" d="M 380,790 L 380,820"/>
+      <path class="edge" d="M 380,900 L 380,930"/>
+
+      <!-- decision branches: left → İptal -->
+      <path class="edge" d="M 290,495 C 240,495 240,560 220,560"/>
+      <text class="elabel" x="220" y="488">İPTAL</text>
+      <!-- decision right → Reminder -->
+      <path class="edge" d="M 470,495 C 520,495 520,560 545,560"/>
+      <text class="elabel" x="490" y="488">SESSİZ 24h</text>
+      <!-- Reminder loop back to decision -->
+      <path class="edge" d="M 720,575 C 745,575 745,460 470,460"/>
+      <text class="elabel" x="680" y="525">retry</text>
+
+      <!-- İptal → 3 reasons -->
+      <path class="edge" d="M 135,610 L 65,690"/>
+      <path class="edge" d="M 135,610 L 135,690"/>
+      <path class="edge" d="M 135,610 L 205,690"/>
+    </svg>
+
+    <!-- Spine top to bottom -->
+    <div class="node n-trigger" style="left:300px; top:30px; width:160px;">
+      <div class="hdr"><span class="ico">▶</span> Şehir Seçildi</div>
+      <div class="body">Dublin / Cork (Akış 2'den)</div>
+      <span class="h out"></span>
+    </div>
+    <div class="node n-action" style="left:300px; top:130px; width:160px;">
+      <div class="hdr"><span class="ico">⚙</span> Teklif Hazırlanıyor</div>
+      <div class="body">ETA iletilir, fiyatlandırma</div>
+      <span class="h in"></span><span class="h out"></span>
+    </div>
+    <div class="node n-action" style="left:300px; top:240px; width:160px;">
+      <div class="hdr"><span class="ico">✉</span> Teklif Önerildi</div>
+      <div class="body">paket sunumu, opsiyonlar</div>
+      <span class="h in"></span><span class="h out"></span>
+    </div>
+    <div class="node n-action" style="left:300px; top:350px; width:160px;">
+      <div class="hdr"><span class="ico">✉</span> Teklif Gönderildi</div>
+      <div class="body">PDF + WhatsApp mesaj</div>
+      <span class="h in"></span><span class="h out"></span>
+    </div>
+    <div class="node n-decision" style="left:300px; top:460px; width:160px;">
+      <div class="hdr"><span class="ico">◆</span> Karar?</div>
+      <div class="body">3 dal: kabul / sessiz / iptal</div>
+      <span class="h in"></span><span class="h out"></span>
+      <span class="h" style="background:#ef4444; left:-4px; top:50%; transform:translateY(-50%);"></span>
+      <span class="h outR"></span>
+    </div>
+
+    <div class="node n-data" style="left:300px; top:580px; width:160px;">
+      <div class="hdr"><span class="ico">▦</span> Hasta Bilgisi Güncelle</div>
+      <div class="body">accepted_at, offer_id</div>
+      <span class="h in"></span><span class="h out"></span>
+    </div>
+    <div class="node n-data" style="left:300px; top:690px; width:160px;">
+      <div class="hdr"><span class="ico">▦</span> Şart Koy</div>
+      <div class="body">Kapora · Anlaşma<div class="sub">Uçak Bileti · Rezerv</div></div>
+      <span class="h in"></span><span class="h out"></span>
+    </div>
+    <div class="node n-action" style="left:300px; top:820px; width:160px;">
+      <div class="hdr"><span class="ico">⚙</span> Hasta Bilgisi Doldur</div>
+      <div class="body">tıbbi geçmiş, foto</div>
+      <span class="h in"></span><span class="h out"></span>
+    </div>
+    <div class="node n-terminal" style="left:280px; top:930px; width:200px; border-color:#10b981;">
+      <div class="hdr" style="background:#10b98120; color:#047857;"><span class="ico">★</span> Online Consultation</div>
+      <div class="body">Google Meet (v1 MOCK)<div class="sub">→ Potansiyel Müşteri ✅</div></div>
+      <span class="h in"></span>
+    </div>
+
+    <!-- Right side: Reminder loop -->
+    <div class="node n-wait" style="left:545px; top:530px; width:175px;">
+      <div class="hdr"><span class="ico">⏱</span> Reminder 24h</div>
+      <div class="body">"hâlâ orada mısın?"</div>
+      <span class="h inL"></span><span class="h outR"></span>
+    </div>
+
+    <!-- Left side: İptal + 3 reasons -->
+    <div class="node n-terminal" style="left:50px; top:530px; width:170px;">
+      <div class="hdr"><span class="ico">■</span> İptal</div>
+      <div class="body">sebep al, taglet</div>
+      <span class="h" style="background:#10b981; right:-4px; top:50%; transform:translateY(-50%);"></span>
+      <span class="h out"></span>
+    </div>
+    <div class="node n-terminal" style="left:20px; top:690px; width:90px; min-width:0;">
+      <div class="hdr">Özel İsyan</div><span class="h in"></span></div>
+    <div class="node n-terminal" style="left:115px; top:690px; width:80px; min-width:0;">
+      <div class="hdr">Rakip</div><span class="h in"></span></div>
+    <div class="node n-terminal" style="left:200px; top:690px; width:80px; min-width:0;">
+      <div class="hdr">Pahalı</div><span class="h in"></span></div>
+  </div>
+
+  <div class="infopane ipane">
+    <h2>Teklif Süreci — 24h Karar Penceresi + Şart Koyma</h2>
+    <p class="lead">Şehir seçildikten sonra teklif PDF'i + WhatsApp mesajıyla gönderilir. 24 saatlik karar penceresi sayaç başlatır. Kabul durumunda kapora/uçak bileti gibi <b>şart</b> kondiktan sonra Online Consultation'a (Meet) geçilir.</p>
+
+    <div class="section">
+      <h3>Senaryo 1 — Mutlu Yol</h3>
+      <div class="scenario">
+        <div class="stitle">💎 Sinéad — All-on-Four <span class="badge b-happy">paid deposit</span></div>
+        <ol class="steps">
+          <li>Dublin seçildi → 2 saatte teklif PDF'i hazırlandı + gönderildi.</li>
+          <li>Lead 6 saat sonra: <i>"Accept"</i> → Hasta Bilgisi Güncelle.</li>
+          <li>Şart Koy: %30 kapora bağlandı → Hasta Bilgisi Doldur (medikal anket).</li>
+          <li>Mock Meet linki gönderildi → Potansiyel Müşteri ✅.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Senaryo 2 — Sessiz Lead (Reminder Loop)</h3>
+      <div class="scenario">
+        <div class="stitle">🤐 Maeve <span class="badge b-info">silent</span></div>
+        <ol class="steps">
+          <li>Teklif gönderildi → 24h yanıt yok → Reminder 24h.</li>
+          <li>"Reminder" mesajı → karar decision'ına geri döner.</li>
+          <li>Hâlâ sessizse 2. reminder; 3. denemede `nurture_cold` tag → Faz 8.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Senaryo 3 — İptal (Pahalı Buldu)</h3>
+      <div class="scenario">
+        <div class="stitle">💸 Klaus <span class="badge b-cold">price objection</span></div>
+        <ol class="steps">
+          <li>Teklif sonrası: <i>"Too expensive"</i> → İptal dalı.</li>
+          <li>Sebep formu: <b>Pahalı</b>.</li>
+          <li>İndirim kuponu opsiyonu (Faz 8 segmentation) için lead taglenir.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Şart Koy — Ne Anlama Geliyor?</h3>
+      <div class="kv">
+        <b>Kapora Alındı</b><span>%30 ön ödeme onaylandı (Stripe / banka transferi).</span>
+        <b>Özel Anlaşma</b><span>Indirim/paket sözleşmesi imzalandı.</span>
+        <b>Uçak Biletlendi</b><span>Lead bilet aldı (booking ref kaydedilir).</span>
+        <b>Rezerv Oluştu</b><span>Klinikte oda + slot rezerve edildi.</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Açıklama Notları</h3>
+      <ul class="notes">
+        <li><b>Mock Meet (v1):</b> sabit placeholder link; Faz 7 canlıya alma öncesi gerçek Google Workspace OAuth.</li>
+        <li><b>24h SLA:</b> teklif penceresi sıkı tutulur; aksi halde aciliyet hissi kaybolur.</li>
+        <li><b>İptal sebepleri:</b> CRM segmentation ve gelecek kampanya hedefleme için saklanır.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== PAGE 4: REPLY INTERRUPT ===================== -->
+<section class="page">
+  <div class="flowpane">
+    <div class="title">Akış 4 · Inbound Reply Interrupt</div>
+    <div class="legend">
+      <div class="row"><span class="sw" style="border-color:#f59e0b"></span>Wait</div>
+      <div class="row"><span class="sw" style="border-color:#a855f7"></span>Decision</div>
+      <div class="row"><span class="sw" style="border-color:#3b82f6"></span>Action</div>
+      <div class="row"><span class="sw" style="border-color:#ef4444"></span>Terminal</div>
+    </div>
+
+    <svg class="edges">
+      <!-- spine: Wait → Decision -->
+      <path class="edge" d="M 380,150 L 380,200"/>
+      <text class="elabel" x="390" y="185">inbound msj</text>
+
+      <!-- Decision bottom (4 outputs distributed) → 4 branches at y=420 -->
+      <path class="edge active" d="M 314,300 C 314,360 100,360 100,420"/>
+      <text class="elabel" x="120" y="355">FAQ intent</text>
+      <path class="edge" d="M 358,300 C 358,360 290,360 290,420"/>
+      <text class="elabel" x="270" y="395">city intent</text>
+      <path class="edge" d="M 402,300 C 402,360 470,360 470,420"/>
+      <text class="elabel" x="420" y="395">opt-out</text>
+      <path class="edge" d="M 446,300 C 446,360 660,360 660,420"/>
+      <text class="elabel" x="610" y="355">timeout</text>
+
+      <!-- FAQ context-preserve loop back to top (purple ghost) -->
+      <path class="edge active" d="M 100,420 C 30,360 30,200 270,225"/>
+      <text class="elabel" x="20" y="320">↺ context preserve</text>
+    </svg>
+
+    <!-- Spine top -->
+    <div class="node n-wait" style="left:280px; top:80px; width:200px;">
+      <div class="hdr"><span class="ico">⏱</span> Wait Node (her wait'te aktif)</div>
+      <div class="body">scheduled pause + inbound listener</div>
+      <span class="h out"></span>
+    </div>
+
+    <div class="node n-decision" style="left:270px; top:200px; width:220px;">
+      <div class="hdr"><span class="ico">◆</span> Inbound Yanıt? · Intent Classifier</div>
+      <div class="body">FAQ / city / opt-out / timeout</div>
+      <span class="h in"></span>
+      <span class="h" style="background:#ef4444; bottom:-4px; left:20%; transform:translateX(-50%);"></span>
+      <span class="h" style="background:#ef4444; bottom:-4px; left:40%; transform:translateX(-50%);"></span>
+      <span class="h" style="background:#ef4444; bottom:-4px; left:60%; transform:translateX(-50%);"></span>
+      <span class="h" style="background:#ef4444; bottom:-4px; left:80%; transform:translateX(-50%);"></span>
+    </div>
+
+    <!-- 4 branches in row at y=420 -->
+    <div class="node n-action" style="left:25px; top:420px; width:160px;">
+      <div class="hdr"><span class="ico">✉</span> Güneş FAQ Cevabı</div>
+      <div class="body">12 FAQ template<div class="sub">→ flow'a geri dön</div></div>
+      <span class="h in"></span>
+    </div>
+
+    <div class="node n-action" style="left:215px; top:420px; width:160px;">
+      <div class="hdr"><span class="ico">⚙</span> City Detection</div>
+      <div class="body">Dublin / Cork<div class="sub">→ Akış 3 (Teklif)</div></div>
+      <span class="h in"></span>
+    </div>
+
+    <div class="node n-terminal" style="left:395px; top:420px; width:160px;">
+      <div class="hdr"><span class="ico">■</span> Opt-out (STOP)</div>
+      <div class="body">nurture durdur<div class="sub">sadece transactional kalır</div></div>
+      <span class="h in"></span>
+    </div>
+
+    <div class="node n-action" style="left:585px; top:420px; width:160px;">
+      <div class="hdr"><span class="ico">▶</span> Sonraki Scheduled</div>
+      <div class="body">timeout → flow devam<div class="sub">(MSJ2 / MSJ3 vb.)</div></div>
+      <span class="h in"></span>
+    </div>
+  </div>
+
+  <div class="infopane ipane">
+    <h2>Reply Interrupt — Her Wait Node'da Aktif</h2>
+    <p class="lead">Lead bir wait sırasında mesaj atarsa scheduled job iptal edilir, intent sınıflandırılır ve flow ilgili dala atlar. Mor edge xyflow'un <b>ghost path</b> stilini taklit eder — FAQ cevabı sonrası flow context'i korunarak orijinal pozisyona geri döner.</p>
+
+    <div class="section">
+      <h3>Senaryo 1 — FAQ Sorusu (Context Preserve)</h3>
+      <div class="scenario">
+        <div class="stitle">❓ Eoin <span class="badge b-info">FAQ</span></div>
+        <ol class="steps">
+          <li>Wait 1.5g sırasında: <i>"Are you on Instagram?"</i></li>
+          <li>FAQ intent → `safety_concern` → IG/FB/YT linkleri ile cevap.</li>
+          <li>Flow orijinal wait pozisyonuna geri döner — kalan 1.2 gün korunur.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Senaryo 2 — City Niyeti</h3>
+      <div class="scenario">
+        <div class="stitle">📍 Maeve <span class="badge b-happy">hot lead</span></div>
+        <ol class="steps">
+          <li>Wait sırasında: <i>"Cork please"</i></li>
+          <li>City Detection tetiklenir → wait iptal → Akış 3 (Teklif Süreci).</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Senaryo 3 — Opt-out (STOP)</h3>
+      <div class="scenario">
+        <div class="stitle">🛑 John <span class="badge b-cold">unsubscribe</span></div>
+        <ol class="steps">
+          <li>Lead "STOP" yazar (her mesajın footer'ında talimat var).</li>
+          <li>Nurture flow tamamen durdurulur; `consent_marketing=false`.</li>
+          <li>Sadece <b>transactional</b> (offer/appointment) mesajlar gidebilir.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Senaryo 4 — Timeout (Cevap Yok)</h3>
+      <div class="scenario">
+        <div class="stitle">⏳ Klaus <span class="badge b-edge">no input</span></div>
+        <ol class="steps">
+          <li>Wait 1.5g doldu, kimse mesaj atmadı.</li>
+          <li>Sonraki scheduled node atılır (MSJ2 Reminder).</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Race Condition Koruması</h3>
+      <ul class="notes">
+        <li><b>Lock:</b> Lead wait'teyken mesaj atar + scheduler MSJ2'yi tetikler → distributed lock (`lead_id`) ile duplicate engellenir.</li>
+        <li><b>Sıralama:</b> Inbound her zaman önceliklidir; scheduled job lock alamazsa cancel edilir.</li>
+        <li><b>Idempotency:</b> Welcome/MSJ2/MSJ3 send'leri `flow_execution_id + node_id` ile idempotent.</li>
+        <li><b>Timezone gate:</b> 21:00–08:00 arası wait biten lead'lerin scheduled atışı ertesi sabaha ötelenir; inbound kısıtsızdır.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

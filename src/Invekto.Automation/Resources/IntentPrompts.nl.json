@@ -1,0 +1,10 @@
+{
+  "greeting": "Hallo! Om je goed te kunnen helpen, mag ik je naam weten?",
+  "name_retry": "Ik heb je naam niet goed verstaan. Kun je hem nogmaals schrijven?",
+  "intent_ask": "{name}, waarmee kan ik je helpen?",
+  "confirm": "{name}, bedoel je: {summary}?",
+  "clarify_low": "{name}, kun je het wat verder toelichten?",
+  "denied": "Begrepen, {name}. Waarmee kan ik je precies helpen?",
+  "max_attempts_reached": "Ik verbind je door met een collega. We komen snel bij je terug.",
+  "off_hours_redirect": "We zijn buiten kantooruren. We reageren zo snel mogelijk."
+}

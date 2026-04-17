@@ -1,0 +1,10 @@
+{
+  "greeting": "Marhaba! Li-ajl musa'adatik, hal yumkin ma'rifatu ismika?",
+  "name_retry": "Lam asma' ismaka bishaklin jayyid. Hal yumkin kitabatahu min jadid?",
+  "intent_ask": "{name}, kayfa yumkinuni musa'adatuk?",
+  "confirm": "{name}, hal ta'ni: {summary}?",
+  "clarify_low": "{name}, hal yumkinuka sharh al-mawdu' aktar?",
+  "denied": "Fahimt, {name}. Bi-ma bit-tahdid yumkinuni musa'adatuk?",
+  "max_attempts_reached": "Sa-aqumu bi-tahwilik li-zamil yastati'u musa'adatik. Sanatawasalu ma'aka qariban.",
+  "off_hours_redirect": "Nahnu kharij sa'at al-'amal. Sanarud 'alayka fi aqrab waqtin mumkin."
+}

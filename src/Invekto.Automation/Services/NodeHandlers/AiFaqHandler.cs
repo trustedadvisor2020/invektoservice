@@ -10,6 +10,12 @@ namespace Invekto.Automation.Services.NodeHandlers;
 /// On Knowledge down or no match: routes to no_match (graceful degradation).
 /// 2 output handles: matched, no_match.
 /// Variables set: faq_answer, faq_confidence, faq_question, faq_source.
+///
+/// HFM-2: when the matched answer's language differs from the lead's
+/// <see cref="ExecutionContext.LeadPreferredLocale"/>, the handler posts a translation
+/// hop to the Backend translation service and returns the localized text. Any hop
+/// failure degrades gracefully to the original answer (logged INV-AT-064).
+/// Fallback chain: lead.preferred_locale → 'en' default → raw (untranslated).
 /// </summary>
 public sealed class AiFaqHandler : INodeHandler
 {
@@ -17,9 +23,11 @@ public sealed class AiFaqHandler : INodeHandler
     private readonly ChunkSummarizer _chunkSummarizer;
     private readonly MockFaqMatcher _mockFaqMatcher;
     private readonly JwtGenerator _jwtGenerator;
+    private readonly TranslationHopClient? _translationHop;
 
     private const int DefaultTopK = 3;
     private const double DefaultMinConfidence = 0.65;
+    private const string DefaultFallbackLocale = "en";
 
     public string NodeType => "ai_faq";
 
@@ -27,12 +35,14 @@ public sealed class AiFaqHandler : INodeHandler
         KnowledgeSearchClient searchClient,
         ChunkSummarizer chunkSummarizer,
         MockFaqMatcher mockFaqMatcher,
-        JwtGenerator jwtGenerator)
+        JwtGenerator jwtGenerator,
+        TranslationHopClient? translationHop = null)
     {
         _searchClient = searchClient;
         _chunkSummarizer = chunkSummarizer;
         _mockFaqMatcher = mockFaqMatcher;
         _jwtGenerator = jwtGenerator;
+        _translationHop = translationHop;
     }
 
     public async Task<NodeResult> ExecuteAsync(FlowNodeV2 node, ExecutionContext ctx, CancellationToken ct)
@@ -139,9 +149,19 @@ public sealed class AiFaqHandler : INodeHandler
         var isMatched = answer != null && confidence >= minConfidence;
         var handle = isMatched ? "matched" : "no_match";
 
+        // HFM-2: post-match translation hook. Applied only on a matched freeform answer
+        // (chunk summaries are translation targets too, intentional — operators author TR
+        // FAQ content but EN/DE leads see their language). Graceful degradation on failure:
+        // keep the original answer so the customer never sees a blank reply.
+        var outboundAnswer = answer;
+        if (isMatched && !string.IsNullOrEmpty(outboundAnswer) && _translationHop != null && !ctx.IsSimulation)
+        {
+            outboundAnswer = await MaybeTranslateAsync(outboundAnswer, ctx, ct) ?? outboundAnswer;
+        }
+
         var variables = new Dictionary<string, string>
         {
-            ["faq_answer"] = answer ?? "",
+            ["faq_answer"] = outboundAnswer ?? "",
             ["faq_confidence"] = confidence.ToString("F2"),
             ["faq_question"] = matchedQuestion ?? "",
             ["faq_source"] = source
@@ -154,11 +174,52 @@ public sealed class AiFaqHandler : INodeHandler
 
         return new NodeResult
         {
-            MessageText = isMatched ? answer : null,
+            MessageText = isMatched ? outboundAnswer : null,
             Action = NodeAction.Continue,
             OutputHandle = handle,
             VariableUpdates = variables
         };
+    }
+
+    /// <summary>
+    /// HFM-2 fallback chain: lead.preferred_locale → 'en' default → raw.
+    /// Returns the translated text when a hop occurred, null when translation was
+    /// skipped (no locale, same locale) or failed (graceful degrade to original).
+    /// </summary>
+    private async Task<string?> MaybeTranslateAsync(string answer, ExecutionContext ctx, CancellationToken ct)
+    {
+        var targetLocale = ResolveTargetLocale(ctx.LeadPreferredLocale);
+        if (targetLocale == null)
+        {
+            // No locale data at all → default to 'en'. If the answer is already English-ish
+            // (Latin script, short), translation adds latency for no gain — skip by convention.
+            targetLocale = DefaultFallbackLocale;
+        }
+
+        // Cheap heuristic short-circuit: if the first non-whitespace chars already look like
+        // the target language (Latin for en/de/fr/es/pt/nl/it), we still call the service —
+        // Gemma is idempotent for same-language input and the cache absorbs repeat hits.
+        // The service itself returns input unchanged when source==target.
+
+        ctx.Logger.StepInfo(
+            $"AiFaq translate attempt: target={targetLocale}, leadLocale={ctx.LeadPreferredLocale ?? "(none)"}",
+            ctx.RequestId);
+
+        var translated = await _translationHop!.TranslateAsync(ctx.TenantId, answer, targetLocale, ctx.RequestId, ct);
+        return translated;
+    }
+
+    private static string? ResolveTargetLocale(string? leadLocale)
+    {
+        if (string.IsNullOrWhiteSpace(leadLocale))
+            return null;
+
+        var trimmed = leadLocale.Trim();
+        var dash = trimmed.IndexOf('-');
+        if (dash > 0)
+            trimmed = trimmed[..dash];
+
+        return trimmed.Length == 2 ? trimmed.ToLowerInvariant() : null;
     }
 
     private static double ParseConfidence(string? raw, double fallback)

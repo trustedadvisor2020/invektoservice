@@ -119,18 +119,27 @@ CREATE TABLE IF NOT EXISTS leads (
     notes           TEXT,
     is_hot          BOOLEAN NOT NULL DEFAULT FALSE,
     hot_alert_sent  BOOLEAN NOT NULL DEFAULT FALSE,
+    -- HFM-2 (migration 018-leads-preferred-locale.sql): per-lead preferred locale
+    -- ISO 639-1 or 'xx-YY'; NULL = not yet detected, fallback chain (en default).
+    preferred_locale VARCHAR(5),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT fk_leads_tenant
         FOREIGN KEY (tenant_id) REFERENCES tenant_registry(tenant_id),
     CONSTRAINT chk_leads_score
-        CHECK (score BETWEEN 0 AND 100)
+        CHECK (score BETWEEN 0 AND 100),
+    CONSTRAINT chk_leads_preferred_locale
+        CHECK (preferred_locale IS NULL OR preferred_locale ~ '^[a-z]{2}(-[A-Z]{2})?$')
 );
 
 CREATE INDEX IF NOT EXISTS idx_leads_tenant
     ON leads(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_leads_phone
     ON leads(tenant_id, phone);
+-- HFM-2: partial index for locale-aware FAQ lookup (NULL rows skipped)
+CREATE INDEX IF NOT EXISTS idx_leads_preferred_locale
+    ON leads(tenant_id, preferred_locale)
+    WHERE preferred_locale IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_leads_pipeline
     ON leads(tenant_id, pipeline_status);
 CREATE INDEX IF NOT EXISTS idx_leads_followup

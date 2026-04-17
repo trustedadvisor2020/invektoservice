@@ -1,0 +1,10 @@
+{
+  "greeting": "Hi! To help you best, may I know your name?",
+  "name_retry": "I didn't catch that. Could you share your actual name?",
+  "intent_ask": "{name}, how can I help you today?",
+  "confirm": "{name}, did you mean: {summary}?",
+  "clarify_low": "{name}, could you tell me a bit more?",
+  "denied": "Got it, {name}. What exactly can I help you with?",
+  "max_attempts_reached": "Let me connect you with a teammate who can help further. We'll be with you shortly.",
+  "off_hours_redirect": "We're outside business hours right now. We'll get back to you as soon as possible."
+}

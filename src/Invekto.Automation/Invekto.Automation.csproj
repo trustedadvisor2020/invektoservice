@@ -19,4 +19,9 @@
     <ProjectReference Include="..\Invekto.Shared\Invekto.Shared.csproj" />
   </ItemGroup>
 
+  <!-- HFM-2: embed IntentPrompts.{locale}.json resources for i18n AiIntentHandler prompts -->
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\IntentPrompts.*.json" />
+  </ItemGroup>
+
 </Project>

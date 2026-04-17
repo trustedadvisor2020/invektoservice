@@ -458,9 +458,15 @@ public sealed class AutomationOrchestrator
         if (!string.IsNullOrEmpty(chatId)) contactKey = chatId;
         else if (!string.IsNullOrEmpty(phone)) contactKey = phone;
         else contactKey = $"flow:{rootFlowId}";
+
+        // HFM-2: resolve lead.preferred_locale (sticky). Detect + upsert when missing so
+        // downstream handlers (AiFaqHandler translation hop, AiIntentHandler i18n prompts)
+        // see the target language on the same message that triggered detection.
+        var leadPreferredLocale = await ResolveLeadPreferredLocaleAsync(tenantId, phone, messageText, requestId, ct);
+
         var result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
             tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
-            onMessage: null, contactKey: contactKey);
+            onMessage: null, contactKey: contactKey, leadPreferredLocale: leadPreferredLocale);
 
         // Sub-flow dispatch loop: handle CallSubFlow and sub-flow completion
         const int maxSubFlowDepth = 5;
@@ -497,7 +503,7 @@ public sealed class AutomationOrchestrator
                     state.Variables["__sub_flow_completed"] = "true";
                     result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
                         tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
-                        onMessage: null, contactKey: contactKey);
+                        onMessage: null, contactKey: contactKey, leadPreferredLocale: leadPreferredLocale);
                     continue;
                 }
 
@@ -510,7 +516,7 @@ public sealed class AutomationOrchestrator
                     state.Variables["__sub_flow_completed"] = "true";
                     result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
                         tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
-                        onMessage: null, contactKey: contactKey);
+                        onMessage: null, contactKey: contactKey, leadPreferredLocale: leadPreferredLocale);
                     continue;
                 }
 
@@ -522,7 +528,7 @@ public sealed class AutomationOrchestrator
                     state.Variables["__sub_flow_completed"] = "true";
                     result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
                         tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
-                        onMessage: null, contactKey: contactKey);
+                        onMessage: null, contactKey: contactKey, leadPreferredLocale: leadPreferredLocale);
                     continue;
                 }
 
@@ -567,7 +573,7 @@ public sealed class AutomationOrchestrator
 
                 result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
                     tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
-                    onMessage: null, contactKey: contactKey);
+                    onMessage: null, contactKey: contactKey, leadPreferredLocale: leadPreferredLocale);
                 continue;
             }
 
@@ -638,7 +644,7 @@ public sealed class AutomationOrchestrator
 
                 result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
                     tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
-                    onMessage: null, contactKey: contactKey);
+                    onMessage: null, contactKey: contactKey, leadPreferredLocale: leadPreferredLocale);
                 continue;
             }
 
@@ -663,8 +669,8 @@ public sealed class AutomationOrchestrator
                 sw.Stop();
                 foreach (var msg in result.Messages)
                 {
-                    await SendCallbackAsync(requestId, tenantId, chatId, sequenceId,
-                        CallbackActions.SendMessage, msg, null, null, sw.ElapsedMilliseconds, callbackUrl, ct);
+                    await DispatchMessageOrChunksAsync(requestId, tenantId, chatId, sequenceId,
+                        msg, sw.ElapsedMilliseconds, callbackUrl, ct);
                 }
             }
 
@@ -690,14 +696,16 @@ public sealed class AutomationOrchestrator
             state, result, graph, tenantId, rootFlowId, chatId, phone,
             instanceId, messageText, pathSnapshotCount, requestId);
 
-        // 5. Side-effects: send messages in order (sequential to preserve delivery order)
+        // 5. Side-effects: send messages in order (sequential to preserve delivery order).
+        // HFM-1: per-message dispatch detects chunk sentinel and applies inter-chunk
+        // delays (insan hissi). Plain messages fall through to the legacy callback path.
         if (result.Messages.Count > 0)
         {
             sw.Stop();
             foreach (var msg in result.Messages)
             {
-                await SendCallbackAsync(requestId, tenantId, chatId, sequenceId,
-                    CallbackActions.SendMessage, msg, null, null, sw.ElapsedMilliseconds, callbackUrl, ct);
+                await DispatchMessageOrChunksAsync(requestId, tenantId, chatId, sequenceId,
+                    msg, sw.ElapsedMilliseconds, callbackUrl, ct);
             }
 
             var combinedMessage = string.Join("\n\n", result.Messages);
@@ -1035,17 +1043,21 @@ public sealed class AutomationOrchestrator
             else if (!string.IsNullOrEmpty(row.Phone)) contactKey = row.Phone!;
             else contactKey = $"flow:{row.FlowId}";
 
+            // HFM-2: resume path also respects lead.preferred_locale (read-only lookup,
+            // no re-detect — wait resume has no new inbound message to detect from).
+            var resumeLocale = await _repo.GetLeadPreferredLocaleAsync(row.TenantId, row.Phone ?? "", ct);
+
             var result = await _flowEngineV2.ExecuteAsync(graph, state, ct,
                 tenantId: row.TenantId, tenantIntents: null, tenantConfidenceThreshold: 0.5,
-                onMessage: null, contactKey: contactKey);
+                onMessage: null, contactKey: contactKey, leadPreferredLocale: resumeLocale);
 
             sw.Stop();
 
             var sequenceId = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             foreach (var msg in result.Messages)
             {
-                await SendCallbackAsync(requestId, row.TenantId, row.ChatId, sequenceId,
-                    CallbackActions.SendMessage, msg, null, null, sw.ElapsedMilliseconds, row.CallbackUrl, ct);
+                await DispatchMessageOrChunksAsync(requestId, row.TenantId, row.ChatId, sequenceId,
+                    msg, sw.ElapsedMilliseconds, row.CallbackUrl, ct);
             }
 
             if (result.Messages.Count > 0)
@@ -1266,11 +1278,118 @@ public sealed class AutomationOrchestrator
         return true;
     }
 
+    /// <summary>
+    /// HFM-2: resolve the lead's preferred locale for this message cycle.
+    /// Flow: DB lookup → (if null AND message long enough) heuristic detect → upsert →
+    /// re-read canonical value (race guard). Any DB failure degrades to null so
+    /// downstream handlers fall back ('en' default).
+    ///
+    /// Race determinism: parallel channel messages (WA + IG + Telegram at the same ms)
+    /// could each detect a different locale. The ON CONFLICT COALESCE pattern preserves
+    /// the first successful insert; losing writers re-read and align with the winner.
+    /// </summary>
+    private async Task<string?> ResolveLeadPreferredLocaleAsync(
+        int tenantId, string? phone, string messageText, string requestId, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(phone))
+            return null;
+
+        var existing = await _repo.GetLeadPreferredLocaleAsync(tenantId, phone, ct);
+        if (!string.IsNullOrEmpty(existing))
+            return existing;
+
+        if (string.IsNullOrWhiteSpace(messageText) || messageText.Length < 2)
+            return null;
+
+        var detected = LanguageDetector.Detect(messageText);
+        if (string.IsNullOrEmpty(detected))
+        {
+            _logger.SystemWarn($"[{ErrorCodes.AutomationLocaleDetectFailed}] LanguageDetector returned empty for tenant={tenantId} phone={phone}");
+            return null;
+        }
+
+        var inserted = await _repo.UpsertLeadPreferredLocaleAsync(tenantId, phone, detected, ct);
+
+        // Race-safe canonical read: regardless of who won the ON CONFLICT race, the stored
+        // value is authoritative. If the re-read fails (rare DB hiccup), fall back to the
+        // freshly detected value so the current cycle still gets a locale.
+        var canonical = await _repo.GetLeadPreferredLocaleAsync(tenantId, phone, ct);
+        var resolved = !string.IsNullOrEmpty(canonical) ? canonical : detected;
+
+        _logger.StepInfo(
+            $"HFM-2 preferred_locale resolved tenant={tenantId} phone={phone} detected={detected} upserted={inserted} canonical={canonical ?? "(none)"} resolved={resolved}",
+            requestId);
+        return resolved;
+    }
+
+    /// <summary>
+    /// HFM-1: dispatch one engine-emitted message. Detects the chunk sentinel prefix and,
+    /// when present, fans out per-chunk callbacks with planner-computed pre-delays.
+    /// Plain messages fall through to the legacy single-callback path unchanged.
+    ///
+    /// Malformed sentinel payloads (JSON parse failure, wrong root kind, zero steps) are
+    /// logged with INV-AT-062 via the decode-error callback and fall back to legacy send
+    /// of the RAW text — this would leak the sentinel prefix, so SendCallbackAsync also
+    /// strips it defensively before invoking the callback client.
+    /// </summary>
+    private async Task DispatchMessageOrChunksAsync(
+        string requestId, int tenantId, string chatId, long sequenceId,
+        string messageText, long processingTimeMs, string? callbackUrl, CancellationToken ct)
+    {
+        var chunks = MessageTextHandler.TryDecodeChunkPayload(messageText,
+            reason => _logger.SystemWarn(
+                $"[{ErrorCodes.AutomationChunkScheduleInvalid}] chunk decode failed tenant={tenantId} chat={chatId}: {reason}"));
+        if (chunks == null)
+        {
+            await SendCallbackAsync(requestId, tenantId, chatId, sequenceId,
+                CallbackActions.SendMessage, messageText, null, null, processingTimeMs, callbackUrl, ct);
+            return;
+        }
+
+        for (var i = 0; i < chunks.Count; i++)
+        {
+            var step = chunks[i];
+            if (step.PreDelayMs > 0)
+            {
+                try
+                {
+                    await Task.Delay(step.PreDelayMs, ct);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw; // user cancelled / shutdown — propagate
+                }
+            }
+
+            _logger.StepInfo(
+                $"HFM-1 chunk {i + 1}/{chunks.Count} dispatch tenant={tenantId} chat={chatId} delayMs={step.PreDelayMs}",
+                requestId);
+
+            await SendCallbackAsync(requestId, tenantId, chatId, sequenceId,
+                CallbackActions.SendMessage, step.Text, null, null, processingTimeMs, callbackUrl, ct);
+        }
+    }
+
     private async Task<bool> SendCallbackAsync(
         string requestId, int tenantId, string chatId, long sequenceId,
         string action, string messageText, string? intent, double? confidence,
         long processingTimeMs, string? callbackUrl, CancellationToken ct)
     {
+        // HFM-1 defense-in-depth: if a caller hands us a raw chunk-sentinel payload (should
+        // already have gone through DispatchMessageOrChunksAsync), strip the sentinel+JSON
+        // wrapper so we never leak it to the customer. Log INV-AT-062 so the bypass path
+        // is visible in ops — should be zero-rate at steady state.
+        if (action == CallbackActions.SendMessage
+            && !string.IsNullOrEmpty(messageText)
+            && messageText.StartsWith(MessageTextHandler.ChunkSentinel, StringComparison.Ordinal))
+        {
+            _logger.SystemWarn($"[{ErrorCodes.AutomationChunkScheduleInvalid}] SendCallbackAsync received raw chunk sentinel — DispatchMessageOrChunksAsync was bypassed; stripping to prevent customer leak. tenant={tenantId} chat={chatId}");
+            var decoded = MessageTextHandler.TryDecodeChunkPayload(messageText);
+            messageText = decoded != null && decoded.Count > 0
+                ? string.Join("\n\n", decoded.Select(s => s.Text))
+                : messageText[MessageTextHandler.ChunkSentinel.Length..];
+        }
+
         // GR-2.6.1: Append KVKK health disclaimer for SendMessage actions only
         var finalMessageText = messageText;
         if (action == CallbackActions.SendMessage && !string.IsNullOrEmpty(messageText))

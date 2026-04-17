@@ -63,6 +63,13 @@ public static class ErrorCodes
     public const string BackendPaymentHistoryFailed = "INV-BE-088";    // Payment history query failed
     public const string BackendPaymentAmountInvalid = "INV-BE-089";    // Amount <= 0
 
+    // Backend Translation Warmup (INV-BE-090+) — HFM-2
+    public const string BackendTranslationWarmupInvalidPayload = "INV-BE-090";   // tenantId/texts/locales missing
+    public const string BackendTranslationWarmupInvalidLocale = "INV-BE-091";    // Unsupported/unknown locale in body
+    public const string BackendTranslationWarmupHttpFailure = "INV-BE-092";      // Gemma/Claude HTTP failure mid-batch
+    public const string BackendTranslationWarmupInvalidState = "INV-BE-093";     // Translation service returned empty/invalid
+    public const string BackendTranslationWarmupCancelled = "INV-BE-094";        // Client cancelled the warmup
+
     // ChatAnalysis errors (INV-CA-xxx)
     public const string ChatAnalysisInvalidPayload = "INV-CA-001";
     public const string ChatAnalysisProcessingFailed = "INV-CA-002";
@@ -182,6 +189,12 @@ public static class ErrorCodes
     public const string AutomationFlowWaitPersistFailed = "INV-AT-058";    // flow_execution_state insert/update failed
     public const string AutomationFlowWaitResumeFailed = "INV-AT-059";     // Resume from persisted wait state failed
     public const string AutomationFlowWaitConfigInvalid = "INV-AT-060";    // action_wait_until node config invalid (no duration / out of bounds)
+
+    // HFM-1/HFM-2: Human-feel + Multi-language (INV-AT-062+)
+    public const string AutomationChunkScheduleInvalid = "INV-AT-062";     // text_chunks JSON parse failed, fallback to legacy text
+    public const string AutomationLocaleDetectFailed = "INV-AT-063";       // preferred_locale upsert failed or detect returned empty
+    public const string AutomationFaqTranslationFailed = "INV-AT-064";     // AiFaq post-match translation hop failed, fallback to raw
+    public const string AutomationIntentPromptResourceMissing = "INV-AT-065"; // IntentPrompts.{locale}.json resource not found
 
     // AgentAI errors (INV-AA-xxx)
     public const string AgentAIInvalidPayload = "INV-AA-001";

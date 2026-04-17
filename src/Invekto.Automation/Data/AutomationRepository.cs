@@ -820,6 +820,120 @@ public sealed class AutomationRepository
     }
 
     // ============================================================
+    // HFM-2: Lead preferred_locale (multi-language fallback)
+    // ============================================================
+
+    /// <summary>
+    /// Read lead.preferred_locale for a given phone. Returns null when the lead row does
+    /// not exist or preferred_locale is NULL (fallback chain kicks in).
+    /// </summary>
+    public async Task<string?> GetLeadPreferredLocaleAsync(int tenantId, string phone, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(phone))
+            return null;
+
+        try
+        {
+            await using var conn = await _db.OpenConnectionAsync(ct);
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT preferred_locale FROM leads WHERE tenant_id = @tid AND phone = @phone LIMIT 1";
+            cmd.Parameters.AddWithValue("tid", tenantId);
+            cmd.Parameters.AddWithValue("phone", phone);
+
+            var result = await cmd.ExecuteScalarAsync(ct);
+            return result == DBNull.Value ? null : result as string;
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemWarn($"[INV-AT-063] GetLeadPreferredLocaleAsync failed tenant={tenantId} phone={phone}: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Upsert lead.preferred_locale. Insert creates a minimal lead row (source='whatsapp'
+    /// default) if none exists. Existing preferred_locale is PRESERVED (sticky): COALESCE
+    /// ensures the first detected locale wins — subsequent mis-detections (e.g. a user
+    /// temporarily typing in English) never overwrite the canonical value.
+    ///
+    /// Returns true when a row was inserted or preferred_locale transitioned from NULL
+    /// to the provided value. Returns false on DB failure (graceful degradation, logged).
+    /// </summary>
+    public async Task<bool> UpsertLeadPreferredLocaleAsync(
+        int tenantId, string phone, string detectedLocale, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(phone) || string.IsNullOrWhiteSpace(detectedLocale))
+            return false;
+
+        // Guard against accidental region suffixes breaking the CHECK constraint.
+        var normalized = detectedLocale.Trim();
+        if (normalized.Length < 2 || normalized.Length > 5)
+            return false;
+
+        const string sql = @"
+            INSERT INTO leads (tenant_id, phone, source, preferred_locale)
+            VALUES (@tid, @phone, 'whatsapp', @loc)
+            ON CONFLICT (tenant_id, phone) DO UPDATE
+                SET preferred_locale = COALESCE(leads.preferred_locale, EXCLUDED.preferred_locale),
+                    updated_at = NOW()
+            RETURNING (xmax = 0) AS was_insert";
+
+        try
+        {
+            await using var conn = await _db.OpenConnectionAsync(ct);
+            await using var cmd = new NpgsqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("tid", tenantId);
+            cmd.Parameters.AddWithValue("phone", phone);
+            cmd.Parameters.AddWithValue("loc", normalized);
+
+            var result = await cmd.ExecuteScalarAsync(ct);
+            return result is bool b && b;
+        }
+        catch (PostgresException ex) when (ex.SqlState == "23505")
+        {
+            // Unique violation: expected when no unique constraint covers (tenant_id, phone).
+            // Fall back to explicit UPDATE — preserves sticky value semantics.
+            return await FallbackUpdatePreferredLocaleAsync(tenantId, phone, normalized, ct);
+        }
+        catch (PostgresException ex) when (ex.SqlState == "42P10")
+        {
+            // No ON CONFLICT target: leads table may not have (tenant_id, phone) unique idx on
+            // some older deployments. Fall back to UPDATE-only path.
+            return await FallbackUpdatePreferredLocaleAsync(tenantId, phone, normalized, ct);
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemWarn($"[INV-AT-063] UpsertLeadPreferredLocaleAsync failed tenant={tenantId} phone={phone}: {ex.Message}");
+            return false;
+        }
+    }
+
+    private async Task<bool> FallbackUpdatePreferredLocaleAsync(
+        int tenantId, string phone, string normalized, CancellationToken ct)
+    {
+        const string sql = @"
+            UPDATE leads SET preferred_locale = @loc, updated_at = NOW()
+            WHERE tenant_id = @tid AND phone = @phone AND preferred_locale IS NULL";
+
+        try
+        {
+            await using var conn = await _db.OpenConnectionAsync(ct);
+            await using var cmd = new NpgsqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("tid", tenantId);
+            cmd.Parameters.AddWithValue("phone", phone);
+            cmd.Parameters.AddWithValue("loc", normalized);
+
+            var rows = await cmd.ExecuteNonQueryAsync(ct);
+            return rows > 0;
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemWarn($"[INV-AT-063] FallbackUpdatePreferredLocale failed tenant={tenantId} phone={phone}: {ex.Message}");
+            return false;
+        }
+    }
+
+    // ============================================================
     // PKT-6B1: Return Deflections (GR-3.8 + GR-3.17)
     // ============================================================
 

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Invekto.Shared.Constants;
 
 namespace Invekto.Automation.Services.NodeHandlers;
 
@@ -19,6 +20,7 @@ public sealed class AiIntentHandler : INodeHandler
 {
     private readonly IntentDetector _intentDetector;
     private readonly MockIntentDetector _mockIntentDetector;
+    private readonly IntentPromptLoader _prompts;
     private readonly ILogger<AiIntentHandler> _logger;
 
     /// <summary>Max clarification rounds before graceful low_confidence fallback.</summary>
@@ -26,11 +28,53 @@ public sealed class AiIntentHandler : INodeHandler
 
     public string NodeType => "ai_intent";
 
-    public AiIntentHandler(IntentDetector intentDetector, MockIntentDetector mockIntentDetector, ILogger<AiIntentHandler> logger)
+    public AiIntentHandler(
+        IntentDetector intentDetector,
+        MockIntentDetector mockIntentDetector,
+        IntentPromptLoader prompts,
+        ILogger<AiIntentHandler> logger)
     {
         _intentDetector = intentDetector;
         _mockIntentDetector = mockIntentDetector;
+        _prompts = prompts;
         _logger = logger;
+    }
+
+    /// <summary>Safety baseline (Turkish) for each prompt key. Used when both the requested locale
+    /// AND the default 'tr' resource are missing/malformed — never let the customer see a blank
+    /// message. INV-AT-065 has already been logged by the loader at that point.</summary>
+    private static readonly IReadOnlyDictionary<string, string> BaselinePromptsTr = new Dictionary<string, string>
+    {
+        ["greeting"] = "Merhaba! Size yardimci olabilmem icin isminizi ogrenebilir miyim?",
+        ["name_retry"] = "Adinizi duyamadim, tekrar yazar misiniz?",
+        ["intent_ask"] = "Size nasil yardimci olabilirim?",
+        ["confirm"] = "Sunu mu demek istiyorsunuz?",
+        ["clarify_low"] = "Biraz daha aciklar misiniz?",
+        ["denied"] = "Anliyorum. Peki, tam olarak ne konuda yardimci olabilirim?",
+        ["max_attempts_reached"] = "Sizi bir temsilciye yonlendiriyorum, en kisa surede donus yapacagiz.",
+        ["off_hours_redirect"] = "Su anda mesai saatleri disindayiz. En kisa surede size donus yapacagiz."
+    };
+
+    private string Prompt(ExecutionContext ctx, string key, IReadOnlyDictionary<string, string>? subs = null)
+    {
+        var text = _prompts.Get(ctx.LeadPreferredLocale, key, subs);
+        if (!string.IsNullOrEmpty(text))
+            return text;
+
+        // Safety baseline — never surface a blank message to the customer.
+        if (BaselinePromptsTr.TryGetValue(key, out var baseline))
+        {
+            if (subs != null)
+            {
+                foreach (var (k, v) in subs)
+                    baseline = baseline.Replace("{" + k + "}", v ?? "", StringComparison.Ordinal);
+            }
+            ctx.Logger.SystemWarn($"[{ErrorCodes.AutomationIntentPromptResourceMissing}] Prompt '{key}' empty for locale={ctx.LeadPreferredLocale ?? "(none)"}; using hardcoded TR baseline.");
+            return baseline;
+        }
+
+        ctx.Logger.SystemWarn($"[{ErrorCodes.AutomationIntentPromptResourceMissing}] Prompt '{key}' has no baseline; returning safe placeholder.");
+        return "...";
     }
 
     public async Task<NodeResult> ExecuteAsync(FlowNodeV2 node, ExecutionContext ctx, CancellationToken ct)
@@ -65,7 +109,7 @@ public sealed class AiIntentHandler : INodeHandler
         {
             var greeting = node.GetData("greeting_message");
             if (string.IsNullOrWhiteSpace(greeting))
-                greeting = "Merhaba! Size yardımcı olabilmem için isminizi öğrenebilir miyim?";
+                greeting = Prompt(ctx, "greeting");
 
             ctx.Logger.StepInfo(
                 $"AiIntent '{node.GetData("label", node.Id)}': asking customer name",
@@ -86,9 +130,9 @@ public sealed class AiIntentHandler : INodeHandler
         // Skip name phase → go to intent detection
         var name = existingName ?? "";
         var intentQuestion = node.GetData("intent_question");
-        var defaultQ = "size nasıl yardımcı olabilirim?";
-        var q = string.IsNullOrWhiteSpace(intentQuestion) ? defaultQ : intentQuestion;
-        var askMsg = string.IsNullOrEmpty(name) ? q : $"{name}, {q}";
+        var askMsg = !string.IsNullOrWhiteSpace(intentQuestion)
+            ? (string.IsNullOrEmpty(name) ? intentQuestion : $"{name}, {intentQuestion}")
+            : Prompt(ctx, "intent_ask", new Dictionary<string, string> { ["name"] = name });
 
         ctx.Logger.StepInfo(
             $"AiIntent '{node.GetData("label", node.Id)}': skipping name, asking intent",
@@ -143,7 +187,7 @@ public sealed class AiIntentHandler : INodeHandler
 
         var intentQuestion = node.GetData("intent_question");
         var intentMsg = string.IsNullOrWhiteSpace(intentQuestion)
-            ? $"{name}, size nasıl yardımcı olabilirim?"
+            ? Prompt(ctx, "intent_ask", new Dictionary<string, string> { ["name"] = name })
             : $"{name}, {intentQuestion}";
 
         return new NodeResult
@@ -242,9 +286,11 @@ public sealed class AiIntentHandler : INodeHandler
         if (detectedIntent != null && confidence >= threshold * 0.5)
         {
             var confirmMsg = clarifyQuestion
-                ?? (string.IsNullOrEmpty(customerName)
-                    ? $"Şunu mu demek istiyorsunuz: {summary}?"
-                    : $"{customerName}, şunu mu demek istiyorsunuz: {summary}?");
+                ?? Prompt(ctx, "confirm", new Dictionary<string, string>
+                {
+                    ["name"] = customerName ?? "",
+                    ["summary"] = summary ?? ""
+                });
 
             var history = GetHistory(ctx);
             history.Add(new ConversationTurn { Role = "user", Content = userInput });
@@ -265,7 +311,7 @@ public sealed class AiIntentHandler : INodeHandler
                     ["__intent_attempt"] = attempt.ToString(),
                     ["__suggested_intent"] = detectedIntent,
                     ["__suggested_confidence"] = confidence.ToString("F2"),
-                    ["__suggested_summary"] = summary,
+                    ["__suggested_summary"] = summary ?? "",
                     ["__intent_history"] = SerializeHistory(history)
                 }
             };
@@ -273,9 +319,10 @@ public sealed class AiIntentHandler : INodeHandler
 
         // LOW confidence → ask clarifying question, stay in intent phase
         var askMsg = clarifyQuestion
-            ?? (string.IsNullOrEmpty(customerName)
-                ? "Biraz daha açıklar mısınız?"
-                : $"{customerName}, biraz daha açıklar mısınız?");
+            ?? Prompt(ctx, "clarify_low", new Dictionary<string, string>
+            {
+                ["name"] = customerName ?? ""
+            });
 
         var hist = GetHistory(ctx);
         hist.Add(new ConversationTurn { Role = "user", Content = userInput });
@@ -329,9 +376,10 @@ public sealed class AiIntentHandler : INodeHandler
         {
             // User denied → back to intent detection
             var customerName = GetVar(ctx, "customer_name");
-            var askMsg = string.IsNullOrEmpty(customerName)
-                ? "Anlıyorum. Peki, tam olarak ne konuda yardımcı olabilirim?"
-                : $"Anlıyorum {customerName}. Peki, tam olarak ne konuda yardımcı olabilirim?";
+            var askMsg = Prompt(ctx, "denied", new Dictionary<string, string>
+            {
+                ["name"] = customerName ?? ""
+            });
 
             var history = GetHistory(ctx);
             history.Add(new ConversationTurn { Role = "user", Content = userInput });

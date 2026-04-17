@@ -410,6 +410,37 @@ errors:
     description: action_wait_until node config invalid (no duration provided, out-of-bounds, or unparseable).
     user_message: Bekleme adimi yapilandirmasi gecersiz.
 
+  # HFM-1/HFM-2: Human-feel + Multi-language
+  - code: INV-AT-062
+    description: message_text node has invalid text_chunks JSON; falling back to legacy text field (or \n\n auto-split).
+    user_message: Mesaj parcalari yuklenemedi, tam mesaj gonderildi.
+  - code: INV-AT-063
+    description: preferred_locale upsert or language detection failed; fallback chain used ('en' or raw answer).
+    user_message: Dil tercihi kaydedilemedi, varsayilan dil kullanildi.
+  - code: INV-AT-064
+    description: AiFaq post-match translation hop failed (Backend unreachable or timeout); original-language answer sent.
+    user_message: Ceviri servisi kullanilamiyor, cevap kaynak dilinde gonderildi.
+  - code: INV-AT-065
+    description: IntentPrompts.{locale}.json embedded resource missing or malformed; fallback to Turkish default prompts.
+    user_message: Dil kaynaklari bulunamadi, varsayilan dil kullanildi.
+
+  # HFM-2: Backend Translation Warmup ops endpoint
+  - code: INV-BE-090
+    description: /ops/translation/warmup body invalid (tenantId/texts/locales missing or empty).
+    user_message: Gecersiz parametreler; tenantId, texts, locales zorunlu.
+  - code: INV-BE-091
+    description: /ops/translation/warmup body contains an unsupported or malformed locale code.
+    user_message: Gecersiz dil kodu.
+  - code: INV-BE-092
+    description: /ops/translation/warmup failed for a locale due to upstream HTTP error (Gemma/Claude unreachable or 5xx).
+    user_message: Ceviri servisi gecici olarak kullanilamiyor.
+  - code: INV-BE-093
+    description: /ops/translation/warmup failed for a locale due to empty/invalid translation response.
+    user_message: Ceviri sonucu okunamadi.
+  - code: INV-BE-094
+    description: /ops/translation/warmup cancelled mid-batch (client disconnected or timeout).
+    user_message: Isletim iptal edildi.
+
   # ── AA — AgentAI ──
   - code: INV-AA-001
     description: Invalid request payload

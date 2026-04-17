@@ -1,0 +1,10 @@
+{
+  "greeting": "Merhaba! Size yardimci olabilmem icin isminizi ogrenebilir miyim?",
+  "name_retry": "Adinizi duyamadim, tekrar yazar misiniz?",
+  "intent_ask": "{name}, size nasil yardimci olabilirim?",
+  "confirm": "{name}, sunu mu demek istiyorsunuz: {summary}?",
+  "clarify_low": "{name}, biraz daha aciklar misiniz?",
+  "denied": "Anliyorum {name}. Peki, tam olarak ne konuda yardimci olabilirim?",
+  "max_attempts_reached": "Sizi bir temsilciye yonlendiriyorum, en kisa surede donus yapacagiz.",
+  "off_hours_redirect": "Su anda mesai saatleri disindayiz. En kisa surede size donus yapacagiz."
+}

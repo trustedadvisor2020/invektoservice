@@ -40,6 +40,13 @@ public sealed class ExecutionContext
     /// Null/empty = unknown contact → rotation falls back to node-only hash.
     /// </summary>
     public string? ContactKey { get; init; }
+
+    /// <summary>
+    /// HFM-2: resolved preferred locale for the current lead (ISO 639-1 or empty).
+    /// Orchestrator populates from leads.preferred_locale before engine execution.
+    /// Null/empty → fallback chain ('en' default → raw text) applied by handlers.
+    /// </summary>
+    public string? LeadPreferredLocale { get; init; }
 }
 
 /// <summary>

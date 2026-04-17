@@ -85,7 +85,7 @@
 |-------|-----------|--------|
 | UP0.1 Contracts | 1g | **1g** (sadece reorg, yeni kod az) |
 | UP0.2 SSO | 3-4g | **1-2g** (altyapı var, sadece end-to-end doğrulama + role map tamamlama) |
-| UP0.3 Unified Tenant | 1-2g | 1-2g |
+| UP0.3 Unified Tenant | 1-2g | **1-2g** (lazy provisioning tek path — 2026-04-17 Q kararı, bulk backfill atlandı) |
 | UP0.4 Domain/UX | 4-5g | 4-5g |
 | UP0.5 Shared Data | 3-4g | **4-5g** (yeni send client + custom field adapter) |
 | UP0.6 Feature Flags | 1-2g | 1g (token claim var, service wrap yap) |

@@ -1,4 +1,5 @@
-# INMA Ekibine — INSE ile Birlikte Çalışma Planı
+
+ INMA Ekibine — INSE ile Birlikte Çalışma Planı
 
 **Tarih:** 2026-04-13
 **Hazırlayan:** Q (Taner)
@@ -19,7 +20,7 @@ Bu özellikleri INMA'ya tek tek eklemek yerine, bu işi yapan **INSE (Invekto Se
 
 **Kritik nokta:** Kullanıcı iki ayrı sistem hissetmeyecek. Tek login, tek domain, tek görsel dil. INMA açar, yanında INSE özellikleri de doğal olarak yerleşmiş olacak.
 
-**İlk müşteri:** Dent Adavista (İrlanda Roadshow kampanyası — Dublin & Cork). Bu müşteri üstünden pilot yapıyoruz.
+**İlk müşteri:** Dent Adavista (çok şehirli yurt dışı etkinlik kampanyası). Bu müşteri üstünden pilot yapıyoruz.
 
 **Peki neden INMA ekibinden bir şey istiyoruz?** Çünkü kullanıcı zaten INMA'ya login oluyor, mesajlar INMA'da, kişiler INMA'da. INSE'nin bu verilere ulaşması ve INMA içinde doğal görünmesi için birkaç küçük kapı açmamız gerek.
 
@@ -122,7 +123,11 @@ var token = new JwtSecurityToken(
 
 ---
 
-### 2. Yeni Firma Açılınca INSE Haberdar Olsun
+### 2. Yeni Firma Açılınca INSE Haberdar Olsun — **İPTAL (2026-04-17)**
+
+> Bu madde iptal edildi. INSE tarafı "lazy provisioning" pattern'i ile çözdü (migration `016-tenant-registry-auto-gen-seq.sql`). Kullanıcı ilk kez INSE endpoint'ine eriştiğinde welcome introspection 200 dönerse ve `tenant_registry`'de kayıt yoksa otomatik oluşturuluyor. INMA tarafında **hiçbir şey yapılmasına gerek yok** — `tenant.created` event'i gerekmiyor.
+>
+> Aşağıdaki orijinal metin referans olarak bırakıldı (ileride event-driven pattern'e geçmek istenirse). Pilot için hiçbir anlamı yok.
 
 **Ne istiyoruz?**
 INMA'da yeni bir firma (tenant) açıldığında, INSE otomatik olarak o firma için de kayıt oluşturabilsin.
@@ -234,17 +239,86 @@ await _outboundWebhookService.PublishAsync(
 
 ---
 
+### 2b. Mevcut Firmaları Listele (J10) — **İPTAL (2026-04-17)**
+
+> Bu madde iptal edildi. Lazy provisioning pattern'i (§2'de anlatılan, migration 016 ile yazılan) mevcut firmaları da otomatik karşılıyor: ilk login'de kayıt yoksa yaratılıyor. Reconciliation gereksiz. INMA tarafında bu endpoint açılmasına gerek yok.
+>
+> Aşağıdaki orijinal metin silinmedi (ileride audit/drift monitoring gerekirse referans).
+
+**Ne istiyoruz?**
+INMA'da şu an var olan tüm firmaların listesini INSE'nin çekebileceği bir read-only endpoint. Günlük bir kere çağrılacak, drift/reconciliation amaçlı.
+
+**Teknik:** `GET /api/admin/tenants/export` — sadece INMA admin JWT ile erişilebilir. Pagination gerekmez (tenant sayısı düşük, <1000).
+
+**Senaryo:**
+> Bir INMA tenant'ı "INSE feature flag"'i sonradan aktif edilir (önce basic plan, sonra premium'a geçiş). `tenant.updated` event bu değişikliği bildirse de bazen kaçabilir (network outage, INMA tarafı feature eklemesi unutulur). INSE günlük bir reconciliation job çalıştırır: INMA listesi ile kendi `tenant_registry` tablosu diff alır. Eksik tenant varsa auto-provision eder, feature flag uyumsuzluğu varsa düzeltir, deaktif tenant varsa INSE tarafında da pasifleştirir.
+
+**Neden önemli?** Event-driven sistem %100 güvenilir değil. `tenant.created` webhook network/queue kaybı yaşayabilir. Tek doğruluk kaynağı = INMA tenants tablosu. Periodic read ile INSE o kaynakla senkron kalır.
+
+**Bu istek P0 DEĞİL — pilot'u bloklamıyor.** INSE tarafında primary backfill pattern "lazy provisioning" (JWT welcome 200 → `tenant_registry`'de yoksa auto-create). J10 ikincil reconciliation mekanizması, P1'de aktif edilecek.
+
+**Çıktı:**
+- `GET /api/admin/tenants/export` — JSON array
+- Auth: INMA admin JWT (normal user erişemez)
+- Rate limit: saatte 5 çağrı yeterli
+
+**Response örneği:**
+```json
+{
+  "tenants": [
+    {
+      "companyCode": "dentadavista",
+      "companyName": "Dent Adavista Dental Clinic",
+      "createdAt": "2026-04-13T11:30:00Z",
+      "active": true,
+      "plan": "premium",
+      "features": ["ai_agent", "flow_builder", "drip", "appointments"]
+    },
+    {
+      "companyCode": "voila",
+      "companyName": "Voila",
+      "createdAt": "2025-09-12T08:15:00Z",
+      "active": true,
+      "plan": "basic",
+      "features": []
+    }
+  ],
+  "exportedAt": "2026-04-17T10:00:00Z",
+  "totalCount": 11
+}
+```
+
+**INSE tarafında yapılacaklar (INMA'yı ilgilendirmez):**
+- Hangfire daily job: `TenantReconciliationJob` (03:00 UTC)
+- Job INMA'dan liste çeker, local tablo ile diff alır
+- Yeni tenant → auto-provision (tenant.created event'i manuel replay edilir)
+- Deaktif tenant → INSE'de `active=false` set (feature flag'ler off)
+- Feature change → `tenant_registry.features` güncelle
+
+**Veri akışı:**
+```
+[INSE] → 03:00 UTC Hangfire trigger
+       → GET https://testapi.wapcrm.net/api/admin/tenants/export
+         Header: Authorization: Bearer <INMA admin JWT>
+[INMA] → 200 OK { tenants: [...], totalCount: 11 }
+[INSE] → Diff against tenant_registry
+       → For each delta: INSERT / UPDATE / DEACTIVATE
+       → Log reconciliation_report row (total_checked, new_created, deactivated, feature_updates)
+```
+
+---
+
 ### 3. Mesajın İçinde Değişken Kullanabilmek
 
 **Ne istiyoruz?**
 Şablon mesajlarında `{{name}}`, `{{city}}` gibi yer tutucular kullanıp, mesaj gönderilirken bunların gerçek değerlerle değişmesi.
 
-**Teknik:** INMA'nın mesaj gönderme API'sine `variables: { "name": "John", "city": "Dublin" }` parametresi ekleyin. Şablonun içinde `{{name}}` geçiyorsa, gönderim anında `John` ile değiştirilip gönderilsin.
+**Teknik:** INMA'nın mesaj gönderme API'sine `variables: { "name": "John", "city": "<şehir>" }` parametresi ekleyin. Şablonun içinde `{{name}}` geçiyorsa, gönderim anında `John` ile değiştirilip gönderilsin.
 
 **Senaryo:**
-> INMA'da "Dublin Randevu Onayı" adında bir şablon var: *"Hi {{name}}, your appointment in {{city}} is confirmed for {{date}}."*
+> INMA'da "Randevu Onayı" adında bir şablon var: *"Hi {{name}}, your appointment in {{city}} is confirmed for {{date}}."*
 >
-> INSE bir akış çalıştırıyor, 50 kişiye bu şablonu gönderecek. Ama her kişiye kendi adıyla ve kendi şehriyle. INSE her gönderimde `variables: { name: "John", city: "Dublin", date: "14 March" }` gibi değişken seti yolluyor. INMA da bunu alıp şablonu kişiselleştirilmiş haliyle gönderiyor.
+> INSE bir akış çalıştırıyor, 50 kişiye bu şablonu gönderecek. Ama her kişiye kendi adıyla ve kendi şehriyle. INSE her gönderimde `variables: { name: "John", city: "<şehir>", date: "<tarih>" }` gibi değişken seti yolluyor. INMA da bunu alıp şablonu kişiselleştirilmiş haliyle gönderiyor.
 
 **Neden önemli?** Kişiselleştirmesiz toplu mesaj spam hissi verir, açılma oranı düşer. Bu en temel pazarlama gereği. Şu an INMA şablonları sabit metin, personalization yok.
 
@@ -266,13 +340,13 @@ await _outboundWebhookService.PublishAsync(
                 "templateId": 1042,
                 "variables": {
                   "name": "John",
-                  "city": "Dublin",
-                  "date": "14 March"
+                  "city": "<şehir>",
+                  "date": "<tarih>"
                 }
               }
 [INMA] → Template'i fetch et: "Hi {{name}}, your appointment in {{city}} is on {{date}}"
        → variables map'le render et
-       → Final: "Hi John, your appointment in Dublin is on 14 March"
+       → Final: "Hi John, your appointment in <şehir> is on <tarih>"
        → WhatsApp API'ye gönder → 200 OK + messageId
 [INSE] ← response { messageId, status: "sent" }
 ```
@@ -281,8 +355,8 @@ await _outboundWebhookService.PublishAsync(
 ```csharp
 public string RenderTemplate(string templateBody, Dictionary<string, string> variables)
 {
-    // "Hi {{name}}, your {{city}} visit" + {name:"John", city:"Dublin"}
-    // → "Hi John, your Dublin visit"
+    // "Hi {{name}}, your {{city}} visit" + {name:"John", city:"<şehir>"}
+    // → "Hi John, your <şehir> visit"
     return Regex.Replace(templateBody, @"\{\{(\w+)\}\}", match =>
     {
         var key = match.Groups[1].Value;
@@ -323,7 +397,7 @@ export class TemplatePreviewComponent {
 
   // Örnek değerlerle render
   readonly sampleValues: Record<string, string> = {
-    name: 'John', city: 'Dublin', date: '14 March'
+    name: 'John', city: '<şehir>', date: '<tarih>'
   };
 
   readonly preview = computed(() =>
@@ -429,104 +503,11 @@ export class ContactDetailComponent {
 
 ---
 
-### 5. Toplu Mesaj Gönderim Endpoint'i
+### 5. (Taşındı) Toplu Mesaj Gönderim Endpoint'i — **Opsiyonel/Backlog'a alındı**
 
-**Ne istiyoruz?**
-Tek seferde çok kişiye mesaj gönderebileceğimiz bir API.
+Bu madde P0'dan çıkarıldı (2026-04-17 Q kararı). Pilot için şart değil — INSE mevcut tekil `start-chat` endpoint'ini kendi tarafında rate-limit queue ile kullanacak (Hangfire + WA tier throttle). Detay: **§11 Opsiyonel — Backlog** altında.
 
-**Teknik:** `POST /api/chatsv3/bulk-send`. Body: `{ contacts: [phone1, phone2, ...], templateId, variables: {...}, scheduleAt?: ISO8601 }`. Response'ta bir job id olsun, per-contact status callback verilsin. WhatsApp tier limit'ini INMA yönetsin.
-
-**Senaryo:**
-> Dent Adavista Roadshow öncesi 200 kayıtlı katılımcıya "Hazırlıklarınız tamam mı?" hatırlatma mesajı göndermek istiyor. INSE'nin kampanya ekranından "Gönder" diyor. INSE 200 ayrı API çağrısı yapmak yerine tek bulk-send çağrısı yapıyor. INMA bu 200'ü WhatsApp rate limit'ine göre sıraya alıp gönderiyor, her birinin durumunu callback ile INSE'ye bildiriyor. INSE dashboard'da "178 gönderildi, 22 bekliyor, 0 hata" görüyor.
-
-**Neden önemli?** Şu an tek tek API çağrısı yapılsa sunucu çöker, rate limit aşılır. Bulk endpoint ortak altyapı gerektiren bir iş, INMA tarafında yapmak mantıklı.
-
-**Çıktı:**
-- Batch endpoint
-- Schedule desteği (şimdi gönder ya da 2 saat sonra)
-- Status callback (webhook ile INSE'ye per-contact)
-
-**Veri Akışı:**
-```
-[INSE Campaign UI] → "Gönder" → hedef 200 kişi, schedule: şimdi
-[INSE → INMA] POST /api/chatsv3/bulk-send
-              Body: {
-                "companyCode": "dentadavista",
-                "channelId": "<wa-id>",
-                "templateId": 1042,
-                "contacts": [
-                  { "phone": "+353...", "variables": {"name":"John","city":"Dublin"} },
-                  { "phone": "+353...", "variables": {"name":"Mary","city":"Cork"} },
-                  ... (200 kayıt)
-                ],
-                "scheduleAt": null,         // şimdi gönder
-                "transactional": false,     // pazarlama
-                "callbackUrl": "https://inse.invekto.com/api/bulk-callback"
-              }
-[INMA] → Job create → response: { jobId: "bulk-8842", queued: 200 }
-       → Rate-limiter kuyruğuna al (WA tier limit)
-       → Her 1 mesaj için async gönderim
-
-Her gönderim için callback:
-[INMA → INSE] POST https://inse.invekto.com/api/bulk-callback
-              Body: {
-                "jobId": "bulk-8842",
-                "phone": "+353...",
-                "status": "sent" | "failed" | "skipped_optout",
-                "messageId": "wa_abc123",
-                "error": null,
-                "timestamp": "2026-04-13T12:00:05Z"
-              }
-[INSE] → campaign_deliveries tablosu update → dashboard anlık güncelle
-```
-
-**Angular campaign dashboard (INMA tarafı opsiyonel, INSE'de de olabilir):**
-```typescript
-// campaign-progress.component.ts
-import { Component, inject, input } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { rxResource } from '@angular/core/rxjs-interop';
-import { interval } from 'rxjs';
-import { toSignal } from '@angular/core/rxjs-interop';
-
-interface JobStatus {
-  jobId: string; total: number;
-  sent: number; failed: number; skippedOptout: number; queued: number;
-  status: 'running' | 'completed' | 'paused';
-}
-
-@Component({
-  selector: 'campaign-progress',
-  standalone: true,
-  template: `
-    @let s = status.value();
-    @if (s) {
-      <h3>Kampanya: {{ s.jobId }}</h3>
-      <progress [value]="s.sent + s.failed + s.skippedOptout" [max]="s.total"></progress>
-      <dl>
-        <dt>Gönderildi</dt><dd>{{ s.sent }}</dd>
-        <dt>Başarısız</dt><dd>{{ s.failed }}</dd>
-        <dt>Opt-out atlandı</dt><dd>{{ s.skippedOptout }}</dd>
-        <dt>Kuyrukta</dt><dd>{{ s.queued }}</dd>
-      </dl>
-      <span class="badge">{{ s.status }}</span>
-    }
-  `
-})
-export class CampaignProgressComponent {
-  jobId = input.required<string>();
-  private http = inject(HttpClient);
-
-  // 3 saniyede bir poll
-  private tick = toSignal(interval(3000), { initialValue: 0 });
-
-  readonly status = rxResource({
-    request: () => ({ id: this.jobId(), tick: this.tick() }),
-    loader: ({ request }) =>
-      this.http.get<JobStatus>(`/api/bulk-jobs/${request.id}`)
-  });
-}
-```
+**Neden P0 değil?** Dent pilot hacmi düşük (~200 lead event bazlı, anlık değil). INSE'nin kendi scheduled job'ı bulk gönderimi 2-3 dakika içinde tamamlar. Bulk endpoint büyük tenant'lar (1000+ hedef) için optimize; pilot sonrası scale gerektiğinde eklenecek.
 
 ---
 
@@ -734,8 +715,8 @@ INMA'nın sağ üst köşesinde bir bell icon + badge + dropdown olsun. Bunu INS
 
 **Senaryo:**
 > Koordinatör sabah INMA'ya giriyor. Sağ üstte "🔔 5" görüyor. Tıklıyor:
-> - "Offer accepted — Sarah (Dublin) — 2 saat önce"
-> - "Appointment booked — John (Cork) — 3 saat önce"
+> - "Offer accepted — Sarah — 2 saat önce"
+> - "Appointment booked — John — 3 saat önce"
 > - "X-ray uploaded — Mary — dün"
 > - "SLA breach: Peter 45 dakikadır cevapsız"
 > - "Flow completed: 23 kişi post-event drip'e alındı"
@@ -831,6 +812,116 @@ INMA'daki kritik aksiyonlar (user login, contact create, chat transfer, template
 
 ---
 
+## Opsiyonel — Backlog (Pilot Kritik Değil)
+
+### 11. Toplu Mesaj Gönderim Endpoint'i (eski §5 — J4)
+
+> **2026-04-17 Q kararı:** Bu madde P0'dan Opsiyonel/Backlog'a taşındı. Pilot için şart değil.
+
+**Ne istiyoruz?**
+Tek seferde çok kişiye mesaj gönderebileceğimiz bir API.
+
+**Teknik:** `POST /api/chatsv3/bulk-send`. Body: `{ contacts: [phone1, phone2, ...], templateId, variables: {...}, scheduleAt?: ISO8601 }`. Response'ta bir job id, per-contact status callback. WhatsApp tier limit'ini INMA yönetsin.
+
+**Senaryo (scale sonrası):**
+> Büyük tenant büyük bir kampanya öncesi 2000+ kayıtlı katılımcıya "Hazırlıklarınız tamam mı?" hatırlatma mesajı göndermek istiyor. INSE'nin kampanya ekranından "Gönder" diyor. 2000 ayrı API çağrısı yapmak yerine tek bulk-send çağrısı yapıyor. INMA bu listeyi WhatsApp rate limit'ine göre sıraya alıp gönderiyor, her birinin durumunu callback ile INSE'ye bildiriyor.
+
+**Neden P0 değil (2026-04-17 karar):**
+- Dent pilot hacmi düşük (~200 lead, event bazlı dağılır, anlık bulk gerekmez)
+- INSE kendi Hangfire + WA tier throttle queue'suyla pilot için yeterli
+- Bulk endpoint 1000+ hedef için optimize; pilot sonrası scale tetiklediğinde eklenecek
+
+**Çıktı (ileride):**
+- Batch endpoint
+- Schedule desteği (şimdi gönder ya da 2 saat sonra)
+- Status callback (webhook ile INSE'ye per-contact)
+
+**Veri Akışı:**
+```
+[INSE Campaign UI] → "Gönder" → hedef 2000 kişi, schedule: şimdi
+[INSE → INMA] POST /api/chatsv3/bulk-send
+              Body: {
+                "companyCode": "<tenant>",
+                "channelId": "<wa-id>",
+                "templateId": 1042,
+                "contacts": [
+                  { "phone": "+...", "variables": {"name":"John","city":"<şehir A>"} },
+                  { "phone": "+...", "variables": {"name":"Mary","city":"<şehir B>"} },
+                  ... (2000 kayıt)
+                ],
+                "scheduleAt": null,
+                "transactional": false,
+                "callbackUrl": "https://inse.invekto.com/api/bulk-callback"
+              }
+[INMA] → Job create → response: { jobId: "bulk-8842", queued: 2000 }
+       → Rate-limiter kuyruğuna al (WA tier limit)
+       → Her 1 mesaj için async gönderim
+
+Her gönderim için callback:
+[INMA → INSE] POST https://inse.invekto.com/api/bulk-callback
+              Body: {
+                "jobId": "bulk-8842",
+                "phone": "+353...",
+                "status": "sent" | "failed" | "skipped_optout",
+                "messageId": "wa_abc123",
+                "error": null,
+                "timestamp": "2026-04-13T12:00:05Z"
+              }
+[INSE] → campaign_deliveries tablosu update → dashboard anlık güncelle
+```
+
+**Angular campaign dashboard (INMA tarafı opsiyonel, INSE'de de olabilir):**
+```typescript
+// campaign-progress.component.ts
+import { Component, inject, input } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { rxResource } from '@angular/core/rxjs-interop';
+import { interval } from 'rxjs';
+import { toSignal } from '@angular/core/rxjs-interop';
+
+interface JobStatus {
+  jobId: string; total: number;
+  sent: number; failed: number; skippedOptout: number; queued: number;
+  status: 'running' | 'completed' | 'paused';
+}
+
+@Component({
+  selector: 'campaign-progress',
+  standalone: true,
+  template: `
+    @let s = status.value();
+    @if (s) {
+      <h3>Kampanya: {{ s.jobId }}</h3>
+      <progress [value]="s.sent + s.failed + s.skippedOptout" [max]="s.total"></progress>
+      <dl>
+        <dt>Gönderildi</dt><dd>{{ s.sent }}</dd>
+        <dt>Başarısız</dt><dd>{{ s.failed }}</dd>
+        <dt>Opt-out atlandı</dt><dd>{{ s.skippedOptout }}</dd>
+        <dt>Kuyrukta</dt><dd>{{ s.queued }}</dd>
+      </dl>
+      <span class="badge">{{ s.status }}</span>
+    }
+  `
+})
+export class CampaignProgressComponent {
+  jobId = input.required<string>();
+  private http = inject(HttpClient);
+
+  // 3 saniyede bir poll
+  private tick = toSignal(interval(3000), { initialValue: 0 });
+
+  readonly status = rxResource({
+    request: () => ({ id: this.jobId(), tick: this.tick() }),
+    loader: ({ request }) =>
+      this.http.get<JobStatus>(`/api/bulk-jobs/${request.id}`)
+  });
+}
+```
+
+**Tetikleyici:** Tek tenant tek seferde 1000+ hedef göndermek istediğinde (pilot sonrası scale metriği).
+
+---
+
 ## Test Ortamı
 
 - **INMA test:** `testapi.wapcrm.net` (mevcut)
@@ -841,15 +932,17 @@ INMA'daki kritik aksiyonlar (user login, contact create, chat transfer, template
 
 | Faz | Takvim | INMA Tahmini Efor |
 |-----|--------|-------------------|
-| P0 (1–5) | 4 hafta | ~2 hafta (1 backend dev) |
+| P0 (1–4) | 3 hafta | ~1.5 hafta (1 backend dev) — §5 Opsiyonel'e taşındı |
 | P1 (6–8) | 3 hafta | ~1.5 hafta |
 | P2 (9–10) | v2 | ayrı sprint |
+| Opsiyonel (§11 bulk-send) | scale tetiklediğinde | ~3-4g |
 
 ## Sıradaki Adımlar
 
 1. **Kickoff toplantısı** — bu dokümanı birlikte gözden geçirelim, sorular netleşsin
-2. P0 5 maddesi için ticket açılsın
+2. P0 4 maddesi için ticket açılsın (§1 SSO, §2 tenant.created, §3 template render, §4 opt-out)
 3. Her madde için API contract draft'ı (INSE tarafı yazar, INMA review eder)
 4. Staging joint test planı
+5. §11 bulk-send pilot sonrası re-visit edilecek (scale metriği tetiklediğinde)
 
 **Not:** INMA tarafında gereksiz refactor istemiyoruz. Mevcut koda dokunmadan yeni endpoint'ler/event'ler ekleme odaklı bir iş. Her maddenin kendi mini PR'ı olabilir, paralel ilerleyebilir.

@@ -1,0 +1,10 @@
+{
+  "greeting": "Ciao! Per aiutarti al meglio, posso sapere il tuo nome?",
+  "name_retry": "Non ho capito bene il tuo nome. Puoi scriverlo di nuovo?",
+  "intent_ask": "{name}, come posso aiutarti?",
+  "confirm": "{name}, intendi dire: {summary}?",
+  "clarify_low": "{name}, puoi spiegare un po' di piu?",
+  "denied": "Capito, {name}. In cosa posso aiutarti esattamente?",
+  "max_attempts_reached": "Ti metto in contatto con un collega. Torniamo da te al piu presto.",
+  "off_hours_redirect": "Siamo fuori orario. Ti risponderemo il prima possibile."
+}
