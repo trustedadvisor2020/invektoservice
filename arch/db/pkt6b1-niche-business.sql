@@ -122,6 +122,9 @@ CREATE TABLE IF NOT EXISTS leads (
     -- HFM-2 (migration 018-leads-preferred-locale.sql): per-lead preferred locale
     -- ISO 639-1 or 'xx-YY'; NULL = not yet detected, fallback chain (en default).
     preferred_locale VARCHAR(5),
+    -- FEAT-WTP (migration 020-leads-faq-rotation-state.sql): per-group-tag variant counter.
+    -- Shape: { "<group_tag>": <next_variant_index:int> }. Empty map = no rotation seen.
+    faq_rotation_state JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT fk_leads_tenant

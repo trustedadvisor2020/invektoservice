@@ -1448,6 +1448,44 @@ app.MapGet("/api/v1/templates/{tenantId:int}/available", async (
     return Results.Ok(new { items, count = items.Count });
 });
 
+// FEAT-WTP: variant pool fetch for Automation rotation (tenant-scope only).
+// Returns active+published tenant templates sharing (group_tag, lang) — Automation
+// uses count for deterministic pick via ITemplateRotationService, then extracts
+// content_json.text from the selected row.
+app.MapGet("/api/v1/templates/{tenantId:int}/group/{groupTag}", async (
+    int tenantId, string groupTag,
+    HttpContext ctx,
+    TemplateRepository repo,
+    JsonLinesLogger jsonLog,
+    string? lang) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant mismatch", requestId), statusCode: 403);
+
+    if (string.IsNullOrWhiteSpace(groupTag) || groupTag.Length > 50)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "groupTag must be 1-50 chars", requestId), statusCode: 400);
+
+    try
+    {
+        var items = await repo.FetchByGroupTagAsync(tenantId, groupTag, lang);
+        return Results.Ok(new { items, count = items.Count, group_tag = groupTag, lang });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        // INV-AT-066 is the canonical code for group_tag pool-fetch failure across the
+        // tenant -> Automation -> Knowledge chain; Automation falls back to inline
+        // text_variants/data.text when the Knowledge endpoint reports 503.
+        jsonLog.SystemWarn(
+            $"[{ErrorCodes.AutomationTemplateGroupFetchFailed}] FetchByGroupTag DB error tenant={tenantId} group_tag={groupTag}: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(
+            ErrorCodes.AutomationTemplateGroupFetchFailed,
+            "Template group fetch failed; try again shortly.",
+            requestId), statusCode: 503);
+    }
+});
+
 // ============================================================
 // Template Adoption (superadmin or tenant)
 // ============================================================

@@ -410,6 +410,11 @@ errors:
     description: action_wait_until node config invalid (no duration provided, out-of-bounds, or unparseable).
     user_message: Bekleme adimi yapilandirmasi gecersiz.
 
+  # FEAT-WTP: Welcome Template Pack (rotation state + group_tag fetch)
+  - code: INV-AT-061
+    description: leads.faq_rotation_state upsert failed (NpgsqlException or update rejected); variant 0 fallback used.
+    user_message: Varyant rotasyonu kaydedilemedi, varsayilan sablon kullanildi.
+
   # HFM-1/HFM-2: Human-feel + Multi-language
   - code: INV-AT-062
     description: message_text node has invalid text_chunks JSON; falling back to legacy text field (or \n\n auto-split).
@@ -423,6 +428,14 @@ errors:
   - code: INV-AT-065
     description: IntentPrompts.{locale}.json embedded resource missing or malformed; fallback to Turkish default prompts.
     user_message: Dil kaynaklari bulunamadi, varsayilan dil kullanildi.
+
+  # FEAT-WTP continued: template variant pool fetch + rotation state shape
+  - code: INV-AT-066
+    description: Knowledge template_catalog group_tag fetch failed (HTTP error / timeout / parse); fallback to inline text_variants or data.text.
+    user_message: Sablon grubu yuklenemedi, varsayilan sablon kullanildi.
+  - code: INV-AT-067
+    description: leads.faq_rotation_state JSONB shape invalid (non-object or non-integer value); state reset to empty map, variant 0 used.
+    user_message: Varyant rotasyon durumu bozuk; sifirlandi.
 
   # HFM-2: Backend Translation Warmup ops endpoint
   - code: INV-BE-090

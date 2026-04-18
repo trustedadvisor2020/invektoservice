@@ -1,4 +1,6 @@
 using System.Text.Json;
+using Invekto.Automation.Services;
+using Invekto.Shared.Auth;
 using Invekto.Shared.Constants;
 using Invekto.Shared.Logging;
 using Invekto.Shared.Services;
@@ -25,6 +27,13 @@ namespace Invekto.Automation.Services.NodeHandlers;
 /// <c>List&lt;string&gt; Messages</c> stream carries it unchanged. Orchestrator detects
 /// the prefix and dispatches one callback per chunk with pre-delays from
 /// <see cref="IMessageChunkPlanner"/>.
+///
+/// FEAT-WTP (variant pool from Knowledge): when <c>data.group_tag</c> is set, the
+/// handler fetches active+published tenant templates sharing that group_tag from the
+/// Knowledge service and picks one deterministically by
+/// <see cref="ITemplateRotationService"/>. State-free (same contact = same variant);
+/// the rotation counter in leads.faq_rotation_state is NOT touched — that is reserved
+/// for AiFaqHandler round-robin. Precedence: group_tag → text_variants → data.text.
 /// </summary>
 public sealed class MessageTextHandler : INodeHandler
 {
@@ -37,24 +46,35 @@ public sealed class MessageTextHandler : INodeHandler
     private readonly ITemplateRotationService _rotation;
     private readonly IMessageChunkPlanner _chunkPlanner;
     private readonly JsonLinesLogger _logger;
+    // FEAT-WTP: optional — tests and simulation can skip HTTP by passing null.
+    private readonly KnowledgeSearchClient? _knowledgeClient;
+    private readonly JwtGenerator? _jwtGenerator;
 
     public MessageTextHandler(
         ITemplateRotationService rotation,
         IMessageChunkPlanner chunkPlanner,
-        JsonLinesLogger logger)
+        JsonLinesLogger logger,
+        KnowledgeSearchClient? knowledgeClient = null,
+        JwtGenerator? jwtGenerator = null)
     {
         _rotation = rotation;
         _chunkPlanner = chunkPlanner;
         _logger = logger;
+        _knowledgeClient = knowledgeClient;
+        _jwtGenerator = jwtGenerator;
     }
 
     public string NodeType => "message_text";
 
-    public Task<NodeResult> ExecuteAsync(FlowNodeV2 node, ExecutionContext ctx, CancellationToken ct)
+    public async Task<NodeResult> ExecuteAsync(FlowNodeV2 node, ExecutionContext ctx, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
 
-        var rawText = ResolveTemplate(node, ctx, out var variantIndex, out var variantCount);
+        var resolved = await ResolveTemplateAsync(node, ctx, ct);
+        var rawText = resolved.Text;
+        var variantIndex = resolved.VariantIndex;
+        var variantCount = resolved.VariantCount;
+        var templateId = resolved.TemplateId;
         var resolvedChunks = ResolveChunks(node, rawText);
 
         // Substitute variables on each chunk (or single text) so the planner operates on final lengths.
@@ -86,6 +106,10 @@ public sealed class MessageTextHandler : INodeHandler
                 [$"__variant_index:{node.Id}"] = variantIndex.ToString(),
                 [$"__variant_count:{node.Id}"] = variantCount.ToString()
             };
+            // FEAT-WTP: emit template_id when the pool came from the Knowledge catalog so
+            // support can trace which row was rendered (grep [FEAT-WTP] in ops logs).
+            if (templateId.HasValue)
+                variableUpdates[$"__variant_template_id:{node.Id}"] = templateId.Value.ToString();
         }
 
         // HFM-1: build the message payload. Single chunk → plain string (legacy).
@@ -103,13 +127,13 @@ public sealed class MessageTextHandler : INodeHandler
 
         if (!waitForInput)
         {
-            return Task.FromResult(new NodeResult
+            return new NodeResult
             {
                 MessageText = string.IsNullOrEmpty(messageText) ? null : messageText,
                 Action = NodeAction.Continue,
                 OutputHandle = null,
                 VariableUpdates = variableUpdates
-            });
+            };
         }
 
         // Phase 2: user already replied to this wait point
@@ -120,16 +144,16 @@ public sealed class MessageTextHandler : INodeHandler
             var userReply = ctx.State.Variables.TryGetValue("__last_input", out var li) ? li : "";
             ctx.State.Variables["user_input"] = userReply;
 
-            return Task.FromResult(new NodeResult
+            return new NodeResult
             {
                 MessageText = null, // Don't re-send the prompt
                 Action = NodeAction.Continue,
                 OutputHandle = null
-            });
+            };
         }
 
         // Phase 1: first visit — send message and wait for user reply
-        return Task.FromResult(new NodeResult
+        return new NodeResult
         {
             MessageText = string.IsNullOrEmpty(messageText) ? null : messageText,
             Action = NodeAction.WaitForInput,
@@ -139,20 +163,69 @@ public sealed class MessageTextHandler : INodeHandler
                 Options = null
             },
             VariableUpdates = variableUpdates
-        });
+        };
     }
 
-    /// <summary>
-    /// Resolve message text — prefer <c>text_variants</c> (JSON array) via rotation service,
-    /// fall back to the legacy single <c>text</c> field when variants are missing/invalid.
-    /// Invalid JSON is swallowed (silent fallback) to guarantee the customer still gets a message;
-    /// a warning is logged with INV-AT-057 so it is visible in ops.
-    /// </summary>
-    private string ResolveTemplate(FlowNodeV2 node, ExecutionContext ctx, out int variantIndex, out int variantCount)
-    {
-        variantIndex = 0;
-        variantCount = 0;
+    private readonly record struct ResolvedTemplate(string Text, int VariantIndex, int VariantCount, int? TemplateId);
 
+    /// <summary>
+    /// Resolve message text — precedence:
+    ///   1. FEAT-WTP: <c>data.group_tag</c> → fetch tenant variant pool from Knowledge,
+    ///      pick via rotation service. Empty pool / HTTP fail / simulation → next step.
+    ///   2. G3: <c>data.text_variants</c> (JSON array) → rotation service pick.
+    ///   3. Legacy: <c>data.text</c> (single balloon).
+    /// Invalid JSON / transport failures are swallowed with a structured warning so the
+    /// customer always receives SOME message.
+    /// </summary>
+    private async Task<ResolvedTemplate> ResolveTemplateAsync(
+        FlowNodeV2 node, ExecutionContext ctx, CancellationToken ct)
+    {
+        // Step 1: Knowledge-backed variant pool (FEAT-WTP).
+        var groupTag = node.GetData("group_tag");
+        if (!string.IsNullOrWhiteSpace(groupTag)
+            && !ctx.IsSimulation
+            && _knowledgeClient != null
+            && _jwtGenerator != null
+            && ctx.TenantId > 0)
+        {
+            // Prefer lead's preferred locale (HFM-2) but fall back to the node-declared
+            // lang (explicit override) or no lang at all (let Knowledge return any match).
+            var lang = !string.IsNullOrEmpty(ctx.LeadPreferredLocale)
+                ? ctx.LeadPreferredLocale
+                : node.GetData("lang");
+
+            try
+            {
+                var jwt = _jwtGenerator.GenerateServiceToken(ctx.TenantId);
+                var pool = await _knowledgeClient.FetchVariantPoolAsync(ctx.TenantId, groupTag, lang, jwt, ct);
+                if (pool.Count > 0)
+                {
+                    var idx = _rotation.PickVariantIndex(ctx.ContactKey, node.Id, pool.Count);
+                    var picked = pool[idx];
+                    _logger.SystemInfo(
+                        $"[FEAT-WTP] tenant={ctx.TenantId} node={node.Id} group_tag={groupTag} variant_index={idx}/{pool.Count} template_id={picked.Id}");
+                    return new ResolvedTemplate(picked.Text, idx, pool.Count, picked.Id);
+                }
+                // Empty pool: caller supplied group_tag but Knowledge has no active+published
+                // templates for it. Log INV-AT-066 once and fall through to text_variants.
+                _logger.SystemWarn(
+                    $"[{ErrorCodes.AutomationTemplateGroupFetchFailed}] empty pool tenant={ctx.TenantId} node={node.Id} group_tag={groupTag} lang={lang}");
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            // Note: KnowledgeSearchClient catches HTTP/JSON/timeout internally and returns
+            // an empty list (see FetchVariantPoolAsync). We only catch here to defend
+            // against unexpected exceptions leaking from JwtGenerator or the client itself.
+            catch (InvalidOperationException ex)
+            {
+                _logger.SystemWarn(
+                    $"[{ErrorCodes.AutomationTemplateGroupFetchFailed}] pool fetch threw tenant={ctx.TenantId} node={node.Id} group_tag={groupTag}: {ex.Message}");
+            }
+        }
+
+        // Step 2: inline text_variants (G3 backwards-compat).
         var variantsRaw = node.GetData("text_variants");
         if (!string.IsNullOrWhiteSpace(variantsRaw))
         {
@@ -174,9 +247,8 @@ public sealed class MessageTextHandler : INodeHandler
 
                     if (variants.Count > 0)
                     {
-                        variantCount = variants.Count;
-                        variantIndex = _rotation.PickVariantIndex(ctx.ContactKey, node.Id, variantCount);
-                        return variants[variantIndex];
+                        var idx = _rotation.PickVariantIndex(ctx.ContactKey, node.Id, variants.Count);
+                        return new ResolvedTemplate(variants[idx], idx, variants.Count, null);
                     }
                 }
             }
@@ -186,7 +258,8 @@ public sealed class MessageTextHandler : INodeHandler
             }
         }
 
-        return node.GetData("text");
+        // Step 3: legacy single text.
+        return new ResolvedTemplate(node.GetData("text") ?? string.Empty, 0, 0, null);
     }
 
     /// <summary>

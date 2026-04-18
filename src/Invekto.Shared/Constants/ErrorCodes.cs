@@ -190,11 +190,18 @@ public static class ErrorCodes
     public const string AutomationFlowWaitResumeFailed = "INV-AT-059";     // Resume from persisted wait state failed
     public const string AutomationFlowWaitConfigInvalid = "INV-AT-060";    // action_wait_until node config invalid (no duration / out of bounds)
 
+    // FEAT-WTP: Welcome Template Pack (faq rotation state upsert)
+    public const string AutomationFaqRotationStateUpdateFailed = "INV-AT-061"; // leads.faq_rotation_state upsert failed, fallback to variant 0
+
     // HFM-1/HFM-2: Human-feel + Multi-language (INV-AT-062+)
     public const string AutomationChunkScheduleInvalid = "INV-AT-062";     // text_chunks JSON parse failed, fallback to legacy text
     public const string AutomationLocaleDetectFailed = "INV-AT-063";       // preferred_locale upsert failed or detect returned empty
     public const string AutomationFaqTranslationFailed = "INV-AT-064";     // AiFaq post-match translation hop failed, fallback to raw
     public const string AutomationIntentPromptResourceMissing = "INV-AT-065"; // IntentPrompts.{locale}.json resource not found
+
+    // FEAT-WTP continued: variant pool fetch + JSONB parse
+    public const string AutomationTemplateGroupFetchFailed = "INV-AT-066"; // Knowledge group_tag template fetch failed/timeout, fallback to inline text
+    public const string AutomationFaqRotationStateMalformed = "INV-AT-067"; // leads.faq_rotation_state JSONB invalid shape, reset to empty
 
     // AgentAI errors (INV-AA-xxx)
     public const string AgentAIInvalidPayload = "INV-AA-001";

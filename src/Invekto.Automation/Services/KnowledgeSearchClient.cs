@@ -91,6 +91,118 @@ public sealed class KnowledgeSearchClient
         }
     }
 
+    /// <summary>
+    /// FEAT-WTP: fetch the active+published variant pool for a tenant group_tag from Knowledge.
+    /// Returns the raw template list (each row = one variant); caller extracts
+    /// content_json.text via <see cref="ExtractVariantText"/> after <see cref="Invekto.Shared.Services.ITemplateRotationService"/> picks an index.
+    /// On any failure returns an empty list and logs INV-AT-066 — caller falls back to
+    /// inline text_variants (G3) or data.text (legacy). Never throws.
+    /// </summary>
+    public async Task<IReadOnlyList<KnowledgeTemplateVariant>> FetchVariantPoolAsync(
+        int tenantId, string groupTag, string? lang, string jwtToken, CancellationToken ct = default)
+    {
+        if (tenantId <= 0 || string.IsNullOrWhiteSpace(groupTag))
+            return Array.Empty<KnowledgeTemplateVariant>();
+
+        try
+        {
+            // Path-encode the group_tag (free-text VARCHAR(50) may contain '_' only in practice
+            // but Uri.EscapeDataString is defensive against future tag formats).
+            var encoded = Uri.EscapeDataString(groupTag);
+            var url = $"/api/v1/templates/{tenantId}/group/{encoded}";
+            if (!string.IsNullOrEmpty(lang))
+                url += $"?lang={Uri.EscapeDataString(lang)}";
+
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", jwtToken);
+            request.Headers.Add("X-Request-Id", Guid.NewGuid().ToString("N"));
+
+            using var response = await _httpClient.SendAsync(request, ct);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.SystemWarn(
+                    $"[{ErrorCodes.AutomationTemplateGroupFetchFailed}] FetchVariantPool HTTP {(int)response.StatusCode} tenant={tenantId} group_tag={groupTag}");
+                return Array.Empty<KnowledgeTemplateVariant>();
+            }
+
+            using var json = await response.Content.ReadFromJsonAsync<JsonDocument>(ct);
+            if (json == null || !json.RootElement.TryGetProperty("items", out var itemsEl) || itemsEl.ValueKind != JsonValueKind.Array)
+            {
+                // Malformed response (missing or non-array `items`) — INV-AT-066 observable
+                // so ops can distinguish payload shape issues from transport/HTTP failures.
+                _logger.SystemWarn(
+                    $"[{ErrorCodes.AutomationTemplateGroupFetchFailed}] FetchVariantPool malformed response (missing items array) tenant={tenantId} group_tag={groupTag}");
+                return Array.Empty<KnowledgeTemplateVariant>();
+            }
+
+            var list = new List<KnowledgeTemplateVariant>(itemsEl.GetArrayLength());
+            foreach (var row in itemsEl.EnumerateArray())
+            {
+                var id = row.TryGetProperty("id", out var idEl) && idEl.ValueKind == JsonValueKind.Number ? idEl.GetInt32() : 0;
+                var text = ExtractVariantText(row);
+                if (id > 0 && !string.IsNullOrWhiteSpace(text))
+                    list.Add(new KnowledgeTemplateVariant { Id = id, Text = text! });
+            }
+            return list;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.SystemWarn($"[{ErrorCodes.AutomationTemplateGroupFetchFailed}] FetchVariantPool timeout tenant={tenantId} group_tag={groupTag}");
+            return Array.Empty<KnowledgeTemplateVariant>();
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.SystemWarn($"[{ErrorCodes.AutomationTemplateGroupFetchFailed}] FetchVariantPool transport tenant={tenantId} group_tag={groupTag}: {ex.Message}");
+            return Array.Empty<KnowledgeTemplateVariant>();
+        }
+        catch (JsonException ex)
+        {
+            _logger.SystemWarn($"[{ErrorCodes.AutomationTemplateGroupFetchFailed}] FetchVariantPool parse tenant={tenantId} group_tag={groupTag}: {ex.Message}");
+            return Array.Empty<KnowledgeTemplateVariant>();
+        }
+    }
+
+    /// <summary>
+    /// Extract the variant text from a template row. Convention:
+    ///   content_json = { "text": "..." }
+    /// Falls through: "text" -> "answer" -> null. Returns null for whitespace-only values.
+    /// </summary>
+    private static string? ExtractVariantText(JsonElement row)
+    {
+        if (!row.TryGetProperty("content_json", out var content))
+            return null;
+
+        // The catalog stores content_json as a JSONB blob; the endpoint emits it either as
+        // an object (most rows) or a JSON string (older rows escaped by the repo). Handle both.
+        JsonElement body = content;
+        if (body.ValueKind == JsonValueKind.String)
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(body.GetString() ?? "{}");
+                body = doc.RootElement.Clone();
+            }
+            catch (JsonException)
+            {
+                return null;
+            }
+        }
+
+        if (body.ValueKind != JsonValueKind.Object)
+            return null;
+
+        if (body.TryGetProperty("text", out var textEl) && textEl.ValueKind == JsonValueKind.String)
+            return textEl.GetString();
+        if (body.TryGetProperty("answer", out var ansEl) && ansEl.ValueKind == JsonValueKind.String)
+            return ansEl.GetString();
+        return null;
+    }
+
     private static KnowledgeFaqSearchResult ParseSearchResponse(JsonDocument json, string? searchSource)
     {
         var root = json.RootElement;
@@ -180,6 +292,16 @@ public sealed class KnowledgeFaqSearchResult
         UnavailableReason = reason,
         Items = new List<KnowledgeFaqSearchItem>()
     };
+}
+
+/// <summary>
+/// FEAT-WTP: one template row from a group_tag variant pool. Id identifies the underlying
+/// template_catalog row for audit logging; Text is the extracted variant body.
+/// </summary>
+public sealed class KnowledgeTemplateVariant
+{
+    public required int Id { get; init; }
+    public required string Text { get; init; }
 }
 
 /// <summary>

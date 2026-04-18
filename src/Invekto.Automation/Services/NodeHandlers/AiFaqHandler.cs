@@ -1,4 +1,6 @@
+using Invekto.Automation.Data;
 using Invekto.Shared.Auth;
+using Invekto.Shared.Constants;
 
 namespace Invekto.Automation.Services.NodeHandlers;
 
@@ -24,6 +26,8 @@ public sealed class AiFaqHandler : INodeHandler
     private readonly MockFaqMatcher _mockFaqMatcher;
     private readonly JwtGenerator _jwtGenerator;
     private readonly TranslationHopClient? _translationHop;
+    // FEAT-WTP: rotation state read/write — nullable so legacy tests/sim still construct handler.
+    private readonly AutomationRepository? _repo;
 
     private const int DefaultTopK = 3;
     private const double DefaultMinConfidence = 0.65;
@@ -36,13 +40,15 @@ public sealed class AiFaqHandler : INodeHandler
         ChunkSummarizer chunkSummarizer,
         MockFaqMatcher mockFaqMatcher,
         JwtGenerator jwtGenerator,
-        TranslationHopClient? translationHop = null)
+        TranslationHopClient? translationHop = null,
+        AutomationRepository? repo = null)
     {
         _searchClient = searchClient;
         _chunkSummarizer = chunkSummarizer;
         _mockFaqMatcher = mockFaqMatcher;
         _jwtGenerator = jwtGenerator;
         _translationHop = translationHop;
+        _repo = repo;
     }
 
     public async Task<NodeResult> ExecuteAsync(FlowNodeV2 node, ExecutionContext ctx, CancellationToken ct)
@@ -149,11 +155,42 @@ public sealed class AiFaqHandler : INodeHandler
         var isMatched = answer != null && confidence >= minConfidence;
         var handle = isMatched ? "matched" : "no_match";
 
+        // FEAT-WTP: rotation_group_tag override. When the flow node declares
+        // data.rotation_group_tag AND the semantic search matched (so we know the intent fired),
+        // replace the Knowledge-returned answer with a deterministic + round-robin pick from
+        // template_catalog. Knowledge search still runs above for the matched/no_match routing
+        // decision and for the attribution log.
+        //
+        // Fall-throughs (empty pool / HTTP fail / deps missing) keep the Knowledge answer —
+        // the customer never sees a blank reply.
+        var outboundAnswer = answer;
+        int? rotationIndex = null;
+        int? rotationCount = null;
+        int? rotationTemplateId = null;
+        string? rotationGroupTag = null;
+
+        var declaredGroupTag = node.GetData("rotation_group_tag");
+        if (isMatched
+            && !string.IsNullOrWhiteSpace(declaredGroupTag)
+            && !ctx.IsSimulation
+            && _repo != null
+            && !string.IsNullOrWhiteSpace(ctx.ContactKey))
+        {
+            var rotationResult = await ApplyRotationAsync(ctx, declaredGroupTag, ct);
+            if (rotationResult != null)
+            {
+                outboundAnswer = rotationResult.Value.Text;
+                rotationIndex = rotationResult.Value.Index;
+                rotationCount = rotationResult.Value.Count;
+                rotationTemplateId = rotationResult.Value.TemplateId;
+                rotationGroupTag = declaredGroupTag;
+            }
+        }
+
         // HFM-2: post-match translation hook. Applied only on a matched freeform answer
         // (chunk summaries are translation targets too, intentional — operators author TR
         // FAQ content but EN/DE leads see their language). Graceful degradation on failure:
         // keep the original answer so the customer never sees a blank reply.
-        var outboundAnswer = answer;
         if (isMatched && !string.IsNullOrEmpty(outboundAnswer) && _translationHop != null && !ctx.IsSimulation)
         {
             outboundAnswer = await MaybeTranslateAsync(outboundAnswer, ctx, ct) ?? outboundAnswer;
@@ -166,10 +203,19 @@ public sealed class AiFaqHandler : INodeHandler
             ["faq_question"] = matchedQuestion ?? "",
             ["faq_source"] = source
         };
+        if (rotationCount.HasValue && rotationCount.Value > 0)
+        {
+            variables["faq_variant_index"] = rotationIndex!.Value.ToString();
+            variables["faq_variant_count"] = rotationCount.Value.ToString();
+            variables["faq_rotation_group_tag"] = rotationGroupTag ?? "";
+            if (rotationTemplateId.HasValue)
+                variables["faq_variant_template_id"] = rotationTemplateId.Value.ToString();
+        }
 
         ctx.Logger.StepInfo(
             $"AiFaq '{label}': matched={isMatched}, confidence={confidence:F2}, " +
-            $"minConfidence={minConfidence:F2}, handle={handle}, source={source}, simulation={ctx.IsSimulation}",
+            $"minConfidence={minConfidence:F2}, handle={handle}, source={source}, simulation={ctx.IsSimulation}" +
+            (rotationCount.HasValue ? $", rotation={rotationIndex}/{rotationCount} gt={rotationGroupTag}" : ""),
             ctx.RequestId);
 
         return new NodeResult
@@ -180,6 +226,77 @@ public sealed class AiFaqHandler : INodeHandler
             VariableUpdates = variables
         };
     }
+
+    /// <summary>
+    /// FEAT-WTP rotation application. Returns null when the rotation cannot be applied
+    /// (empty pool / fetch failure / no ContactKey) so the caller keeps the Knowledge answer.
+    /// Counter semantics: the persisted index is ALWAYS the NEXT one to emit. After picking
+    /// variant at (persistedIdx % count), we persist (persistedIdx + 1) % count.
+    /// Per-chat ordering (orchestrator's single-flight lock per (tenant, phone)) means we
+    /// do not need a DB-side CAS.
+    /// </summary>
+    private async Task<RotationPick?> ApplyRotationAsync(
+        ExecutionContext ctx, string groupTag, CancellationToken ct)
+    {
+        // Defensive guard — caller already checked _repo != null, but keep this check local
+        // so future refactors do not silently re-introduce a null dereference.
+        var repo = _repo;
+        if (repo == null)
+            return null;
+
+        var lang = !string.IsNullOrEmpty(ctx.LeadPreferredLocale) ? ctx.LeadPreferredLocale : null;
+        var jwt = _jwtGenerator.GenerateServiceToken(ctx.TenantId);
+
+        var pool = await _searchClient.FetchVariantPoolAsync(ctx.TenantId, groupTag, lang, jwt, ct);
+        if (pool.Count == 0)
+        {
+            // KnowledgeSearchClient already logged INV-AT-066 for transport issues; empty pool
+            // is a configuration signal logged here so ops can distinguish missing-content from
+            // transport failure.
+            ctx.Logger.SystemWarn(
+                $"[{ErrorCodes.AutomationTemplateGroupFetchFailed}] empty pool tenant={ctx.TenantId} group_tag={groupTag} lang={lang ?? "(any)"}");
+            return null;
+        }
+
+        // ContactKey may be phone or chatId. UpsertLeadFaqRotationState keys on phone; passing
+        // the chatId form is still safe (rows are keyed (tenant_id, phone); phone=chatId means
+        // we partition rotation state by chat instead of lead when phone is unavailable — the
+        // deterministic rotation invariant is preserved).
+        var contactKey = ctx.ContactKey ?? string.Empty;
+
+        var persistedIdx = await repo.GetLeadFaqRotationIndexAsync(ctx.TenantId, contactKey, groupTag, ct);
+        var bounded = persistedIdx % pool.Count;
+        if (bounded < 0) bounded = 0;
+
+        var picked = pool[bounded];
+        var next = (bounded + 1) % pool.Count;
+
+        // Best-effort write: failure is logged (INV-AT-061/067) inside the repo. Check the
+        // return value so the success log tells ops whether the counter actually advanced;
+        // even on false we still serve the picked variant (deterministic fallback) — the
+        // only user-visible effect is that the SAME lead may see the same variant next time.
+        var persisted = await repo.UpdateLeadFaqRotationStateAsync(ctx.TenantId, contactKey, groupTag, next, ct);
+
+        if (persisted)
+        {
+            ctx.Logger.SystemInfo(
+                $"[FEAT-WTP] rotation tenant={ctx.TenantId} phone={contactKey} group_tag={groupTag} " +
+                $"picked_index={bounded}/{pool.Count} template_id={picked.Id} next={next} persisted=true");
+        }
+        else
+        {
+            // Repo already logged the specific INV-AT-061/067; surface the state advancement
+            // failure here so the structured [FEAT-WTP] trail remains coherent for support.
+            ctx.Logger.SystemWarn(
+                $"[{ErrorCodes.AutomationFaqRotationStateUpdateFailed}] rotation counter not advanced " +
+                $"tenant={ctx.TenantId} phone={contactKey} group_tag={groupTag} picked_index={bounded}/{pool.Count} " +
+                $"template_id={picked.Id}; variant still served, lead may see same variant next time");
+        }
+
+        return new RotationPick(picked.Text, bounded, pool.Count, picked.Id);
+    }
+
+    private readonly record struct RotationPick(string Text, int Index, int Count, int TemplateId);
 
     /// <summary>
     /// HFM-2 fallback chain: lead.preferred_locale → 'en' default → raw.

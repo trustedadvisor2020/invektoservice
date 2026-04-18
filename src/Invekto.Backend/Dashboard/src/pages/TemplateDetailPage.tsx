@@ -3,13 +3,25 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api, TemplateCatalogDetail, TemplateVersionItem } from '../lib/api';
 import {
   ArrowLeft, Check, Clock, Users, FileQuestion, MessageCircle,
-  Lightbulb, GitBranch, Layers, LayoutTemplate,
+  Lightbulb, GitBranch, Layers, LayoutTemplate, Tag,
 } from 'lucide-react';
 
 const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   faq: FileQuestion, message: MessageCircle, intent: Lightbulb,
   flow: GitBranch, scenario: Layers,
 };
+
+// FEAT-WTP: sector-level suggested group_tag values surfaced in the datalist. Not a DB
+// whitelist — tenants may enter any free-text label. See arch/features/welcome-template-pack.md.
+const GROUP_TAG_SUGGESTIONS = [
+  'welcome_with_date',
+  'welcome_no_date',
+  'welcome_returning',
+  'faq_pricing',
+  'faq_hours',
+  'faq_address',
+  'faq_booking',
+];
 
 export function TemplateDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -18,6 +30,9 @@ export function TemplateDetailPage() {
   const [versions, setVersions] = useState<TemplateVersionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // FEAT-WTP: local draft for group_tag input (dirty when !== persisted value).
+  const [groupTagDraft, setGroupTagDraft] = useState<string>('');
+  const [savingGroupTag, setSavingGroupTag] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -32,6 +47,7 @@ export function TemplateDetailPage() {
           api.getTemplateVersions(numId),
         ]);
         setTemplate(tmpl);
+        setGroupTagDraft(tmpl.group_tag ?? '');
         setVersions(vers.versions);
       } catch (err) {
         console.error('Failed to fetch template:', err);
@@ -52,6 +68,38 @@ export function TemplateDetailPage() {
     } catch (err) {
       console.error('Publish failed:', err);
       setError('Sablon yayinlanirken hata olustu.');
+    }
+  };
+
+  /**
+   * FEAT-WTP: persist the group_tag draft.
+   * Empty input clears the tag — backend TemplateRepository.UpdateAsync interprets
+   * '' as "set column to NULL" and null as "leave untouched", so we send the trimmed
+   * string verbatim (empty string propagates as the clear signal).
+   */
+  const handleSaveGroupTag = async () => {
+    if (!template || savingGroupTag) return;
+    const trimmed = groupTagDraft.trim();
+    if (trimmed.length > 50) {
+      setError('[INV-INT-FE-041] Grup etiketi en fazla 50 karakter olabilir.');
+      return;
+    }
+    setSavingGroupTag(true);
+    setError(null);
+    try {
+      // Empty string is intentional: it tells the backend to clear the column.
+      // Passing null here would be a no-op (leave untouched) per the api.ts contract.
+      const updated = await api.updateTemplateGroupTag(template.id, trimmed);
+      setTemplate(updated);
+      setGroupTagDraft(updated.group_tag ?? '');
+    } catch (err) {
+      console.error('Group tag save failed:', err);
+      // INV-INT-FE-042 frontend fallback code: surface actionable next step (retry /
+      // check connection) so support can distinguish this failure from generic 500s.
+      const code = err instanceof Error && err.message ? err.message : 'unknown';
+      setError(`[INV-INT-FE-042] Grup etiketi kaydedilemedi (${code}). Baglantiyi kontrol edip tekrar deneyin.`);
+    } finally {
+      setSavingGroupTag(false);
     }
   };
 
@@ -169,6 +217,39 @@ export function TemplateDetailPage() {
               <div><span className="text-navy-400">Dil:</span> <span className="font-medium">{template.lang}</span></div>
               <div><span className="text-navy-400">Kullanim:</span> <span className="font-medium">{template.usage_count}</span></div>
               <div><span className="text-navy-400">Olusturan:</span> <span className="font-medium">{template.created_by}</span></div>
+            </div>
+          </div>
+
+          {/* FEAT-WTP: Group Tag editor */}
+          <div className="bg-white rounded-lg border border-navy-100 p-3">
+            <h3 className="text-xs font-medium text-navy-500 mb-2 flex items-center gap-1">
+              <Tag className="w-3 h-3" />
+              Grup Etiketi (Rotasyon)
+            </h3>
+            <div className="space-y-2">
+              <input
+                type="text"
+                list="group-tag-suggestions"
+                value={groupTagDraft}
+                maxLength={50}
+                onChange={e => setGroupTagDraft(e.target.value)}
+                placeholder="orn. welcome_with_date"
+                className="w-full text-xs border border-navy-200 rounded px-2 py-1.5 outline-none focus:border-navy-400"
+                disabled={savingGroupTag}
+              />
+              <datalist id="group-tag-suggestions">
+                {GROUP_TAG_SUGGESTIONS.map(g => <option key={g} value={g} />)}
+              </datalist>
+              <p className="text-[10px] text-navy-400">
+                Ayni grup etiketine sahip sablonlar rotasyon havuzu olustur. Bos birakirsaniz etiket silinir.
+              </p>
+              <button
+                onClick={handleSaveGroupTag}
+                disabled={savingGroupTag || groupTagDraft.trim() === (template.group_tag ?? '')}
+                className="w-full px-3 py-1.5 text-xs font-medium rounded bg-navy-800 text-white hover:bg-navy-700 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {savingGroupTag ? 'Kaydediliyor...' : 'Kaydet'}
+              </button>
             </div>
           </div>
 

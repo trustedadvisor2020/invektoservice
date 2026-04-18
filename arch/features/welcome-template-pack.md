@@ -1,7 +1,7 @@
 # SPEC: Welcome Template Pack
 
-> **Spec ID:** FEAT-WTP | **Paket:** TBD | **Risk:** MEDIUM
-> **Yazar:** Q | **Son Guncelleme:** 2026-04-16 | **Durum:** DRAFT
+> **Spec ID:** FEAT-WTP | **Paket:** 20260417-feat-wtp-welcome-faq-rotation | **Risk:** MEDIUM
+> **Yazar:** Q | **Son Guncelleme:** 2026-04-17 | **Durum:** IMPLEMENTED (review pending)
 
 ## 1. Intent (Ne & Neden)
 
@@ -19,9 +19,9 @@ Mevcut durum: Knowledge servisinde template sistemi (5 tip, 3 katman — Platfor
 | AC-1 | Tenant N welcome template yukleyebiliyor (group tag ile, ornegin `welcome_with_date`, `welcome_no_date`) | DB: `template_catalog` row'larinda `group_tag` kolonu populated |
 | AC-2 | Welcome gonderimi `hash(contact_key) % N` ile deterministik secim yapiyor | Unit test: ayni phone 10 kez denenince ayni variant_index donuyor |
 | AC-3 | FAQ intent cevap varyantlari round-robin rotation (lead bazinda `rotation_index`) | `leads.faq_rotation_state` JSONB guncelleniyor per intent |
-| AC-4 | Template dili lead `preferred_locale` ile filtrelenir; yoksa tenant `locale_default` fallback | Simulasyon: TR lead + EN lead + unknown lead 3 farkli locale resolution |
-| AC-5 | Knowledge servisinin mevcut suggestion queue'su DOKUNULMADAN calisir (additive) | Diff: sadece rotation + group_tag eklentileri |
-| AC-6 | Unknown intent fallback: `human_handoff` trigger + diagnostic log (INV-ATxxx) | Flow execution log'da handoff event kaniti |
+| AC-4 | Template dili lead `preferred_locale` ile filtrelenir; 'en' fallback | **MET (HFM-2 2026-04-17):** `ExecutionContext.LeadPreferredLocale` + `KnowledgeSearchClient.FetchVariantPoolAsync(lang)` |
+| AC-5 | Knowledge servisinin mevcut suggestion queue'su DOKUNULMADAN calisir (additive) | Diff: sadece rotation + group_tag eklentileri (template_suggestions tablosu hic dokunulmadi) |
+| AC-6 | Unknown intent fallback: `human_handoff` trigger + diagnostic log (INV-ATxxx) | **N/A:** mevcut AiIntentHandler fallback korunur, bu pakette degisiklik yok |
 
 ## 3. Architectural Decisions
 
@@ -38,7 +38,7 @@ Mevcut durum: Knowledge servisinde template sistemi (5 tip, 3 katman — Platfor
 |----------|-------|
 | Template CRUD API | `arch/contracts/knowledge-templates.json` (mevcut, additive `group_tag`) |
 | DB Schema | `arch/db/template-catalog.sql` (mevcut + ALTER) + `arch/db/pkt6b1-niche-business.sql` (leads.faq_rotation_state ALTER) |
-| Error Codes | `arch/errors.md` INV-AT-057 (G3'ten mevcut), yeni INV-AT-061 (template_group_missing) |
+| Error Codes | `arch/errors.md` INV-AT-057 (G3'ten mevcut), yeni **INV-AT-061** (faq_rotation_state upsert fail), **INV-AT-066** (group_tag fetch fail), **INV-AT-067** (rotation state malformed JSONB) |
 | Shared Service | `Invekto.Shared/ITemplateRotationService.cs` (mevcut) |
 
 ## 5. Scope Boundaries

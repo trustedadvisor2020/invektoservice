@@ -21,16 +21,18 @@ public class TemplateRepository
     // Catalog CRUD
     // ============================================================
 
+    // FEAT-WTP: group_tag appended at column index 21 so existing reader indexes (0-20) stay valid.
+    private const string CatalogSelectColumns =
+        "id, template_type, scope, sector, tenant_id, parent_template_id, " +
+        "slug, name, description, lang, tags, content_json, version, " +
+        "is_active, is_published, usage_count, confidence_score, source_count, " +
+        "created_by, created_at, updated_at, group_tag";
+
     public virtual async Task<TemplateCatalogDto?> GetByIdAsync(int id, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = @"
-            SELECT id, template_type, scope, sector, tenant_id, parent_template_id,
-                   slug, name, description, lang, tags, content_json, version,
-                   is_active, is_published, usage_count, confidence_score, source_count,
-                   created_by, created_at, updated_at
-            FROM template_catalog WHERE id = @id";
+        cmd.CommandText = $"SELECT {CatalogSelectColumns} FROM template_catalog WHERE id = @id";
         cmd.Parameters.AddWithValue("id", id);
 
         await using var r = await cmd.ExecuteReaderAsync(ct);
@@ -76,6 +78,18 @@ public class TemplateRepository
             where += " AND tags && @tags";
             parms.Add(new NpgsqlParameter("tags", NpgsqlDbType.Array | NpgsqlDbType.Text) { Value = f.Tags });
         }
+        // FEAT-WTP: operational group filter (tenant dashboard list + Automation variant pool).
+        if (!string.IsNullOrEmpty(f.GroupTag))
+        {
+            where += " AND group_tag = @group_tag";
+            parms.Add(new NpgsqlParameter("group_tag", f.GroupTag));
+        }
+        // FEAT-WTP: tenant-scope restriction (safe for Automation tenant-scoped lookups).
+        if (f.TenantId.HasValue)
+        {
+            where += " AND tenant_id = @tid";
+            parms.Add(new NpgsqlParameter("tid", f.TenantId.Value));
+        }
 
         // Count
         await using var countCmd = conn.CreateCommand();
@@ -87,10 +101,7 @@ public class TemplateRepository
         var offset = (f.Page - 1) * f.Limit;
         await using var listCmd = conn.CreateCommand();
         listCmd.CommandText = $@"
-            SELECT id, template_type, scope, sector, tenant_id, parent_template_id,
-                   slug, name, description, lang, tags, content_json, version,
-                   is_active, is_published, usage_count, confidence_score, source_count,
-                   created_by, created_at, updated_at
+            SELECT {CatalogSelectColumns}
             FROM template_catalog {where}
             ORDER BY usage_count DESC, created_at DESC
             LIMIT @limit OFFSET @offset";
@@ -113,10 +124,10 @@ public class TemplateRepository
         cmd.CommandText = @"
             INSERT INTO template_catalog
                 (template_type, scope, sector, tenant_id, parent_template_id,
-                 slug, name, description, lang, tags, content_json, created_by)
+                 slug, name, description, lang, tags, group_tag, content_json, created_by)
             VALUES
                 (@type, @scope, @sector, @tid, @parent,
-                 @slug, @name, @desc, @lang, @tags, @content::jsonb, @created_by)
+                 @slug, @name, @desc, @lang, @tags, @group_tag, @content::jsonb, @created_by)
             RETURNING id";
 
         cmd.Parameters.AddWithValue("type", req.TemplateType);
@@ -129,6 +140,8 @@ public class TemplateRepository
         cmd.Parameters.Add(new NpgsqlParameter("desc", NpgsqlDbType.Text) { Value = req.Description ?? (object)DBNull.Value });
         cmd.Parameters.AddWithValue("lang", req.Lang);
         cmd.Parameters.Add(new NpgsqlParameter("tags", NpgsqlDbType.Array | NpgsqlDbType.Text) { Value = req.Tags ?? Array.Empty<string>() });
+        // FEAT-WTP: NULL group_tag (legacy-compatible) when not supplied.
+        cmd.Parameters.Add(new NpgsqlParameter("group_tag", NpgsqlDbType.Varchar) { Value = string.IsNullOrEmpty(req.GroupTag) ? (object)DBNull.Value : req.GroupTag });
         cmd.Parameters.AddWithValue("content", JsonSerializer.Serialize(req.ContentJson));
         cmd.Parameters.AddWithValue("created_by", req.CreatedBy);
 
@@ -163,6 +176,12 @@ public class TemplateRepository
         if (req.Name != null) { sets.Add("name = @name"); parms.Add(new("name", req.Name)); }
         if (req.Description != null) { sets.Add("description = @desc"); parms.Add(new("desc", req.Description)); }
         if (req.Tags != null) { sets.Add("tags = @tags"); parms.Add(new NpgsqlParameter("tags", NpgsqlDbType.Array | NpgsqlDbType.Text) { Value = req.Tags }); }
+        // FEAT-WTP: treat "" as clear-request (sets NULL), non-empty as overwrite; null = leave untouched.
+        if (req.GroupTag != null)
+        {
+            sets.Add("group_tag = @group_tag");
+            parms.Add(new NpgsqlParameter("group_tag", NpgsqlDbType.Varchar) { Value = string.IsNullOrEmpty(req.GroupTag) ? (object)DBNull.Value : req.GroupTag });
+        }
         if (req.ContentJson != null) { sets.Add("content_json = @content::jsonb"); parms.Add(new("content", JsonSerializer.Serialize(req.ContentJson))); }
         if (req.IsPublished.HasValue) { sets.Add("is_published = @pub"); parms.Add(new("pub", req.IsPublished.Value)); }
 
@@ -282,10 +301,7 @@ public class TemplateRepository
 
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = $@"
-            SELECT id, template_type, scope, sector, tenant_id, parent_template_id,
-                   slug, name, description, lang, tags, content_json, version,
-                   is_active, is_published, usage_count, confidence_score, source_count,
-                   created_by, created_at, updated_at
+            SELECT {CatalogSelectColumns}
             FROM template_catalog {where}
             ORDER BY scope DESC, usage_count DESC";
         cmd.Parameters.AddWithValue("tid", tenantId);
@@ -293,6 +309,47 @@ public class TemplateRepository
             cmd.Parameters.AddWithValue("sector", sector);
         if (!string.IsNullOrEmpty(templateType))
             cmd.Parameters.AddWithValue("ttype", templateType);
+        if (!string.IsNullOrEmpty(lang))
+            cmd.Parameters.AddWithValue("lang", lang);
+
+        var items = new List<TemplateCatalogDto>();
+        await using var r = await cmd.ExecuteReaderAsync(ct);
+        while (await r.ReadAsync(ct))
+            items.Add(ReadCatalogDto(r));
+        return items;
+    }
+
+    // ============================================================
+    // FEAT-WTP: Variant pool lookup for Automation (group_tag-scoped).
+    // ============================================================
+
+    /// <summary>
+    /// Fetch active published templates for a tenant sharing a group_tag and language.
+    /// Used by Automation MessageTextHandler (welcome rotation) and AiFaqHandler
+    /// (FAQ variant pool) to retrieve the N variants that the rotation service picks from.
+    /// Returns an empty list when no match — caller falls back to inline text_variants/data.text.
+    /// Tenant-scope only: sector/platform group_tag lookups are out of scope for this method.
+    /// </summary>
+    public virtual async Task<List<TemplateCatalogDto>> FetchByGroupTagAsync(
+        int tenantId, string groupTag, string? lang, CancellationToken ct = default)
+    {
+        if (tenantId <= 0 || string.IsNullOrWhiteSpace(groupTag))
+            return new List<TemplateCatalogDto>();
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+
+        var where = "WHERE scope = 'tenant' AND tenant_id = @tid AND group_tag = @group_tag" +
+                    " AND is_active = true AND is_published = true";
+        if (!string.IsNullOrEmpty(lang))
+            where += " AND lang = @lang";
+
+        cmd.CommandText = $@"
+            SELECT {CatalogSelectColumns}
+            FROM template_catalog {where}
+            ORDER BY id ASC";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("group_tag", groupTag);
         if (!string.IsNullOrEmpty(lang))
             cmd.Parameters.AddWithValue("lang", lang);
 
@@ -697,10 +754,7 @@ public class TemplateRepository
             where += " AND tenant_id = @tid";
 
         cmd.CommandText = $@"
-            SELECT id, template_type, scope, sector, tenant_id, parent_template_id,
-                   slug, name, description, lang, tags, content_json, version,
-                   is_active, is_published, usage_count, confidence_score, source_count,
-                   created_by, created_at, updated_at
+            SELECT {CatalogSelectColumns}
             FROM template_catalog {where}
             ORDER BY version DESC LIMIT 1";
 
@@ -741,7 +795,9 @@ public class TemplateRepository
             SourceCount = r.GetInt32(17),
             CreatedBy = r.GetString(18),
             CreatedAt = r.GetDateTime(19),
-            UpdatedAt = r.GetDateTime(20)
+            UpdatedAt = r.GetDateTime(20),
+            // FEAT-WTP: column 21 — NULL for legacy rows, populated after migration 019.
+            GroupTag = r.IsDBNull(21) ? null : r.GetString(21)
         };
     }
 

@@ -27,6 +27,9 @@ CREATE TABLE IF NOT EXISTS template_catalog (
     description         TEXT,
     lang                VARCHAR(10) NOT NULL DEFAULT 'tr',
     tags                TEXT[] NOT NULL DEFAULT '{}',
+    -- FEAT-WTP (migration 019): operational grouping label for variant rotation.
+    -- Free-text; recommended values documented in arch/features/welcome-template-pack.md.
+    group_tag           VARCHAR(50),
     content_json        JSONB NOT NULL,
     version             INTEGER NOT NULL DEFAULT 1,
     is_active           BOOLEAN NOT NULL DEFAULT true,
@@ -81,6 +84,11 @@ CREATE INDEX IF NOT EXISTS idx_tc_slug_lookup
 
 CREATE INDEX IF NOT EXISTS idx_tc_parent
     ON template_catalog (parent_template_id) WHERE parent_template_id IS NOT NULL;
+
+-- FEAT-WTP (migration 019): tenant-scoped variant pool lookup.
+CREATE INDEX IF NOT EXISTS idx_tc_group_tag
+    ON template_catalog (tenant_id, group_tag, lang)
+    WHERE group_tag IS NOT NULL;
 
 CREATE TRIGGER trigger_tc_updated_at
     BEFORE UPDATE ON template_catalog

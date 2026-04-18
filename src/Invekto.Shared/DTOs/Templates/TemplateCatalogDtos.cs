@@ -39,6 +39,10 @@ public sealed class TemplateCatalogDto
     [JsonPropertyName("tags")]
     public string[] Tags { get; set; } = [];
 
+    // FEAT-WTP (migration 019): operational grouping label; NULL for legacy rows.
+    [JsonPropertyName("group_tag")]
+    public string? GroupTag { get; set; }
+
     [JsonPropertyName("content_json")]
     public object? ContentJson { get; set; }
 
@@ -107,6 +111,10 @@ public sealed class TemplateCreateRequest
     [JsonPropertyName("tags")]
     public string[]? Tags { get; set; }
 
+    // FEAT-WTP: tenant-supplied grouping label for variant rotation (optional).
+    [JsonPropertyName("group_tag")]
+    public string? GroupTag { get; set; }
+
     [JsonPropertyName("content_json")]
     public object ContentJson { get; set; } = new { };
 
@@ -126,6 +134,11 @@ public sealed class TemplateUpdateRequest
 
     [JsonPropertyName("tags")]
     public string[]? Tags { get; set; }
+
+    // FEAT-WTP: update-only mutations send a non-null value to overwrite, null to leave
+    // the existing group_tag untouched (sticky to prior value).
+    [JsonPropertyName("group_tag")]
+    public string? GroupTag { get; set; }
 
     [JsonPropertyName("content_json")]
     public object? ContentJson { get; set; }
@@ -233,6 +246,10 @@ public sealed class TemplateCatalogFilter
     public string? Lang { get; set; }
     public string? Search { get; set; }
     public string[]? Tags { get; set; }
+    // FEAT-WTP: tenant-scoped rotation pool lookup (variant pool by operational group).
+    public string? GroupTag { get; set; }
+    // FEAT-WTP: per-tenant lookup for Automation variant fetch (not used by Dashboard listings).
+    public int? TenantId { get; set; }
     public int Page { get; set; } = 1;
     public int Limit { get; set; } = 20;
 }

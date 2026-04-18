@@ -367,6 +367,8 @@ export interface TemplateCatalogItem {
   description?: string;
   lang: string;
   tags: string[];
+  // FEAT-WTP: operational rotation group label (free-text VARCHAR(50), nullable).
+  group_tag?: string | null;
   version: number;
   is_published: boolean;
   usage_count: number;
@@ -1588,6 +1590,21 @@ class OpsApiClient {
 
   async publishTemplate(id: number): Promise<void> {
     return this.request<void>(`/api/ops/templates/catalog/${id}/publish`, { method: 'POST' });
+  }
+
+  /**
+   * FEAT-WTP: update the operational rotation group_tag on an existing template.
+   * Semantics mirror backend TemplateRepository.UpdateAsync:
+   *   - non-empty string → overwrite
+   *   - empty string ''  → clear (sets column to NULL)
+   *   - null             → leave untouched (no-op on the column)
+   * Callers that want to clear MUST send '' (not null).
+   */
+  async updateTemplateGroupTag(id: number, groupTag: string | null): Promise<TemplateCatalogDetail> {
+    return this.request<TemplateCatalogDetail>(`/api/ops/templates/catalog/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ group_tag: groupTag }),
+    });
   }
 
   async deleteTemplate(id: number): Promise<void> {

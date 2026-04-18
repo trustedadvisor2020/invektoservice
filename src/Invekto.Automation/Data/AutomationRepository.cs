@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Invekto.Shared.Data;
 using Invekto.Shared.Logging;
@@ -929,6 +930,181 @@ public sealed class AutomationRepository
         catch (NpgsqlException ex)
         {
             _logger.SystemWarn($"[INV-AT-063] FallbackUpdatePreferredLocale failed tenant={tenantId} phone={phone}: {ex.Message}");
+            return false;
+        }
+    }
+
+    // ============================================================
+    // FEAT-WTP: Lead FAQ rotation state (per-group-tag variant counter)
+    // ============================================================
+
+    /// <summary>
+    /// Read the current next-variant-index for a lead's rotation group. Returns 0 when:
+    ///  - no lead row exists for (tenant_id, phone),
+    ///  - faq_rotation_state is NULL or missing the key,
+    ///  - JSONB shape is unexpected (caller will pick index 0 as safe fallback).
+    /// INV-AT-067 is logged for malformed shapes; INV-AT-061 for DB errors.
+    /// Caller must take the returned index modulo variantCount before using it.
+    /// </summary>
+    public async Task<int> GetLeadFaqRotationIndexAsync(
+        int tenantId, string phone, string groupTag, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(phone) || string.IsNullOrWhiteSpace(groupTag))
+            return 0;
+
+        try
+        {
+            await using var conn = await _db.OpenConnectionAsync(ct);
+            await using var cmd = conn.CreateCommand();
+            // jsonb -> int extraction at the DB layer keeps the payload small and avoids
+            // shipping the full rotation_state map to the app.
+            cmd.CommandText = @"
+                SELECT (faq_rotation_state -> @gt)::text
+                FROM leads
+                WHERE tenant_id = @tid AND phone = @phone
+                LIMIT 1";
+            cmd.Parameters.AddWithValue("tid", tenantId);
+            cmd.Parameters.AddWithValue("phone", phone);
+            cmd.Parameters.AddWithValue("gt", groupTag);
+
+            var raw = await cmd.ExecuteScalarAsync(ct);
+            if (raw == null || raw == DBNull.Value)
+                return 0;
+
+            var text = raw as string;
+            if (string.IsNullOrEmpty(text) || text == "null")
+                return 0;
+
+            if (!int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var idx) || idx < 0)
+            {
+                _logger.SystemWarn(
+                    $"[INV-AT-067] faq_rotation_state[{groupTag}] non-integer tenant={tenantId} phone={phone} raw={text}");
+                return 0;
+            }
+            return idx;
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemWarn($"[INV-AT-061] GetLeadFaqRotationIndex failed tenant={tenantId} phone={phone} gt={groupTag}: {ex.Message}");
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// Persist (idx+1) % variantCount for the (lead, group_tag) pair. Inserts a minimal
+    /// lead row when missing (mirrors UpsertLeadPreferredLocaleAsync defaults).
+    /// Atomic jsonb_set on the same row we just read from — there is no check-then-set race
+    /// because Automation processes a single message per (tenant, phone) sequentially via
+    /// the orchestrator's per-chat lock. Returns false on DB failure (INV-AT-061, graceful).
+    /// </summary>
+    public async Task<bool> UpdateLeadFaqRotationStateAsync(
+        int tenantId, string phone, string groupTag, int nextIndex, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(phone) || string.IsNullOrWhiteSpace(groupTag))
+            return false;
+        if (nextIndex < 0)
+            return false;
+
+        const string sql = @"
+            INSERT INTO leads (tenant_id, phone, source, faq_rotation_state)
+            VALUES (@tid, @phone, 'whatsapp', jsonb_build_object(@gt, @idx::int))
+            ON CONFLICT (tenant_id, phone) DO UPDATE
+                SET faq_rotation_state =
+                        jsonb_set(
+                            COALESCE(leads.faq_rotation_state, '{}'::jsonb),
+                            ARRAY[@gt]::text[],
+                            to_jsonb(@idx::int),
+                            true),
+                    updated_at = NOW()
+            RETURNING (xmax = 0) AS was_insert";
+
+        try
+        {
+            await using var conn = await _db.OpenConnectionAsync(ct);
+            await using var cmd = new NpgsqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("tid", tenantId);
+            cmd.Parameters.AddWithValue("phone", phone);
+            cmd.Parameters.AddWithValue("gt", groupTag);
+            cmd.Parameters.AddWithValue("idx", nextIndex);
+
+            await cmd.ExecuteScalarAsync(ct);
+            return true;
+        }
+        catch (PostgresException ex) when (ex.SqlState == "42P10")
+        {
+            // Same fallback path as preferred_locale: older deployments may lack the
+            // (tenant_id, phone) unique constraint. Degrade to UPDATE-only.
+            return await FallbackUpdateFaqRotationStateAsync(tenantId, phone, groupTag, nextIndex, ct);
+        }
+        catch (PostgresException ex) when (ex.SqlState == "22P02" || ex.SqlState == "22023")
+        {
+            // JSONB shape corruption — reset to empty map + re-apply.
+            _logger.SystemWarn($"[INV-AT-067] faq_rotation_state invalid JSONB tenant={tenantId} phone={phone}: {ex.Message}; resetting");
+            return await ResetAndSetFaqRotationStateAsync(tenantId, phone, groupTag, nextIndex, ct);
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemWarn($"[INV-AT-061] UpdateLeadFaqRotationState failed tenant={tenantId} phone={phone} gt={groupTag}: {ex.Message}");
+            return false;
+        }
+    }
+
+    private async Task<bool> FallbackUpdateFaqRotationStateAsync(
+        int tenantId, string phone, string groupTag, int nextIndex, CancellationToken ct)
+    {
+        const string sql = @"
+            UPDATE leads
+            SET faq_rotation_state = jsonb_set(
+                    COALESCE(faq_rotation_state, '{}'::jsonb),
+                    ARRAY[@gt]::text[],
+                    to_jsonb(@idx::int),
+                    true),
+                updated_at = NOW()
+            WHERE tenant_id = @tid AND phone = @phone";
+
+        try
+        {
+            await using var conn = await _db.OpenConnectionAsync(ct);
+            await using var cmd = new NpgsqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("tid", tenantId);
+            cmd.Parameters.AddWithValue("phone", phone);
+            cmd.Parameters.AddWithValue("gt", groupTag);
+            cmd.Parameters.AddWithValue("idx", nextIndex);
+
+            var rows = await cmd.ExecuteNonQueryAsync(ct);
+            return rows > 0;
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemWarn($"[INV-AT-061] FallbackUpdateFaqRotationState failed tenant={tenantId} phone={phone}: {ex.Message}");
+            return false;
+        }
+    }
+
+    private async Task<bool> ResetAndSetFaqRotationStateAsync(
+        int tenantId, string phone, string groupTag, int nextIndex, CancellationToken ct)
+    {
+        const string sql = @"
+            UPDATE leads
+            SET faq_rotation_state = jsonb_build_object(@gt, @idx::int),
+                updated_at = NOW()
+            WHERE tenant_id = @tid AND phone = @phone";
+
+        try
+        {
+            await using var conn = await _db.OpenConnectionAsync(ct);
+            await using var cmd = new NpgsqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("tid", tenantId);
+            cmd.Parameters.AddWithValue("phone", phone);
+            cmd.Parameters.AddWithValue("gt", groupTag);
+            cmd.Parameters.AddWithValue("idx", nextIndex);
+
+            var rows = await cmd.ExecuteNonQueryAsync(ct);
+            return rows > 0;
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemWarn($"[INV-AT-067] ResetAndSetFaqRotationState failed tenant={tenantId} phone={phone}: {ex.Message}");
             return false;
         }
     }
