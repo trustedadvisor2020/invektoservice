@@ -39,22 +39,13 @@ class InmaBridgeImpl {
   private readonly handleMessage = (event: MessageEvent) => this.onMessage(event);
 
   init(callbacks: InmaBridgeCallbacks = {}): () => void {
-    console.log('[inma-debug] bridge.init called', {
-      allowedOrigins: INMA_ALLOWED_ORIGINS,
-      isProd: import.meta.env.PROD,
-      selfOrigin: window.location.origin,
-      hasParent: window.parent !== window,
-      callbackKeys: Object.keys(callbacks),
-    });
     this.callbacks = callbacks;
     if (!this.listenerAttached) {
       window.addEventListener('message', this.handleMessage);
       this.listenerAttached = true;
-      console.log('[inma-debug] message listener attached');
     }
     // Parent origin not yet known; 'inma:ready' is the only outbound using '*'.
     window.parent?.postMessage({ type: 'inma:ready' }, '*');
-    console.log('[inma-debug] inma:ready sent to parent with targetOrigin=*');
     return () => this.dispose();
   }
 
@@ -100,57 +91,30 @@ class InmaBridgeImpl {
   }
 
   private onMessage(event: MessageEvent): void {
-    const rawType = typeof (event.data as { type?: unknown } | undefined)?.type === 'string'
-      ? (event.data as { type: string }).type
-      : '<non-string>';
-    console.log('[inma-debug] postMessage received', {
-      origin: event.origin,
-      type: rawType,
-      allowedOrigins: INMA_ALLOWED_ORIGINS,
-    });
     if (!INMA_ALLOWED_ORIGINS.includes(event.origin)) {
-      console.warn('[inma-debug] ORIGIN REJECTED - message discarded silently pre-debug', {
-        receivedOrigin: event.origin,
-        allowedOrigins: INMA_ALLOWED_ORIGINS,
-        hint: 'add parent origin to INMA_ALLOWED_ORIGINS (inmaBridge.ts) OR parent must postMessage from one of allowed origins',
-      });
       return;
     }
     const data = event.data as InmaInboundMessage | undefined;
     if (!data || typeof data !== 'object' || typeof (data as { type?: unknown }).type !== 'string') {
-      console.warn('[inma-debug] invalid payload shape (non-object or missing type)', { data });
       return;
     }
 
-    console.log('[inma-debug] routing to case', { type: data.type });
     const session = useInmaSession.getState();
 
     switch (data.type) {
       case 'inma:auth': {
         if (typeof data.accessToken !== 'string' || !data.accessToken) {
-          console.warn('[inma-debug] inma:auth rejected: invalid accessToken', { hasToken: !!data.accessToken });
           session.setError(INMA_ERRORS.INVALID_ACCESS_TOKEN);
           this.callbacks.onAuthError?.(INMA_ERRORS.INVALID_ACCESS_TOKEN);
           return;
         }
         if (typeof data.apiBaseUrl !== 'string' || !INMA_API_BASE_URL_REGEX.test(data.apiBaseUrl)) {
-          console.warn('[inma-debug] inma:auth rejected: invalid apiBaseUrl', {
-            apiBaseUrl: data.apiBaseUrl,
-            regex: INMA_API_BASE_URL_REGEX.source,
-          });
           session.setError(INMA_ERRORS.INVALID_API_BASE_URL);
           this.callbacks.onAuthError?.(INMA_ERRORS.INVALID_API_BASE_URL);
           return;
         }
-        console.log('[inma-debug] inma:auth validated, setting session + firing onReady', {
-          accessTokenLength: data.accessToken.length,
-          apiBaseUrl: data.apiBaseUrl,
-          parentOrigin: event.origin,
-          hasOnReady: !!this.callbacks.onReady,
-        });
         session.setAuth(data.accessToken, data.apiBaseUrl, event.origin);
         this.callbacks.onReady?.();
-        console.log('[inma-debug] onReady callback returned');
         return;
       }
       case 'inma:refresh-response': {
@@ -176,7 +140,6 @@ class InmaBridgeImpl {
         return;
       }
       case 'inma:logout': {
-        console.log('[inma-debug] inma:logout received, clearing session + firing onLogout');
         session.clear();
         this.failPendingRefresh(INMA_ERRORS.BRIDGE_DISPOSED);
         this.callbacks.onLogout?.();
@@ -186,11 +149,9 @@ class InmaBridgeImpl {
         // Input validation: path must be absolute local ('/foo') but not protocol-relative ('//evil.com').
         // Auth check is delegated to the onNavigate callback (App.tsx) where auth context lives.
         if (typeof data.path !== 'string' || !data.path.startsWith('/') || data.path.startsWith('//')) {
-          console.warn('[inma-debug] inma:navigate rejected: invalid path', { path: data.path });
           console.warn(inmaErrorMessage(INMA_ERRORS.NAVIGATE_REJECTED, 'invalid_path'));
           return;
         }
-        console.log('[inma-debug] inma:navigate firing onNavigate', { path: data.path });
         this.callbacks.onNavigate?.(data.path);
         return;
       }

@@ -1,0 +1,167 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260418-inma-debug-log-cleanup",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-04-18T15:00:00+03:00",
+  "updated_at": "2026-04-18T15:10:00+03:00",
+  "plan": {
+    "summary": "INMA bridge/bootstrap/useAuth/App.tsx içindeki tum [inma-debug] prefix'li console.log/warn/error cagrilari temizlenir. Bu log'lar 2026-04-16 origin whitelist bug teshisinde (commit aba45b5) eklenmis, INMA takimi handshake dogruladiktan sonra silinmesi planlanmisti. Bugun Q onayi ile temizlik yapilir. Structured error log'lar (inmaErrorMessage, [inmaBootstrap] warn) korunur.",
+    "q_intent": "Execution queue task #5 (PENDING): 'Debug log temizligi (INMA test sonrasi). [inma-debug] prefix'li log'lar inmaBridge + inmaBootstrap + useAuth + App.tsx'te. INMA takimi handshake basarili dogruladiktan sonra temizle.' Q bugun (2026-04-18) handshake dogrulamasini onayladi.",
+    "interview_notes": "Sadece [inma-debug] prefix'li cagrilar silinir. [inmaBootstrap] prefix'li production error log'u (inmaBootstrap.ts L58, exchangeInmaToken failed) KORUNUR — gercek hata teshisi icin. inmaBridge.ts navigate path validation'daki inmaErrorMessage(NAVIGATE_REJECTED) log'u KORUNUR — structured error code. App.tsx onNavigate unauthenticated warn KORUNUR — structured error. Runtime davranis degisikligi SIFIR: sadece diagnostic console output silinir.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "inmaBridge.ts: tum [inma-debug] prefix'li console.log/warn (16 adet) silinir. Structured error log'lar korunur: L190 inmaErrorMessage(INMA_ERRORS.NAVIGATE_REJECTED, 'invalid_path').",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC2",
+        "criterion": "inmaBootstrap.ts: tum [inma-debug] prefix'li console.log/warn/error (10 adet) silinir. [inmaBootstrap] prefix'li production warn (L58) KORUNUR.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC3",
+        "criterion": "App.tsx: tum [inma-debug] prefix'li console.log (4 adet) silinir. onNavigate unauthenticated branch'indeki inmaErrorMessage warn KORUNUR.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC4",
+        "criterion": "useAuth.ts: tum [inma-debug] prefix'li console.log (3 adet) silinir. INMA_SESSION_UPDATED_EVENT + INMA_SESSION_CLEARED_EVENT listener kaydi/kaldirmasi davranisi korunur.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC5",
+        "criterion": "Build PASS: Dashboard vite production build 0 error + [inma-debug] kaynak dosyalarda 0 match (grep dogrulama). Yeni bundle (wwwroot/app/assets/index-*.js) icinde 0 match.",
+        "verified": false,
+        "verification_note": null
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Dashboard/src/inma/inmaBridge.ts",
+    "src/Invekto.Backend/Dashboard/src/inma/inmaBootstrap.ts",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "src/Invekto.Backend/Dashboard/src/hooks/useAuth.ts",
+    "arch/plans/20260418-inma-debug-log-cleanup.json",
+    "arch/plans/diffs/20260418-inma-debug-log-cleanup.diff"
+  ],
+  "files_changed": [
+    {"path": "src/Invekto.Backend/Dashboard/src/inma/inmaBridge.ts", "change": "16 [inma-debug] console.log/warn silindi (init, onMessage receive/origin-reject/invalid-payload/route, inma:auth accessToken/apiBaseUrl/validated/onReady-returned, inma:logout, inma:navigate rejected/firing). rawType unused var ile birlikte silindi. Structured NAVIGATE_REJECTED log korundu.", "is_new": false},
+    {"path": "src/Invekto.Backend/Dashboard/src/inma/inmaBootstrap.ts", "change": "10 [inma-debug] console.log/warn/error silindi (run-called, early-exit, idempotent-skip, bootstrapping-state, calling-exchange, exchange-SUCCESS, exchange-FAILED, authenticated-state, dispatching-event, clear-called). 3 satirlik welcome-metadata yorumu silindi (ayni bolgeyi aciklayan 2026-04-17 yorum, artik mantikli oldugu icin). [inmaBootstrap] prefix'li production warn KORUNDU.", "is_new": false},
+    {"path": "src/Invekto.Backend/Dashboard/src/App.tsx", "change": "4 [inma-debug] console.log silindi (useEffect-mount, onReady, onLogout, onNavigate). onNavigate authed local var inline'landi (api.isAuthenticated()). NAVIGATE_REJECTED unauthenticated warn KORUNDU.", "is_new": false},
+    {"path": "src/Invekto.Backend/Dashboard/src/hooks/useAuth.ts", "change": "3 [inma-debug] console.log silindi (listener registration, onUpdated, onCleared). onUpdated icindeki auth/sess local var'lar inline'landi. INMA_SESSION_* event listener kaydi/kaldirmasi korundu.", "is_new": false},
+    {"path": "arch/plans/20260418-inma-debug-log-cleanup.json", "change": "Plan JSON (this file).", "is_new": true},
+    {"path": "arch/plans/diffs/20260418-inma-debug-log-cleanup.diff", "change": "Full diff capture for Codex review.", "is_new": true}
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "0634f8342450f4e3146cc774e5c24cccd3194ef5cff278f3b02efaf61783d153",
+    "full_path": "arch/plans/diffs/20260418-inma-debug-log-cleanup.diff",
+    "stats": { "insertions": 3, "deletions": 73, "files_count": 4 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "cd src/Invekto.Backend/Dashboard && npm run build",
+    "timestamp": "2026-04-18T14:59:58+03:00",
+    "duration_ms": 4870,
+    "output_tail": "vite v5.x built in 4.87s. Dashboard SPA bundle generated: wwwroot/app/assets/index-Cf2mwKV2.js (930 KB, gzip 251 KB). Grep [inma-debug] in bundle: 0 match.",
+    "error_summary": null,
+    "services": ["Invekto.Backend (Dashboard SPA only)"]
+  },
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Backend Program.cs INMA auth/exchange/welcome endpoint'leri — ayri paket",
+      "inmaSession.ts, inmaApiClient.ts, inmaErrors.ts, InmaConnectionStatus.tsx — debug log'u yok, dokunulmaz",
+      "lib/api.ts executeWithRefresh/exchange path'leri — ayri diagnostic log pattern'i, dokunulmaz",
+      "Pre-existing staged WIP: arch/plans/20260418-db-backup-hangfire.json, src/Invekto.Backend/Services/Jobs/DbBackupJob.cs, src/Invekto.Backend/Program.cs/appsettings.json, tracking/feat-dbbk-daily-backup.md, src/Invekto.Shared/Constants/ErrorCodes.cs, arch/errors.md, tracking/README.md — Q'nun paralel is paketi, karistirilmaz"
+    ],
+    "non_goals": [
+      "Yeni production log pattern ekleme (structured logging framework migration)",
+      "Backend-side INMA auth diagnostic log temizligi (Backend log'larinda [inma-debug] prefix yok — sadece FE)",
+      "inmaErrors.ts constant temizligi (hic dokunulmadi, log'larda sadece set/warn kullanimi vardi)",
+      "useAuth.ts INSE login flow'u welcome/exchange cagrilari — ayri session pattern"
+    ],
+    "intentional_exclusions": [
+      "inmaBootstrap.ts L58 console.warn('[inmaBootstrap] exchangeInmaToken failed:', err) — production error visibility icin KORUNUR, [inma-debug] prefix yok",
+      "inmaBridge.ts NAVIGATE_REJECTED inmaErrorMessage warn — structured error code, KORUNUR",
+      "App.tsx onNavigate unauthenticated NAVIGATE_REJECTED warn — structured error code, KORUNUR",
+      "wwwroot/app/assets/*.js eski bundle'lar — vite yeni hash ile yeni bundle urettigi icin eskiler git'te 'deleted' + yeniler 'untracked'. Commit'te dogru karsilik alinir."
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Sadece diagnostic console cagrilari silindi. Runtime kontrol akisi (origin reject, payload validation, auth error, exchange catch) DEGISTIRILMEDI. Structured error log'lar (inmaErrorMessage, [inmaBootstrap] warn) korundu. Sessiz hata riski eklenmedi."
+  },
+  "aha_moments": [
+    {
+      "category": "SUPPORT",
+      "user_pain": "Dashboard console'u INMA SSO ile embed edildiginde her handshake adiminda 10+ [inma-debug] log firlatyordu (bridge.init, listener-attached, inma:ready sent, postMessage received, routing, inma:auth validated, bootstrap.run, exchange-SUCCESS, authenticated, dispatching event, useAuth onUpdated). INMA takimi bunlari gerekli diagnostik sandi + production'da da gorunuyordu.",
+      "suggestion": "Debug log'lar temizlenir, sadece structured error log'lar kalir.",
+      "aha_moment": "INMA takimi SSO embed test'inde console temiz — gercek hatalar (origin reject, invalid token) gozlemlenirse hemen gorulur, gurultu yok."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Production console'da 'exchangeInmaToken SUCCESS' + 'session: <full object>' log'u aktif kullaniciya ait JWT/session bilgisini console'a yaziyordu — devtools acik kullanici veya uzaktan destek sharing'de sizinti riski.",
+      "suggestion": "Session object + token-length log'lari silindi.",
+      "aha_moment": "Console uzerinden PII/credential sizinti vektoru kapandi. Compliance review'da '[inma-debug] prefix'i artik yok' sunumu temiz."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Chrome DevTools Console panel'i kalabalikken render performansi dusuyor + log filter'lari ile gecmis oturum kayitlari aranirken gurultu oluyor.",
+      "suggestion": "37 debug log (16+10+4+3+4 retained structured = 37 silinen) silinerek console output hacmi dususu.",
+      "aha_moment": "DevTools Console hizli acilir, filter sonuclari kucuk, INMA handshake trace yerine production hatalari gozlemlenir."
+    },
+    {
+      "category": "UX",
+      "user_pain": "Yeni gelistirici inmaBridge/inmaBootstrap okurken '[inma-debug] bridge.init called { allowedOrigins, ... }' gibi 7-satirlik log blok'lari ana kontrol akisini gizliyordu.",
+      "suggestion": "Log block'lari kaldirildi, fonksiyon govdeleri sadelesti.",
+      "aha_moment": "Yeni gelistirici onMessage fonksiyonunu tek ekranda okur: origin check -> payload validation -> switch -> handler. Log gurultusu yok."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "INMA team kickoff-brief ve handshake dokumanlarinda '[inma-debug] prefix'li log'lar ile trace edin' yazili — ancak artik handshake stable, o dokumanlar stale.",
+      "suggestion": "Log temizligi ile INMA dokuman guncellemesi yapilabilir: 'structured INV-INT-* kodlarina bak' yonergesine gecis.",
+      "aha_moment": "INMA takimi handshake sorunu bildirirken code-name (INV-INT-101, 102, 109) paylasiyor — console screenshot yerine structured error koduyla iletisim."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-18T15:10:00+03:00",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-18T15:10:00+03:00",
+    "raw_text": "Iter 0 PASS - 12/12 CQ + 2/2 CoVe, 0 blocking. gpt-5.4, 9271 tokens.",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "NAVIGATE_REJECTED warns preserved in App.tsx:91-93 + inmaBridge.ts:152-155; bootstrap failure path intact at inmaBootstrap.ts:40-52" },
+      "CQ2": { "result": "PASS", "evidence": "Only diagnostic calls removed; early returns/typed catches unchanged; no swallowed exceptions added" },
+      "CQ3": { "result": "PASS", "evidence": "4 planned files only; rawType unused var + 3-line comment block removed in scope" },
+      "CQ4": { "result": "PASS", "evidence": "Single-use locals inlined (App.tsx authed, useAuth.ts auth/sess); no duplication" },
+      "CQ5": { "result": "PASS", "evidence": "Dashboard FE-local; inmaErrorMessage structured pattern preserved" },
+      "CQ6": { "result": "PASS", "evidence": "Hot-path console overhead reduced; lifecycle unchanged" },
+      "CQ7": { "result": "PASS", "evidence": "No TODO/HACK/FIXME added" },
+      "CQ8": { "result": "PASS", "evidence": "InmaBridgeCallbacks + inbound message contract unchanged; rawType internal" },
+      "CQ9": { "result": "PASS", "evidence": "No tenant/data/microservice logic change" },
+      "CQ10": { "result": "PASS", "evidence": "No UI layout/response-shape change; user-visible warnings preserved" },
+      "CQ11": { "result": "PASS", "evidence": "N/A FE-only, no DB touches" },
+      "CQ12": { "result": "PASS", "evidence": "EXCHANGE_FAILED cleanup path + onAuthError preserved" }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "Structured NAVIGATE_REJECTED warns + [inmaBootstrap] warn + setError/onAuthError preserved; no new silent failure" },
+      "Q2": { "result": "PASS", "reasoning": "origin/payload/auth early returns + session.setError + onAuthError callback unchanged; only log calls removed" }
+    },
+    "blocking_issues": [],
+    "iteration": 0,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}

@@ -84,19 +84,11 @@ export function useAuth() {
   // Faz 2: postMessage bootstrap session sync. inmaBootstrap.run/clear
   // CustomEvent firar; bu listener existing state hook'larini yeniden okur.
   useEffect(() => {
-    console.log('[inma-debug] useAuth registering window event listeners', {
-      updated: INMA_SESSION_UPDATED_EVENT,
-      cleared: INMA_SESSION_CLEARED_EVENT,
-    });
     const onUpdated = () => {
-      const auth = api.isAuthenticated();
-      const sess = api.getSession();
-      console.log('[inma-debug] useAuth onUpdated fired', { isAuthenticated: auth, hasSession: !!sess, session: sess });
-      setIsAuthenticated(auth);
-      setSession(sess);
+      setIsAuthenticated(api.isAuthenticated());
+      setSession(api.getSession());
     };
     const onCleared = () => {
-      console.log('[inma-debug] useAuth onCleared fired');
       setIsAuthenticated(false);
       setSession(null);
       setWelcomeData(null);
