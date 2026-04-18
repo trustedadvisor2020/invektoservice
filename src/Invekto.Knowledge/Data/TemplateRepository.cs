@@ -320,6 +320,119 @@ public class TemplateRepository
     }
 
     // ============================================================
+    // 2026-04-18: Bulk create (Dashboard bulk import + pilot seed support).
+    // Per-item typed catch — partial success semantic. NOT atomic transaction.
+    // ============================================================
+
+    /// <summary>
+    /// Insert a batch of templates with per-item failure isolation. Each item is inserted
+    /// independently; a slug conflict (23505) or DB error on one row does NOT roll back
+    /// previously-inserted rows. Callers inspect the failed list and may retry a subset.
+    /// Max batch size is enforced by the caller (endpoint).
+    /// </summary>
+    public virtual async Task<TemplateBulkCreateResult> InsertBatchAsync(
+        List<TemplateCreateRequest> requests, CancellationToken ct = default)
+    {
+        var result = new TemplateBulkCreateResult { Total = requests.Count };
+
+        for (var i = 0; i < requests.Count; i++)
+        {
+            var req = requests[i];
+            try
+            {
+                var id = await InsertAsync(req, ct);
+                var created = await GetByIdAsync(id, ct);
+                if (created != null)
+                {
+                    result.Succeeded.Add(created);
+                }
+                else
+                {
+                    // Extremely unlikely — row was just inserted. Treat as partial failure with
+                    // an actionable hint: the row may have been soft-deleted by a concurrent
+                    // admin action, or the DB rejected read-your-write consistency.
+                    _logger.SystemWarn(
+                        $"[INV-KN-019] InsertBatchAsync item {i} slug={req.Slug} inserted (id={id}) but GetById returned null — possible concurrent delete");
+                    result.Failed.Add(new TemplateBulkCreateItemFailure
+                    {
+                        Index = i,
+                        Slug = req.Slug,
+                        ErrorCode = "INV-KN-019",
+                        ErrorMessage = $"Template id={id} created but not retrievable; check template list and retry if still missing"
+                    });
+                }
+            }
+            catch (PostgresException ex) when (ex.SqlState == "23505")
+            {
+                // Duplicate slug / unique index violation — per-item surface without aborting batch.
+                _logger.SystemWarn(
+                    $"[INV-KN-021] InsertBatchAsync item {i} slug={req.Slug} duplicate: {ex.ConstraintName ?? "unknown"}");
+                result.Failed.Add(new TemplateBulkCreateItemFailure
+                {
+                    Index = i,
+                    Slug = req.Slug,
+                    ErrorCode = "INV-KN-021",
+                    ErrorMessage = "Slug already exists for this scope/lang; choose a different slug or edit the existing row"
+                });
+            }
+            catch (PostgresException ex) when (ex.SqlState == "23503")
+            {
+                // Foreign key violation (invalid tenant_id / parent_template_id).
+                _logger.SystemWarn(
+                    $"[INV-KN-009] InsertBatchAsync item {i} slug={req.Slug} FK violation: {ex.ConstraintName ?? "unknown"} ({ex.Message})");
+                result.Failed.Add(new TemplateBulkCreateItemFailure
+                {
+                    Index = i,
+                    Slug = req.Slug,
+                    ErrorCode = "INV-KN-009",
+                    ErrorMessage = $"Foreign key violation ({ex.ConstraintName ?? "unknown"}); verify tenant_id and parent_template_id exist"
+                });
+            }
+            catch (PostgresException ex) when (ex.SqlState == "23514")
+            {
+                // CHECK constraint violation (invalid type/scope/created_by enum value).
+                _logger.SystemWarn(
+                    $"[INV-KN-009] InsertBatchAsync item {i} slug={req.Slug} CHECK violation: {ex.ConstraintName ?? "unknown"} ({ex.Message})");
+                result.Failed.Add(new TemplateBulkCreateItemFailure
+                {
+                    Index = i,
+                    Slug = req.Slug,
+                    ErrorCode = "INV-KN-009",
+                    ErrorMessage = $"CHECK constraint failed ({ex.ConstraintName ?? "unknown"}); review template_type/scope/created_by values"
+                });
+            }
+            catch (NpgsqlException ex)
+            {
+                _logger.SystemWarn(
+                    $"[INV-KN-003] InsertBatchAsync item {i} slug={req.Slug} NpgsqlException: {ex.Message}");
+                result.Failed.Add(new TemplateBulkCreateItemFailure
+                {
+                    Index = i,
+                    Slug = req.Slug,
+                    ErrorCode = "INV-KN-003",
+                    ErrorMessage = "Database error; retry may succeed"
+                });
+            }
+            catch (JsonException ex)
+            {
+                _logger.SystemWarn(
+                    $"[INV-KN-002] InsertBatchAsync item {i} slug={req.Slug} invalid content_json: {ex.Message}");
+                result.Failed.Add(new TemplateBulkCreateItemFailure
+                {
+                    Index = i,
+                    Slug = req.Slug,
+                    ErrorCode = "INV-KN-002",
+                    ErrorMessage = $"Invalid content_json ({ex.Message}); ensure value is a valid JSON object"
+                });
+            }
+        }
+
+        result.SucceededCount = result.Succeeded.Count;
+        result.FailedCount = result.Failed.Count;
+        return result;
+    }
+
+    // ============================================================
     // FEAT-WTP: Variant pool lookup for Automation (group_tag-scoped).
     // ============================================================
 

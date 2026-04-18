@@ -29,6 +29,7 @@ const FlowEditorPage = lazy(() => import('./pages/flow-builder/FlowEditorPage').
 const WizardPage = lazy(() => import('./pages/flow-builder/WizardPage').then(m => ({ default: m.WizardPage })));
 
 const TemplateLibraryPage = lazy(() => import('./pages/TemplateLibraryPage').then(m => ({ default: m.TemplateLibraryPage })));
+const TemplateCreatePage = lazy(() => import('./pages/TemplateCreatePage').then(m => ({ default: m.TemplateCreatePage })));
 const TemplateDetailPage = lazy(() => import('./pages/TemplateDetailPage').then(m => ({ default: m.TemplateDetailPage })));
 const TemplateIngestionPage = lazy(() => import('./pages/TemplateIngestionPage').then(m => ({ default: m.TemplateIngestionPage })));
 const TemplateOnboardPage = lazy(() => import('./pages/TemplateOnboardPage').then(m => ({ default: m.TemplateOnboardPage })));
@@ -131,6 +132,7 @@ export default function App() {
         <Route path="/licenses" element={<LicensesPage />} />
         <Route path="/payment" element={<PaymentPage />} />
         <Route path="/templates" element={<Suspense><TemplateLibraryPage /></Suspense>} />
+        <Route path="/templates/new" element={<Suspense><TemplateCreatePage /></Suspense>} />
         <Route path="/templates/ingestion" element={<Suspense><TemplateIngestionPage /></Suspense>} />
         <Route path="/templates/onboard" element={<Suspense><TemplateOnboardPage /></Suspense>} />
         <Route path="/templates/:id" element={<Suspense><TemplateDetailPage /></Suspense>} />

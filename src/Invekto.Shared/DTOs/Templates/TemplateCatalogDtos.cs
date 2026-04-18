@@ -238,6 +238,49 @@ public sealed class TemplateCloneRequest
 
 // ── List Query Params ───────────────────────────────────────
 
+// ── Bulk Create (2026-04-18: Dashboard bulk import + pilot seed support) ────────
+
+public sealed class TemplateBulkCreateRequest
+{
+    [JsonPropertyName("templates")]
+    public List<TemplateCreateRequest> Templates { get; set; } = new();
+}
+
+public sealed class TemplateBulkCreateItemFailure
+{
+    [JsonPropertyName("index")]
+    public int Index { get; set; }
+
+    [JsonPropertyName("slug")]
+    public string? Slug { get; set; }
+
+    [JsonPropertyName("error_code")]
+    public string ErrorCode { get; set; } = "";
+
+    [JsonPropertyName("error_message")]
+    public string ErrorMessage { get; set; } = "";
+}
+
+public sealed class TemplateBulkCreateResult
+{
+    [JsonPropertyName("total")]
+    public int Total { get; set; }
+
+    [JsonPropertyName("succeeded_count")]
+    public int SucceededCount { get; set; }
+
+    [JsonPropertyName("failed_count")]
+    public int FailedCount { get; set; }
+
+    [JsonPropertyName("succeeded")]
+    public List<TemplateCatalogDto> Succeeded { get; set; } = new();
+
+    [JsonPropertyName("failed")]
+    public List<TemplateBulkCreateItemFailure> Failed { get; set; } = new();
+}
+
+// ────────────────────────────────────────────────────────────────────────────────
+
 public sealed class TemplateCatalogFilter
 {
     public string? Scope { get; set; }

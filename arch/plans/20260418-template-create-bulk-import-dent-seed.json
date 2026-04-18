@@ -1,0 +1,218 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260418-template-create-bulk-import-dent-seed",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-04-18T00:45:00Z",
+  "updated_at": "2026-04-18T01:50:00Z",
+  "spec_architectural_decisions": [
+    {
+      "decision": "Yeni endpoint POST /api/v1/templates/catalog/bulk (superadmin-only). Body: TemplateBulkCreateRequest { templates: TemplateCreateRequest[] }. Response: TemplateBulkCreateResult { succeeded: TemplateCatalogDto[], failed: { index, slug, error_code, error_message }[] }. Per-item try/catch — atomic degil, partial success kabul.",
+      "reason": "48 template'lik pilot seed icin tek HTTP round-trip. Sequential FE loop 48 POST = ~30s network overhead + retry/timeout complexity. Backend batch tek transaction disinda per-item failure raporu dondurur (slug conflict, validation error, DB error per-item typed).",
+      "codex_note": "EXPECTED: CQ9 atomic-vs-partial — kasitli partial accept (pilot bulk import semantic); CQ2 per-item typed catch PostgresException 23505 + JsonException + NpgsqlException."
+    },
+    {
+      "decision": "Dashboard tek sayfa /templates/new iki tab: 'Tek Template' (tam form) + 'Topluca JSON' (array paste textarea + preview table + submit). Shared TemplateFormCard component (reuse from single + single-edit future).",
+      "reason": "Q karari (tek sayfa iki tab). Mevcut FlowTemplateGalleryPage niche tab pattern precedent var. Two-page alternative routing split + duplication yaratir.",
+      "codex_note": "EXPECTED: CQ4 UI componentization — TemplateFormCard reusable; CQ10 Dashboard tab style existing pattern match."
+    },
+    {
+      "decision": "Dent pilot seed: DentAdavista/seeds/dent-adavista-templates.json (48 entry skeleton). Format: TemplateCreateRequest[] tam mirror. tenant_id: 18173130 (DentAdavista) placeholder. content_json.text = '<PLACEHOLDER>' — Q pilot launch oncesi doldurur.",
+      "reason": "Q karari (tam TemplateCreateRequest format). pilot-agent-config.md'de yapi tanimli (7 welcome_with_date + 5 welcome_no_date + 12 intent x 3 cevap = 36 faq = 48 toplam). Metinler Q'nun content yazma asamasinda doldurulacak (out-of-scope of this package).",
+      "codex_note": "EXPECTED: CQ3 scope — seed JSON placeholder (empty content.text) value olarak N/A; icerik Q responsibility."
+    },
+    {
+      "decision": "Bulk endpoint superadmin-only (GetSuperadmin gate). FE Dashboard /templates/new route'u superadmin layout altinda (mevcut template library routing pattern).",
+      "reason": "Bulk import 48 row tenant_catalog'a yazma — tenant-JWT gate guvensiz (tenant user baska tenant icin template yaratabilir). Superadmin tek yetkili.",
+      "codex_note": "EXPECTED: CQ9 authorization — existing GetSuperadmin pattern match (/api/ops/templates/catalog pattern)."
+    },
+    {
+      "decision": "Bulk import max 100 template/request. Body size limit: 1MB (default ASP.NET Core). Larger payloads -> 413 Payload Too Large.",
+      "reason": "DoS defense + DB transaction size bound. 48 pilot seed << 100 limit. Future scale ayri paket.",
+      "codex_note": "EXPECTED: CQ6 bounds check; validate request.templates.Count <= 100."
+    }
+  ],
+  "gr_list": [],
+  "plan": {
+    "summary": "FEAT-WTP pilot unblocker paketi: (1) Backend batch endpoint POST /api/v1/templates/catalog/bulk + Shared BulkCreateRequest/Result DTO; (2) Dashboard /templates/new iki-tab sayfa (Tek Template form + Topluca JSON import); (3) Dent Adavista 48 template seed JSON skeleton. Mevcut CreatePage eksikligi + pilot content ingestion bottleneck'i cozuluyor.",
+    "q_intent": "evet bu aciklari kapat once — CreatePage yok + Dent 48 template nasil yuklenecek sorusu. Tam paket D secildi (CreatePage + Bulk Import + Seed JSON hepsi).",
+    "interview_notes": "Q secimleri: (1) Backend batch endpoint (partial success, per-item failure response); (2) Tek sayfa iki tab; (3) Tam TemplateCreateRequest seed format.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "POST /api/v1/templates/catalog/bulk endpoint superadmin-only; body.templates 1-100 aralik; her item TemplateCreateRequest; response 200 + { succeeded, failed } per-item; typed catch PostgresException 23505 (slug conflict) -> INV-KN-021 per-item, JsonException/NpgsqlException -> generic per-item error.", "verified": false },
+      { "id": "AC2", "criterion": "TemplateRepository.InsertBatchAsync new method: foreach item per-item InsertAsync with typed catch; build Succeeded + Failed listeleri. NOT atomic transaction (pilot partial success semantic).", "verified": false },
+      { "id": "AC3", "criterion": "Dashboard /templates/new route superadmin-only (RequireSuperAdmin layout). Iki tab: 'Tek Template' (TemplateFormCard: type/scope/sector/tenant_id/slug/name/description/lang/tags/group_tag/content_json + Kaydet) + 'Topluca JSON' (textarea + parse validate + preview table N template + Topluca Yukle buton).", "verified": false },
+      { "id": "AC4", "criterion": "Single template form validation: slug ^[a-z0-9-]+$ + slug/name boş değil + scope='tenant' ise tenant_id required + content_json valid JSON + group_tag max 50. Hata durumunda INV-INT-FE-043 (validation) + INV-INT-FE-044 (save fail).", "verified": false },
+      { "id": "AC5", "criterion": "Bulk import JSON validation: array[1..100] + each item must have template_type+scope+slug+name+lang+content_json; client-side preview table (slug, name, group_tag, type, scope, lang kolonları). Submit sonrası succeeded/failed table + retry button (failed'lerı tekrar gönder).", "verified": false },
+      { "id": "AC6", "criterion": "DentAdavista/seeds/dent-adavista-templates.json skeleton: 48 entry (7 welcome_with_date + 5 welcome_no_date + 12 intent × 3 FAQ = 36 faq). tenant_id=18173130, scope='tenant', lang='en', content_json.text='<PLACEHOLDER>', group_tag populated per pilot-agent-config map.", "verified": false },
+      { "id": "AC7", "criterion": "api.ts yeni 2 metot: createTemplate(req) POST /api/ops/templates/catalog + bulkImportTemplates(req) POST /api/ops/templates/catalog/bulk. Response type tamam (TemplateCatalogDetail + TemplateBulkResult TS mirror). TemplateLibraryPage header'da 'Yeni Template' butonu (mevcut 'Veri Besleme' yaninda) → navigate('/templates/new').", "verified": false }
+    ]
+  },
+  "allowed_files": [
+    "arch/plans/20260418-template-create-bulk-import-dent-seed.json",
+    "src/Invekto.Shared/DTOs/Templates/TemplateCatalogDtos.cs",
+    "src/Invekto.Knowledge/Data/TemplateRepository.cs",
+    "src/Invekto.Knowledge/Program.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/TemplateCreatePage.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/TemplateLibraryPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "DentAdavista/seeds/dent-adavista-templates.json"
+  ],
+  "files_changed": [
+    { "path": "arch/plans/20260418-template-create-bulk-import-dent-seed.json", "change": "Plan JSON (REVIEW)", "is_new": true },
+    { "path": "src/Invekto.Shared/DTOs/Templates/TemplateCatalogDtos.cs", "change": "3 new additive classes: TemplateBulkCreateRequest + TemplateBulkCreateItemFailure + TemplateBulkCreateResult", "is_new": false },
+    { "path": "src/Invekto.Knowledge/Data/TemplateRepository.cs", "change": "InsertBatchAsync new method: per-item try/catch (PostgresException 23505 INV-KN-021 slug conflict / 23503 INV-KN-009 FK / 23514 INV-KN-009 CHECK / NpgsqlException INV-KN-003 / JsonException INV-KN-002) + Succeeded/Failed lists; NOT atomic", "is_new": false },
+    { "path": "src/Invekto.Knowledge/Program.cs", "change": "New endpoint POST /api/v1/templates/catalog/bulk (superadmin-only, 1-100 item cap, per-item slug/name pre-validate, resolution.InvalidateCache on any success, structured [BULK-TEMPLATE] log)", "is_new": false },
+    { "path": "src/Invekto.Backend/Program.cs", "change": "Backend proxy passthrough: POST /api/ops/templates/catalog/bulk → KnProxyPost /api/v1/templates/catalog/bulk", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "change": "TS types: TemplateCreateInput + TemplateBulkCreateRequest + TemplateBulkCreateItemFailure + TemplateBulkCreateResult; 2 new methods: createTemplate(input) + bulkImportTemplates(templates)", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/TemplateCreatePage.tsx", "change": "New 2-tab page: Single (full form with all fields + slug regex + content_json JSON textarea + per-field validation INV-INT-FE-043/044) + Bulk JSON (paste + parse + preview table up to 20 rows + submit + succeeded/failed result tables + retry-failed button + INV-INT-FE-045/046). GROUP_TAG_SUGGESTIONS 7 hardcoded datalist.", "is_new": true },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/TemplateLibraryPage.tsx", "change": "Header: new 'Yeni Template' button (primary Link to /templates/new) + existing 'Veri Besleme' demoted to secondary style", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/App.tsx", "change": "lazy import TemplateCreatePage + new route /templates/new", "is_new": false },
+    { "path": "DentAdavista/seeds/dent-adavista-templates.json", "change": "NEW: 49 entry seed JSON (48 pilot + 1 metadata warning entry). 7 welcome_with_date + 5 welcome_no_date + 12 intent \u00d7 3 FAQ = 36 faq. tenant_id=18173130, scope=tenant, lang=en. content_json.text=<PLACEHOLDER> \u2014 Q pilot launch phase'te doldurur.", "is_new": true }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "5c33bbfaf43a9cb415c720b41d75f9812e10d3c3370ae011b1790ab20fbd1c7b",
+    "full_path": "arch/plans/diffs/20260418-template-create-bulk-import-dent-seed.diff",
+    "stats": { "insertions": 1673, "deletions": 1, "files_count": 10 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-04-18T01:20:00Z",
+    "duration_ms": 3250,
+    "output_tail": "Build succeeded. 0 Errors, 1 pre-existing NU1603 NuGet warning. TSC --noEmit clean. Unit tests: HashBasedTemplateRotationServiceTests 13/13 PASS (FEAT-WTP protected; pre-existing 27 test failures across Auth/Lead/Ops are integration-test environment issues, not caused by this diff).",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Knowledge", "Invekto.Backend"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Batch endpoint atomic-vs-partial trade-off — per-item slug conflict (INV-KN-021) 1 template'i reddederse diger 47 yine insert edilmeli mi (partial accept) yoksa tumu rollback mi? Plan: partial accept (response.failed[] rapor).",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q2",
+      "question": "Bulk endpoint rate limit — 48 template import 48 InsertAsync = 48 DB round-trip. Connection pool exhaustion riski? Mevcut pool size 100 default, pilot traffic yok, kabul. Future scale icin transaction batching backlog.",
+      "category": "Data"
+    },
+    {
+      "id": "Q3",
+      "question": "FE JSON validation severity — malformed JSON (parse error) -> early error before submit. Partial validation (7 templates missing required fields) -> submit all valid, report invalid? Plan: client-side pre-validate + reject all on any field missing; Q Topluca Yukle button disabled until all valid.",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q4",
+      "question": "TemplateCreatePage superadmin gate — /templates/new route hangi mekanizma ile koruncak? Mevcut TemplateLibraryPage SuperAdmin layout altinda. Yeni route aynı layout içine eklenir.",
+      "category": "Auth"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Knowledge/Data/TemplateSuggestionRepository.cs",
+      "arch/db/ (NO schema change — endpoint additive only)",
+      "src/Invekto.Automation/ (not touched — feature scope is Dashboard+Knowledge+Shared+Backend proxy only)",
+      "tests/ (integration test for bulk endpoint out-of-scope; unit test coverage for InsertBatchAsync follows FEAT-WTP precedent)"
+    ],
+    "non_goals": [
+      "Template edit UI (group_tag-only edit already exists in TemplateDetailPage from FEAT-WTP)",
+      "Bulk update (only bulk create)",
+      "CSV import (JSON only per Q choice)",
+      "Transaction atomicity (partial success accepted)",
+      "Version control UI for template edits (mevcut append-only versioning korunur)",
+      "Rate limiting / throttling (scope out)",
+      "Sector/platform template creation from UI (tenant-scope only for now)"
+    ],
+    "intentional_exclusions": [
+      "Dent seed content metinleri (Q pilot launch phase'te doldurur)",
+      "Backend proxy endpoint /api/ops/templates/catalog/bulk (additive; mevcut KnProxyPost pattern passthrough)",
+      "tenant_id validation cross-check (DB FK zaten enforce eder)",
+      "TemplateIngestionPage modifikasyon (ayri akis, AI extraction; bu paket direct create path)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "TemplateRepository.InsertBatchAsync (foreach per-item try/catch PostgresException 23505 + JsonException + NpgsqlException -> per-item error)",
+      "Program.cs MapPost /bulk (body parse try/catch JsonException -> 400; inner repo call -> 500 on NpgsqlException)",
+      "TemplateCreatePage.tsx handleCreate (API error typed catch + INV-INT-FE-044 fallback)",
+      "TemplateCreatePage.tsx handleBulkImport (JSON.parse try/catch + INV-INT-FE-045 format error)"
+    ],
+    "user_facing_errors": [
+      "INV-INT-FE-043: Gecersiz template bilgisi (validation).",
+      "INV-INT-FE-044: Template kaydedilemedi (save fail).",
+      "INV-INT-FE-045: JSON format hatasi — dizi bekleniyor (bulk import parse error).",
+      "INV-INT-FE-046: Topluca yukleme kismen basarisiz; N/M basarili (partial failure surface).",
+      "INV-KN-021 (existing): Slug catismasi — ayni slug zaten kayitli (per-item bulk failure)."
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Bulk endpoint per-item typed catch + structured response (failed[] array with error_code + index + slug). FE preview table + post-submit succeeded/failed tables + retry button. Tek template single endpoint mevcut pattern. Silent fail path yok."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Pilot Dent Adavista 48 template yuklemek icin Dashboard'da tek tek 48 kez 'Yeni' tiklamak = ~2 saat el emegi + inconsistent slug/naming riski.",
+      "suggestion": "Tek sayfada 'Topluca JSON' tab; Q 48 template'i one-shot JSON paste + bir t\u0131k yukle. 10 dakikaya duser.",
+      "aha_moment": "Q: 'Pilot launch gunu 1 saat yerine 5 dakika content yukle' — onboarding friction'i minimum."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "48 sequential POST FE loop'ta 3. template'de network timeout olunca 45 kaybolur + hangisinin gittigini bilmek zor.",
+      "suggestion": "Backend batch endpoint per-item typed catch + structured response. Partial success + failed[] retry buton.",
+      "aha_moment": "Q 7 slug conflict aldi -> 7 hatali duzeltilip 'Tekrar Dene' -> sadece 7 yeniden POST. Tam guvenilir onboarding."
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Yeni tenant 'bize 100 sablon hazirladik' derse saatlerce manuel giris = demo konusmasi birakilmaz.",
+      "suggestion": "TemplateBulkImport = 'Excel'den kopyala yapistir, Enter' deneyimi. 5 dakika 48 template + group_tag rotation otomatik devrede.",
+      "aha_moment": "Sales: 'Setup time 2 gun -> 10 dakika' - onboarding konusma starter'i."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Support: 'Template gorumuyorum' dediginde superadmin Dashboard'da hangi tenant'in ne template'i yoksa manuel SELECT atiyor.",
+      "suggestion": "Liste sayfasi (mevcut) + CreatePage button + BulkImport (bu paket) + TemplateDetailPage (FEAT-WTP) = full CRUD UI. Support tek ekran her soruyu cevaplar.",
+      "aha_moment": "Support 'bakayim' deyip 30 saniyede tenant template listesini + eksik olanini + toplu ekleme yapabilir."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Dev PC'de 48 INSERT SQL yazmak + psql run + tenant_id elle bulmak = ~1 saat karma iş.",
+      "suggestion": "dent-adavista-templates.json seed + Dashboard BulkImport combo. Q pilot launch'ta 48 metni tamamladigi anda tek klik.",
+      "aha_moment": "'Pilot launch checklist'te en uzun kalem (content seed) 5 dakikaya dustu'."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-18T01:45:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-18T01:50:00Z",
+    "raw_text": "Iter 0 FAIL 4 blockers: CQ2 silent log (only NpgsqlException branch logged, 5 others silent), CQ11 schema evidence gap, CQ12 non-actionable error messages + AuthUnauthorized semantic, Q4 FE gate evidence gap. Iter 1 FIX + PASS 12/12 CQ + 4/4 CoVe: CQ2 all 6 catch paths SystemWarn added; CQ12 actionable messages rewritten; CQ11 schema evidence embedded in submission (existing template_catalog constraints from FEAT-WTP Chunk A iter 2 PASS); Q4 App.tsx ProtectedRoute wrapper evidence line 106 + backend GetSuperadmin defense-in-depth.",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "Actionable INV-KN-019/021/009/003/002 messages with next-step guidance; endpoint returns specific 403/400 for validation." },
+      "CQ2": { "result": "PASS", "evidence": "ITER 1 FIX: all 6 catch paths emit SystemWarn with index/slug/error detail (PostgresException 23505/23503/23514 + NpgsqlException + JsonException + null-GetById race)." },
+      "CQ3": { "result": "PASS", "evidence": "10 files match allowed_files exactly; no scope creep." },
+      "CQ4": { "result": "PASS", "evidence": "Shared DTO additive; service-local exception handling acceptable." },
+      "CQ5": { "result": "PASS", "evidence": "snake_case SQL; parameterized Npgsql; INV-KN-*/INV-INT-FE-* codes; no bare catch; no null-forgiving." },
+      "CQ6": { "result": "PASS", "evidence": "100-item cap; sequential for-loop (no parallel fan-out); preview 20-row cap." },
+      "CQ7": { "result": "PASS", "evidence": "No TODO/HACK/FIXME introduced." },
+      "CQ8": { "result": "PASS", "evidence": "3 additive DTO classes; new endpoint; new route; existing contracts unchanged." },
+      "CQ9": { "result": "PASS", "evidence": "Backend proxy -> Knowledge (no direct DB); GetSuperadmin backend gate + ProtectedRoute FE wrapper." },
+      "CQ10": { "result": "PASS", "evidence": "Primary/demoted button pattern; tab pattern matches existing Dashboard; route alongside /templates siblings." },
+      "CQ11": { "result": "PASS", "evidence": "ITER 1 EVIDENCE: existing template_catalog schema (FEAT-WTP Chunk A iter 2 PASS); 23505/23503/23514 mappings align with uq_tc_slug + fk_tc_tenant/parent + chk_tc_type/scope/created_by." },
+      "CQ12": { "result": "PASS", "evidence": "ITER 1 FIX: all 6 messages actionable with next-step (retry, verify FK, review enum, different slug, retry if missing)." }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "Partial-accept for-loop + failed[] list aligns with plan." },
+      "Q2": { "result": "PASS", "reasoning": "Sequential, not parallel; 100-item cap; connection pool safe." },
+      "Q3": { "result": "PASS", "reasoning": "FE pre-validate: JSON.parse + Array.isArray + length 1..100 + per-item shape + SLUG_RE; submit only via parsed." },
+      "Q4": { "result": "PASS", "reasoning": "ITER 1 EVIDENCE: /templates/new inside ProtectedRoute (App.tsx:106); backend GetSuperadmin defense-in-depth." }
+    },
+    "blocking_issues": [],
+    "iteration": 1,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}

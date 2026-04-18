@@ -444,6 +444,42 @@ export interface TemplateOnboardResult {
   duration_ms: number;
 }
 
+// 2026-04-18: Bulk create types (Dashboard bulk import + pilot seed support)
+export interface TemplateCreateInput {
+  template_type: string;
+  scope: string;
+  sector?: string | null;
+  tenant_id?: number | null;
+  parent_template_id?: number | null;
+  slug: string;
+  name: string;
+  description?: string | null;
+  lang: string;
+  tags?: string[];
+  group_tag?: string | null;
+  content_json: Record<string, unknown>;
+  created_by?: string;
+}
+
+export interface TemplateBulkCreateRequest {
+  templates: TemplateCreateInput[];
+}
+
+export interface TemplateBulkCreateItemFailure {
+  index: number;
+  slug: string | null;
+  error_code: string;
+  error_message: string;
+}
+
+export interface TemplateBulkCreateResult {
+  total: number;
+  succeeded_count: number;
+  failed_count: number;
+  succeeded: TemplateCatalogDetail[];
+  failed: TemplateBulkCreateItemFailure[];
+}
+
 // Self-service template types (tenant-facing)
 export interface AvailableTemplate {
   id: number;
@@ -1590,6 +1626,26 @@ class OpsApiClient {
 
   async publishTemplate(id: number): Promise<void> {
     return this.request<void>(`/api/ops/templates/catalog/${id}/publish`, { method: 'POST' });
+  }
+
+  /** 2026-04-18: create a single template (superadmin). */
+  async createTemplate(input: TemplateCreateInput): Promise<TemplateCatalogDetail> {
+    return this.request<TemplateCatalogDetail>('/api/ops/templates/catalog', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  /**
+   * 2026-04-18: bulk create templates (superadmin). Per-item partial success —
+   * response.failed[] contains per-row error_code + slug for retry display.
+   * Server enforces max 100 items / request.
+   */
+  async bulkImportTemplates(templates: TemplateCreateInput[]): Promise<TemplateBulkCreateResult> {
+    return this.request<TemplateBulkCreateResult>('/api/ops/templates/catalog/bulk', {
+      method: 'POST',
+      body: JSON.stringify({ templates } satisfies TemplateBulkCreateRequest),
+    });
   }
 
   /**

@@ -1071,6 +1071,52 @@ app.MapGet("/api/v1/templates/catalog/{id:int}", async (
     return Results.Ok(template);
 });
 
+// Bulk create templates (2026-04-18: Dashboard bulk import + pilot seed support).
+// Superadmin-only. Body max 100 templates. Per-item partial success; response reports
+// succeeded + failed lists with error codes. NOT atomic — slug conflict on one row does
+// NOT roll back others.
+app.MapPost("/api/v1/templates/catalog/bulk", async (
+    HttpContext ctx,
+    TemplateRepository repo,
+    TemplateResolutionService resolution,
+    JsonLinesLogger jsonLogger,
+    HttpRequest request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (GetSuperadmin(ctx) == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Superadmin required", requestId), statusCode: 403);
+
+    TemplateBulkCreateRequest? body;
+    try { body = await request.ReadFromJsonAsync<TemplateBulkCreateRequest>(); }
+    catch (JsonException) { return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "Invalid JSON", requestId), statusCode: 400); }
+
+    if (body == null || body.Templates == null || body.Templates.Count == 0)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "templates array required (1-100 items)", requestId), statusCode: 400);
+    if (body.Templates.Count > 100)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "templates array exceeds 100 item limit", requestId), statusCode: 400);
+
+    // Pre-validate each item at the shape level so the batch call does not fail at
+    // InsertAsync's NullReferenceException surface for missing required fields.
+    for (var i = 0; i < body.Templates.Count; i++)
+    {
+        var t = body.Templates[i];
+        if (t == null || string.IsNullOrWhiteSpace(t.Slug) || string.IsNullOrWhiteSpace(t.Name))
+            return Results.Json(ErrorResponse.Create(
+                ErrorCodes.KnowledgeInvalidRequest,
+                $"Item {i}: slug and name are required",
+                requestId), statusCode: 400);
+    }
+
+    var result = await repo.InsertBatchAsync(body.Templates);
+    if (result.SucceededCount > 0)
+        resolution.InvalidateCache();
+
+    jsonLogger.SystemInfo(
+        $"[BULK-TEMPLATE] requestId={requestId} total={result.Total} succeeded={result.SucceededCount} failed={result.FailedCount}");
+
+    return Results.Ok(result);
+});
+
 // Create template
 app.MapPost("/api/v1/templates/catalog", async (
     HttpContext ctx,

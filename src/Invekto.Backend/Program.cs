@@ -3834,6 +3834,10 @@ app.MapGet("/api/ops/templates/catalog/{id:int}", async (HttpContext ctx, Knowle
 app.MapPost("/api/ops/templates/catalog", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog) =>
     await KnProxyPost(ctx, knClient, jsonLog, 0, "/api/v1/templates/catalog"));
 
+// 2026-04-18: Dashboard bulk import proxy (body verbatim to Knowledge service).
+app.MapPost("/api/ops/templates/catalog/bulk", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog) =>
+    await KnProxyPost(ctx, knClient, jsonLog, 0, "/api/v1/templates/catalog/bulk"));
+
 app.MapPut("/api/ops/templates/catalog/{id:int}", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int id) =>
     await KnProxyPut(ctx, knClient, jsonLog, 0, $"/api/v1/templates/catalog/{id}"));
 

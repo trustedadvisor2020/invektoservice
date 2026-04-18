@@ -519,8 +519,15 @@ function OpsTemplateView() {
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
           <Link
-            to="/templates/ingestion"
+            to="/templates/new"
             className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded bg-navy-800 text-white hover:bg-navy-700"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Yeni Template
+          </Link>
+          <Link
+            to="/templates/ingestion"
+            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded border border-navy-200 text-navy-700 hover:bg-navy-50"
           >
             <Plus className="w-3.5 h-3.5" />
             Veri Besleme
