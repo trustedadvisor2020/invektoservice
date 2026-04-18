@@ -219,5 +219,124 @@
       "last_source_slug":   "'wa-direct' on this path.",
       "submission_<iso>":   { "source_slug": "wa-direct", "channel": "whatsapp", "submitted_at": "<iso>", "referer": "<optional>", "wa_profile_name": "<optional>" }
     }
+  },
+
+  "dashboard_endpoints": {
+    "_chunk": "FEAT-LIW Chunk C",
+    "purpose": "Tenant-scoped Dashboard UI CRUD for landing settings (API key lifecycle, field map editor, dry-run preview, audit history). All endpoints are JWT-auth'd via Backend's JwtAuthMiddleware; tenant_id is extracted EXCLUSIVELY from the JWT claim — NO caller-supplied tenant_id parameter (IDOR prevention).",
+    "concurrency_model": "Optimistic concurrency via tenant_landing_settings.updated_at used as opaque row_version. GET returns updated_at. Mutations (rotate/revoke/fieldmap.save) pass the observed updated_at via If-Match header or body.expected_row_version; UPDATE ... WHERE updated_at = @expected RETURNING updated_at; 0 rows -> 409 INV-BE-113. First-time rotate on a tenant with no row auto-creates the row (no If-Match required).",
+    "audit_trail": "Every mutation emits an INSERT into liw_audit_log inside the SAME transaction as the settings UPDATE. Action vocabulary: 'apikey.rotate' | 'apikey.revoke' | 'fieldmap.save' | 'welcome_slug.change' (last reserved for future).",
+    "headers": {
+      "required": {
+        "Authorization": "Bearer <tenant-scoped JWT>",
+        "Content-Type": "application/json"
+      },
+      "conditional": {
+        "If-Match": "Required on apikey.rotate (when row exists), apikey.revoke, fieldmap.save. Value is the updated_at ISO string from the last GET."
+      }
+    },
+    "endpoints": {
+      "get_settings": {
+        "method": "GET",
+        "path": "/api/v1/tenant/landing/settings",
+        "response": "200 TenantLandingSettingsDto",
+        "response_shape": {
+          "tenant_id": "integer",
+          "masked_active_key": "string | null (format: 'liw_live_****abcd' or null when not initialized / revoked)",
+          "masked_old_key": "string | null",
+          "old_expires_at": "ISO datetime | null",
+          "field_map": "object (canonical -> source_field, or empty {})",
+          "welcome_flow_slug": "string | null",
+          "dup_window_days": "integer",
+          "flow_status": { "resolved_slug": "string", "exists": "boolean", "flow_id": "integer | null", "flow_display_name": "string | null" },
+          "updated_at": "ISO datetime (row_version)",
+          "created_at": "ISO datetime | null",
+          "has_active_key": "boolean"
+        },
+        "errors": { "500": "INV-BE-001", "503": "INV-DB-001" }
+      },
+      "rotate_apikey": {
+        "method": "POST",
+        "path": "/api/v1/tenant/landing/apikey/rotate",
+        "if_match": "Required when row already exists; omitted on first-time auto-create.",
+        "response": "200 RotateApiKeyResponse",
+        "response_shape": {
+          "active_plaintext": "string (shown exactly once; full 64-char key with liw_live_ prefix)",
+          "masked_old": "string | null",
+          "old_expires_at": "ISO datetime | null",
+          "row_version": "ISO datetime"
+        },
+        "errors": { "409": "INV-BE-113 (row_version mismatch)", "500": "INV-BE-001 (repeated unique-violation on key generation)", "503": "INV-DB-001" }
+      },
+      "revoke_apikey": {
+        "method": "POST",
+        "path": "/api/v1/tenant/landing/apikey/revoke",
+        "if_match": "Required.",
+        "response": "204 No Content (on success row.landing_api_key = NULL + row.landing_api_key_old = NULL)",
+        "errors": { "404": "INV-BE-107 (no settings row for tenant)", "409": "INV-BE-113", "503": "INV-DB-001" }
+      },
+      "update_fieldmap": {
+        "method": "PUT",
+        "path": "/api/v1/tenant/landing/fieldmap",
+        "if_match": "Required.",
+        "request_shape": { "field_map": "object (source -> canonical)", "expected_row_version": "ISO datetime (falls back to If-Match header when absent)" },
+        "response": "200 { field_map, row_version }",
+        "validation_rules": [
+          "phone canonical must be mapped by at least one row (INV-BE-114)",
+          "consent canonical must be mapped by at least one row (INV-BE-114)",
+          "canonical value must be in allowlist: name|phone|email|consent|utm_source|utm_medium|utm_campaign|utm_content|utm_term|referer|metadata (INV-BE-115)",
+          "source-field string must be non-empty (INV-BE-114)",
+          "canonical target must be unique EXCEPT 'metadata' which allows multiple sources (INV-BE-114)"
+        ],
+        "errors": { "400": "INV-BE-114 | INV-BE-115 (errors[] array lists every failing row)", "404": "INV-BE-107", "409": "INV-BE-113", "503": "INV-DB-001" }
+      },
+      "dry_run": {
+        "method": "POST",
+        "path": "/api/v1/tenant/landing/dry-run",
+        "request_shape": {
+          "source_slug": "string (defaults to 'dryrun' when empty — slug format rules from landing endpoint apply)",
+          "payload": "object (the free-form fields payload that the tenant's landing page WOULD post)",
+          "field_map_override": "object | null (when non-null, validator is skipped AND this map is used instead of the saved field_map — lets the UI preview UNSAVED drafts without requiring a save; when null, the current saved field_map is used)"
+        },
+        "response": "200 DryRunResponse",
+        "response_shape": {
+          "resolved_fields": "object (canonical -> resolved value or null)",
+          "warnings": "string[] (human-readable explanations — missing required canonical, phone parse failure, consent missing, etc.)",
+          "would_upsert": "boolean (true when all required canonicals resolved AND phone normalized AND consent=true)",
+          "would_trigger_welcome": "boolean (true when would_upsert AND tenant is not in a duplicate-window scenario — dry-run does NOT query leads so this is a conservative estimate based on payload shape only)",
+          "phone_e164": "string | null (normalized phone when parse succeeded)",
+          "consent_ok": "boolean"
+        },
+        "security": "JWT-auth'd + tenant-scoped; field_map_override affects only the caller's own response (no cross-tenant leak). Dry-run SKIPS strict FieldMapValidator so tenants can diagnose 'what would the resolver do with a bad map?' — errors surface in warnings[], not as 400.",
+        "side_effects": "None — no DB write, no flow enqueue, no audit entry.",
+        "errors": { "400": "INV-BE-116 (JSON parse failure) | INV-BE-101 (invalid source_slug)", "503": "INV-DB-001" }
+      },
+      "list_audit": {
+        "method": "GET",
+        "path": "/api/v1/tenant/landing/audit",
+        "query_params": { "limit": "integer (1..200, default 50)" },
+        "response": "200 { entries: LiwAuditEntryDto[] }",
+        "response_shape": {
+          "entries[]": {
+            "id": "bigint",
+            "action": "string (apikey.rotate | apikey.revoke | fieldmap.save | welcome_slug.change)",
+            "before_json": "object | null",
+            "after_json": "object | null",
+            "created_at": "ISO datetime",
+            "user_display": "string (User#{user_id} or 'Sistem' when user_id is null)"
+          }
+        },
+        "ordering": "Newest-first by created_at DESC (index idx_liw_audit_log_tenant_created).",
+        "errors": { "503": "INV-DB-001" }
+      }
+    },
+    "error_responses": {
+      "409_concurrent":     { "error_code": "INV-BE-113", "message": "Ayarlar baska bir sekmede degistirildi, son hali yuklendi." },
+      "400_fieldmap_req":   { "error_code": "INV-BE-114", "message": "Alan eslemesinde zorunlu canonical alan eksik veya hatali." },
+      "400_fieldmap_unknown": { "error_code": "INV-BE-115", "message": "Tanimsiz canonical alan." },
+      "400_dryrun_json":    { "error_code": "INV-BE-116", "message": "Dry-run payload gecersiz (JSON format hatasi)." },
+      "404_no_settings":    { "error_code": "INV-BE-107", "message": "Tenant ayarlari tamamlanmadi." },
+      "503_db_unreachable": { "error_code": "INV-DB-001", "message": "Veritabani baglantisi kurulamadi." }
+    }
   }
 }

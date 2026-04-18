@@ -1,0 +1,311 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260419-liw-chunk-c-dashboard-ui",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "status_log": [
+    { "at": "2026-04-19T00:05:00+03:00", "status": "PLAN", "note": "Chunk C plan written after 8-question interview (4+3+1 rounds). Q chose all 7 Recommended defaults plus audit_log gri-nokta resolution: new liw_audit_log table + migration 022. Dependencies: Chunk A+B DONE+DEPLOYED+SMOKED (commits 918e6a2, 0812e54, 67ba336). Awaiting Q plan approval before Phase 2 dev." },
+    { "at": "2026-04-19T00:30:00+03:00", "status": "DEV", "note": "Q approved plan. Phase 1-5 implemented: Migration 022 + 6 Shared DTOs + 4 Backend services + 6 endpoints + 6 Dashboard components + LeadIntakeSettingsPage + SettingsPage card + App.tsx route. Build PASS Backend (0 errors) + Dashboard Vite (LeadIntakeSettingsPage 27kB emit)." },
+    { "at": "2026-04-19T01:00:00+03:00", "status": "REVIEW->FAIL", "note": "Codex iter 0 FAIL - 10 blocking: CQ5+CQ9+Q3 isolation (Backend direct chatbot_flows read), CQ8 DTO doc mismatch, CQ10+Q2 dirty preservation, CQ1+CQ12 /revoke If-Match 400, CQ12 tenant context message, CQ12 unique-violation log code, CQ2 audit load silent fail, CQ2 ParseElement silent JSON." },
+    { "at": "2026-04-19T01:45:00+03:00", "status": "REVIEW->FAIL", "note": "Codex iter 1 FAIL - 5/5 CoVe PASS + Q3 HTTP isolation PASS, but 4 CQ remaining: CQ5 untyped TS catches + FlowLookupClient OperationCanceledException, CQ1 'unknown' fallback, CQ9 pre-lookup outside tx, CQ12 INV-GEN-003 usage. Iter 1 fixes: (1) deleted AutomationFlowLookupRepository.cs; (2) added Shared/Contracts/Leads/FlowLookupResponse.cs + Automation endpoint + Backend FlowLookupClient (JwtGenerator pattern); (3) TenantLandingSettingsDto XML doc fixed direction; (4) FieldMapEditor alignedRowVersionRef dirty preservation + 'Sunucu drifted' banner; (5) /revoke If-Match 400; (6) Tenant context standardized message; (7) Unique-violation log -> INV-DB-003; (8) Audit load toast; (9) ParseElement structured log." },
+    { "at": "2026-04-19T02:15:00+03:00", "status": "REVIEW->FAIL", "note": "Codex iter 2 FAIL - 8/12 CQ PASS + 4/5 CoVe PASS (Q4 CQ9 restructure PASS!), 2 remaining: CQ5+Q5 NewKeyCopyModal:39 bare catch (missed in iter 2 TS sweep), CQ1+CQ9+CQ12 UpdateFieldMap missing row_version returning 409 Conflict (should be 400 Validation). Iter 2 fixes: (1) FlowLookupClient OCE when-guard + re-throw; (2) DryRunPreview + FieldMapEditor typed catches with SyntaxError narrowing; (3) fieldmap fallback message 'Alan eslemesi kaydedilemedi.'; (4) MAJOR transaction restructure - FindByTenantIdAsync overload accepting NpgsqlConnection; Rotate/Revoke/UpdateFieldMap open-conn-then-begin-tx then in-tx SELECT + UPDATE + audit all atomic." },
+    { "at": "2026-04-19T02:30:00+03:00", "status": "REVIEW->PASS", "note": "Codex iter 3 PASS - 12/12 CQ PASS + 5/5 CoVe PASS + 0 blocking issues. Iter 3 fixes (3 lines): (1) NewKeyCopyModal bare catch -> catch (err) with instanceof Error + console.warn diagnostic; (2) LiwSettingsService.UpdateFieldMapAsync missing ExpectedRowVersion -> ValidationFailed(INV-GEN-003) with actionable message (was Conflict 409). Overall verdict: PASS. Build PASS both Backend + Dashboard Vite. Ready for commit + deploy." }
+  ],
+  "created_at": "2026-04-19T00:05:00+03:00",
+  "updated_at": "2026-04-19T00:05:00+03:00",
+  "plan": {
+    "summary": "FEAT-LIW Chunk C (Dashboard UI). Standalone /settings/lead-intake page in Backend Dashboard + 6 tenant-scoped JWT-auth'd endpoints + DB migration 022 for audit history + landing_api_key NOT NULL relaxation. Four UI cards + FlowWarningBanner + AuditLogTimeline compose the page. ApiKeyManagerCard implements the single-key-per-tenant model already in the tenant_landing_settings schema (active + 24h grace old), with 'Generate-once + copy modal' UX — the plaintext key is shown exactly once on generate/rotate, masked as 'liw_live_****abcd' thereafter. FieldMapEditorCard uses form-rows (source-field text input -> canonical-field dropdown) plus a 'paste sample payload, extract sources' helper; strict validation on save (phone + consent REQUIRED, unknown canonical BLOCKED, empty source BLOCKED). DryRunPreviewCard POSTs sample payload to a backend endpoint that reuses the EXACT FieldMapResolver + PhoneE164Normalizer + consent-check code path as real intake but short-circuits before any DB write or flow enqueue. FlowWarningBanner renders a page-load banner when the configured welcome_flow_slug has no matching active chatbot_flows row (resolves the INV-AT-069 silent-skip observed on prod smoke). AuditLogTimeline shows the last 50 audit entries from the new liw_audit_log table (action + user + relative time + before/after summary). All writes emit an audit_log insert within the SAME transaction as the settings UPDATE (avoids the CQ2 fire-and-forget silent-drift pattern). row_version optimistic concurrency via updated_at — mutations require the caller to pass the observed updated_at; 0-rows returned from the UPDATE = conflict (409 INV-BE-113). Six endpoints under /api/v1/tenant/landing/* (JWT auth, tenant_id from JWT claim only, no caller-supplied tenant_id to prevent IDOR). Migration 022 creates liw_audit_log(id, tenant_id, user_id, action, before_json, after_json, created_at) + composite index on (tenant_id, created_at DESC) AND relaxes tenant_landing_settings.landing_api_key NOT NULL -> NULL (needed for revoke semantics; PL/pgSQL DO block makes the ALTER idempotent). FindByApiKeyAsync gains 'AND landing_api_key IS NOT NULL' guard so revoked rows never match. Error codes: INV-BE-113 (concurrent modification 409), INV-BE-114 (required canonical missing 400), INV-BE-115 (unknown canonical 400), INV-BE-116 (dry-run invalid payload 400). Applied lessons: arch/errors.md user_message LITERAL match (lesson 2026-04-16), XML doc describes runtime behavior (lesson 2026-04-18), no null-forgiving operators (lesson 2026-04-18 x2), schema-citation comments on every new repo method (lesson 2026-04-18).",
+    "q_intent": "Q: 'A' — Chunk C Interview + Dev. Q answered 8 interview questions across 3 rounds (4+3+1), chose every Recommended default; requested audit history endpoint + new liw_audit_log table after I flagged that a generic audit_log table does not exist in arch/db/ or production (Grep: 0 hits; MCP query against prod showed feature-scoped pattern: template_audit_trail, zoho_sync_log, no generic audit_log).",
+    "interview_notes": "8 interview decisions (2026-04-18 23:50 -> 2026-04-19 00:00): (1) API key UX = Generate-once + copy modal (single key per tenant with 24h grace rotation; revoke clears both keys + sets active to NULL). (2) Field map UI = form-rows with source-field text input -> canonical-field dropdown + sample-payload paste auto-detect helper. (3) Dry-run = backend endpoint /dry-run reusing real resolvers (no client-side duplicate logic -> no drift risk). (4) Page placement = standalone /settings/lead-intake route; entry via new card in existing SettingsPage; NO new sidebar icon (Layout bloat prevention, matches Zoho's integrations-card-link pattern). (5) Flow rename warning = reactive banner on /settings/lead-intake (page-load check); proactive flow-editor-save hook deferred to v2. (6) Field map validation = strict (phone + consent REQUIRED block save; unknown canonical field BLOCKED; empty source BLOCKED). (7) Audit trail = feature-scoped liw_audit_log table + migration 022 (precedent: template_audit_trail, zoho_sync_log). (8) Endpoint scope = 6 endpoints (Extended set with GET /audit). INTENTIONAL DEFERRALS: Flow editor proactive rename dialog, audit CSV export, multi-key labeled management (schema is PK(tenant_id) single-row).",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Migration 022 creates liw_audit_log(id BIGSERIAL PK, tenant_id INT NOT NULL REFERENCES tenant_registry(tenant_id), user_id INT NULL, action VARCHAR(50) NOT NULL, before_json JSONB NULL, after_json JSONB NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()) + index idx_liw_audit_log_tenant_created ON (tenant_id, created_at DESC) + GRANT ALL ON liw_audit_log, liw_audit_log_id_seq TO invekto (production role, per lesson 2026-04-18 GRANT audit). Migration is idempotent: CREATE TABLE IF NOT EXISTS + CREATE INDEX IF NOT EXISTS. SAME migration also relaxes tenant_landing_settings.landing_api_key NOT NULL -> NULL via a PL/pgSQL DO block that checks pg_attribute.attnotnull before ALTER COLUMN DROP NOT NULL (idempotent). Canonical schema copies: new arch/db/liw-audit-log.sql mirrors the table DDL; arch/db/tenant-landing-settings.sql updated comment header noting Chunk C nullable relaxation + revoke semantics. Action values allowed (enforced at application layer): 'apikey.rotate', 'apikey.revoke', 'fieldmap.save', 'welcome_slug.change' (last one reserved future-use; Chunk C does not mutate welcome_slug).",
+        "verified": false
+      },
+      {
+        "id": "AC2",
+        "criterion": "Six backend endpoints registered under /api/v1/tenant/landing/* — ALL JWT-auth'd via Backend's existing JwtAuthMiddleware; tenant_id is extracted EXCLUSIVELY from the JWT claim (no caller-supplied tenant_id parameter, IDOR prevention per CQ9 precedent). (a) GET /settings -> 200 TenantLandingSettingsDto { tenant_id, masked_active_key (nullable when not yet initialized or revoked), masked_old_key?, old_expires_at?, field_map, welcome_flow_slug, dup_window_days, flow_status { resolved_slug, exists, flow_id?, flow_display_name? }, updated_at (row_version), created_at, has_active_key (bool) }. Returns a sentinel envelope for tenants with no row yet (auto-row-create is lazy on first rotate). (b) POST /apikey/rotate -> 200 RotateApiKeyResponse { active_plaintext, masked_old, old_expires_at, row_version }. Auto-creates the settings row on first call (no expected_row_version required for first-time create). Subsequent rotations require If-Match: <updated_at> header -> 409 INV-BE-113 on mismatch. Moves current active -> old + sets old_expires_at = NOW() + '24 hours'::interval; generates new active via ApiKeyGenerator. (c) POST /apikey/revoke -> 204. Requires If-Match. Sets landing_api_key = NULL and landing_api_key_old = NULL + clears old_expires_at. (d) PUT /fieldmap -> 200 { field_map, row_version }. Body: { field_map, expected_row_version }. Validates via FieldMapValidator -> 400 INV-BE-114 / INV-BE-115 with first error message + errors[] array in envelope. (e) POST /dry-run -> 200 DryRunResponse { resolved_fields, warnings, would_upsert, would_trigger_welcome, phone_e164?, consent_ok }. Request body: { source_slug, payload (JsonElement), field_map_override? }. field_map_override lets the UI preview UNSAVED drafts. No DB write, no flow enqueue. (f) GET /audit?limit=50 -> 200 { entries: LiwAuditEntryDto[] }. Newest-first. limit clamped to [1, 200]. user_display = 'User#{user_id}' or 'Sistem' when user_id is null.",
+        "verified": false
+      },
+      {
+        "id": "AC3",
+        "criterion": "ApiKeyGenerator.cs — cryptographically secure key generator. Implementation: RandomNumberGenerator.GetBytes(48) -> Convert.ToBase64String -> URL-safe transform (+ -> -, / -> _, trim =) -> 'liw_live_' prefix + truncate final length to 64 chars total. Prefix enables at-a-glance identification in logs/configs (reserves 'liw_test_' for a future sandbox mode). RotateApiKeyAsync retries ONCE on PostgreSQL 23505 unique-violation (uq_tls_api_key collision — astronomically unlikely but defensive per CQ2 observability guidance) then surfaces 500 INV-BE-001 with a structured log line.",
+        "verified": false
+      },
+      {
+        "id": "AC4",
+        "criterion": "FieldMapValidator.cs — pure validation helper returning ValidationResult { is_valid, errors: { field_name, error_code, message }[] }. Canonical allowlist (static readonly): 'name', 'phone', 'email', 'consent', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'referer', 'metadata'. Rules: (a) at least one mapping to 'phone' canonical required — INV-BE-114 msg 'Telefon alani zorunlu (en az bir satirda canonical=phone olmali)'. (b) at least one mapping to 'consent' canonical required — INV-BE-114 msg 'KVKK onay alani zorunlu (en az bir satirda canonical=consent olmali)'. (c) NO canonical value outside the allowlist — INV-BE-115 msg 'Tanimsiz canonical alan: \\'{field}\\'. Gecerli alanlar: {allowlist}'. (d) NO empty source-field string — INV-BE-114 msg 'Kaynak alan adi bos birakilamaz'. (e) NO duplicate canonical target EXCEPT 'metadata' (multiple sources may map to metadata for arbitrary extras; name/phone/email/consent must be unique canonical targets) — INV-BE-114 msg 'Canonical alan \\'{canonical}\\' birden fazla kaynak alana atanamaz'. Validator returns errors (not throw). LiwSettingsService.UpdateFieldMapAsync maps is_valid=false to 400 with errors[0] as envelope primary error + errors[] as supplementary array (arch/contracts envelope convention).",
+        "verified": false
+      },
+      {
+        "id": "AC5",
+        "criterion": "TenantLandingSettingsRepository gains 4 new virtual methods matching FindByApiKeyAsync/FindByTenantIdAsync precedent. (a) EnsureRowExistsOrCreateWithKeyAsync(tenantId, initialActiveKey, ct) — INSERT with ON CONFLICT (tenant_id) DO NOTHING RETURNING updated_at, or SELECT-updated_at when row exists; initial landing_field_map = '{}'::jsonb; initial landing_api_key = @initialActiveKey (NOT NULL satisfied). (b) RotateApiKeyAsync(tenantId, newActive, graceUntil, expectedRowVersion, ct) — UPDATE tenant_landing_settings SET landing_api_key_old = landing_api_key, landing_api_key_old_expires_at = @grace, landing_api_key = @new, updated_at = NOW() WHERE tenant_id = @tid AND updated_at = @expected RETURNING updated_at. 0 rows -> conflict. (c) RevokeApiKeyAsync(tenantId, expectedRowVersion, ct) — UPDATE SET landing_api_key = NULL, landing_api_key_old = NULL, landing_api_key_old_expires_at = NULL, updated_at = NOW() WHERE tenant_id = @tid AND updated_at = @expected RETURNING updated_at. 0 rows -> conflict. (d) UpdateFieldMapAsync(tenantId, fieldMapJson, expectedRowVersion, ct) — UPDATE SET landing_field_map = @json::jsonb, updated_at = NOW() WHERE tenant_id = @tid AND updated_at = @expected RETURNING updated_at. 0 rows -> conflict. Additionally: FindByApiKeyAsync gains 'AND landing_api_key IS NOT NULL' guard so revoked rows never match. All methods accept optional NpgsqlConnection parameter (default: open own connection) to participate in an external transaction. Schema-citation comment on every new method cites arch/db/tenant-landing-settings.sql + migration 022.",
+        "verified": false
+      },
+      {
+        "id": "AC6",
+        "criterion": "LiwAuditRepository.cs — NEW class separate from TenantLandingSettingsRepository (single-responsibility + future audit growth room). Two virtual methods. (a) InsertAsync(tenantId, userId?, action, beforeJson?, afterJson?, conn, ct) — INSERT INTO liw_audit_log (tenant_id, user_id, action, before_json, after_json) VALUES (...). ALWAYS takes an externally-owned NpgsqlConnection (no default) because audit writes must run inside the caller's transaction. (b) ListAsync(tenantId, limit, ct) — SELECT id, action, before_json::text, after_json::text, created_at, user_id FROM liw_audit_log WHERE tenant_id = @tid ORDER BY created_at DESC LIMIT @limit. Own connection (read-only, no transaction needed). Schema-citation comment cites arch/db/liw-audit-log.sql + migration 022.",
+        "verified": false
+      },
+      {
+        "id": "AC7",
+        "criterion": "AutomationFlowLookupRepository.cs — NEW minimal Backend repo. Single method: LookupActiveFlowByNameAsync(tenantId, flowName, ct) -> (FlowId int, FlowName string, DisplayName string)? or null. SELECT flow_id, flow_name, display_name FROM chatbot_flows WHERE tenant_id = @tid AND flow_name = @name AND is_active = true LIMIT 1. Used EXCLUSIVELY by LiwSettingsService.GetSettingsAsync to populate flow_status in the GET response (avoids a second UI roundtrip). Read-only; no INSERT/UPDATE/DELETE surface. Schema-citation comment acknowledges microservice isolation policy: the chatbot_flows table lives in the shared PostgreSQL; Backend READs this table READ-ONLY matching the same pattern Chunk B's AutomationRepository.GetFlowByNameAndTenantAsync uses (read access to a peer service's operational table is the established project pattern; writes would require an HTTP hop).",
+        "verified": false
+      },
+      {
+        "id": "AC8",
+        "criterion": "LiwSettingsService.cs — NEW application service orchestrating the 6 endpoints. Methods: GetSettingsAsync(tenantId, ct), RotateApiKeyAsync(tenantId, userId, expectedVersion?, ct), RevokeApiKeyAsync(tenantId, userId, expectedVersion, ct), UpdateFieldMapAsync(tenantId, userId, fieldMap, expectedVersion, ct), DryRunAsync(tenantId, request, ct), ListAuditAsync(tenantId, limit, ct). Returns typed result objects (Success<T> / Conflict / ValidationFailed / NotConfigured) so the endpoint layer maps to HTTP responses without exception-as-control-flow. Each mutating method follows the pattern: (1) validate input, (2) open connection, (3) BEGIN, (4) perform settings UPDATE, (5) InsertAsync on LiwAuditRepository with same connection, (6) COMMIT (or ROLLBACK on any failure), (7) return updated projection. DryRunAsync: NO transaction (read-only); validates payload JSON -> resolves via FieldMapResolver (with optional field_map_override) -> runs PhoneE164Normalizer -> checks consent -> assembles DryRunResponse. FieldMapResolver from Chunk A receives a minor additive extension (new overload Resolve(payload, fieldMapOverride) that does not touch persistence context) — existing signature UNCHANGED, so Chunk A/B call sites keep working. No null-forgiving operators anywhere. DI registration: LiwSettingsService as Singleton in Program.cs (matches LeadIntakeService Singleton pattern).",
+        "verified": false
+      },
+      {
+        "id": "AC9",
+        "criterion": "Dashboard App.tsx gains a lazy-loaded route <Route path='/settings/lead-intake' element={<LeadIntakeSettingsPage />} /> under the existing ProtectedRoute+Layout wrapper. No sidebar entry added to Layout.tsx (Layout bloat prevention). Entry is via a new 'Lead Kaynaklari' card on SettingsPage.tsx that navigates to /settings/lead-intake — SettingsPage.tsx modification is PURELY additive (new card appended below existing cards; no existing layout/markup reshuffle). document.title = 'Invekto AI - Lead Kaynaklari' on page mount.",
+        "verified": false
+      },
+      {
+        "id": "AC10",
+        "criterion": "LeadIntakeSettingsPage.tsx container — fetches settings on mount (GET /api/v1/tenant/landing/settings) and renders children: FlowWarningBanner (only when flow_status.exists=false), ApiKeyManagerCard, FieldMapEditorCard, DryRunPreviewCard, AuditLogTimeline. Loading state = centered spinner; error state = inline error banner with Retry button. Shared state (settings object + row_version + unsaved draft field_map) held in useState/useEffect — matches ZohoStageMappingPage.tsx pattern, NOT Zustand (avoids store bloat for a localized page). row_version is threaded into every mutation request header (If-Match). On 409 response, the page automatically refetches settings + toasts 'Ayarlar baska bir sekmede degistirildi, son hali yuklendi' + preserves any unsaved fieldmap draft rows so the tenant can retry the save. SWR-style refetch on every successful mutation keeps the AuditLogTimeline fresh.",
+        "verified": false
+      },
+      {
+        "id": "AC11",
+        "criterion": "ApiKeyManagerCard.tsx — three visual states. (A) Not-initialized (masked_active_key=null AND created_at=null): primary 'Yeni API Key Olustur' button; on click -> POST /apikey/rotate -> NewKeyCopyModal opens with plaintext + copy-to-clipboard button + X close icon (per Q's rule 'no Cancel text button in modals'). Modal clears plaintext from React state on close. (B) Active (masked_active_key non-null): masked display 'liw_live_****abcd' + rotated_at relative-time + 'Yenile' button + 'Iptal Et' button. Yenile -> confirm dialog 'Mevcut key 24 saat boyunca calismaya devam edecek, yeni key olusturulacak. Devam edilsin mi?' -> POST /rotate -> NewKeyCopyModal. Iptal Et -> confirm dialog 'Bu tenant artik lead alamayacak. Devam edilsin mi?' -> POST /revoke -> toast 'API key iptal edildi'. (C) Grace period (old_expires_at in future): additionally shows 'Eski key: liw_live_****xxxx — {N} saat icinde gecersiz' inline chip. Clipboard API failure path (iframe/insecure context): textarea + document.execCommand('copy') fallback with user-visible confirmation.",
+        "verified": false
+      },
+      {
+        "id": "AC12",
+        "criterion": "FieldMapEditorCard.tsx — editable table rows { source_field: string, canonical_field: string }. Columns: 'Kaynak Alan (Landing Form)' | 'Invekto Canonical' | '' (remove button). Canonical dropdown populated from types/leadIntake.ts CANONICAL_FIELDS constant (mirrors FieldMapValidator allowlist). Required canonical fields (phone, consent) are rendered with a red asterisk in the dropdown; when neither 'phone' nor 'consent' is present across any row, the 'Kaydet' button is disabled with a tooltip 'En az bir satir canonical=phone ve bir satir canonical=consent olmali'. Unknown canonical legacy data -> red border + inline 'Tanimsiz alan — duzeltin' message. 'Kaynak Yapistirma Yardimi' button -> modal with textarea; on submit, JSON top-level keys are extracted and empty rows pre-filled (DOES NOT overwrite existing non-empty rows). Dirty flag tracks unsaved edits; window.beforeunload prompt fires if dirty. Save -> PUT /fieldmap with If-Match; on 409 the card absorbs the fresh server map but preserves the unsaved dirty rows (manual merge by tenant).",
+        "verified": false
+      },
+      {
+        "id": "AC13",
+        "criterion": "DryRunPreviewCard.tsx — two-pane layout: left editable JSON payload textarea, right read-only results panel, top 'Dry Run Calistir' button. The card reads the CURRENT unsaved field_map from parent page state and passes it as field_map_override in the POST body so preview reflects draft edits without requiring a save. Results panel sections: resolved_fields 2-column table; 'Normalized phone: +905551112233 (OK)' or 'Phone parse basarisiz' in red; 'Onay alani: OK' green check / 'Eksik' red X; warnings[] as a yellow bullet list; 'would_upsert' + 'would_trigger_welcome' as colored chips (green=true / gray=false). Invalid payload JSON -> inline textarea border+message before the network call. 'Dry Run Calistir' is disabled while a request is in flight.",
+        "verified": false
+      },
+      {
+        "id": "AC14",
+        "criterion": "FlowWarningBanner.tsx — renders TOP banner ONLY when settings.flow_status.exists=false. Banner copy TR: 'Uyari: Welcome akisi `{resolved_slug}` tenant'in aktif chatbot_flows listesinde bulunamadi. Yeni lead kayitlari olusacak ama welcome mesaji tetiklenmeyecek.' + secondary line '`{resolved_slug}` adli bir flow'u Flow Builder'da aktif hale getirin veya Ayarlar uzerinden welcome slug'ini degistirin.' + [Flow Builder'a Git] outline button linking to /flow-builder. Banner is dismissible per-session via X close icon but re-mounts on page refresh (so the tenant does not permanently hide a live config gap).",
+        "verified": false
+      },
+      {
+        "id": "AC15",
+        "criterion": "AuditLogTimeline.tsx — right-rail timeline (or bottom full-width on narrow viewports). Fetches GET /audit?limit=50 on mount and after every successful mutation elsewhere on the page. Each entry rendered as { action_label_tr, user_display, relative_time, summary_line }. Action labels: apikey.rotate -> 'API key yenilendi', apikey.revoke -> 'API key iptal edildi', fieldmap.save -> 'Alan eslesmesi guncellendi', welcome_slug.change -> 'Welcome akisi degisti' (future). Summary line computed client-side: apikey diff displays 'Eski: ***abcd -> Yeni: ***wxyz' (extracted from before_json/after_json last 4 chars); fieldmap diff displays '{N} satir -> {M} satir' + '+{added} / -{removed}' counts. Clicking an entry expands into a <details> block with raw before_json / after_json (developer-friendly, not primary UX).",
+        "verified": false
+      },
+      {
+        "id": "AC16",
+        "criterion": "arch/contracts/lead-intake.json gains a 'dashboard_endpoints' section listing all 6 endpoints (path, method, request shape, response shape, error codes, concurrency model note). arch/errors.md adds four new codes with literal TR user_message strings matching FieldMapValidator messages (per lesson 2026-04-16 user_message LITERAL match rule): INV-BE-113 'Ayarlar baska bir sekmede degistirildi, son hali yuklendi.' (409); INV-BE-114 'Alan eslesmesinde zorunlu canonical alan eksik veya hatali.' (400); INV-BE-115 'Tanimsiz canonical alan.' (400); INV-BE-116 'Dry-run payload gecersiz (JSON format hatasi).' (400). ErrorCodes.cs synchronized with matching constants. Chunk A cross_channel_attribution section and Chunk B wa_direct_internal_endpoint section remain UNTOUCHED (additive-only modifications).",
+        "verified": false
+      },
+      {
+        "id": "AC17",
+        "criterion": "Build PASS across Invekto.Shared + Invekto.Backend (Dashboard Vite build triggered via existing Invekto.Backend.csproj pre-build target). Zero regression in Chunks A/B runtime paths: (a) FindByApiKeyAsync additive 'AND landing_api_key IS NOT NULL' guard is semantically equivalent to current behavior for non-NULL keys; (b) LeadIntakeService.IntakeAsync + IntakeWaDirectAsync code paths UNCHANGED (FieldMapResolver gets a NEW overload but the existing signature keeps its exact behavior); (c) Zoho/Flow/Knowledge pages UNCHANGED. Migration 022 runs idempotently against production — CREATE TABLE IF NOT EXISTS + CREATE INDEX IF NOT EXISTS + PL/pgSQL DO block gating the ALTER COLUMN DROP NOT NULL on pg_attribute.attnotnull. Zero Chunk C-introduced warnings on build.",
+        "verified": false
+      }
+    ]
+  },
+  "spec_acceptance_criteria": [
+    { "id": "AC-1", "description": "POST /api/v1/leads/intake/{source_slug} endpoint + pre-shared API key (per-tenant)", "status": "MET" },
+    { "id": "AC-2", "description": "Field mapping config JSONB (landing_field_map) -> source field -> canonical field", "status": "MET" },
+    { "id": "AC-3", "description": "Phone E.164 normalize + duplicate check (son 30g window, tenant-scoped)", "status": "MET" },
+    { "id": "AC-4", "description": "Source tag auto-assign (source_slug path param) + UTM passthrough (JSONB intake_metadata)", "status": "MET" },
+    { "id": "AC-5", "description": "Consent flag required (source form'da opt-in checkbox, field mapping'te zorunlu alan)", "status": "MET" },
+    { "id": "AC-6", "description": "Welcome flow auto-trigger (tenant config'ten welcome_flow_slug)", "status": "MET" },
+    { "id": "AC-7", "description": "WA direct (wa.me) inbound -> eger lead yoksa otomatik create (profile name + phone)", "status": "MET" }
+  ],
+  "spec_architectural_decisions": [
+    {
+      "decision": "Single-key-per-tenant model (active + 24h grace old) instead of multi-key labeled management",
+      "reason": "Matches existing tenant_landing_settings schema (PK tenant_id, one row per tenant). Multi-key would require a tenant_landing_api_keys table + migration. Q explicitly chose 'Generate-once + copy modal' (single-key UX). Revoke endpoint covers the 'stop accepting leads' scenario.",
+      "codex_note": "EXPECTED: no CQ flag on 'why not a keys table?'. Spec scope explicitly chose single-key; multi-key deferred if tenant demand surfaces."
+    },
+    {
+      "decision": "landing_api_key DB column relaxed from NOT NULL to NULL in migration 022 to support revoke semantics",
+      "reason": "Pure soft-delete flag would still leave the key usable via FindByApiKeyAsync; sentinel values (e.g., 'REVOKED_...') pollute uq_tls_api_key + require sentinel-aware lookup code. NULL is the cleanest 'key not set' signal + FindByApiKeyAsync 'AND landing_api_key IS NOT NULL' guard prevents accidental matches.",
+      "codex_note": "EXPECTED: CQ11 may probe schema change scope; migration 022 gates the ALTER in a PL/pgSQL DO block (idempotent via pg_attribute.attnotnull check)."
+    },
+    {
+      "decision": "Dry-run endpoint reuses the real FieldMapResolver + PhoneE164Normalizer + consent-check code path instead of duplicating validation client-side",
+      "reason": "Eliminates drift risk between preview and real intake (Q rejected the 'both client + backend' option for exactly this reason). Performance: dry-run is a per-interaction human-speed action; ~10-20 ms backend roundtrip is well within UX budget.",
+      "codex_note": "EXPECTED: no CQ flag on code reuse; LiwSettingsService.DryRunAsync calls the same collaborators LeadIntakeService.IntakeAsync uses."
+    },
+    {
+      "decision": "row_version optimistic concurrency via updated_at (timestamptz) rather than a dedicated version INT column",
+      "reason": "updated_at is already on the schema and naturally monotonic; a version INT requires another migration + triggers. Client treats updated_at as an opaque string (no date-parsing) so sub-millisecond precision drift is not a correctness concern. Same-millisecond collision for the same tenant is astronomically unlikely at human mutation speed.",
+      "codex_note": "EXPECTED: CQ6 may probe race conditions; mitigation is 'UPDATE ... WHERE updated_at = @expected RETURNING updated_at' — 0 rows = conflict. Client retries after refetch."
+    },
+    {
+      "decision": "No sidebar entry for /settings/lead-intake; entry via a new card on the existing SettingsPage",
+      "reason": "Q chose 'standalone page' over 'SettingsPage tab' AND 'IntegrationsPage card' — meaning own route, not nested. Layout sidebar already has 12+ items; adding 'Lead Kaynaklari' as top-level displaces higher-priority entries. Settings-drill-down via a card link matches the Zoho pattern (sub-routes are reached via IntegrationsPage cards, not sidebar).",
+      "codex_note": "EXPECTED: no CQ flag on UX discoverability — SettingsPage card link is a conventional settings-drill-down pattern."
+    },
+    {
+      "decision": "Audit insert happens in the SAME transaction as the underlying settings UPDATE, not in a fire-and-forget async call",
+      "reason": "Fire-and-forget audit is a known CQ2 silent-drift pattern — audit-miss becomes possible while the main change succeeded. Same-transaction means an audit-insert failure rolls back the main change; user retries; audit is consistent. Performance cost is a single-row INSERT (~1 ms intra-connection) which is acceptable for a settings page.",
+      "codex_note": "EXPECTED: CQ2 WOULD flag absence of transactional audit; plan proactively keeps them in the same transaction."
+    },
+    {
+      "decision": "LiwAuditRepository is a SEPARATE class, not a method on TenantLandingSettingsRepository",
+      "reason": "Single-responsibility: tenant_landing_settings repo speaks to ONE table; liw_audit_log is a distinct table with different access patterns (append-only write, time-range read). Future audit growth has room without bloating the settings repo.",
+      "codex_note": "EXPECTED: no CQ flag — textbook SRP."
+    },
+    {
+      "decision": "Strict field map validation with block-save + inline error surfaces, not warn-only",
+      "reason": "Q explicitly chose strict. Underlying Chunk A intake already enforces phone + consent at runtime — warn-only at save time would create a 'saved but invalid' config state that silently drops real leads. Strict at save = runtime invariant maintained, no surprise 400 at lead arrival.",
+      "codex_note": "EXPECTED: no CQ flag — UX pattern is 'fail fast, visible'."
+    },
+    {
+      "decision": "Backend reads chatbot_flows directly (via AutomationFlowLookupRepository) rather than calling an Automation HTTP endpoint",
+      "reason": "Chunk B precedent: TriggerWelcomeFlowJob in Automation reads the same table. Read-only cross-service DB access is the established project pattern; an HTTP hop would add ~20-50 ms latency to every settings-page GET without a tangible isolation benefit for READS. Writes would still go through HTTP (not applicable here — this is read-only flow_status lookup).",
+      "codex_note": "EXPECTED: CQ9 or Q-category verification question may probe microservice isolation. Mitigation documented in AC7 + in the repo's schema-citation comment."
+    }
+  ],
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Migration 022 relaxes tenant_landing_settings.landing_api_key from NOT NULL to NULL via a PL/pgSQL DO block that checks pg_attribute.attnotnull before ALTER COLUMN DROP NOT NULL (idempotent). Rollback scenario: if the migration is reverted, any existing NULL-key row would violate the re-added NOT NULL constraint — the rollback SQL must either purge NULL rows or set a sentinel. Does the migration need a companion rollback.sql documenting the clean-up, or is the forward-only convention (per arch/db/migrations/ precedent — 021 has no rollback counterpart) sufficient?",
+      "category": "Data"
+    },
+    {
+      "id": "Q2",
+      "question": "row_version threading via updated_at — if Q rotates a key from tab A while simultaneously saving a field_map from tab B (both with the original version), one wins (409 on the other). The loser must refetch. UX impact: the loser's local draft field_map is discarded on full refetch unless we merge. Plan AC10 preserves the unsaved-dirty rows on 409 + refetches server state + toast. Is 'preserve dirty rows + overwrite clean state' acceptable, or should the client perform an explicit field-by-field merge of server-new-rows with local-dirty-rows?",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q3",
+      "question": "FlowWarningBanner calls AutomationFlowLookupRepository.LookupActiveFlowByNameAsync from WITHIN Backend — a READ of a table (chatbot_flows) that Automation owns operationally. CLAUDE.md says 'servisler arasi dogrudan referans YASAK — Shared uzerinden iletisim'. Policy interpretation: shared PostgreSQL table READS are allowed cross-service (Chunk B precedent: TriggerWelcomeFlowJob in Automation reads the SAME table; plan AC7 read-only crossing mirrors that pattern). Should READ be allowed under this rule, or does it demand an HTTP endpoint on Automation for Backend to call?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q4",
+      "question": "DryRunPreviewCard sends an UNSAVED draft field_map as field_map_override in POST /dry-run. Threat model: JWT-auth'd + tenant-scoped, so override only affects the caller's own response (no cross-tenant leak). Should dry-run apply the SAME strict FieldMapValidator rules as PUT /fieldmap (block unknown canonical + missing required), or skip validation to let tenants inspect 'what would the resolver do with a bad map?' for diagnostic purposes?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q5",
+      "question": "Audit diff_summary is computed client-side in AuditLogTimeline.tsx from before_json/after_json. If a second UI consumer (e.g., Chunk D super-admin view) also needs audit display, it would re-implement the diff logic. Should diff summary be server-side (a computed VIEW or a response transform in GET /audit) to avoid duplication, or is client-side for v1 acceptable (YAGNI + matches how every other Dashboard component structures presentation)?",
+      "category": "Lifecycle"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Chunk A intake endpoint /api/v1/leads/intake/{source_slug} — UNCHANGED except FindByApiKeyAsync gains 'AND landing_api_key IS NOT NULL' guard (additive, semantically equivalent for non-NULL keys)",
+      "Chunk B /api/internal/leads/intake/wa-direct — UNCHANGED",
+      "Chunk A LeadIntakeService.IntakeAsync and Chunk B IntakeWaDirectAsync — UNCHANGED",
+      "FlowEditorPage.tsx / Flow Builder — proactive rename dialog is deferred to Chunk D if Q requests",
+      "Multi-key labeled API key management — schema is PK(tenant_id); deferred if demand surfaces",
+      "Full user name resolution in audit feed — user_display='User#{user_id}' for v1",
+      "Audit export (CSV / JSON bulk) — out of scope; GET /audit?limit=50 with newest-first is enough for operational visibility",
+      "welcome_slug.change mutation — Chunk C does NOT expose a welcome_slug editor (read-only display); action-vocabulary entry is forward-compat",
+      "Migration 023+ — one migration (022) only",
+      "Shared / Marketing / Automation code outside Invekto.Backend.Dashboard + Invekto.Backend + Invekto.Shared",
+      "INMA MSSQL (READONLY policy)"
+    ],
+    "non_goals": [
+      "Real-time audit stream (WebSocket / SSE) — polling + refetch-on-mutate only",
+      "Audit entry delete / redaction — append-only table",
+      "Bulk field_map import from CSV / Excel — manual entry + JSON paste helper only",
+      "Canonical field type coercion display — phone is the only normalized field",
+      "Pre-canned sample payload library (Meta Lead / Google Lead Form / Typeform templates) — documentation site",
+      "Super-admin cross-tenant LIW settings view — tenant-scoped only",
+      "UI for intake_dup_window_days tuning — read-only display in Chunk C",
+      "Proactive flow-editor rename dialog — deferred to Chunk D"
+    ],
+    "intentional_exclusions": [
+      "No sidebar icon for 'Lead Kaynaklari' — SettingsPage card link only (Layout bloat prevention)",
+      "No SettingsPage tabs restructure — only an additive card on the existing page",
+      "No Zustand/Redux store for the lead-intake page — local useState/useEffect matches ZohoStageMappingPage precedent",
+      "No new toast library — reuses whatever SettingsPage currently uses for success/error feedback",
+      "No RowVersion INT column on tenant_landing_settings — updated_at-as-opaque-string suffices at human mutation speed",
+      "No soft-delete column on tenant_landing_settings — revoke = landing_api_key NULL (migration 022 enables this)",
+      "No i18n on audit action labels — Turkish only for v1 (matches rest of Dashboard)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "LiwSettingsService.RotateApiKeyAsync: NpgsqlException 23505 (unique violation on landing_api_key) -> retry ONCE with fresh key; if still collides -> 500 INV-BE-001 + structured log. Generic NpgsqlException -> 503 INV-DB-001.",
+      "LiwSettingsService.UpdateFieldMapAsync / RevokeApiKeyAsync / RotateApiKeyAsync: 'UPDATE ... WHERE updated_at = @expected' returning 0 rows -> 409 INV-BE-113. NpgsqlException -> 503 INV-DB-001.",
+      "LiwSettingsService.DryRunAsync: explicit try/catch around JsonDocument.Parse -> 400 INV-BE-116 on JsonException. FieldMapResolver exceptions caught + surfaced in DryRunResponse.warnings[] (non-fatal; dry-run is diagnostic).",
+      "LiwAuditRepository.InsertAsync: NpgsqlException bubbles to the service transaction; rollback semantics applied (AC6 + architectural decision).",
+      "Backend endpoint layer: auth failure (JwtAuthMiddleware) -> 401 INV-BE-100 / INV-BE-110 (existing). Model binding failures -> 400 INV-BE-109 (existing).",
+      "Dashboard api.ts: HTTP 401 -> existing useAuth logout flow; HTTP 409 -> page-level refetch + toast (see AC10); HTTP 400 -> inline errorResponse.message display; HTTP 500/503 -> generic 'Sunucu hatasi, tekrar deneyin' toast.",
+      "FieldMapEditorCard Save handler: catches Promise rejection, clears dirty flag only on 200; on any non-200, dirty flag preserved.",
+      "ApiKeyManagerCard navigator.clipboard.writeText: catch -> fallback document.execCommand('copy') with a confirm textarea (clipboard API silently fails in some iframe / insecure contexts)."
+    ],
+    "user_facing_errors": [
+      "INV-BE-113 (NEW) 'Ayarlar baska bir sekmede degistirildi, son hali yuklendi.' (409 optimistic-concurrency conflict)",
+      "INV-BE-114 (NEW) 'Alan eslesmesinde zorunlu canonical alan eksik veya hatali.' (400 validation — phone/consent missing, empty source, or duplicate canonical target)",
+      "INV-BE-115 (NEW) 'Tanimsiz canonical alan.' (400 validation — canonical value outside allowlist)",
+      "INV-BE-116 (NEW) 'Dry-run payload gecersiz (JSON format hatasi).' (400 validation — payload parse failure)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Every degradation path is observable: (a) settings mutations use RETURNING updated_at to detect 0-rows-as-conflict (409 INV-BE-113 explicit response); (b) audit insert in the same transaction means audit-insert failure rolls back the entire mutation (user retries; consistent state); (c) FlowWarningBanner explicitly RENDERS when flow_status.exists=false (not silently absent); (d) dry-run JSON parse failure returns 400 INV-BE-116 with envelope message (not empty response); (e) ApiKeyGenerator unique-violation retries once then surfaces 500 INV-BE-001 with structured log; (f) Dashboard 409 path triggers refetch + toast (the tenant sees state diverged, not silently-lost change); (g) clipboard API failure falls back to execCommand + confirm (user sees success or manual-copy instruction, never a silent no-op)."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Tenant admin rotates the landing API key on Dashboard without realizing their landing page HTML still embeds the old key; form submissions start 401-ing; tenant notices 'leads stopped coming in' only after 30-60 minutes and opens a support ticket.",
+      "suggestion": "24h grace period on rotate (existing schema: landing_api_key_old + landing_api_key_old_expires_at) — old key keeps working for 24 hours with a prominent UI chip 'Eski key: liw_live_****abcd — {N} saat icinde gecersiz'. ApiKeyManagerCard renders this chip immediately after rotate.",
+      "aha_moment": "Tenant rotates, sees the grace chip, realizes 'I need to update the landing page within 24h', does so in minutes — zero lost leads, no support ticket."
+    },
+    {
+      "category": "UX",
+      "user_pain": "Tenant copies field_map values from an existing working setup on another landing page, pastes them into Invekto, saves — but they forgot 'consent' canonical field. Chunk A intake returns 400 on the first real lead submission; tenant has no idea why it's broken.",
+      "suggestion": "Strict FieldMapValidator at SAVE time — tenant CANNOT save a field_map missing 'phone' or 'consent'. Inline error 'En az bir satir consent canonical alanina map edilmeli' + red asterisk marks required targets in the dropdown. Save button disabled with tooltip until resolved.",
+      "aha_moment": "Tenant realizes at save time (not at first failed lead), adds the 'kvkk_onay' -> 'consent' row, saves — first real lead works end-to-end."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Tenant built a 12-field mapping for a Meta Lead Ads form. They're unsure the mapping is correct. Validating today requires submitting a real test lead via the ads platform — 5-10 minutes per iteration and pollutes the real leads table.",
+      "suggestion": "DryRunPreviewCard — tenant pastes the JSON payload Meta would POST, clicks 'Dry Run Calistir', sees resolved canonical fields + phone E.164 normalization + consent check + would_trigger_welcome in <1 second. No DB write, no lead row, no test pollution.",
+      "aha_moment": "Tenant pastes sample payload, sees 'phone_e164: +905551112233 (OK); consent_ok: EKSIK (source field kvkk payload'da yok)' and fixes the Meta form field name in 30 seconds."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Ops engineer investigating 'tenant reports welcome message not sending'. Today the only signal is INV-AT-069 log lines in Automation (observed on prod smoke validation). Correlating Dashboard-visible config to those logs requires SSH + grep.",
+      "suggestion": "FlowWarningBanner renders at page-load when the configured welcome_flow_slug has no matching active chatbot_flows row. The tenant sees the problem BEFORE a real lead arrives. Ops engineer visiting the tenant's Dashboard (super-admin impersonation, existing flow) sees the banner immediately.",
+      "aha_moment": "Ops engineer visits /settings/lead-intake, sees the red banner, tells tenant 'your slug welcome_default is not an active flow — rename a flow to welcome_default or change the slug'; resolved in 2 minutes instead of 30 of log-grep."
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Pilot onboarding call: the prospect asks 'can I see what happens when a lead fills the form BEFORE we go live?'. Today the answer is 'check the API docs and craft a curl request'.",
+      "suggestion": "DryRunPreviewCard is demo-ready: paste a canned sample payload, click Run, see instant structured response. Works without a real landing page, without test leads, without any setup beyond the field_map.",
+      "aha_moment": "Prospect watches Q paste a mock JSON, click Run, sees 'Ahmet Yilmaz, +905551234567, consent OK, would_trigger_welcome: true' — realizes 'this is configurable without code, I can debug my own integration'. Deal advances in the same call."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-19T02:30:00+03:00",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-19T02:30:00+03:00",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "iter 3: fieldmap missing row_version -> 400 ValidationFailed + actionable message (was 409 in iter 2)" },
+      "CQ2": { "result": "PASS", "evidence": "iter 3: all 4 silent-swallow paths resolved - ParseElement log, audit load toast, NewKeyCopyModal log, FlowLookupClient log" },
+      "CQ3": { "result": "PASS", "evidence": "all iters: files match allowed_files scope" },
+      "CQ4": { "result": "PASS", "evidence": "all iters: feature-specific patterns, no harmful duplication" },
+      "CQ5": { "result": "PASS", "evidence": "iter 3: all 4 typed catch violations resolved (FlowLookupClient when-guard + 3 TS bare catch -> catch(err) with narrowing)" },
+      "CQ6": { "result": "PASS", "evidence": "all iters: bounded queries, await using, no N+1" },
+      "CQ7": { "result": "PASS", "evidence": "all iters: no new TODO/HACK/FIXME" },
+      "CQ8": { "result": "PASS", "evidence": "iter 1+: DTO doc direction fixed; additive Shared changes only" },
+      "CQ9": { "result": "PASS", "evidence": "iter 2: audit before-snapshot atomicity via same-tx SELECT+UPDATE+audit; iter 3 fixed missing row_version contract" },
+      "CQ10": { "result": "PASS", "evidence": "all iters: SettingsPage card pattern, dirty preservation banner" },
+      "CQ11": { "result": "PASS", "evidence": "all iters: liw_audit_log schema+migration+code sync; tenant_landing_settings nullable aligned" },
+      "CQ12": { "result": "PASS", "evidence": "iter 3: all error codes specific+actionable, no 'unknown' fallback, typed catches only" }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "Migration 022 forward-only + PL/pgSQL idempotent DO block; matches 021 precedent" },
+      "Q2": { "result": "PASS", "reasoning": "FieldMapEditor alignedRowVersionRef preserves dirty rows + 'server drifted' banner with explicit Accept-Server button" },
+      "Q3": { "result": "PASS", "reasoning": "Backend FlowLookupClient HTTPs with service JWT to Automation /api/v1/automation/flows/lookup; direct DB read eliminated (AutomationFlowLookupRepository.cs deleted)" },
+      "Q4": { "result": "PASS", "reasoning": "LiwSettingsService opens conn + BEGIN tx + in-tx SELECT + UPDATE (optimistic concurrency) + audit INSERT + COMMIT; before-snapshot atomicity structurally guaranteed" },
+      "Q5": { "result": "PASS", "reasoning": "All 4 typed-catch hotspots fixed across FlowLookupClient + 3 TS components + NewKeyCopyModal (iter 3)" }
+    },
+    "blocking_issues": [],
+    "iteration": 3,
+    "escalation_required": false
+  }
+}

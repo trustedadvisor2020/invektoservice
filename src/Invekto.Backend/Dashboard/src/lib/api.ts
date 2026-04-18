@@ -1,5 +1,14 @@
 import { jwtDecode } from 'jwt-decode';
 import type { FlowExecutionSummary, FlowExecutionDetail } from '../types/flow';
+import type {
+  TenantLandingSettingsDto as LiwSettingsDto,
+  RotateApiKeyResponse as LiwRotateResponse,
+  UpdateFieldMapRequest as LiwFieldMapRequest,
+  UpdateFieldMapResponse as LiwFieldMapResponse,
+  DryRunRequest as LiwDryRunRequest,
+  DryRunResponse as LiwDryRunResponse,
+  AuditListResponse as LiwAuditListResponse,
+} from '../types/leadIntake';
 
 // API types
 export interface ServiceHealth {
@@ -2009,6 +2018,50 @@ class OpsApiClient {
 
   async forceDisconnectOpsZoho(tenantId: number): Promise<ZohoOpsDisconnectResponse> {
     return this.request<ZohoOpsDisconnectResponse>(`/api/ops/zoho/connections/${tenantId}`, { method: 'DELETE' });
+  }
+
+  // ---- FEAT-LIW Chunk C: Tenant Landing Settings (/api/v1/tenant/landing/*) ----
+  async getLeadIntakeSettings(): Promise<LiwSettingsDto> {
+    return this.request<LiwSettingsDto>('/api/v1/tenant/landing/settings');
+  }
+
+  async rotateLeadIntakeApiKey(rowVersion: string | null): Promise<LiwRotateResponse> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (rowVersion) headers['If-Match'] = rowVersion;
+    return this.request<LiwRotateResponse>('/api/v1/tenant/landing/apikey/rotate', {
+      method: 'POST',
+      headers,
+    });
+  }
+
+  async revokeLeadIntakeApiKey(rowVersion: string): Promise<void> {
+    return this.request<void>('/api/v1/tenant/landing/apikey/revoke', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'If-Match': rowVersion },
+    });
+  }
+
+  async updateLeadIntakeFieldMap(req: LiwFieldMapRequest): Promise<LiwFieldMapResponse> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (req.expected_row_version) headers['If-Match'] = req.expected_row_version;
+    return this.request<LiwFieldMapResponse>('/api/v1/tenant/landing/fieldmap', {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(req),
+    });
+  }
+
+  async dryRunLeadIntake(req: LiwDryRunRequest): Promise<LiwDryRunResponse> {
+    return this.request<LiwDryRunResponse>('/api/v1/tenant/landing/dry-run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req),
+    });
+  }
+
+  async listLeadIntakeAudit(limit: number = 50): Promise<LiwAuditListResponse> {
+    const qs = limit ? `?limit=${limit}` : '';
+    return this.request<LiwAuditListResponse>(`/api/v1/tenant/landing/audit${qs}`);
   }
 
   async batchRetryOpsZoho(ids: number[]): Promise<ZohoOpsBatchRetryResponse> {

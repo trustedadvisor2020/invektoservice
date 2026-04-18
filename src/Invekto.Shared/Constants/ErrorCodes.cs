@@ -87,6 +87,12 @@ public static class ErrorCodes
     public const string LeadIntakeWaDirectPhoneInvalid = "INV-BE-111";  // wa-direct payload phone missing/empty/E.164 normalize fail
     public const string LeadIntakeWaDirectUnknownTenant = "INV-BE-112"; // wa-direct payload tenant_id has no row in tenant_registry (defense-in-depth against caller bug)
 
+    // FEAT-LIW Chunk C: Dashboard settings endpoints (INV-BE-113+)
+    public const string LeadIntakeSettingsConcurrentModification = "INV-BE-113"; // updated_at row_version mismatch on rotate/revoke/fieldmap.save (another tab/operator updated)
+    public const string LeadIntakeFieldMapRequiredMissing = "INV-BE-114";        // Field map save: phone or consent canonical not mapped, empty source, or duplicate canonical target
+    public const string LeadIntakeFieldMapUnknownCanonical = "INV-BE-115";       // Field map save: canonical value outside allowlist (name/phone/email/consent/utm_*/referer/metadata)
+    public const string LeadIntakeDryRunPayloadInvalid = "INV-BE-116";           // Dry-run payload JSON parse failure
+
     // ChatAnalysis errors (INV-CA-xxx)
     public const string ChatAnalysisInvalidPayload = "INV-CA-001";
     public const string ChatAnalysisProcessingFailed = "INV-CA-002";

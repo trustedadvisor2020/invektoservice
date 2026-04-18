@@ -45,6 +45,9 @@ const ZohoConnectionPage = lazy(() => import('./pages/zoho/ZohoConnectionPage').
 const ZohoStageMappingPage = lazy(() => import('./pages/zoho/ZohoStageMappingPage').then(m => ({ default: m.ZohoStageMappingPage })));
 const ZohoSyncLogPage = lazy(() => import('./pages/zoho/ZohoSyncLogPage').then(m => ({ default: m.ZohoSyncLogPage })));
 
+// FEAT-LIW Chunk C: tenant landing settings (lazy).
+const LeadIntakeSettingsPage = lazy(() => import('./pages/settings/LeadIntakeSettingsPage').then(m => ({ default: m.LeadIntakeSettingsPage })));
+
 function ProtectedRoute() {
   const { isAuthenticated } = useAuth();
 
@@ -136,6 +139,8 @@ export default function App() {
         <Route path="/onboarding" element={<OnboardingWizardPage />} />
         <Route path="/onboarding-guide" element={<OnboardingGuidePage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        {/* FEAT-LIW Chunk C: standalone lead intake settings page (entered via SettingsPage 'Lead Kaynaklari' card). */}
+        <Route path="/settings/lead-intake" element={<LeadIntakeSettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

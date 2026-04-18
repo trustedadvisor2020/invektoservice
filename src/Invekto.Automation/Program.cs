@@ -307,7 +307,11 @@ app.EnsureJobStorageInitialized();
 app.UseTrafficLogging();
 
 // Enable JWT auth for /api/v1/ prefixed paths
-app.UseJwtAuth(jwtValidator, logger, "/api/v1/webhook/", "/api/v1/flows/", "/api/v1/faq/", "/api/v1/simulation/", "/api/v1/onboarding/", "/api/v1/returns/");
+// FEAT-LIW Chunk C: /api/v1/automation/flows/ — cross-service HTTP lookup from
+// Backend (FlowLookupClient mints a service JWT via JwtGenerator.GenerateServiceToken
+// so the standard middleware enforces tenant binding without any direct DB access
+// crossing between services).
+app.UseJwtAuth(jwtValidator, logger, "/api/v1/webhook/", "/api/v1/flows/", "/api/v1/faq/", "/api/v1/simulation/", "/api/v1/onboarding/", "/api/v1/returns/", "/api/v1/automation/flows/");
 
 // Faz 1: Plan-based feature guard (after JwtAuth sets TenantContext)
 var planCache = new TenantPlanCache(pgConnStr, logger);
@@ -1833,6 +1837,45 @@ app.MapGet("/api/v1/flows/{tenantId:int}/onboarding-stats", async (int tenantId,
     {
         jsonLogger.StepError($"Onboarding stats failed for tenant {tenantId}: {ex.Message}", "-");
         return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationOnboardingStatsFailed, "Failed to retrieve onboarding stats", "-"), statusCode: 500);
+    }
+});
+
+// ============================================================
+// FEAT-LIW Chunk C: cross-service flow metadata lookup. Backend's Dashboard
+// /settings/lead-intake GET calls this endpoint (via FlowLookupClient +
+// service JWT) to populate the FlowWarningBanner. Read-only, no side effects;
+// JWT tenant_id claim is authoritative — `?name=` query param is the only
+// caller-supplied value, interpreted as chatbot_flows.flow_name to look up.
+// Response shape mirrors FlowLookupResponse in Invekto.Shared.Contracts.Leads.
+// ============================================================
+
+app.MapGet("/api/v1/automation/flows/lookup", async (
+    HttpContext ctx, string? name, AutomationRepository repo, JsonLinesLogger jsonLogger, CancellationToken ct) =>
+{
+    var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Oturum gecerli degil; tekrar giris yapin.", rid), statusCode: 401);
+
+    if (string.IsNullOrWhiteSpace(name))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "name query parametresi zorunlu.", rid), statusCode: 400);
+
+    try
+    {
+        var meta = await repo.LookupActiveFlowMetaAsync(tenantContext.TenantId, name, ct);
+        var body = new Invekto.Shared.Contracts.Leads.FlowLookupResponse
+        {
+            Exists = meta.HasValue,
+            FlowId = meta.HasValue ? meta.Value.FlowId : null,
+            FlowName = meta.HasValue ? meta.Value.FlowName : null,
+            DisplayName = meta.HasValue ? meta.Value.DisplayName : null
+        };
+        return Results.Ok(body);
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.SystemWarn($"[{ErrorCodes.DatabaseConnectionFailed}] /api/v1/automation/flows/lookup: DB error tenant={tenantContext.TenantId} name={name}: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Veritabani baglantisi kurulamadi.", rid), statusCode: 503);
     }
 });
 

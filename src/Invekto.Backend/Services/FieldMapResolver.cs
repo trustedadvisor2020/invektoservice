@@ -36,6 +36,36 @@ public sealed class FieldMapResolver
     }
 
     /// <summary>
+    /// FEAT-LIW Chunk C: build a <see cref="LandingFieldMap"/> from an in-memory
+    /// dictionary (Dashboard's draft editor state — not persisted yet). Input
+    /// shape mirrors UpdateFieldMapRequest: { source_field -> canonical }.
+    /// Inverts to the internal canonical->source map direction + adds the
+    /// optional phone country hint. Unlike <see cref="ParseMap"/> there is no
+    /// JSON parsing / exception path — this overload is only called from the
+    /// dry-run code path where the UI has already given us strongly-typed
+    /// dictionary content.
+    /// </summary>
+    public LandingFieldMap FromSourceToCanonical(
+        IDictionary<string, string>? sourceToCanonical,
+        string? phoneCountryHint)
+    {
+        var result = new LandingFieldMap();
+        if (sourceToCanonical != null)
+        {
+            foreach (var kvp in sourceToCanonical)
+            {
+                if (string.IsNullOrWhiteSpace(kvp.Key) || string.IsNullOrWhiteSpace(kvp.Value))
+                    continue;
+                // Internal map direction is canonical -> source_field.
+                result.Map[kvp.Value] = kvp.Key;
+            }
+        }
+        if (!string.IsNullOrWhiteSpace(phoneCountryHint))
+            result.PhoneCountryHint = phoneCountryHint.Trim().ToUpperInvariant();
+        return result;
+    }
+
+    /// <summary>
     /// Try to pull the canonical value from <paramref name="fields"/> using the
     /// resolved source field name. Returns true iff the canonical is mapped AND
     /// the source key exists in the payload (value may be null/empty — caller

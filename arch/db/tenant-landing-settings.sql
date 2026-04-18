@@ -1,17 +1,22 @@
--- Canonical: tenant_landing_settings (FEAT-LIW Chunk A)
+-- Canonical: tenant_landing_settings (FEAT-LIW Chunk A, updated by Chunk C)
 -- Run on: invekto database (PostgreSQL 16)
 -- Depends on: tenant_registry
--- Source migration: arch/db/migrations/021-leads-intake-tenant-landing-settings.sql
+-- Source migrations: arch/db/migrations/021-leads-intake-tenant-landing-settings.sql (create)
+--                    arch/db/migrations/022-liw-audit-log.sql (landing_api_key NOT NULL -> NULL)
 
 -- Per-tenant Lead Intake Webhook (LIW) configuration:
 --   - API key with 24h grace-period rotation (active + old + old_expires_at)
+--     Chunk C: landing_api_key is NULLABLE — Revoke sets it to NULL (channel
+--     disabled without destroying field_map / welcome_slug / dup_window); the
+--     FindByApiKeyAsync lookup includes an IS NOT NULL guard so a NULL key never
+--     matches any inbound request.
 --   - landing_field_map: source field name -> Invekto canonical field map
 --   - welcome_flow_slug: auto-trigger target (falls back to 'welcome_default')
 --   - intake_dup_window_days: duplicate merge window (default 30, tenant override 1..365)
 
 CREATE TABLE IF NOT EXISTS tenant_landing_settings (
     tenant_id                      INT PRIMARY KEY,
-    landing_api_key                VARCHAR(64) NOT NULL,
+    landing_api_key                VARCHAR(64),
     landing_api_key_old            VARCHAR(64),
     landing_api_key_old_expires_at TIMESTAMPTZ,
     landing_field_map              JSONB NOT NULL DEFAULT '{}'::jsonb,

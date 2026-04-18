@@ -379,6 +379,21 @@ if (!string.IsNullOrEmpty(pgConnectionString))
         windowSeconds: 60));
     builder.Services.AddSingleton<LeadIntakeService>();
 
+    // FEAT-LIW Chunk C: Dashboard settings endpoints (tenant-scoped JWT-auth'd)
+    builder.Services.AddSingleton<LiwAuditRepository>();
+    builder.Services.AddSingleton<FieldMapValidator>();
+    builder.Services.AddSingleton<ApiKeyGenerator>();
+    // FEAT-LIW Chunk C: cross-service flow lookup via HTTP (microservice isolation —
+    // direct DB access from Backend to Automation's chatbot_flows is forbidden).
+    // Reuses the existing Automation BaseAddress + mints per-call service JWT through
+    // the same JwtGenerator Chunk B's BackendIntakeClient pattern uses.
+    builder.Services.AddHttpClient<FlowLookupClient>(client =>
+    {
+        client.BaseAddress = new Uri(automationUrl);
+        client.Timeout = TimeSpan.FromSeconds(5);
+    });
+    builder.Services.AddSingleton<LiwSettingsService>();
+
     // SuperAdmin: Message log (fire-and-forget insert at webhook, paginated select for ops)
     builder.Services.AddSingleton<MessageLogRepository>();
 
@@ -518,6 +533,10 @@ if (jwtValidator != null)
         "/api/v1/leads",
         "/api/v1/onboarding/",
         "/api/v1/zoho/",
+        // FEAT-LIW Chunk C: tenant Dashboard LIW settings endpoints — tenant-scoped JWT
+        // required; tenant_id is extracted exclusively from the JWT claim (never from
+        // request body/query) to prevent IDOR across tenants.
+        "/api/v1/tenant/landing/",
         // FEAT-LIW Chunk B: service-to-service wa-direct internal endpoint REQUIRES JWT.
         // Automation generates a per-call service JWT (JwtGenerator.GenerateServiceToken
         // with tenant_id claim) so the existing JWT middleware enforces tenant binding;
@@ -5060,6 +5079,186 @@ app.MapPost("/api/internal/leads/intake/wa-direct", async (
         return Results.Json(outcome.Success, statusCode: outcome.StatusCode);
 
     return Results.Json(outcome.Error, statusCode: outcome.StatusCode);
+});
+
+// ============================================
+// FEAT-LIW Chunk C: TENANT LANDING SETTINGS ENDPOINTS (/api/v1/tenant/landing/*)
+// Consumed by Dashboard LeadIntakeSettingsPage. Tenant-scoped JWT (tenant_id from
+// claim only — never request parameter). Envelope conforms to /api/v1/leads/*
+// (ErrorResponse.Create on 4xx/5xx, typed DTO on 2xx). Mutations use optimistic
+// concurrency via tenant_landing_settings.updated_at — 0 rows on UPDATE -> 409
+// INV-BE-113 and the Dashboard refetches + retries. Every rotate/revoke/fieldmap.save
+// writes a liw_audit_log row INSIDE the same transaction as the settings UPDATE.
+// ============================================
+
+// FEAT-LIW Chunk C: standardized tenant-auth envelope. Middleware normally sets
+// TenantContext; reaching a handler without it means a misconfiguration or a path
+// excluded from JWT. Using INV-AUTH-003 with a user-facing TR message matches the
+// arch/errors.md contract ("Oturum gecerli degil; tekrar giris yapin.").
+const string tenantContextUnauthorizedMessage = "Oturum gecerli degil; tekrar giris yapin.";
+
+app.MapGet("/api/v1/tenant/landing/settings", async (HttpContext ctx, LiwSettingsService svc) =>
+{
+    var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, tenantContextUnauthorizedMessage, rid), statusCode: 401);
+
+    var result = await svc.GetSettingsAsync(tenantContext.TenantId, ctx.RequestAborted);
+    if (result.Status == MutationStatus.Success && result.Payload != null)
+        return Results.Json(result.Payload, statusCode: 200);
+
+    return Results.Json(
+        ErrorResponse.Create(result.ErrorCode ?? ErrorCodes.GeneralUnknown, result.Message ?? "Ayarlar yuklenemedi.", rid),
+        statusCode: result.HttpStatus);
+});
+
+app.MapPost("/api/v1/tenant/landing/apikey/rotate", async (HttpContext ctx, LiwSettingsService svc) =>
+{
+    var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, tenantContextUnauthorizedMessage, rid), statusCode: 401);
+
+    // If-Match header is optional on first-time rotate (no row exists yet); required when a row already exists.
+    var ifMatch = ctx.Request.Headers["If-Match"].FirstOrDefault();
+    DateTime? expected = null;
+    if (!string.IsNullOrWhiteSpace(ifMatch))
+    {
+        if (!DateTime.TryParse(ifMatch, System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.RoundtripKind, out var parsed))
+        {
+            // Malformed If-Match supplied (non-empty but unparseable) is a client bug, not a concurrency conflict → 400.
+            return Results.Json(
+                ErrorResponse.Create(ErrorCodes.GeneralValidation,
+                    "If-Match header gecersiz (ISO 8601 datetime bekleniyor).", rid),
+                statusCode: 400);
+        }
+        expected = parsed;
+    }
+
+    var result = await svc.RotateApiKeyAsync(tenantContext.TenantId, tenantContext.UserId, expected, ctx.RequestAborted);
+    if (result.Status == MutationStatus.Success && result.Payload != null)
+        return Results.Json(result.Payload, statusCode: 200);
+
+    return Results.Json(
+        ErrorResponse.Create(result.ErrorCode ?? ErrorCodes.GeneralUnknown, result.Message ?? "Anahtar yenileme basarisiz.", rid),
+        statusCode: result.HttpStatus);
+});
+
+app.MapPost("/api/v1/tenant/landing/apikey/revoke", async (HttpContext ctx, LiwSettingsService svc) =>
+{
+    var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, tenantContextUnauthorizedMessage, rid), statusCode: 401);
+
+    // Missing If-Match on /revoke is a BAD REQUEST (client forgot to include the required
+    // header) — distinct from a concurrency conflict (409 INV-BE-113 is reserved for cases
+    // where the header IS supplied but does not match the server's current row_version).
+    // Codex iter 0 CQ1+CQ12: conflating 400 with 409 is a contract bug.
+    var ifMatch = ctx.Request.Headers["If-Match"].FirstOrDefault();
+    if (string.IsNullOrWhiteSpace(ifMatch))
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.GeneralValidation,
+                "If-Match header zorunlu (revoke oncesi GET /settings ile row_version alinmali).", rid),
+            statusCode: 400);
+    }
+    if (!DateTime.TryParse(ifMatch, System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.RoundtripKind, out var expected))
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.GeneralValidation,
+                "If-Match header gecersiz (ISO 8601 datetime bekleniyor).", rid),
+            statusCode: 400);
+    }
+
+    var result = await svc.RevokeApiKeyAsync(tenantContext.TenantId, tenantContext.UserId, expected, ctx.RequestAborted);
+    if (result.Status == MutationStatus.Success)
+        return Results.StatusCode(204);
+
+    return Results.Json(
+        ErrorResponse.Create(result.ErrorCode ?? ErrorCodes.GeneralUnknown, result.Message ?? "Anahtar iptal basarisiz.", rid),
+        statusCode: result.HttpStatus);
+});
+
+app.MapPut("/api/v1/tenant/landing/fieldmap", async (HttpContext ctx, UpdateFieldMapRequest? request, LiwSettingsService svc) =>
+{
+    var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, tenantContextUnauthorizedMessage, rid), statusCode: 401);
+
+    if (request == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.LeadIntakeFieldMapRequiredMissing,
+            "Alan eslemesinde zorunlu canonical alan eksik veya hatali.", rid), statusCode: 400);
+
+    // If-Match header takes priority over body.expected_row_version when both are provided;
+    // endpoint layer normalizes the two pathways before handing to the service.
+    if (request.ExpectedRowVersion == null)
+    {
+        var ifMatch = ctx.Request.Headers["If-Match"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(ifMatch) &&
+            DateTime.TryParse(ifMatch, System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.RoundtripKind, out var parsed))
+        {
+            request.ExpectedRowVersion = parsed;
+        }
+    }
+
+    var result = await svc.UpdateFieldMapAsync(tenantContext.TenantId, tenantContext.UserId, request, ctx.RequestAborted);
+    if (result.Status == MutationStatus.Success && result.Payload != null)
+        return Results.Json(result.Payload, statusCode: 200);
+
+    // Validation failures include the full errors[] array alongside the envelope primary code.
+    if (result.Status == MutationStatus.ValidationFailed && result.ValidationErrors != null)
+    {
+        return Results.Json(new
+        {
+            error_code = result.ErrorCode,
+            message = result.Message,
+            request_id = rid,
+            timestamp = DateTime.UtcNow,
+            errors = result.ValidationErrors
+        }, statusCode: result.HttpStatus);
+    }
+
+    return Results.Json(
+        ErrorResponse.Create(result.ErrorCode ?? ErrorCodes.GeneralUnknown, result.Message ?? "Alan eslemesi kaydedilemedi.", rid),
+        statusCode: result.HttpStatus);
+});
+
+app.MapPost("/api/v1/tenant/landing/dry-run", async (HttpContext ctx, DryRunRequest? request, LiwSettingsService svc) =>
+{
+    var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, tenantContextUnauthorizedMessage, rid), statusCode: 401);
+
+    var outcome = await svc.DryRunAsync(tenantContext.TenantId, request, ctx.RequestAborted);
+    if (outcome.Status == MutationStatus.Success && outcome.Payload != null)
+        return Results.Json(outcome.Payload, statusCode: 200);
+
+    return Results.Json(
+        ErrorResponse.Create(outcome.ErrorCode ?? ErrorCodes.GeneralUnknown, outcome.Message ?? "Dry-run basarisiz.", rid),
+        statusCode: outcome.HttpStatus);
+});
+
+app.MapGet("/api/v1/tenant/landing/audit", async (HttpContext ctx, LiwSettingsService svc, int? limit) =>
+{
+    var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, tenantContextUnauthorizedMessage, rid), statusCode: 401);
+
+    var result = await svc.ListAuditAsync(tenantContext.TenantId, limit ?? 50, ctx.RequestAborted);
+    if (result.Status == MutationStatus.Success && result.Payload != null)
+        return Results.Json(new { entries = result.Payload }, statusCode: 200);
+
+    return Results.Json(
+        ErrorResponse.Create(result.ErrorCode ?? ErrorCodes.GeneralUnknown, result.Message ?? "Degisiklik gecmisi yuklenemedi.", rid),
+        statusCode: result.HttpStatus);
 });
 
 app.MapPost("/api/v1/leads", async (HttpContext ctx, LeadRepository leadRepo, JsonLinesLogger jsonLog, LeadRequest? request) =>

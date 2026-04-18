@@ -513,6 +513,20 @@ errors:
     description: WA-direct intake payload tenant_id has no row in tenant_registry. Defense-in-depth check guards against a buggy Automation caller (the shared-secret auth proves the caller is an Invekto service, but caller-supplied tenant_id is otherwise trusted blindly). Endpoint returns 400.
     user_message: Tanimsiz tenant; kayit reddedildi.
 
+  # FEAT-LIW Chunk C: Dashboard settings endpoints (Dashboard-driven LIW config)
+  - code: INV-BE-113
+    description: /api/v1/tenant/landing/* mutation endpoint detected a row_version mismatch on the optimistic-concurrency guard (UPDATE ... WHERE updated_at = @expected returned 0 rows). Another tab/operator saved a change between the Dashboard's GET and the subsequent mutation. Endpoint returns 409; client is expected to refetch + retry.
+    user_message: Ayarlar baska bir sekmede degistirildi, son hali yuklendi.
+  - code: INV-BE-114
+    description: /api/v1/tenant/landing/fieldmap (PUT) field map validation failure — required canonical field 'phone' or 'consent' is not mapped, an empty source-field string was supplied, or the same canonical target is mapped from multiple source rows (duplicates allowed only on 'metadata'). Endpoint returns 400 with errors[] array listing every failing row.
+    user_message: Alan eslemesinde zorunlu canonical alan eksik veya hatali.
+  - code: INV-BE-115
+    description: /api/v1/tenant/landing/fieldmap (PUT) field map validation failure — canonical value outside the allowlist (name, phone, email, consent, utm_source, utm_medium, utm_campaign, utm_content, utm_term, referer, metadata). Endpoint returns 400.
+    user_message: Tanimsiz canonical alan.
+  - code: INV-BE-116
+    description: /api/v1/tenant/landing/dry-run (POST) payload JSON parse failure. The Dashboard textarea contains invalid JSON. Endpoint returns 400.
+    user_message: Dry-run payload gecersiz (JSON format hatasi).
+
   # ── AA — AgentAI ──
   - code: INV-AA-001
     description: Invalid request payload

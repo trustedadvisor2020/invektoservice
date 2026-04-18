@@ -83,6 +83,38 @@ public sealed class AutomationRepository
     }
 
     /// <summary>
+    /// FEAT-LIW Chunk C: lightweight metadata lookup for the cross-service
+    /// HTTP endpoint GET /api/v1/automation/flows/lookup. Returns only the
+    /// flow_id / flow_name / display_name (skips flow_config::text to keep
+    /// the payload small — the caller is the Backend's FlowWarningBanner
+    /// which only needs existence + display name). Mirrors
+    /// <see cref="GetFlowByNameAndTenantAsync"/>'s WHERE clause so both
+    /// callers agree on "active match".
+    /// Schema reference: chatbot_flows — arch/db/automation.sql:10-22
+    /// (columns flow_id, tenant_id, flow_name, display_name, is_active).
+    /// </summary>
+    public async Task<(int FlowId, string FlowName, string? DisplayName)?> LookupActiveFlowMetaAsync(
+        int tenantId, string flowName, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(flowName)) return null;
+
+        const string sql = @"
+            SELECT flow_id, flow_name, display_name
+            FROM chatbot_flows
+            WHERE tenant_id = @tid AND flow_name = @name AND is_active = true
+            LIMIT 1";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("name", flowName);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        if (!await reader.ReadAsync(ct)) return null;
+        return (reader.GetInt32(0), reader.GetString(1), reader.IsDBNull(2) ? null : reader.GetString(2));
+    }
+
+    /// <summary>
     /// Check if tenant has any instance configuration records.
     /// No records = old behavior (single flow routing).
     /// </summary>
