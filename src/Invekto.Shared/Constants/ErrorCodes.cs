@@ -92,6 +92,7 @@ public static class ErrorCodes
     public const string LeadIntakeFieldMapRequiredMissing = "INV-BE-114";        // Field map save: phone or consent canonical not mapped, empty source, or duplicate canonical target
     public const string LeadIntakeFieldMapUnknownCanonical = "INV-BE-115";       // Field map save: canonical value outside allowlist (name/phone/email/consent/utm_*/referer/metadata)
     public const string LeadIntakeDryRunPayloadInvalid = "INV-BE-116";           // Dry-run payload JSON parse failure
+    public const string LeadIntakeSettingsUnknownTenant = "INV-BE-117";          // LIW settings mutation (rotate/revoke/fieldmap): JWT-bound tenant_id has no row in tenant_registry (auth drift / stale test JWT); pre-check via TenantExistsAsync before opening settings tx
 
     // ChatAnalysis errors (INV-CA-xxx)
     public const string ChatAnalysisInvalidPayload = "INV-CA-001";

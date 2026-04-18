@@ -1,0 +1,175 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260419-liw-tenant-exists-precheck",
+  "risk": "LOW",
+  "status": "DONE",
+  "status_log": [
+    { "at": "2026-04-19T02:00:00+03:00", "status": "PLAN", "note": "FEAT-LIW Chunk C smoke (10-step validation on tenant 5050) yakaladi latent bug: /apikey/rotate calls with unknown tenant_id (smoke tried 9999) dusuyor 503 INV-DB-001 'Veritabani baglantisi kurulamadi' instead of actionable 400. Root cause: RotateApiKeyAsync first-time path EnsureRowExistsOrCreateWithKeyAsync INSERT'e gider; eger tenant_registry'de row yoksa FK violation (23503 fk_tenant_landing_settings_tenant) -> generic NpgsqlException catch-all -> misclassified 503. Q karar (3-soru interview): scope = Rotate+Revoke+UpdateFieldMap (defense-in-depth tutarliligi), error code = NEW INV-BE-117 (Chunk C range INV-BE-113..116 full, LIW-specific), HTTP = 400 Bad Request. Chunk A+B's TenantExistsAsync pattern (LeadIntakeService.ProcessWaDirectIntakeAsync:288+ ornegi) uygulanacak." },
+    { "at": "2026-04-19T02:15:00+03:00", "status": "DEV", "note": "Q plan approved. Phase 2 implemented: (1) ErrorCodes.cs +1 const LeadIntakeSettingsUnknownTenant=INV-BE-117; (2) arch/errors.md +3 satir entry (user_message literal match); (3) LiwSettingsService.cs +86 satir = TenantRegistryRepository ctor injection + private ValidateTenantExistsAsync helper + 3 path pre-check blocks (Rotate method entry, Revoke method entry, UpdateFieldMap after validation). Build PASS full sln 0 errors, 17 pre-existing warnings (no new warnings). 3 files, +90 ins / -0 del, total 9817 bytes diff." },
+    { "at": "2026-04-19T02:25:00+03:00", "status": "REVIEW->PASS", "note": "Codex iter 0 PASS - 12/12 CQ PASS (CQ1 error handling, CQ2 silent failure, CQ3 minimal diff, CQ4 dedup via helper, CQ5 pattern compliance, CQ6 perf, CQ7 no TODO/HACK, CQ8 no breaking, CQ9 isolation OK, CQ10 UX consistency, CQ11 DB-code sync, CQ12 error code quality) + 0 blocking issues. Model gpt-5.4-2026-03-05, 8649 total tokens. Q 'CODEX UTANSIN' doktrini tutturuldu: iteration=0 hedefi." }
+  ],
+  "created_at": "2026-04-19T02:00:00+03:00",
+  "updated_at": "2026-04-19T02:00:00+03:00",
+  "plan": {
+    "summary": "FEAT-LIW Chunk C smoke'ta yakalanan latent bug'in follow-up patch'i. LiwSettingsService'in 3 mutating method'una (RotateApiKeyAsync, RevokeApiKeyAsync, UpdateFieldMapAsync) TenantRegistryRepository.TenantExistsAsync pre-existence check eklenir; tenant yoksa 400 INV-BE-117 donulur (503 INV-DB-001 misclassification yerine). Pre-check open-connection-then-begin-tx sandwich'inin DISINDA calisir (ekstra bir PK probe roundtrip; tx scope'u kirlenmez, audit atomicitesi korunur). Rotate first-time path'indeki INSERT artik tenant_registry FK'yi asla ihlal edemez (pre-check tutuyor), ama tenant_registry rows effectively immutable oldugu icin race yok (Q Option 2 sect: defense-in-depth two-layer degil, sadece pre-check yeterli). NpgsqlException while calling TenantExistsAsync -> mevcut 503 INV-DB-001 pattern (yeni davranis degil). Ek olarak Chunk C smoke oncesi data cleanup icin: scope tamamen behavior-preserving + additive (mevcut iyi path'lerde hicbir semantik degisim yok; sadece bilinmeyen tenant_id edge case artik dogru 400 doner).",
+    "q_intent": "Q: 'C' (3 options arasindan) - TenantExistsAsync FK fix follow-up. Interview: scope=3 path, code=yeni INV-BE-117, HTTP=400. Latent bug yeri: Chunk C smoke 10-step validation'da tenant 9999 (olmayan) ile rotate denendi, 503 cevabi yanilticiydi; Chunk A+B zaten TenantExistsAsync ornegi var; aynı pattern LIW settings path'lerine genisletilir.",
+    "interview_notes": "3-soru interview (2026-04-19 02:00): (1) Scope = Rotate+Revoke+UpdateFieldMap (3 path defense-in-depth, Option 2 - revoke/fieldmap zaten FindByTenantIdAsync null ile 404 donerdi ama 400 INV-BE-117 semantik olarak daha net - 'tenant mevcut ama kayitli degil' vs 'tenant var ama ayar yok' ayrimi kaybolmasin). (2) Error code = yeni INV-BE-117 'LeadIntakeSettingsUnknownTenant' (INV-BE-112 wa-direct icin tanimli, reuse olabilirdi ama semantik olarak LIW-settings path'i ile wa-direct path'i farkli surfaces; log filter disiplini icin ayri kod tercih). (3) HTTP = 400 Bad Request (caller bug - JWT'de tenant_id var ama registry'de yok; 404 Not Found yanilticidir cunku tenant_registry endpoint endpoint olarak expose edilmez). Intentional non-scope: two-layer defense (pre-check + FK-violation catch in rotate INSERT) iptal - Q Option 3 degil Option 2 sect; tenant_registry rows effectively immutable (hic delete edilmiyor), race condition yok.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "ErrorCodes.cs'e yeni sabit eklenir: public const string LeadIntakeSettingsUnknownTenant = \"INV-BE-117\"; /* LIW settings mutation: tenant_id JWT'de var ama tenant_registry'de yok - auth drift / test tenant */. FEAT-LIW Chunk C range (INV-BE-113..116) sonrasina (80-95. satirlar civarinda Chunk C grubunun sonuna), LeadIntakeDryRunPayloadInvalid = INV-BE-116'nin hemen ardindan yerlestirilir.",
+        "verified": true
+      },
+      {
+        "id": "AC2",
+        "criterion": "arch/errors.md'ye yeni entry eklenir. Format mevcut INV-BE-116 satiri ile tutarli: 'INV-BE-117 | LIW settings mutation: bilinmeyen tenant (tenant_registry kaydi yok) | Tanimsiz tenant. Lutfen sistem yoneticisine basvurun. | LiwSettingsService.RotateApiKey/RevokeApiKey/UpdateFieldMap TenantExistsAsync pre-check.' user_message TR kolonu kod'daki Failure() mesaj parametresi ile HARFIYEN eslesir (lesson 2026-04-16 literal match).",
+        "verified": true
+      },
+      {
+        "id": "AC3",
+        "criterion": "LiwSettingsService ctor'una TenantRegistryRepository _tenantRegistry parametresi eklenir (Program.cs L401'de zaten AddSingleton kayitli, DI otomatik resolve). Yeni private helper: private async Task<string?> ValidateTenantExistsAsync(int tenantId, string operationName, CancellationToken ct). Donusler: null = OK, non-null = error code string (caller bunu mapping icin kullanir). Method icinde try { exists = await _tenantRegistry.TenantExistsAsync(tenantId, ct); } catch (NpgsqlException ex) { _logger.SystemWarn($\"[{ErrorCodes.DatabaseConnectionFailed}] LiwSettings.{operationName}: tenant existence check DB error tenant={tenantId}: {ex.Message}\"); return ErrorCodes.DatabaseConnectionFailed; } ; if (!exists) { _logger.SystemWarn($\"[{ErrorCodes.LeadIntakeSettingsUnknownTenant}] LiwSettings.{operationName}: tenant not in tenant_registry (JWT drift or test tenant) tenant={tenantId}\"); return ErrorCodes.LeadIntakeSettingsUnknownTenant; } return null;. Schema-citation XML doc: pre-check tenant_registry.tenant_id PK'sinin existence'i, arch/db/tenant_registry.sql (virtual method TenantExistsAsync single-row EXISTS query).",
+        "verified": true
+      },
+      {
+        "id": "AC4",
+        "criterion": "RotateApiKeyAsync: ilk satir olarak (ctor injection'dan sonra, conn open ETMEDEN once) pre-check cagirilir. var precheckError = await ValidateTenantExistsAsync(tenantId, \"Rotate\", ct); if (precheckError == ErrorCodes.LeadIntakeSettingsUnknownTenant) return RotateApiKeyResult.Failure(400, ErrorCodes.LeadIntakeSettingsUnknownTenant, \"Tanimsiz tenant. Lutfen sistem yoneticisine basvurun.\"); if (precheckError == ErrorCodes.DatabaseConnectionFailed) return RotateApiKeyResult.Failure(503, ErrorCodes.DatabaseConnectionFailed, \"Veritabani baglantisi kurulamadi.\");. Mevcut conn-open + tx-begin + FindByTenantIdAsync sandwich'i DEGISMEZ (audit atomicite guvencesi korunur). Pre-check tek ekstra roundtrip (tenant_registry PK probe, <1ms typical).",
+        "verified": true
+      },
+      {
+        "id": "AC5",
+        "criterion": "RevokeApiKeyAsync: RotateApiKeyAsync ile ayni pre-check block'u method basinda (conn open ETMEDEN once) cagirilir, hata yoluna MutationResult.Failure mapping. Mevcut '404 LeadIntakeTenantNotConfigured' path'i (FindByTenantIdAsync == null) korunur - artik sadece 'tenant registry'de var ama landing_settings row yok' durumuna gelir (gercek anlami: tenant kayitli ama hic rotate'e girmemis). Yani iki ayri hata cok daha ayirt edilebilir: 400 INV-BE-117 = tenant registry'de yok, 404 INV-BE-107 = tenant var ama landing_settings bos.",
+        "verified": true
+      },
+      {
+        "id": "AC6",
+        "criterion": "UpdateFieldMapAsync: RotateApiKeyAsync ile ayni pre-check block'u method basinda (mevcut FieldMapValidator cagrisindan SONRA - validation-first tercihi korunur; input shape bozuksa 400 validation direkt doner, boslugunda existence check calisir) cagirilir, hata yoluna UpdateFieldMapResult.Failure mapping. 404 LeadIntakeTenantNotConfigured path'i RevokeApiKeyAsync ile ayni sekilde korunur.",
+        "verified": true
+      },
+      {
+        "id": "AC7",
+        "criterion": "GetSettingsAsync ve DryRunAsync ve ListAuditAsync pre-check KAPSAMI DISINDA (read-only operations - unknown tenant dogal olarak empty result / sentinel doner, 400 overkill; mevcut davranis korunur). Endpoint mapping (Program.cs:5116-5230) DEGISMEZ - RotateApiKeyResult.Failure/MutationResult.Failure/UpdateFieldMapResult.Failure zaten HttpStatus+ErrorCode+Message verbatim donusturuyor, yani 400 INV-BE-117 otomatik surface olur.",
+        "verified": true
+      },
+      {
+        "id": "AC8",
+        "criterion": "Build PASS full solution (dotnet build InvektoServis.sln --no-restore -v q) 0 errors, pre-existing warning count artmaz. Hicbir CQ5 null-forgiving, hicbir silent catch, hicbir ad-hoc error message kullanilmaz (lessons 570/572/596).",
+        "verified": true
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "arch/errors.md",
+    "src/Invekto.Backend/Services/LiwSettingsService.cs",
+    "arch/plans/20260419-liw-tenant-exists-precheck.json"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "change": "+1 additive const LeadIntakeSettingsUnknownTenant=INV-BE-117 after INV-BE-116; Chunk C range extended. Breaking change YOK - sadece yeni constant.", "is_new": false },
+    { "path": "arch/errors.md", "change": "+3 satir: INV-BE-117 entry (code/description/user_message format Chunk C entry'leri ile tutarli; user_message 'Tanimsiz tenant. Lutfen sistem yoneticisine basvurun.' kod'daki Failure() mesaj parametresi ile HARFIYEN eslesir per lesson 2026-04-16 literal match).", "is_new": false },
+    { "path": "src/Invekto.Backend/Services/LiwSettingsService.cs", "change": "+86 satir, -0 satir: (a) ctor'a TenantRegistryRepository _tenantRegistry parametresi (DI auto-resolve - Program.cs L401 AddSingleton<TenantRegistryRepository> mevcut, yeni registration gerekmez); (b) new private helper ValidateTenantExistsAsync(tenantId, operationName, ct) 24 satir - try/catch NpgsqlException on TenantExistsAsync + explicit SystemWarn her hata path'i icin + null/error-code return pattern; (c) RotateApiKeyAsync method entry'ine pre-check block (conn open ETMEDEN once, 8 satir); (d) RevokeApiKeyAsync method entry'ine ayni pre-check (8 satir); (e) UpdateFieldMapAsync validator + expectedRowVersion check'lerinden SONRA pre-check (validation-first preserved, 8 satir). Hicbir null-forgiving operator, hicbir silent catch, XML doc schema-citation TenantExistsAsync pattern'e atif yapar.", "is_new": false },
+    { "path": "arch/plans/20260419-liw-tenant-exists-precheck.json", "change": "Bu plan JSON dosyasi (new file).", "is_new": true }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "aeb9a8ccf5d0aac9c2647823de2b18c5a0d5a081b80101ffd4df3fa15387a5cd",
+    "full_path": "arch/plans/diffs/20260419-liw-tenant-exists-precheck.diff",
+    "stats": { "insertions": 90, "deletions": 0, "files_count": 3 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-04-19T02:15:35+03:00",
+    "duration_ms": 35020,
+    "output_tail": "Build succeeded. 17 Warning(s) 0 Error(s). Time Elapsed 00:00:35.02. All warnings are pre-existing (Marketing NU1603, Automation CS8600, Backend CA1416 ServiceController, etc.); none from the 3 files touched by this patch.",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Backend"]
+  },
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Program.cs endpoint mapping (result objects zaten HttpStatus+ErrorCode surface ediyor)",
+      "TenantRegistryRepository.cs (DEGISMEZ - mevcut TenantExistsAsync imzasi kullanilir)",
+      "Chunk A Backend LeadIntakeService / Chunk B BackendIntakeClient (bu paket sadece Chunk C LiwSettingsService path'i)",
+      "Dashboard (SPA dokunulmaz - sadece backend fix)",
+      "arch/db/ migration files (yeni schema yok)"
+    ],
+    "non_goals": [
+      "Rotate INSERT'e iki-layer FK-violation catch eklemek (Q Option 2 sect, Option 3 reddedildi - tenant_registry immutable varsayimi gecerli)",
+      "INV-BE-112 reuse (Q yeni kod sect semantik ayrimi icin)",
+      "GetSettingsAsync / DryRunAsync / ListAuditAsync'i pre-check kapsamina almak (read-only - unknown tenant empty response dogal davranis)",
+      "Tum mevcut Failure() mesajlarini revize etmek (sadece yeni pre-check path'ler icin mesaj eklenir)",
+      "Test fixture eklemek (mevcut proje test pattern'ine yok; smoke revalidation yeterli)"
+    ],
+    "intentional_exclusions": [
+      "Two-layer defense (pre-check + FK-violation catch): tenant_registry rows effectively immutable, race yok",
+      "INV-BE-112 wa-direct path'i DEGISMEZ - Chunk B'nin kendine ozgu pattern'i korunur",
+      "Endpoint-level pre-check (middleware): Service layer tercih edildi cunku LiwSettingsService disaridan da cagirilabilir (future dashboard bg jobs)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "LiwSettingsService.ValidateTenantExistsAsync: try { _tenantRegistry.TenantExistsAsync(...) } catch (NpgsqlException ex) { SystemWarn INV-DB-001 + return code }"
+    ],
+    "user_facing_errors": [
+      "400 INV-BE-117: 'Tanimsiz tenant. Lutfen sistem yoneticisine basvurun.' (Rotate+Revoke+UpdateFieldMap)",
+      "503 INV-DB-001: 'Veritabani baglantisi kurulamadi.' (mevcut mesaj - degisiklik yok, sadece pre-check path'inden surface olabilir)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Helper method null (OK) vs error-code (non-null) donduruyor; caller her iki kolu da explicit Failure() mapping yapiyor. Fire-and-forget pattern yok. _logger.SystemWarn her hata path'i icin emission yapiyor. Pre-check DB error (NpgsqlException) silent swallow YAPMIYOR - SystemWarn + 503 surface eder."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Dashboard tenant kullanicisi /settings/lead-intake'e girip 'Yeni API Key Olustur' basiyor ama JWT'deki tenant_id production tenant_registry'de yok (test JWT kalmisti, auth drift); 503 'Veritabani baglantisi kurulamadi' geliyor - tamamen yanlis suphe, support ticket'i tetikliyor.",
+      "suggestion": "Pre-check ile 400 'Tanimsiz tenant. Lutfen sistem yoneticisine basvurun.' doner; dashboard error banner'i dogru aksiyon ipucu verir - kullanici DB arizasi dusunmez, yetkilendirmesinin duzeltilmesi gerektigini anlar.",
+      "aha_moment": "Hata banner'ini gorunce 'ah, test tenant'ini unutmusum, dogru tenant'la giris yapmaliyim' demesi."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Developer/ops log incelerken INV-DB-001 503 gorduyor -> PostgreSQL saglik dashboard'una kosuyor -> her sey yesil -> 30dk sonra fark ediyor ki tenant_id prod'da yok.",
+      "suggestion": "Pre-check log'u 'INV-BE-117 LiwSettings.Rotate: tenant not in tenant_registry (JWT drift or test tenant) tenant=9999' yaziyor - grep'le 5sn'de root cause.",
+      "aha_moment": "Log satirinda 'tenant not in tenant_registry' goren destek ekibi hemen auth team'e yonlendirir - orta nokta arama devresi kalkar."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Chunk C smoke sirasinda unknown tenant FK violation'i catch-all NpgsqlException ile yutulmustu ve 503 INV-DB-001 veriyordu - bu pattern Rotate first-time path'indeki INSERT'i sensitive degildi; gelecekte baska FK ihlali de ayni sekilde suskunlasabilirdi.",
+      "suggestion": "Pre-check explicit boundary olarak calisir: tenant yoksa FK hic tetiklenmez. Rotate INSERT sadece gercek DB arizalari icin NpgsqlException firlatir.",
+      "aha_moment": "Prod'da 503 gorduyseniz gercekten DB arizasi var - yanlis alarm neredeyse sifira duser."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Bilinmeyen tenant ile rotate cagrisi: (1) open conn (~5ms), (2) BEGIN tx, (3) SELECT landing_settings (~1ms), (4) INSERT TRIGGER FK VIOLATION (~2ms, rollback), (5) catch + ROLLBACK, (6) return 503. Toplam ~15ms ve log karmasasi.",
+      "suggestion": "Pre-check tenant_registry PK probe <1ms, bilinmeyen tenant direkt 400 doner; conn/tx hic acilmaz. Prod'da pozitif durum %100 oldugu icin ek maliyet <1ms per rotate/revoke/save - kabul edilebilir.",
+      "aha_moment": "Negatif path'te 15ms -> <1ms latency kazanimi + rollback/log karmasasindan tamamen kacinma."
+    },
+    {
+      "category": "UX",
+      "user_pain": "Revoke ve fieldmap.save path'leri pre-check olmadan da 'dogal' 404 doniyordu (FindByTenantIdAsync null -> LeadIntakeTenantNotConfigured), ama ikisi semantik olarak karisiyordu: 'tenant gercekten yok' vs 'tenant var ama hic rotate'e girmemis'. Tenant destek ekibi dogru aksiyon adimini secmekte zorlaniyordu.",
+      "suggestion": "400 INV-BE-117 ve 404 INV-BE-107 artik net ayrilir. 400 = auth team problemi (kayit ekle), 404 = tenant kendisi rotate butonuna basmali (ilk konfig).",
+      "aha_moment": "Iki farkli error sayfasi iki farkli call-to-action - yanlis ekibe destek bileti gitmez."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-19T02:25:00+03:00",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-19T02:25:00+03:00",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "LiwSettingsService.cs:71-89 explicit tenant-miss + NpgsqlException handling; lines 157-163, 325-331, 420-426 specific HTTP/code/message pairs (400 INV-BE-117, 503 INV-DB-001); errors.md:529-531 user_message literal match." },
+      "CQ2": { "result": "PASS", "evidence": "LiwSettingsService.cs:73-80 catch NpgsqlException + _logger.SystemWarn before explicit code return; no broad catch, no swallow-without-log." },
+      "CQ3": { "result": "PASS", "evidence": "Diff limited to 3 declared files + plan JSON. Additive only." },
+      "CQ4": { "result": "PASS", "evidence": "ValidateTenantExistsAsync helper (lines 65-89) centralizes repeat pattern across Rotate/Revoke/UpdateFieldMap." },
+      "CQ5": { "result": "PASS", "evidence": "Shared constant pattern + repository abstraction (_tenantRegistry); no null-forgiving; no bare catch." },
+      "CQ6": { "result": "PASS", "evidence": "Single PK existence probe per mutating request, no loop/N+1/leak." },
+      "CQ7": { "result": "PASS", "evidence": "No TODO/HACK/FIXME in added lines." },
+      "CQ8": { "result": "PASS", "evidence": "ErrorCodes.cs:95 additive const only; ctor gains parameter but DI registration pre-exists." }
+    },
+    "cove_verification": {},
+    "blocking_issues": [],
+    "iteration": 0,
+    "raw_text": "OVERALL_VERDICT: PASS | BLOCKING_ISSUES: NONE | The patch is narrowly scoped and correctly reclassifies the unknown-tenant edge case from misleading 503/INV-DB-001 to 400/INV-BE-117 with matching shared constant and error catalog updates. No policy, tenant-isolation, schema-sync, or breaking-change issue is evident in the provided diff."
+  }
+}

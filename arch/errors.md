@@ -526,6 +526,9 @@ errors:
   - code: INV-BE-116
     description: /api/v1/tenant/landing/dry-run (POST) payload JSON parse failure. The Dashboard textarea contains invalid JSON. Endpoint returns 400.
     user_message: Dry-run payload gecersiz (JSON format hatasi).
+  - code: INV-BE-117
+    description: /api/v1/tenant/landing/apikey/rotate|revoke or /api/v1/tenant/landing/fieldmap (PUT) pre-check — JWT-bound tenant_id has no row in tenant_registry (auth drift, stale test JWT, or JWT minted for a deleted tenant). Pre-check runs BEFORE opening the settings transaction via TenantRegistryRepository.TenantExistsAsync; on miss the service returns 400 without touching tenant_landing_settings. Classifies caller-bug scenarios distinctly from real DB connectivity failures (INV-DB-001/503).
+    user_message: Tanimsiz tenant. Lutfen sistem yoneticisine basvurun.
 
   # ── AA — AgentAI ──
   - code: INV-AA-001

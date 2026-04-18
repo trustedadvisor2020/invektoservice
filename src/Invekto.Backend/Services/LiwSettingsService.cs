@@ -34,6 +34,7 @@ public sealed class LiwSettingsService
     private readonly FieldMapResolver _fieldMap;
     private readonly PhoneE164Normalizer _phoneNorm;
     private readonly ApiKeyGenerator _keyGen;
+    private readonly TenantRegistryRepository _tenantRegistry;
     private readonly JsonLinesLogger _logger;
 
     public LiwSettingsService(
@@ -45,6 +46,7 @@ public sealed class LiwSettingsService
         FieldMapResolver fieldMap,
         PhoneE164Normalizer phoneNorm,
         ApiKeyGenerator keyGen,
+        TenantRegistryRepository tenantRegistry,
         JsonLinesLogger logger)
     {
         _db = db;
@@ -55,7 +57,50 @@ public sealed class LiwSettingsService
         _fieldMap = fieldMap;
         _phoneNorm = phoneNorm;
         _keyGen = keyGen;
+        _tenantRegistry = tenantRegistry;
         _logger = logger;
+    }
+
+    // ================================================================
+    //  Shared pre-check: tenant_registry existence guard
+    // ================================================================
+
+    /// <summary>
+    /// Follow-up to FEAT-LIW Chunk C smoke: a rotate against an unknown tenant_id
+    /// previously hit the rotate-first-time INSERT path and FK-violated against
+    /// <c>fk_tenant_landing_settings_tenant</c> (PostgreSQL 23503), which the
+    /// generic <see cref="NpgsqlException"/> catch classified as 503 INV-DB-001
+    /// "Veritabani baglantisi kurulamadi" — misleading for an operator debugging
+    /// prod. This helper runs a cheap PK probe on <c>tenant_registry</c> BEFORE
+    /// the mutation opens its transaction; unknown tenants surface as 400
+    /// INV-BE-117 with an actionable message. Rotate/Revoke/UpdateFieldMap share
+    /// this helper so all three paths have consistent semantics.
+    /// Returns <c>null</c> on success (tenant exists and the caller may proceed);
+    /// returns an <see cref="ErrorCodes"/> string otherwise so the caller can map
+    /// to the appropriate <c>*.Failure(http, code, message)</c> result. Matches
+    /// the <c>TenantExistsAsync</c> guard pattern used by
+    /// <c>LeadIntakeService.ProcessWaDirectIntakeAsync</c> (Chunk B).
+    /// </summary>
+    private async Task<string?> ValidateTenantExistsAsync(int tenantId, string operationName, CancellationToken ct)
+    {
+        bool exists;
+        try
+        {
+            exists = await _tenantRegistry.TenantExistsAsync(tenantId, ct);
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemWarn($"[{ErrorCodes.DatabaseConnectionFailed}] LiwSettings.{operationName}: tenant existence check DB error tenant={tenantId}: {ex.Message}");
+            return ErrorCodes.DatabaseConnectionFailed;
+        }
+
+        if (!exists)
+        {
+            _logger.SystemWarn($"[{ErrorCodes.LeadIntakeSettingsUnknownTenant}] LiwSettings.{operationName}: tenant not in tenant_registry (JWT drift or test tenant) tenant={tenantId}");
+            return ErrorCodes.LeadIntakeSettingsUnknownTenant;
+        }
+
+        return null;
     }
 
     // ================================================================
@@ -103,6 +148,21 @@ public sealed class LiwSettingsService
         DateTime? expectedRowVersion,
         CancellationToken ct = default)
     {
+        // Follow-up (2026-04-19): probe tenant_registry BEFORE opening the settings
+        // transaction so an unknown tenant_id classifies as 400 INV-BE-117 instead
+        // of silently turning into a 23503 FK violation inside the first-time INSERT
+        // path (which the generic NpgsqlException catch below would misclassify as
+        // 503 INV-DB-001). Pre-check runs on its own connection (TenantExistsAsync
+        // opens/closes internally) — no impact on the audit-atomicity invariant
+        // established by Chunk C iter 2.
+        var precheckError = await ValidateTenantExistsAsync(tenantId, "Rotate", ct);
+        if (precheckError == ErrorCodes.LeadIntakeSettingsUnknownTenant)
+            return RotateApiKeyResult.Failure(400, ErrorCodes.LeadIntakeSettingsUnknownTenant,
+                "Tanimsiz tenant. Lutfen sistem yoneticisine basvurun.");
+        if (precheckError == ErrorCodes.DatabaseConnectionFailed)
+            return RotateApiKeyResult.Failure(503, ErrorCodes.DatabaseConnectionFailed,
+                "Veritabani baglantisi kurulamadi.");
+
         // Open connection + begin transaction FIRST so the pre-lookup, the UPDATE,
         // and the audit insert all share the same transaction boundary (CQ9 iter 1
         // fix: before-snapshot cannot drift under a concurrent writer because the
@@ -257,6 +317,18 @@ public sealed class LiwSettingsService
         DateTime expectedRowVersion,
         CancellationToken ct = default)
     {
+        // Follow-up (2026-04-19): tenant_registry existence pre-check so unknown
+        // tenants classify as 400 INV-BE-117 (auth drift) distinct from the
+        // existing 404 INV-BE-107 "tenant var ama landing_settings henuz yok"
+        // (tenant exists but has never rotated). See ValidateTenantExistsAsync.
+        var precheckError = await ValidateTenantExistsAsync(tenantId, "Revoke", ct);
+        if (precheckError == ErrorCodes.LeadIntakeSettingsUnknownTenant)
+            return MutationResult.Failure(400, ErrorCodes.LeadIntakeSettingsUnknownTenant,
+                "Tanimsiz tenant. Lutfen sistem yoneticisine basvurun.");
+        if (precheckError == ErrorCodes.DatabaseConnectionFailed)
+            return MutationResult.Failure(503, ErrorCodes.DatabaseConnectionFailed,
+                "Veritabani baglantisi kurulamadi.");
+
         // Same-transaction pattern: SELECT + UPDATE + audit INSERT share one tx boundary
         // so the before-snapshot cannot drift relative to the UPDATE + audit (CQ9 iter 1 fix).
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -338,6 +410,20 @@ public sealed class LiwSettingsService
                 error.Message,
                 new[] { error });
         }
+
+        // Follow-up (2026-04-19): tenant_registry existence pre-check runs AFTER
+        // input-shape validation (validation-first preserves 400 VALIDATION for
+        // the common case of a malformed body) but BEFORE opening the settings
+        // transaction. Same 400 INV-BE-117 vs 404 INV-BE-107 semantic split as
+        // Revoke: 'tenant registry kaydi yok' vs 'tenant kayitli ama henuz
+        // rotate etmedi' artik ayrilir.
+        var precheckError = await ValidateTenantExistsAsync(tenantId, "UpdateFieldMap", ct);
+        if (precheckError == ErrorCodes.LeadIntakeSettingsUnknownTenant)
+            return UpdateFieldMapResult.Failure(400, ErrorCodes.LeadIntakeSettingsUnknownTenant,
+                "Tanimsiz tenant. Lutfen sistem yoneticisine basvurun.");
+        if (precheckError == ErrorCodes.DatabaseConnectionFailed)
+            return UpdateFieldMapResult.Failure(503, ErrorCodes.DatabaseConnectionFailed,
+                "Veritabani baglantisi kurulamadi.");
 
         // Convert UI shape (source -> canonical) into stored JSONB shape (canonical -> source + optional phone.country_hint).
         var storedJson = SerializeFieldMapForStorage(req.FieldMap, req.PhoneCountryHint);
