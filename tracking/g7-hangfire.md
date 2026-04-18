@@ -55,6 +55,7 @@ Mevcut 10 zamanlanmis `IHostedService` (Timer + Interlocked loop) Hangfire recur
   - `automation:rescue-followup` (cron 0 */4)
   - `backend:translation-cleanup` (cron hourly)
   - `backend:metrics-aggregation` (cron */5)
+  - `backend:db-backup` (cron `0 3 * * *` UTC — daily pg_dump + 14-day retention, FEAT-DBBK)
   - `integrations:order-sync` (cron */5)
   - `waanalytics:nightly-batch` (cron 0 {RunHour})
 - "Last/Next execution" timestamp'leri geliyor mu
@@ -67,6 +68,10 @@ Mevcut 10 zamanlanmis `IHostedService` (Timer + Interlocked loop) Hangfire recur
 - INV-JOB-003: Recurring job registration conflict
 - INV-JOB-004: Dashboard unauthorized access
 - INV-JOB-005: Job execution failure (retry exhausted)
+- INV-JOB-010: DbBackup pg_dump exit non-zero / stderr failure (FEAT-DBBK)
+- INV-JOB-011: DbBackup disk space below MinFreeDiskGb (FEAT-DBBK)
+- INV-JOB-012: DbBackup pg_dump binary not found (FEAT-DBBK)
+- INV-JOB-013: DbBackup required config missing (FEAT-DBBK)
 
 ## Deliverables (Faz 1)
 
