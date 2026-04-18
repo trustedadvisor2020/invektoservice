@@ -52,8 +52,9 @@
 | FEAT-EFS | Event Follow-Up Sequence | N-stage drip sequence + Hangfire scheduled + A/B control + 4 trigger | [Spec](../arch/features/event-followup-sequence.md) | DRAFT | 16 Nis | - |
 | FEAT-TFM | Tenant Field Mapping | INMA 10-field semantic overlay (JSONB + resolver + validation + flow/template integration) | [Spec](../arch/features/tenant-field-mapping.md) | DRAFT | 16 Nis | - |
 | DENT-PILOT | Dent Adavista Pilot | Generic feature'lari tuketen ilk tenant konfigurasyonu (46 template, 5 field, 3-stage nurture) | [Detay](../DentAdavista/plan/README.md) | BLOCKED (UP0 + FEAT-*) | 16 Nis | - |
+| FEAT-DBBK | Daily DB Backup | Hangfire recurring pg_dump -Fc -> C:\Invekto\Backups + 14-day retention + 4 yeni INV-JOB kodu | [Detay](feat-dbbk-daily-backup.md) | DONE | 18 Nis | iter 4, PASS |
 
-**Toplam:** 40 paket (25 done, 0 in-progress, 5 planned, 2 pending, 6 feature DRAFT, 1 pilot blocked) | 50+ GR + RI-100+ task
+**Toplam:** 41 paket (26 done, 0 in-progress, 5 planned, 2 pending, 6 feature DRAFT, 1 pilot blocked) | 50+ GR + RI-100+ task
 
 ## Mikroservis Port Haritasi
 

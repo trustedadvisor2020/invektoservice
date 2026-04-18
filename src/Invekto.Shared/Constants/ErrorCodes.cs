@@ -472,6 +472,10 @@ public static class ErrorCodes
     public const string JobRegistrationConflict = "INV-JOB-003";      // Duplicate recurring job registration
     public const string JobDashboardUnauthorized = "INV-JOB-004";     // Dashboard access denied (non-superadmin)
     public const string JobExecutionFailed = "INV-JOB-005";           // Recurring job final failure (retries exhausted)
+    public const string DbBackupPgDumpFailed = "INV-JOB-010";         // pg_dump exit code != 0 or stderr signals failure
+    public const string DbBackupDiskSpaceInsufficient = "INV-JOB-011"; // Free disk below MinFreeDiskGb threshold
+    public const string DbBackupBinaryNotFound = "INV-JOB-012";       // Configured PgDumpPath does not exist on disk
+    public const string DbBackupConfigMissing = "INV-JOB-013";        // Required DbBackup configuration is missing
 
     // Database errors (INV-DB-xxx)
     public const string DatabaseConnectionFailed = "INV-DB-001";

@@ -1113,6 +1113,18 @@ errors:
   - code: INV-JOB-005
     description: Recurring job final failure (retries exhausted)
     user_message: Zamanlanmış görev başarısız oldu; tekrar deneme limiti aşıldı.
+  - code: INV-JOB-010
+    description: DbBackup pg_dump exited non-zero or stderr signalled failure
+    user_message: Veritabanı yedeği alınamadı.
+  - code: INV-JOB-011
+    description: DbBackup skipped - free disk below configured threshold
+    user_message: Disk alanı yetersiz; yedek alınmadı.
+  - code: INV-JOB-012
+    description: DbBackup skipped - configured pg_dump binary not found on disk
+    user_message: Yedek aracı bulunamadı (pg_dump).
+  - code: INV-JOB-013
+    description: DbBackup skipped - required configuration is missing (e.g. ConnectionStrings:PostgreSQL)
+    user_message: Yedek yapılandırması eksik.
 
   # ── EXT — External ──
   - code: INV-EXT-001

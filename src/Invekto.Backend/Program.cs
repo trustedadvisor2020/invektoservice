@@ -415,6 +415,8 @@ if (hangfireEnabled)
     // G7 Faz 4: Backend recurring jobs (TranslationCleanup + MetricsAggregation)
     builder.Services.AddScoped<TranslationCleanupJob>();
     builder.Services.AddScoped<MetricsAggregationJob>();
+    // FEAT-DBBK: Daily pg_dump custom-format backup with rolling retention.
+    builder.Services.AddScoped<DbBackupJob>();
 }
 
 // QNB VPos — ödeme servisi
@@ -584,6 +586,13 @@ if (hangfireEnabled)
         "backend:metrics-aggregation",
         j => j.RunAsync(CancellationToken.None),
         metricsAggregationCron);
+
+    // FEAT-DBBK: Daily pg_dump (custom format) + 14-day rolling retention.
+    var dbBackupCron = builder.Configuration["DbBackup:Cron"] ?? "0 3 * * *";
+    RecurringJob.AddOrUpdate<DbBackupJob>(
+        "backend:db-backup",
+        j => j.RunAsync(CancellationToken.None),
+        dbBackupCron);
 }
 else
 {

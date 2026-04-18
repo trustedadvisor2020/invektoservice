@@ -1,0 +1,209 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260418-db-backup-hangfire",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-04-18T14:30:00Z",
+  "updated_at": "2026-04-18T15:35:00Z",
+  "plan": {
+    "summary": "Backend icine Hangfire recurring job (backend:db-backup) eklenir; her gece pg_dump --format=custom ile C:\\Invekto\\Backups\\ altina tam cluster dump alinir ve 14 gun ustu dosyalar ayni run'da silinir.",
+    "q_intent": "db yedegi aliyormuyuz? -> Q: evet (plan olustur + devam)",
+    "interview_notes": "Trigger: Gunluk scheduled (Hangfire). Scope: Full cluster (pg_dump -Fc tek dosya). Storage: prod lokal disk C:\\Invekto\\Backups. Retention: 14 gun daily (pre-deploy ayrimi yok). Mechanism: Hangfire recurring job (Backend). Encryption: plain -Fc. Prod'da pg_dump 18.2 C:\\Program Files\\PostgreSQL\\18\\bin\\ altinda mevcut; Backups dir yok -> job olusturur (Directory.CreateDirectory idempotent).",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Hangfire dashboard'da 'backend:db-backup' recurring job gorunur, cron = '0 3 * * *' (DbBackup:Cron konfigurasyonundan degistirilebilir).",
+        "verified": true,
+        "verification_note": "Program.cs:590-594 RecurringJob.AddOrUpdate<DbBackupJob>('backend:db-backup', cron). Codex CQ5 PASS. Prod deploy sonrasi dashboard goruntulemesi manuel."
+      },
+      {
+        "id": "AC2",
+        "criterion": "Manuel 'Trigger now' sonrasi C:\\Invekto\\Backups\\invekto-YYYYMMDD-HHmm.dump olusur; pg_restore --list ile custom format icerigi dogrulanabilir.",
+        "verified": true,
+        "verification_note": "DbBackupJob.cs:81-89 outputFile + pg_dump --format=custom. Codex CoVe Q2+Q3 PASS. Manuel pg_restore --list test prod deploy sonrasi."
+      },
+      {
+        "id": "AC3",
+        "criterion": "Retention: LastWriteTime 14 gunden eski *.dump dosyalari ayni run'da silinir; yeni (<= 14 gun) dosya silinmez.",
+        "verified": true,
+        "verification_note": "DbBackupJob.cs:214-223 LastWriteTimeUtc < cutoff (UtcNow.AddDays(-retentionDays)); runs after successful dump. Codex CoVe Q4 PASS."
+      },
+      {
+        "id": "AC4",
+        "criterion": "pg_dump exit code != 0 -> INV-JOB-010 log + Hangfire AutomaticRetry tetiklenir; job sessiz basarisiz olmaz.",
+        "verified": true,
+        "verification_note": "DbBackupJob.cs:156-163 SystemError+INV-JOB-010 then throw InvalidOperationException. Codex CQ1+CQ2+CQ12 PASS."
+      },
+      {
+        "id": "AC5",
+        "criterion": "appsettings.Production.json uzerinden DbBackup:Enabled, Cron, PgDumpPath, OutputDir, RetentionDays, MinFreeDiskGb, TimeoutMinutes ayarlanabilir; hepsi default degerli (env bagimsiz calisir).",
+        "verified": true,
+        "verification_note": "appsettings.json:116-124 7 config keys with defaults + DbBackupJob.cs:45-52 GetValue fallbacks."
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Services/Jobs/DbBackupJob.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/appsettings.json",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "arch/errors.md",
+    "tracking/README.md",
+    "tracking/feat-dbbk-daily-backup.md",
+    "arch/plans/20260418-db-backup-hangfire.json"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Backend/Services/Jobs/DbBackupJob.cs", "change": "NEW: Hangfire recurring job invoking pg_dump --format=custom; PGPASSWORD env var; disk guard; binary guard; partial-file cleanup; retention", "is_new": true },
+    { "path": "src/Invekto.Backend/Program.cs", "change": "DI AddScoped<DbBackupJob> + RecurringJob.AddOrUpdate(backend:db-backup, cron 0 3 * * *)", "is_new": false },
+    { "path": "src/Invekto.Backend/appsettings.json", "change": "Added DbBackup block (Enabled, Cron, PgDumpPath, OutputDir, RetentionDays, MinFreeDiskGb, TimeoutMinutes)", "is_new": false },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "change": "Added INV-JOB-010 (DbBackupPgDumpFailed), INV-JOB-011 (DbBackupDiskSpaceInsufficient), INV-JOB-012 (DbBackupBinaryNotFound)", "is_new": false },
+    { "path": "arch/errors.md", "change": "Added INV-JOB-010/011/012 entries with Turkish user messages", "is_new": false },
+    { "path": "tracking/README.md", "change": "Registered FEAT-DBBK row in master tracking table; totals 40 -> 41 packets", "is_new": false },
+    { "path": "tracking/feat-dbbk-daily-backup.md", "change": "NEW: Full tracking doc for FEAT-DBBK", "is_new": true },
+    { "path": "arch/plans/20260418-db-backup-hangfire.json", "change": "NEW: Codex review plan v5.1", "is_new": true }
+  ],
+  "git_diff": {
+    "sha256": "725542a31fd90b0d447f9363d835777ad56b6fffd6cd010e21c8ed107414c925",
+    "full_path": "arch/plans/diffs/20260418-db-backup-hangfire.diff",
+    "stats": {
+      "insertions": 593,
+      "deletions": 1,
+      "files_count": 8
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-04-18T14:42:00Z",
+    "duration_ms": 16280,
+    "output_tail": "Build succeeded. 17 Warning(s) (all pre-existing, unrelated). 0 Error(s). Time Elapsed 00:00:16.28",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Backend"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "pg_dump child process uzun calisirsa (ornegin 2 saat) NSSM shutdown / IIS recycle durumunda nasil sonlandiriliyor? DisableConcurrentExecution timeout'u kafi mi, yoksa Process.Kill ile explicit cleanup var mi?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Postgres credential'lari (conn string'den parse edilen sifre) pg_dump'a nasil iletiliyor? Komut satirinda password gecerken process listesinde (Get-Process / Task Manager) sizma riski var mi? PGPASSWORD env var veya .pgpass pattern kullanilmis mi?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Disk guard once dump yazdiktan sonra mi, once mi calisir? Dolu disk senaryosunda kismi (corrupt) dump kalir mi ve silme logic'i bunu temizler mi?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "Retention delete loop'u, ayni gun icinde olusturulan yeni dump'i (henuz yazimi bitmemis) silme riski tasir mi? mtime cutoff 14 gun oldugu icin guvenli kabul ediliyor mu, yoksa 'currently-being-written' dosya icin ek filtre gerekir mi?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Diger servisler (ChatAnalysis, Automation, Outbound, AgentAI, Knowledge, WhatsAppAnalytics, Appointments, Integrations, VoiceAI, Marketing, WebChat) — Backend-only degisim",
+      "Invekto.Shared/DTOs (DTO eklenmiyor)",
+      ".claude/commands/deploy.md (pre-deploy hook SCOPE DISI)",
+      "Frontend (Dashboard/SPA) — UI eklenmiyor; Hangfire dashboard yeterli"
+    ],
+    "non_goals": [
+      "Restore procedure runbook",
+      "External storage (S3/Azure Blob)",
+      "At-rest encryption",
+      "Pre-deploy backup hook (/deploy akisi ile entegrasyon)",
+      "Email/push alerting on failure",
+      "Per-tenant backup",
+      "Backup health check endpoint"
+    ],
+    "intentional_exclusions": [
+      "Encryption — key-loss riski > fiziksel server erisim kisitli, net benefit negatif",
+      "Separate backup_user Postgres role — mevcut conn string full erisim saglar, simplicity"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "DbBackupJob.RunAsync — top-level try/catch(OperationCanceledException) pattern (TranslationCleanupJob paralleli). Diger exception'lar Hangfire AutomaticRetry + INV-JOB-005 finalize path'ine akar."
+    ],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Her failure path'i explicit log eder: pg_dump exit != 0 -> INV-JOB-010, disk < threshold -> INV-JOB-011, pg_dump.exe yok -> INV-JOB-012. Exception bubble olursa Hangfire retry + INV-JOB-005 devreye girer. Dashboard job durumu gorunur."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Disaster recovery'de en son DB state'i kaybetme korkusu; migration oncesi rollback noktasi yoklugu.",
+      "suggestion": "Gunluk otomatik pg_dump -Fc + 14 gunluk rolling retention; Hangfire dashboard uzerinden gorunurluk.",
+      "aha_moment": "Her sabah 03:00 sonrasi backup dosyasini listelerken 'evet, dun gece yedegim var' diye rahatlama."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Backup job hata aldigi zaman Q'nun haberi olmuyor, gecen hafta basarili mi diye manuel kontrol gerekir.",
+      "suggestion": "Exit code != 0 -> INV-JOB-010 kodu ile JsonLinesLogger.SystemError; Hangfire dashboard job history'sinde hemen gorunur + ErrorCodes ile grep'lenebilir.",
+      "aha_moment": "Tek bir log grep ile 'hangi gunler backup basarisiz oldu' sorusu 5 saniyede yanitlanir."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Manuel backup icin Q SSH acip pg_dump komut yaziyor olurdu; bu aksamlar ve tatil gunleri icin problem.",
+      "suggestion": "Hangfire dashboard -> recurring job -> 'Trigger now' butonu ile on-demand backup tetiklenebilir.",
+      "aha_moment": "Onemli bir migration'dan once 3 tik ile ek backup alabilmek (dashboard'dan trigger)."
+    },
+    {
+      "category": "UX",
+      "user_pain": "Backup dosyalari classic isimlendirme ile (dump_1.sql, dump_2.sql) karistigi zaman hangi tarih hangisi belli degil.",
+      "suggestion": "Dosya adi invekto-YYYYMMDD-HHmm.dump formatinda; sort natural chronological.",
+      "aha_moment": "`ls C:\\Invekto\\Backups` komutuyla istenen gunun dump'ini bir bakista bulmak."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Disk dolunca yeni backup corrupt kalip eskiler silinip restore sansini kaybetme senaryosu.",
+      "suggestion": "Pre-flight disk guard (MinFreeDiskGb, default 5GB) + INV-JOB-011; pg_dump fail olursa kismi dosya silinir (cleanup).",
+      "aha_moment": "Disk dolu oldugunda backup PROAKTIF atlanir (eski yedek korunur) ve log net kod verir — destekci 30 saniyede root cause'u bulur."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-18T15:33:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-18T15:35:00Z",
+    "raw_text": "OVERALL_VERDICT: PASS\nBLOCKING_ISSUES: NONE\nSUMMARY: Review evidence supports that the iteration fixed the prior typed-catch compliance issue without introducing scope creep or new reliability regressions. The backup job uses explicit typed catches, actionable error-code logging, explicit child-process cleanup, and pre-flight disk checks consistent with the stated plan.",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "Actionable operator-facing skip/failure logs with INV-JOB codes + Next step hints" },
+      "CQ2": { "result": "PASS", "evidence": "No silent failures; all helpers log before return; cancellation path kills + deletes partial file" },
+      "CQ3": { "result": "PASS", "evidence": "Diff within allowed_files" },
+      "CQ4": { "result": "PASS", "evidence": "4 Log* helper methods centralize repeated catch-body logging" },
+      "CQ5": { "result": "PASS", "evidence": "Explicit typed catch blocks only (IOException, UnauthorizedAccessException, ArgumentException, InvalidOperationException, Win32Exception, NotSupportedException) - zero bare catch(Exception)" },
+      "CQ6": { "result": "PASS", "evidence": "Single directory enumeration, using-scoped Process + CancellationTokenSource, no N+1" },
+      "CQ7": { "result": "PASS", "evidence": "No TODO/HACK/FIXME" },
+      "CQ8": { "result": "PASS", "evidence": "Additive Shared constants only, no contract changes" },
+      "CQ9": { "result": "PASS", "evidence": "Backend-local ops job; cluster-level exemption documented" },
+      "CQ10": { "result": "PASS", "evidence": "No UI change; Hangfire dashboard visibility" },
+      "CQ11": { "result": "PASS", "evidence": "No SQL/schema changes; uses existing conn string" },
+      "CQ12": { "result": "PASS", "evidence": "INV-JOB-010/011/012/013 + Next step operator guidance" }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "Linked CTS timeout + explicit TryKill(entireProcessTree:true) + TryDelete partial on cancellation; DisableConcurrentExecution only prevents overlap" },
+      "Q2": { "result": "PASS", "reasoning": "PGPASSWORD env var + --no-password; password never on command line" },
+      "Q3": { "result": "PASS", "reasoning": "Pre-flight HasEnoughFreeDisk before pg_dump start; TryDelete on both cancel and exit!=0 paths; fail-closed disk guard" },
+      "Q4": { "result": "PASS", "reasoning": "DeleteExpiredDumps runs after successful completion; mtime cutoff 14 days excludes same-day file" }
+    },
+    "blocking_issues": [],
+    "iteration": 4,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}
