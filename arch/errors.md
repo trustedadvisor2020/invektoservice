@@ -437,6 +437,11 @@ errors:
     description: leads.faq_rotation_state JSONB shape invalid (non-object or non-integer value); state reset to empty map, variant 0 used.
     user_message: Varyant rotasyon durumu bozuk; sifirlandi.
 
+  # FEAT-LIW: Welcome flow enqueue from Backend intake endpoint
+  - code: INV-AT-068
+    description: TriggerWelcomeFlowJob welcome flow slug not found for tenant (tenant_landing_settings.welcome_flow_slug missing AND 'welcome_default' inactive); lead still created, flow enqueue skipped.
+    user_message: Hosgeldin flow bulunamadi.
+
   # HFM-2: Backend Translation Warmup ops endpoint
   - code: INV-BE-090
     description: /ops/translation/warmup body invalid (tenantId/texts/locales missing or empty).
@@ -453,6 +458,38 @@ errors:
   - code: INV-BE-094
     description: /ops/translation/warmup cancelled mid-batch (client disconnected or timeout).
     user_message: Isletim iptal edildi.
+
+  # FEAT-LIW: Lead Intake Webhook (INV-BE-100+) — Chunk A
+  - code: INV-BE-100
+    description: Lead intake API key missing/invalid (X-Invekto-Api-Key header)
+    user_message: Gecersiz API anahtari.
+  - code: INV-BE-101
+    description: Lead intake source_slug path param format invalid (must match ^[a-z0-9][a-z0-9-]{0,49}$)
+    user_message: Kaynak tanimi gecersiz.
+  - code: INV-BE-102
+    description: Lead intake consent canonical field missing from field map or payload
+    user_message: Onay alani zorunlu.
+  - code: INV-BE-103
+    description: Lead intake field mapping resolution failed (required canonical field not mapped or source key missing)
+    user_message: "Alan eslemesi eksik: {field}"
+  - code: INV-BE-104
+    description: Lead intake phone number failed E.164 normalization (libphonenumber parse error or invalid number)
+    user_message: Telefon numarasi gecersiz.
+  - code: INV-BE-105
+    description: Lead intake consent value resolved to non-true (false, null, missing, or non-boolean)
+    user_message: Onay degeri true olmali.
+  - code: INV-BE-106
+    description: Lead intake rate limit exceeded (100 req/min per API key, sliding window)
+    user_message: Cok fazla istek, sonra deneyiniz.
+  - code: INV-BE-107
+    description: Lead intake tenant_landing_settings row missing for tenant (setup incomplete)
+    user_message: Tenant ayarlari tamamlanmadi.
+  - code: INV-BE-108
+    description: Lead intake tenant_landing_settings.landing_field_map JSONB column is malformed (JsonException on parse). Tenant config fix required; endpoint returns 500 until the operator repairs the JSON.
+    user_message: Tenant alan eslemesi bozuk, yetkili ile iletisime gecin.
+  - code: INV-BE-109
+    description: Lead intake request body missing or empty `fields` object. Caller sent null JSON or an empty fields map; no canonical value resolution can run.
+    user_message: Istek govdesi bos veya eksik; fields alani zorunlu.
 
   # ── AA — AgentAI ──
   - code: INV-AA-001

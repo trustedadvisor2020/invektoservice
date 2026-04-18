@@ -22,6 +22,7 @@ using Invekto.Shared.DTOs.ChatAnalysis;
 using Invekto.Shared.DTOs.Integration;
 using Invekto.Shared.Integration;
 using Invekto.Shared.DTOs.Analytics;
+using Invekto.Shared.Contracts.Leads;
 using Invekto.Shared.DTOs.Attribution;
 using Invekto.Shared.DTOs.Leads;
 using Invekto.Shared.DTOs.Onboarding;
@@ -367,6 +368,17 @@ if (!string.IsNullOrEmpty(pgConnectionString))
     // PKT-6B1: Lead Management v2 (GR-3.13)
     builder.Services.AddSingleton<LeadRepository>();
 
+    // FEAT-LIW Chunk A: Lead Intake Webhook services + tenant landing settings
+    // All singletons — FieldMapResolver + PhoneE164Normalizer are stateless;
+    // ApiKeyRateLimiter holds the in-memory sliding-window bucket state.
+    builder.Services.AddSingleton<TenantLandingSettingsRepository>();
+    builder.Services.AddSingleton<PhoneE164Normalizer>();
+    builder.Services.AddSingleton<FieldMapResolver>();
+    builder.Services.AddSingleton(new ApiKeyRateLimiter(
+        limit: builder.Configuration.GetValue<int>("LeadIntake:RateLimitPerMinute", 100),
+        windowSeconds: 60));
+    builder.Services.AddSingleton<LeadIntakeService>();
+
     // SuperAdmin: Message log (fire-and-forget insert at webhook, paginated select for ops)
     builder.Services.AddSingleton<MessageLogRepository>();
 
@@ -490,7 +502,25 @@ if (jwtValidator != null)
     // /api/v1/inma/nav intentionally NOT whitelisted: endpoint accepts INMA JWT directly
     // via ExtractTenantFromBearer (welcome introspection) so INMA Angular shell can call
     // it with its own bearer. See plan 20260416-inma-nav-cors.
-    app.UseJwtAuth(jwtValidator, jwtLogger, webhookIpSet, "/api/v1/webhook/", "/api/v1/automation/", "/api/v1/outbound/", "/api/v1/flow-builder/flows/", "/api/v1/flow-builder/monitor/", "/api/v1/flow-builder/wizard/", "/api/v1/attribution/", "/api/v1/leads", "/api/v1/onboarding/", "/api/v1/zoho/");
+    // FEAT-LIW Chunk A: /api/v1/leads/intake/ opts out of JWT so the endpoint can
+    // run its own per-tenant API key check (X-Invekto-Api-Key). Exclusions win over
+    // the broader /api/v1/leads JWT inclusion; all other /api/v1/leads/* paths keep
+    // Bearer JWT auth unchanged.
+    var jwtRequiredPrefixes = new[]
+    {
+        "/api/v1/webhook/",
+        "/api/v1/automation/",
+        "/api/v1/outbound/",
+        "/api/v1/flow-builder/flows/",
+        "/api/v1/flow-builder/monitor/",
+        "/api/v1/flow-builder/wizard/",
+        "/api/v1/attribution/",
+        "/api/v1/leads",
+        "/api/v1/onboarding/",
+        "/api/v1/zoho/"
+    };
+    var jwtExcludedPrefixes = new[] { "/api/v1/leads/intake/" };
+    app.UseJwtAuth(jwtValidator, jwtLogger, webhookIpSet, jwtRequiredPrefixes, jwtExcludedPrefixes);
 }
 
 // Enable static file serving for Dashboard UI (wwwroot/)
@@ -576,6 +606,15 @@ if (hangfireEnabled)
 
     // G7 Faz 4: Recurring job registration (idempotent via AddOrUpdate)
     var translationCleanupCron = builder.Configuration["TranslationCleanup:Cron"] ?? Cron.Hourly();
+    // FEAT-LIW Chunk A: reclaim drained API-key rate-limit buckets every 5 minutes.
+    // Pre-DB limiter accepts raw unknown keys (brute-force shield); Sweep bounds
+    // dictionary growth so the MaxTrackedKeys cap doesn't stay saturated with
+    // single-hit buckets from an attacker who has since stopped probing.
+    RecurringJob.AddOrUpdate<ApiKeyRateLimiter>(
+        "lead-intake:rate-limiter-sweep",
+        limiter => limiter.SweepNow(),
+        "*/5 * * * *");
+
     RecurringJob.AddOrUpdate<TranslationCleanupJob>(
         "backend:translation-cleanup",
         j => j.RunAsync(CancellationToken.None),
@@ -4913,6 +4952,30 @@ app.MapDelete("/api/v1/attribution/costs/{id:int}", async (HttpContext ctx, Attr
 // PKT-6B1: LEAD MANAGEMENT ENDPOINTS (/api/v1/leads/*)
 // GR-3.13: Lead Management v2 - Backend API only (no UI)
 // ============================================
+
+// FEAT-LIW Chunk A: Lead Intake Webhook — public endpoint, per-tenant API key auth.
+// JWT middleware is excluded for /api/v1/leads/intake/ (see UseJwtAuth configuration
+// above); LeadIntakeService enforces API key + rate limit + field map + phone parse
+// + consent before UPSERT, then enqueues the welcome flow for fresh leads only.
+app.MapPost("/api/v1/leads/intake/{source_slug}", async (
+    string source_slug,
+    LeadIntakeRequest? request,
+    HttpContext ctx,
+    LeadIntakeService intakeService) =>
+{
+    var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var apiKey = ctx.Request.Headers["X-Invekto-Api-Key"].FirstOrDefault();
+
+    var outcome = await intakeService.IntakeAsync(source_slug, apiKey, request, rid, ctx.RequestAborted);
+
+    if (outcome.StatusCode == 429 && outcome.RetryAfterSeconds is int retry)
+        ctx.Response.Headers["Retry-After"] = retry.ToString();
+
+    if (outcome.Success != null)
+        return Results.Json(outcome.Success, statusCode: outcome.StatusCode);
+
+    return Results.Json(outcome.Error, statusCode: outcome.StatusCode);
+});
 
 app.MapPost("/api/v1/leads", async (HttpContext ctx, LeadRepository leadRepo, JsonLinesLogger jsonLog, LeadRequest? request) =>
 {

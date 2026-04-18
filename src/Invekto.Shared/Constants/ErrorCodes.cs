@@ -70,6 +70,18 @@ public static class ErrorCodes
     public const string BackendTranslationWarmupInvalidState = "INV-BE-093";     // Translation service returned empty/invalid
     public const string BackendTranslationWarmupCancelled = "INV-BE-094";        // Client cancelled the warmup
 
+    // FEAT-LIW: Lead Intake Webhook (INV-BE-100+) — Chunk A
+    public const string LeadIntakeApiKeyInvalid = "INV-BE-100";         // X-Invekto-Api-Key missing or not recognized
+    public const string LeadIntakeSourceSlugInvalid = "INV-BE-101";     // source_slug regex fail
+    public const string LeadIntakeConsentMissing = "INV-BE-102";        // consent canonical not in field map or payload
+    public const string LeadIntakeFieldMappingMissing = "INV-BE-103";   // required canonical field unresolved
+    public const string LeadIntakePhoneInvalid = "INV-BE-104";          // libphonenumber parse/validate fail
+    public const string LeadIntakeConsentNotTrue = "INV-BE-105";        // consent value resolved to non-true
+    public const string LeadIntakeRateLimitExceeded = "INV-BE-106";     // sliding window 100/min per key
+    public const string LeadIntakeTenantNotConfigured = "INV-BE-107";   // tenant_landing_settings row missing
+    public const string LeadIntakeFieldMapMalformed = "INV-BE-108";     // tenant_landing_settings.landing_field_map JSONB unparseable (operator fix)
+    public const string LeadIntakePayloadEmpty = "INV-BE-109";          // request body missing or fields map empty
+
     // ChatAnalysis errors (INV-CA-xxx)
     public const string ChatAnalysisInvalidPayload = "INV-CA-001";
     public const string ChatAnalysisProcessingFailed = "INV-CA-002";
@@ -202,6 +214,9 @@ public static class ErrorCodes
     // FEAT-WTP continued: variant pool fetch + JSONB parse
     public const string AutomationTemplateGroupFetchFailed = "INV-AT-066"; // Knowledge group_tag template fetch failed/timeout, fallback to inline text
     public const string AutomationFaqRotationStateMalformed = "INV-AT-067"; // leads.faq_rotation_state JSONB invalid shape, reset to empty
+
+    // FEAT-LIW: Welcome flow enqueue (INV-AT-068) — triggered from Backend intake endpoint
+    public const string AutomationWelcomeFlowSlugMissing = "INV-AT-068"; // welcome_flow_slug + 'welcome_default' both unavailable; lead created, enqueue skipped
 
     // AgentAI errors (INV-AA-xxx)
     public const string AgentAIInvalidPayload = "INV-AA-001";

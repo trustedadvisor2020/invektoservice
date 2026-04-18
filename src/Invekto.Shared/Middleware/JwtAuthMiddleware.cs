@@ -20,6 +20,7 @@ public sealed class JwtAuthMiddleware
     private readonly JwtValidator _jwtValidator;
     private readonly JsonLinesLogger _logger;
     private readonly HashSet<string> _authRequiredPrefixes;
+    private readonly HashSet<string> _authExcludedPrefixes;
     private readonly HashSet<string> _allowedIps;
 
     public JwtAuthMiddleware(
@@ -28,11 +29,23 @@ public sealed class JwtAuthMiddleware
         JsonLinesLogger logger,
         IEnumerable<string> authRequiredPrefixes,
         HashSet<string> allowedIps)
+        : this(next, jwtValidator, logger, authRequiredPrefixes, Array.Empty<string>(), allowedIps)
+    {
+    }
+
+    public JwtAuthMiddleware(
+        RequestDelegate next,
+        JwtValidator jwtValidator,
+        JsonLinesLogger logger,
+        IEnumerable<string> authRequiredPrefixes,
+        IEnumerable<string> authExcludedPrefixes,
+        HashSet<string> allowedIps)
     {
         _next = next;
         _jwtValidator = jwtValidator;
         _logger = logger;
         _authRequiredPrefixes = new HashSet<string>(authRequiredPrefixes, StringComparer.OrdinalIgnoreCase);
+        _authExcludedPrefixes = new HashSet<string>(authExcludedPrefixes, StringComparer.OrdinalIgnoreCase);
         _allowedIps = allowedIps;
     }
 
@@ -143,6 +156,13 @@ public sealed class JwtAuthMiddleware
 
     private bool RequiresAuth(string path)
     {
+        // Exclusions win over inclusions — lets an endpoint nested under a required
+        // prefix (e.g. /api/v1/leads/intake/*) opt out cleanly for its own auth scheme.
+        foreach (var prefix in _authExcludedPrefixes)
+        {
+            if (path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return false;
+        }
         foreach (var prefix in _authRequiredPrefixes)
         {
             if (path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
@@ -171,5 +191,27 @@ public static class JwtAuthMiddlewareExtensions
         params string[] authRequiredPrefixes)
     {
         return app.UseMiddleware<JwtAuthMiddleware>(jwtValidator, logger, (IEnumerable<string>)authRequiredPrefixes, webhookAllowedIps);
+    }
+
+    /// <summary>
+    /// Registers the JWT middleware with explicit exclusions. Exclusion prefixes win
+    /// over inclusions: a path matched by both is treated as unauthenticated, so the
+    /// endpoint can run its own auth scheme (e.g. API key). Used by FEAT-LIW for
+    /// /api/v1/leads/intake/ while /api/v1/leads stays JWT-protected.
+    /// </summary>
+    public static IApplicationBuilder UseJwtAuth(
+        this IApplicationBuilder app,
+        JwtValidator jwtValidator,
+        JsonLinesLogger logger,
+        HashSet<string> webhookAllowedIps,
+        IEnumerable<string> authRequiredPrefixes,
+        IEnumerable<string> authExcludedPrefixes)
+    {
+        return app.UseMiddleware<JwtAuthMiddleware>(
+            jwtValidator,
+            logger,
+            authRequiredPrefixes,
+            authExcludedPrefixes,
+            webhookAllowedIps);
     }
 }

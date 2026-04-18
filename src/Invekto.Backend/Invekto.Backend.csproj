@@ -20,6 +20,9 @@
     <!-- G7: Hangfire runtime + dashboard (Shared's refs are PrivateAssets=all; opt-in per consumer). -->
     <PackageReference Include="Hangfire.AspNetCore" Version="1.8.14" />
     <PackageReference Include="Hangfire.PostgreSql" Version="1.20.10" />
+    <!-- FEAT-LIW: libphonenumber port for E.164 normalization at intake. Backend-only dep;
+         Shared kontrat yalınlığı korunur (DTO'lar string phone tutar). -->
+    <PackageReference Include="libphonenumber-csharp" Version="8.13.52" />
   </ItemGroup>
 
   <PropertyGroup>

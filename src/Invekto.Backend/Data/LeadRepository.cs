@@ -118,6 +118,87 @@ public class LeadRepository
     }
 
     // ================================================================
+    // FEAT-LIW: Intake UPSERT (merge-by-phone, intake_metadata JSONB append)
+    // ================================================================
+
+    /// <summary>
+    /// Intake UPSERT used by <c>LeadIntakeService</c>. Inserts a new lead or merges
+    /// into the existing (tenant_id, phone) row: intake_metadata is concatenated
+    /// via JSONB <c>||</c>, source_slug is overwritten with the latest submission,
+    /// UTM fields promoted only when the new payload has them (COALESCE to prior).
+    /// Returns the lead id and the PRIOR created_at (null when the row is brand
+    /// new). Caller uses <c>PriorCreatedAt</c> to decide duplicate-within-window
+    /// and welcome-flow gating.
+    /// </summary>
+    public virtual async Task<LeadIntakeUpsertResult> UpsertIntakeLeadAsync(
+        int tenantId,
+        string phoneE164,
+        string? name,
+        string? email,
+        string sourceSlug,
+        string? utmSource,
+        string? utmMedium,
+        string? utmCampaign,
+        string intakeMetadataJson,
+        CancellationToken ct = default)
+    {
+        // Single round-trip: probe prior created_at, then UPSERT. We need the
+        // prior created_at (not the post-merge updated_at) to classify the
+        // duplicate window; CTE captures it before the INSERT overwrites.
+        const string sql = @"
+            WITH prior AS (
+                SELECT id, created_at
+                FROM leads
+                WHERE tenant_id = @tid AND phone = @phone
+            ),
+            upserted AS (
+                INSERT INTO leads
+                    (tenant_id, phone, name, email,
+                     source, source_slug,
+                     utm_source, utm_medium, utm_campaign,
+                     intake_metadata)
+                VALUES
+                    (@tid, @phone, @name, @email,
+                     'landing', @slug,
+                     @utmSource, @utmMedium, @utmCampaign,
+                     @intakeMeta::jsonb)
+                ON CONFLICT (tenant_id, phone) DO UPDATE SET
+                    name            = COALESCE(EXCLUDED.name, leads.name),
+                    email           = COALESCE(EXCLUDED.email, leads.email),
+                    source_slug     = EXCLUDED.source_slug,
+                    utm_source      = COALESCE(EXCLUDED.utm_source, leads.utm_source),
+                    utm_medium      = COALESCE(EXCLUDED.utm_medium, leads.utm_medium),
+                    utm_campaign    = COALESCE(EXCLUDED.utm_campaign, leads.utm_campaign),
+                    intake_metadata = leads.intake_metadata || EXCLUDED.intake_metadata,
+                    updated_at      = NOW()
+                RETURNING id
+            )
+            SELECT upserted.id, prior.created_at
+            FROM upserted
+            LEFT JOIN prior ON TRUE";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("phone", phoneE164);
+        cmd.Parameters.AddWithValue("name", (object?)name ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("email", (object?)email ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("slug", sourceSlug);
+        cmd.Parameters.AddWithValue("utmSource", (object?)utmSource ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("utmMedium", (object?)utmMedium ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("utmCampaign", (object?)utmCampaign ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("intakeMeta", intakeMetadataJson);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        if (!await reader.ReadAsync(ct))
+            throw new InvalidOperationException("Intake UPSERT returned no rows");
+
+        var leadId = reader.GetInt32(0);
+        DateTime? priorCreatedAt = reader.IsDBNull(1) ? null : reader.GetDateTime(1);
+        return new LeadIntakeUpsertResult(leadId, priorCreatedAt);
+    }
+
+    // ================================================================
     // Pipeline & Score
     // ================================================================
 
@@ -343,6 +424,17 @@ public class LeadRepository
     // ================================================================
     // Helpers
     // ================================================================
+
+    // ================================================================
+    // Intake result record
+    // ================================================================
+
+    /// <summary>
+    /// Return of <see cref="UpsertIntakeLeadAsync"/>. <see cref="PriorCreatedAt"/>
+    /// is null for a brand-new lead row; otherwise it holds the existing row's
+    /// created_at so callers can gate the duplicate/re-engagement semantics.
+    /// </summary>
+    public readonly record struct LeadIntakeUpsertResult(int LeadId, DateTime? PriorCreatedAt);
 
     private static LeadResponse ReadLeadResponse(NpgsqlDataReader reader)
     {

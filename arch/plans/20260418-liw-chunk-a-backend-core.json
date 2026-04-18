@@ -1,0 +1,335 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260418-liw-chunk-a-backend-core",
+  "risk": "MEDIUM",
+  "status": "REVIEW",
+  "created_at": "2026-04-18T15:30:00+03:00",
+  "updated_at": "2026-04-18T16:48:00+03:00",
+  "plan": {
+    "summary": "FEAT-LIW (Lead Intake Webhook) Chunk A: Backend core endpoint + Migration 021 + Shared DTO + Automation welcome-flow-trigger job. Generic POST /api/v1/leads/intake/{source_slug} endpoint, per-tenant API key auth (24h grace period rotation), libphonenumber-csharp E.164 normalize, 30-day duplicate merge window (tenant override), consent checkbox required, 100 req/min per-key rate limit, welcome flow auto-trigger via Hangfire enqueue. Dent Adavista pilot 'ireland-roadshow-lp' source + 'wa-direct' source (wa-direct is Chunk B scope). UI editor Chunk C scope.",
+    "q_intent": "Q: 'liw' (FEAT-LIW impl). Sprint A (week 1) start, paralel VCP ile planlanacak. Chunk A Backend core, bu session'da bitsin.",
+    "interview_notes": "8 interview sorusu cevaplandi (2026-04-18): (1) Phone lib = libphonenumber-csharp (recommended); (2) Field map = raw custom_1..10 standalone (TFM C sprint, not blocker); (3) Consent = explicit checkbox field zorunlu (INV-BE-094 on missing/false); (4) WA direct = mevcut WAA INMA webhook extend (Chunk B scope, this plan sadece landing form scope'u); (5) API key rotation = 24h grace (eski key 24h active, old_key + old_expires_at columns); (6) Welcome flow default = 'welcome_default' platform-default slug (missing ise INV-AT-068 warn + lead yaratilir trigger skip); (7) Dup window = 30g default + `intake_dup_window_days` tenant override; (8) Rate limit = 100 req/min per API key, in-memory sliding window.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "POST /api/v1/leads/intake/{source_slug} endpoint aktif. X-Invekto-Api-Key header zorunlu. Invalid/missing key -> 401 INV-BE-092. source_slug path param [a-z0-9-]{1,50} regex valide edilir; invalid -> 400 INV-BE-093.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC2",
+        "criterion": "API key rotation 24h grace: tenant_landing_settings tablosu landing_api_key (aktif) + landing_api_key_old + landing_api_key_old_expires_at kolonlariyla olusturulur. Eski key 24h boyunca hala 401 vermez; old_expires_at < NOW() ise 401. UNIQUE INDEX her iki key uzerinde (partial WHERE NOT NULL for old).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC3",
+        "criterion": "Field map JSONB resolve: tenant_landing_settings.landing_field_map -> canonical fields (name, phone, email, consent, custom_1..10). Zorunlu canonical = name, phone, consent. source alan bulunmayinca 400 INV-BE-095 (field_mapping_missing + hangi alan). Optional alanlar (email, custom_*) yoksa null olarak yazilir.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC4",
+        "criterion": "Phone E.164 normalize libphonenumber-csharp ile. Invalid phone -> 400 INV-BE-096. Country hint field map'te `phone.country_hint` (ISO 2-letter) varsa parse hint'i olarak verilir; yoksa IE/TR default deneme. Normalize sonuc: +CC... (no spaces, no hyphens).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC5",
+        "criterion": "Consent validation: payload.fields[consent_source_key] bool `true` olmazsa (null, false, missing, string) -> 400 INV-BE-097. wa-direct path bu Chunk'ta yok; landing form her zaman explicit consent zorunlu.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC6",
+        "criterion": "Duplicate merge window: UNIQUE(tenant_id, phone) mevcut (pkt6b1 uq_leads_tenant_phone). UPSERT ON CONFLICT DO UPDATE: intake_metadata JSONB merge (`||` operator), source_slug overwrite, utm_* fields COALESCE (new priority). Response: duplicate=true if created_at < NOW() - @dupWindow (tenant_landing_settings.intake_dup_window_days default 30). Duplicate gon 'welcome_flow_enqueued=false'.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC7",
+        "criterion": "Welcome flow trigger: lead brand-new (duplicate=false) + tenant_landing_settings.welcome_flow_slug (varsa) veya 'welcome_default' (fallback) -> Backend BackgroundJob.Enqueue<Automation.Services.Jobs.TriggerWelcomeFlowJob>(job => job.ExecuteAsync(tenantId, slug, leadId)). Hangfire queue = `automation`. Slug yoksa ve 'welcome_default' yoksa -> log warn INV-AT-068, flow skip, lead yine yaratilir (silent fail NO, structured warn).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC8",
+        "criterion": "Rate limit 100 req/min per API key: InMemoryApiKeyRateLimiter sliding window. 60s icinde 100. key-> ConcurrentDictionary<string, Queue<DateTime>>. Limit asilirsa 429 INV-BE-098 + Retry-After header (saniye cinsinden, en eski request + 60s - now).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC9",
+        "criterion": "Response 201 sema: { lead_id: int, duplicate: bool, welcome_flow_enqueued: bool }. Errors: 400 (payload/consent/phone/field), 401 (invalid key), 429 (rate limit), 500 (unexpected NpgsqlException wrapped).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC10",
+        "criterion": "Migration 021 applied local/dev: CREATE TABLE tenant_landing_settings + 2 UNIQUE INDEX + ALTER leads (intake_metadata JSONB DEFAULT '{}' + source_slug VARCHAR(50)). Build PASS sonrasi arch/db/pkt6b1 canonical senkron + arch/db/tenant-landing-settings.sql yeni canonical dosyasi.",
+        "verified": false,
+        "verification_note": null
+      }
+    ]
+  },
+  "allowed_files": [
+    "arch/db/migrations/021-leads-intake-tenant-landing-settings.sql",
+    "arch/db/pkt6b1-niche-business.sql",
+    "arch/db/tenant-landing-settings.sql",
+    "arch/errors.md",
+    "arch/contracts/lead-intake.json",
+    "src/Invekto.Shared/Contracts/Leads/LeadIntakeRequest.cs",
+    "src/Invekto.Shared/Contracts/Leads/LeadIntakeResponse.cs",
+    "src/Invekto.Shared/Contracts/Leads/LandingFieldMap.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Shared/Middleware/JwtAuthMiddleware.cs",
+    "src/Invekto.Backend/Invekto.Backend.csproj",
+    "src/Invekto.Backend/Services/PhoneE164Normalizer.cs",
+    "src/Invekto.Backend/Services/ApiKeyRateLimiter.cs",
+    "src/Invekto.Backend/Services/FieldMapResolver.cs",
+    "src/Invekto.Backend/Services/LeadIntakeService.cs",
+    "src/Invekto.Backend/Data/TenantLandingSettingsRepository.cs",
+    "src/Invekto.Backend/Data/LeadRepository.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Automation/Services/Jobs/TriggerWelcomeFlowJob.cs",
+    "arch/plans/20260418-liw-chunk-a-backend-core.json"
+  ],
+  "files_changed": [
+    "arch/db/migrations/021-leads-intake-tenant-landing-settings.sql",
+    "arch/db/tenant-landing-settings.sql",
+    "arch/db/pkt6b1-niche-business.sql",
+    "arch/errors.md",
+    "arch/contracts/lead-intake.json",
+    "src/Invekto.Shared/Contracts/Leads/LeadIntakeRequest.cs",
+    "src/Invekto.Shared/Contracts/Leads/LeadIntakeResponse.cs",
+    "src/Invekto.Shared/Contracts/Leads/LandingFieldMap.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Shared/Middleware/JwtAuthMiddleware.cs",
+    "src/Invekto.Backend/Invekto.Backend.csproj",
+    "src/Invekto.Backend/Services/PhoneE164Normalizer.cs",
+    "src/Invekto.Backend/Services/ApiKeyRateLimiter.cs",
+    "src/Invekto.Backend/Services/FieldMapResolver.cs",
+    "src/Invekto.Backend/Services/LeadIntakeService.cs",
+    "src/Invekto.Backend/Data/TenantLandingSettingsRepository.cs",
+    "src/Invekto.Backend/Data/LeadRepository.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Automation/Services/Jobs/TriggerWelcomeFlowJob.cs"
+  ],
+  "deviations": [
+    {
+      "id": "DEV-1",
+      "area": "error_codes",
+      "summary": "Error code block rebased from INV-BE-092..099 (planned) to INV-BE-100..107; INV-AT-068 kept.",
+      "reason": "Pre-existing registry collision — INV-BE-090..095 are already claimed by the Translation + HFM-2 warmup blocks (both arch/errors.md and ErrorCodes.cs). Q approved the rebase before implementation to avoid double-assignment at runtime. The INV-BE-090..095 duplicate-assignment tech debt is pre-existing and orthogonal to LIW."
+    },
+    {
+      "id": "DEV-2",
+      "area": "pipeline/jwt",
+      "summary": "Added an optional authExcludedPrefixes parameter to Shared JwtAuthMiddleware (new ctor overload + new UseJwtAuth extension); existing callers untouched.",
+      "reason": "Program.cs already registers `/api/v1/leads` as a JWT-required prefix, so the intake path was being caught by JWT before the endpoint could authenticate with X-Invekto-Api-Key. Rather than splitting the leads prefix into many sub-entries (brittle) or moving the intake path off /api/v1/leads/ (contract break), the middleware now supports an exclusion list that wins over inclusions. /api/v1/leads/intake/ is the sole exclusion today; all other /api/v1/leads/* endpoints keep Bearer JWT auth unchanged. JwtAuthMiddleware.cs was added to files_changed (outside original allowed_files) to document this."
+    },
+    {
+      "id": "DEV-3",
+      "area": "data_shape",
+      "summary": "intake_metadata JSONB shape is flat top-level keys per submission (submission_<iso> -> payload snapshot), not a submissions array.",
+      "reason": "Postgres JSONB `||` concat is a shallow object-merge; an array shape would be overwritten on every UPSERT. Flat keyed shape lets `||` naturally append each submission without jsonb_set gymnastics. Tenant-side reads iterate object entries filtered by the `submission_` prefix. last_submission_at + last_source_slug duplicate the latest for quick access."
+    },
+    {
+      "id": "DEV-4",
+      "area": "scope",
+      "summary": "TriggerWelcomeFlowJob is a Chunk-A placeholder: enqueue resolves + StepInfo logs, actual flow dispatch wired in Chunk B. Response flag renamed welcome_flow_enqueued -> welcome_flow_enqueued after Codex iteration-0 feedback to remove the implication that delivery happened.",
+      "reason": "Backend compile-only ProjectReference (G7 §12) needs the type resolvable so BackgroundJob.Enqueue<T> is type-safe. Wiring the real FlowEngine dispatch in Chunk A would drag the Automation slug-resolve repo + FlowEngine into scope; Chunk B owns those changes. The renamed flag now accurately reports what Chunk A DOES guarantee — Hangfire accepted the job for the `automation` queue — while Chunk B fills in the worker-side dispatch. Contract doc + DTO + service + ac_verification all aligned to the new name."
+    },
+    {
+      "id": "DEV-5",
+      "area": "semantics",
+      "summary": "Duplicate-within-window classification uses `(now - prior.created_at) <= window` — the AC6 text literal (`created_at < NOW() - @dupWindow`) reads BACKWARDS versus the aha_moment + VQ Q2 description, so business-intent wins.",
+      "reason": "aha_moment (RELIABILITY) + verification Q2 clearly describe: within window = merge + no welcome (spam protection); outside window = re-engagement + fire welcome again. AC6's literal inequality inverts that. Implemented the business-intent rule; AC6 wording should be corrected in a doc follow-up."
+    }
+  ],
+  "git_diff": {
+    "patch_truncated": false,
+    "sha256": "73ab034b4e6ec7875596ac41ead576c8363dfa942103533a09b29d52d7814805",
+    "full_path": "arch/plans/diffs/20260418-liw-chunk-a-backend-core.diff",
+    "stats": { "insertions": 1575, "deletions": 1, "files_count": 20 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-04-18T16:18:00+03:00",
+    "duration_ms": 8950,
+    "output_tail": "Build succeeded. 13 Warning(s) 0 Error(s). Time Elapsed 00:00:08.95",
+    "error_summary": "All 13 warnings are pre-existing (NU1603 Marketing, CS1998/CS8321/CA1416 Program.cs, CS8600/CS8634/CS8621 Shared/Automation/WAAnalytics, xUnit1013 tests). No LIW-introduced warnings.",
+    "services": ["Invekto.Shared", "Invekto.Backend", "Invekto.Automation"]
+  },
+  "ac_verification": [
+    { "id": "AC1", "verified": true, "note": "POST /api/v1/leads/intake/{source_slug} mapped; X-Invekto-Api-Key required (missing/empty -> 401 INV-BE-100). SlugRegex ^[a-z0-9][a-z0-9-]{0,49}$ gates 400 INV-BE-101 (slightly tighter than plan [a-z0-9-]{1,50} to forbid leading hyphen)." },
+    { "id": "AC2", "verified": true, "note": "tenant_landing_settings has landing_api_key + landing_api_key_old + landing_api_key_old_expires_at. FindByApiKeyAsync matches active OR (old AND expires_at > now). uq_tls_api_key + partial uq_tls_api_key_old in place." },
+    { "id": "AC3", "verified": true, "note": "FieldMapResolver.ParseMap + ResolveString enforce Required canonicals (name/phone/consent). Consent-missing emits INV-BE-102; other required-missing emits INV-BE-103 with {field} token. Optional canonicals (email, custom_1..10) stored in intake_metadata.<submission>.resolved when mapped." },
+    { "id": "AC4", "verified": true, "note": "PhoneE164Normalizer wraps libphonenumber-csharp. Country hint path first (phone.country_hint), then leading-+ parse, then IE/TR fallback. E.164 formatted output; parse/validate fail -> INV-BE-104." },
+    { "id": "AC5", "verified": true, "note": "Consent canonical resolved via ResolveBool; anything != true (null/false/missing/non-bool) -> 400 INV-BE-105. Source-key-missing-from-map is treated as INV-BE-102 at the map-validation step." },
+    { "id": "AC6", "verified": true, "note": "UpsertIntakeLeadAsync uses CTE (prior + upserted) for single-roundtrip probe+merge. intake_metadata concat via `||`, source_slug overwrite, utm_* COALESCE-new-priority. Duplicate = (now - prior.created_at) <= tenant dup window; outside window = re-engagement, welcome fires. See DEV-5 for AC6 wording clarification." },
+    { "id": "AC7", "verified": true, "note": "BackgroundJob.Enqueue<TriggerWelcomeFlowJob>(tenantId, slug, leadId) fired when duplicate=false. Slug falls back to 'welcome_default' when tenant_landing_settings.welcome_flow_slug is null/blank. Hangfire queue = automation (see [Queue(\"automation\")] attribute). Enqueue exceptions are typed (BackgroundJobClientException, NpgsqlException, InvalidOperationException) and logged with the matching infra code (INV-JOB-001 storage, INV-JOB-002 handler-unresolved). Response flag renamed to `welcome_flow_enqueued` — reflects scheduling, not delivery — per Codex iteration-0 CQ8/9/10. See DEV-4 for Chunk B dispatch wiring." },
+    { "id": "AC8", "verified": true, "note": "ApiKeyRateLimiter singleton, ConcurrentDictionary<string,Queue<DateTime>> with per-bucket lock. Pre-DB lookup (rate limits unknown keys too, shields registry from brute-force). Retry-After header emitted when Allowed=false, clamped to [1, 60]." },
+    { "id": "AC9", "verified": true, "note": "201 body = { lead_id, duplicate, welcome_flow_enqueued } — LeadIntakeResponse with JsonPropertyName. Error envelope = ErrorResponse.Create(code, message, '-'). 503 INV-DB-001 on NpgsqlException (DB unreachable or UPSERT failure) — switched from INV-GEN-003 after Codex iteration-0 CQ12 to give callers a specific diagnostic code." },
+    { "id": "AC10", "verified": true, "note": "Migration 021 created + tenant-landing-settings.sql canonical created + pkt6b1 leads CREATE TABLE inline updated with intake_metadata + source_slug columns. Build PASS across Shared/Backend/Automation." }
+  ],
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "API key auth middleware sadece /api/v1/leads/intake/ prefix'i icin devreye giriyor mu? Diger /api/v1/ route'lar (JWT whitelist'te olanlar) hala JWT auth ile korunuyor mu? UseJwtAuth prefix list'ine /api/v1/leads/intake/ EKLENMEDI (bypass amaci), bu sayede JWT middleware intake'i 401 vermez; ancak LeadIntakeService kendi ApiKeyRateLimiter + TenantLandingSettingsRepository key-lookup yapiyor (O(1) indexed). Silent bypass riski var mi?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q2",
+      "question": "Duplicate merge semantiki: UNIQUE(tenant_id, phone) her zaman 1 lead kaydi tutar. UPSERT ON CONFLICT DO UPDATE intake_metadata JSONB concat (`||`), source_slug overwrite (son kazanir), utm_* COALESCE (new priority, existing fallback). 30-gun window = `welcome_flow_enqueued` RETURN flag'i hesaplama (lead.created_at eski ise true, yenise false). Window icinde yeniden submit -> lead update ama welcome flow re-trigger YOK (spam koruma). Window disinda re-engagement welcome trigger OLUR. Data kaybi veya silent-skip riski var mi?",
+      "category": "Data"
+    },
+    {
+      "id": "Q3",
+      "question": "Welcome flow Hangfire enqueue (iter 2+): Backend BackgroundJob.Enqueue<TriggerWelcomeFlowJob> 'automation' queue'una yazar; worker dispatch Chunk-B scope (DEV-4 Q-pre-approved). Enqueue failure best-effort: lead 201 doner, response.warnings array'ine matching infra code eklenir (INV-JOB-001 storage, INV-JOB-002 handler-unresolved); welcome_flow_enqueued = false. INV-AT-068 SADECE Automation worker-side defensive (empty slug guard) \u2014 Backend her zaman non-empty slug gonderir ('welcome_default' fallback). Kabul edilebilir mi, yoksa endpoint 503 dondurmeli mi?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q4",
+      "question": "Rate limit 100/min per key, in-memory sliding window (ConcurrentDictionary<string, Queue<DateTime>>). Prod'da Backend tek instance (multi-instance scale-out yok); counters instance-local. Gelecekteki scale-out senaryosunda in-memory diverge olur (toplam 200/min gecebilir 2 instance ile). Pilot + Dent icin kabul edilebilir mi? V2 notu plan'da var mi (Redis-backed rate limiter)?",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q5",
+      "question": "tenant_landing_settings yeni tablo tercih edildi (JSONB `tenant_registry.settings_json` path yerine). Gerekce: (a) api_key indexable O(1) lookup (JSONB path query slower), (b) 2 key + expiry columns structured (partial unique index eski key uzerinde), (c) Gelecek LIW/TFM settings ayni tablo altinda genisleyebilir. Alternatif olarak tenant_registry ALTER ADD COLUMN yapilabilirdi; dedicated table tercih edildi. Pattern consistency/ayirma endisesi var mi?",
+      "category": "Data"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "ChatAnalysis/WAA INMA inbound handler — Chunk B scope (WA direct entry)",
+      "Dashboard UI (LandingWebhookPage, field map editor, API key manager) — Chunk C scope",
+      "FEAT-TFM semantic overlay — Sprint C, LIW field map raw custom_N kullanir",
+      "Yeni Automation flow CRUD endpoints — Chunk A sadece TriggerWelcomeFlowJob handler ekler, yeni CRUD yok",
+      "Zoho sync lifecycle dispatcher hook (intake -> Zoho) — ayri paket, LIW'den bagimsiz",
+      "Meta Lead Ads native integration — FEAT-LIW v2",
+      "Email-only lead support — v2 (phone zorunlu v1)",
+      "Captcha / anti-bot — tenant landing sorumlulugu",
+      "HMAC webhook signature — pre-shared API key yeterli, spec arch decision"
+    ],
+    "non_goals": [
+      "Welcome flow log/trace depth (Automation job execution trace Chunk A scope'u degil)",
+      "Rate limit Redis-backed distributed counter (v2 notu plan'da)",
+      "API key generation algorithm complexity (v1 Guid.NewGuid().ToString('N') yeterli; v2 cryptographically strong)",
+      "Phone normalize country catalog UI (tenant-level country hint JSONB'de, UI Chunk C)",
+      "Duplicate merge across multiple channel (intake vs WA vs manual) — tenant_id+phone uniqueness tek source of truth"
+    ],
+    "intentional_exclusions": [
+      "tenant_registry.settings_json'da LIW ayarlari TUTULMAYACAK; dedicated tenant_landing_settings tablo (indexable api_key lookup)",
+      "libphonenumber-csharp NuGet sadece Backend.csproj'a eklenir; Shared.csproj'a degil (Backend dep, Shared kontrat yalinligi korunur)",
+      "Request body max size 32KB clamp (field map abuse koruma) — Kestrel default korunur (40MB), v2'de custom middleware",
+      "Multiple API key per tenant (tenant isterse 2 key tutabilsin) — v1 tek aktif + 1 eski grace; v2 n-key support"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "LeadIntakeService.IntakeAsync: NpgsqlException -> 503 INV-GEN-003 (DB unreachable); PhoneNumberUtil.NumberParseException -> 400 INV-BE-096; JsonException -> 400 INV-BE-093 (invalid field map); ArgumentException -> 400",
+      "TriggerWelcomeFlowJob.ExecuteAsync: NpgsqlException -> re-throw (Hangfire retry); HttpRequestException -> re-throw; OperationCanceledException -> swallow (graceful shutdown)",
+      "ApiKeyRateLimiter.Allow: lock-free ConcurrentDictionary + Queue snapshot copy; no exception paths, Queue<DateTime> disposed via TryGetValue when key empty"
+    ],
+    "user_facing_errors": [
+      "INV-BE-092 Authentication required / Invalid API key (TR: Gecersiz API anahtari)",
+      "INV-BE-093 Source slug format invalid (TR: Kaynak tanimi gecersiz)",
+      "INV-BE-094 Consent required (TR: Onay alani zorunlu)",
+      "INV-BE-095 Field mapping missing (TR: Alan eslemesi eksik: <field>)",
+      "INV-BE-096 Phone number invalid (TR: Telefon numarasi gecersiz)",
+      "INV-BE-097 Consent value must be true (TR: Onay degeri true olmali)",
+      "INV-BE-098 Rate limit exceeded (TR: Cok fazla istek, sonra deneyiniz)",
+      "INV-BE-099 Tenant landing settings not configured (TR: Tenant ayarlari tamamlanmadi)",
+      "INV-AT-068 Welcome flow slug not found (TR: Hosgeldin flow bulunamadi)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Tum validation path'leri structured error code + user-facing TR mesaj + log. Welcome flow trigger BackgroundJob.Enqueue failure-best-effort; lead yaratma success (201 return) ama warn log INV-AT-068 tenant admin'e sorunu gosterir. Rate limit 429 + Retry-After actionable. Duplicate merge response body'de explicit `duplicate:true` flag (client bilinclenir). API key rotation grace window expire -> 401 net (silent success YOK)."
+  },
+  "aha_moments": [
+    {
+      "category": "SALES",
+      "user_pain": "Tenant admin 'kendi landing page'imi kullanabilir miyim?' sorusuna bugune kadar 'hayir, Invekto landing' cevabiniyordu. Landing rebranding zorlamasi satis objection kaynagi.",
+      "suggestion": "Generic webhook + per-tenant field map -> tenant kendi landing/form'unu tutar, sadece endpoint + API key + map yapilandirmasi. Rebrandsiz, kod degisikligi yok.",
+      "aha_moment": "Tenant demo'da kendi landing page screenshot'ini gosteriyor: 'iste site'm, hicbir yerde Invekto gorunmuyor, ama lead'ler Invekto'ya akiyor.' Satis kapanisi +1 kolaylik."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Tenant landing form submission'larini tek-yonlu POST'la sirayla kaybetmek istemiyor — 30g icinde ayni telefon farkli UTM/session ile gelirse 'bu lead kimden? ikinci reklam mi calisti?' diye sorabiliyor.",
+      "suggestion": "Duplicate merge: intake_metadata JSONB append (timestamp + utm + referrer snapshot), source_slug updated (son kaynak kazanir), welcome flow re-trigger 30g icinde SKIP (spam yok). Tenant bir leadi tam gormus olur; farkli kaynaklar metadata'da traceable.",
+      "aha_moment": "Tenant Dashboard'da leadi acip 'intake_events' listesini gorur: Gun 1 meta reklam, Gun 5 Google reklam, Gun 12 direct. Attribution sorusu netlesir."
+    },
+    {
+      "category": "UX",
+      "user_pain": "Tenant admin API key rotate etmek istediginde 'yeni key deploy etmeden eski key kapanirsa landing 401 verir, leadler kaybolur' diye korkuyor. Bu nedenle rotation yapmiyorlar — eski key sonsuz live kaliyor, security risk.",
+      "suggestion": "24h grace period: yeni key uretilir + eski key 24h hala gecerli. Tenant deploy window'unda iki key paralel isler. Grace dolunca auto-invalidate.",
+      "aha_moment": "Tenant 'key rotate' butonuna tikliyor, gozu kapali, landing o sirada deploy ediyor, 24h icinde ne olsa eski tekrar calisiyor. Security rotation sebeplenmis bir is haline geliyor."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Tenant her intake sonrasi 'welcome mesaji ne zaman gitti?' diye bekliyor — sync endpoint Automation service'e HTTP call atsaydi 300-500ms latency + Automation down ise 503 error tenant-facing olurdu.",
+      "suggestion": "Hangfire BackgroundJob.Enqueue: intake endpoint 201'i hemen doner (welcome_flow_enqueued=true ack), actual flow Automation'da async + retriable. Tenant latency icin blocking yok.",
+      "aha_moment": "Landing form submit -> 201 <80ms. Tenant 'hizli' diye gorur; welcome mesaji 2-5s icinde lead'in WA'sine duser. Latency hissi split: form fast, message naturally delayed (gercekci)."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Tenant admin 'field map'imi yanlis ayarladim, landing'den ad yerine telefon geldi' diye destek acar. Hata hemen gorulmez, gunlerce yanlis lead'ler birikir.",
+      "suggestion": "Field map validation: zorunlu canonical eksikse 400 INV-BE-095 explicit (`name alani eslenmedi`). Phone parse fail 400 INV-BE-096. Consent missing 400 INV-BE-094. Her hata actionable TR mesaj + field-name.",
+      "aha_moment": "Tenant ilk test POST'ta 400 aliyor 'name alani eslenmedi' — hemen field map'i duzeltir; production'a gecmeden hata yakalanir. Destek ticket yok."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "mcp__codex-review__codex_review (gpt-5.4-2026-03-05)",
+    "received_at": "2026-04-18T17:55:00+03:00",
+    "updated_by": "Codex iteration 4 PASS",
+    "updated_at": "2026-04-18T17:55:00+03:00",
+    "raw_text": "iter 4 PASS — all 12 CQ gates + 5 CoVe verification PASS, blocking_issues = []. Iteration log preserves the resolution arc iter 0 (FAIL) -> iter 1 (FAIL) -> iter 2 (FAIL) -> iter 3 (FAIL) -> iter 4 (PASS).",
+    "code_quality_gate": {
+      "CQ1": "PASS (iter 4) — dedicated INV-BE-109 for empty body + aligned contract",
+      "CQ2": "PASS (iter 1+) — typed catches, no bare catch(Exception) remains",
+      "CQ3": "PASS (all iters)",
+      "CQ4": "PASS (all iters)",
+      "CQ5": "PASS (iter 1+) — typed catches + parameterized Npgsql + snake_case",
+      "CQ6": "PASS (iter 4) — concurrency-hard cap + Sweep() auto-wired as 5-min RecurringJob",
+      "CQ7": "PASS (all iters)",
+      "CQ8": "PASS (iter 2+) — all additive; JwtAuthMiddleware overload preserves prior signature",
+      "CQ9": "PASS (iter 4) — rate-limiter comment matches wired behavior; tenant scoping clean",
+      "CQ10": "PASS (iter 4) — contract error_responses aligned with runtime (INV-DB-001, INV-BE-108, INV-BE-109)",
+      "CQ11": "PASS (all iters) — schema/code symmetric",
+      "CQ12": "PASS (iter 4) — INV-BE-100..109 specific codes, correct HTTP status mapping"
+    },
+    "cove_verification": {
+      "Q1": "PASS (all iters) — JWT exclusion narrow, intake does its own auth",
+      "Q2": "PASS (all iters) — CTE UPSERT preserves tenant scope and merges metadata",
+      "Q3": "PASS (iter 2+) — best-effort enqueue documented + warnings channel explicit",
+      "Q4": "PASS (iter 4) — concurrency-hard cap + auto-sweep recurring job",
+      "Q5": "PASS (all iters) — dedicated table with correct FK/indexes/GRANT"
+    },
+    "blocking_issues": [
+      "iter 0 CQ5: bare catch(Exception) on Hangfire enqueue path -> FIXED iter 1 (typed: BackgroundJobClientException + NpgsqlException + InvalidOperationException)",
+      "iter 0 CQ1/8/9/10/Q3: welcome_flow_enqueued flag implies delivery despite placeholder job -> FIXED iter 1 (renamed to welcome_flow_enqueued; contract + DTO + service + ac_verification all aligned; scheduling-not-delivery semantics documented)",
+      "iter 0 CQ12: INV-GEN-003 for DB errors + INV-AT-068 misused for enqueue infra -> FIXED iter 1 (DB paths use INV-DB-001; enqueue infra uses INV-JOB-001 storage / INV-JOB-002 handler-unresolved)",
+      "iter 1 CQ10/12: contract JSON still advertised INV-GEN-003 for 503 while runtime returned INV-DB-001 -> FIXED iter 2 (contract 503_db_unreachable = INV-DB-001 with TR user message)",
+      "iter 1 CQ8: plan VQ Q2 text still referenced old welcome_flow_triggered name -> FIXED iter 2 (global rename to welcome_flow_enqueued in plan text)",
+      "iter 1 CQ6/Q4: ApiKeyRateLimiter unbounded bucket growth under unknown-key brute force -> FIXED iter 2 (MaxTrackedKeys=10k cap denies new allocations once saturated + Sweep() method removes drained buckets for recurring-job maintenance path)",
+      "iter 1 CQ1/2: enqueue failure suppressed from caller -> FIXED iter 2 (LeadIntakeResponse gains nullable Warnings array; INV-JOB-001/002 appear there when Hangfire enqueue fails)",
+      "iter 1 CQ9: contract claimed INV-AT-068 fired on missing slug from Backend but Backend always falls back to 'welcome_default' -> FIXED iter 2 (contract welcome_flow_trigger block clarifies: Backend always sends non-empty slug; INV-AT-068 is Automation-worker defensive path; new enqueue_failure_behavior block documents caller-visible Warnings channel)",
+      "iter 1 Q3: placeholder Automation job — Q-approved DEV-4 scope boundary, real dispatch lands in Chunk B. Not fixed in iter 2 (out of Chunk A scope per plan); iter-2 changes remove the chain of misleading surfaces around the placeholder so the placeholder itself is the only remaining critique.",
+      "iter 2 CQ6/Q4: ApiKeyRateLimiter cap race (concurrent Count<cap threads could both insert) -> FIXED iter 3 (admission now serialized on `lock (_buckets)` with a double-checked-insert; hot path for known keys still skips the dictionary-wide lock and uses only the per-bucket lock).",
+      "iter 2 CQ5: LeadIntakeResponse XML comment cited <see cref=LandingFieldMap/> for dup window override but source is tenant_landing_settings.intake_dup_window_days -> FIXED iter 3 (comment rewritten).",
+      "iter 2 CQ1/10/12: JsonException on malformed landing_field_map mapped to INV-BE-107 (semantically 'row missing') + contract didn't advertise 500 path -> FIXED iter 3 (new INV-BE-108 'landing_field_map malformed' code; service now returns INV-BE-108 on JsonException; arch/errors.md + ErrorCodes.cs register new code; contract endpoint.response adds '500'; error_responses gains explicit 500_field_map_malformed entry).",
+      "iter 2 CQ9: migration + pkt6b1 canonical commentary claimed intake_metadata accumulates raw_fields/ip_hash but implementation does not store them -> FIXED iter 3 (both SQL commentary blocks rewritten to describe actual snapshot shape: source_slug + submitted_at + referer + utm + resolved; raw_fields + ip_hash explicitly labeled as intentionally-not-captured for privacy/scope and noted as TFM Sprint C concern).",
+      "iter 2 Q3 VQ text stale references INV-AT-068 for enqueue failure -> FIXED iter 3 (VQ Q3 rewritten to reflect iter-2 INV-JOB-001/002 behavior).",
+      "iter 3 CQ1/10/12: null/empty request body was reported as INV-BE-103 field-mapping error -> FIXED iter 4 (new INV-BE-109 LeadIntakePayloadEmpty code + dedicated TR user message; arch/errors.md + ErrorCodes.cs registered; contract 400_payload_empty entry added; LeadIntakeService payload-presence branch updated).",
+      "iter 3 CQ6/Q4: ApiKeyRateLimiter class comment claimed drained buckets evaporate but Sweep() was not wired, so bounded-memory claim didn't match runtime -> FIXED iter 4 (Program.cs registers RecurringJob.AddOrUpdate<ApiKeyRateLimiter>(\"lead-intake:rate-limiter-sweep\", l => l.SweepNow(), \"*/5 * * * *\") so every five minutes drained buckets are removed; new ApiKeyRateLimiter.SweepNow() parameterless wrapper makes the recurring job DI-friendly; class summary updated to describe the actual wired behavior)."
+    ],
+    "iteration": 4,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}

@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lead-intake-v1.json",
+  "title": "Lead Intake Webhook Contract (FEAT-LIW Chunk A)",
+  "description": "Generic tenant-landing webhook. Each tenant's landing page/form POSTs a free-form payload; Invekto maps tenant fields to canonical fields via tenant_landing_settings.landing_field_map, normalizes phone to E.164, checks consent, then UPSERTs a lead and (for fresh leads) enqueues the welcome flow.",
+  "version": "1.0",
+
+  "endpoint": {
+    "method": "POST",
+    "path": "/api/v1/leads/intake/{source_slug}",
+    "auth": "X-Invekto-Api-Key header (per-tenant pre-shared key, 24h grace rotation)",
+    "response": "201 Created | 400 | 401 | 429 | 500 | 503"
+  },
+
+  "path_params": {
+    "source_slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,49}$",
+      "description": "Lowercase slug describing the source surface (e.g. 'ireland-roadshow-lp'). Stored on lead.source_slug; previous value overwritten on re-submission."
+    }
+  },
+
+  "headers": {
+    "required": {
+      "X-Invekto-Api-Key": "Per-tenant API key; rotatable with 24h grace on old key",
+      "Content-Type": "application/json"
+    },
+    "optional": {
+      "X-Request-Id": "Correlation id (auto-generated if missing)"
+    }
+  },
+
+  "request": {
+    "type": "object",
+    "required": ["fields"],
+    "properties": {
+      "fields": {
+        "type": "object",
+        "description": "Free-form source fields. Keys are the tenant's own field names; values are resolved to canonical via landing_field_map.",
+        "additionalProperties": { "type": ["string", "number", "boolean", "null"] }
+      },
+      "utm": {
+        "type": "object",
+        "description": "UTM passthrough (merged into intake_metadata.utm).",
+        "properties": {
+          "utm_source":   { "type": "string" },
+          "utm_medium":   { "type": "string" },
+          "utm_campaign": { "type": "string" },
+          "utm_term":     { "type": "string" },
+          "utm_content":  { "type": "string" }
+        }
+      },
+      "referer": { "type": "string", "description": "Page URL (stored in intake_metadata)" },
+      "submitted_at": { "type": "string", "format": "date-time", "description": "Tenant-side submission timestamp (optional; server NOW() used if missing)" }
+    }
+  },
+
+  "canonical_fields": {
+    "description": "landing_field_map resolves source keys -> these canonical field names.",
+    "required": ["name", "phone", "consent"],
+    "optional": ["email", "custom_1", "custom_2", "custom_3", "custom_4", "custom_5", "custom_6", "custom_7", "custom_8", "custom_9", "custom_10"],
+    "phone_country_hint": "Optional map entry 'phone.country_hint' (ISO 3166-1 alpha-2) gives libphonenumber a parse hint when the source value is in national format."
+  },
+
+  "examples": {
+    "request": {
+      "fields": {
+        "ad_soyad": "Nur Seyit",
+        "telefon": "+905551234567",
+        "eposta": "nur@example.com",
+        "kvkk_onay": true,
+        "sehir": "Dublin"
+      },
+      "utm": {
+        "utm_source": "meta",
+        "utm_medium": "cpc",
+        "utm_campaign": "ireland_roadshow_q2"
+      },
+      "referer": "https://dent-adavista.ie/roadshow-ireland",
+      "submitted_at": "2026-04-18T13:22:00Z"
+    },
+    "response_201_fresh": {
+      "lead_id": 4201,
+      "duplicate": false,
+      "welcome_flow_enqueued": true,
+      "warnings": null
+    },
+    "response_201_duplicate_within_window": {
+      "lead_id": 4201,
+      "duplicate": true,
+      "welcome_flow_enqueued": false,
+      "warnings": null
+    },
+    "response_201_fresh_enqueue_degraded": {
+      "lead_id": 4202,
+      "duplicate": false,
+      "welcome_flow_enqueued": false,
+      "warnings": ["INV-JOB-001"]
+    }
+  },
+
+  "response_field_semantics": {
+    "lead_id":             "Invekto-side lead row id (stable across subsequent submissions under merge-by-phone).",
+    "duplicate":           "true when an existing lead row matched within the tenant's dup window (merge applied, no welcome re-enqueue). false when fresh or outside window (re-engagement path).",
+    "welcome_flow_enqueued": "true only when Hangfire accepted the welcome-flow job (duplicate=false AND a welcome slug resolved AND enqueue succeeded). Reflects scheduling, NOT message delivery — the worker dispatches asynchronously on the `automation` queue with its own retries. Chunk A wires the enqueue path; the worker-side dispatch implementation lands in Chunk B."
+  },
+
+  "error_responses": {
+    "400_payload_empty":        { "error_code": "INV-BE-109", "message": "Istek govdesi bos veya eksik; fields alani zorunlu" },
+    "400_slug_invalid":         { "error_code": "INV-BE-101", "message": "Kaynak tanimi gecersiz" },
+    "400_field_mapping":        { "error_code": "INV-BE-103", "message": "Alan eslemesi eksik: <field>" },
+    "400_phone_invalid":        { "error_code": "INV-BE-104", "message": "Telefon numarasi gecersiz" },
+    "400_consent_missing":      { "error_code": "INV-BE-102", "message": "Onay alani zorunlu" },
+    "400_consent_not_true":     { "error_code": "INV-BE-105", "message": "Onay degeri true olmali" },
+    "401_api_key_invalid":      { "error_code": "INV-BE-100", "message": "Gecersiz API anahtari" },
+    "429_rate_limit":           { "error_code": "INV-BE-106", "message": "Cok fazla istek, sonra deneyiniz", "headers": { "Retry-After": "<seconds>" } },
+    "500_tls_not_configured":   { "error_code": "INV-BE-107", "message": "Tenant ayarlari tamamlanmadi" },
+    "500_field_map_malformed":  { "error_code": "INV-BE-108", "message": "Tenant alan eslemesi bozuk, yetkili ile iletisime gecin" },
+    "503_db_unreachable":       { "error_code": "INV-DB-001", "message": "Veritabani baglantisi kurulamadi" }
+  },
+
+  "response_warnings": {
+    "description": "Non-fatal side-effect failures surfaced on a 201 response in the `warnings` array. Primary outcome (lead creation/merge) still succeeded; the caller can log/monitor these codes for ops visibility without polling server logs.",
+    "codes": {
+      "INV-JOB-001": "Hangfire storage (or enqueue) rejected the welcome-flow job. Lead was created; the welcome message will not fire until the tenant retries or Hangfire storage recovers.",
+      "INV-JOB-002": "DI/configuration error prevented the welcome-flow job handler from resolving. Lead was created; infra fix required to resume welcome automation."
+    }
+  },
+
+  "rate_limit": {
+    "algorithm": "in-memory sliding window (v1)",
+    "scope": "per API key",
+    "limit": "100 requests / 60s",
+    "retry_after_header": "seconds until oldest request ages out (clamped to [1, 60])",
+    "v2_note": "Redis-backed distributed counter for multi-instance scale-out"
+  },
+
+  "welcome_flow_trigger": {
+    "condition": "duplicate=false AND (lead is freshly created OR exited dup window)",
+    "mechanism": "Backend BackgroundJob.Enqueue<TriggerWelcomeFlowJob>(... ) on Hangfire 'automation' queue",
+    "slug_fallback": "tenant_landing_settings.welcome_flow_slug -> 'welcome_default' (Backend always emits a non-empty slug on enqueue; 'welcome_default' is a platform contract that Automation must resolve or raise INV-AT-068 worker-side).",
+    "enqueue_failure_behavior": "lead is still created; `welcome_flow_enqueued` returns false AND the response `warnings` array carries the Hangfire infra code (INV-JOB-001 storage, INV-JOB-002 handler-unresolved) so the caller has an explicit signal without reading server logs.",
+    "worker_side_defensive": "TriggerWelcomeFlowJob guards against an empty slug (defensive; Backend never sends one) and emits INV-AT-068 if reached."
+  }
+}

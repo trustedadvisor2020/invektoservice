@@ -125,6 +125,14 @@ CREATE TABLE IF NOT EXISTS leads (
     -- FEAT-WTP (migration 020-leads-faq-rotation-state.sql): per-group-tag variant counter.
     -- Shape: { "<group_tag>": <next_variant_index:int> }. Empty map = no rotation seen.
     faq_rotation_state JSONB NOT NULL DEFAULT '{}'::jsonb,
+    -- FEAT-LIW (migration 021-leads-intake-tenant-landing-settings.sql): per-submission attribution.
+    -- intake_metadata accumulates submissions via JSONB `||` concat. Each submission adds a new
+    -- top-level key (submission_<iso8601>) containing { source_slug, submitted_at, referer, utm,
+    -- resolved }. Raw source_fields and ip_hash are intentionally NOT captured (privacy + scope;
+    -- TFM Sprint C will promote mapped customs to dedicated columns).
+    -- source_slug overlays `source` with the latest intake path param (tenant's landing surface).
+    intake_metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    source_slug     VARCHAR(50),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT fk_leads_tenant
