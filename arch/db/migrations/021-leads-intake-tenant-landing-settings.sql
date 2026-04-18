@@ -45,7 +45,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_tls_api_key_old
     ON tenant_landing_settings(landing_api_key_old)
     WHERE landing_api_key_old IS NOT NULL;
 
-GRANT ALL ON tenant_landing_settings TO invekto_app;
+GRANT ALL ON tenant_landing_settings TO invekto;
 
 -- ============================================================
 -- 2. leads: per-submission attribution metadata + latest source_slug
