@@ -517,7 +517,15 @@ if (jwtValidator != null)
         "/api/v1/attribution/",
         "/api/v1/leads",
         "/api/v1/onboarding/",
-        "/api/v1/zoho/"
+        "/api/v1/zoho/",
+        // FEAT-LIW Chunk B: service-to-service wa-direct internal endpoint REQUIRES JWT.
+        // Automation generates a per-call service JWT (JwtGenerator.GenerateServiceToken
+        // with tenant_id claim) so the existing JWT middleware enforces tenant binding;
+        // the endpoint additionally checks the X-Internal-Service-Token header (defense
+        // in depth — proves the caller is a peer Invekto service, not just any client
+        // that happens to know how to mint a JWT) and validates that the JWT's tenant_id
+        // claim matches the payload tenant_id. Iter 2 reinforcement of CQ9.
+        "/api/internal/"
     };
     var jwtExcludedPrefixes = new[] { "/api/v1/leads/intake/" };
     app.UseJwtAuth(jwtValidator, jwtLogger, webhookIpSet, jwtRequiredPrefixes, jwtExcludedPrefixes);
@@ -4970,6 +4978,83 @@ app.MapPost("/api/v1/leads/intake/{source_slug}", async (
 
     if (outcome.StatusCode == 429 && outcome.RetryAfterSeconds is int retry)
         ctx.Response.Headers["Retry-After"] = retry.ToString();
+
+    if (outcome.Success != null)
+        return Results.Json(outcome.Success, statusCode: outcome.StatusCode);
+
+    return Results.Json(outcome.Error, statusCode: outcome.StatusCode);
+});
+
+// FEAT-LIW Chunk B: WA-direct service-to-service internal intake. Called by
+// Automation when an inbound WA message comes from a phone Backend doesn't yet
+// know about. Auth is two-layered (iter 2 fix for CQ9 + CQ12): (1) the standard
+// JWT middleware runs on /api/internal/ and sets TenantContext from the JWT
+// tenant_id claim — Automation mints these per-call via JwtGenerator
+// .GenerateServiceToken so each request is bound to the tenant on whose behalf
+// it is acting; (2) IntakeInternalAuth.Validate cross-checks the
+// X-Internal-Service-Token header against InternalServices:SharedSecret to
+// prove the caller is a peer Invekto service (not an arbitrary holder of a
+// valid tenant JWT). The endpoint then verifies that payload.tenant_id matches
+// TenantContext.TenantId before write — closing the "caller-supplied tenant_id"
+// gap Codex flagged. Response envelope mirrors the rest of /api/v1/leads/* —
+// 4xx/5xx use ErrorResponse.Create with the standardized INV-BE-110 user
+// message from arch/errors.md (raw auth.Reason stays in server logs only,
+// never reaches the client).
+app.MapPost("/api/internal/leads/intake/wa-direct", async (
+    WaDirectIntakeRequest? request,
+    HttpContext ctx,
+    IConfiguration config,
+    JsonLinesLogger jsonLog,
+    LeadIntakeService intakeService) =>
+{
+    var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    const string standardizedAuthMessage = "Servisler arasi yetki gecersiz veya yapilandirilmamis.";
+
+    // Layer 2: peer-service identity proof. Layer 1 (JWT tenant binding) was
+    // already enforced by UseJwtAuth on the /api/internal/ prefix above; if we
+    // reach this handler, TenantContext is present and the tenant_id claim is
+    // signature-validated. The shared-secret header makes it harder for a
+    // tenant-scoped JWT (e.g. a leaked Dashboard token) to call this endpoint
+    // by accident — only Invekto services hold the secret.
+    var auth = Invekto.Backend.Services.Internal.IntakeInternalAuth.Validate(ctx, config);
+    if (!auth.Ok)
+    {
+        jsonLog.SystemWarn(
+            $"[{ErrorCodes.LeadIntakeInternalAuthInvalid}] /api/internal/leads/intake/wa-direct: " +
+            $"internal-auth check failed (status={auth.StatusCode}, reason='{auth.Reason}', requestId={rid})");
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.LeadIntakeInternalAuthInvalid, standardizedAuthMessage, "-"),
+            statusCode: auth.StatusCode);
+    }
+
+    // JWT-bound tenant binding: payload tenant_id MUST match the signed JWT
+    // claim. This is the iter 2 reinforcement for CQ9 — even with a valid
+    // shared-secret + a valid tenant JWT, the caller cannot write to a
+    // different tenant than the one they authenticated for.
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+    {
+        // Belt-and-braces: JWT middleware should have set this; if it didn't,
+        // refuse the write rather than fall through to caller-trust mode.
+        jsonLog.SystemError(
+            $"[{ErrorCodes.LeadIntakeInternalAuthInvalid}] /api/internal/leads/intake/wa-direct: " +
+            $"TenantContext missing despite JWT-required prefix (middleware misconfiguration; requestId={rid})");
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.LeadIntakeInternalAuthInvalid, standardizedAuthMessage, "-"),
+            statusCode: 401);
+    }
+
+    if (request != null && request.TenantId != tenantContext.TenantId)
+    {
+        jsonLog.SystemWarn(
+            $"[{ErrorCodes.LeadIntakeInternalAuthInvalid}] /api/internal/leads/intake/wa-direct: " +
+            $"tenant_id mismatch: payload={request.TenantId} jwt_claim={tenantContext.TenantId} requestId={rid}");
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.LeadIntakeInternalAuthInvalid, standardizedAuthMessage, "-"),
+            statusCode: 403);
+    }
+
+    var outcome = await intakeService.IntakeWaDirectAsync(request, rid, ctx.RequestAborted);
 
     if (outcome.Success != null)
         return Results.Json(outcome.Success, statusCode: outcome.StatusCode);

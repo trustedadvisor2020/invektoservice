@@ -138,8 +138,86 @@
   "welcome_flow_trigger": {
     "condition": "duplicate=false AND (lead is freshly created OR exited dup window)",
     "mechanism": "Backend BackgroundJob.Enqueue<TriggerWelcomeFlowJob>(... ) on Hangfire 'automation' queue",
-    "slug_fallback": "tenant_landing_settings.welcome_flow_slug -> 'welcome_default' (Backend always emits a non-empty slug on enqueue; 'welcome_default' is a platform contract that Automation must resolve or raise INV-AT-068 worker-side).",
+    "slug_fallback": "tenant_landing_settings.welcome_flow_slug -> 'welcome_default' (Backend always emits a non-empty slug on enqueue; 'welcome_default' is a platform contract that Automation must resolve or raise INV-AT-068/069 worker-side).",
     "enqueue_failure_behavior": "lead is still created; `welcome_flow_enqueued` returns false AND the response `warnings` array carries the Hangfire infra code (INV-JOB-001 storage, INV-JOB-002 handler-unresolved) so the caller has an explicit signal without reading server logs.",
-    "worker_side_defensive": "TriggerWelcomeFlowJob guards against an empty slug (defensive; Backend never sends one) and emits INV-AT-068 if reached."
+    "worker_side_defensive": "TriggerWelcomeFlowJob guards against an empty slug (defensive; Backend never sends one) and emits INV-AT-068 if reached. Chunk B adds the real dispatch path: slug → AutomationRepository.GetFlowByNameAndTenantAsync (chatbot_flows.flow_name treated as slug, no migration); a missing/inactive row emits INV-AT-069 and exits without retry."
+  },
+
+  "wa_direct_internal_endpoint": {
+    "_chunk": "FEAT-LIW Chunk B",
+    "purpose": "Service-to-service entry point used by Automation when an inbound WhatsApp message arrives from a phone Backend doesn't yet know about. Caller is the Automation service (the AutomationOrchestrator wa-direct hook); end users never reach this endpoint. Implied consent under GDPR Recital 32 (user-initiated contact = clear affirmative action), so no consent field is required — distinct from the public landing endpoint.",
+    "endpoint": {
+      "method": "POST",
+      "path": "/api/internal/leads/intake/wa-direct",
+      "auth": "X-Internal-Service-Token header; constant-time compare against InternalServices:SharedSecret config value (mirrors Zoho internal-auth pattern).",
+      "response": "201 Created | 400 | 401 | 403 | 500 | 503"
+    },
+    "headers": {
+      "required": {
+        "X-Internal-Service-Token": "Shared cluster secret; rotate on both Backend and Automation appsettings + redeploy.",
+        "Content-Type": "application/json"
+      },
+      "optional": {
+        "X-Request-Id": "Correlation id (auto-generated if missing)"
+      }
+    },
+    "request": {
+      "type": "object",
+      "required": ["tenant_id", "phone"],
+      "properties": {
+        "tenant_id":    { "type": "integer", "description": "Resolved by Automation from the inbound TenantContext." },
+        "phone":        { "type": "string",  "description": "Sender phone in any format; Backend normalizes via libphonenumber-csharp." },
+        "profile_name": { "type": ["string", "null"], "description": "WhatsApp profile name when present." },
+        "referer":      { "type": ["string", "null"], "description": "WA click-to-chat referrer (e.g. ctwa_clid for Meta CTW ads). Stored in intake_metadata.referer when present; absent fields are silently omitted (no synthetic placeholder)." },
+        "received_at":  { "type": ["string", "null"], "format": "date-time", "description": "Inbound message timestamp (server NOW() used when null)." }
+      }
+    },
+    "examples": {
+      "request": {
+        "tenant_id": 5050,
+        "phone": "+353851234567",
+        "profile_name": "John O'Brien",
+        "referer": "ctwa_clid_abc123"
+      },
+      "response_201_new": {
+        "lead_id": 4287,
+        "is_new": true,
+        "welcome_flow_enqueued": true,
+        "warnings": null
+      },
+      "response_201_within_window": {
+        "lead_id": 4287,
+        "is_new": false,
+        "welcome_flow_enqueued": false,
+        "warnings": null
+      },
+      "response_201_new_enqueue_degraded": {
+        "lead_id": 4288,
+        "is_new": true,
+        "welcome_flow_enqueued": false,
+        "warnings": ["INV-JOB-001"]
+      }
+    },
+    "response_field_semantics": {
+      "lead_id": "Backend-side lead row id. Stable across subsequent inbounds via UNIQUE(tenant_id, phone).",
+      "is_new":  "true on a brand-new INSERT or out-of-window re-engagement (UPSERT happened); false on an in-window short-circuit (no UPSERT, no metadata churn, no welcome). Use this to tell whether welcome activity is expected.",
+      "welcome_flow_enqueued": "true only when is_new=true AND a welcome slug resolved AND Hangfire accepted the job. Reflects scheduling, not delivery — same semantic as the landing endpoint."
+    },
+    "error_responses": {
+      "400_payload_empty":     { "error_code": "INV-BE-109", "message": "Istek govdesi bos veya eksik; tenant_id zorunlu" },
+      "400_phone_invalid":     { "error_code": "INV-BE-111", "message": "Telefon numarasi eksik veya gecersiz" },
+      "401_token_missing":     { "error_code": "INV-BE-110", "message": "Servisler arasi yetki gecersiz veya yapilandirilmamis" },
+      "403_token_mismatch":    { "error_code": "INV-BE-110", "message": "Servisler arasi yetki gecersiz veya yapilandirilmamis" },
+      "500_secret_unconfigured": { "error_code": "INV-BE-110", "message": "Servisler arasi yetki gecersiz veya yapilandirilmamis" },
+      "503_db_unreachable":    { "error_code": "INV-DB-001", "message": "Veritabani baglantisi kurulamadi" }
+    },
+    "duplicate_window": "Reuses tenant_landing_settings.intake_dup_window_days (default 30 days, tenant override). One configuration knob covers both landing and wa-direct so attribution dashboards stay coherent.",
+    "channel_attribution": "On a fresh INSERT or out-of-window re-engagement, `source` is set to 'whatsapp' and `source_slug` to 'wa-direct'. Cross-channel dup (e.g. landing form 5 days ago, then WA today) overwrites source_slug to the latest channel; full per-event history (channel, slug, timestamp) is preserved in intake_metadata.submission_<iso> snapshots so first-touch attribution can be reconstructed by iterating the JSONB. Welcome flow is suppressed within the dup window (no double-onboarding).",
+    "rate_limit": "None applied (internal trusted caller). Automation can backoff on its own if Backend signals 5xx.",
+    "intake_metadata_shape": {
+      "last_submission_at": "ISO timestamp of most recent submission (this call when is_new=true).",
+      "last_source_slug":   "'wa-direct' on this path.",
+      "submission_<iso>":   { "source_slug": "wa-direct", "channel": "whatsapp", "submitted_at": "<iso>", "referer": "<optional>", "wa_profile_name": "<optional>" }
+    }
   }
 }

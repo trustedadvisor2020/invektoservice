@@ -34,6 +34,7 @@ public sealed class AutomationOrchestrator
     private readonly VipDetectionService _vipDetection;
     private readonly ReviewRescueService _reviewRescue;
     private readonly JwtGenerator _jwtGenerator;
+    private readonly BackendIntakeClient _backendIntake;
     private readonly JsonLinesLogger _logger;
 
     // GR-2.6: KVKK health tenant cache (tenant_id -> isHealthTenant)
@@ -57,6 +58,7 @@ public sealed class AutomationOrchestrator
         VipDetectionService vipDetection,
         ReviewRescueService reviewRescue,
         JwtGenerator jwtGenerator,
+        BackendIntakeClient backendIntake,
         JsonLinesLogger logger)
     {
         _repo = repo;
@@ -71,6 +73,7 @@ public sealed class AutomationOrchestrator
         _vipDetection = vipDetection;
         _reviewRescue = reviewRescue;
         _jwtGenerator = jwtGenerator;
+        _backendIntake = backendIntake;
         _logger = logger;
     }
 
@@ -132,6 +135,65 @@ public sealed class AutomationOrchestrator
                 await SendHandoffAsync(requestId, tenantId, chatId, message.Time,
                     "Chatbot akisi tanimlanmamis, mesaj temsilciye yonlendiriliyor", 0, callbackUrl, ct);
                 return true;
+            }
+
+            // FEAT-LIW Chunk B: WA-direct lead intake hook. Every inbound that
+            // makes it past flow routing (so handoff messages are excluded — no
+            // lead row when chat won't run) gets registered with Backend. The
+            // call is idempotent server-side: EnsureLeadForWaDirectAsync probes
+            // the dup window in a single CTE and short-circuits when a recent
+            // row exists, so this is safe to fire on every message — repeat
+            // inbounds add no row churn beyond a tenant-scoped index seek.
+            // Failure is best-effort: leadId stays null, INV-AT-070 is logged
+            // by BackendIntakeClient, and the flow path proceeds unchanged so
+            // the user still gets a chat reply. The Stopwatch already running
+            // since line 89 captures any added latency in the existing
+            // StepInfo emission downstream — no separate timing knob needed.
+            int? waDirectLeadId = null;
+            if (!string.IsNullOrWhiteSpace(phone))
+            {
+                var intakePayload = new Invekto.Shared.Contracts.Leads.WaDirectIntakeRequest
+                {
+                    TenantId = tenantId,
+                    Phone = phone,
+                    ProfileName = message.SenderName,
+                    Referer = null, // INMA inbound payload doesn't currently carry ctwa_clid; left null intentionally so reports don't see synthetic attribution.
+                    ReceivedAt = null // message.Time is a Unix epoch long with ambiguous unit (s vs ms across senders); Backend defaults to NOW() when null, which is good enough for the second-resolution intake_metadata snapshot.
+                };
+                var intakeResult = await _backendIntake.IntakeAsync(intakePayload, requestId, ct);
+                waDirectLeadId = intakeResult?.LeadId;
+                if (intakeResult != null)
+                {
+                    // Correlation log only — flow execution does not yet bind
+                    // lead_id into FlowEngineV2 context (Chunk C will wire
+                    // {{lead.*}} substitution); for now the audit trail in logs
+                    // + intake_metadata is enough for ops to join. The
+                    // non-null check here (instead of the indirect
+                    // `waDirectLeadId.HasValue` we previously used) keeps the
+                    // analyzer happy without any null-forgiving operator —
+                    // intakeResult.IsNew / .WelcomeFlowEnqueued are now
+                    // statically known to be safe accesses.
+                    _logger.StepInfo(
+                        $"WA-direct intake: tenant={tenantId} phone={phone} lead={intakeResult.LeadId} " +
+                        $"isNew={intakeResult.IsNew} welcomeEnqueued={intakeResult.WelcomeFlowEnqueued}",
+                        requestId);
+                }
+                else
+                {
+                    // Iter 2 fix for CQ1+CQ2: BackendIntakeClient already logs the
+                    // transport-level reason (HTTP code / parse error / timeout)
+                    // under INV-AT-070, but that log sits in Automation's logs
+                    // without orchestrator context (tenant/phone/chat). This
+                    // call-site warn ensures an ops query for "why was no lead
+                    // created for chat X?" returns a single line with the full
+                    // join key, even when the upstream log was rotated or the
+                    // operator is grepping at the message-pipeline level.
+                    _logger.StepWarn(
+                        $"[{ErrorCodes.AutomationBackendIntakeUnavailable}] WA-direct intake skipped: " +
+                        $"tenant={tenantId} chat={chatId} phone={phone} (Backend intake returned no result; " +
+                        $"chat reply path continues with leadId=null)",
+                        requestId);
+                }
             }
 
             // Version dispatch: check flow_config.version

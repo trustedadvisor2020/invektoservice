@@ -48,6 +48,41 @@ public sealed class AutomationRepository
     }
 
     /// <summary>
+    /// FEAT-LIW Chunk B: resolve a welcome-flow slug to a flow_config + flow_id.
+    /// chatbot_flows has no dedicated slug column today, so flow_name is treated
+    /// as the slug — the operational contract Q chose over a migration. Returns
+    /// null when no row matches OR the matching row is inactive (a tenant who
+    /// renames or disables the welcome flow gets a structured warn from
+    /// TriggerWelcomeFlowJob, never a stuck queue). Case-sensitive match: slugs
+    /// stored in tenant_landing_settings.welcome_flow_slug must round-trip
+    /// verbatim with chatbot_flows.flow_name.
+    /// Schema reference: chatbot_flows is defined in arch/db/automation.sql:10-22
+    /// (flow_id SERIAL PK, tenant_id INT, flow_name VARCHAR(200), flow_config JSONB,
+    /// is_active BOOLEAN). welcome_flow_slug is read from
+    /// tenant_landing_settings.welcome_flow_slug (arch/db/tenant-landing-settings.sql).
+    /// </summary>
+    public async Task<(string FlowConfigJson, int FlowId)?> GetFlowByNameAndTenantAsync(
+        int tenantId, string flowName, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT flow_config::text, flow_id
+            FROM chatbot_flows
+            WHERE tenant_id = @tid AND flow_name = @name AND is_active = true
+            LIMIT 1";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("name", flowName);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        if (!await reader.ReadAsync(ct))
+            return null;
+
+        return (reader.GetString(0), reader.GetInt32(1));
+    }
+
+    /// <summary>
     /// Check if tenant has any instance configuration records.
     /// No records = old behavior (single flow routing).
     /// </summary>

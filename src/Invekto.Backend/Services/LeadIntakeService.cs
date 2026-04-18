@@ -26,6 +26,7 @@ public sealed class LeadIntakeService
     private readonly PhoneE164Normalizer _phoneNorm;
     private readonly ApiKeyRateLimiter _limiter;
     private readonly IBackgroundJobClient _jobs;
+    private readonly TenantRegistryRepository _tenantRegistry;
     private readonly JsonLinesLogger _logger;
 
     public LeadIntakeService(
@@ -35,6 +36,7 @@ public sealed class LeadIntakeService
         PhoneE164Normalizer phoneNorm,
         ApiKeyRateLimiter limiter,
         IBackgroundJobClient jobs,
+        TenantRegistryRepository tenantRegistry,
         JsonLinesLogger logger)
     {
         _tlsRepo = tlsRepo;
@@ -43,6 +45,7 @@ public sealed class LeadIntakeService
         _phoneNorm = phoneNorm;
         _limiter = limiter;
         _jobs = jobs;
+        _tenantRegistry = tenantRegistry;
         _logger = logger;
     }
 
@@ -243,6 +246,185 @@ public sealed class LeadIntakeService
         });
     }
 
+    /// <summary>
+    /// FEAT-LIW Chunk B: WA-direct intake. Service-to-service entry point used by
+    /// Automation when an inbound WA message arrives from a phone Backend doesn't
+    /// know about. Bypasses the consent gate (user-initiated contact = implied
+    /// consent under GDPR Recital 32) and the field-map machinery (no tenant
+    /// form involved); reuses <see cref="PhoneE164Normalizer"/> and the welcome-
+    /// flow enqueue path so behaviour stays aligned with landing intake. Tenant
+    /// landing settings are best-effort: a missing row falls back to platform
+    /// defaults ('welcome_default' slug, 30-day dup window) so tenants can take
+    /// WA leads before configuring a landing page.
+    /// </summary>
+    public async Task<WaDirectOutcome> IntakeWaDirectAsync(
+        WaDirectIntakeRequest? request,
+        string requestId,
+        CancellationToken ct = default)
+    {
+        // 1. Payload presence + tenant id sanity (caller is internal, but defend
+        //    against a misconfigured Automation just the same).
+        if (request == null || request.TenantId <= 0)
+            return WaDirectOutcome.Fail(400, ErrorCodes.LeadIntakePayloadEmpty,
+                "Istek govdesi bos veya eksik; tenant_id zorunlu.");
+
+        if (string.IsNullOrWhiteSpace(request.Phone))
+            return WaDirectOutcome.Fail(400, ErrorCodes.LeadIntakeWaDirectPhoneInvalid,
+                "Telefon numarasi eksik veya gecersiz.");
+
+        // 2. Phone normalize. Country hint is null on the wa-direct path —
+        //    inbound WA traffic crosses borders unpredictably, so we let
+        //    libphonenumber try the international form first and fall through
+        //    to the IE/TR defaults baked into PhoneE164Normalizer.
+        var phoneE164 = _phoneNorm.Normalize(request.Phone, countryHint: null);
+        if (phoneE164 == null)
+            return WaDirectOutcome.Fail(400, ErrorCodes.LeadIntakeWaDirectPhoneInvalid,
+                "Telefon numarasi eksik veya gecersiz.");
+
+        // 2b. Defense-in-depth tenant existence check. The X-Internal-Service-Token
+        //     gate proves the CALLER is an Invekto service, but the tenant_id in
+        //     the payload is otherwise trusted blindly — without this guard a
+        //     buggy Automation routing the wrong tenant_id would silently create
+        //     orphan rows under a non-existent tenant. Caller-supplied tenant_id
+        //     is acceptable in this trust model (peer-service auth replaces JWT
+        //     tenant-claim binding for /api/internal/* paths), but the existence
+        //     check catches coding bugs cheaply (single PK probe against
+        //     tenant_registry).
+        bool tenantExists;
+        try
+        {
+            tenantExists = await _tenantRegistry.TenantExistsAsync(request.TenantId, ct);
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemWarn($"[{ErrorCodes.DatabaseConnectionFailed}] LeadIntake.WaDirect: tenant existence check DB error tenant={request.TenantId}: {ex.Message}");
+            return WaDirectOutcome.Fail(503, ErrorCodes.DatabaseConnectionFailed,
+                "Veritabani baglantisi kurulamadi.");
+        }
+        if (!tenantExists)
+        {
+            _logger.SystemWarn(
+                $"[{ErrorCodes.LeadIntakeWaDirectUnknownTenant}] LeadIntake.WaDirect: " +
+                $"unknown tenant_id={request.TenantId} (caller bug; rejecting before write)");
+            return WaDirectOutcome.Fail(400, ErrorCodes.LeadIntakeWaDirectUnknownTenant,
+                "Tanimsiz tenant; kayit reddedildi.");
+        }
+
+        // 3. Resolve tenant landing settings (optional — defaults applied below).
+        TenantLandingSettings? tls;
+        try
+        {
+            tls = await _tlsRepo.FindByTenantIdAsync(request.TenantId, ct);
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemWarn($"[{ErrorCodes.DatabaseConnectionFailed}] LeadIntake.WaDirect: TLS lookup DB error tenant={request.TenantId}: {ex.Message}");
+            return WaDirectOutcome.Fail(503, ErrorCodes.DatabaseConnectionFailed,
+                "Veritabani baglantisi kurulamadi.");
+        }
+
+        // Capture into a typed local so the welcome-slug fallback can be
+        // expressed without the null-forgiving operator (project rule).
+        // configuredSlug being non-null AND non-whitespace after this branch
+        // is guaranteed by the IsNullOrWhiteSpace short-circuit.
+        var configuredSlug = tls?.WelcomeFlowSlug;
+        var welcomeSlug = string.IsNullOrWhiteSpace(configuredSlug)
+            ? "welcome_default"
+            : configuredSlug;
+        var dupWindowDays = tls?.DupWindowDays ?? 30;
+
+        // 4. Build intake_metadata snapshot. Shape mirrors landing intake (flat
+        //    top-level keys + submission_<iso> object) so downstream consumers
+        //    only learn one schema. `referer` and `wa_profile_name` are omitted
+        //    when null — keeping JSONB honest, no synthetic placeholders.
+        var now = DateTime.UtcNow;
+        var submissionKey = $"submission_{now:yyyyMMddTHHmmssfffZ}";
+        var submission = new Dictionary<string, object?>
+        {
+            ["source_slug"] = "wa-direct",
+            ["channel"] = "whatsapp",
+            ["submitted_at"] = (request.ReceivedAt ?? now).ToString("O")
+        };
+        if (!string.IsNullOrWhiteSpace(request.Referer))
+            submission["referer"] = request.Referer;
+        if (!string.IsNullOrWhiteSpace(request.ProfileName))
+            submission["wa_profile_name"] = request.ProfileName;
+
+        var snapshot = new Dictionary<string, object?>
+        {
+            ["last_submission_at"] = now.ToString("O"),
+            ["last_source_slug"] = "wa-direct",
+            [submissionKey] = submission
+        };
+        var intakeMetaJson = JsonSerializer.Serialize(snapshot);
+
+        // 5. Idempotent ensure: existence check inside the dup window short-
+        //    circuits writes (returns existing leadId, isNew=false). Outside the
+        //    window OR brand-new => UPSERT with channel='whatsapp', slug='wa-direct'.
+        LeadRepository.WaDirectEnsureResult ensure;
+        try
+        {
+            ensure = await _leadRepo.EnsureLeadForWaDirectAsync(
+                request.TenantId, phoneE164, request.ProfileName,
+                dupWindowDays, intakeMetaJson, ct);
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemWarn($"[{ErrorCodes.DatabaseConnectionFailed}] LeadIntake.WaDirect: EnsureLead DB error tenant={request.TenantId} phone={phoneE164}: {ex.Message}");
+            return WaDirectOutcome.Fail(503, ErrorCodes.DatabaseConnectionFailed,
+                "Veritabani baglantisi kurulamadi.");
+        }
+
+        // 6. Welcome-flow enqueue mirrors landing intake — only when isNew.
+        //    Failure surfaces in Warnings (lead row already committed, no point
+        //    in 5xx-ing back to Automation).
+        var welcomeEnqueued = false;
+        List<string>? warnings = null;
+        if (ensure.IsNew)
+        {
+            try
+            {
+                _jobs.Enqueue<Invekto.Automation.Services.Jobs.TriggerWelcomeFlowJob>(
+                    job => job.ExecuteAsync(request.TenantId, welcomeSlug, ensure.LeadId, CancellationToken.None));
+                welcomeEnqueued = true;
+            }
+            catch (BackgroundJobClientException ex)
+            {
+                _logger.SystemWarn(
+                    $"[{ErrorCodes.JobStorageConnectionFailed}] LeadIntake.WaDirect: Hangfire enqueue rejected " +
+                    $"(tenant={request.TenantId}, lead={ensure.LeadId}, slug={welcomeSlug}): {ex.Message}");
+                warnings = new List<string> { ErrorCodes.JobStorageConnectionFailed };
+            }
+            catch (NpgsqlException ex)
+            {
+                _logger.SystemWarn(
+                    $"[{ErrorCodes.JobStorageConnectionFailed}] LeadIntake.WaDirect: Hangfire storage DB error " +
+                    $"(tenant={request.TenantId}, lead={ensure.LeadId}, slug={welcomeSlug}): {ex.Message}");
+                warnings = new List<string> { ErrorCodes.JobStorageConnectionFailed };
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.SystemWarn(
+                    $"[{ErrorCodes.JobHandlerUnresolved}] LeadIntake.WaDirect: Hangfire enqueue misconfigured " +
+                    $"(tenant={request.TenantId}, lead={ensure.LeadId}, slug={welcomeSlug}): {ex.Message}");
+                warnings = new List<string> { ErrorCodes.JobHandlerUnresolved };
+            }
+        }
+
+        _logger.StepInfo(
+            $"LeadIntake.WaDirect: tenant={request.TenantId} lead={ensure.LeadId} " +
+            $"isNew={ensure.IsNew} enqueued={welcomeEnqueued} warnings={(warnings?.Count ?? 0)}",
+            requestId);
+
+        return WaDirectOutcome.Created(new WaDirectIntakeResponse
+        {
+            LeadId = ensure.LeadId,
+            IsNew = ensure.IsNew,
+            WelcomeFlowEnqueued = welcomeEnqueued,
+            Warnings = warnings
+        });
+    }
+
     private static Dictionary<string, object?> BuildResolvedFields(
         LandingFieldMap map,
         IReadOnlyDictionary<string, object?> fields,
@@ -308,6 +490,28 @@ public sealed class LeadIntakeOutcome
     };
 
     public static LeadIntakeOutcome Fail(int status, string code, string message) => new()
+    {
+        StatusCode = status,
+        Error = ErrorResponse.Create(code, message, "-")
+    };
+}
+
+/// <summary>
+/// FEAT-LIW Chunk B: transport between <see cref="LeadIntakeService.IntakeWaDirectAsync"/>
+/// and the wa-direct internal endpoint mapper. Mirrors <see cref="LeadIntakeOutcome"/>
+/// but carries a <see cref="WaDirectIntakeResponse"/> on success — the wa-direct
+/// shape is intentionally narrower (no Duplicate flag; IsNew is the inverse semantic).
+/// </summary>
+public sealed class WaDirectOutcome
+{
+    public int StatusCode { get; init; }
+    public WaDirectIntakeResponse? Success { get; init; }
+    public ErrorResponse? Error { get; init; }
+
+    public static WaDirectOutcome Created(WaDirectIntakeResponse body) =>
+        new() { StatusCode = 201, Success = body };
+
+    public static WaDirectOutcome Fail(int status, string code, string message) => new()
     {
         StatusCode = status,
         Error = ErrorResponse.Create(code, message, "-")

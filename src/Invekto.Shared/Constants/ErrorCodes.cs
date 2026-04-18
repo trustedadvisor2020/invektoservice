@@ -82,6 +82,11 @@ public static class ErrorCodes
     public const string LeadIntakeFieldMapMalformed = "INV-BE-108";     // tenant_landing_settings.landing_field_map JSONB unparseable (operator fix)
     public const string LeadIntakePayloadEmpty = "INV-BE-109";          // request body missing or fields map empty
 
+    // FEAT-LIW Chunk B: WA-direct internal endpoint (Automation -> Backend service-to-service)
+    public const string LeadIntakeInternalAuthInvalid = "INV-BE-110";   // X-Internal-Service-Token missing/mismatch (or InternalServices:SharedSecret unconfigured)
+    public const string LeadIntakeWaDirectPhoneInvalid = "INV-BE-111";  // wa-direct payload phone missing/empty/E.164 normalize fail
+    public const string LeadIntakeWaDirectUnknownTenant = "INV-BE-112"; // wa-direct payload tenant_id has no row in tenant_registry (defense-in-depth against caller bug)
+
     // ChatAnalysis errors (INV-CA-xxx)
     public const string ChatAnalysisInvalidPayload = "INV-CA-001";
     public const string ChatAnalysisProcessingFailed = "INV-CA-002";
@@ -217,6 +222,11 @@ public static class ErrorCodes
 
     // FEAT-LIW: Welcome flow enqueue (INV-AT-068) — triggered from Backend intake endpoint
     public const string AutomationWelcomeFlowSlugMissing = "INV-AT-068"; // welcome_flow_slug + 'welcome_default' both unavailable; lead created, enqueue skipped
+
+    // FEAT-LIW Chunk B: Welcome flow real dispatch + WA direct intake hook
+    public const string AutomationWelcomeFlowDefinitionMissing = "INV-AT-069"; // chatbot_flows row not found for tenant+slug (or inactive); lead created, dispatch skipped
+    public const string AutomationBackendIntakeUnavailable = "INV-AT-070";     // AutomationOrchestrator wa-direct hook: Backend /api/internal/leads/intake/wa-direct unreachable; flow continues with leadId=null
+    public const string AutomationWelcomeFlowDispatchFailed = "INV-AT-071";    // TriggerWelcomeFlowJob execution-time infra failure (DB error during lookup, parse/build error on flow_config, cancellation, InvalidOperationException during ExecuteAsync). Distinct from -069 (which is strictly "row not found").
 
     // AgentAI errors (INV-AA-xxx)
     public const string AgentAIInvalidPayload = "INV-AA-001";

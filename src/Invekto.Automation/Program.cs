@@ -198,6 +198,29 @@ builder.Services.AddSingleton<TranslationHopClient>(sp =>
         backendBaseUrl);
 });
 
+// FEAT-LIW Chunk B: BackendIntakeClient — POST wa-direct payload to Backend's
+// /api/internal/leads/intake/wa-direct via the existing Backend:BaseUrl. Shared
+// secret mirrors Zoho's pattern (InternalServices:SharedSecret); Singleton
+// lifecycle matches the named-HttpClient pool above. Empty secret degrades the
+// wa-direct hook gracefully (BackendIntakeClient logs INV-AT-070 and returns
+// null) instead of blocking service startup — keeps Automation bootable on
+// dev machines without manual config.
+var backendIntakeSharedSecret = builder.Configuration["InternalServices:SharedSecret"] ?? string.Empty;
+builder.Services.AddHttpClient(nameof(BackendIntakeClient), client =>
+{
+    client.BaseAddress = new Uri(backendBaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(5);
+});
+builder.Services.AddSingleton<BackendIntakeClient>(sp =>
+{
+    var factory = sp.GetRequiredService<IHttpClientFactory>();
+    return new BackendIntakeClient(
+        factory.CreateClient(nameof(BackendIntakeClient)),
+        backendIntakeSharedSecret,
+        sp.GetRequiredService<JwtGenerator>(),
+        sp.GetRequiredService<JsonLinesLogger>());
+});
+
 // PKT-6A: Register KnowledgeIntentClient (typed HttpClient with 3s timeout)
 var knowledgeBaseUrl = builder.Configuration["Knowledge:BaseUrl"] ?? "http://localhost:7104";
 var knowledgeTimeoutMs = builder.Configuration.GetValue<int>("Knowledge:IntentFetchTimeoutMs", 3000);

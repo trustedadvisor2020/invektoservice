@@ -25,6 +25,25 @@ public class TenantRegistryRepository
     }
 
     /// <summary>
+    /// FEAT-LIW Chunk B: defense-in-depth check for the wa-direct internal
+    /// endpoint. The endpoint authenticates the CALLER (Automation) via shared
+    /// secret, but the tenant_id in the payload is otherwise trusted blindly —
+    /// a buggy Automation routing the wrong tenant_id would silently create
+    /// orphan rows. Cheap SELECT 1 against the PRIMARY KEY (tenant_registry.sql:9-10).
+    /// Kept here rather than wrapped in <see cref="GetTenantAsync"/> so callers
+    /// don't pay for unused TenantEntry materialization on every WA inbound.
+    /// </summary>
+    public virtual async Task<bool> TenantExistsAsync(int tenantId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT EXISTS(SELECT 1 FROM tenant_registry WHERE tenant_id = @tid)";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is true;
+    }
+
+    /// <summary>
     /// List all tenants ordered by tenant_id.
     /// No pagination — tenant_registry is expected to be small (hundreds max).
     /// </summary>

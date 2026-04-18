@@ -426,7 +426,99 @@ public class LeadRepository
     // ================================================================
 
     // ================================================================
-    // Intake result record
+    // FEAT-LIW Chunk B: WA-direct intake (Automation hook -> Backend internal)
+    // ================================================================
+
+    /// <summary>
+    /// Idempotent lead ensure for the wa-direct entry path. Distinct from
+    /// <see cref="UpsertIntakeLeadAsync"/> for two reasons: (1) it short-circuits
+    /// inside the dup window (no UPSERT, no metadata churn) so every inbound WA
+    /// message after the first does not append a submission_* snapshot; (2) it
+    /// owns the channel attribution rule (source='whatsapp', source_slug='wa-direct')
+    /// so the landing path's signature stays untouched and AC7 regression-safety
+    /// holds. Single CTE: probe prior, decide in SQL, return (id, isNew). When
+    /// isNew=true the snapshot JSONB is concatenated with `||` exactly like
+    /// landing intake; the shape mirrors landing (last_submission_at,
+    /// last_source_slug, submission_&lt;iso&gt;) so downstream readers only need
+    /// to learn one schema.
+    /// Schema reference: leads table defined in arch/db/pkt6b1-niche-business.sql
+    /// (uq_leads_tenant_phone UNIQUE constraint enforces single row per
+    /// tenant_id+phone). intake_metadata + source_slug columns added by
+    /// migration arch/db/migrations/021-leads-intake-tenant-landing-settings.sql.
+    /// </summary>
+    public virtual async Task<WaDirectEnsureResult> EnsureLeadForWaDirectAsync(
+        int tenantId,
+        string phoneE164,
+        string? profileName,
+        int dupWindowDays,
+        string intakeMetadataSnapshotJson,
+        CancellationToken ct = default)
+    {
+        // The dup-window decision lives in the SQL CTE so we get a single
+        // round-trip and an atomic decision under concurrent writes for the
+        // same (tenant_id, phone). The 'decision' CTE selects either 'noop'
+        // (prior found, within window) or 'upsert' (no prior OR outside
+        // window); only the upsert branch executes the INSERT ... ON CONFLICT.
+        // is_new is derived from prior.created_at (null prior => brand new;
+        // prior outside window => re-engagement; both classify as is_new=true).
+        const string sql = @"
+            WITH prior AS (
+                SELECT id, created_at
+                FROM leads
+                WHERE tenant_id = @tid AND phone = @phone
+            ),
+            decision AS (
+                SELECT
+                    CASE
+                        WHEN prior.id IS NOT NULL
+                         AND (NOW() - prior.created_at) <= make_interval(days => @dupDays)
+                        THEN 'noop' ELSE 'upsert'
+                    END AS action,
+                    prior.id AS prior_id
+                FROM (SELECT 1) _ LEFT JOIN prior ON TRUE
+            ),
+            upserted AS (
+                INSERT INTO leads
+                    (tenant_id, phone, name,
+                     source, source_slug,
+                     intake_metadata)
+                SELECT
+                    @tid, @phone, @name,
+                    'whatsapp', 'wa-direct',
+                    @intakeMeta::jsonb
+                FROM decision
+                WHERE decision.action = 'upsert'
+                ON CONFLICT (tenant_id, phone) DO UPDATE SET
+                    name            = COALESCE(EXCLUDED.name, leads.name),
+                    source          = EXCLUDED.source,
+                    source_slug     = EXCLUDED.source_slug,
+                    intake_metadata = leads.intake_metadata || EXCLUDED.intake_metadata,
+                    updated_at      = NOW()
+                RETURNING id
+            )
+            SELECT
+                COALESCE(upserted.id, decision.prior_id) AS lead_id,
+                (decision.action = 'upsert')             AS is_new
+            FROM decision
+            LEFT JOIN upserted ON TRUE";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("phone", phoneE164);
+        cmd.Parameters.AddWithValue("name", (object?)profileName ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("dupDays", Math.Max(1, dupWindowDays));
+        cmd.Parameters.AddWithValue("intakeMeta", intakeMetadataSnapshotJson);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        if (!await reader.ReadAsync(ct))
+            throw new InvalidOperationException("EnsureLeadForWaDirect returned no rows");
+
+        return new WaDirectEnsureResult(reader.GetInt32(0), reader.GetBoolean(1));
+    }
+
+    // ================================================================
+    // Intake result records
     // ================================================================
 
     /// <summary>
@@ -435,6 +527,13 @@ public class LeadRepository
     /// created_at so callers can gate the duplicate/re-engagement semantics.
     /// </summary>
     public readonly record struct LeadIntakeUpsertResult(int LeadId, DateTime? PriorCreatedAt);
+
+    /// <summary>
+    /// Return of <see cref="EnsureLeadForWaDirectAsync"/>. <see cref="IsNew"/> is
+    /// true when an INSERT or out-of-window re-engagement UPSERT ran; false when
+    /// an existing row inside the dup window short-circuited the write.
+    /// </summary>
+    public readonly record struct WaDirectEnsureResult(int LeadId, bool IsNew);
 
     private static LeadResponse ReadLeadResponse(NpgsqlDataReader reader)
     {

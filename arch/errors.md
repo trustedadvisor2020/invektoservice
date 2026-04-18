@@ -439,8 +439,19 @@ errors:
 
   # FEAT-LIW: Welcome flow enqueue from Backend intake endpoint
   - code: INV-AT-068
-    description: TriggerWelcomeFlowJob welcome flow slug not found for tenant (tenant_landing_settings.welcome_flow_slug missing AND 'welcome_default' inactive); lead still created, flow enqueue skipped.
+    description: TriggerWelcomeFlowJob welcome flow slug missing or empty (defensive guard; Backend always emits non-empty slug, so this fires only on contract violation). Lead still created, flow dispatch skipped.
     user_message: Hosgeldin flow bulunamadi.
+
+  # FEAT-LIW Chunk B: Welcome flow real dispatch + wa-direct intake hook
+  - code: INV-AT-069
+    description: TriggerWelcomeFlowJob resolved a slug but no active matching row exists in chatbot_flows for the tenant (tenant renamed/disabled the welcome flow), OR the matched flow_config has no recognized welcome-trigger entry node (must be one of trigger_start / webhook_trigger / outbound_trigger; schedule_trigger is cron-only and rejected). Strictly a config gap, not an infra failure. Lead still created, flow dispatch skipped.
+    user_message: Hosgeldin akisi tanimlanmamis.
+  - code: INV-AT-070
+    description: AutomationOrchestrator wa-direct hook could not reach Backend /api/internal/leads/intake/wa-direct after one retry (transient HTTP error, timeout, or non-2xx response). Chat reply path proceeds with leadId=null; lead row will be retried on the next inbound message from this contact.
+    user_message: Lead kaydi gecici olarak yapilamiyor; sohbet devam ediyor.
+  - code: INV-AT-071
+    description: TriggerWelcomeFlowJob hit an execution-time infra failure (NpgsqlException during slug lookup, FlowGraphV2.Build returning null due to malformed flow_config, OperationCanceledException mid-execution, or InvalidOperationException from FlowEngineV2.ExecuteAsync). Distinct from INV-AT-069 which is strictly "no matching active row in chatbot_flows". Lead row already exists; welcome dispatch did not complete.
+    user_message: Hosgeldin akisi calistirilamadi.
 
   # HFM-2: Backend Translation Warmup ops endpoint
   - code: INV-BE-090
@@ -490,6 +501,17 @@ errors:
   - code: INV-BE-109
     description: Lead intake request body missing or empty `fields` object. Caller sent null JSON or an empty fields map; no canonical value resolution can run.
     user_message: Istek govdesi bos veya eksik; fields alani zorunlu.
+
+  # FEAT-LIW Chunk B: WA-direct internal endpoint (service-to-service Automation -> Backend)
+  - code: INV-BE-110
+    description: /api/internal/leads/intake/wa-direct internal auth failed (missing/empty X-Internal-Service-Token, mismatch with InternalServices:SharedSecret, or shared secret unconfigured at Backend). Endpoint returns 401 (missing) / 403 (mismatch) / 500 (unconfigured).
+    user_message: Servisler arasi yetki gecersiz veya yapilandirilmamis.
+  - code: INV-BE-111
+    description: WA-direct intake payload phone field missing/empty or libphonenumber-csharp E.164 normalize failure. Endpoint returns 400.
+    user_message: Telefon numarasi eksik veya gecersiz.
+  - code: INV-BE-112
+    description: WA-direct intake payload tenant_id has no row in tenant_registry. Defense-in-depth check guards against a buggy Automation caller (the shared-secret auth proves the caller is an Invekto service, but caller-supplied tenant_id is otherwise trusted blindly). Endpoint returns 400.
+    user_message: Tanimsiz tenant; kayit reddedildi.
 
   # ── AA — AgentAI ──
   - code: INV-AA-001
