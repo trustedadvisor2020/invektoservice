@@ -77,6 +77,13 @@ builder.Services.AddSingleton(pgFactory);
 // Register repository
 builder.Services.AddSingleton<IntegrationsRepository>();
 
+// FEAT-VCP Chunk A: Video consultation provider factory + mock implementation.
+// Chunk B (Appointments) resolves providers via VideoProviderFactory per-tenant.
+// Chunk C adds the production GoogleMeetProvider registration in this same block.
+builder.Services.AddSingleton<TenantSettingsRepository>();
+builder.Services.AddSingleton<Invekto.Integrations.Services.Video.GoogleMeetMockProvider>();
+builder.Services.AddSingleton<Invekto.Integrations.Services.Video.VideoProviderFactory>();
+
 // Register marketplace providers (mock implementations)
 builder.Services.AddSingleton<IMarketplaceProvider, HepsiburadaMockProvider>();
 

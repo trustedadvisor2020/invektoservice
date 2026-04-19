@@ -787,6 +787,20 @@ errors:
     description: All sampled Zoho leads returned RECORD_NOT_IN_PROCESS during blueprint aggregation (no lead is engaged in the blueprint workflow); distinct from BlueprintNotConfigured (no leads at all)
     user_message: Zoho'daki lead'ler Blueprint sürecine dahil değil. Manuel ID ile her satırı elle girin (Zoho → Setup → Automation → Blueprint → ilgili Blueprint → her geçişe tıklayın → URL'deki son segmenti kopyalayın).
 
+  # FEAT-VCP Video Consultation Provider (INV-INT-140+) — Chunk A/B/C
+  - code: INV-INT-140
+    description: Video consultation provider (Chunk C GoogleMeetProvider) OAuth refresh token is invalid or expired. Tenant must reconnect their Google Workspace account via the Dashboard provider-settings flow. Declared in Chunk A, actively surfaced by Chunk C.
+    user_message: Video consultation OAuth refresh token invalid or expired. Please reconnect calendar.
+  - code: INV-INT-141
+    description: Video consultation meeting create call failed (provider threw). Chunk B appointment handler catches provider exceptions and surfaces this code in the MeetingResult failure envelope; retry is safe because providers are idempotent for identical (tenant, title, start) tuples.
+    user_message: Video consultation meeting create failed. Please try again or contact support.
+  - code: INV-INT-142
+    description: VideoProviderFactory returned null — tenant business state "provider not configured". Either tenant_settings.video_provider is null (never configured) or the configured value names an implementation not yet wired (e.g. 'googlemeet' before Chunk C ships). Distinct from INV-INT-143 (DB outage); caller maps this to a non-blocking appointment confirmation without a meeting link. NpgsqlException from the underlying probe is NOT collapsed into this code.
+    user_message: Video consultation provider not configured for this tenant. Please set video_provider in settings.
+  - code: INV-INT-143
+    description: VideoProviderFactory.ResolveAsync surfaced an NpgsqlException while reading tenant_settings — DB outage or connectivity failure. Distinct from INV-INT-142 (legitimate "not configured" state). Chunk B's appointment handler catches the exception and surfaces this code with HTTP 503 so operators know to check database health rather than tenant configuration.
+    user_message: Video consultation settings could not be read (database error). Please retry; if persistent, contact support.
+
   # ── OB — Outbound (GR-1.3) ──
   - code: INV-OB-001
     description: Invalid broadcast payload
