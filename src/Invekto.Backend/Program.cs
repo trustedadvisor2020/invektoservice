@@ -427,6 +427,29 @@ if (!string.IsNullOrEmpty(callbackUrl))
     builder.Services.AddHttpClient<MainAppCallbackClient>();
 }
 
+// FEAT-DMP: INMA dynamic-fields proxy + cache + NullResolver (default binding).
+// IInmaDynamicFieldsClient uses a per-call secretKey so the typed-client model doesn't fit;
+// we register a named HttpClient (5s timeout) and manually wire the client singleton.
+// ApiBaseUrl falls back to the standard wapcrm.net production host when unset to match
+// the FEAT-J2 convention used by HttpInmaContactOptOutClient consumers.
+builder.Services.AddHttpClient("inma_dynamicfields", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(5);
+});
+builder.Services.AddSingleton<Invekto.Shared.Contracts.Inma.IInmaDynamicFieldsClient>(sp =>
+{
+    var baseUrl = builder.Configuration["InmaAuth:ApiBaseUrl"]
+                  ?? builder.Configuration["InmaAuth:OptOutSync:BaseUrl"]
+                  ?? "https://cxapi.wapcrm.net";
+    return new Invekto.Shared.Contracts.Inma.HttpInmaDynamicFieldsClient(
+        sp.GetRequiredService<IHttpClientFactory>().CreateClient("inma_dynamicfields"),
+        sp.GetRequiredService<JsonLinesLogger>(),
+        baseUrl);
+});
+builder.Services.AddSingleton<Invekto.Shared.Services.InmaDynamicFieldsCache>();
+builder.Services.AddSingleton<Invekto.Shared.Contracts.TenantFieldMapping.ITenantFieldMappingResolver,
+    Invekto.Shared.Contracts.TenantFieldMapping.NullTenantFieldMappingResolver>();
+
 builder.Services.AddAuthorization();
 
 // G7: Hangfire infrastructure — Backend hosts the dashboard and a placeholder server
@@ -7561,9 +7584,17 @@ app.MapPost("/api/v1/callback/wapcrm", async (HttpContext ctx, JsonLinesLogger j
         wapPayload["messageCategory"] = messageCategory;
     }
 
-    // FEAT-DMP placeholder: DynamicFields is pre-provisioned on CallbackData but set
-    // to null during FEAT-J2 scope. Activation (wapPayload.dynamicMessage + fields)
-    // happens in FEAT-DMP — no-op here until then.
+    // FEAT-DMP: activate INMA DynamicMessage when upstream set DynamicFields.
+    // Null/empty = legacy INSE substitution already applied in caller; raw text ships as-is.
+    // Non-empty = MessageText contains {{placeholders}} left raw for INMA to resolve from
+    // the tenant Customer DB (wapcrm-marketing-api.md §2). Allowlist validation happened
+    // in DynamicMessageValidator before dispatch (INV-OB-033 is an upstream reject).
+    var dynamicFields = callback.Data?.DynamicFields;
+    if (dynamicFields is { Length: > 0 })
+    {
+        wapPayload["dynamicMessage"] = true;
+        wapPayload["dynamicMessageFields"] = dynamicFields;
+    }
 
     try
     {
@@ -7582,10 +7613,15 @@ app.MapPost("/api/v1/callback/wapcrm", async (HttpContext ctx, JsonLinesLogger j
         // arrive as HTTP 200 + Status:false + StatusCode:'906'/'907'. Previously
         // treated as 'sent' — compliance/audit bug. Parse fail is graceful:
         // falls back to HTTP-status-based outcome (Q4 decision).
+        // FEAT-DMP extends the same parse path to cover INMA DynamicMessage error codes
+        // 900/901/902/903/905 (wapcrm-marketing-api.md §6). Same HTTP-200+Status:false
+        // envelope semantics; we map each code to its INV-OB-033..036 log + mark
+        // outbound='failed' so the Dashboard badge surfaces the cause.
         var wapStatusCode = ExtractWapStatusCode(responseBody);
         var isMarketingBlock = wapStatusCode is "906" or "907";
+        var isDynamicFailure = wapStatusCode is "900" or "901" or "902" or "903" or "905";
         var outboundStatus = response.IsSuccessStatusCode
-            ? (isMarketingBlock ? "blocked" : "sent")
+            ? (isMarketingBlock ? "blocked" : (isDynamicFailure ? "failed" : "sent"))
             : "failed";
 
         if (isMarketingBlock)
@@ -7595,6 +7631,18 @@ app.MapPost("/api/v1/callback/wapcrm", async (HttpContext ctx, JsonLinesLogger j
                 : ErrorCodes.ChatoperationBlockedContact;
             jsonLog.SystemWarn(
                 $"[{invCode}] WapCRM marketing block: tenant={callback.TenantId}, phone={phone}, wap={wapStatusCode}, outbound_msg_id={callback.Data?.OutboundMessageId}");
+        }
+        else if (isDynamicFailure)
+        {
+            var invCode = wapStatusCode switch
+            {
+                "901" => ErrorCodes.DynamicFieldUnsupported,
+                "903" => ErrorCodes.DynamicCustomerNotFound,
+                "905" => ErrorCodes.DynamicFieldValueNull,
+                _ => ErrorCodes.DynamicFieldValidationFailed, // 900 + 902
+            };
+            jsonLog.SystemWarn(
+                $"[{invCode}] INMA DynamicMessage rejection: tenant={callback.TenantId}, phone={phone}, wap={wapStatusCode}, fields=[{string.Join(",", dynamicFields ?? Array.Empty<string>())}], outbound_msg_id={callback.Data?.OutboundMessageId}");
         }
 
         jsonLog.StepInfo(
@@ -7654,6 +7702,90 @@ static string? ExtractWapStatusCode(string? body)
         return null;
     }
 }
+
+// ============================================
+// FEAT-DMP: INMA /api/dynamicfields PROXY (tenant-scoped, cached)
+// ============================================
+// Auth: **both routes below are protected by the global JWT middleware registered in
+// `app.UseAuthentication() + app.UseAuthorization()` early in this file (search the
+// string "UseAuthentication" above the route table). The middleware rejects missing/
+// invalid tokens with 401 INV-AUTH-003 before the handler runs, populates
+// `ctx.Items["TenantId"]` from the signed claim, and that is the ONLY source of tenant
+// scope — no query/header/body override is accepted. Identical gate as FEAT-J2
+// /api/v1/optout and FEAT-LIW /api/v1/tenant/landing/*.**
+//
+// Consumed by Dashboard PlaceholderPicker (FlowBuilder / TemplateCreate). Cache is
+// shared across all editors (1h TTL per tenant) with single-flight stampede guard.
+//
+// Failure semantics (iter 1 fix for CQ1/CQ2/CQ12):
+//   - no WapCRM secret → 422 + ErrorResponse(INV-AUTH-003-equivalent surface via INV-OB-037
+//     variant "not configured"); UI distinguishes "not configured" from "fetch fail".
+//   - InmaDynamicFieldsFetchException from the client → 503 + ErrorResponse(DynamicFieldsFetchFailed).
+//   - ok → 200 + {data: [{fieldKey, fieldName}]} — empty list is a valid tenant state.
+app.MapGet("/api/v1/dynamic-fields", async (
+    HttpContext ctx,
+    JsonLinesLogger jsonLog,
+    Invekto.Shared.Services.InmaDynamicFieldsCache cache,
+    TenantRegistryRepository tenantRepo) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+
+    var tenantIdStr = ctx.Items["TenantId"]?.ToString();
+    if (!int.TryParse(tenantIdStr, out var tenantId))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var wapcrm = await tenantRepo.GetWapCrmSettingsAsync(tenantId, ctx.RequestAborted);
+    if (wapcrm == null || string.IsNullOrWhiteSpace(wapcrm.SecretKey))
+    {
+        jsonLog.StepWarn($"[{ErrorCodes.DynamicFieldsNotConfigured}] /api/v1/dynamic-fields: no WapCRM secret for tenant {tenantId}", requestId);
+        return Results.Json(
+            ErrorResponse.Create(
+                ErrorCodes.DynamicFieldsNotConfigured,
+                "Tenant INMA entegrasyonu yapilandirilmamis. Yonetici tenant ayarlarindan eklemelidir.",
+                requestId),
+            statusCode: 422);
+    }
+
+    try
+    {
+        var fields = await cache.GetOrFetchAsync(tenantId, wapcrm.SecretKey, ctx.RequestAborted);
+        return Results.Json(new { data = fields });
+    }
+    catch (Invekto.Shared.Contracts.Inma.InmaDynamicFieldsFetchException ex)
+    {
+        jsonLog.StepWarn(
+            $"[{ErrorCodes.DynamicFieldsFetchFailed}] /api/v1/dynamic-fields upstream fail " +
+            $"(tenant={tenantId}, inmaCode={ex.InmaStatusCode ?? "-"}, http={ex.HttpStatusCode?.ToString() ?? "-"}): {ex.Message}",
+            requestId);
+        return Results.Json(
+            ErrorResponse.Create(
+                ErrorCodes.DynamicFieldsFetchFailed,
+                "INMA dinamik alan listesine ulasilamadi, kisa sure sonra tekrar deneyin.",
+                requestId),
+            statusCode: 503);
+    }
+});
+
+// Cache drop endpoint. Tenant-scoped by design — each tenant owns its own cache slot and
+// there is no super-admin role check on this handler; a rogue actor invalidating their own
+// tenant only causes a single extra INMA fetch on the next GET (bounded by the 5s client
+// timeout + HttpClient pool). Abuse surface therefore stays below the upstream proxy's
+// rate-limit floor; the handler only logs the invocation for flap-tracking.
+app.MapPost("/api/v1/dynamic-fields/cache-invalidate", (
+    HttpContext ctx,
+    JsonLinesLogger jsonLog,
+    Invekto.Shared.Services.InmaDynamicFieldsCache cache) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+
+    var tenantIdStr = ctx.Items["TenantId"]?.ToString();
+    if (!int.TryParse(tenantIdStr, out var tenantId))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    cache.Invalidate(tenantId);
+    jsonLog.StepInfo($"/api/v1/dynamic-fields cache invalidated (tenant={tenantId})", requestId);
+    return Results.Ok(new { invalidated = true });
+});
 
 // ============================================
 // FEAT-J2: Manual opt-out/opt-in (JWT-scoped dashboard admin action)

@@ -87,8 +87,16 @@ builder.Services.AddSingleton<AutomationRepository>();
 builder.Services.AddSingleton<FlowWaitRepository>();
 
 // FEAT-J2: TenantSettingsRepository with IMemoryCache (enforce_message_category flag)
+// FEAT-DMP extends the same repo with enable_dynamic_message read + shares the cache instance.
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<TenantSettingsRepository>();
+
+// FEAT-DMP: NullResolver is the default binding (FEAT-TFM swaps it in when it ships).
+// DynamicMessageValidator is shared with Outbound; AutomationOrchestrator consumes it for
+// action_send_message placeholder scanning.
+builder.Services.AddSingleton<Invekto.Shared.Contracts.TenantFieldMapping.ITenantFieldMappingResolver,
+    Invekto.Shared.Contracts.TenantFieldMapping.NullTenantFieldMappingResolver>();
+builder.Services.AddSingleton<Invekto.Shared.Services.DynamicMessageValidator>();
 
 // Register callback client
 var callbackSettings = builder.Configuration.GetSection("Integration:Callback").Get<CallbackSettings>() ?? new CallbackSettings();

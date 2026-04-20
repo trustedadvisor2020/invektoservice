@@ -74,7 +74,7 @@ public class BroadcastLifecycleE2ETests : IClassFixture<OutboundTestFactory>
 
         _factory.FakeRepo.BatchInsertMessagesAsync(
             Arg.Any<int>(), Arg.Any<Guid>(), Arg.Any<int>(),
-            Arg.Any<List<(string phone, string text)>>(),
+            Arg.Any<List<(string phone, string text, string[]? dynamicFields)>>(),
             Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
@@ -142,7 +142,7 @@ public class BroadcastLifecycleE2ETests : IClassFixture<OutboundTestFactory>
 
         _factory.FakeRepo.BatchInsertMessagesAsync(
             Arg.Any<int>(), Arg.Any<Guid>(), Arg.Any<int>(),
-            Arg.Any<List<(string phone, string text)>>(),
+            Arg.Any<List<(string phone, string text, string[]? dynamicFields)>>(),
             Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 

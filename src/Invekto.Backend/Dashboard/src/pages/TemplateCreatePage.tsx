@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   api,
@@ -9,6 +9,7 @@ import {
 import {
   ArrowLeft, Plus, Upload, Save, Check, AlertTriangle, FileJson, Tag,
 } from 'lucide-react';
+import { PlaceholderPicker } from '../components/PlaceholderPicker';
 
 const TEMPLATE_TYPES = ['faq', 'message', 'intent', 'flow', 'scenario'];
 const SCOPES = ['tenant', 'sector', 'platform'];
@@ -59,6 +60,28 @@ export function TemplateCreatePage() {
   const [saving, setSaving] = useState(false);
   const [singleError, setSingleError] = useState<string | null>(null);
   const [created, setCreated] = useState<TemplateCatalogDetail | null>(null);
+
+  // FEAT-DMP: cursor-aware INMA placeholder insertion into content_json.
+  const contentTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const insertTokenIntoContentJson = (token: string) => {
+    const el = contentTextareaRef.current;
+    const current = form.content_json;
+    if (!el) {
+      setForm({ ...form, content_json: current + token });
+      return;
+    }
+    const start = el.selectionStart ?? current.length;
+    const end = el.selectionEnd ?? current.length;
+    const next = current.slice(0, start) + token + current.slice(end);
+    setForm({ ...form, content_json: next });
+    requestAnimationFrame(() => {
+      if (contentTextareaRef.current) {
+        const caret = start + token.length;
+        contentTextareaRef.current.focus();
+        contentTextareaRef.current.setSelectionRange(caret, caret);
+      }
+    });
+  };
 
   const handleSingleSave = async () => {
     setSingleError(null);
@@ -395,14 +418,22 @@ export function TemplateCreatePage() {
                 <FileJson className="w-3 h-3" /> content_json (JSON)
               </label>
               <textarea
+                ref={contentTextareaRef}
                 value={form.content_json}
                 onChange={e => setForm({ ...form, content_json: e.target.value })}
                 rows={6}
                 className="w-full text-[11px] border border-navy-200 rounded px-2 py-1.5 outline-none font-mono"
               />
-              <p className="text-[10px] text-navy-400 mt-0.5">
-                Message tipi: <code>{`{"text": "..."}`}</code> — FAQ tipi: <code>{`{"text": "..."}`}</code> veya <code>{`{"answer": "..."}`}</code>.
-              </p>
+              <div className="flex items-center justify-between mt-0.5">
+                <p className="text-[10px] text-navy-400">
+                  Message tipi: <code>{`{"text": "..."}`}</code> — FAQ tipi: <code>{`{"text": "..."}`}</code> veya <code>{`{"answer": "..."}`}</code>.
+                </p>
+                <PlaceholderPicker
+                  onInsert={(token) => insertTokenIntoContentJson(token)}
+                  triggerLabel="INMA alani"
+                  position="above"
+                />
+              </div>
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-navy-50">

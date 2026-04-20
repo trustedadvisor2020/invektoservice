@@ -36,6 +36,7 @@ public sealed class AutomationOrchestrator
     private readonly JwtGenerator _jwtGenerator;
     private readonly BackendIntakeClient _backendIntake;
     private readonly TenantSettingsRepository _tenantSettings;
+    private readonly DynamicMessageValidator _dynamicValidator;
     private readonly JsonLinesLogger _logger;
 
     // GR-2.6: KVKK health tenant cache (tenant_id -> isHealthTenant)
@@ -61,6 +62,7 @@ public sealed class AutomationOrchestrator
         JwtGenerator jwtGenerator,
         BackendIntakeClient backendIntake,
         TenantSettingsRepository tenantSettings,
+        DynamicMessageValidator dynamicValidator,
         JsonLinesLogger logger)
     {
         _repo = repo;
@@ -77,6 +79,7 @@ public sealed class AutomationOrchestrator
         _jwtGenerator = jwtGenerator;
         _backendIntake = backendIntake;
         _tenantSettings = tenantSettings;
+        _dynamicValidator = dynamicValidator;
         _logger = logger;
     }
 
@@ -1464,6 +1467,34 @@ public sealed class AutomationOrchestrator
             finalMessageText = KvkkHelper.AppendDisclaimerIfHealth(messageText, isHealth);
         }
 
+        // FEAT-DMP: resolve INMA DynamicMessage placeholders for SendMessage.
+        // Gate: tenant_settings.enable_dynamic_message (default TRUE) + validator.HasPlaceholders
+        // + validator.IsValid (no unknown tokens). Unknown placeholders while flag TRUE is logged
+        // and falls through with DynamicFields=null — legacy path handles the rendered text.
+        string[]? dynamicFields = null;
+        if (action == CallbackActions.SendMessage && !string.IsNullOrEmpty(finalMessageText))
+        {
+            var dynamicEnabled = await _tenantSettings.GetEnableDynamicMessageAsync(tenantId, ct);
+            if (dynamicEnabled)
+            {
+                var validation = await _dynamicValidator.ValidateAsync(tenantId, finalMessageText, ct);
+                if (validation.HasPlaceholders)
+                {
+                    if (validation.IsValid)
+                    {
+                        dynamicFields = validation.InmaFieldKeys.ToArray();
+                    }
+                    else
+                    {
+                        _logger.StepWarn(
+                            $"[{ErrorCodes.DynamicFieldValidationFailed}] Flow send_message has non-INMA placeholders: " +
+                            $"tenant={tenantId} chat={chatId} unknown=[{string.Join(",", validation.UnknownPlaceholders)}]",
+                            requestId, processingTimeMs);
+                    }
+                }
+            }
+        }
+
         // FEAT-J2: derive MessageCategory for SendMessage callbacks.
         //
         // Semantics (tenant-scoped, opt-in):
@@ -1513,6 +1544,7 @@ public sealed class AutomationOrchestrator
                 Intent = intent,
                 Confidence = confidence,
                 MessageCategory = messageCategory,
+                DynamicFields = dynamicFields,
             },
             ProcessingTimeMs = processingTimeMs
         };

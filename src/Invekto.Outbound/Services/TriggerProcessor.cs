@@ -135,7 +135,9 @@ public sealed class TriggerProcessor
         // GR-2.3: Use template's actual language after fallback (not the originally requested lang)
         var effectiveLang = template.Lang ?? lang;
 
-        // Insert single message (no broadcast_id, GR-2.3: with effective language)
+        // Insert single message (no broadcast_id, GR-2.3: with effective language).
+        // FEAT-DMP: dynamicFields optional param sits AFTER ct in the repository signature,
+        // so positional call remains compatible; triggers render text upstream (dynamicFields=null).
         var messageId = await _repository.InsertMessageAsync(
             tenantId, null, template.Id, request.Phone, finalText, effectiveLang, ct);
 

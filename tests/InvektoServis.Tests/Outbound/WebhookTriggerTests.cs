@@ -39,7 +39,7 @@ public class WebhookTriggerTests : IClassFixture<OutboundTestFactory>
         _factory.FakeRepo.InsertMessageAsync(
             Arg.Any<int>(), Arg.Any<Guid?>(), Arg.Any<int?>(),
             Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            Arg.Any<string?>(), Arg.Any<CancellationToken>(), Arg.Any<string[]?>())
             .Returns(42L);
 
         _factory.FakeRepo.InsertAuditTrailAsync(

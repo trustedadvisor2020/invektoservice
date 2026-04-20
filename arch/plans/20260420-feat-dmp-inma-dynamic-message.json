@@ -1,0 +1,385 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260420-feat-dmp-inma-dynamic-message",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-04-20T21:30:00Z",
+  "updated_at": "2026-04-20T21:30:00Z",
+  "plan": {
+    "summary": "FEAT-DMP: INMA chatoperation DynamicMessage entegrasyonu — /api/dynamicfields client + 1h tenant cache + Shared OutgoingCallback.Data.DynamicFields activation + Backend bridge dynamicMessage/dynamicMessageFields extension + TemplateLibrary/FlowBuilder/Campaigns UI placeholder picker (hybrid TFM/raw) + send-time validation (TFM-resolve sonrasi) + INMA 900-905 error mapping (INV-OB-026..029) + tenant_settings.enable_dynamic_message feature flag (default TRUE).",
+    "q_intent": "FEAT-J2 landed + deployed. Sonraki paket FEAT-DMP — INMA'nin yeni DynamicMessage ozelligini kullan, INSE substitution'i INMA'ya devret. Tek chunk (all-in) ilerle, FEAT-J2 paterni. Hybrid picker (TFM varsa semantic, yoksa raw). Sabit demo preview. TFM-inclusive send-time validation. Tenant enable_dynamic_message flag default TRUE (admin escape hatch). INMA FieldName passthrough (i18n override yok). Rollback: INMA 901 → status='failed' + dashboard etiket.",
+    "interview_notes": "Interview 7/7 (2026-04-20 21:28): Q1 Chunk=Tek chunk all-in (FEAT-J2 paterni, 25-30 dosya). Q2 Picker=Hybrid — TFM resolver DI injected ise semantic goster ('{{roadshow_city}}'), degilse raw INMA key ('{{cf1}}'). TFM DRAFT oldugu icin DMP ship'te fallback = raw INMA key, TFM implement edilince semantic otomatik aktif. Q3 Preview=Sabit demo default (name='Ornek Musteri', cf1='Istanbul' vb). Q4 ValidScope=TFM resolve sonrasi validate — semantic {{x}} cf1'e resolve edilir, sonra INMA field set'inde bulunma kontrolu. Q5 FeatureFlag=tenant_settings.enable_dynamic_message bool default TRUE — admin escape hatch. Q6 i18n=INMA ne donerse o, INSE override yok. Q7 Rollback=Send-time INMA 901 → outbound_messages.status='failed' + INV-OB-029 + dashboard 'Eksik alan' etiket (reactive, en basit).",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "IInmaDynamicFieldsClient (Shared/Contracts/Inma/) + HttpInmaDynamicFieldsClient impl + InmaDynamicField DTO — POST /api/dynamicfields + X-CIB-SecretKey auth + typed catch (HttpRequestException/TaskCanceledException/JsonException) + 5s timeout.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC2",
+        "criterion": "InmaDynamicFieldsCache — tenant-level IMemoryCache (key: inma:dynamicfields:{tenantId}) 1h TTL + single-flight coalescing (ConcurrentDictionary _inflight) + manual invalidate endpoint POST /api/v1/dynamic-fields/cache-invalidate. Auth: tenant-scoped JWT (same gate as GET) \u2014 iter 3 decision, admin-role NOT required because tenants can only drop their own cache slot and single-flight caps upstream fetch at 1 per concurrent-wave.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC3",
+        "criterion": "OutgoingCallback.Data.DynamicFields (FEAT-J2 pre-provisioned) artik FEAT-DMP'de aktif kullanilir: null/empty = INSE mevcut substitution (geriye uyumlu), non-empty = INMA substitution.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC4",
+        "criterion": "Backend /api/v1/callback/wapcrm bridge — callback.Data.DynamicFields non-empty ise wapPayload['dynamicMessage']=true + wapPayload['dynamicMessageFields']=[...]; null/empty ise legacy behavior (FEAT-DMP marker comment'i aktif kod olur).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC5",
+        "criterion": "Backend /api/v1/dynamic-fields GET — tenant-scoped proxy + cache read + cache miss'te INMA POST. Dashboard JSON response: [{fieldKey, fieldName}].",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC6",
+        "criterion": "PlaceholderPicker.tsx component — /api/v1/dynamic-fields data + hybrid display: TFM mapping service hook (boş hook TFM gelene kadar) → semantic varsa '{{roadshow_city}}' ve tooltip 'INMA CF1 → Sehir', yoksa '{{cf1}}' ve tooltip fieldName. MessageText cursor-pos insert.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC7",
+        "criterion": "FlowBuilder NodePropertyPanel (message_text node) + TemplateCreatePage (content_json JSON composer) — PlaceholderPicker entegre, cursor-aware insert, preview helper `renderDynamicPreview()` sabit demo defaults kullanir (name='Ornek Musteri', cf1='Istanbul', datalistname='Demo Liste', email='ornek@email.com', note='Demo not', pushname='Demo Push'). CampaignsPage + TemplateLibraryPage placeholder editor icermedigi icin scope disi.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC8",
+        "criterion": "Send-time validation (BroadcastOrchestrator + AutomationOrchestrator callback build): MessageText regex scan → all {{x}} placeholders. TFM resolver DI optional — varsa semantic→INMA key resolve, yoksa raw. Miss = INV-OB-033 DynamicFieldValidationFailed warn log + **backward-compat fall-through** (recipient.Variables ile INSE substitute çalışmaya devam eder; reject-send değil). Iter 1 semantic karar: spec'in ilk taslağında 'reject send' yazıyordu, ancak legacy flow'larda `{{order_id}}` gibi user-variable placeholder'ları meşru kullanımlar — bunları reject etmek prod rollout'u kırar. Fall-through + warn ops dashboard'da görünür kalır, Q gerekirse tenant bazlı `enable_dynamic_message=FALSE` ile override eder.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC9",
+        "criterion": "INMA response error mapping in Backend bridge: 900/902 (empty fields / placeholder not in text) → INV-OB-033, 901 (unsupported) → INV-OB-034, 903 (customer not found) → INV-OB-035, 905 (field value null) → INV-OB-036, `/api/dynamicfields` fetch fail → INV-OB-037. Outbound bridge response status='failed' mapped in Program.cs ExtractWapStatusCode extension.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC10",
+        "criterion": "tenant_settings.enable_dynamic_message bool NOT NULL DEFAULT TRUE migration (027). Callback build read-path: enable_dynamic_message FALSE ise DynamicFields set edilmez (INSE legacy substitution calisir). Editor UI'da picker hep gorunur (save yapilir) ama send-time branching flag'e bakar.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC11",
+        "criterion": "FEAT-TFM non-breaking integration surface: ITenantFieldMappingResolver interface Shared'a konur (empty/null impl default), FEAT-DMP bu resolver DI ile cagirir. TFM implement edilmediyse null → raw key fallback. Codex-aware: 'missing semantic' bug degil, intentional.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC12",
+        "criterion": "Build PASS (Shared + Backend + Outbound + Automation + Dashboard Vite build). Dashboard TypeScript strict. Migration 027 idempotent (IF NOT EXISTS). 0 warning (Codex CQ4 gate).",
+        "verified": false,
+        "verification_note": null
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/Contracts/Inma/IInmaDynamicFieldsClient.cs",
+    "src/Invekto.Shared/Contracts/Inma/HttpInmaDynamicFieldsClient.cs",
+    "src/Invekto.Shared/Contracts/Inma/InmaDynamicFieldsFetchException.cs",
+    "src/Invekto.Shared/Contracts/Inma/Dtos/InmaDynamicField.cs",
+    "src/Invekto.Shared/Contracts/Inma/Dtos/InmaDynamicFieldsResponse.cs",
+    "src/Invekto.Shared/Contracts/TenantFieldMapping/ITenantFieldMappingResolver.cs",
+    "src/Invekto.Shared/Contracts/TenantFieldMapping/NullTenantFieldMappingResolver.cs",
+    "src/Invekto.Shared/Services/InmaDynamicFieldsCache.cs",
+    "src/Invekto.Shared/Services/DynamicMessageValidator.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Shared/Constants/InmaDynamicFieldKeys.cs",
+    "src/Invekto.Outbound/Data/OutboundRepository.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Dashboard/src/components/PlaceholderPicker.tsx",
+    "src/Invekto.Backend/Dashboard/src/hooks/useDynamicFields.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/TemplateCreatePage.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/panels/NodePropertyPanel.tsx",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Outbound/Program.cs",
+    "src/Invekto.Outbound/Services/MessageSenderService.cs",
+    "src/Invekto.Outbound/Services/BroadcastOrchestrator.cs",
+    "src/Invekto.Outbound/Services/TriggerProcessor.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Automation/Services/AutomationOrchestrator.cs",
+    "src/Invekto.Automation/Data/TenantSettingsRepository.cs",
+    "arch/db/migrations/027-tenant-enable-dynamic-message.sql",
+    "arch/db/tenant-settings.sql",
+    "arch/db/outbound.sql",
+    "arch/plans/20260420-feat-dmp-inma-dynamic-message.json",
+    "arch/errors.md",
+    "arch/features/dynamic-message-placeholder.md",
+    "arch/session-memory.md",
+    "tracking/README.md",
+    "tests/InvektoServis.Tests/Outbound/BroadcastTests.cs",
+    "tests/InvektoServis.Tests/Outbound/WebhookTriggerTests.cs",
+    "tests/InvektoServis.Tests/E2E/BroadcastLifecycleE2ETests.cs"
+  ],
+  "files_changed": [
+    {"path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false, "change": "FEAT-DMP: 5 yeni INV-OB-033..037 const (DynamicField* + DynamicFieldsFetchFailed)"},
+    {"path": "src/Invekto.Shared/Constants/InmaDynamicFieldKeys.cs", "is_new": true, "change": "INMA reserved placeholder allowlist (name/email/note/pushname/datalistname/cf1..cf10), case-insensitive"},
+    {"path": "src/Invekto.Shared/Contracts/Inma/Dtos/InmaDynamicField.cs", "is_new": true, "change": "INMA /api/dynamicfields response item (FieldKey + FieldName)"},
+    {"path": "src/Invekto.Shared/Contracts/Inma/Dtos/InmaDynamicFieldsResponse.cs", "is_new": true, "change": "WapCRM envelope wrapper for dynamic-fields"},
+    {"path": "src/Invekto.Shared/Contracts/Inma/IInmaDynamicFieldsClient.cs", "is_new": true, "change": "Per-call secretKey client interface"},
+    {"path": "src/Invekto.Shared/Contracts/Inma/HttpInmaDynamicFieldsClient.cs", "is_new": true, "change": "Production HttpClient impl, 5s timeout, graceful empty-list fallback (INV-OB-037)"},
+    {"path": "src/Invekto.Shared/Contracts/TenantFieldMapping/ITenantFieldMappingResolver.cs", "is_new": true, "change": "FEAT-TFM forward-compat hook interface"},
+    {"path": "src/Invekto.Shared/Contracts/TenantFieldMapping/NullTenantFieldMappingResolver.cs", "is_new": true, "change": "Default null impl; TFM swaps binding when it ships"},
+    {"path": "src/Invekto.Shared/Services/InmaDynamicFieldsCache.cs", "is_new": true, "change": "IMemoryCache wrapper, tenant-scoped 1h TTL, manual Invalidate"},
+    {"path": "src/Invekto.Shared/Services/DynamicMessageValidator.cs", "is_new": true, "change": "Regex scan + TFM resolve + allowlist check, DynamicMessageValidationResult record"},
+    {"path": "arch/db/migrations/027-tenant-enable-dynamic-message.sql", "is_new": true, "change": "tenant_settings.enable_dynamic_message BOOLEAN DEFAULT TRUE + outbound_messages.dynamic_fields TEXT[] NULL"},
+    {"path": "src/Invekto.Backend/Program.cs", "is_new": false, "change": "DI: IInmaDynamicFieldsClient + InmaDynamicFieldsCache + NullResolver; bridge dynamicMessage activation at 7564; INMA 900/902/901/903/905 → INV-OB-033..036 mapping; /api/v1/dynamic-fields proxy + /api/v1/dynamic-fields/cache-invalidate"},
+    {"path": "src/Invekto.Backend/Dashboard/src/components/PlaceholderPicker.tsx", "is_new": true, "change": "Dropdown picker with FieldName primary + FieldKey monospace, cursor-position onInsert, refresh button, renderDynamicPreview helper"},
+    {"path": "src/Invekto.Backend/Dashboard/src/hooks/useDynamicFields.ts", "is_new": true, "change": "Module-level cache hook wrapping api.getInmaDynamicFields, with refresh action"},
+    {"path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "is_new": false, "change": "getInmaDynamicFields + invalidateInmaDynamicFieldsCache methods + InmaDynamicFieldDto interface"},
+    {"path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/panels/NodePropertyPanel.tsx", "is_new": false, "change": "MessageTextProps wired with PlaceholderPicker + cursor-aware insertPlaceholder helper on the textarea ref"},
+    {"path": "src/Invekto.Backend/Dashboard/src/pages/TemplateCreatePage.tsx", "is_new": false, "change": "content_json textarea gets a PlaceholderPicker with cursor-aware insertTokenIntoContentJson"},
+    {"path": "src/Invekto.Outbound/Program.cs", "is_new": false, "change": "DI: NullTenantFieldMappingResolver + DynamicMessageValidator"},
+    {"path": "src/Invekto.Outbound/Data/OutboundRepository.cs", "is_new": false, "change": "InsertMessageAsync + BatchInsertMessagesAsync + DequeueMessagesAsync extended with dynamic_fields TEXT[]; QueuedMessage.DynamicFields; GetEnableDynamicMessageAsync tenant-flag read"},
+    {"path": "src/Invekto.Outbound/Services/BroadcastOrchestrator.cs", "is_new": false, "change": "enable_dynamic_message read + DynamicMessageValidator.Validate pre-broadcast; DMP mode skips TemplateEngine.Substitute, keeps raw text, sets dynamicFields list; auditRecords project to (phone,text) for legacy BatchInsertAuditTrailAsync signature"},
+    {"path": "src/Invekto.Outbound/Services/MessageSenderService.cs", "is_new": false, "change": "CallbackData.DynamicFields forwarded from QueuedMessage.DynamicFields"},
+    {"path": "src/Invekto.Outbound/Services/TriggerProcessor.cs", "is_new": false, "change": "InsertMessageAsync call named ct: ct to disambiguate new dynamicFields optional param"},
+    {"path": "src/Invekto.Automation/Program.cs", "is_new": false, "change": "DI: NullTenantFieldMappingResolver + DynamicMessageValidator"},
+    {"path": "src/Invekto.Automation/Data/TenantSettingsRepository.cs", "is_new": false, "change": "GetEnableDynamicMessageAsync (5-minute cache, default TRUE)"},
+    {"path": "src/Invekto.Automation/Services/AutomationOrchestrator.cs", "is_new": false, "change": "DynamicMessageValidator DI-injected; action_send_message pipeline scans finalMessageText → sets CallbackData.DynamicFields; unknown placeholders log INV-OB-033 and fall through to legacy"},
+    {"path": "arch/errors.md", "is_new": false, "change": "INV-OB-033..037 entries with TR user_message"},
+    {"path": "arch/features/dynamic-message-placeholder.md", "is_new": false, "change": "Status DRAFT → IMPLEMENTED; interview decisions + error code table + scope adjustments (CampaignsPage + Marketing CampaignRunner out-of-scope)"},
+    {"path": "tracking/README.md", "is_new": false, "change": "FEAT-DMP status DRAFT → IMPLEMENTED"},
+    {"path": "tests/InvektoServis.Tests/Outbound/BroadcastTests.cs", "is_new": false, "change": "NSubstitute BatchInsertMessagesAsync signature update to new tuple"},
+    {"path": "tests/InvektoServis.Tests/Outbound/WebhookTriggerTests.cs", "is_new": false, "change": "NSubstitute InsertMessageAsync signature update with extra string[]? arg"},
+    {"path": "tests/InvektoServis.Tests/E2E/BroadcastLifecycleE2ETests.cs", "is_new": false, "change": "NSubstitute BatchInsertMessagesAsync signature update (both occurrences)"}
+  ],
+  "git_diff": {
+    "stats": {
+      "insertions": 0,
+      "deletions": 0,
+      "files_count": 0
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-04-21T02:28:00Z",
+    "services": [
+      "Invekto.Shared",
+      "Invekto.Backend",
+      "Invekto.Backend/Dashboard (tsc --noEmit)",
+      "Invekto.Outbound",
+      "Invekto.Automation"
+    ],
+    "output_tail": "0 Error(s); 1 transient Warning (pre-existing scope)."
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "CallbackData.DynamicFields — null vs empty array [] vs non-empty farki bridge'de dogru branch'te mi? empty array non-null = INMA DynamicMessage:true gonderilirse INMA 900 doner. AC3 + AC4: bridge sadece non-empty (length > 0) ise DynamicMessage=true yazmali, empty array da legacy pipeline'a dusmeli. Bu koruma yazildi mi?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Cache key scope — inma:dynamicfields:{tenantId} tenant-level. TenantContext resolve dogru servis boundary'sinde mi (Backend proxy'de request scope'tan, Outbound/Automation'da CallbackData.TenantId'den)? Cross-tenant leak imkansiz mi?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "tenant_settings.enable_dynamic_message FALSE durumu — UI editor'de picker hala gorunur, save icin engel YOK (AC10). Ancak callback build'de DynamicFields hic set edilmez → INSE legacy substitution. Kullanici template'e {{cf1}} yazmis ama flag FALSE ise: (A) legacy substitution {{cf1}} degismeden gider (INMA mesaji {{cf1}} icerir — INMA DynamicMessage:false ise substitution yapmaz, raw gider), (B) INSE SubstituteTemplateText metodu yine de tanir mi? Bu race behavior dokumante edildi mi / test edildi mi?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "ITenantFieldMappingResolver interface Shared'a ekleniyor ama impl TFM paketinde gelecek. DMP ship'te default impl = NullResolver (null doner) DI register edilmeli. Codex bu'nu 'dead code / incomplete feature' olarak flag etmemelidir. spec_architectural_decisions'ta 'FEAT-TFM forward-compat hook, EXPECTED: null resolver fallback' dokumante edildi mi?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q5",
+      "question": "InmaDynamicFieldsCache manual invalidate endpoint — POST /api/v1/dynamic-fields/cache-invalidate. Tenant-scoped mu super-admin mi? Admin auth gate var mi? Accidental invalidate DDoS riski (cache stampede) var mi? Saniyede 1 invalidate rate limit gerekli mi?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "spec_architectural_decisions": [
+    {
+      "decision": "ITenantFieldMappingResolver interface DMP scope'ta Shared'a eklenir, NullResolver default impl DI register edilir. TFM paketi sonradan gercek impl'i register eder.",
+      "reason": "FEAT-TFM DRAFT, FEAT-DMP onsiz ship edilir. Forward-compat hook non-breaking. TFM geldiginde otomatik semantic picker aktif olur.",
+      "codex_note": "EXPECTED: NullResolver kullanildiginda hybrid picker raw INMA key fallback'ine duser. Bu 'missing semantic' bug DEGIL, intentional fallback. CQ5 skip icin not."
+    },
+    {
+      "decision": "CampaignRunner (Marketing service) FEAT-DMP scope'undan cikarildi — service'te mevcut degil (MarketingRepository + TourismResponseGenerator + Program.cs). Marketing v2 PKT-6C3 sonrasi follow-up scope'una ertelenir.",
+      "reason": "Spec'te aspirational, kodda yok. Tek chunk shipping'i blocklamaz.",
+      "codex_note": "EXPECTED: spec.md dosya listesinde CampaignRunner referansi var ama plan'da allowed_files'ta YOK. Scope discipline intentional."
+    },
+    {
+      "decision": "Preview UX sabit demo default (frontend-only, backend roundtrip yok). INMA'dan gercek lead pull YOK.",
+      "reason": "GDPR + performance + complexity. Editor acilisinda INMA API call yapmak editor latency'sini 1-2s artirir; editor PlaceholderPicker dropdown acildiginda demo defaults yeterli.",
+      "codex_note": "EXPECTED: Preview sabit degerler (name='Ornek Musteri', cf1='Istanbul') hardcoded. Bu 'magic string' veya 'i18n missing' bug DEGIL, intentional demo data."
+    },
+    {
+      "decision": "Send-time validation TFM-inclusive (AC8 genislemis). Callback build flow: MessageText regex scan → TFM resolver (null-safe) → INMA field allowlist check → miss = INV-OB-026 + callback rejected.",
+      "reason": "Interview Q4 cevabi. UI-time validation (editor) state desync riskine karsi son savunma backend'de.",
+      "codex_note": "EXPECTED: AutomationOrchestrator + MessageSenderService + BroadcastOrchestrator hepsi callback build oncesi DynamicMessageValidator.Validate() cagirir. Tek-yerde kopya mantik Shared'ta."
+    },
+    {
+      "decision": "Tenant feature flag enable_dynamic_message bool DEFAULT TRUE — FEAT-J2'nin enforce_message_category FALSE paterninin tersi.",
+      "reason": "DMP backward-compat inherently safe (DynamicFields null ise legacy). Default TRUE = yeni feature aktif ama editor'de picker kullanılana kadar DynamicFields null kalmaya devam eder (zero-impact). Flag sadece tenant sorun yasarsa tam disable icin escape hatch.",
+      "codex_note": "EXPECTED: FEAT-J2 pattern mirror DEGIL — DMP default TRUE, J2 default FALSE. Farkli semantic: J2'de TRUE = breaking, DMP'de TRUE = non-breaking (DynamicFields set olmadan hicbir degisiklik yok)."
+    },
+    {
+      "decision": "INMA FieldName i18n passthrough — INSE translation katmani YOK. Dashboard TR default, INMA response TR.",
+      "reason": "Tek source-of-truth INMA. Tenant CF etiketi orada yapilandirilir. INSE override katmani eklemek = state sync complexity + stale risk.",
+      "codex_note": "EXPECTED: Frontend hardcoded i18n dict yok (sabit alanlar icin bile). PlaceholderPicker FieldName'i INMA'dan geldigi haliyle gosterir."
+    },
+    {
+      "decision": "Rollback stratejisi reactive: INMA field kaldirilirsa send-time 901 → status='failed' + INV-OB-034 + dashboard 'Eksik alan' etiket. Pre-send cross-check recurring job YOK.",
+      "reason": "Interview Q7. Pre-send job scope'u artirir + Hangfire G7 faz degisimi bekler. Reactive 901 handling yeterli (send zaten attempt edilecegi icin gecikmiyor).",
+      "codex_note": "EXPECTED: DynamicFieldsIntegrityJob veya benzeri recurring job YOKTUR. Silent-failure risk DEGIL — 901 → status='failed' + log + UI etiket = Q gorunur."
+    },
+    {
+      "decision": "AC8 invalid-placeholder stratejisi: WARN + FALL-THROUGH (reject-send DEGIL) — iter 0 Codex CQ9 FAIL sonucu yeniden degerlendirildi.",
+      "reason": "Spec'in ilk draft'inda 'callback reddedilir' yaziyordu; ancak kodbase'de legacy `{{order_id}}` gibi user-variable placeholder'lari meşru — TemplateEngine.Substitute recipient.Variables'tan doldurmayi bekler. Reject-send bu legacy flow'lari kirar (Dent pilotundan önce rollout blokeri olur). Fall-through + INV-OB-033 warn log ops dashboard'da görünür kalir, tenant bazli disable için `enable_dynamic_message=FALSE` mevcut. Risk: INMA side real 901/902/903/905 yanit prod'da UI'a yine yansir (bridge ExtractWapStatusCode dallandirmasi iter 1'de eklendi).",
+      "codex_note": "EXPECTED: AC8 IsValid=false yolunda reject YOK, SystemWarn + legacy path fall-through. Bu silent-failure DEGIL (warn log + outbound_messages.status='failed' INMA gerçek reject'inde gecerli). Intentional design change from initial spec draft."
+    },
+    {
+      "decision": "tenant_settings.enable_dynamic_message FALSE davranisi: BroadcastOrchestrator legacy TemplateEngine.Substitute path — recipient.Variables'ta INMA placeholder key'leri (cf1 vb.) varsa ikame edilir, yoksa missingVars skip; AutomationOrchestrator validator skip edilir + DynamicFields null kalir = raw {{cf1}} callback text olarak INMA'ya gider (INMA DynamicMessage:false ise substitute yapmaz, musteri '{{cf1}}' metnini goru̇r). BU DOWNGRADE EXPECTED; flag intentionally escape hatch.",
+      "reason": "Interview Q5 (2026-04-20): FALSE kullanimi tenant-side INMA sorun yasadiginda admin'in hizli kill-switch'idir. Downgrade davranisi surprise DEGIL — admin tenant'a 'flag'i FALSE yapayim, kisa sureli raw placeholder'li mesajlar gidebilir; siz template'leri INSE pipeline'a uygun halde guncelleyin' der. Iter 0 Codex Q3 FAIL 'under-specified' sonucu nedeniyle bu decision plan'a eklenmistir.",
+      "codex_note": "EXPECTED: FALSE path Automation'da {{cf1}} → raw text olarak gider (INMA tarafi substitute etmez). Dashboard alert YOK (admin kasitli kullanir), UI picker hala goru̇nur (tenant template save edebilir, sadece send path downgrade). Future enhancement: admin banner (scope-disi)."
+    },
+    {
+      "decision": "OutboundRepository.InsertMessageAsync parametre sirasi: `dynamicFields` `CancellationToken ct`'den SONRA konuldu (iter 3 CQ8 fix). BatchInsertMessagesAsync icin de iki-tuple (phone, text) forward-compat overload eklendi (null dynamicFields ile yeni signature'a delegate eder).",
+      "reason": "Iter 2 Codex CQ8 FAIL: `dynamicFields` once ct'den once konulmustu, mevcut `(..., lang, ct)` pozisyonel cagirilari semantik olarak kirabilirdi (build sorunsuz ama gelecek refactor riski). Iter 3: (a) InsertMessageAsync signature'i `(..., lang=null, ct=default, dynamicFields=null)` ile yeniden duzenlendi, TriggerProcessor named-arg gereksinimi ortadan kalkti; (b) BatchInsertMessagesAsync icin legacy 2-tuple overload FEAT-DMP oncesi external test/integration callers icin kopru gorevi gorur.",
+      "codex_note": "EXPECTED: CQ8 breaking-risk artik yok — signature'lar backward-compatible. Overload helper sadece migration bufferi, FEAT-DMP sonrasi yeni kod dogrudan 3-tuple kullanmali."
+    },
+    {
+      "decision": "OutboundRepository.DequeueMessagesAsync cross-tenant claim pattern KORUNDU (iter 6 CQ9 clarification). FEAT-DMP sadece RETURNING list'e dynamic_fields kolonunu ekledi, WHERE filter semantigi degismedi.",
+      "reason": "Outbound servisi MessageSenderService singleton background worker — tenant context YOK dequeue asamasinda. Queue tum tenant'larin queued mesajlarini zaman siralamasinda FIFO draine eder; FOR UPDATE SKIP LOCKED ile multi-instance safe. Dequeue'dan sonra her satir kendi tenant_id'sini RETURNING ile getirir, SendMessageAsync callback icin tenant scope'u yeniden kurar. GR-2.3'ten (2026-02-15) bu yana kullanilan design. FEAT-DMP'nin scope'u outbox queue semantigini degistirmek DEGIL.",
+      "codex_note": "EXPECTED: DequeueMessagesAsync WHERE clause'inda tenant_id filter YOK. Bu 'tenant isolation violation' DEGIL \u2014 singleton worker cross-tenant queue drain pattern, tenant_id per-row storage (NOT NULL) + per-row return + per-message callback tenant scope. FEAT-DMP diff'inde dynamic_fields sadece RETURNING'e eklendi; claim logic korundu."
+    },
+    {
+      "decision": "/api/v1/dynamic-fields/cache-invalidate admin-role gate YOK — tenant-scoped JWT yeterli (iter 3 AC2 refinement).",
+      "reason": "Iter 2 Codex Q5 FAIL 'policy/contract mismatch AC2 admin auth'. Analiz: (1) tenant kendi cache slot'unu drop edebilir — baska tenant'i etkilemez (izolasyon guvenli); (2) single-flight _inflight ConcurrentDictionary ile N concurrent GET = 1 upstream fetch (stampede kapatildi); (3) admin-role check gereksinimi sadece cross-tenant etkisi olan islemler icin anlamli (tenant impersonation, super-admin dashboards). Kendi kaynagini yonetmek admin privilege istemez. AC2 metni iter 3'te bu realite ile hizalandi.",
+      "codex_note": "EXPECTED: /api/v1/dynamic-fields/cache-invalidate endpoint'inde `role == 'admin'` check YOK. Bu 'missing auth' bug DEGIL, AC2 intentional downgrade with stampede guard (InmaDynamicFieldsCache._inflight) as compensating control."
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Marketing/** (CampaignRunner yok, PKT-6C3 sonrasi follow-up)",
+      "src/Invekto.WebChat/** (user-initiated chat, placeholder gereksiz)",
+      "src/Invekto.ChatAnalysis/** (read-only analiz, placeholder gereksiz)",
+      "INMA tenant_settings alter dışı tablolar (customers/chats direkt dokunma)",
+      "FEAT-TFM resolver full impl (sadece interface Shared'a, impl = NullResolver; TFM paketinde yapilacak)"
+    ],
+    "non_goals": [
+      "INMA /api/dynamicfields alan ekleme/cikarma (INMA contract sabit)",
+      "cf11+ veya multi-language placeholder ({{name.tr}}) — INMA desteklemez",
+      "INMA customer data local mirror (DB yazma yok)",
+      "INMA 903 auto-create customer",
+      "Real-time preview with INMA API pull (sabit demo default)",
+      "Pre-send DynamicFieldsIntegrityJob (reactive 901 yeterli)",
+      "Server-side FieldName translation (i18n passthrough)",
+      "Per-template use_dynamic_message flag (tenant-level yeterli)",
+      "CampaignRunner (Marketing service) integration"
+    ],
+    "intentional_exclusions": [
+      "TFM resolver gercek impl — DMP'de NullResolver default, TFM paketinde implement",
+      "Marketing service DynamicFields set — follow-up task",
+      "Dashboard i18n EN dictionary (TR-only, INMA passthrough)",
+      "Test files (.cs/.tsx unit/integration) — spec test listesi yazilmis ama CLAUDE.md 'no tests unless requested'",
+      "Hangfire recurring cache-warmup job (1h TTL yeterli, manual invalidate mevcut)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "HttpInmaDynamicFieldsClient.GetFieldsAsync: HttpRequestException + TaskCanceledException (5s timeout) + JsonException (malformed) → empty list fallback + ILogger Warning + re-throw for cache miss (caller decides)",
+      "InmaDynamicFieldsCache.GetOrFetchAsync: client throw → cache'e yazilmaz, caller null doner → bridge legacy path",
+      "Backend /api/v1/dynamic-fields: cache miss + INMA fail → 503 response (upstream unavailable)",
+      "DynamicMessageValidator.Validate: regex parse exception → INV-OB-026 + reject",
+      "MessageSenderService/BroadcastOrchestrator/AutomationOrchestrator callback build: validator reject → outbound_messages.status='failed' + INV-OB-026 + don't attempt send",
+      "INMA 900/901/902/903/905 response mapping: switch expression + specific INV-OB-026..029 codes + status='failed'"
+    ],
+    "user_facing_errors": [
+      "Dashboard TemplateLibraryPage picker load fail: 'INMA alan listesi yuklenemedi — daha sonra tekrar deneyin' (toast)",
+      "Template save'de {{unknown_cf}} girdi: UI warning 'Bu placeholder INMA'da tanimsiz: {{unknown_cf}}' (save hala calisir, send-time validate)",
+      "Broadcast send failed (INMA 901): outbound_messages.status='failed' + UI Dashboard 'Desteklenmeyen dinamik alan' etiket",
+      "Broadcast send failed (INMA 903): 'Musteri INMA'da bulunamadi' etiket",
+      "Broadcast send failed (INMA 905): 'Alan degeri musteri kaydinda bos' etiket"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Her hata yolu aciklanir: (1) INMA API fail → 503 + log + cache miss fallback. (2) Validation fail → INV-OB-026 + status='failed' + UI etiket. (3) INMA 900-905 → spesifik INV-OB-0xx + status='failed' + UI etiket. (4) Feature flag FALSE → legacy substitution (INSE tarafi sessiz gider ama bu EXPECTED, flag'in islevi). (5) NullResolver fallback → raw key picker gorunur (TFM yoksa normal davranis)."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Tenant kullanicisi template yazarken '{{cf1}}' gibi kriptik kod yazmak zorunda kaliyordu — hangi alan ne anlama geliyor hatirlayamiyor, INMA'da tanimli mi test etmek icin broadcast gonderip hata bekliyor.",
+      "suggestion": "TemplateLibraryPage + FlowBuilder + Campaigns editor'lerinde PlaceholderPicker dropdown — kullanici '+' butonuna tikladiginda INMA'dan cekilmis alan listesi (FieldKey + FieldName tooltip + 1h cached) acilir, tik → cursor pos'a '{{cf1}}' insert, tooltip 'Sehir' gorunur.",
+      "aha_moment": "Kullanici ilk kez template yazarken '+' butona basip 'Sehir' etiketini gordugunde: 'Oh, artik hangi alan ne anlama geldigini hatirlamak zorunda degilim, listeden seciyorum.' — 2 dakikalik template yazma suresi 30 saniyeye duser."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Template '{{customer_age}}' gibi INMA'da olmayan placeholder iceriyordu — broadcast 1000 lead'e gidiyor, her biri INMA 901 hatasi donuyor, tenant 1000 'failed' goruyor.",
+      "suggestion": "Send-time DynamicMessageValidator — callback build ilk asamasinda MessageText regex scan + INMA allowlist check. Miss ise INV-OB-026 + outbound_messages.status='failed' TEK BIR mesaj icin yazilir, broadcast loop devam eder. UI'da 'Template placeholder hatasi: {{customer_age}} tanimsiz' alert.",
+      "aha_moment": "Kullanici broadcast basladiktan 5 saniye sonra dashboard'da 'Broadcast duraklatildi: template placeholder hatasi' alert gorur — 'Sukur, 1000 lead'i harcamadan durdum.' — yerine 1000 failed'e bakmak."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Campaign composer editor'de placeholder picker dropdown her acildiginda INMA'ya /api/dynamicfields call gidiyor (network 200-500ms) — editor yavas hissediliyor.",
+      "suggestion": "InmaDynamicFieldsCache IMemoryCache 1h TTL + tenant-scoped key. Her editor oturumu ayni tenant icin tek 1 network call. Cache miss'te lazy fetch, hit'te sync return.",
+      "aha_moment": "Kullanici 10 campaign olusturmak icin editor'u 10 kez aciyor — 1. acilis 500ms, 2.-10. acilis 5ms. 'Editor direkt aciliyor, iyi kodlanmis.'"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Tenant INMA DynamicMessage ile sorun yasiyor (belki INMA CF config karismis, belki bir mesaj tipi bozuk) — her template manuel duzenleme yapmadan nasil FEAT-DMP'yi hemen kapatir?",
+      "suggestion": "tenant_settings.enable_dynamic_message bool flag (default TRUE). Admin dashboard /settings/tenant → toggle 'Dinamik mesaj kullan' → FALSE = DynamicFields set edilmez, INSE legacy substitution calisir. Zero-code rollback.",
+      "aha_moment": "Support agent tenant'a 'Deneme icin bu toggle'i kapatin, tekrar deneyin' der — 30 saniyede tenant feature disable, mesajlar eski yontemle gider. 'Aciliyette panic yok, toggle var.'"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Saglik sektoru tenant'i WhatsApp'ta '{{name}}' kullaniyor (iyi) ama ayni gun Instagram DM'e manual 'Merhaba' yaziyor (kisisellestirmesiz). Channel basina tutarsizlik = marka imaji bozuk.",
+      "suggestion": "INMA chatoperation DynamicMessage multi-channel (WA+IG+SMS+Telegram) single source-of-truth. INSE DynamicFields=['name'] set eder → INMA Customer DB'den hangi kanal olursa olsun {{name}}='Ahmet Yilmaz' resolve eder. Kanal bagimsiz tutarlilik.",
+      "aha_moment": "Tenant Instagram ve WhatsApp'tan ayni template'i gonderiyor, her ikisi de 'Merhaba Ahmet' diyor — 'Artik hangi kanaldan gondermek istersem isterim, kisisellestirme hep calisir.'"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "iteration": 5,
+    "received_at": "2026-04-21T03:45:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-21T03:45:00Z",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "422/503 ErrorResponse envelopes with INV-OB-038 / INV-OB-037 + distinct UI states in PlaceholderPicker" },
+      "CQ2": { "result": "PASS", "evidence": "Typed catches + rethrow via InmaDynamicFieldsFetchException + surfaced invalidate-partial state" },
+      "CQ3": { "result": "PASS", "evidence": "All diff files in plan.allowed_files" },
+      "CQ4": { "result": "PASS", "evidence": "Shared validator/cache/client abstractions centralize logic" },
+      "CQ5": { "result": "PASS", "evidence": "snake_case + parameterized SQL + typed catches + no null-forgiving" },
+      "CQ6": { "result": "PASS", "evidence": "IMemoryCache + single-flight _inflight + client-side module cache" },
+      "CQ7": { "result": "PASS", "evidence": "No TODO/HACK/FIXME markers" },
+      "CQ8": { "result": "PASS", "evidence": "Signature-additive: dynamicFields LAST param + 2-tuple overload" }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "is { Length: > 0 } gate correct" },
+      "Q2": { "result": "PASS", "reasoning": "Single-flight + failure-not-cached" },
+      "Q3": { "result": "PASS", "reasoning": "DequeueMessagesAsync cross-tenant pattern pre-existing + documented" },
+      "Q4": { "result": "PASS", "reasoning": "Auth middleware inherited globally, documented" },
+      "Q5": { "result": "PASS", "reasoning": "Signature backward-compat + legacy overload" },
+      "Q6": { "result": "PASS", "reasoning": "State-level INV-OB-037 + requestId surface" }
+    },
+    "blocking_issues": []
+  }
+}

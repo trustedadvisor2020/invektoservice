@@ -84,6 +84,13 @@ builder.Services.AddSingleton<TemplateEngine>();
 builder.Services.AddSingleton<OptOutManager>();
 builder.Services.AddSingleton<ConsentManager>();
 builder.Services.AddSingleton(new RateLimiter(defaultMsgPerMin, logger));
+
+// FEAT-DMP: NullResolver is the default binding; FEAT-TFM replaces it when it ships.
+// DynamicMessageValidator depends on it for placeholder → INMA key resolution.
+builder.Services.AddSingleton<Invekto.Shared.Contracts.TenantFieldMapping.ITenantFieldMappingResolver,
+    Invekto.Shared.Contracts.TenantFieldMapping.NullTenantFieldMappingResolver>();
+builder.Services.AddSingleton<Invekto.Shared.Services.DynamicMessageValidator>();
+
 builder.Services.AddSingleton<BroadcastOrchestrator>();
 builder.Services.AddSingleton<TriggerProcessor>();
 builder.Services.AddSingleton<CampaignOrchestrator>();

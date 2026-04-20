@@ -903,6 +903,25 @@ errors:
   - code: INV-OB-032
     description: Audit — admin ops /outbox/retry-skipped invoked (drain trigger)
     user_message: (Operasyon kaydı — skipped outbox girişleri yeniden kuyruğa alındı.)
+  # ── FEAT-DMP: INMA DynamicMessage placeholder integration ──
+  - code: INV-OB-033
+    description: DynamicMessageValidator pre-send reject — MessageText placeholder outside INMA allowlist OR INMA 900/902 (empty fields / placeholder-text mismatch)
+    user_message: Mesaj metnindeki dinamik alan desteklenmiyor — şablonu güncelleyin.
+  - code: INV-OB-034
+    description: INMA 901 — placeholder not supported by tenant (cf column inactive or unknown key)
+    user_message: Kullanılan alan bu tenant için yapılandırılmamış.
+  - code: INV-OB-035
+    description: INMA 903 — phone/account not matched to any Customer row (DynamicMessage mode)
+    user_message: Müşteri kaydı INMA'da bulunamadı; kişisel mesaj gönderilemedi.
+  - code: INV-OB-036
+    description: INMA 905 — placeholder field exists but Customer row has NULL value
+    user_message: Kişiselleştirme alanının değeri boş; mesaj gönderilemedi.
+  - code: INV-OB-037
+    description: INMA /api/dynamicfields fetch failed (HTTP/timeout/malformed JSON / Status:false) — upstream transient
+    user_message: INMA dinamik alanları yüklenemedi; daha sonra tekrar deneyin.
+  - code: INV-OB-038
+    description: Tenant has no WapCRM secret key configured; dynamic-fields proxy returns 422 so picker shows "configure INMA first"
+    user_message: INMA entegrasyonu yapılandırılmamış. Yönetici tenant ayarlarından INMA bağlantısını eklemelidir.
 
   # ── IG — Integrations (GR-3.4/3.6) ──
   - code: INV-IG-001

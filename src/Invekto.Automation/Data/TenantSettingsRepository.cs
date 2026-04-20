@@ -54,4 +54,34 @@ public class TenantSettingsRepository
         _cache.Set(cacheKey, enforce, CacheTtl);
         return enforce;
     }
+
+    /// <summary>
+    /// FEAT-DMP: Read <c>tenant_settings.enable_dynamic_message</c>. Missing row
+    /// yields <c>true</c> — matches the column default (migration 027) so new
+    /// tenants get feature-enabled behaviour. 5-minute cache (hot path on every
+    /// flow-driven send_message).
+    /// </summary>
+    public virtual async Task<bool> GetEnableDynamicMessageAsync(int tenantId, CancellationToken ct = default)
+    {
+        var cacheKey = $"tenant_settings:enable_dynamic_msg:{tenantId}";
+        if (_cache.TryGetValue(cacheKey, out bool cached))
+        {
+            return cached;
+        }
+
+        await using var conn = await _db.OpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT enable_dynamic_message
+            FROM tenant_settings
+            WHERE tenant_id = @tid
+            LIMIT 1";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+
+        var result = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        var enabled = result is bool b ? b : true;
+
+        _cache.Set(cacheKey, enabled, CacheTtl);
+        return enabled;
+    }
 }

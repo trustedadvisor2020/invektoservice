@@ -19,6 +19,11 @@ CREATE TABLE tenant_settings (
     -- compat (legacy flows with null event_name still send, INMA opt-out check skipped).
     -- TRUE rejects send_message without event_name (INV-OB-031). Pilot tenants only.
     enforce_message_category  BOOLEAN     NOT NULL DEFAULT FALSE,
+    -- FEAT-DMP (migration 027): INMA DynamicMessage placeholder activation gate. TRUE (default)
+    -- lets BroadcastOrchestrator/AutomationOrchestrator attach DynamicFields when a template
+    -- contains INMA-reserved placeholders. FALSE forces legacy INSE substitution (admin escape
+    -- hatch — if INMA DynamicMessage misbehaves tenant-side, disable without code change).
+    enable_dynamic_message    BOOLEAN     NOT NULL DEFAULT TRUE,
     created_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at                TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

@@ -141,6 +141,9 @@ public sealed class MessageSenderService : IHostedService, IDisposable
                     // BroadcastId != null; INMA applies opt-out check server-side when this
                     // category reaches /api/chatoperation (double-guard with INSE opt-out).
                     MessageCategory = msg.BroadcastId.HasValue ? "marketing" : null,
+                    // FEAT-DMP: forward placeholder list recorded at broadcast-create time.
+                    // Bridge flips wapPayload.dynamicMessage=true when this is non-empty.
+                    DynamicFields = msg.DynamicFields,
                 },
                 ProcessingTimeMs = 0,
                 Timestamp = DateTime.UtcNow

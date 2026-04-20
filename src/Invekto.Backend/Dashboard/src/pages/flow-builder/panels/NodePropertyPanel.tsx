@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useFlowStore } from '../../../stores/flow-store';
 import { useAuth } from '../../../hooks/useAuth';
 import { getNodeTypeInfo, type FlowNodeType } from '../../../types/flow';
 import { api, type FbAvailableInstance, type FlowSummary } from '../../../lib/api';
+import { PlaceholderPicker } from '../../../components/PlaceholderPicker';
 import {
   NODE_GUIDES,
   NODE_OUTPUT_VARS,
@@ -491,18 +492,46 @@ function MessageTextProps({
   onChange: (d: Record<string, unknown>) => void;
 }) {
   const waitForInput = data.wait_for_input === true;
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // FEAT-DMP: insert INMA placeholder '{{cf1}}' at the cursor caret. Falls back to
+  // append-to-end when the textarea hasn't been focused yet.
+  const insertPlaceholder = (token: string) => {
+    const el = textareaRef.current;
+    const current = data.text ?? '';
+    if (!el) {
+      onChange({ text: current + token });
+      return;
+    }
+    const start = el.selectionStart ?? current.length;
+    const end = el.selectionEnd ?? current.length;
+    const next = current.slice(0, start) + token + current.slice(end);
+    onChange({ text: next });
+    // Restore caret after React reconciliation.
+    requestAnimationFrame(() => {
+      if (textareaRef.current) {
+        const caret = start + token.length;
+        textareaRef.current.focus();
+        textareaRef.current.setSelectionRange(caret, caret);
+      }
+    });
+  };
 
   return (
     <>
       <FieldGroup label="Mesaj Metni">
         <textarea
+          ref={textareaRef}
           value={data.text ?? ''}
           onChange={(e) => onChange({ text: e.target.value })}
           rows={4}
           className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500 resize-none"
           placeholder="Gonderilecek mesaj..."
         />
-        <MessageLengthCounter text={data.text ?? ''} />
+        <div className="flex items-center justify-between mt-1">
+          <MessageLengthCounter text={data.text ?? ''} />
+          <PlaceholderPicker onInsert={insertPlaceholder} position="above" />
+        </div>
       </FieldGroup>
       <FieldGroup label="Davranis">
         <label className="flex items-center gap-2 cursor-pointer">

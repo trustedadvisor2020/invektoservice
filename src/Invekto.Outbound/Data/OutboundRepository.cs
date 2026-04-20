@@ -318,17 +318,21 @@ public class OutboundRepository
     // ================================================================
 
     /// <summary>
-    /// GR-2.3: Insert message with optional language tag.
+    /// GR-2.3: Insert message with optional language tag. FEAT-DMP adds <paramref name="dynamicFields"/>
+    /// for INMA DynamicMessage mode — non-null, non-empty list signals the bridge to forward the
+    /// placeholder list to <c>wapPayload.dynamicMessageFields</c> and MessageText ships raw.
+    /// <paramref name="dynamicFields"/> is AFTER <paramref name="ct"/> so existing positional
+    /// callers (<c>tenantId, ..., lang, ct</c>) compile unchanged \u2014 iter 3 fix for CQ8.
     /// </summary>
     public virtual async Task<long> InsertMessageAsync(
         int tenantId, Guid? broadcastId, int? templateId,
         string recipientPhone, string messageText,
-        string? lang = null, CancellationToken ct = default)
+        string? lang = null, CancellationToken ct = default, string[]? dynamicFields = null)
     {
         const string sql = @"
             INSERT INTO outbound_messages
-                (tenant_id, broadcast_id, template_id, recipient_phone, message_text, status, lang)
-            VALUES (@tid, @bid, @tmpl, @phone, @msg, 'queued', @lang)
+                (tenant_id, broadcast_id, template_id, recipient_phone, message_text, status, lang, dynamic_fields)
+            VALUES (@tid, @bid, @tmpl, @phone, @msg, 'queued', @lang, @df)
             RETURNING id";
 
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -339,12 +343,26 @@ public class OutboundRepository
         cmd.Parameters.AddWithValue("phone", recipientPhone);
         cmd.Parameters.AddWithValue("msg", messageText);
         cmd.Parameters.AddWithValue("lang", (object?)lang ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("df", (object?)dynamicFields ?? DBNull.Value);
 
         var id = await cmd.ExecuteScalarAsync(ct);
         return Convert.ToInt64(id);
     }
 
-    /// <summary>Dequeue next batch of messages to send, respecting rate limit.</summary>
+    /// <summary>
+    /// Dequeue next batch of messages to send, respecting rate limit.
+    /// <para>
+    /// <b>Tenant-scope note (iter 6, pre-existing design preserved):</b> this UPDATE...RETURNING
+    /// runs in <see cref="MessageSenderService"/>, a SINGLETON background worker that drains the
+    /// outbound queue ACROSS ALL tenants. The tenant_id is stored PER-ROW on
+    /// <c>outbound_messages</c> and returned in the projection; downstream per-message handling
+    /// (<see cref="MessageSenderService.SendMessageAsync"/>) reads it from the claimed row and
+    /// respects tenant-scope at the callback layer. This intentionally bypasses the "filter by
+    /// tenant_id in WHERE" rule because there is no tenant context at dequeue time — the worker
+    /// pulls whichever N queued rows are ready. FEAT-DMP (iter 6) only adds <c>dynamic_fields</c>
+    /// to the RETURNING list; cross-tenant claim behaviour is unchanged from GR-2.3.
+    /// </para>
+    /// </summary>
     public virtual async Task<List<QueuedMessage>> DequeueMessagesAsync(
         int batchSize, CancellationToken ct = default)
     {
@@ -359,7 +377,7 @@ public class OutboundRepository
                 FOR UPDATE SKIP LOCKED
             )
             RETURNING id, tenant_id, broadcast_id, template_id,
-                      recipient_phone, message_text";
+                      recipient_phone, message_text, dynamic_fields";
 
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = new NpgsqlCommand(sql, conn);
@@ -376,7 +394,8 @@ public class OutboundRepository
                 BroadcastId = reader.IsDBNull(2) ? null : reader.GetGuid(2),
                 TemplateId = reader.IsDBNull(3) ? null : reader.GetInt32(3),
                 RecipientPhone = reader.GetString(4),
-                MessageText = reader.GetString(5)
+                MessageText = reader.GetString(5),
+                DynamicFields = reader.IsDBNull(6) ? null : (string[])reader.GetValue(6)
             });
         }
         return messages;
@@ -536,11 +555,28 @@ public class OutboundRepository
     }
 
     /// <summary>
-    /// GR-2.3: Batch insert messages with optional language tag.
+    /// GR-2.3 legacy overload: forwards to the FEAT-DMP-aware signature with
+    /// <c>dynamicFields=null</c> on every row so existing callers compiled against the
+    /// original <c>(phone, text)</c> tuple shape stay source-compatible (iter 3 CQ8 fix).
+    /// </summary>
+    public virtual Task BatchInsertMessagesAsync(
+        int tenantId, Guid broadcastId, int templateId,
+        List<(string phone, string text)> messages,
+        string? lang = null, CancellationToken ct = default)
+        => BatchInsertMessagesAsync(
+            tenantId, broadcastId, templateId,
+            messages.Select(m => (m.phone, m.text, (string[]?)null)).ToList(),
+            lang, ct);
+
+    /// <summary>
+    /// GR-2.3: Batch insert messages with optional language tag. FEAT-DMP: each message
+    /// carries an optional <c>dynamicFields</c> array (INMA placeholder keys) that the
+    /// bridge forwards to <c>chatoperation.dynamicMessageFields</c> on dispatch. Null =
+    /// legacy INSE-substituted text (backward-compat).
     /// </summary>
     public virtual async Task BatchInsertMessagesAsync(
         int tenantId, Guid broadcastId, int templateId,
-        List<(string phone, string text)> messages,
+        List<(string phone, string text, string[]? dynamicFields)> messages,
         string? lang = null, CancellationToken ct = default)
     {
         if (messages.Count == 0) return;
@@ -554,9 +590,10 @@ public class OutboundRepository
 
         for (var i = 0; i < messages.Count; i++)
         {
-            valueClauses.Add($"(@tid, @bid, @tmpl, @phone{i}, @msg{i}, 'queued', @lang)");
+            valueClauses.Add($"(@tid, @bid, @tmpl, @phone{i}, @msg{i}, 'queued', @lang, @df{i})");
             cmd.Parameters.AddWithValue($"phone{i}", messages[i].phone);
             cmd.Parameters.AddWithValue($"msg{i}", messages[i].text);
+            cmd.Parameters.AddWithValue($"df{i}", (object?)messages[i].dynamicFields ?? DBNull.Value);
         }
 
         cmd.Parameters.AddWithValue("tid", tenantId);
@@ -566,10 +603,32 @@ public class OutboundRepository
 
         cmd.CommandText = $@"
             INSERT INTO outbound_messages
-                (tenant_id, broadcast_id, template_id, recipient_phone, message_text, status, lang)
+                (tenant_id, broadcast_id, template_id, recipient_phone, message_text, status, lang, dynamic_fields)
             VALUES {string.Join(",\n                   ", valueClauses)}";
 
         await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    /// <summary>
+    /// FEAT-DMP: Read <c>tenant_settings.enable_dynamic_message</c>. Missing row (tenant
+    /// has never written settings) yields <c>true</c> — matches the column default so
+    /// new tenants get feature-enabled behaviour automatically. Tight DB hit (no cache);
+    /// callers (BroadcastOrchestrator) should memoize per-broadcast.
+    /// </summary>
+    public virtual async Task<bool> GetEnableDynamicMessageAsync(int tenantId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT enable_dynamic_message
+            FROM tenant_settings
+            WHERE tenant_id = @tid
+            LIMIT 1";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is bool b ? b : true;
     }
 
     /// <summary>Reset stale 'sending' messages back to 'queued' on service shutdown.</summary>
@@ -1363,4 +1422,7 @@ public sealed class QueuedMessage
     public int? TemplateId { get; set; }
     public string RecipientPhone { get; set; } = "";
     public string MessageText { get; set; } = "";
+
+    /// <summary>FEAT-DMP: INMA placeholder keys (e.g. ["name","cf1"]). Null = INSE legacy path.</summary>
+    public string[]? DynamicFields { get; set; }
 }

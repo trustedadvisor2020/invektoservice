@@ -1,7 +1,35 @@
 # SPEC: Dynamic Message Placeholder (INMA `{{placeholder}}` Integration)
 
-> **Spec ID:** FEAT-DMP | **Paket:** TBD | **Risk:** MEDIUM
-> **Yazar:** Q | **Son Guncelleme:** 2026-04-20 | **Durum:** DRAFT
+> **Spec ID:** FEAT-DMP | **Paket:** Tek chunk all-in | **Risk:** MEDIUM
+> **Yazar:** Q | **Son Guncelleme:** 2026-04-20 | **Durum:** IMPLEMENTED (plan: [20260420-feat-dmp-inma-dynamic-message.json](../plans/20260420-feat-dmp-inma-dynamic-message.json))
+
+## Interview Decisions (2026-04-20, 7/7 locked)
+
+| # | Karar | Not |
+|---|-------|-----|
+| Q1 | **Tek chunk all-in** (FEAT-J2 paterni) | Shared + Bridge + UI + Outbound + Automation tek commit |
+| Q2 | **Hybrid picker** — TFM varsa semantic, yoksa raw | `NullTenantFieldMappingResolver` DMP'de default; FEAT-TFM geldiğinde swap edilir |
+| Q3 | **Sabit demo preview** | `renderDynamicPreview()` helper (PlaceholderPicker.tsx) — hardcoded defaults |
+| Q4 | **TFM-inclusive validation** | `DynamicMessageValidator` → resolver → allowlist kontrol |
+| Q5 | **Flag default TRUE** | `tenant_settings.enable_dynamic_message` — admin escape hatch |
+| Q6 | **i18n passthrough** | INMA FieldName (TR) aynen gösterilir; INSE override katmanı YOK |
+| Q7 | **Reactive rollback** | INMA 901 → `outbound_messages.status='failed'` + INV-OB-034 + UI etiket; pre-send recurring job YOK |
+
+## Error Codes (INV-OB-033..037)
+
+FEAT-J2 INV-OB-026..032'i kullandı; DMP 033'ten başlar:
+- **INV-OB-033** DynamicFieldValidationFailed (pre-send miss + INMA 900/902)
+- **INV-OB-034** DynamicFieldUnsupported (INMA 901)
+- **INV-OB-035** DynamicCustomerNotFound (INMA 903)
+- **INV-OB-036** DynamicFieldValueNull (INMA 905)
+- **INV-OB-037** DynamicFieldsFetchFailed (`/api/dynamicfields` HTTP/timeout/JSON failure)
+
+## Scope Adjustments (implement-time)
+
+- **CampaignsPage.tsx out of scope** — sayfa boş placeholder, composer yok. Marketing v2 PKT-6C3 sonrasi follow-up.
+- **Marketing CampaignRunner out of scope** — service'te mevcut değil (MarketingRepository + TourismResponseGenerator + Program.cs). DTO alanı Shared'da hazır, Marketing composer implement edildiğinde entegre olur.
+- **UI integration noktaları:** FlowBuilder `NodePropertyPanel` (message_text node) + `TemplateCreatePage` (content_json JSON composer). Her ikisi de cursor-position insert ile çalışır.
+
 
 ## 1. Intent (Ne & Neden)
 

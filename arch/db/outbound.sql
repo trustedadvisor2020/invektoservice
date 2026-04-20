@@ -82,6 +82,10 @@ CREATE TABLE IF NOT EXISTS outbound_messages (
     delivered_at            TIMESTAMPTZ,
     read_at                 TIMESTAMPTZ,
     failed_reason           VARCHAR(500),
+    -- FEAT-DMP (migration 027): INMA placeholder keys recorded at broadcast-create time so
+    -- the callback bridge can forward them to wapPayload.dynamicMessageFields without re-parsing
+    -- MessageText on dequeue. NULL = INSE legacy substituted text (pre-DMP rows + legacy path).
+    dynamic_fields          TEXT[],
     created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     -- status values: queued, sending, sent, delivered, read, failed, blocked

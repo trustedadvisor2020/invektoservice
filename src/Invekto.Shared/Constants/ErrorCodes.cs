@@ -411,6 +411,14 @@ public static class ErrorCodes
     public const string MessageCategoryEnforcementFailed = "INV-OB-031";   // enforce_message_category=TRUE and event_name null/outside allow-list
     public const string OutboxDrainTriggered = "INV-OB-032";               // Audit: admin ops /outbox/retry-skipped endpoint invoked
 
+    // FEAT-DMP: INMA DynamicMessage placeholder integration (INV-OB-033+)
+    public const string DynamicFieldValidationFailed = "INV-OB-033";       // Pre-send validation: MessageText placeholder outside INMA allowlist OR INMA 900/902 response (empty fields / placeholder-text mismatch)
+    public const string DynamicFieldUnsupported = "INV-OB-034";            // INMA 901: placeholder not supported by tenant (cf column not active)
+    public const string DynamicCustomerNotFound = "INV-OB-035";            // INMA 903: phone/account not matched to any Customer row
+    public const string DynamicFieldValueNull = "INV-OB-036";              // INMA 905: placeholder field exists but Customer row has NULL value
+    public const string DynamicFieldsFetchFailed = "INV-OB-037";           // /api/dynamicfields INMA call failed (HTTP/timeout/malformed/Status:false) — upstream unreachable, transient
+    public const string DynamicFieldsNotConfigured = "INV-OB-038";         // Tenant has no WapCRM secret key; Dashboard picker shows "Admin tenant ayarlarindan eklemelidir"
+
     // Lead Management errors (INV-LD-xxx) -- GR-3.13
     public const string LeadInvalidPayload = "INV-LD-001";
     public const string LeadNotFound = "INV-LD-002";

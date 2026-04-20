@@ -2070,7 +2070,35 @@ class OpsApiClient {
       body: JSON.stringify({ ids }),
     });
   }
+
+  // FEAT-DMP: INMA dynamic-fields proxy (tenant-scoped, 1h cached server-side).
+  // 200 + {data:[...]} = success (empty list = tenant has no active placeholders).
+  // 422 INV-OB-038 DynamicFieldsNotConfigured = tenant has no WapCRM secret configured yet.
+  // 503 INV-OB-037 DynamicFieldsFetchFailed   = upstream INMA unreachable; transient retry-able.
+  // These error codes are distinct in arch/errors.md so dashboards can grep each state separately.
+  async getInmaDynamicFields(): Promise<{ data: InmaDynamicFieldDto[] }> {
+    return this.request<{ data: InmaDynamicFieldDto[] }>('/api/v1/dynamic-fields');
+  }
+
+  async invalidateInmaDynamicFieldsCache(): Promise<{ invalidated: boolean }> {
+    return this.request<{ invalidated: boolean }>('/api/v1/dynamic-fields/cache-invalidate', {
+      method: 'POST',
+    });
+  }
 }
+
+// FEAT-DMP: INMA placeholder descriptor — matches the bridge proxy shape.
+export interface InmaDynamicFieldDto {
+  FieldKey: string;  // 'name' | 'email' | 'cf1' ... — the token inside {{...}}.
+  FieldName: string; // Tenant-authored label shown in the picker (e.g. 'Şehir').
+}
+
+/** FEAT-DMP: distinct error kinds surfaced by useDynamicFields to PlaceholderPicker. */
+export type DynamicFieldsErrorKind =
+  | 'not_configured'      // 422 — tenant has no WapCRM secret; admin must configure INMA first.
+  | 'upstream_fail'       // 503 — INMA unreachable; transient, refresh may help.
+  | 'invalidate_partial'  // Server-side cache drop failed; fresh fetch may return stale (1h TTL) data.
+  | 'unknown';            // Other (401, 5xx without code) — show generic retry.
 
 // --- Zoho DTOs (mirror src/Invekto.Shared/Contracts/Zoho, camelCase per API serializer) ---
 

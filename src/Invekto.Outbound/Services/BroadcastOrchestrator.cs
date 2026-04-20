@@ -17,6 +17,7 @@ public sealed class BroadcastOrchestrator
     private readonly TemplateEngine _templateEngine;
     private readonly OptOutManager _optOutManager;
     private readonly ConsentManager _consentManager;
+    private readonly DynamicMessageValidator _dynamicValidator;
     private readonly JsonLinesLogger _logger;
 
     public BroadcastOrchestrator(
@@ -24,12 +25,14 @@ public sealed class BroadcastOrchestrator
         TemplateEngine templateEngine,
         OptOutManager optOutManager,
         ConsentManager consentManager,
+        DynamicMessageValidator dynamicValidator,
         JsonLinesLogger logger)
     {
         _repository = repository;
         _templateEngine = templateEngine;
         _optOutManager = optOutManager;
         _consentManager = consentManager;
+        _dynamicValidator = dynamicValidator;
         _logger = logger;
     }
 
@@ -56,6 +59,26 @@ public sealed class BroadcastOrchestrator
         // GR-2.3: Resolve broadcast language (request override > template lang)
         var lang = request.Lang ?? template.Lang;
 
+        // FEAT-DMP: per-broadcast DynamicMessage activation gate (interview Q5).
+        // enable_dynamic_message=FALSE forces legacy INSE substitution regardless of placeholder shape.
+        // Placeholder scan runs once per broadcast (template is shared across recipients).
+        var dynamicEnabled = await _repository.GetEnableDynamicMessageAsync(tenantId, ct);
+        var validation = await _dynamicValidator.ValidateAsync(tenantId, template.MessageTemplate, ct);
+        var useDynamic = dynamicEnabled && validation.HasPlaceholders && validation.IsValid;
+        string[]? broadcastDynamicFields = useDynamic ? validation.InmaFieldKeys.ToArray() : null;
+
+        if (dynamicEnabled && validation.HasPlaceholders && !validation.IsValid)
+        {
+            // Unknown placeholders + flag TRUE = template references a key outside the INMA
+            // allowlist AND TFM doesn't map it. Fall through to legacy TemplateEngine.Substitute
+            // which will consume recipient.Variables — if the token is a user-variable the
+            // broadcast succeeds; if not, recipient is skipped per its own missingVars path.
+            // Logged once per broadcast so the tenant can spot stale placeholders in their template.
+            _logger.SystemWarn(
+                $"[{ErrorCodes.DynamicFieldValidationFailed}] Broadcast template has non-INMA placeholders: " +
+                $"tenant={tenantId}, template={request.TemplateId}, unknown=[{string.Join(",", validation.UnknownPlaceholders)}]");
+        }
+
         // Collect valid phones for batch opt-out check
         var validRecipients = request.Recipients
             .Where(r => !string.IsNullOrWhiteSpace(r.Phone))
@@ -79,7 +102,7 @@ public sealed class BroadcastOrchestrator
         // Filter and prepare messages
         var skippedOptout = 0;
         var skippedConsent = 0;
-        var messagesToInsert = new List<(string phone, string text)>();
+        var messagesToInsert = new List<(string phone, string text, string[]? dynamicFields)>();
 
         foreach (var recipient in validRecipients)
         {
@@ -96,20 +119,33 @@ public sealed class BroadcastOrchestrator
                 continue;
             }
 
-            // Apply template variables
-            var (messageText, missingVars) = _templateEngine.Substitute(
-                template.MessageTemplate, recipient.Variables);
-
-            if (missingVars.Count > 0)
+            string messageText;
+            string[]? recipientDynamicFields = null;
+            if (useDynamic)
             {
-                _logger.SystemWarn(
-                    $"Broadcast skipping {recipient.Phone}: missing variables [{string.Join(", ", missingVars)}]");
-                continue;
+                // FEAT-DMP: raw template text ships to INMA which resolves placeholders
+                // from Customer DB. TemplateEngine.Substitute is bypassed entirely —
+                // recipient.Variables is ignored in dynamic mode (INMA doesn't use it).
+                messageText = template.MessageTemplate;
+                recipientDynamicFields = broadcastDynamicFields;
+            }
+            else
+            {
+                var (substituted, missingVars) = _templateEngine.Substitute(
+                    template.MessageTemplate, recipient.Variables);
+
+                if (missingVars.Count > 0)
+                {
+                    _logger.SystemWarn(
+                        $"Broadcast skipping {recipient.Phone}: missing variables [{string.Join(", ", missingVars)}]");
+                    continue;
+                }
+                messageText = substituted;
             }
 
             // GR-2.6.1: Append KVKK health disclaimer if applicable
             var finalText = KvkkHelper.AppendDisclaimerIfHealth(messageText, isHealthTenant);
-            messagesToInsert.Add((recipient.Phone, finalText));
+            messagesToInsert.Add((recipient.Phone, finalText, recipientDynamicFields));
         }
 
         if (messagesToInsert.Count == 0)
@@ -128,9 +164,14 @@ public sealed class BroadcastOrchestrator
             tenantId, broadcastId, request.TemplateId, messagesToInsert, lang, ct);
         var queuedCount = messagesToInsert.Count;
 
-        // GR-3.29: Audit trail - batch insert for compliance (single multi-row INSERT)
+        // GR-3.29: Audit trail - batch insert for compliance (single multi-row INSERT).
+        // AuditTrail records the rendered MessageText only (DynamicFields is per-message
+        // metadata, not customer-visible content) — project to the legacy (phone, content) shape.
+        var auditRecords = messagesToInsert
+            .Select(m => (phone: m.phone, content: m.text))
+            .ToList();
         await _repository.BatchInsertAuditTrailAsync(
-            tenantId, request.TemplateId, null, messagesToInsert, ct);
+            tenantId, request.TemplateId, null, auditRecords, ct);
 
         _logger.SystemInfo(
             $"Broadcast created: id={broadcastId}, tenant={tenantId}, " +
