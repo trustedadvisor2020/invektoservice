@@ -111,7 +111,13 @@ public static class TenantFieldMappingEndpoints
                     updated_at = updatedAt
                 }
             });
-        }).RequireAuthorization();
+        });
+        // NOTE: route-level RequireAuthorization() removed — Backend uses custom JWT
+        // middleware (sets ctx.Items["TenantId"] from signed claim) instead of .NET
+        // AddAuthentication scheme. Adding RequireAuthorization() here throws
+        // "No authenticationScheme was specified" InvalidOperationException at request
+        // time → 500 instead of 401. Same pattern as /api/v1/dynamic-fields (DMP) and
+        // /api/v1/optout: rely on the global middleware + handler-side TenantId guard.
 
         // ============================================
         // PUT — validate + UPSERT + invalidate local resolver cache.
@@ -247,7 +253,13 @@ public static class TenantFieldMappingEndpoints
                     updated_at = updatedAt
                 }
             });
-        }).RequireAuthorization();
+        });
+        // NOTE: route-level RequireAuthorization() removed — Backend uses custom JWT
+        // middleware (sets ctx.Items["TenantId"] from signed claim) instead of .NET
+        // AddAuthentication scheme. Adding RequireAuthorization() here throws
+        // "No authenticationScheme was specified" InvalidOperationException at request
+        // time → 500 instead of 401. Same pattern as /api/v1/dynamic-fields (DMP) and
+        // /api/v1/optout: rely on the global middleware + handler-side TenantId guard.
     }
 
     /// <summary>
