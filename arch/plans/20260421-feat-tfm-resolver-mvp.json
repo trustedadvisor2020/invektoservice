@@ -1,0 +1,274 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260421-feat-tfm-resolver-mvp",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-04-21T00:00:00Z",
+  "updated_at": "2026-04-21T00:00:00Z",
+  "plan": {
+    "summary": "FEAT-TFM MVP: tenant-scoped semantic field-mapping resolver. Migration 028 (tenant_settings.field_mapping JSONB + leads.custom_1..custom_10 TEXT additive ALTER) + Shared DbTenantFieldMappingResolver with IMemoryCache (5min TTL) + TenantFieldMappingValidator (reserved-name + type + enum + source-range guards, INV-BE-096..099) + Backend GET/PUT /api/v1/tenant-settings/field-mapping (tenant-scoped JWT) + DI swap NullResolver→DbResolver in Backend/Outbound/Automation. UI editor, INMA mirror sync, flow builder semantic picker explicitly OUT OF SCOPE (later packets).",
+    "q_intent": "FEAT-DMP prod deploy bitti. Sıradaki paket FEAT-TFM. Q seçti: (1) MVP scope = Resolver + Config CRUD + DMP swap (UI/sync/flow yok). (2) leads.custom_1..custom_10 TEXT mirror schema spec-aligned. (3) INMA → INSE sync MVP'ye dahil DEĞİL — sonraki paket. (4) Tüm tenantlar için açık, mapping yoksa null fallback (DMP mevcut raw INMA key davranışı korunur). Codex iteration=0 hedefi.",
+    "interview_notes": "Interview 4/4 (2026-04-21 00:01): Q1 Scope=MVP (resolver+CRUD+DI swap), Q2 Mirror schema=leads.custom_1..custom_10 TEXT (spec-aligned, sonraki sync paketine hazır), Q3 INMA sync=MVP DIŞI (sonraki paket FEAT-TFM-SYNC), Q4 Rollout=tüm tenantlar açık, mapping yoksa NullResolver davranışı (sıfır breaking change). Pre-existing surface: ITenantFieldMappingResolver interface + NullTenantFieldMappingResolver Shared'da DMP'den miras (interface signature: ResolveToInmaKeyAsync(tenantId, placeholder, ct) → string?). DI registrations 3 servis: Backend/Program.cs:450, Outbound/Program.cs:90, Automation/Program.cs:97. DbResolver bu binding'leri swap eder.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Migration 028-tenant-field-mapping.sql idempotent (IF NOT EXISTS): tenant_settings.field_mapping JSONB NOT NULL DEFAULT '{}'::jsonb + leads.custom_1..custom_10 TEXT NULL kolonları + GRANT ALL ON tenant_settings, leads TO invekto. Canonical schema mirror tenant-settings.sql ve (varsa) leads.sql veya pkt6b1-niche-business.sql'e yansıtılır.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC2",
+        "criterion": "TenantFieldMappingEntry DTO (Shared/Contracts/TenantFieldMapping/Dtos/): { Source: string (cf1..cf10 enum guard), Type: string (enum/string/date/bool/int), EnumValues?: List<string>, Required?: bool }. JsonSerializerOptions snake_case (PropertyNamingPolicy.SnakeCaseLower).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC3",
+        "criterion": "TenantFieldMappingValidator (Shared/Services/): ValidateMapping(Dictionary<string, TenantFieldMappingEntry>) → throws TenantFieldMappingValidationException with INV-BE-096..099. RESERVED semantic names = InmaDynamicFieldKeys.Allowlist (15: name/email/note/pushname/datalistname + cf1..cf10) ∪ DB columns (id, tenant_id, full_name, phone, created_at, updated_at, pipeline_status, preferred_locale) → reject INV-BE-097. Reason: 'name' raw key INMA Allowlist'te zaten — tenant 'name' semantic'i kaydederse cf1'e map edip aynı zamanda raw 'name' Allowlist match alır → çakışma; reserved guard contract bug'ını önler. Source range cf1..cf10 enforce INV-BE-099. Type whitelist (enum/string/date/bool/int) INV-BE-096. Type=enum && enum_values null/empty reject INV-BE-098. Semantic name regex ^[a-z][a-z0-9_]{1,63}$ enforce INV-BE-096.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC4",
+        "criterion": "ErrorCodes.cs ekleme: INV-BE-096 (FieldMappingInvalid — type/regex), INV-BE-097 (FieldMappingReservedSemanticName), INV-BE-098 (FieldMappingEnumValueMissing), INV-BE-099 (FieldMappingSourceOutOfRange). arch/errors.md mirror.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC5",
+        "criterion": "DbTenantFieldMappingResolver (Shared/Contracts/TenantFieldMapping/) impl: ResolveToInmaKeyAsync(tenantId, placeholder, ct) → IMemoryCache hit (key 'tenant:field_mapping:{tenantId}', 5dk TTL, single-flight ConcurrentDictionary) → cache miss tenant_settings.field_mapping SELECT → JSONB deserialize → semantic→source lookup → 'cf1' style key döner; mapping yoksa veya placeholder mapping'de yoksa null (DMP raw key fallback davranışı korunur). PostgresConnectionFactory injected (Invekto.Shared.Data.PostgresConnectionFactory — mevcut pattern, 3 servisin de kullandığı). Typed catch (NpgsqlException, JsonException, OperationCanceledException) → fail-safe null return + JsonLinesLogger warn (resolver fail bug değil, DMP raw fallback'e düşer).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC6",
+        "criterion": "Backend/Data/TenantSettingsRepository.cs (yeni dosya) — Backend için tenant_settings repo. PostgresConnectionFactory injected. Methods: GetFieldMappingAsync(tenantId, ct) → JSON string + updated_at; UpsertFieldMappingAsync(tenantId, fieldMappingJson, ct) → INSERT ON CONFLICT (tenant_id) DO UPDATE SET field_mapping=EXCLUDED.field_mapping, updated_at=NOW(). Outbound/Automation'daki Repository pattern'i ile uyumlu (per-service repo, microservice isolation).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC7",
+        "criterion": "Backend GET /api/v1/tenant-settings/field-mapping endpoint (tenant-scoped JWT — TenantContext.TenantId kullan, body'den tenant_id ALMA, JWT pattern'i Backend'in mevcut endpoint'leri ile aynı). Response: { tenant_id, field_mapping: { semantic_name: { source, type, enum_values, required } }, updated_at }. Mapping yoksa empty object. typed catch (NpgsqlException, JsonException, OperationCanceledException) + JsonLinesLogger.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC8",
+        "criterion": "Backend PUT /api/v1/tenant-settings/field-mapping endpoint (tenant-scoped JWT — TenantContext.TenantId kullan). Body: { tenant_id?: int, field_mapping: { semantic_name: TenantFieldMappingEntry } }. tenant_id optional defansif: body.tenant_id verildi ve JWT.TenantId ile farklı → 403 + INV-AUTH-010 (AuthCrossTenantBlocked, iter 2 fix dedicated forbidden code; INV-AUTH-003=AuthUnauthorized=401 semantic 403'e uymadı). TenantFieldMappingValidator.Validate çağrılır → fail → 400 + INV-BE-09x error code. Pass → repository.UpsertFieldMappingAsync. PUT sonrası resolver.Invalidate(tenantId) — ITenantFieldMappingResolver interface method (type-cast yok, DI decoration safe). Multi-instance not: Outbound/Automation instance'larındaki cache 5dk TTL ile eventual consistent (acceptable MVP). Success response envelope `{ data: {...} }` (DMP /api/v1/dynamic-fields pattern).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC9",
+        "criterion": "DI swap 3 servis (Backend/Program.cs:450, Outbound/Program.cs:90, Automation/Program.cs:97): NullTenantFieldMappingResolver yerine DbTenantFieldMappingResolver register. AddMemoryCache() + PostgresConnectionFactory dependency'leri zaten mevcut (Backend Program.cs:299, Automation TenantSettingsRepository pattern). Outbound için AddMemoryCache() yoktu → eklendi. NullTenantFieldMappingResolver dosyası SİLİNMEZ — test fixture + ileride per-tenant disable senaryosu için kalır (intentional). ITenantFieldMappingResolver interface'e Invalidate(int) method eklendi (Null=no-op, Db=cache.Remove); cache invalidation contract type-cast yerine interface method ile garanti edilir (DI decoration safe).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC10",
+        "criterion": "FEAT-DMP backward-compat: Tenant mapping kaydetmemişse veya placeholder mapping'de yoksa resolver null döner → DMP DynamicMessageValidator raw INMA key allowlist fallback'ine düşer (mevcut davranış, kırılma yok). Mapping yazan tenant semantic placeholder ({{roadshow_city}}) kullanmaya başlar → resolver cf1'e çevirir → INMA'ya cf1 gider.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC11",
+        "criterion": "tracking/feat-tfm-mvp.md yeni paket dosyası (status, AC checklist, deliverables). tracking/README.md master tablo update (FEAT-TFM-MVP satırı). arch/features/tenant-field-mapping.md status DRAFT → IN_PROGRESS (MVP scope clarification + out-of-scope note). arch/codex-context.md güncellemesi: 'DbTenantFieldMappingResolver null return = INTENTIONAL DMP raw INMA key fallback contract, bug değil' notu (Codex false-positive önleme).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC12",
+        "criterion": "Build PASS: Shared + Backend + Outbound + Automation. 0 warning (Codex CQ4 gate). Migration 028 idempotent re-run guvenli.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC13",
+        "criterion": "Microservice isolation korunur: DbTenantFieldMappingResolver Shared'da yaşar, 3 servis kendi PostgresConnectionFactory'sini inject eder. Servisler arası direct reference yok (Outbound → Backend HTTP yok, sadece kendi DB read). Service-isolation-checker agent'ı Shared değişiklikleri için manuel çağrılabilir (advisory).",
+        "verified": false,
+        "verification_note": null
+      }
+    ]
+  },
+  "allowed_files": [
+    "arch/db/migrations/028-tenant-field-mapping.sql",
+    "arch/db/tenant-settings.sql",
+    "arch/db/pkt6b1-niche-business.sql",
+    "arch/errors.md",
+    "arch/endpoints.md",
+    "arch/features/tenant-field-mapping.md",
+    "arch/codex-context.md",
+    "arch/plans/20260421-feat-tfm-resolver-mvp.json",
+    "arch/plans/diffs/20260421-feat-tfm-resolver-mvp.diff",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Shared/Contracts/TenantFieldMapping/ITenantFieldMappingResolver.cs",
+    "src/Invekto.Shared/Contracts/TenantFieldMapping/NullTenantFieldMappingResolver.cs",
+    "src/Invekto.Shared/Contracts/TenantFieldMapping/Dtos/TenantFieldMappingEntry.cs",
+    "src/Invekto.Shared/Contracts/TenantFieldMapping/DbTenantFieldMappingResolver.cs",
+    "src/Invekto.Shared/Contracts/TenantFieldMapping/TenantFieldMappingValidationException.cs",
+    "src/Invekto.Shared/Services/TenantFieldMappingValidator.cs",
+    "src/Invekto.Backend/Data/TenantSettingsRepository.cs",
+    "src/Invekto.Backend/Endpoints/TenantFieldMappingEndpoints.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Outbound/Program.cs",
+    "src/Invekto.Automation/Program.cs",
+    "tracking/feat-tfm-mvp.md",
+    "tracking/README.md"
+  ],
+  "files_changed": [
+    {"path": "arch/codex-context.md", "is_new": false, "change": "FEATURE-SPECIFIC INTENT section: FEAT-TFM intent guidance (null return intentional, NullResolver preserved, multi-instance cache trade-off, reserved guard rationale, leads.custom_X forward-compat)"},
+    {"path": "arch/db/migrations/028-tenant-field-mapping.sql", "is_new": true, "change": "Migration 028: tenant_settings.field_mapping JSONB DEFAULT '{}' + leads.custom_1..custom_10 TEXT NULL (additive, idempotent IF NOT EXISTS) + GRANT to invekto"},
+    {"path": "arch/db/pkt6b1-niche-business.sql", "is_new": false, "change": "Canonical mirror: leads.custom_1..custom_10 TEXT kolonları (forward-compat for FEAT-TFM-SYNC)"},
+    {"path": "arch/db/tenant-settings.sql", "is_new": false, "change": "Canonical mirror: field_mapping JSONB DEFAULT '{}' kolonu"},
+    {"path": "arch/errors.md", "is_new": false, "change": "INV-BE-096..099 entries (FieldMappingInvalid, ReservedSemanticName, EnumValueMissing, SourceOutOfRange)"},
+    {"path": "arch/features/tenant-field-mapping.md", "is_new": false, "change": "Status DRAFT → IN_PROGRESS (MVP), MVP scope clarification + plan ref"},
+    {"path": "arch/plans/20260421-feat-tfm-resolver-mvp.json", "is_new": true, "change": "Plan JSON v5.1, MEDIUM risk, 13 AC, 4 verification questions, 5 AHA"},
+    {"path": "src/Invekto.Automation/Program.cs", "is_new": false, "change": "DI swap: NullTenantFieldMappingResolver → DbTenantFieldMappingResolver"},
+    {"path": "src/Invekto.Backend/Data/TenantSettingsRepository.cs", "is_new": true, "change": "Backend tenant_settings repo: GetFieldMappingAsync + UpsertFieldMappingAsync (PostgresConnectionFactory)"},
+    {"path": "src/Invekto.Backend/Endpoints/TenantFieldMappingEndpoints.cs", "is_new": true, "change": "MapTenantFieldMappingEndpoints extension — GET + PUT /api/v1/tenant-settings/field-mapping (tenant-scoped JWT, validate + UPSERT + cache invalidate)"},
+    {"path": "src/Invekto.Backend/Program.cs", "is_new": false, "change": "DI swap (Null→Db) + register TenantSettingsRepository + DbTenantFieldMappingResolver + app.MapTenantFieldMappingEndpoints() + discovery list 2 entries + using Invekto.Backend.Endpoints"},
+    {"path": "src/Invekto.Outbound/Program.cs", "is_new": false, "change": "DI swap (Null→Db) + AddMemoryCache() (DbResolver dep)"},
+    {"path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false, "change": "INV-BE-096..099 const additions (additive, no breaking)"},
+    {"path": "src/Invekto.Shared/Contracts/TenantFieldMapping/DbTenantFieldMappingResolver.cs", "is_new": true, "change": "DB-backed ITenantFieldMappingResolver impl: IMemoryCache 5dk + single-flight ConcurrentDictionary + typed catch fail-safe null + Invalidate()"},
+    {"path": "src/Invekto.Shared/Contracts/TenantFieldMapping/Dtos/TenantFieldMappingEntry.cs", "is_new": true, "change": "DTO: Source/Type/EnumValues?/Required? — snake_case JsonPropertyName"},
+    {"path": "src/Invekto.Shared/Contracts/TenantFieldMapping/TenantFieldMappingValidationException.cs", "is_new": true, "change": "Validation exception with ErrorCode + SemanticName"},
+    {"path": "src/Invekto.Shared/Services/TenantFieldMappingValidator.cs", "is_new": true, "change": "Static validator: reserved guard (Allowlist ∪ leads core cols), source range cf1..cf10, type whitelist, enum_values requirement, semantic name regex, duplicate slot check"},
+    {"path": "tracking/README.md", "is_new": false, "change": "FEAT-TFM master tablo satır güncellemesi (DRAFT → MVP IN_PROGRESS, plan link)"},
+    {"path": "tracking/feat-tfm-mvp.md", "is_new": true, "change": "MVP paket tracking: scope, AC checklist, deliverables, build status, next steps"}
+  ],
+  "git_diff": {
+    "sha256": "F3C8054AF281CAE53BAFF6D9A2A7C386AE874FC13319310E1167481DD98C8C37",
+    "full_path": "arch/plans/diffs/20260421-feat-tfm-resolver-mvp.diff",
+    "stats": { "insertions": 1189, "deletions": 12, "files_count": 21 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-04-21T00:55:00Z",
+    "error_summary": "0 error, 17 warning (hepsi pre-existing — FEAT-TFM yeni warning eklemedi: TenantUsageService CS1998, OnboardingInsightService CS8634/CS8621, AutomationOrchestrator CS8600, Backend Program.cs CS1998/CS8321/CA1416, NU1603 Marketing pkg, xUnit1013 LogReaderTests).",
+    "services": ["Invekto.Shared", "Invekto.Backend", "Invekto.Outbound", "Invekto.Automation"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Migration 028 idempotent mi (IF NOT EXISTS), tenant_settings.field_mapping JSONB DEFAULT '{}' encoded doğru mu, leads.custom_1..custom_10 NULL ve mevcut row'lar bozulmadan ALTER eklenir mi?",
+      "category": "Data"
+    },
+    {
+      "id": "Q2",
+      "question": "PUT /api/v1/tenant-settings/field-mapping endpoint sadece JWT'deki tenant_id ile aynı row'a yazıyor mu? Cross-tenant write attempt 403 döner mi? Reserved semantic names (name, phone, email, vb.) ve source range (cf1..cf10) sıkı validate edilip INV-BE-09x hatasıyla reject ediliyor mu?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q3",
+      "question": "PUT sonrası IMemoryCache 'tenant:field_mapping:{tenantId}' anahtarı invalidate ediliyor mu? Sıradaki resolver çağrısı fresh DB read yapar mı? Single-flight ConcurrentDictionary inflight guard race condition'a karşı koruyor mu?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q4",
+      "question": "FEAT-DMP backward-compat: Tenant mapping yokken DbResolver null döner mi (DMP raw INMA key allowlist fallback'ı kırılmaz)? Mevcut Outbound/Automation DMP test akışları regress etmez mi? Microservice isolation korundu mu (3 servis kendi NpgsqlConnection'ı kullanır, cross-service reference yok)?",
+      "category": "Process/Policy"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Dashboard frontend (UI editor sonraki paket FEAT-TFM-UI)",
+      "FlowBuilder NodePropertyPanel semantic picker (sonraki paket FEAT-TFM-FLOW)",
+      "INMA → INSE custom field sync worker (sonraki paket FEAT-TFM-SYNC)",
+      "leads tablosu read/write logic (mirror kolonları boş kalır, sync paketi dolduracak)",
+      "FEAT-DMP DynamicMessageValidator değişikliği (resolver hook zaten doğru çağırıyor)",
+      "Tenant_settings diğer kolonlar (timezone, enable_dynamic_message, vb.)"
+    ],
+    "non_goals": [
+      "Custom field tipinde JSON/array support (only enum/string/date/bool/int)",
+      "11+ field support (INMA 10 field hard limit)",
+      "Field-level access control (v2)",
+      "Historical value tracking per field (v2)",
+      "Multi-tenant shared semantic dictionary",
+      "Field rename auto-sync from INMA"
+    ],
+    "intentional_exclusions": [
+      "Dashboard UI editor — Q seçimi MVP scope dışı; Q şu an SQL ile veya Postman ile config girer",
+      "INMA webhook/polling sync — Q seçimi MVP scope dışı",
+      "leads.custom_X read endpoint — kolonlar additive ALTER ile geliyor ama MVP'de boş; sonraki sync paketi dolduracak ve okuyacak",
+      "Per-tenant enable_field_mapping flag — Q seçimi 'tüm tenantlar açık, mapping yoksa null fallback' (sıfır breaking change)",
+      "Multi-instance cache cross-invalidation (Redis pub/sub vb.) — Backend PUT cache invalidate sadece local instance'da; Outbound/Automation cache 5dk TTL ile eventual consistent. Acceptable MVP — config değişikliği nadir (haftada 1-2x), 5dk gecikme tolere edilir. Cross-instance invalidate v2 (FEAT-TFM-CACHE).",
+      "NullTenantFieldMappingResolver dosyası SİLİNMEZ — DI binding swap yeterli, dosya test fixture + ileride per-tenant TFM disable senaryosu için kalır."
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "DbTenantFieldMappingResolver.ResolveToInmaKeyAsync — typed catch NpgsqlException + JsonException + OperationCanceledException, fail-safe null return + warn log (DMP raw key fallback'i çalışsın diye)",
+      "Backend GET /api/v1/tenant-settings/field-mapping — typed catch, 500 + INV-BE-001 mapping",
+      "Backend PUT /api/v1/tenant-settings/field-mapping — typed catch TenantFieldMappingValidationException → 400 + INV-BE-09x; NpgsqlException → 500 + INV-BE-001"
+    ],
+    "user_facing_errors": [
+      "INV-BE-096 (field_mapping_invalid): 'Geçersiz alan tanımı: {detail}'",
+      "INV-BE-097 (field_mapping_reserved_semantic_name): 'Bu isim sistem alanı, kullanılamaz: {name}'",
+      "INV-BE-098 (field_mapping_enum_value_missing): 'Enum tipi için en az bir değer gerekli: {semantic}'",
+      "INV-BE-099 (field_mapping_source_out_of_range): 'INMA kaynağı cf1..cf10 olmalı: {source}'"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Resolver null return DESIGNED behavior (DMP raw key allowlist fallback için). Mapping miss bug değil, intentional contract. PUT validation hataları açıkça 400 + error code ile kullanıcıya döner. NpgsqlException catch edilse de WARN log + JsonLinesLogger ile observable. Cache miss zaten DB hit'e düşer, sessiz değil."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Tenant admin DMP placeholder picker'da 'cf1, cf2, cf3' gibi anlamsız INMA key'leri görüyor — hangi alanın ne olduğunu hatırlamak zor.",
+      "suggestion": "MVP sonrası FEAT-TFM-UI paketinde editor'de mapping girilince picker tooltip 'cf1 → Roadshow Şehri' göstersin; mapping yoksa raw key + INMA field name fallback.",
+      "aha_moment": "Mapping kaydeden tenant editor'a dönünce '{{roadshow_city}}' otomatik görünür ve picker semantic isimle filtreleme yapılır — 'cf1 neydi ya?' sorusu yok olur."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Tenant config değiştirince eski cache 5dk daha çağrılırsa yanlış mapping ile mesaj gönderilebilir.",
+      "suggestion": "PUT endpoint cache invalidate çağırsın (IMemoryCache.Remove tenant key). Single-flight ConcurrentDictionary ile concurrent PUT-PUT race'inde son yazan kazanır + cache fresh olur.",
+      "aha_moment": "Q config değiştirip hemen mesaj gönderince yeni mapping anında devreye girer — restart yok, 'cache yenilenmesini bekle' tepkisi yok."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Her placeholder substitution için DB hit edilirse template render p99 ms-level'dan saniyelere fırlar (hot path).",
+      "suggestion": "IMemoryCache 5dk TTL + tenant-scoped key. Tenant'lar nadir değiştirir (haftada 1-2x), cache hit ratio %99+. Single-flight coalescing concurrent miss'leri tek query'ye düşürür.",
+      "aha_moment": "Broadcast 1000 mesaj gönderirken her mesajın placeholder resolve'u tek-DB-hit-cached, render p50 değişmez."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Tenant admin reserved name (örn. 'phone') girip kaydedince hata mesajı belirsiz — 'JSON validation failed' gibi cryptic.",
+      "suggestion": "INV-BE-097 mesajı net Türkçe: 'Bu isim sistem alanı, kullanılamaz: phone'. Reserved liste enum + tooltip'te gösterilebilir (sonraki UI paketi).",
+      "aha_moment": "Tenant admin hatayı görür görmez 'tamam phone INMA-native, başka isim seçeyim' diye anlar — destek ticket açmaz."
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Demo'da '{{cf1}}' placeholder'ı yatırımcıya gösterilince 'bu nedir, müşteri nasıl anlayacak?' sorusu geliyor.",
+      "suggestion": "Mapping girince flow builder + template editor + dashboard hepsi semantic isim gösterir ('roadshow_city', 'appointment_slot'). Demo akışı 'işte bu Dental klinik için RoadshowCity koşulu' diye business-language ile anlatılır.",
+      "aha_moment": "Yatırımcı 'tamam, generic değil, her sektör için özelleşiyor' der — multi-vertical SaaS pozisyonlama somut hale gelir."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-21T00:55:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-21T00:55:00Z",
+    "iteration": 4,
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "Endpoint catches return actionable codes/messages (401/400/403/500); resolver logs specific failures." },
+      "CQ2": { "result": "PASS", "evidence": "Null-on-miss intentional contract; failures logged; OperationCanceledException rethrow." },
+      "CQ3": { "result": "PASS", "evidence": "Diff matches plan.allowed_files; no scope creep." },
+      "CQ4": { "result": "PASS", "evidence": "Per-service repo pattern; shared validator/resolver centralized." },
+      "CQ5": { "result": "PASS", "evidence": "Parameterized SQL; snake_case columns; RequireAuthorization route-level; no null-forgiving." },
+      "CQ6": { "result": "PASS", "evidence": "IMemoryCache + single-flight + WaitAsync per-caller cancellation; await using disposal." },
+      "CQ7": { "result": "PASS", "evidence": "No new TODO/HACK/FIXME markers." },
+      "CQ8": { "result": "PASS", "evidence": "Interface expansion (Invalidate) implemented by both Null+Db; DI swap 3 services; build PASS." }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "Migration 028 idempotent IF NOT EXISTS; field_mapping JSONB DEFAULT '{}'; leads.custom_1..custom_10 TEXT NULL additive." },
+      "Q2": { "result": "PASS", "reasoning": "Tenant-scoped writes only; cross-tenant body mismatch 403 + INV-AUTH-010; reserved guard + cf1..cf10 enforced; route-level .RequireAuthorization()." },
+      "Q3": { "result": "PASS", "reasoning": "Invalidate clears cache+inflight; CancellationToken.None inflight + per-caller WaitAsync(ct) cancellation poison fix." },
+      "Q4": { "result": "PASS", "reasoning": "DbResolver null-on-miss = NullResolver semantic parity; malformed JSON 500 + INV-BE-096; DB fail INV-BE-110; OCE 3-yer typed catch; SnakeCaseJson contract." }
+    },
+    "blocking_issues": []
+  }
+}

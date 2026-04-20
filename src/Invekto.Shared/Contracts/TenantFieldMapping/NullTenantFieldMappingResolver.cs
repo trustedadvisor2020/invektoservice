@@ -8,4 +8,7 @@ public sealed class NullTenantFieldMappingResolver : ITenantFieldMappingResolver
 {
     public Task<string?> ResolveToInmaKeyAsync(int tenantId, string placeholder, CancellationToken ct = default)
         => Task.FromResult<string?>(null);
+
+    /// <summary>No-op: NullResolver has no cache to invalidate.</summary>
+    public void Invalidate(int tenantId) { /* intentional no-op */ }
 }

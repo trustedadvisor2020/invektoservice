@@ -85,10 +85,13 @@ builder.Services.AddSingleton<OptOutManager>();
 builder.Services.AddSingleton<ConsentManager>();
 builder.Services.AddSingleton(new RateLimiter(defaultMsgPerMin, logger));
 
-// FEAT-DMP: NullResolver is the default binding; FEAT-TFM replaces it when it ships.
-// DynamicMessageValidator depends on it for placeholder → INMA key resolution.
+// FEAT-TFM MVP: DbResolver swap (was NullResolver). Mapping yoksa null döner → DMP
+// DynamicMessageValidator raw INMA-key allowlist fallback intact (sıfır breaking change).
+// Multi-instance not: Outbound her instance kendi cache'ini tutar; Backend PUT'tan sonra
+// 5dk TTL ile eventual consistent (FEAT-TFM-CACHE cross-invalidation v2).
+builder.Services.AddMemoryCache(); // DbTenantFieldMappingResolver dependency
 builder.Services.AddSingleton<Invekto.Shared.Contracts.TenantFieldMapping.ITenantFieldMappingResolver,
-    Invekto.Shared.Contracts.TenantFieldMapping.NullTenantFieldMappingResolver>();
+    Invekto.Shared.Contracts.TenantFieldMapping.DbTenantFieldMappingResolver>();
 builder.Services.AddSingleton<Invekto.Shared.Services.DynamicMessageValidator>();
 
 builder.Services.AddSingleton<BroadcastOrchestrator>();

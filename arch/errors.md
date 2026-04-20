@@ -170,6 +170,28 @@ errors:
     description: Empty or invalid source text
     user_message: Çevrilecek metin boş veya geçersiz.
 
+  # FEAT-TFM MVP: Tenant Field Mapping (INV-BE-096..099)
+  - code: INV-BE-096
+    description: Field mapping invalid (type/regex/source format/duplicate slot)
+    user_message: Geçersiz alan tanımı.
+  - code: INV-BE-097
+    description: Reserved semantic name (conflicts with InmaDynamicFieldKeys.Allowlist or leads core columns)
+    user_message: Bu isim sistem alanı, kullanılamaz.
+  - code: INV-BE-098
+    description: Type=enum but enum_values null/empty
+    user_message: Enum tipi için en az bir değer gerekli.
+  - code: INV-BE-099
+    description: Source not in cf1..cf10 range
+    user_message: INMA kaynağı cf1..cf10 olmalı.
+  - code: INV-BE-110
+    description: tenant_settings.field_mapping DB read/write fail (TFM-specific, distinguish from generic INV-BE-001)
+    user_message: Alan tanımları geçici olarak okunamıyor/kaydedilemiyor; birkaç saniye sonra tekrar deneyin.
+
+  # FEAT-TFM MVP: explicit forbidden-cross-tenant write code (INV-AUTH-010)
+  - code: INV-AUTH-010
+    description: Cross-tenant write blocked (body-supplied tenant_id mismatches JWT claim)
+    user_message: Bu işlem için yetkiniz yok (cross-tenant yazma engellendi).
+
   # ── CA — ChatAnalysis ──
   - code: INV-CA-001
     description: Invalid payload

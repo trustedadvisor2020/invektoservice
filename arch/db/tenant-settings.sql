@@ -24,6 +24,13 @@ CREATE TABLE tenant_settings (
     -- contains INMA-reserved placeholders. FALSE forces legacy INSE substitution (admin escape
     -- hatch — if INMA DynamicMessage misbehaves tenant-side, disable without code change).
     enable_dynamic_message    BOOLEAN     NOT NULL DEFAULT TRUE,
+    -- FEAT-TFM MVP (migration 028): per-tenant semantic→INMA key mapping for cf1..cf10. Shape:
+    --   { "<semantic_name>": { "source": "cf1..cf10", "type": "enum|string|date|bool|int",
+    --                           "enum_values": ["..."], "required": false } }
+    -- Empty object = no mapping (DbTenantFieldMappingResolver returns null → DMP raw key fallback).
+    -- Reserved name guard (InmaDynamicFieldKeys.Allowlist ∪ leads core columns) enforced app-side
+    -- by TenantFieldMappingValidator (INV-BE-096..099).
+    field_mapping             JSONB       NOT NULL DEFAULT '{}'::jsonb,
     created_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at                TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

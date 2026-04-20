@@ -19,4 +19,16 @@ public interface ITenantFieldMappingResolver
     /// <param name="placeholder">Raw token from <c>{{placeholder}}</c>, already trimmed.</param>
     /// <param name="ct">Cancellation token.</param>
     Task<string?> ResolveToInmaKeyAsync(int tenantId, string placeholder, CancellationToken ct = default);
+
+    /// <summary>
+    /// Drop any cached mapping for the given tenant. Backend PUT endpoint calls this after
+    /// a successful upsert so the next resolver call reads fresh DB state.
+    /// <para>
+    /// FEAT-TFM MVP: <see cref="DbTenantFieldMappingResolver"/> implements this with
+    /// IMemoryCache.Remove. <see cref="NullTenantFieldMappingResolver"/> is a no-op.
+    /// Method on the interface (not type-cast) so DI decoration / future replacement
+    /// preserves the invalidation contract.
+    /// </para>
+    /// </summary>
+    void Invalidate(int tenantId);
 }

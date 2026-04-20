@@ -85,6 +85,17 @@ These are hard codebase conventions. Violations = automatic FAIL:
 - Kaynak: Mount Sinai ChatGPT Health Study — CoT faithfulness yapisal LLM problemi
 - Bu kural TUM CQ sonuclarini kapsar: herhangi bir CQ'nun reasoning'i ile verdict'i celisiyorsa = FAIL
 
+## FEATURE-SPECIFIC INTENT (anti-false-positive guidance for Codex)
+
+### FEAT-TFM MVP — Tenant Field Mapping (resolver + config CRUD + DI swap)
+- **DbTenantFieldMappingResolver null return = INTENTIONAL contract.** Mapping yoksa veya placeholder mapping'de yoksa resolver `null` döner; çağıran `DynamicMessageValidator` raw INMA-key allowlist fallback'ine düşer. Bu bir "silent failure" DEĞİL — DMP backward-compat sözleşmesi (NullResolver davranışıyla aynı). CQ2 değerlendirirken bu davranışı silent failure olarak işaretleme.
+- **NullTenantFieldMappingResolver dosyası SİLİNMEDİ.** DI binding swap edildi (3 servis), dosya korundu — test fixture + ileride per-tenant TFM disable senaryosu için intentional kalıt. CQ8 dead code tespiti yapma.
+- **Multi-instance cache eventual consistency.** Backend PUT cache invalidate sadece local instance'da çalışır; Outbound/Automation cache 5dk TTL ile yenilenir. Bu kabul edilen bir MVP davranışı (cross-instance Redis pub/sub v2'ye ertelendi). CQ11 tutarlılık değerlendirirken acceptable trade-off olarak gör.
+- **Reserved name guard zorunlu.** Validator `InmaDynamicFieldKeys.Allowlist` (15 INMA-native key) ∪ leads core columns'u reserved tutar — INV-BE-097 ile reject. Sebep: tenant 'name' semantic kaydederse DMP allowlist'te de raw 'name' var → ambiguous substitution. Reserved guard contract bug'ını önler.
+- **leads.custom_1..custom_10 kolonlar MVP'de boş.** Sadece forward-compat ALTER (FEAT-TFM-SYNC sonraki paket dolduracak). Resolver bu kolonları okumuyor — sadece tenant_settings.field_mapping JSONB'yi çağırıyor. CQ9 unused-column tespiti yapma.
+- **ITenantFieldMappingResolver.Invalidate(int) interface expansion safety.** İki impl var: NullTenantFieldMappingResolver (no-op stub) + DbTenantFieldMappingResolver (cache.Remove + _inflight.TryRemove). Tüketici sayısı: 1 (DynamicMessageValidator yalnız ResolveToInmaKeyAsync çağırıyor; Invalidate çağıran yok dışında Backend PUT endpoint). Solution-wide grep pattern: `ITenantFieldMappingResolver|ResolveToInmaKey` 11 dosyada (3 servis Program.cs DI + 2 impl + 1 interface + 1 validator + 4 plan/lessons doc). Build PASS = breaking yok. CQ8 "all consumers safely updated" proof = bu liste.
+- **No-test policy.** InvektoServices CLAUDE.md "No tests, no docs unless requested" der. FEAT-TFM MVP integration test eklemiyor — bu intentional, regression doğrulaması: (1) NullResolver davranışı aynen korundu (no-op + null-on-miss), (2) DbResolver mapping yoksa null döner (NullResolver semantics ile aynı kontrat), (3) Build PASS tüm DMP test patikalarını compile-time doğrular, (4) Q deploy-smoke aşamasında structural validation yapacak (DMP pattern). CQ8/Q4 "regression test evidence" beklentisi project policy ile uyumsuz; pattern parity yeterli.
+
 ## FAIL CONDITIONS (ANY = automatic FAIL)
 - Tenant/auth/security regression risk
 - Architecture/policy violation

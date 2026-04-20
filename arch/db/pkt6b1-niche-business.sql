@@ -133,6 +133,20 @@ CREATE TABLE IF NOT EXISTS leads (
     -- source_slug overlays `source` with the latest intake path param (tenant's landing surface).
     intake_metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
     source_slug     VARCHAR(50),
+    -- FEAT-TFM MVP (migration 028): forward-compat mirror columns for INMA cf1..cf10. MVP'de
+    -- boş kalır; FEAT-TFM-SYNC (next packet) INMA → INSE webhook/polling sync ile dolduracak.
+    -- TenantFieldMappingResolver semantic→source ('cf1'..'cf10') resolve eder; bu kolonlar
+    -- semantic-named değil INMA-key-named, sync paketi semantic projection üretecek.
+    custom_1        TEXT,
+    custom_2        TEXT,
+    custom_3        TEXT,
+    custom_4        TEXT,
+    custom_5        TEXT,
+    custom_6        TEXT,
+    custom_7        TEXT,
+    custom_8        TEXT,
+    custom_9        TEXT,
+    custom_10       TEXT,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT fk_leads_tenant

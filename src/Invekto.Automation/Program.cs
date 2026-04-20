@@ -91,11 +91,13 @@ builder.Services.AddSingleton<FlowWaitRepository>();
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<TenantSettingsRepository>();
 
-// FEAT-DMP: NullResolver is the default binding (FEAT-TFM swaps it in when it ships).
-// DynamicMessageValidator is shared with Outbound; AutomationOrchestrator consumes it for
-// action_send_message placeholder scanning.
+// FEAT-TFM MVP: DbResolver swap (was NullResolver). Mapping yoksa null döner → DMP
+// DynamicMessageValidator raw INMA-key allowlist fallback intact (sıfır breaking change).
+// AddMemoryCache + PostgresConnectionFactory + JsonLinesLogger zaten kayıtlı (TenantSettingsRepository pattern).
+// Multi-instance not: Automation her instance kendi cache'ini tutar; Backend PUT'tan sonra
+// 5dk TTL ile eventual consistent (FEAT-TFM-CACHE cross-invalidation v2).
 builder.Services.AddSingleton<Invekto.Shared.Contracts.TenantFieldMapping.ITenantFieldMappingResolver,
-    Invekto.Shared.Contracts.TenantFieldMapping.NullTenantFieldMappingResolver>();
+    Invekto.Shared.Contracts.TenantFieldMapping.DbTenantFieldMappingResolver>();
 builder.Services.AddSingleton<Invekto.Shared.Services.DynamicMessageValidator>();
 
 // Register callback client

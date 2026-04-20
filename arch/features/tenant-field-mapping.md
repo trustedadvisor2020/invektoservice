@@ -1,7 +1,11 @@
 # SPEC: Tenant Field Mapping (INMA 10-Field Semantic Overlay)
 
-> **Spec ID:** FEAT-TFM | **Paket:** TBD | **Risk:** MEDIUM
-> **Yazar:** Q | **Son Guncelleme:** 2026-04-16 | **Durum:** DRAFT
+> **Spec ID:** FEAT-TFM | **Paket:** FEAT-TFM-MVP (resolver+config CRUD+DI swap) | **Risk:** MEDIUM
+> **Yazar:** Q | **Son Guncelleme:** 2026-04-21 | **Durum:** IN_PROGRESS (MVP)
+>
+> **MVP Scope (2026-04-21):** Resolver + tenant_settings.field_mapping JSONB CRUD + DMP DI swap.
+> UI editor, INMA mirror sync (webhook/polling), flow builder semantic picker → SONRAKİ PAKETLER.
+> Plan: `arch/plans/20260421-feat-tfm-resolver-mvp.json`.
 
 ## 1. Intent (Ne & Neden)
 

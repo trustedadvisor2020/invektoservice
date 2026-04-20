@@ -8,6 +8,7 @@ using Npgsql;
 using Invekto.Shared.Middleware;
 using Hangfire;
 using Invekto.Backend.Data;
+using Invekto.Backend.Endpoints;
 using Invekto.Backend.Services;
 using Invekto.Backend.Services.Jobs;
 using Invekto.Backend.Services.Zoho;
@@ -447,8 +448,12 @@ builder.Services.AddSingleton<Invekto.Shared.Contracts.Inma.IInmaDynamicFieldsCl
         baseUrl);
 });
 builder.Services.AddSingleton<Invekto.Shared.Services.InmaDynamicFieldsCache>();
-builder.Services.AddSingleton<Invekto.Shared.Contracts.TenantFieldMapping.ITenantFieldMappingResolver,
-    Invekto.Shared.Contracts.TenantFieldMapping.NullTenantFieldMappingResolver>();
+// FEAT-TFM MVP: swap NullResolver → DbResolver (semantic→INMA key from tenant_settings.field_mapping).
+// Mapping yoksa null döner → DMP DynamicMessageValidator raw INMA-key allowlist fallback intact.
+builder.Services.AddSingleton<Invekto.Backend.Data.TenantSettingsRepository>();
+builder.Services.AddSingleton<Invekto.Shared.Contracts.TenantFieldMapping.DbTenantFieldMappingResolver>();
+builder.Services.AddSingleton<Invekto.Shared.Contracts.TenantFieldMapping.ITenantFieldMappingResolver>(sp =>
+    sp.GetRequiredService<Invekto.Shared.Contracts.TenantFieldMapping.DbTenantFieldMappingResolver>());
 
 builder.Services.AddAuthorization();
 
@@ -2081,6 +2086,10 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
             new() { Method = "POST", Path = "/api/v1/outbound/optout", Description = "Add opt-out proxy", Auth = "Bearer", Category = "API" },
             new() { Method = "DELETE", Path = "/api/v1/outbound/optout/{phone}", Description = "Remove opt-out proxy", Auth = "Bearer", Category = "API" },
             new() { Method = "GET", Path = "/api/v1/outbound/optout/check/{phone}", Description = "Check opt-out proxy", Auth = "Bearer", Category = "API" },
+
+            // FEAT-TFM MVP: tenant-scoped semantic field-mapping CRUD
+            new() { Method = "GET", Path = "/api/v1/tenant-settings/field-mapping", Description = "Read tenant semantic→INMA field mapping", Auth = "Bearer", Category = "API" },
+            new() { Method = "PUT", Path = "/api/v1/tenant-settings/field-mapping", Description = "Upsert tenant semantic→INMA field mapping (validate + cache invalidate)", Auth = "Bearer", Category = "API" },
 
             // Appointments proxy endpoints (GR-2.4)
             new() { Method = "GET", Path = "/api/v1/appointments/slots", Description = "List slots proxy (Backend -> Appointments)", Auth = "Bearer", Category = "API" },
@@ -7786,6 +7795,13 @@ app.MapPost("/api/v1/dynamic-fields/cache-invalidate", (
     jsonLog.StepInfo($"/api/v1/dynamic-fields cache invalidated (tenant={tenantId})", requestId);
     return Results.Ok(new { invalidated = true });
 });
+
+// ============================================
+// FEAT-TFM MVP: tenant-scoped field-mapping CRUD (semantic→INMA cf1..cf10).
+// ============================================
+// Routes registered as an extension to keep Program.cs scannable. Implementation +
+// validation + cache-invalidation lives in Endpoints/TenantFieldMappingEndpoints.cs.
+app.MapTenantFieldMappingEndpoints();
 
 // ============================================
 // FEAT-J2: Manual opt-out/opt-in (JWT-scoped dashboard admin action)

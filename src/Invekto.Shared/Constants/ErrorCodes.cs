@@ -117,6 +117,9 @@ public static class ErrorCodes
     public const string AuthInmaIntrospectionUnavailable = "INV-AUTH-008"; // Welcome endpoint network/transport fail
     public const string AuthTenantResolveFailed = "INV-AUTH-009";          // Lazy auto-provision tenant lookup/insert failure (CompanyCode → tenant_id)
 
+    // FEAT-TFM MVP (INV-AUTH-010+) — explicit cross-tenant write defense
+    public const string AuthCrossTenantBlocked = "INV-AUTH-010";           // 403: body-supplied tenant_id mismatches JWT claim (defensive guard)
+
     // Backward-compat aliases (pre-GR-1.9 names, do not use in new code)
     public const string AuthForbidden = AuthTokenInvalid;
 
@@ -492,6 +495,13 @@ public static class ErrorCodes
     public const string BackendTranslationUnsupportedLang = "INV-BE-093";   // Unsupported target language
     public const string BackendTranslationBatchTooLarge = "INV-BE-094";     // Batch size exceeds limit (max 50)
     public const string BackendTranslationInvalidText = "INV-BE-095";       // Empty or invalid source text
+
+    // FEAT-TFM MVP: Tenant Field Mapping (INV-BE-096..099 + INV-BE-110)
+    public const string FieldMappingInvalid = "INV-BE-096";              // Type/regex/source format invalid
+    public const string FieldMappingReservedSemanticName = "INV-BE-097"; // Semantic name conflicts with InmaDynamicFieldKeys.Allowlist or leads core columns
+    public const string FieldMappingEnumValueMissing = "INV-BE-098";     // Type=enum but enum_values null/empty
+    public const string FieldMappingSourceOutOfRange = "INV-BE-099";     // Source not in cf1..cf10
+    public const string FieldMappingDbUnavailable = "INV-BE-110";        // tenant_settings.field_mapping read/write DB fail (TFM-specific, distinguish from generic INV-BE-001)
 
     // WebChat errors (INV-WC-xxx)
     public const string WebChatInvalidVisitor = "INV-WC-001";
