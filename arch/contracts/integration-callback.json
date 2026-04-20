@@ -48,7 +48,17 @@
         "handoff_to_human": { "type": "boolean", "description": "Transfer to human agent" },
         "confidence": { "type": "number", "minimum": 0, "maximum": 1, "description": "AI confidence score" },
         "ai_summary": { "type": "string", "description": "AI summary for agent context" },
-        "intent": { "type": "string", "description": "Detected intent (e.g., price_inquiry)" }
+        "intent": { "type": "string", "description": "Detected intent (e.g., price_inquiry)" },
+        "message_category": {
+          "type": ["string", "null"],
+          "enum": ["marketing", "transactional", null],
+          "description": "FEAT-J2: forwards to WapCRM chatoperation.messageCategory. null = INMA skips opt-out check (backward-compat). 'marketing' = broadcasts + flow events outside transactional allow-list. 'transactional' = appointment_confirmed_*, meeting_link_sent_*, offer_sent_consult_*, payment_receipt_sent, etc. (see TransactionalEventRegistry)."
+        },
+        "dynamic_fields": {
+          "type": ["array", "null"],
+          "items": { "type": "string" },
+          "description": "FEAT-DMP pre-provisioned slot (currently always null under FEAT-J2 scope). When activated by FEAT-DMP, carries INMA dynamic-message placeholders (e.g. [\"name\",\"cf1\"]) and the Backend bridge adds dynamicMessage/dynamicMessageFields to chatoperation."
+        }
       }
     },
     "processing_time_ms": {

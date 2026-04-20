@@ -94,7 +94,8 @@
       "auth": "JWT",
       "request": {
         "phone": { "type": "string", "required": true },
-        "message_text": { "type": "string", "required": true }
+        "message_text": { "type": "string", "required": true },
+        "instance_id": { "type": "integer|null", "required": false, "note": "FEAT-J2: WapCRM instance that delivered the incoming message; forwarded to inma_optout_outbox enqueue so the INMA /api/optout push carries the correct InstanceID. Legacy callers omit it; enqueue is then skipped with a warn log (INSE-side opt-out still registered)." }
       },
       "response_200": {
         "opted_out": "boolean",
