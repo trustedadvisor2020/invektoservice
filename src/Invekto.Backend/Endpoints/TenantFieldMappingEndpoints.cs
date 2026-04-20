@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Invekto.Backend.Data;
+using Invekto.Shared.Auth;
 using Invekto.Shared.Constants;
 using Invekto.Shared.Contracts.TenantFieldMapping;
 using Invekto.Shared.Contracts.TenantFieldMapping.Dtos;
@@ -16,10 +17,14 @@ namespace Invekto.Backend.Endpoints;
 /// GET  /api/v1/tenant-settings/field-mapping  → current mapping JSON + updated_at.
 /// PUT  /api/v1/tenant-settings/field-mapping  → validate + UPSERT + cache invalidate.
 ///
-/// Auth: both routes are protected by route-level <c>RequireAuthorization()</c> in addition
-/// to the global JWT middleware. Tenant scope comes ONLY from <c>ctx.Items["TenantId"]</c>
-/// (signed claim). Body MAY optionally carry tenant_id for explicit defensive 403:
-/// if body.tenant_id is present and does NOT match the JWT claim, the request is rejected.
+/// Auth: both routes are gated by the global JWT middleware via the
+/// <c>/api/v1/tenant-settings/</c> prefix in <c>jwtRequiredPrefixes</c>. The middleware
+/// validates the Bearer token and stores the extracted <see cref="TenantContext"/> in
+/// <c>ctx.Items["TenantContext"]</c>; this handler reads <c>TenantContext.TenantId</c> from
+/// there (the prior <c>ctx.Items["TenantId"]</c> read was a latent bug — that key was
+/// never written by any middleware, so handlers returned 401 regardless of the token).
+/// Body MAY optionally carry tenant_id for explicit defensive 403: if body.tenant_id is
+/// present and does NOT match the JWT claim, the request is rejected.
 ///
 /// Response envelope: success → <c>{ data: { tenant_id, field_mapping, updated_at } }</c>
 /// (mirrors DMP <c>/api/v1/dynamic-fields</c> pattern). Errors → <c>ErrorResponse.Create</c>.
@@ -47,14 +52,14 @@ public static class TenantFieldMappingEndpoints
         {
             var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
 
-            var tenantIdStr = ctx.Items["TenantId"]?.ToString();
-            if (!int.TryParse(tenantIdStr, out var tenantId))
+            if (ctx.Items["TenantContext"] is not TenantContext tenantContext)
                 return Results.Json(
                     ErrorResponse.Create(
                         ErrorCodes.AuthUnauthorized,
                         "Tenant context yok. Authorization: Bearer <jwt> header'i ile giris yapip tekrar deneyin.",
                         requestId),
                     statusCode: 401);
+            var tenantId = tenantContext.TenantId;
 
             string fieldMappingJson;
             DateTime? updatedAt;
@@ -133,14 +138,14 @@ public static class TenantFieldMappingEndpoints
         {
             var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
 
-            var tenantIdStr = ctx.Items["TenantId"]?.ToString();
-            if (!int.TryParse(tenantIdStr, out var tenantId))
+            if (ctx.Items["TenantContext"] is not TenantContext tenantContext)
                 return Results.Json(
                     ErrorResponse.Create(
                         ErrorCodes.AuthUnauthorized,
                         "Tenant context yok. Authorization: Bearer <jwt> header'i ile giris yapip tekrar deneyin.",
                         requestId),
                     statusCode: 401);
+            var tenantId = tenantContext.TenantId;
 
             UpdateFieldMappingRequest? body;
             try

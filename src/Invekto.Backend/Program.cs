@@ -566,6 +566,15 @@ if (jwtValidator != null)
         // required; tenant_id is extracted exclusively from the JWT claim (never from
         // request body/query) to prevent IDOR across tenants.
         "/api/v1/tenant/landing/",
+        // FEAT-TFM MVP + FEAT-DMP + FEAT-J2 + Payment: tenant-scoped JWT required. All
+        // four consume tenant identity from the signed claim via TenantContext. Without
+        // these prefixes the global JWT middleware skips the path entirely — handler
+        // sees no TenantContext and returns 401 INV-AUTH-003 for every caller (valid
+        // JWT or not). Reintroduced after latent-bug smoke revealed path-skip behavior.
+        "/api/v1/tenant-settings/",
+        "/api/v1/dynamic-fields",
+        "/api/v1/optout",
+        "/api/v1/payment/",
         // FEAT-LIW Chunk B: service-to-service wa-direct internal endpoint REQUIRES JWT.
         // Automation generates a per-call service JWT (JwtGenerator.GenerateServiceToken
         // with tenant_id claim) so the existing JWT middleware enforces tenant binding;
@@ -7739,9 +7748,9 @@ app.MapGet("/api/v1/dynamic-fields", async (
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
 
-    var tenantIdStr = ctx.Items["TenantId"]?.ToString();
-    if (!int.TryParse(tenantIdStr, out var tenantId))
+    if (ctx.Items["TenantContext"] is not TenantContext dmpGetTenantCtx)
         return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+    var tenantId = dmpGetTenantCtx.TenantId;
 
     var wapcrm = await tenantRepo.GetWapCrmSettingsAsync(tenantId, ctx.RequestAborted);
     if (wapcrm == null || string.IsNullOrWhiteSpace(wapcrm.SecretKey))
@@ -7787,9 +7796,9 @@ app.MapPost("/api/v1/dynamic-fields/cache-invalidate", (
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
 
-    var tenantIdStr = ctx.Items["TenantId"]?.ToString();
-    if (!int.TryParse(tenantIdStr, out var tenantId))
+    if (ctx.Items["TenantContext"] is not TenantContext dmpInvTenantCtx)
         return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+    var tenantId = dmpInvTenantCtx.TenantId;
 
     cache.Invalidate(tenantId);
     jsonLog.StepInfo($"/api/v1/dynamic-fields cache invalidated (tenant={tenantId})", requestId);
@@ -7813,11 +7822,11 @@ app.MapPost("/api/v1/optout", async (HttpContext ctx, JsonLinesLogger jsonLog, I
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
 
-    var tenantIdStr = ctx.Items["TenantId"]?.ToString();
-    if (!int.TryParse(tenantIdStr, out var tenantId))
+    if (ctx.Items["TenantContext"] is not TenantContext optoutTenantCtx)
     {
         return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
     }
+    var tenantId = optoutTenantCtx.TenantId;
 
     OptOutRequest? dto;
     try { dto = await ctx.Request.ReadFromJsonAsync<OptOutRequest>(); }
@@ -7908,9 +7917,16 @@ app.MapPost("/api/ops/outbox/retry-skipped", async (HttpContext ctx, JsonLinesLo
 // POST /api/v1/payment/initiate — JWT auth, pending kayıt oluştur, 3D HTML form döner
 app.MapPost("/api/v1/payment/initiate", async (HttpContext ctx, QnbVPosService vpos, JsonLinesLogger jsonLog) =>
 {
-    var tenantId = ctx.Items["TenantId"]?.ToString();
-    if (string.IsNullOrEmpty(tenantId))
-        return Results.Json(new { error = ErrorCodes.AuthUnauthorized, message = "Yetkisiz erişim." }, statusCode: 401);
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+
+    if (ctx.Items["TenantContext"] is not TenantContext paymentTenantCtx)
+        return Results.Json(
+            ErrorResponse.Create(
+                ErrorCodes.AuthUnauthorized,
+                "Tenant context yok. Authorization: Bearer <jwt> header'i ile giris yapip tekrar deneyin.",
+                requestId),
+            statusCode: 401);
+    var tenantId = paymentTenantCtx.TenantId.ToString();
 
     PaymentInitRequest? request;
     try { request = await ctx.Request.ReadFromJsonAsync<PaymentInitRequest>(); }
