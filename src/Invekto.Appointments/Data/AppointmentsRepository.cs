@@ -5,7 +5,10 @@ using Npgsql;
 
 namespace Invekto.Appointments.Data;
 
-public sealed class AppointmentsRepository
+// FEAT-VCP Chunk B: no longer sealed — 6 new virtual methods support Moq-based
+// unit tests for VideoMeetingCreationJob and VideoReminderJob without requiring
+// a DB fixture. Existing non-virtual methods continue to work unchanged.
+public class AppointmentsRepository
 {
     private readonly PostgresConnectionFactory _db;
     private readonly JsonLinesLogger _logger;
@@ -1171,4 +1174,252 @@ public sealed class AppointmentsRepository
             UpdatedAt = reader.GetDateTime(15)
         };
     }
+
+    // ================================================================
+    // FEAT-VCP Chunk B: video meeting persistence + reminder tracking.
+    // AppointmentVideoRow lives in the Appointments service (not Shared) so the
+    // 7 new columns stay local to video orchestration. Shared AppointmentDto is
+    // untouched — API surface is unchanged.
+    // ================================================================
+
+    /// <summary>
+    /// Read-only projection of the video-relevant columns plus the identity/patient
+    /// context VideoMeetingCreationJob / VideoReminderJob need. Returns <c>null</c>
+    /// when the appointment does not exist for the tenant (orphan enqueue).
+    /// </summary>
+    public virtual async Task<AppointmentVideoRow?> GetAppointmentVideoRowAsync(
+        int tenantId, long appointmentId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT a.id, a.tenant_id, a.patient_name, a.patient_phone,
+                   a.appointment_date, a.start_time, a.end_time, a.status,
+                   a.meeting_link, a.meeting_provider, a.calendar_event_id,
+                   a.video_reminder_24h_job_id, a.video_reminder_1h_job_id,
+                   a.video_reminder_24h_sent_at, a.video_reminder_1h_sent_at,
+                   s.doctor_id, d.name AS doctor_name
+            FROM appointments a
+            INNER JOIN appointment_slots s ON s.id = a.slot_id
+            LEFT JOIN doctors d ON d.id = s.doctor_id AND d.tenant_id = a.tenant_id
+            WHERE a.tenant_id = @tid AND a.id = @id";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("id", appointmentId);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        if (!await reader.ReadAsync(ct)) return null;
+
+        return new AppointmentVideoRow
+        {
+            Id = reader.GetInt64(0),
+            TenantId = reader.GetInt32(1),
+            PatientName = reader.GetString(2),
+            PatientPhone = reader.GetString(3),
+            AppointmentDate = reader.GetFieldValue<DateOnly>(4),
+            StartTime = reader.GetFieldValue<TimeOnly>(5),
+            EndTime = reader.GetFieldValue<TimeOnly>(6),
+            Status = reader.GetString(7),
+            MeetingLink = reader.IsDBNull(8) ? null : reader.GetString(8),
+            MeetingProvider = reader.IsDBNull(9) ? null : reader.GetString(9),
+            CalendarEventId = reader.IsDBNull(10) ? null : reader.GetString(10),
+            VideoReminder24hJobId = reader.IsDBNull(11) ? null : reader.GetString(11),
+            VideoReminder1hJobId = reader.IsDBNull(12) ? null : reader.GetString(12),
+            VideoReminder24hSentAt = reader.IsDBNull(13) ? null : reader.GetDateTime(13),
+            VideoReminder1hSentAt = reader.IsDBNull(14) ? null : reader.GetDateTime(14),
+            DoctorId = reader.IsDBNull(15) ? null : reader.GetInt32(15),
+            DoctorName = reader.IsDBNull(16) ? null : reader.GetString(16)
+        };
+    }
+
+    /// <summary>
+    /// Resolves per-tenant IANA timezone (e.g. <c>Europe/Istanbul</c>) from
+    /// <c>tenant_settings.timezone</c>. Returns <c>null</c> when the tenant has no
+    /// row yet — caller defaults to <c>Europe/Istanbul</c>. Migration 024 adds the
+    /// column with DEFAULT 'Europe/Istanbul' so new tenants auto-populate.
+    /// </summary>
+    public virtual async Task<string?> GetTenantTimezoneAsync(
+        int tenantId, CancellationToken ct = default)
+    {
+        const string sql = "SELECT timezone FROM tenant_settings WHERE tenant_id = @tid";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+
+        var value = await cmd.ExecuteScalarAsync(ct);
+        return value is string s && !string.IsNullOrWhiteSpace(s) ? s : null;
+    }
+
+    /// <summary>
+    /// Idempotent meeting link persistence. The <c>meeting_link IS NULL</c> predicate
+    /// guarantees a second invocation (Hangfire retry after a partial success) cannot
+    /// overwrite an already-persisted link and cause duplicate downstream work.
+    /// Returns <c>true</c> when exactly one row was updated, <c>false</c> otherwise.
+    /// </summary>
+    public virtual async Task<bool> SetMeetingLinkAsync(
+        int tenantId, long appointmentId, string meetingLink, string provider,
+        string? calendarEventId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE appointments
+            SET meeting_link = @link,
+                meeting_provider = @provider,
+                calendar_event_id = @eid,
+                updated_at = NOW()
+            WHERE tenant_id = @tid AND id = @id
+              AND status = 'confirmed'
+              AND meeting_link IS NULL";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("id", appointmentId);
+        cmd.Parameters.AddWithValue("link", meetingLink);
+        cmd.Parameters.AddWithValue("provider", provider);
+        cmd.Parameters.AddWithValue("eid", (object?)calendarEventId ?? DBNull.Value);
+
+        var rows = await cmd.ExecuteNonQueryAsync(ct);
+        return rows > 0;
+    }
+
+    /// <summary>
+    /// Persist the two Hangfire job ids returned by
+    /// <c>BackgroundJob.Schedule</c> so the cancel hook can call
+    /// <c>BackgroundJob.Delete</c> when the appointment is cancelled.
+    /// </summary>
+    public virtual async Task SetVideoReminderJobIdsAsync(
+        int tenantId, long appointmentId, string job24Id, string job1Id,
+        CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE appointments
+            SET video_reminder_24h_job_id = @j24,
+                video_reminder_1h_job_id = @j1,
+                updated_at = NOW()
+            WHERE tenant_id = @tid AND id = @id";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("id", appointmentId);
+        cmd.Parameters.AddWithValue("j24", job24Id);
+        cmd.Parameters.AddWithValue("j1", job1Id);
+
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    /// <summary>
+    /// Reads the two scheduled reminder job ids so the cancel hook can
+    /// <c>BackgroundJob.Delete</c> them. Either may be <c>null</c> if the reminder
+    /// was never scheduled (appointment cancelled before VideoMeetingCreationJob
+    /// finished) or has already been deleted.
+    /// </summary>
+    public virtual async Task<(string? Job24, string? Job1)> GetScheduledReminderJobIdsAsync(
+        int tenantId, long appointmentId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT video_reminder_24h_job_id, video_reminder_1h_job_id
+            FROM appointments
+            WHERE tenant_id = @tid AND id = @id";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("id", appointmentId);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        if (!await reader.ReadAsync(ct)) return (null, null);
+
+        var j24 = reader.IsDBNull(0) ? null : reader.GetString(0);
+        var j1 = reader.IsDBNull(1) ? null : reader.GetString(1);
+        return (j24, j1);
+    }
+
+    /// <summary>
+    /// Clears both scheduled reminder job id columns after the cancel hook has
+    /// called <c>BackgroundJob.Delete</c>. Idempotent — safe to call multiple times.
+    /// </summary>
+    public virtual async Task ClearScheduledReminderJobIdsAsync(
+        int tenantId, long appointmentId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE appointments
+            SET video_reminder_24h_job_id = NULL,
+                video_reminder_1h_job_id = NULL,
+                updated_at = NOW()
+            WHERE tenant_id = @tid AND id = @id";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("id", appointmentId);
+
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    /// <summary>
+    /// Marks the specified reminder as sent. The <c>sent_at IS NULL</c> guard makes
+    /// a double-fire (Hangfire retry after a partial Outbound success) a no-op.
+    /// Each reminderType maps to a const SQL string — no interpolation, no column-name
+    /// string composition — per project rule "Parameterized queries ONLY, no string
+    /// concatenation in SQL."
+    /// </summary>
+    public virtual async Task MarkVideoReminderSentAsync(
+        int tenantId, long appointmentId, string reminderType,
+        CancellationToken ct = default)
+    {
+        const string sql24h = @"
+            UPDATE appointments
+            SET video_reminder_24h_sent_at = NOW(), updated_at = NOW()
+            WHERE tenant_id = @tid AND id = @id AND video_reminder_24h_sent_at IS NULL";
+
+        const string sql1h = @"
+            UPDATE appointments
+            SET video_reminder_1h_sent_at = NOW(), updated_at = NOW()
+            WHERE tenant_id = @tid AND id = @id AND video_reminder_1h_sent_at IS NULL";
+
+        var sql = reminderType switch
+        {
+            "24h" => sql24h,
+            "1h" => sql1h,
+            _ => throw new ArgumentException(
+                $"reminderType must be '24h' or '1h' (got '{reminderType}')",
+                nameof(reminderType))
+        };
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("id", appointmentId);
+
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+}
+
+/// <summary>
+/// FEAT-VCP Chunk B: Appointments-local projection of the video-relevant columns
+/// plus the identity/patient context the Hangfire jobs need. Separate from the
+/// Shared <c>AppointmentDto</c> to keep the 7 video columns out of the API surface
+/// (those columns are orchestration metadata, not client-facing state).
+/// </summary>
+public sealed class AppointmentVideoRow
+{
+    public long Id { get; set; }
+    public int TenantId { get; set; }
+    public string PatientName { get; set; } = "";
+    public string PatientPhone { get; set; } = "";
+    public DateOnly AppointmentDate { get; set; }
+    public TimeOnly StartTime { get; set; }
+    public TimeOnly EndTime { get; set; }
+    public string Status { get; set; } = "";
+    public string? MeetingLink { get; set; }
+    public string? MeetingProvider { get; set; }
+    public string? CalendarEventId { get; set; }
+    public string? VideoReminder24hJobId { get; set; }
+    public string? VideoReminder1hJobId { get; set; }
+    public DateTime? VideoReminder24hSentAt { get; set; }
+    public DateTime? VideoReminder1hSentAt { get; set; }
+    public int? DoctorId { get; set; }
+    public string? DoctorName { get; set; }
 }

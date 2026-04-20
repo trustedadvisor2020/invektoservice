@@ -23,7 +23,10 @@ CREATE TABLE IF NOT EXISTS outbound_templates (
     updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     -- trigger_event values: manual, new_lead, payment_received, appointment_reminder
-    CONSTRAINT chk_trigger_event CHECK (trigger_event IN ('manual', 'new_lead', 'payment_received', 'appointment_reminder'))
+    -- FEAT-VCP Chunk B (migration 024): +video_meeting_confirmed, video_reminder_24h, video_reminder_1h
+    CONSTRAINT chk_trigger_event CHECK (trigger_event IN (
+        'manual', 'new_lead', 'payment_received', 'appointment_reminder',
+        'video_meeting_confirmed', 'video_reminder_24h', 'video_reminder_1h'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_outbound_templates_tenant_active

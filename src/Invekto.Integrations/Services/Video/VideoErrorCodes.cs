@@ -48,4 +48,16 @@ public static class VideoErrorCodes
     /// issue when the real problem is database health.
     /// </summary>
     public const string ProviderResolveDbError = "INV-INT-143";
+
+    /// <summary>
+    /// Chunk B — internal shared-secret auth rejected the inbound hop on
+    /// <c>/internal/video/meetings</c>. Emitted for missing/invalid
+    /// <c>X-Internal-Service-Token</c> header and for server-side
+    /// <c>InternalServices:SharedSecret</c> misconfiguration. Distinct from
+    /// INV-INT-142 (business state: provider not configured) so support can tell
+    /// "caller authentication failed" from "tenant hasn't picked a provider."
+    /// Status codes: 500 when config missing, 401 when header missing, 403 when
+    /// header mismatched.
+    /// </summary>
+    public const string InternalServiceAuthFailed = "INV-INT-147";
 }

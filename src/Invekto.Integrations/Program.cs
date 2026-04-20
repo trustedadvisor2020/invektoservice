@@ -786,6 +786,12 @@ app.MapZohoOpsEndpoints();
 // Adim 4: Stage mapping editor endpoints (blueprint transitions + test).
 app.MapZohoStageMappingEditorEndpoints();
 
+// FEAT-VCP Chunk B: internal video meeting creation hop consumed by
+// Invekto.Appointments VideoMeetingCreationJob. Header-secret auth (no JWT) —
+// tenant_id travels in the body because the caller is a Hangfire job without
+// a HttpContext-bound TenantContext.
+Invekto.Integrations.Endpoints.VideoMeetingEndpoints.Map(app);
+
 app.MapGet("/api/ops/endpoints", () =>
 {
     var endpoints = new List<EndpointInfo>
@@ -821,6 +827,7 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "POST", Path = "/api/internal/ops/zoho/sync-log/retry", Description = "Super-admin batch retry failed sync rows (Adim 3 P3-C, max 50)", Auth = "X-Internal-Service-Token", Category = "Zoho" },
         new() { Method = "GET", Path = "/api/v1/zoho/blueprint/transitions", Description = "Adim 4: Module-level Blueprint transitions for stage mapping editor dropdown (?refresh=true bypasses cache)", Auth = "Bearer", Category = "Zoho" },
         new() { Method = "POST", Path = "/api/v1/zoho/stage-mappings/test", Description = "Adim 4: Stage mapping dry-run (transition_id whitelist check, no Zoho mutation)", Auth = "Bearer", Category = "Zoho" },
+        new() { Method = "POST", Path = "/internal/video/meetings", Description = "FEAT-VCP Chunk B: Appointments -> Integrations video meeting hop (factory resolve + provider CreateMeetingAsync)", Auth = "X-Internal-Service-Token", Category = "Video" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "none", Category = "Ops" }
     };
     return Results.Ok(endpoints);

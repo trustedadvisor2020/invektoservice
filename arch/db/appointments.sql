@@ -58,11 +58,25 @@ CREATE TABLE IF NOT EXISTS appointments (
     reminder_2h_sent    BOOLEAN NOT NULL DEFAULT FALSE,
     cancel_reason       VARCHAR(500),
     notes               VARCHAR(500),
+
+    -- FEAT-VCP Chunk B (migration 024): video consultation persistence.
+    meeting_link                TEXT NULL,
+    meeting_provider            VARCHAR(20) NULL,
+    calendar_event_id           TEXT NULL,
+    video_reminder_24h_job_id   TEXT NULL,
+    video_reminder_1h_job_id    TEXT NULL,
+    video_reminder_24h_sent_at  TIMESTAMPTZ NULL,
+    video_reminder_1h_sent_at   TIMESTAMPTZ NULL,
+
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     -- Status lifecycle: confirmed -> completed | cancelled | no_show
-    CONSTRAINT chk_appointment_status CHECK (status IN ('confirmed', 'cancelled', 'completed', 'no_show'))
+    CONSTRAINT chk_appointment_status CHECK (status IN ('confirmed', 'cancelled', 'completed', 'no_show')),
+
+    -- FEAT-VCP Chunk B: meeting_provider mirrors tenant_settings.video_provider enum.
+    CONSTRAINT chk_appointment_meeting_provider
+        CHECK (meeting_provider IS NULL OR meeting_provider IN ('mock', 'googlemeet'))
 );
 
 -- Tenant + date range lookup (list appointments for a tenant on a date)
@@ -86,6 +100,20 @@ CREATE INDEX IF NOT EXISTS idx_appointments_reminder_2h
 -- Patient phone lookup (for cancel/history by phone)
 CREATE INDEX IF NOT EXISTS idx_appointments_patient_phone
     ON appointments (tenant_id, patient_phone);
+
+-- FEAT-VCP Chunk B (migration 024): ops query aids for pending video reminders.
+-- Hangfire is the primary scheduler; these partial indexes support audit scans.
+CREATE INDEX IF NOT EXISTS idx_appointments_video_reminder_24h_pending
+    ON appointments (appointment_date, start_time)
+    WHERE status = 'confirmed'
+      AND meeting_link IS NOT NULL
+      AND video_reminder_24h_sent_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_appointments_video_reminder_1h_pending
+    ON appointments (appointment_date, start_time)
+    WHERE status = 'confirmed'
+      AND meeting_link IS NOT NULL
+      AND video_reminder_1h_sent_at IS NULL;
 
 -- =============================================================
 -- Triggers: auto-update updated_at on row change

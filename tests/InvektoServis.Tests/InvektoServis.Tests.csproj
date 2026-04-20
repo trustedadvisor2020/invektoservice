@@ -29,6 +29,7 @@
     <ProjectReference Include="..\..\src\Invekto.Knowledge\Invekto.Knowledge.csproj" />
     <ProjectReference Include="..\..\src\Invekto.Outbound\Invekto.Outbound.csproj" />
     <ProjectReference Include="..\..\src\Invekto.Integrations\Invekto.Integrations.csproj" />
+    <ProjectReference Include="..\..\src\Invekto.Appointments\Invekto.Appointments.csproj" />
     <ProjectReference Include="..\..\src\Invekto.Shared\Invekto.Shared.csproj" />
   </ItemGroup>
 

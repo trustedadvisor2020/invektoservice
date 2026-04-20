@@ -1,0 +1,263 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260419-feat-vcp-chunk-b-appointments-reminders",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "status_log": [
+    { "at": "2026-04-19T06:15:00+03:00", "status": "PLAN", "note": "FEAT-VCP Chunk B interview tamamlandi (3 round, 8 Q): (R1) Factory resolver + tenant lookup, BackgroundJob.Schedule per-meeting (spec §3), Migration 024 tek atomic 7-col ALTER, Timezone = tenant_settings.timezone DTSTART TZID (UTC start_at + TZ hint). (R2) 3 yeni template (video_meeting_confirmed + video_reminder_24h + video_reminder_1h) tr-TR+en-US, ICS = Calendar event invite auto (Meet attendee email) + WA sadece link, Trigger = post-create BackgroundJob.Enqueue (create endpoint 201 sonrasi). (R3) Cancel flow = job_id kolonlar migration 024'e dahil + BackgroundJob.Delete, sent_at kolonlar migration 024'e dahil (idempotency+audit), immediate confirmation WA da atilsin. **ARCHITECTURAL PIVOT** VideoProviderFactory Integrations'ta + GoogleMeetMockProvider Integrations'ta → Appointments direct reference mikroservis izolasyon ihlali → Q onayi ile HTTP hop pattern: yeni Integrations POST /internal/video/meetings endpoint + Appointments IntegrationsVideoClient (named HttpClient + JwtGenerator). Chunk B deploy-able standalone, Chunk C Dashboard UI disinda. Template row seed Chunk B'ye dahil DEGIL (sadece schema/CHECK constraint genisleme) — Dent pilot icin deploy sonrasi manuel SQL seed. Hardcoded BaselineVideoTemplates fallback dict Chunk B scope'unda YOK (gerekirse Chunk C ya da post-pilot enhancement)." },
+    { "at": "2026-04-20T15:35:00+03:00", "status": "DEV", "note": "Implementation + 15/15 test PASS + full sln build PASS (0 errors). 20 files staged (+1878 / -3). Plan deviations (dev-time micro-decisions): (1) Error codes lokasyon pivot: AC-2 Shared'i isaret ediyordu ama Chunk A VideoErrorCodes.cs precedent (service-local) takip edildi → YENI src/Invekto.Appointments/Services/Video/VideoHopErrorCodes.cs. Shared.Constants.ErrorCodes DOKUNULMADI (mikro servis izolasyonu + Chunk A ile tutarli). (2) Response envelope lokasyon pivot: AC-4 Appointments-local DTO'lari isaret ediyordu ama LIW WaDirectIntakeResponse Shared precedent takip edildi → YENI src/Invekto.Shared/Contracts/Video/VideoMeetingHopResponse.cs (additive, breaking change yok — hicbir mevcut consumer etkilenmez; Chunk A Video namespace genislemesi). (3) Internal auth pivot: AC-3 JWT dedi ama LIW IntakeInternalAuth precedent + Hangfire job'un TenantContext tasimadigi gercegi → X-Internal-Service-Token header + InternalServices:SharedSecret (shared LIW secret). (4) Test csproj eklenti: tests/InvektoServis.Tests/InvektoServis.Tests.csproj'a Appointments ProjectReference satiri — AppointmentVideoRow'a erisim icin sart; allowed_files'a eklendi. (5) sealed→unsealed rework: AppointmentsRepository ve IntegrationsVideoClient'ta virtual methodlar Moq icin gerekliydi, C# sealed+virtual yasak → iki sinifta da sealed kaldirildi (Chunk A'daki yeni siniflar sealed kaldi, sadece Chunk B mock edilenler degisti). Build iter 0 FAIL (CS0549 x8) → fix → build iter 1 PASS." },
+    { "at": "2026-04-20T15:42:00+03:00", "status": "REVIEW", "note": "MCP Codex review submission: 127KB diff (2083 satir), 20 dosya. allowed_files 3 new dosya eklenerek guncellendi (VideoHopErrorCodes.cs + VideoMeetingHopResponse.cs + InvektoServis.Tests.csproj). Secret scan: header name + config key referanslari var ama gercek secret VALUE diff icinde YOK — safe. 28/28 Video + Ics regression PASS (Chunk A 13 + Chunk B 15). Pre-existing Backend WebApplicationFactory failures (Dev PC postgresql yok) kalemi Chunk B ile alakasiz." },
+    { "at": "2026-04-20T15:58:00+03:00", "status": "REVIEW->FAIL", "note": "Codex iter 0 FAIL — 9 blocking: (real bugs fixed iter 1) CQ2/CQ5 bare catch in IntegrationsVideoClient.SafeReadBodyAsync → typed catch (HttpRequestException + IOException + ObjectDisposedException); CQ5 null-forgiving `outcome.Meeting!` (VideoMeetingCreationJob) + `row.MeetingLink!` (VideoReminderJob) → capture-into-local pattern with explicit null guard; CQ5/CQ11 dynamic SQL {column} interpolation in MarkVideoReminderSentAsync → switch-based const SQL (2 pre-defined queries); CQ2 Program.cs bare `catch (Exception)` enqueue+cancel → typed `catch (NpgsqlException) + catch (InvalidOperationException)`; (auth+envelope fixes iter 1) CQ1/CQ9/CQ12 auth failures using INV-INT-142 (ProviderNotConfigured) → YENI INV-INT-147 InternalServiceAuthFailed error code eklendi (VideoErrorCodes + arch/errors.md); CQ10 inconsistent envelope (auth ErrorResponse, success VideoMeetingHopResponse) → unified VideoMeetingHopResponse on all paths; CQ11 GRANT explicit → 3 GRANT ALL statement migration 024 sonuna (self-contained role audit per lesson 2026-04-18). (docs iter 1) CoVe Q3 idempotency — 3-layer defense XML doc (Hangfire DisableConcurrentExecution distributed lock + DB UPDATE WHERE meeting_link IS NULL guard + IVideoConsultProvider Chunk A contract deterministic-or-idempotent); CoVe Q4 text — 'JWT service auth' → 'X-Internal-Service-Token header + InternalServices:SharedSecret constant-time compare (LIW IntakeInternalAuth precedent, not JWT because Hangfire caller has no TenantContext)' reflecting architectural pivot documented in DEV status_log." },
+    { "at": "2026-04-20T16:05:00+03:00", "status": "REVIEW->PASS", "note": "Codex iter 1 PASS — tum 12 CQ (CQ1..CQ12) ve CoVe Q1..Q4 PASS. Blocking issues NONE. CODEX UTANSIN doktrini iter 1'de karsilandi. 9/9 iter 0 blocker resolve oldu tek iterasyonda: typed catches + null-forgiving kaldirildi + dynamic SQL → const switch + INV-INT-147 auth code + unified envelope + explicit GRANT + 3-layer idempotency XML doc + CoVe Q4 text update. Build PASS + 15/15 new test + 28/28 Video+Ics regression PASS. Ready for commit + deploy. Token usage iter 1: 11949 (11.1% iter 0'in yaklasik yarisi — fix-focused response, cleaner diff)." }
+  ],
+  "created_at": "2026-04-19T06:15:00+03:00",
+  "updated_at": "2026-04-20T16:05:00+03:00",
+  "plan": {
+    "summary": "FEAT-VCP Chunk B: Appointments servisini video consultation layer'ina entegre et. (1) Integrations servisinde yeni internal endpoint POST /internal/video/meetings — VideoProviderFactory.ResolveAsync(tenantId) cagrir, provider varsa CreateMeetingAsync + 200 MeetingResult doner; null → 200 {skipped:true, errorCode:INV-INT-142}; NpgsqlException → 503 INV-INT-143; provider throw → 400 INV-INT-141. Chunk A result-semantics split korunur. (2) Appointments servisinde IntegrationsVideoClient (named HttpClient \"IntegrationsInternal\" + JwtGenerator service JWT pattern — ReminderJob Outbound client precedent). (3) VideoMeetingCreationJob (Hangfire [Queue('appointments')] [DisableConcurrentExecution 60s]) — POST create sonrasi Enqueue: idempotency guard (meeting_link NOT NULL → skip), hop → MeetingResult, UPDATE appointments SET meeting_link/meeting_provider/calendar_event_id, BackgroundJob.Schedule<VideoReminderJob>(apt.start_at UTC - 24h) + aynisi -1h, UPDATE apt SET video_reminder_{24h,1h}_job_id, Outbound POST /trigger {event='video_meeting_confirmed', phone, variables}. (4) VideoReminderJob (Hangfire [Queue('appointments')]) — aptId + type ('24h'|'1h') alir: SELECT apt → skip if status!='confirmed' OR meeting_link IS NULL OR video_reminder_{type}_sent_at NOT NULL (INV-INT-145 info log), Outbound POST /trigger {event='video_reminder_24h'|'video_reminder_1h'}, UPDATE apt SET video_reminder_{type}_sent_at=NOW(). Outbound 5xx → INV-INT-146 log + Hangfire auto-retry (default 10 attempts exp backoff). (5) Program.cs create endpoint (line ~440) hook: POST bookAppointment 201 response'undan ONCE BackgroundJob.Enqueue<VideoMeetingCreationJob>(j => j.RunAsync(apt.Id)) — fire-and-forget fail response'u etkilemez (endpoint-as-scheduling pattern HFM-1 precedent). (6) POST /api/v1/appointments/{id}/cancel hook (line ~503): CancelAppointmentAsync sonrasi AppointmentsRepository.GetScheduledReminderJobIdsAsync → her non-null jobId icin BackgroundJob.Delete(id) + UPDATE apt SET job_ids=NULL. (7) Migration 024 atomic — 3 tablo ALTER: appointments +7 col (meeting_link TEXT, meeting_provider VARCHAR(20), calendar_event_id TEXT, video_reminder_24h_job_id TEXT, video_reminder_1h_job_id TEXT, video_reminder_24h_sent_at TIMESTAMPTZ, video_reminder_1h_sent_at TIMESTAMPTZ) + tenant_settings +1 col (timezone VARCHAR(40) DEFAULT 'Europe/Istanbul') + outbound_templates DROP/ADD CHECK chk_trigger_event with 3 yeni deger. (8) 3 yeni error code: INV-INT-144 video_meeting_hop_failed (Appointments → Integrations HTTP 5xx/timeout; Hangfire retry target), INV-INT-145 video_reminder_skipped_state_changed (audit info), INV-INT-146 video_reminder_send_failed (Outbound hop fail). (9) Tests InvektoServis.Tests/Appointments/Jobs altinda VideoMeetingCreationJobTests + VideoReminderJobTests (provider-factory + http-hop stub, idempotency, skip paths). Chunk B deploy-able standalone — Integrations + Appointments restart. Chunk C Dashboard UI + real GoogleMeet OAuth ayri paket.",
+    "q_intent": "Q: next-session prompt'ta 'Chunk B devam' dedi. 3-round 8-soru interview tamamlandi, HTTP hop mimarisi + migration 024 atomicity + job_id persistence + immediate+24h+1h 3 template onaylandi. Tum sorularda Recommended secildi.",
+    "interview_notes": "3-round 8-Q interview (2026-04-19 05:45-06:10). R1 (4 Q): Provider DI = Factory resolver + tenant lookup; Reminder mode = BackgroundJob.Schedule per-meeting (spec §3); Migration 024 = tek atomic ALTER; Timezone = Appointment.start_at UTC + tenant_settings.timezone DTSTART TZID. R2 (3 Q): WA template = 2 reminder template (24h + 1h) locale-aware tr-TR+en-US; ICS delivery = Calendar event invite + WA sadece link; Trigger point = AppointmentsRepository.ConfirmAsync sonrasi async enqueue (NOTE: appointments schema 'confirmed' as default status, create endpoint'te 201 sonrasi enqueue — no explicit ConfirmAsync). R3 (3 Q): Cancel flow = job_id kolonlar + BackgroundJob.Delete; sent_at kolonlar (idempotency+audit); immediate confirmation WA (3. template). Q ARCHITECTURAL APPROVAL (1 Q): VideoProviderFactory + GoogleMeetMockProvider Integrations'ta → mikroservis izolasyonu korumak icin HTTP hop pattern onaylandi (direct ref YASAK, Shared'a tasima Chunk A rework'u gerektirir). Intentional non-scope Chunk B: Dashboard /settings/video-provider UI (Chunk C), OAuth callback /oauth/google-calendar/callback (Chunk C), GoogleMeetProvider prod OAuth (Chunk C), BaselineVideoTemplates hardcoded fallback dict (post-pilot enhancement), template row seed (manuel Dent pilot icin), reschedule explicit hook (yeni create ile zaten yeni enqueue), multi-channel notification (WA-only MVP), post-meeting satisfaction AC-7 (v2 per spec)."
+  },
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "criterion": "arch/db/migrations/024-vcp-chunk-b-appointments-video-meeting.sql — idempotent transactional migration. BEGIN; ALTER TABLE appointments ADD COLUMN IF NOT EXISTS meeting_link TEXT NULL, ADD COLUMN IF NOT EXISTS meeting_provider VARCHAR(20) NULL CHECK (meeting_provider IS NULL OR meeting_provider IN ('mock','googlemeet')), ADD COLUMN IF NOT EXISTS calendar_event_id TEXT NULL, ADD COLUMN IF NOT EXISTS video_reminder_24h_job_id TEXT NULL, ADD COLUMN IF NOT EXISTS video_reminder_1h_job_id TEXT NULL, ADD COLUMN IF NOT EXISTS video_reminder_24h_sent_at TIMESTAMPTZ NULL, ADD COLUMN IF NOT EXISTS video_reminder_1h_sent_at TIMESTAMPTZ NULL; ALTER TABLE tenant_settings ADD COLUMN IF NOT EXISTS timezone VARCHAR(40) NOT NULL DEFAULT 'Europe/Istanbul'; ALTER TABLE outbound_templates DROP CONSTRAINT IF EXISTS chk_trigger_event; ALTER TABLE outbound_templates ADD CONSTRAINT chk_trigger_event CHECK (trigger_event IN ('manual','new_lead','payment_received','appointment_reminder','video_meeting_confirmed','video_reminder_24h','video_reminder_1h')); -- Partial index for pending video reminder scan (future-proof, Hangfire-schedule ONLY pattern — no polling but aid ops queries) CREATE INDEX IF NOT EXISTS idx_appointments_video_reminder_24h_pending ON appointments (appointment_date, start_time) WHERE status='confirmed' AND meeting_link IS NOT NULL AND video_reminder_24h_sent_at IS NULL; CREATE INDEX IF NOT EXISTS idx_appointments_video_reminder_1h_pending ON appointments (appointment_date, start_time) WHERE status='confirmed' AND meeting_link IS NOT NULL AND video_reminder_1h_sent_at IS NULL; COMMIT; Arch-source-of-truth: arch/db/appointments.sql + arch/db/tenant-settings.sql + arch/db/outbound.sql canonical copies column-for-column sync. Migration idempotent (IF NOT EXISTS + DROP CONSTRAINT IF EXISTS + ADD CONSTRAINT). ROLE grant: NONE — mevcut appointments/tenant_settings/outbound_templates GRANT invekto ALREADY present, ALTER re-uses."
+    },
+    {
+      "id": "AC2",
+      "criterion": "arch/errors.md entries for INV-INT-144/145/146 appended after existing INV-INT-143 block (line ~801). INV-INT-144: video_meeting_hop_failed — 'Appointments → Integrations POST /internal/video/meetings HTTP call failed (5xx / network / timeout). Hangfire AutomaticRetry target (exp backoff default 10 attempts). Distinct from INV-INT-141 (provider throw) and INV-INT-143 (DB outage on provider resolve).' INV-INT-145: video_reminder_skipped_state_changed — 'VideoReminderJob fired but appointment state changed between scheduling and firing (cancelled / completed / meeting_link cleared / already sent). Informational — expected after cancel/complete transitions. No retry.' INV-INT-146: video_reminder_send_failed — 'Outbound POST /trigger for video_reminder_{24h,1h} template returned 5xx / network error. Hangfire AutomaticRetry target. Distinct from INV-INT-144 (provider hop) — this is the reminder WA dispatch.' Invekto.Shared/Constants/ErrorCodes.cs appended 3 const entries in INV-INT block (likely line ~425 per existing INV-INT-xxx density): public const string VideoMeetingHopFailed = \"INV-INT-144\"; public const string VideoReminderSkippedStateChanged = \"INV-INT-145\"; public const string VideoReminderSendFailed = \"INV-INT-146\";"
+    },
+    {
+      "id": "AC3",
+      "criterion": "src/Invekto.Integrations/Endpoints/VideoMeetingEndpoints.cs — NEW static class MapVideoMeetingEndpoints(IEndpointRouteBuilder). Single endpoint: POST /internal/video/meetings. Auth: [Authorize] via mevcut InternalServiceJwt auth scheme (ReminderJob → Outbound pattern reuse — 'InternalService' JWT scheme registered in Integrations Program.cs). Body: VideoMeetingHopRequest record {TenantId int, AppointmentId long, Title string, StartAtUtc DateTime, DurationMinutes int, Timezone string, Attendees List<AttendeeDto>}. Flow: (1) validate body (TenantId>0, DurationMinutes>0, Attendees non-empty, Timezone non-empty) → 400 INV-INT-141 on fail. (2) provider = await _factory.ResolveAsync(req.TenantId, ct); NpgsqlException NOT caught — propagates to handler catch below. (3) if provider is null → 200 Results.Json(new {skipped=true, errorCode=INV-INT-142, reason='provider_not_configured'}). (4) try await provider.CreateMeetingAsync(MeetingCreateRequest from body); catch ArgumentException → 400 INV-INT-141 {error:'meeting_create_failed', message:ex.Message}. (5) 200 Results.Json(MeetingResult). Outer catch NpgsqlException → 503 INV-INT-143 {error:'provider_resolve_db_outage'} + SystemError log. Outer catch OperationCanceledException → propagate (shutdown). XML doc: 'FEAT-VCP Chunk B microservice boundary for Invekto.Appointments — factory + provider execution server-side, response envelope distinguishes skipped/fail/outage.' Program.cs app.MapGroup('/internal/video') ekler, endpoint mapping + requires internal service JWT."
+    },
+    {
+      "id": "AC4",
+      "criterion": "src/Invekto.Appointments/Services/IntegrationsVideoClient.cs — NEW sealed class. DI singleton. Ctor: (IHttpClientFactory factory, JwtGenerator jwtGen, JsonLinesLogger logger, IConfiguration config). Named HttpClient 'IntegrationsInternal' (registered in Program.cs AddHttpClient(\"IntegrationsInternal\", client => client.BaseAddress = new Uri(config[\"Integrations:InternalBaseUrl\"] ?? \"http://localhost:7106\")) — appsettings key Appointments.appsettings.json'a eklenmez, reads via IConfiguration GetValue fallback). Method: public async Task<VideoMeetingHopResult> CreateMeetingAsync(VideoMeetingHopRequest req, CancellationToken ct). Flow: (1) GenerateServiceJwt with claims {sub='appointments', aud='integrations', iss=JWT issuer from config} — JwtGenerator reuse (ReminderJob pattern); (2) client.DefaultRequestHeaders.Authorization = Bearer; (3) response = await client.PostAsJsonAsync(\"/internal/video/meetings\", req, ct); (4) if 200 → deserialize; (5) if 503 → throw VideoMeetingHopException(ex, INV-INT-144) [Hangfire retries]; (6) if 400 → return VideoMeetingHopResult.Failed(INV-INT-141); (7) 200 with skipped=true → return VideoMeetingHopResult.Skipped(INV-INT-142); (8) 200 with MeetingResult payload → return VideoMeetingHopResult.Success(result); (9) catch HttpRequestException / TaskCanceledException → throw VideoMeetingHopException(INV-INT-144) [retries]. VideoMeetingHopRequest/Response records private/internal to Appointments (not Shared — response envelope = API contract, not domain contract). XML doc: 'FEAT-VCP Chunk B — Appointments → Integrations HTTP hop. Named HttpClient isolation; JWT service auth; failure modes mapped to INV-INT-141/142/143/144.'"
+    },
+    {
+      "id": "AC5",
+      "criterion": "src/Invekto.Appointments/Services/Jobs/VideoMeetingCreationJob.cs — NEW sealed class [Queue(\"appointments\")] [DisableConcurrentExecution(timeoutInSeconds: 60)]. Ctor injected: AppointmentsRepository, IntegrationsVideoClient, OutboundTriggerClient (new thin client — or reuse inline HttpClient pattern per ReminderJob.SendReminderToOutboundAsync), JsonLinesLogger, TenantSettingsRepository? (NO — tenant_settings read sadece Integrations'ta factory tarafindan; Appointments timezone'i Integrations hop response'unda alamaz, cunku factory response'u MeetingResult sadece — YENI EK GEREKLI: tenant timezone lookup icin ya hop request'inde client Appointments Shared DB read yap ya da Integrations endpoint tenant_settings.timezone'i da resolve edip response DTO'ya ekle. Karar: Appointments Shared DB pool'undan lightweight SELECT timezone FROM tenant_settings WHERE tenant_id=@id — InMigrationTenantSettingsReader ya da AppointmentsRepository'ye GetTenantTimezoneAsync ekle.). Public async Task RunAsync(int tenantId, long appointmentId, CancellationToken ct). Flow: (1) apt = await _repo.GetAppointmentByIdAsync(tenantId, appointmentId, ct); if null → SystemWarn + return (no retry). (2) if apt.meeting_link IS NOT NULL → SystemInfo 'already_created idempotency skip' + return (retry no-op). (3) if apt.status != 'confirmed' → SystemInfo INV-INT-145 skip + return (cancelled/completed between enqueue and fire). (4) tz = await _repo.GetTenantTimezoneAsync(tenantId, ct) ?? 'Europe/Istanbul'; (5) startAtUtc = ComposeUtcStart(apt.appointment_date, apt.start_time, tz) — DateOnly + TimeOnly + TimeZoneInfo.FindSystemTimeZoneById + TimeZoneInfo.ConvertTimeToUtc. (6) req = new VideoMeetingHopRequest { TenantId=tenantId, AppointmentId=apt.Id, Title=$\"Video konsultasyon — {apt.PatientName}\", StartAtUtc=startAtUtc, DurationMinutes=ComputeDuration(apt.start_time, apt.end_time), Timezone=tz, Attendees=[new AttendeeDto{Name=apt.PatientName,PhoneE164=apt.PatientPhone,TimeZoneId=tz,Role='lead'}] }. (7) result = await _videoClient.CreateMeetingAsync(req, ct) — VideoMeetingHopException propagate (Hangfire retry INV-INT-144). (8) switch result: Skipped(INV-INT-142) → SystemInfo 'provider_not_configured, skipping video meeting creation' + return (no retry, tenant henuz provider ayarlamadi); Failed(INV-INT-141) → SystemError 'meeting_create_failed' + return (no retry — argument validation, retry useless); Success(meetingResult) → devam. (9) await _repo.SetMeetingLinkAsync(tenantId, apt.Id, meetingResult.MeetingLink, meetingResult.Provider, meetingResult.CalendarEventId, ct). (10) var job24 = BackgroundJob.Schedule<VideoReminderJob>(j => j.SendAsync(tenantId, apt.Id, \"24h\"), startAtUtc.AddHours(-24) - DateTime.UtcNow); (11) var job1 = BackgroundJob.Schedule<VideoReminderJob>(j => j.SendAsync(tenantId, apt.Id, \"1h\"), startAtUtc.AddHours(-1) - DateTime.UtcNow); — Note: if startAtUtc-24h or -1h < now (appointment already within window), BackgroundJob.Schedule 0 delay = immediate fire (acceptable — late enqueue catch-up). (12) await _repo.SetVideoReminderJobIdsAsync(tenantId, apt.Id, job24, job1, ct). (13) Outbound trigger: POST /api/v1/outbound/trigger with event='video_meeting_confirmed', phone=apt.PatientPhone, variables={patient_name, meeting_link, meeting_start_local=start_at formatted in tenant TZ, dentist_name=apt.DoctorName ?? 'Klinik'}. 5xx → SystemError INV-INT-146 + propagate (retry). 200 → SystemInfo done. XML doc: 'Hangfire job enqueued post-appointment-create. Idempotent on meeting_link NOT NULL. All failure modes typed.'"
+    },
+    {
+      "id": "AC6",
+      "criterion": "src/Invekto.Appointments/Services/Jobs/VideoReminderJob.cs — NEW sealed class [Queue(\"appointments\")]. Ctor: AppointmentsRepository, IHttpClientFactory, JwtGenerator, JsonLinesLogger. Public async Task SendAsync(int tenantId, long appointmentId, string reminderType, CancellationToken ct = default). reminderType one-of '24h'|'1h' (other → ArgumentException). Flow: (1) apt = _repo.GetAppointmentByIdAsync; if null → SystemWarn INV-INT-145 + return. (2) if apt.status != 'confirmed' OR apt.meeting_link IS NULL → SystemInfo INV-INT-145 skip + return. (3) var alreadySent = reminderType == \"24h\" ? apt.VideoReminder24hSentAt.HasValue : apt.VideoReminder1hSentAt.HasValue; if alreadySent → SystemInfo 'already_sent idempotency skip' + return. (4) Outbound trigger client (ReminderJob pattern reuse — inline SendReminderToOutboundAsync): event=reminderType=='24h' ? 'video_reminder_24h' : 'video_reminder_1h', phone, variables={patient_name, meeting_link, meeting_start_local, dentist_name, hours_remaining=reminderType=='24h'?'24':'1'}. 5xx → SystemError INV-INT-146 + throw (Hangfire retries). 200 → (5) await _repo.MarkVideoReminderSentAsync(tenantId, apt.Id, reminderType, ct). 200 SystemInfo done. No inner catch (let Hangfire retry). Outer catch OperationCanceledException → log + return (graceful shutdown). XML doc: 'Per-meeting reminder job scheduled via BackgroundJob.Schedule by VideoMeetingCreationJob. Idempotent on video_reminder_{type}_sent_at NOT NULL. State-change skip (INV-INT-145) informational; dispatch fail (INV-INT-146) retryable.'"
+    },
+    {
+      "id": "AC7",
+      "criterion": "src/Invekto.Appointments/Data/AppointmentsRepository.cs — 5 yeni method eklenir, existing method'lar dokunulmaz. (1) public async Task<int?> GetTenantTimezoneAsync(int tenantId, CancellationToken ct) → NOT INT — string? — SELECT timezone FROM tenant_settings WHERE tenant_id=@tid (null fallback to NULL → caller defaults 'Europe/Istanbul'). (2) public async Task SetMeetingLinkAsync(int tenantId, long appointmentId, string meetingLink, string provider, string? calendarEventId, CancellationToken ct) → UPDATE appointments SET meeting_link=@link, meeting_provider=@p, calendar_event_id=@eid, updated_at=NOW() WHERE tenant_id=@tid AND id=@id AND meeting_link IS NULL — idempotency guard (UPDATE 0 rows if already set, log INV-INT-145 equiv). (3) public async Task SetVideoReminderJobIdsAsync(int tenantId, long appointmentId, string job24Id, string job1Id, CancellationToken ct) → UPDATE appointments SET video_reminder_24h_job_id=@j24, video_reminder_1h_job_id=@j1, updated_at=NOW() WHERE tenant_id=@tid AND id=@id. (4) public async Task<(string? Job24, string? Job1)> GetScheduledReminderJobIdsAsync(int tenantId, long appointmentId, CancellationToken ct) → SELECT video_reminder_24h_job_id, video_reminder_1h_job_id FROM appointments WHERE tenant_id=@tid AND id=@id. (5) public async Task MarkVideoReminderSentAsync(int tenantId, long appointmentId, string reminderType, CancellationToken ct) → reminderType in ('24h','1h') → UPDATE SET video_reminder_{type}_sent_at=NOW() WHERE tenant_id=@tid AND id=@id AND video_reminder_{type}_sent_at IS NULL — idempotency guard. (6) public async Task ClearScheduledReminderJobIdsAsync(int tenantId, long appointmentId, CancellationToken ct) → UPDATE SET video_reminder_24h_job_id=NULL, video_reminder_1h_job_id=NULL, updated_at=NOW() WHERE tenant_id=@tid AND id=@id — post-cancel cleanup. GetAppointmentByIdAsync (mevcut) genisletilir: SELECT list'e meeting_link, meeting_provider, calendar_event_id, video_reminder_24h_job_id, video_reminder_1h_job_id, video_reminder_24h_sent_at, video_reminder_1h_sent_at eklenir. AppointmentDto DTO (mevcut Shared veya local?) yeni alanlar eklenir (Shared ise — FEAT-VCP Chunk B'nin DTO-level Shared change'i). Karar: **Appointment domain DTO local Appointments'ta** → Shared'a dokunmuyoruz (YENI Shared contract only via Chunk A Video namespace)."
+    },
+    {
+      "id": "AC8",
+      "criterion": "src/Invekto.Appointments/Program.cs modifications (mevcut Program.cs ~600+ line, minimal surgical changes). (1) DI registrations ~line 60 block: builder.Services.AddHttpClient(\"IntegrationsInternal\", client => { client.BaseAddress = new Uri(builder.Configuration.GetValue<string>(\"Integrations:InternalBaseUrl\") ?? \"http://localhost:7106\"); client.Timeout = TimeSpan.FromSeconds(10); }); builder.Services.AddSingleton<IntegrationsVideoClient>(); — named client factory pattern (lesson 2026-04-17 TranslationHopClient). VideoMeetingCreationJob + VideoReminderJob auto-registered by Hangfire via DI (AddScoped<T> OR AddTransient<T>; pattern mevcut ReminderJob uses AddTransient). (2) Create endpoint hook (line ~430 booked Appointments create): after 201 Results.Json, **OPTION A** (selected): Enqueue BEFORE return — `BackgroundJob.Enqueue<VideoMeetingCreationJob>(j => j.RunAsync(tenantContext.TenantId, id, default));` fire-and-forget (Hangfire persists enqueue atomically to PG storage, endpoint returns 201 immediately); enqueue failure (Hangfire DB down) → log INV-JOB-001 + **still return 201** (appointment created, video is best-effort — HFM-1 precedent endpoint-as-scheduling). (3) Cancel endpoint hook (line ~503 POST /api/v1/appointments/{id}/cancel): after CancelAppointmentAsync returns true (appointment cancelled), `var (j24, j1) = await repository.GetScheduledReminderJobIdsAsync(tenantContext.TenantId, id, ct); if (j24 != null) BackgroundJob.Delete(j24); if (j1 != null) BackgroundJob.Delete(j1); await repository.ClearScheduledReminderJobIdsAsync(tenantContext.TenantId, id, ct);` — BackgroundJob.Delete idempotent (non-existent id returns false, no throw). Status update endpoint (mevcut — TreatmentLifecycleService.UpdateAppointmentStatusAsync path — TreatmentLifecycleService handles status=cancelled/completed): Chunk B DOKUNULMAZ (post-review) — Hangfire scheduled jobs firing-time check (VideoReminderJob.SendAsync guards) zaten INV-INT-145 skip eder, cleanup gerek yok. Reschedule: mevcut endpoint yok (cancel + new create pattern — yeni create otomatik yeni enqueue yapar). (4) NO endpoint mapping changes — no new endpoint in Appointments Program.cs."
+    },
+    {
+      "id": "AC9",
+      "criterion": "src/Invekto.Integrations/Program.cs modifications — minimal: (1) VideoProviderFactory + GoogleMeetMockProvider + TenantSettingsRepository zaten Chunk A'da AddSingleton registered. Dokunulmuyor. (2) Line ~enadow endpoint map block: var videoGroup = app.MapGroup(\"/internal/video\").RequireAuthorization(\"InternalService\"); VideoMeetingEndpoints.Map(videoGroup); — RequireAuthorization 'InternalService' policy (mevcut ise reuse; değilse `RequireAuthorization()` JWT default scheme yeterli — ReminderJob → Outbound pattern default scheme). (3) VideoMeetingEndpoints.Map static method adds: group.MapPost(\"/meetings\", HandleCreateAsync). XML doc comment: 'FEAT-VCP Chunk B internal endpoint consumed by Appointments VideoMeetingCreationJob.'"
+    },
+    {
+      "id": "AC10",
+      "criterion": "tests/InvektoServis.Tests/Appointments/Jobs/VideoMeetingCreationJobTests.cs — xUnit + FluentAssertions. Tests (5): (1) [Fact] SkipsWhenAppointmentMissing — repo returns null, no hop call, no repo SetMeetingLink; (2) [Fact] SkipsWhenAlreadyCreated — meeting_link already set, no hop call (idempotency); (3) [Fact] SkipsWhenStatusNotConfirmed — status='cancelled', INV-INT-145 log, no hop call; (4) [Fact] HopSkippedNotConfigured — IntegrationsVideoClient returns Skipped(INV-INT-142), no SetMeetingLink, no schedule, no outbound call — verified via mock expectations; (5) [Fact] HappyPath_CreatesMeetingAndSchedulesReminders — IntegrationsVideoClient returns Success(MeetingResult), SetMeetingLinkAsync called, BackgroundJob.Schedule mock called 2x (24h+1h), SetVideoReminderJobIdsAsync called, Outbound POST called. Mocks: Moq for AppointmentsRepository + IntegrationsVideoClient (not real HTTP); Hangfire BackgroundJob static mocked via JobStorage test harness OR simple assertion 'would schedule' (Hangfire testing pattern: inject IBackgroundJobClient interface, test validates calls).",
+      "codex_note": "AC10 Hangfire BackgroundJob.Schedule static — testability gap. Codex CQ6 riski. Mitigation: VideoMeetingCreationJob scheduling logic extracted to internal IBackgroundJobEnqueuer abstraction (thin wrapper over BackgroundJob.Schedule) + inject. Chunk A precedent: none (unit test Hangfire-free). Karar: abstraction minimal (2-method interface Schedule + Delete) + tests Moq. Dev fazi executes."
+    },
+    {
+      "id": "AC11",
+      "criterion": "tests/InvektoServis.Tests/Appointments/Jobs/VideoReminderJobTests.cs — xUnit + FluentAssertions. Tests (5): (1) [Fact] SkipsWhenAppointmentMissing — null apt → INV-INT-145 log; (2) [Theory] SkipsWhenStatusNotConfirmed — status IN ('cancelled','completed','no_show') → INV-INT-145 log; (3) [Fact] SkipsWhenMeetingLinkNull — hypothetical scenario (never happens post-MeetingCreationJob, but defensive) → skip; (4) [Fact] SkipsWhenAlreadySent — 24h already sent, new 24h call → idempotent skip no outbound; (5) [Fact] HappyPath_SendsAndMarksSent — clean state → Outbound POST called with template 'video_reminder_24h' + variables, MarkVideoReminderSentAsync called. Mocks: HttpMessageHandler for HttpClient, Moq repo."
+    },
+    {
+      "id": "AC12",
+      "criterion": "Build PASS full solution (dotnet build InvektoServis.sln --no-restore -v q) 0 errors, pre-existing warning count artmaz. Full test run InvektoServis.Tests project: VideoMeetingCreationJobTests 5/5 + VideoReminderJobTests 5/5 PASS = 10 yeni test. Mevcut Chunk A 13/13 test still PASS (regression). Total InvektoServis.Tests suite all green. No null-forgiving, no silent catch, no bare catch. Tüm yeni tipler sealed. snake_case DB identifiers. Microservice isolation: Appointments.csproj NO new PackageReference to Integrations; IntegrationsVideoClient uses HttpClient only; Shared references unchanged (no new Shared contract — endpoint DTOs local to each service)."
+    }
+  ],
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does the Integrations endpoint POST /internal/video/meetings preserve Chunk A's result-semantics split — null factory returns 200 with skipped=true + INV-INT-142, NpgsqlException propagates to 503 + INV-INT-143, provider ArgumentException returns 400 + INV-INT-141, transient 5xx/timeout on Appointments side surfaces INV-INT-144 distinct from all three — without collapsing outages into configuration gaps?",
+      "category": "Data"
+    },
+    {
+      "id": "Q2",
+      "question": "Does the Appointments cancel hook (POST /api/v1/appointments/{id}/cancel) invoke BackgroundJob.Delete for both scheduled video reminder job_ids retrieved from the database AND clear the job_id columns, so that no orphan VideoReminderJob fires after an appointment cancellation, and is the state-change guard inside VideoReminderJob.SendAsync (status != confirmed → INV-INT-145 skip) a secondary defense rather than primary cleanup?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q3",
+      "question": "Is VideoMeetingCreationJob idempotent on Hangfire retry — specifically, does the meeting_link NOT NULL guard combined with the UPDATE WHERE meeting_link IS NULL predicate in SetMeetingLinkAsync prevent duplicate provider.CreateMeetingAsync calls (and therefore duplicate calendar events / mock hash collisions / phantom reminder re-schedules) when the job fires multiple times for the same (tenantId, appointmentId)?",
+      "category": "Idempotency"
+    },
+    {
+      "id": "Q4",
+      "question": "Does the Appointments → Integrations integration respect microservice isolation — i.e., Invekto.Appointments.csproj has NO ProjectReference to Invekto.Integrations, IntegrationsVideoClient communicates only via HttpClient to /internal/video/meetings (X-Internal-Service-Token header + InternalServices:SharedSecret constant-time compare — LIW IntakeInternalAuth precedent, not JWT because the Hangfire caller has no TenantContext), no Integrations classes are imported in Appointments source, and no shared DB writes to tenant_settings (Appointments only reads tenant_settings.timezone for ICS formatting)?",
+      "category": "Architecture"
+    }
+  ],
+  "allowed_files": [
+    "arch/db/migrations/024-vcp-chunk-b-appointments-video-meeting.sql",
+    "arch/db/appointments.sql",
+    "arch/db/tenant-settings.sql",
+    "arch/db/outbound.sql",
+    "arch/errors.md",
+    "src/Invekto.Integrations/Endpoints/VideoMeetingEndpoints.cs",
+    "src/Invekto.Integrations/Program.cs",
+    "src/Invekto.Shared/Contracts/Video/VideoMeetingHopResponse.cs",
+    "src/Invekto.Appointments/Services/IntegrationsVideoClient.cs",
+    "src/Invekto.Appointments/Services/Jobs/VideoMeetingCreationJob.cs",
+    "src/Invekto.Appointments/Services/Jobs/VideoReminderJob.cs",
+    "src/Invekto.Appointments/Services/IBackgroundJobEnqueuer.cs",
+    "src/Invekto.Appointments/Services/BackgroundJobEnqueuer.cs",
+    "src/Invekto.Appointments/Services/Video/VideoHopErrorCodes.cs",
+    "src/Invekto.Appointments/Data/AppointmentsRepository.cs",
+    "src/Invekto.Appointments/Program.cs",
+    "tests/InvektoServis.Tests/Appointments/Jobs/VideoMeetingCreationJobTests.cs",
+    "tests/InvektoServis.Tests/Appointments/Jobs/VideoReminderJobTests.cs",
+    "tests/InvektoServis.Tests/InvektoServis.Tests.csproj",
+    "arch/plans/20260419-feat-vcp-chunk-b-appointments-reminders.json"
+  ],
+  "files_changed": [
+    { "path": "arch/db/appointments.sql", "is_new": false },
+    { "path": "arch/db/migrations/024-vcp-chunk-b-appointments-video-meeting.sql", "is_new": true },
+    { "path": "arch/db/outbound.sql", "is_new": false },
+    { "path": "arch/db/tenant-settings.sql", "is_new": false },
+    { "path": "arch/errors.md", "is_new": false },
+    { "path": "arch/plans/20260419-feat-vcp-chunk-b-appointments-reminders.json", "is_new": true },
+    { "path": "src/Invekto.Appointments/Data/AppointmentsRepository.cs", "is_new": false },
+    { "path": "src/Invekto.Appointments/Program.cs", "is_new": false },
+    { "path": "src/Invekto.Appointments/Services/BackgroundJobEnqueuer.cs", "is_new": true },
+    { "path": "src/Invekto.Appointments/Services/IBackgroundJobEnqueuer.cs", "is_new": true },
+    { "path": "src/Invekto.Appointments/Services/IntegrationsVideoClient.cs", "is_new": true },
+    { "path": "src/Invekto.Appointments/Services/Jobs/VideoMeetingCreationJob.cs", "is_new": true },
+    { "path": "src/Invekto.Appointments/Services/Jobs/VideoReminderJob.cs", "is_new": true },
+    { "path": "src/Invekto.Appointments/Services/Video/VideoHopErrorCodes.cs", "is_new": true },
+    { "path": "src/Invekto.Integrations/Endpoints/VideoMeetingEndpoints.cs", "is_new": true },
+    { "path": "src/Invekto.Integrations/Program.cs", "is_new": false },
+    { "path": "src/Invekto.Shared/Contracts/Video/VideoMeetingHopResponse.cs", "is_new": true },
+    { "path": "tests/InvektoServis.Tests/Appointments/Jobs/VideoMeetingCreationJobTests.cs", "is_new": true },
+    { "path": "tests/InvektoServis.Tests/Appointments/Jobs/VideoReminderJobTests.cs", "is_new": true },
+    { "path": "tests/InvektoServis.Tests/InvektoServis.Tests.csproj", "is_new": false }
+  ],
+  "git_diff": {
+    "sha256": "38d66ac4a5163386fe2c21b19a70a90f81c48c811bc979ace5b0c2d4033a7628",
+    "full_path": "arch/plans/diffs/20260419-feat-vcp-chunk-b-appointments-reminders.diff",
+    "stats": { "insertions": 1878, "deletions": 3, "files_count": 20 }
+  },
+  "build": {
+    "status": "PASS",
+    "timestamp": "2026-04-20T15:30:00+03:00",
+    "errors": 0,
+    "warnings": 1,
+    "notes": "Full InvektoServis.sln build PASS. Chunk B iter 0 build failed CS0549 x8 (sealed+virtual conflict), iter 1 PASS (sealed keyword removed). Test run: 15/15 VideoMeetingCreationJobTests+VideoReminderJobTests PASS, 28/28 Video+Ics regression PASS (Chunk A 13 + Chunk B 15). Pre-existing Backend WebApplicationFactory failures (Dev PC PostgreSQL yok) Chunk B ile alakasiz."
+  },
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Backend/** (Dashboard settings UI + OAuth callback Chunk C'de, simdi DOKUNULMAZ)",
+      "src/Invekto.Backend/wwwroot/** (Dashboard UI Chunk C)",
+      "src/Invekto.Automation/** (WA outbound template dispatch Outbound servisi tarafindan — no Automation involvement)",
+      "src/Invekto.Shared/Contracts/Video/** (Chunk A'da yaratildi, Chunk B dokunmaz — VideoMeetingHopRequest/Response Appointments ve Integrations local DTOs olarak tanimlanir)",
+      "src/Invekto.Shared/Ics/IcsBuilder.cs (Chunk A'da yaratildi, Chunk B direkt cagirmaz — Chunk B MVP'de Calendar event invite Meet attendee email ile otomatik — IcsBuilder Chunk C veya post-pilot ICS attachment icin standby)",
+      "Mevcut ReminderJob / TreatmentLifecycleJob / WaitlistJob — dokunulmuyor, paralel video reminder yolu ayri",
+      "Mevcut outbound_templates rows — seed yok (sadece CHECK constraint expansion)"
+    ],
+    "non_goals": [
+      "Dashboard video provider settings UI + OAuth connect flow (Chunk C)",
+      "Backend /oauth/google-calendar/callback endpoint (Chunk C)",
+      "GoogleMeetProvider prod OAuth (Chunk C)",
+      "BaselineVideoTemplates hardcoded fallback dict (post-pilot)",
+      "Template row seed for Dent pilot (manuel ops deploy sonrasi)",
+      "IcsBuilder WA document attachment (v2 — Chunk B MVP Calendar invite yeterli)",
+      "Post-meeting satisfaction prompt T+30m (spec AC-7, v2)",
+      "Reschedule explicit hook (yeni create ile ayni flow — YOK)",
+      "Multi-channel notification (SMS/Email) — Chunk B WA-only",
+      "Zoom/Teams/Jitsi provider impl (v2)",
+      "Meeting recording / transcription (v2)"
+    ],
+    "intentional_exclusions": [
+      "VideoMeetingHopRequest/VideoMeetingHopResult DTOs Shared'a KONMAZ — sadece 2 servis arasi API contract, Shared kontrat-degeri yok (LIW Chunk C precedent: IntakeWaDirectRequest Backend↔Automation local). Chunk C eger Dashboard da /internal/video'yu cagirirsa Shared'a promote edilir.",
+      "Chunk B'de hardcoded BaselineVideoTemplates fallback YOK — pilot tenant Dent (5050) deploy sonrasi manuel outbound_templates seed calisacak. Template mismatch ops tarafinda INV-INT-146 Outbound 422 log'u ile goruntur. Post-pilot lesson: HFM-2 BaselinePromptsTr pattern evaluated for Chunk C.",
+      "IcsBuilder Chunk B'de CAGRILMAZ — Calendar event invite Meet tarafindan otomatik attendee email'e ICS ile gönderilir (Chunk C GoogleMeetProvider Workspace OAuth impl bunu events.create ile yapacak). Mock provider email yollamaz — pilot ilk gunlerinde Dent coordinator manuel Meet link'i gorur. IcsBuilder WA document attachment fallback v2.",
+      "Reschedule explicit endpoint YOK — mevcut pattern cancel + yeni create. Yeni create otomatik yeni VideoMeetingCreationJob enqueue eder — tasarim gereği, ek hook gerekmez.",
+      "TreatmentLifecycleService (completed/no_show status transitions) Chunk B dokunulmaz — VideoReminderJob.SendAsync status guard (INV-INT-145) zaten skip eder, explicit cleanup gerek yok. Performance riski: N pending reminder x 1 DB SELECT fire time — kabul edilebilir (orphan reminder count <100 beklenir pilot donem)."
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "VideoMeetingEndpoints.HandleCreateAsync: try provider.CreateMeetingAsync catch ArgumentException → 400 INV-INT-141; outer try factory.ResolveAsync catch NpgsqlException → 503 INV-INT-143; catch OperationCanceledException → propagate",
+      "IntegrationsVideoClient.CreateMeetingAsync: try PostAsJsonAsync catch HttpRequestException → throw VideoMeetingHopException(INV-INT-144); catch TaskCanceledException → throw VideoMeetingHopException(INV-INT-144); 200 skipped parse → return Skipped; 200 success parse → return Success; 400/500 → map INV-INT-141/143/144",
+      "VideoMeetingCreationJob.RunAsync: outer try; VideoMeetingHopException (INV-INT-144) → throw (Hangfire retry); Skipped(INV-INT-142) → return (no retry); Failed(INV-INT-141) → SystemError log + return (no retry, argument validation); HttpRequestException from Outbound trigger → throw INV-INT-146 (Hangfire retry); catch OperationCanceledException → log + return",
+      "VideoReminderJob.SendAsync: outer try; HttpRequestException / TaskCanceledException from Outbound → throw INV-INT-146 (Hangfire retry); NpgsqlException from MarkVideoReminderSentAsync → throw (Hangfire retry); catch OperationCanceledException → log + return"
+    ],
+    "user_facing_errors": [
+      "Appointments create endpoint: 201 unchanged. Video creation failures are background Hangfire jobs — no direct user-facing surfacing (lesson 2026-04-18 async fire-and-forget response_field_naming commitment=scheduling).",
+      "Appointments cancel endpoint: 200 unchanged. BackgroundJob.Delete failures logged but not surfaced (best-effort cleanup).",
+      "Outbound WA video_meeting_confirmed / video_reminder_{24h,1h}: customer-facing WA message. Template missing → Outbound 422 → INV-INT-146 log in Appointments (pilot tenant Dent ops Run manuel seed check).",
+      "Integrations /internal/video/meetings: microservice-internal, user-facing DIRECT error YOK. Appointments catches and maps to INV-INT-144/145/146 logs — no HTTP surface to user."
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Tum typed catch'ler SystemError/SystemWarn log (JsonLinesLogger) + INV-INT-{code} prefix. Hangfire AutomaticRetry default 10 attempts exp backoff — fail-open-with-log pattern (lesson 2026-04-18 response_field=commitment). Idempotency checks (meeting_link NOT NULL, sent_at NOT NULL, UPDATE WHERE null predicates) primary consistency guard — NOT silent skip. Skip log'lari SystemInfo + INV-INT-145 explicit audit trail (ReminderJob pattern). State-change skip (cancelled/completed between Schedule-and-Fire) ops tarafindan 'expected behavior' tanitilir."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Dent Adavista pilot lead randevu onayi aldi ama meeting link ne zaman geliyor? WA mesaji gelmezse lead telefonla arayacak, coordinator meshgul.",
+      "suggestion": "Appointment create 201 sonrasi hemen (fire-and-forget) VideoMeetingCreationJob enqueue → mock provider 100ms icinde link uretir → immediate WA video_meeting_confirmed template + 24h/1h reminder scheduled. Lead 3 mesaj alir: onay+link, 24h once, 1h once.",
+      "aha_moment": "Lead book yaptigi anda 'Randevunuz onayli, video link: https://meet.google.com/mock-ABC123' mesaji gorur — pilot gunden itibaren self-service UX."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Hangfire VideoMeetingCreationJob Postgres down olunca 10 defa retry ediyor — her retry Google Meet Calendar event yaratacak? 10 duplicate calendar event + 10 WA mesaj = kabus.",
+      "suggestion": "Idempotency multi-layer: (1) Hangfire job-per-meeting unique id; (2) VideoMeetingCreationJob ilk step apt.meeting_link NOT NULL → skip; (3) SetMeetingLinkAsync UPDATE WHERE meeting_link IS NULL (row-level atomic guard); (4) GoogleMeetMockProvider deterministic hash (Chunk A AC-5) — ayni inputs = ayni link.",
+      "aha_moment": "Prod OAuth retry'i Google Calendar events.create idempotency token'i ile (Chunk C) + appointments.meeting_link unique lock = sifir duplicate calendar event garantisi."
+    },
+    {
+      "category": "OPS",
+      "user_pain": "Lead randevuyu iptal ediyor → scheduled 2 Hangfire job hala 24h+1h sonra fire edip orphan WA mesaji yolluyor: 'Video konsultasyonunuz 1 saat sonra' — ama randevu yok!",
+      "suggestion": "Cancel endpoint hook: SELECT 2 job_id → BackgroundJob.Delete → UPDATE NULL. Double defense: VideoReminderJob.SendAsync fire-time status != confirmed → INV-INT-145 skip.",
+      "aha_moment": "Cancel → 5 saniye icinde 2 job tamamen temizlenir. Eger cancel commit Edge case'inde kacan job olsa fire-time guard yakalar — ikili guvenlik."
+    },
+    {
+      "category": "ARCHITECTURE",
+      "user_pain": "Chunk A VideoProviderFactory Integrations'ta yerlestirildi — Appointments direkt ref = mikroservis izolasyon ihlali. Factory'yi Shared'a tasimak Chunk A rework, breaking. Duplicate factory = technical debt.",
+      "suggestion": "HTTP hop pattern: Integrations /internal/video/meetings endpoint + Appointments IntegrationsVideoClient. LIW Chunk C precedent (Backend↔Automation hop). JWT service auth (ReminderJob → Outbound pattern). Chunk C prod OAuth ile ayni endpoint — Appointments kod degismez.",
+      "aha_moment": "Mikroservis izolasyonu %100 clean + Chunk C'ye geciste Appointments'ta TEK SATIR kod degismez — sadece Integrations endpoint handler googlemeet case'i ekler."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Tenant tenant_settings.video_provider kolonunu henuz ayarlamadi → appointment create 201 doner ama meeting_link hic gelmez, lead 'link nerede?' ticket acar.",
+      "suggestion": "VideoProviderFactory null → 200 {skipped:INV-INT-142} → VideoMeetingCreationJob SystemInfo 'provider_not_configured, skipping' + return (no retry, no outbound). Appointment normal calisir, sadece video layer ses siz kalir. Ops ticket'inda INV-INT-142 log grep → 'tenant X video_provider eksik' anlik tespit.",
+      "aha_moment": "Dent pilot gunu 5050 tenant provider='mock' set edilmezse sistem calisir (appointment normal), hicbir 500 error yok — pilot ops tenant_settings row yaratir, gelecek appointments video link alir."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_MCP",
+    "received_at": "2026-04-20T16:05:00+03:00",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-20T16:05:00+03:00",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "VideoMeetingEndpoints unified VideoMeetingHopResponse envelope on all paths, INV-INT-147 auth distinct from INV-INT-143 DB outage. errors.md INV-INT-144..147 actionable semantics. VideoMeetingCreationJob contract-violation log." },
+      "CQ2": { "result": "PASS", "evidence": "Program.cs typed catch (NpgsqlException) + catch (InvalidOperationException). IntegrationsVideoClient.SafeReadBodyAsync typed HttpRequestException + IOException + ObjectDisposedException." },
+      "CQ3": { "result": "PASS", "evidence": "Scope limited to Appointments video-consultation Chunk B files (schema + service + test + Integrations endpoint + Shared envelope). No cross-service leakage." },
+      "CQ4": { "result": "PASS", "evidence": "Feature-specific, appropriate split across services/jobs/client. No DRY violation." },
+      "CQ5": { "result": "PASS", "evidence": "snake_case DB cols. Const SQL switch (no interpolation). Null-forgiving removed (capture-into-local). Typed catches. Project pattern compliance." },
+      "CQ6": { "result": "PASS", "evidence": "Single parameterized UPDATE + tenant filter. await using for NpgsqlConnection/NpgsqlCommand. Partial indexes aid reminder lookups." },
+      "CQ7": { "result": "PASS", "evidence": "No TODO/HACK/FIXME in added lines." },
+      "CQ8": { "result": "PASS", "evidence": "VideoMeetingHopResponse additive (Shared). No removed public contract. Appointments→Integrations HTTP-only boundary preserved." },
+      "CQ9": { "result": "PASS", "evidence": "Tenant-scoped WHERE. HTTP-only cross-service. Auth/business-state separation via INV-INT-147 vs INV-INT-142." },
+      "CQ10": { "result": "PASS", "evidence": "Single-envelope discipline: VideoMeetingHopResponse on all /internal/video/meetings response paths." },
+      "CQ11": { "result": "PASS", "evidence": "Migration 024 + canonical schema sync + GRANT ALL 3 table. DB-code sync complete." },
+      "CQ12": { "result": "PASS", "evidence": "errors.md INV-INT-144..147. VideoErrorCodes.InternalServiceAuthFailed. Auth 401/403/500 distinct; DB 503; business state distinct." }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "Result-semantics split preserved: INV-INT-142 skipped / INV-INT-143 DB outage / INV-INT-141 provider throw / INV-INT-144 hop-fail / INV-INT-147 auth-fail — all distinct in VideoMeetingHopResponse envelope." },
+      "Q2": { "result": "PASS", "reasoning": "Cancel hook primary cleanup (GetScheduledReminderJobIdsAsync + enqueuer.Delete + ClearScheduledReminderJobIdsAsync) + VideoReminderJob.SendAsync secondary guard (status != confirmed || meetingLink null → INV-INT-145 skip)." },
+      "Q3": { "result": "PASS", "reasoning": "3-layer defense explicitly documented: Hangfire DisableConcurrentExecution(60s) + DB UPDATE WHERE meeting_link IS NULL guard + IVideoConsultProvider Chunk A deterministic-or-idempotent contract. Retry after worker crash = no-op (identical link via provider determinism)." },
+      "Q4": { "result": "PASS", "reasoning": "Microservice isolation preserved: no ProjectReference Invekto.Integrations from Appointments. HTTP-only via IntegrationsVideoClient + X-Internal-Service-Token header. No cross-service DB writes (tenant_settings read-only)." }
+    },
+    "blocking_issues": [],
+    "iteration": 1,
+    "escalation_required": false,
+    "escalation_reason": null,
+    "raw_text": "iter 1: OVERALL_VERDICT PASS - 12/12 CQ PASS + 4/4 CoVe PASS. All 9 iter 0 blockers resolved (typed catches + null-forgiving removal + const SQL switch + INV-INT-147 + unified envelope + GRANT + idempotency XML doc + CoVe Q4 text). Ready for commit."
+  }
+}

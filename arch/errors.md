@@ -800,6 +800,18 @@ errors:
   - code: INV-INT-143
     description: VideoProviderFactory.ResolveAsync surfaced an NpgsqlException while reading tenant_settings — DB outage or connectivity failure. Distinct from INV-INT-142 (legitimate "not configured" state). Chunk B's appointment handler catches the exception and surfaces this code with HTTP 503 so operators know to check database health rather than tenant configuration.
     user_message: Video consultation settings could not be read (database error). Please retry; if persistent, contact support.
+  - code: INV-INT-144
+    description: FEAT-VCP Chunk B — Appointments → Integrations POST /internal/video/meetings HTTP call failed (5xx / network failure / timeout). Hangfire AutomaticRetry (default 10 attempts exponential backoff) target. Distinct from INV-INT-141 (provider threw an ArgumentException on malformed input) and INV-INT-143 (DB outage inside factory resolve). Emitted by IntegrationsVideoClient in Appointments when the hop itself fails to complete — retry re-issues the POST once Integrations / network recovers.
+    user_message: Video consultation setup temporarily unavailable. Retrying automatically.
+  - code: INV-INT-145
+    description: FEAT-VCP Chunk B — VideoReminderJob (or VideoMeetingCreationJob) fired but the appointment state changed between scheduling and firing — status is no longer 'confirmed', meeting_link was cleared, the appointment was deleted, or the reminder was already marked sent (idempotency guard). Informational / audit; no retry. Expected after cancel/complete transitions; frequent occurrences for a single appointment indicate orphan-job cleanup failure.
+    user_message: (internal; reminder skipped because appointment state changed)
+  - code: INV-INT-146
+    description: FEAT-VCP Chunk B — Outbound POST /api/v1/outbound/trigger for video_meeting_confirmed / video_reminder_24h / video_reminder_1h returned a non-success status (5xx / network error / timeout). Hangfire AutomaticRetry target. Distinct from INV-INT-144 (provider hop) — this is the customer-facing WA dispatch failure. Most common root cause during pilot rollout is a missing outbound_templates row for the tenant + trigger_event tuple (ops should verify Dent-style manual seed post-deploy).
+    user_message: Video consultation reminder delivery delayed. Retrying automatically.
+  - code: INV-INT-147
+    description: FEAT-VCP Chunk B — Internal shared-secret authentication rejected the inbound hop on POST /internal/video/meetings. Emitted for missing X-Internal-Service-Token header (401), invalid header value (403), and server-side InternalServices:SharedSecret misconfiguration (500). Distinct from INV-INT-142 (business state: provider not configured) so operators can distinguish "caller authentication failed" from "tenant hasn't picked a provider." Not customer-facing — the Appointments job treats any 4xx/5xx as a retriable hop failure and surfaces INV-INT-144 in its own logs.
+    user_message: (internal; service-to-service auth rejected)
 
   # ── OB — Outbound (GR-1.3) ──
   - code: INV-OB-001

@@ -1,4 +1,5 @@
 using Hangfire;
+using Npgsql;
 using Invekto.Appointments.Data;
 using Invekto.Appointments.Services;
 using Invekto.Appointments.Services.Jobs;
@@ -85,10 +86,32 @@ builder.Services.AddHttpClient("Outbound", client =>
     client.Timeout = TimeSpan.FromMilliseconds(outboundTimeoutMs);
 });
 
+// FEAT-VCP Chunk B: HTTP hop to Integrations for video meeting creation.
+// Named client (not typed-on-T) because IntegrationsVideoClient's ctor takes
+// IHttpClientFactory + JsonLinesLogger + IConfiguration rather than HttpClient
+// alone — lesson 2026-04-17 (TranslationHopClient pattern).
+var integrationsInternalUrl = builder.Configuration["Integrations:InternalBaseUrl"]
+    ?? "http://localhost:7106";
+var integrationsInternalTimeoutMs = builder.Configuration
+    .GetValue<int>("Integrations:InternalTimeoutMs", 10000);
+builder.Services.AddHttpClient(IntegrationsVideoClient.HttpClientName, client =>
+{
+    client.BaseAddress = new Uri(integrationsInternalUrl);
+    client.Timeout = TimeSpan.FromMilliseconds(integrationsInternalTimeoutMs);
+});
+builder.Services.AddSingleton<IntegrationsVideoClient>();
+builder.Services.AddSingleton<IBackgroundJobEnqueuer, BackgroundJobEnqueuer>();
+
 // G7: Hangfire recurring reminder job (replaces ReminderSchedulerService IHostedService)
 var hangfireConnStr = HangfireSetup.ResolveConnectionString(builder.Configuration);
 builder.Services.AddInvektoHangfire("appointments", hangfireConnStr, enableScheduler: false);
 builder.Services.AddScoped<ReminderJob>();
+
+// FEAT-VCP Chunk B: per-meeting creation + reminder jobs (BackgroundJob.Schedule
+// driven, not recurring). Scoped because the job touches the same repository +
+// HttpClientFactory pool as ReminderJob.
+builder.Services.AddScoped<VideoMeetingCreationJob>();
+builder.Services.AddScoped<VideoReminderJob>();
 
 // GR-3.19 + G7 Faz 2: WaitlistService (endpoint helper; tick moved to WaitlistJob)
 builder.Services.AddSingleton<WaitlistService>();
@@ -437,6 +460,33 @@ app.MapPost("/api/v1/appointments/book", async (
         $"patient={request.PatientName}",
         requestId);
 
+    // FEAT-VCP Chunk B: enqueue video meeting creation. Fire-and-forget — Hangfire
+    // persists the enqueue atomically to PG storage, so the failure modes are
+    // (a) NpgsqlException when the storage connection is down and (b)
+    // InvalidOperationException when the Hangfire JobStorage is mis-initialised.
+    // Both are logged with INV-INT-144 and swallowed so the booking response stays
+    // 201 (video link creation is best-effort; the confirmed appointment is the
+    // primary outcome and the background job is resumable once storage recovers).
+    try
+    {
+        BackgroundJob.Enqueue<VideoMeetingCreationJob>(
+            j => j.RunAsync(tenantContext.TenantId, id, CancellationToken.None));
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLogger.SystemWarn(
+            $"[{Invekto.Appointments.Services.Video.VideoHopErrorCodes.VideoMeetingHopFailed}] " +
+            $"VideoMeetingCreationJob enqueue: Hangfire storage unavailable " +
+            $"tenant={tenantContext.TenantId} id={id}: {ex.Message}");
+    }
+    catch (InvalidOperationException ex)
+    {
+        jsonLogger.SystemWarn(
+            $"[{Invekto.Appointments.Services.Video.VideoHopErrorCodes.VideoMeetingHopFailed}] " +
+            $"VideoMeetingCreationJob enqueue: Hangfire JobStorage not initialised " +
+            $"tenant={tenantContext.TenantId} id={id}: {ex.Message}");
+    }
+
     return Results.Json(new { id, status = "confirmed" }, statusCode: 201);
 });
 
@@ -542,6 +592,42 @@ app.MapPost("/api/v1/appointments/{id:long}/cancel", async (
             ErrorResponse.Create(ErrorCodes.AppointmentAlreadyCancelled,
                 $"Appointment {id} cannot be cancelled (current status: {appointment.Status})", requestId),
             statusCode: 409);
+    }
+
+    // FEAT-VCP Chunk B: cancel scheduled reminder jobs (primary cleanup). The job
+    // body's state-change guard is the secondary defense — this pair ensures the
+    // Hangfire queue and the DB stay in sync even if only one of the two succeeds.
+    // Typed catches per CODEX UTANSIN rule: (a) NpgsqlException when the repository
+    // calls or the Hangfire storage lookup fail, (b) InvalidOperationException when
+    // Hangfire JobStorage is unavailable. Both are logged with INV-INT-145 and
+    // swallowed so the cancel response stays 200 — the job body's state-change
+    // guard catches any reminders whose Delete call silently failed.
+    try
+    {
+        var enqueuer = ctx.RequestServices.GetRequiredService<IBackgroundJobEnqueuer>();
+        var (j24, j1) = await repository.GetScheduledReminderJobIdsAsync(
+            tenantContext.TenantId, id, ctx.RequestAborted);
+        enqueuer.Delete(j24);
+        enqueuer.Delete(j1);
+        if (j24 is not null || j1 is not null)
+        {
+            await repository.ClearScheduledReminderJobIdsAsync(
+                tenantContext.TenantId, id, ctx.RequestAborted);
+        }
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLogger.SystemWarn(
+            $"[{Invekto.Appointments.Services.Video.VideoHopErrorCodes.VideoReminderSkippedStateChanged}] " +
+            $"cancel hook: DB unavailable during reminder cleanup (status-change guard will catch) " +
+            $"tenant={tenantContext.TenantId} id={id}: {ex.Message}");
+    }
+    catch (InvalidOperationException ex)
+    {
+        jsonLogger.SystemWarn(
+            $"[{Invekto.Appointments.Services.Video.VideoHopErrorCodes.VideoReminderSkippedStateChanged}] " +
+            $"cancel hook: Hangfire JobStorage unavailable during reminder cleanup " +
+            $"tenant={tenantContext.TenantId} id={id}: {ex.Message}");
     }
 
     // GR-3.19: Trigger waitlist matching (fire-and-forget, must not block cancel response)

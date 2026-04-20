@@ -12,6 +12,9 @@ CREATE TABLE tenant_settings (
                                        CHECK (video_provider IS NULL
                                               OR video_provider IN ('mock', 'googlemeet')),
     video_provider_config  JSONB       NULL,
+    -- FEAT-VCP Chunk B (migration 024): per-tenant IANA timezone for ICS DTSTART TZID
+    -- and WA meeting_start_local substitution. Default Europe/Istanbul for TR pilot.
+    timezone               VARCHAR(40) NOT NULL DEFAULT 'Europe/Istanbul',
     created_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at             TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
