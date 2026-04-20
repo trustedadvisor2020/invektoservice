@@ -381,5 +381,13 @@
       "Q6": { "result": "PASS", "reasoning": "State-level INV-OB-037 + requestId surface" }
     },
     "blocking_issues": []
-  }
+  },
+  "status_log": [
+    {
+      "at": "2026-04-20T22:47:00Z",
+      "event": "PROD_DEPLOYED",
+      "commit": "f56015b",
+      "note": "Migration 027 applied via mcp-postgres + Backend+Outbound+Automation publish+deploy via server-deploy MCP (config preserve sandwich). 10/10 services HEALTHY post-deploy. 5/5 smoke PASS (binary freshness + migration columns verified + endpoint 401 gate + flag default TRUE all 7 tenants + new types resident in all 3 DLLs). Pre-existing IntegrationsClient EndpointDiscoveryResponse JSON warn surfaced — unrelated to DMP, separate follow-up. E2E INMA substitute + flag FALSE simulate = Q manuel smoke (tenant JWT + real outbound required)."
+    }
+  ]
 }
