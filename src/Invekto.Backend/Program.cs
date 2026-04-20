@@ -20,6 +20,7 @@ using Invekto.Shared.Data;
 using Invekto.Shared.DTOs;
 using Invekto.Shared.DTOs.ChatAnalysis;
 using Invekto.Shared.DTOs.Integration;
+using Invekto.Shared.DTOs.Outbound;
 using Invekto.Shared.Integration;
 using Invekto.Shared.DTOs.Analytics;
 using Invekto.Shared.Contracts.Leads;
@@ -7552,6 +7553,18 @@ app.MapPost("/api/v1/callback/wapcrm", async (HttpContext ctx, JsonLinesLogger j
         ["messageText"] = messageText
     };
 
+    // FEAT-J2: forward MessageCategory (marketing|transactional) when upstream set it.
+    // Null = legacy path, INMA skips opt-out check (backward-compat).
+    var messageCategory = callback.Data?.MessageCategory;
+    if (!string.IsNullOrEmpty(messageCategory))
+    {
+        wapPayload["messageCategory"] = messageCategory;
+    }
+
+    // FEAT-DMP placeholder: DynamicFields is pre-provisioned on CallbackData but set
+    // to null during FEAT-J2 scope. Activation (wapPayload.dynamicMessage + fields)
+    // happens in FEAT-DMP — no-op here until then.
+
     try
     {
         var client = httpClientFactory.CreateClient();
@@ -7565,9 +7578,28 @@ app.MapPost("/api/v1/callback/wapcrm", async (HttpContext ctx, JsonLinesLogger j
 
         var responseBody = await response.Content.ReadAsStringAsync();
 
+        // FEAT-J2 (AC9): parse WapCRM body to detect application-level blocks that
+        // arrive as HTTP 200 + Status:false + StatusCode:'906'/'907'. Previously
+        // treated as 'sent' — compliance/audit bug. Parse fail is graceful:
+        // falls back to HTTP-status-based outcome (Q4 decision).
+        var wapStatusCode = ExtractWapStatusCode(responseBody);
+        var isMarketingBlock = wapStatusCode is "906" or "907";
+        var outboundStatus = response.IsSuccessStatusCode
+            ? (isMarketingBlock ? "blocked" : "sent")
+            : "failed";
+
+        if (isMarketingBlock)
+        {
+            var invCode = wapStatusCode == "906"
+                ? ErrorCodes.ChatoperationBlockedMarketing
+                : ErrorCodes.ChatoperationBlockedContact;
+            jsonLog.SystemWarn(
+                $"[{invCode}] WapCRM marketing block: tenant={callback.TenantId}, phone={phone}, wap={wapStatusCode}, outbound_msg_id={callback.Data?.OutboundMessageId}");
+        }
+
         jsonLog.StepInfo(
             $"WapCRM bridge: tenant={callback.TenantId}, phone={phone}, instanceId={instanceIdInt}, " +
-            $"action={callback.Action}, status={response.StatusCode}, elapsed={sw.ElapsedMilliseconds}ms",
+            $"action={callback.Action}, status={response.StatusCode}, wap={wapStatusCode ?? "-"}, outbound={outboundStatus}, elapsed={sw.ElapsedMilliseconds}ms",
             requestId);
 
         // Log outgoing message to message_log
@@ -7586,8 +7618,9 @@ app.MapPost("/api/v1/callback/wapcrm", async (HttpContext ctx, JsonLinesLogger j
 
         return Results.Ok(new
         {
-            status = response.IsSuccessStatusCode ? "sent" : "failed",
+            status = outboundStatus,
             wapcrm_status = (int)response.StatusCode,
+            wapcrm_app_code = wapStatusCode,
             elapsed_ms = sw.ElapsedMilliseconds,
             response = responseBody
         });
@@ -7598,6 +7631,126 @@ app.MapPost("/api/v1/callback/wapcrm", async (HttpContext ctx, JsonLinesLogger j
         return Results.Json(new { error = "WAPCRM_HTTP_ERROR", message = ex.Message }, statusCode: 502);
     }
 });
+
+// FEAT-J2 helper: extract INMA application-level StatusCode from the WapCRM
+// response body. Returns null when the body isn't JSON or doesn't carry the
+// envelope — callers then fall back to HTTP-status-based outcomes (Q4).
+static string? ExtractWapStatusCode(string? body)
+{
+    if (string.IsNullOrWhiteSpace(body)) return null;
+    try
+    {
+        using var doc = JsonDocument.Parse(body);
+        if (doc.RootElement.ValueKind != JsonValueKind.Object) return null;
+        var root = doc.RootElement;
+        var statusFalse = root.TryGetProperty("Status", out var s) && s.ValueKind == JsonValueKind.False;
+        if (!statusFalse) return null;
+        if (root.TryGetProperty("StatusCode", out var sc) && sc.ValueKind == JsonValueKind.String)
+            return sc.GetString();
+        return null;
+    }
+    catch (JsonException)
+    {
+        return null;
+    }
+}
+
+// ============================================
+// FEAT-J2: Manual opt-out/opt-in (JWT-scoped dashboard admin action)
+// ============================================
+// Backend resolves last-known WapCRM instance via MessageLogRepository, then
+// forwards to Outbound /api/v1/internal/optout over the internal shared secret.
+// No instance found (lead never messaged) → 400 + INV-OB-029.
+app.MapPost("/api/v1/optout", async (HttpContext ctx, JsonLinesLogger jsonLog, IHttpClientFactory httpClientFactory) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+
+    var tenantIdStr = ctx.Items["TenantId"]?.ToString();
+    if (!int.TryParse(tenantIdStr, out var tenantId))
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+    }
+
+    OptOutRequest? dto;
+    try { dto = await ctx.Request.ReadFromJsonAsync<OptOutRequest>(); }
+    catch (JsonException ex)
+    {
+        jsonLog.StepWarn($"Manual opt-out: invalid JSON body: {ex.Message}", requestId);
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.GeneralValidation, "Invalid JSON body", requestId),
+            statusCode: 400);
+    }
+    if (dto == null || string.IsNullOrWhiteSpace(dto.Phone))
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.OutboundInvalidBroadcastPayload, "phone is required", requestId),
+            statusCode: 400);
+    }
+
+    var msgLogRepo = ctx.RequestServices.GetService<MessageLogRepository>();
+    if (msgLogRepo == null)
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.BackendMicroserviceUnavailable, "PostgreSQL not configured", requestId),
+            statusCode: 503);
+    }
+
+    var resolvedInstance = await msgLogRepo.GetLastInstanceIdAsync(tenantId, dto.Phone);
+    if (string.IsNullOrWhiteSpace(resolvedInstance) || !int.TryParse(resolvedInstance, out var instanceIdInt))
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.NoInstanceForOptOut,
+                "Bu numara için geçmiş konuşma yok — önce etkileşim gerekli.", requestId),
+            statusCode: 400);
+    }
+
+    var payload = new
+    {
+        tenant_id = tenantId,
+        phone = dto.Phone,
+        instance_id = instanceIdInt,
+        event_type = string.IsNullOrEmpty(dto.EventType) ? "opt_out" : dto.EventType,
+        reason = dto.Reason,
+    };
+
+    var client = httpClientFactory.CreateClient();
+    client.BaseAddress = new Uri(outboundUrl);
+    client.DefaultRequestHeaders.Add("X-Internal-Service-Token", zohoSharedSecret);
+    var upstream = await client.PostAsJsonAsync("/api/v1/internal/optout", payload, ctx.RequestAborted);
+    var upstreamBody = await upstream.Content.ReadAsStringAsync(ctx.RequestAborted);
+
+    jsonLog.StepInfo(
+        $"Manual opt-out forwarded: tenant={tenantId}, phone={dto.Phone}, event={payload.event_type}, instance={instanceIdInt}, upstream={(int)upstream.StatusCode}",
+        requestId);
+
+    return Results.Content(upstreamBody, "application/json", statusCode: (int)upstream.StatusCode);
+});
+
+// ============================================
+// FEAT-J2: SuperAdmin outbox retry-skipped proxy (AC11)
+// ============================================
+// Flips 'skipped_noop' rows back to 'pending' after Mode is switched from NoOp
+// to Http. Forwards to Outbound internal endpoint with the shared secret.
+app.MapPost("/api/ops/outbox/retry-skipped", async (HttpContext ctx, JsonLinesLogger jsonLog, IHttpClientFactory httpClientFactory) =>
+{
+    if (!ValidateOpsAuth(ctx)) return OpsUnauthorized(ctx);
+    var identity = ResolveOpsIdentity(ctx);
+
+    string body;
+    using (var reader = new StreamReader(ctx.Request.Body, Encoding.UTF8))
+        body = await reader.ReadToEndAsync(ctx.RequestAborted).ConfigureAwait(false);
+
+    var client = httpClientFactory.CreateClient();
+    client.BaseAddress = new Uri(outboundUrl);
+    client.DefaultRequestHeaders.Add("X-Internal-Service-Token", zohoSharedSecret);
+    var content = new StringContent(string.IsNullOrWhiteSpace(body) ? "{}" : body, Encoding.UTF8, "application/json");
+    var upstream = await client.PostAsync("/api/v1/internal/outbox/retry-skipped", content, ctx.RequestAborted);
+    var upstreamBody = await upstream.Content.ReadAsStringAsync(ctx.RequestAborted);
+
+    jsonLog.SystemInfo($"[OPS-OUTBOX] drain super_admin={identity} upstream_status={(int)upstream.StatusCode}");
+    return Results.Content(upstreamBody, "application/json", statusCode: (int)upstream.StatusCode);
+});
+
 
 // ============================================
 // PAYMENT — QNB Finansbank 3DPay

@@ -52,12 +52,12 @@
 | FEAT-EFS | Event Follow-Up Sequence | N-stage drip sequence + Hangfire scheduled + A/B control + 4 trigger | [Spec](../arch/features/event-followup-sequence.md) | DRAFT | 16 Nis | - |
 | FEAT-TFM | Tenant Field Mapping | INMA 10-field semantic overlay (JSONB + resolver + validation + flow/template integration) | [Spec](../arch/features/tenant-field-mapping.md) | DRAFT | 16 Nis | - |
 | FEAT-DMP | Dynamic Message Placeholder | INMA chatoperation DynamicMessage entegrasyonu (`{{name}}`, `{{cf1}}`) + `/api/dynamicfields` client + cache + template/flow/campaign UI picker + FEAT-TFM cross-hook | [Spec](../arch/features/dynamic-message-placeholder.md) | DRAFT | 20 Nis | - |
-| FEAT-J2 | J2 Opt-Out INMA Sync | INMA POST /api/optout+/optin outbox sync + chatoperation MessageCategory (marketing/transactional) + bridge 906/907 response parsing + outbound status='blocked' | [Plan](../arch/plans/20260417-j2-opt-out-inse-sync.json) | PLANNING (revised 20 Nis post-INMA teslim) | 17-20 Nis | - |
+| FEAT-J2 | J2 Opt-Out INMA Sync | INMA POST /api/optout+/optin outbox sync + chatoperation MessageCategory (marketing/transactional) + bridge 906/907 response parsing + outbound status='blocked' + enforce_message_category feature flag (default FALSE) | [Plan](../arch/plans/20260417-j2-opt-out-inse-sync.json) | DONE | 20 Nis | iter 2 → Q FORCE PASS (CoVe 7/7 PASS, CQ design-judgment nuance) |
 | DENT-PILOT | Dent Adavista Pilot | Generic feature'lari tuketen ilk tenant konfigurasyonu (46 template, 5 field, 3-stage nurture) | [Detay](../DentAdavista/plan/README.md) | BLOCKED (UP0 + FEAT-*) | 16 Nis | - |
 | FEAT-DBBK | Daily DB Backup | Hangfire recurring pg_dump -Fc -> C:\Invekto\Backups + 14-day retention + 4 yeni INV-JOB kodu | [Detay](feat-dbbk-daily-backup.md) | DONE | 18 Nis | iter 4, PASS |
 | FEAT-ICB | INMA Chat Bridge | 23 backend modul (conv enrichment + media + reactions + flow runtime + templates + customer 360 + reminders + reports) INMA chat-v3 UI icin; SignalR event yayini + OpenAPI contract | [Detay](feat-inma-chat-bridge.md) | BACKLOG (Dent sonrasi) | 20 Nis | - |
 
-**Toplam:** 44 paket (26 done, 0 in-progress, 5 planned, 2 pending, 7 feature DRAFT, 1 pilot blocked, 1 planning, 1 backlog) | 50+ GR + RI-100+ task
+**Toplam:** 44 paket (27 done, 0 in-progress, 5 planned, 2 pending, 7 feature DRAFT, 1 pilot blocked, 1 backlog) | 50+ GR + RI-100+ task
 
 ## Mikroservis Port Haritasi
 

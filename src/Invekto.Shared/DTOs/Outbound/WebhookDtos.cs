@@ -74,6 +74,13 @@ public sealed class IncomingMessageRequest
 
     [JsonPropertyName("message_text")]
     public string MessageText { get; set; } = "";
+
+    // FEAT-J2: instance_id carries the WapCRM instance that delivered the incoming
+    // message. Outbound uses it at outbox enqueue so the subsequent INMA /api/optout
+    // push can pass InstanceID without cross-service lookup. Optional for backward
+    // compatibility; legacy Backend callers without instance context send null.
+    [JsonPropertyName("instance_id")]
+    public int? InstanceId { get; set; }
 }
 
 /// <summary>
@@ -89,7 +96,47 @@ public sealed class IncomingMessageResponse
 }
 
 /// <summary>
+/// FEAT-J2: Backend → Outbound manual opt-out forwarder payload.
+/// Backend resolves last-known instance via MessageLogRepository before forwarding.
+/// Auth: X-Internal-Service-Token header (InternalServices:SharedSecret).
+/// </summary>
+public sealed class InternalOptOutRequest
+{
+    [JsonPropertyName("tenant_id")]
+    public int TenantId { get; set; }
+
+    [JsonPropertyName("phone")]
+    public string Phone { get; set; } = "";
+
+    [JsonPropertyName("instance_id")]
+    public int? InstanceId { get; set; }
+
+    /// <summary>"opt_out" (default) or "opt_in".</summary>
+    [JsonPropertyName("event_type")]
+    public string EventType { get; set; } = "opt_out";
+
+    [JsonPropertyName("reason")]
+    public string? Reason { get; set; }
+}
+
+/// <summary>
+/// FEAT-J2: SuperAdmin-triggered drain of 'skipped_noop' outbox rows.
+/// TenantId=null drains all tenants; SinceUtc=null drains all history.
+/// </summary>
+public sealed class OutboxRetryRequest
+{
+    [JsonPropertyName("tenant_id")]
+    public int? TenantId { get; set; }
+
+    [JsonPropertyName("since_utc")]
+    public DateTime? SinceUtc { get; set; }
+}
+
+/// <summary>
 /// POST /api/v1/optout request - manual opt-out add.
+/// FEAT-J2: optional <see cref="EventType"/> extends this DTO with opt-in support
+/// on the Backend Dashboard admin action (null/opt_out = register opt-out,
+/// "opt_in" = clear opt-out).
 /// </summary>
 public sealed class OptOutRequest
 {
@@ -98,6 +145,10 @@ public sealed class OptOutRequest
 
     [JsonPropertyName("reason")]
     public string? Reason { get; set; }
+
+    /// <summary>FEAT-J2: "opt_out" (default/null) or "opt_in".</summary>
+    [JsonPropertyName("event_type")]
+    public string? EventType { get; set; }
 }
 
 /// <summary>

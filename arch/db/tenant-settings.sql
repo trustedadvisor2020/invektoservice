@@ -6,17 +6,21 @@
 -- Any column additions land here first, then as an additive ALTER migration.
 
 CREATE TABLE tenant_settings (
-    tenant_id              INTEGER     PRIMARY KEY
-                                       REFERENCES tenant_registry(tenant_id) ON DELETE CASCADE,
-    video_provider         VARCHAR(20) NULL
-                                       CHECK (video_provider IS NULL
-                                              OR video_provider IN ('mock', 'googlemeet')),
-    video_provider_config  JSONB       NULL,
+    tenant_id                 INTEGER     PRIMARY KEY
+                                          REFERENCES tenant_registry(tenant_id) ON DELETE CASCADE,
+    video_provider            VARCHAR(20) NULL
+                                          CHECK (video_provider IS NULL
+                                                 OR video_provider IN ('mock', 'googlemeet')),
+    video_provider_config     JSONB       NULL,
     -- FEAT-VCP Chunk B (migration 024): per-tenant IANA timezone for ICS DTSTART TZID
     -- and WA meeting_start_local substitution. Default Europe/Istanbul for TR pilot.
-    timezone               VARCHAR(40) NOT NULL DEFAULT 'Europe/Istanbul',
-    created_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at             TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    timezone                  VARCHAR(40) NOT NULL DEFAULT 'Europe/Istanbul',
+    -- FEAT-J2 (migration 026): MessageCategory enforcement gate. FALSE keeps backward-
+    -- compat (legacy flows with null event_name still send, INMA opt-out check skipped).
+    -- TRUE rejects send_message without event_name (INV-OB-031). Pilot tenants only.
+    enforce_message_category  BOOLEAN     NOT NULL DEFAULT FALSE,
+    created_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at                TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Production role (see 2026-04-18 lesson: invekto, not invekto_app).

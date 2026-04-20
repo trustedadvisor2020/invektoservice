@@ -400,6 +400,17 @@ public static class ErrorCodes
     public const string OutboundClinicTriggerTemplateMissing = "INV-OB-022";
     public const string OutboundLeadFollowUpFailed = "INV-OB-023";
 
+    // FEAT-J2: INMA opt-out outbox sync + MessageCategory (INV-OB-024+)
+    public const string InmaOptOutSyncPending = "INV-OB-024";              // Outbox row enqueued, not yet pushed
+    public const string InmaOptOutSyncFailed = "INV-OB-025";               // Max attempts exhausted or INMA 908 not-found
+    public const string InmaOptOutSyncSkippedNoOp = "INV-OB-026";          // NoOp mode active, push deferred
+    public const string ChatoperationBlockedMarketing = "INV-OB-027";      // INMA 906 chat-level marketing block
+    public const string ChatoperationBlockedContact = "INV-OB-028";        // INMA 907 contact-level global block
+    public const string NoInstanceForOptOut = "INV-OB-029";                // Manuel opt-out: last-known instance lookup returned null
+    public const string TransactionalBypassAudit = "INV-OB-030";           // Informational: opt-out check bypassed for transactional event
+    public const string MessageCategoryEnforcementFailed = "INV-OB-031";   // enforce_message_category=TRUE and event_name null/outside allow-list
+    public const string OutboxDrainTriggered = "INV-OB-032";               // Audit: admin ops /outbox/retry-skipped endpoint invoked
+
     // Lead Management errors (INV-LD-xxx) -- GR-3.13
     public const string LeadInvalidPayload = "INV-LD-001";
     public const string LeadNotFound = "INV-LD-002";

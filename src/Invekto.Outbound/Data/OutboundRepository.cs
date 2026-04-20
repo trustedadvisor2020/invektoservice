@@ -1112,6 +1112,243 @@ public class OutboundRepository
             Lang = reader.FieldCount > 8 && !reader.IsDBNull(8) ? reader.GetString(8) : "tr"
         };
     }
+
+    // ================================================================
+    // FEAT-J2: INMA opt-out outbox (migration 017)
+    // ================================================================
+
+    /// <summary>
+    /// Idempotent enqueue — ON CONFLICT DO NOTHING on
+    /// (tenant_id, phone, event_type, date_trunc('second', created_at)).
+    /// Returns true when a new row was inserted, false when deduped by the unique index.
+    /// </summary>
+    public virtual async Task<bool> EnqueueOptOutSyncAsync(
+        int tenantId, string phone, int instanceId, string eventType,
+        string scope, string? reason, string? source, CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO inma_optout_outbox (tenant_id, phone, instance_id, event_type, scope, reason, source)
+            VALUES (@tid, @phone, @iid, @et, @scope, @reason, @source)
+            ON CONFLICT (tenant_id, phone, event_type, (date_trunc('second', created_at))) DO NOTHING
+            RETURNING id";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("phone", phone);
+        cmd.Parameters.AddWithValue("iid", instanceId);
+        cmd.Parameters.AddWithValue("et", eventType);
+        cmd.Parameters.AddWithValue("scope", scope);
+        cmd.Parameters.AddWithValue("reason", (object?)reason ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("source", (object?)source ?? DBNull.Value);
+
+        var id = await cmd.ExecuteScalarAsync(ct);
+        return id != null;
+    }
+
+    /// <summary>
+    /// Atomically claims up to <paramref name="limit"/> pending rows by flipping
+    /// their status to 'processing' in a single UPDATE ... RETURNING. The inner
+    /// SELECT uses FOR UPDATE SKIP LOCKED, so parallel workers (multi-instance
+    /// Outbound deployments) never pick the same row — the DB serialises access.
+    /// Using a simple FOR UPDATE + external transaction was rejected because the
+    /// caller's connection/transaction scope would have to span the whole
+    /// outbound HTTP call to INMA, blocking other drainers for seconds.
+    /// </summary>
+    public virtual async Task<List<OutboxRow>> FetchPendingOutboxBatchAsync(
+        int limit, int maxAttempts, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE inma_optout_outbox AS o
+            SET status = 'processing',
+                attempted_at = NOW()
+            WHERE o.id IN (
+                SELECT id FROM inma_optout_outbox
+                WHERE status = 'pending' AND attempts < @maxAttempts
+                ORDER BY created_at
+                LIMIT @limit
+                FOR UPDATE SKIP LOCKED
+            )
+            RETURNING id, tenant_id, phone, instance_id, event_type, scope, reason, source, attempts";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("limit", limit);
+        cmd.Parameters.AddWithValue("maxAttempts", maxAttempts);
+
+        var rows = new List<OutboxRow>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            rows.Add(new OutboxRow
+            {
+                Id = reader.GetInt64(0),
+                TenantId = reader.GetInt32(1),
+                Phone = reader.GetString(2),
+                InstanceId = reader.GetInt32(3),
+                EventType = reader.GetString(4),
+                Scope = reader.GetString(5),
+                Reason = reader.IsDBNull(6) ? null : reader.GetString(6),
+                Source = reader.IsDBNull(7) ? null : reader.GetString(7),
+                Attempts = reader.GetInt32(8),
+            });
+        }
+        return rows;
+    }
+
+    /// <summary>
+    /// Recovers rows that the worker claimed ('processing') but never reached a
+    /// terminal state — e.g. process crashed between claim and Mark*. Called at
+    /// startup so the next tick picks them back up. Older than <paramref name="staleSeconds"/>
+    /// to avoid stealing in-flight rows from a concurrent worker.
+    /// </summary>
+    public virtual async Task<int> RecoverStuckProcessingAsync(
+        int staleSeconds, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE inma_optout_outbox
+            SET status = 'pending'
+            WHERE status = 'processing'
+              AND attempted_at IS NOT NULL
+              AND attempted_at < NOW() - make_interval(secs => @stale)";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("stale", staleSeconds);
+        return await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    /// <summary>Terminal success transition: status='processed', last_status_code recorded.</summary>
+    public virtual async Task MarkOutboxProcessedAsync(
+        long id, string lastStatusCode, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE inma_optout_outbox
+            SET status = 'processed',
+                last_status_code = @code,
+                attempted_at = NOW(),
+                processed_at = NOW()
+            WHERE id = @id";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", id);
+        cmd.Parameters.AddWithValue("code", lastStatusCode);
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    /// <summary>
+    /// Failure transition: attempts++; when isFinal=true OR attempts>=maxAttempts the
+    /// row moves to status='failed' (retry stops). isFinal=true is used for
+    /// INMA 908 contact-not-found so we do not waste retries. Otherwise the row
+    /// returns to 'pending' so the next tick retries.
+    /// </summary>
+    public virtual async Task MarkOutboxFailedAsync(
+        long id, string lastStatusCode, string? rawError, bool isFinal, int maxAttempts,
+        CancellationToken ct = default)
+    {
+        // Note: we flip 'processing'→'pending'/'failed' here. attempts is
+        // incremented before the CASE so the threshold matches post-increment.
+        const string sql = @"
+            UPDATE inma_optout_outbox
+            SET attempts = attempts + 1,
+                status = CASE
+                    WHEN @isFinal OR attempts + 1 >= @maxAttempts THEN 'failed'
+                    ELSE 'pending'
+                END,
+                last_status_code = @code,
+                last_error = @err,
+                attempted_at = NOW()
+            WHERE id = @id";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", id);
+        cmd.Parameters.AddWithValue("code", lastStatusCode);
+        cmd.Parameters.AddWithValue("err", (object?)rawError ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("isFinal", isFinal);
+        cmd.Parameters.AddWithValue("maxAttempts", maxAttempts);
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    /// <summary>NoOp-mode parking: row moves to 'skipped_noop' for later drain.</summary>
+    public virtual async Task MarkOutboxSkippedNoOpAsync(long id, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE inma_optout_outbox
+            SET status = 'skipped_noop',
+                last_status_code = 'SKIPPED-NOOP',
+                attempted_at = NOW()
+            WHERE id = @id";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", id);
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    /// <summary>
+    /// Admin ops drain: promotes 'skipped_noop' rows back to 'pending' (attempts reset to 0)
+    /// after Mode is flipped from NoOp to Http. tenantId=null drains all tenants;
+    /// sinceUtc=null drains all history.
+    /// </summary>
+    public virtual async Task<int> RetrySkippedNoOpAsync(
+        int? tenantId, DateTime? sinceUtc, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE inma_optout_outbox
+            SET status = 'pending',
+                attempts = 0,
+                last_status_code = NULL,
+                last_error = NULL,
+                attempted_at = NULL
+            WHERE status = 'skipped_noop'
+              AND (@tid::int IS NULL OR tenant_id = @tid)
+              AND (@since::timestamptz IS NULL OR created_at >= @since)";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", (object?)tenantId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("since", (object?)sinceUtc ?? DBNull.Value);
+        return await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    /// <summary>Diagnostics: count outbox rows by status for ops dashboard.</summary>
+    public virtual async Task<Dictionary<string, long>> GetOutboxStatusCountsAsync(
+        int? tenantId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT status, COUNT(*)
+            FROM inma_optout_outbox
+            WHERE (@tid::int IS NULL OR tenant_id = @tid)
+            GROUP BY status";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", (object?)tenantId ?? DBNull.Value);
+
+        var counts = new Dictionary<string, long>(StringComparer.Ordinal);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            counts[reader.GetString(0)] = reader.GetInt64(1);
+        }
+        return counts;
+    }
+}
+
+/// <summary>FEAT-J2: single outbox row handed to InmaOptOutSyncJob.</summary>
+public sealed class OutboxRow
+{
+    public long Id { get; init; }
+    public int TenantId { get; init; }
+    public string Phone { get; init; } = "";
+    public int InstanceId { get; init; }
+    public string EventType { get; init; } = "";
+    public string Scope { get; init; } = "";
+    public string? Reason { get; init; }
+    public string? Source { get; init; }
+    public int Attempts { get; init; }
 }
 
 public sealed class QueuedMessage

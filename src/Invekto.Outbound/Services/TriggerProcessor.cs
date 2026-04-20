@@ -46,12 +46,22 @@ public sealed class TriggerProcessor
         if (string.IsNullOrWhiteSpace(request.Phone))
             return (null, ErrorCodes.OutboundInvalidBroadcastPayload, "phone is required", 400);
 
-        // Check opt-out
-        if (await _optOutManager.IsOptedOutAsync(tenantId, request.Phone, ct))
+        // FEAT-J2: transactional allow-list bypasses opt-out (appointment confirms,
+        // meeting links, payment receipts). Audit trail kept via INV-OB-030 so
+        // the bypass path remains visible in ops logs even though it's legitimate.
+        var isTransactional = ConsentManager.IsTransactionalEvent(request.Event);
+
+        // Check opt-out (skipped for transactional events)
+        if (!isTransactional && await _optOutManager.IsOptedOutAsync(tenantId, request.Phone, ct))
         {
             _logger.SystemInfo($"Trigger skipped (opted out): tenant={tenantId}, phone={request.Phone}, event={request.Event}");
             return (null, ErrorCodes.OutboundRecipientOptedOut,
                 $"Recipient {request.Phone} has opted out of messages", 409);
+        }
+        if (isTransactional)
+        {
+            _logger.SystemInfo(
+                $"[{ErrorCodes.TransactionalBypassAudit}] opt-out bypassed for transactional event: tenant={tenantId}, phone={request.Phone}, event={request.Event}");
         }
 
         // GR-3.26: Marketing consent check (utility events exempt)

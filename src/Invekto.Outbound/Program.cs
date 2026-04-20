@@ -4,6 +4,7 @@ using Invekto.Shared.Services;
 using Invekto.Outbound.Services;
 using Invekto.Shared.Auth;
 using Invekto.Shared.Constants;
+using Invekto.Shared.Contracts.Inma;
 using Invekto.Shared.Data;
 using Invekto.Shared.DTOs;
 using Invekto.Shared.DTOs.Outbound;
@@ -114,6 +115,34 @@ builder.Services.AddSingleton<MessageSenderService>(sp =>
         sp.GetRequiredService<JsonLinesLogger>(),
         senderIntervalMs));
 builder.Services.AddHostedService(sp => sp.GetRequiredService<MessageSenderService>());
+
+// ─── FEAT-J2: INMA opt-out sync (IInmaContactOptOutClient + InmaOptOutSyncJob) ───
+var optOutSyncOptions = new InmaOptOutSyncOptions();
+builder.Configuration.GetSection("InmaAuth:OptOutSync").Bind(optOutSyncOptions);
+builder.Services.AddSingleton(optOutSyncOptions);
+
+if (string.Equals(optOutSyncOptions.Mode, "Http", StringComparison.OrdinalIgnoreCase))
+{
+    // Production path: push to cxapi.wapcrm.net
+    builder.Services.AddHttpClient<IInmaContactOptOutClient, HttpInmaContactOptOutClient>()
+        .AddTypedClient((httpClient, sp) =>
+        {
+            var opts = sp.GetRequiredService<InmaOptOutSyncOptions>();
+            return new HttpInmaContactOptOutClient(
+                httpClient,
+                opts.BaseUrl,
+                opts.SecretKey,
+                opts.TimeoutSeconds);
+        });
+}
+else
+{
+    // Emergency kill-switch: outbox rows park as 'skipped_noop'
+    builder.Services.AddSingleton<IInmaContactOptOutClient, NoOpInmaContactOptOutClient>();
+}
+
+builder.Services.AddSingleton<InmaOptOutSyncJob>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<InmaOptOutSyncJob>());
 
 builder.Services.AddAuthorization();
 
@@ -353,7 +382,7 @@ app.MapPost("/api/v1/webhook/message", async (
     }
 
     var (optedOut, keyword) = await optOutManager.ProcessIncomingMessageAsync(
-        tenantContext.TenantId, request.Phone, request.MessageText);
+        tenantContext.TenantId, request.Phone, request.MessageText, request.InstanceId);
 
     if (optedOut)
     {
@@ -366,6 +395,87 @@ app.MapPost("/api/v1/webhook/message", async (
         OptedOut = optedOut,
         KeywordMatched = keyword
     });
+});
+
+// ============================================================
+// FEAT-J2: Internal manuel opt-out / opt-in (Backend → Outbound)
+// ============================================================
+// Called by Backend Dashboard admin action after it resolves the last-known
+// instance via MessageLogRepository.GetLastInstanceIdAsync. Authenticated via
+// InternalServices:SharedSecret header (service-to-service).
+var internalSharedSecret = builder.Configuration["InternalServices:SharedSecret"] ?? "";
+
+app.MapPost("/api/v1/internal/optout", async (
+    HttpContext ctx,
+    OptOutManager optOutManager,
+    JsonLinesLogger jsonLogger,
+    InternalOptOutRequest? request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var providedSecret = ctx.Request.Headers["X-Internal-Service-Token"].FirstOrDefault() ?? "";
+    if (string.IsNullOrEmpty(internalSharedSecret) || providedSecret != internalSharedSecret)
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Invalid internal service token", requestId),
+            statusCode: 401);
+    }
+    if (request == null || request.TenantId <= 0 || string.IsNullOrWhiteSpace(request.Phone))
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.OutboundInvalidBroadcastPayload,
+                "tenant_id and phone required", requestId),
+            statusCode: 400);
+    }
+
+    // Trust boundary note (CQ9): the tenant_id in the payload is authoritative
+    // because the caller is already authenticated via the internal shared
+    // secret, and the Backend proxy (/api/v1/optout) validates the JWT-bound
+    // tenant context before forwarding. Outbound does not expose this path
+    // externally — only service-to-service callers with the shared secret can
+    // reach it. Same trust model as the Zoho internal endpoints.
+    if (request.EventType is not null and not ("opt_out" or "opt_in"))
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.OutboundInvalidBroadcastPayload,
+                "event_type must be 'opt_out' or 'opt_in'", requestId),
+            statusCode: 400);
+    }
+
+    var added = request.EventType == "opt_in"
+        ? await optOutManager.RegisterAdminOptInAsync(request.TenantId, request.Phone, request.InstanceId, ctx.RequestAborted)
+        : await optOutManager.RegisterAdminOptOutAsync(request.TenantId, request.Phone, request.InstanceId, request.Reason, ctx.RequestAborted);
+
+    jsonLogger.StepInfo(
+        $"Internal opt-{(request.EventType == "opt_in" ? "in" : "out")}: tenant={request.TenantId}, phone={request.Phone}, instance={request.InstanceId}, updated={added}",
+        requestId);
+    return Results.Ok(new { updated = added });
+});
+
+// ============================================================
+// FEAT-J2: Admin ops — retry 'skipped_noop' outbox rows (AC11)
+// ============================================================
+// SuperAdmin-triggered drain used after flipping Mode from NoOp to Http.
+// Authenticated via the same InternalServices token (Backend proxies here).
+app.MapPost("/api/v1/internal/outbox/retry-skipped", async (
+    HttpContext ctx,
+    OutboundRepository repository,
+    JsonLinesLogger jsonLogger,
+    OutboxRetryRequest? request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var providedSecret = ctx.Request.Headers["X-Internal-Service-Token"].FirstOrDefault() ?? "";
+    if (string.IsNullOrEmpty(internalSharedSecret) || providedSecret != internalSharedSecret)
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Invalid internal service token", requestId),
+            statusCode: 401);
+    }
+
+    var affected = await repository.RetrySkippedNoOpAsync(
+        request?.TenantId, request?.SinceUtc, ctx.RequestAborted);
+    jsonLogger.SystemInfo(
+        $"[{ErrorCodes.OutboxDrainTriggered}] Outbox drain: tenantId={request?.TenantId?.ToString() ?? "*"}, since={request?.SinceUtc?.ToString("o") ?? "*"}, affected={affected}");
+    return Results.Ok(new { affected_rows = affected });
 });
 
 // ============================================================

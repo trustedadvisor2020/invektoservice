@@ -35,6 +35,7 @@ public sealed class AutomationOrchestrator
     private readonly ReviewRescueService _reviewRescue;
     private readonly JwtGenerator _jwtGenerator;
     private readonly BackendIntakeClient _backendIntake;
+    private readonly TenantSettingsRepository _tenantSettings;
     private readonly JsonLinesLogger _logger;
 
     // GR-2.6: KVKK health tenant cache (tenant_id -> isHealthTenant)
@@ -59,6 +60,7 @@ public sealed class AutomationOrchestrator
         ReviewRescueService reviewRescue,
         JwtGenerator jwtGenerator,
         BackendIntakeClient backendIntake,
+        TenantSettingsRepository tenantSettings,
         JsonLinesLogger logger)
     {
         _repo = repo;
@@ -74,6 +76,7 @@ public sealed class AutomationOrchestrator
         _reviewRescue = reviewRescue;
         _jwtGenerator = jwtGenerator;
         _backendIntake = backendIntake;
+        _tenantSettings = tenantSettings;
         _logger = logger;
     }
 
@@ -1435,7 +1438,8 @@ public sealed class AutomationOrchestrator
     private async Task<bool> SendCallbackAsync(
         string requestId, int tenantId, string chatId, long sequenceId,
         string action, string messageText, string? intent, double? confidence,
-        long processingTimeMs, string? callbackUrl, CancellationToken ct)
+        long processingTimeMs, string? callbackUrl, CancellationToken ct,
+        string? eventName = null)
     {
         // HFM-1 defense-in-depth: if a caller hands us a raw chunk-sentinel payload (should
         // already have gone through DispatchMessageOrChunksAsync), strip the sentinel+JSON
@@ -1460,6 +1464,41 @@ public sealed class AutomationOrchestrator
             finalMessageText = KvkkHelper.AppendDisclaimerIfHealth(messageText, isHealth);
         }
 
+        // FEAT-J2: derive MessageCategory for SendMessage callbacks.
+        //
+        // Semantics (tenant-scoped, opt-in):
+        //   enforce_message_category=FALSE (default) → MessageCategory stays null,
+        //     INMA skips opt-out check, reactive replies flow as-is.
+        //     This is the behaviour for all tenants today — breaking change risk = 0.
+        //   enforce_message_category=TRUE (pilot tenants who run J2 strictly) →
+        //     send_message without an event_name is rejected (INV-OB-031). Callers
+        //     observe this as `SendCallbackAsync` returning false, which their
+        //     existing failure branches already surface upstream (INV-INT-002
+        //     callback delivery failure is reused for "callback not delivered" at
+        //     the caller-visible boundary). INV-OB-031 is the authoritative log
+        //     line tagging *why* the callback was dropped — ops dashboards can
+        //     grep on that code to detect misconfigured flows before pilot
+        //     enablement.
+        string? messageCategory = null;
+        if (action == CallbackActions.SendMessage)
+        {
+            var enforce = await _tenantSettings.GetEnforceMessageCategoryAsync(tenantId, ct);
+            if (enforce)
+            {
+                if (string.IsNullOrEmpty(eventName))
+                {
+                    _logger.StepError(
+                        $"[{ErrorCodes.MessageCategoryEnforcementFailed}] send_message rejected: enforce_message_category=TRUE requires event_name. tenant={tenantId} chat={chatId} action_item=tag_flow_send_message_nodes_with_event",
+                        requestId, processingTimeMs);
+                    return false;
+                }
+                messageCategory = TransactionalEventRegistry.IsTransactional(eventName)
+                    ? "transactional"
+                    : "marketing";
+            }
+            // enforce=FALSE: MessageCategory remains null (INMA back-compat skip).
+        }
+
         var callback = new OutgoingCallback
         {
             RequestId = requestId,
@@ -1472,7 +1511,8 @@ public sealed class AutomationOrchestrator
                 MessageText = action == CallbackActions.SendMessage ? finalMessageText : null,
                 SuggestedReply = action == CallbackActions.SuggestReply ? messageText : null,
                 Intent = intent,
-                Confidence = confidence
+                Confidence = confidence,
+                MessageCategory = messageCategory,
             },
             ProcessingTimeMs = processingTimeMs
         };

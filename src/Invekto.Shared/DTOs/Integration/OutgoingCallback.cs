@@ -94,6 +94,17 @@ public sealed class CallbackData
     /// <summary>Group ID to assign conversation to (for assign_group action)</summary>
     [JsonPropertyName("group_id")]
     public string? GroupId { get; init; }
+
+    // FEAT-J2: MessageCategory — forwards to WapCRM chatoperation.messageCategory.
+    // Null keeps backward-compat (INMA skips opt-out check).
+    /// <summary>"marketing" | "transactional" | null (backward-compat, INMA skips opt-out check when null).</summary>
+    [JsonPropertyName("message_category")]
+    public string? MessageCategory { get; init; }
+
+    // FEAT-DMP pre-provisioned slot (set to null during FEAT-J2 scope, activated by FEAT-DMP).
+    /// <summary>INMA dynamic-message placeholders (e.g. ["name","cf1"]). Null leaves INSE substitution in charge.</summary>
+    [JsonPropertyName("dynamic_fields")]
+    public string[]? DynamicFields { get; init; }
 }
 
 /// <summary>

@@ -1,6 +1,7 @@
 using Invekto.Outbound.Data;
 using Invekto.Shared.DTOs.Outbound;
 using Invekto.Shared.Logging;
+using Invekto.Shared.Services;
 
 namespace Invekto.Outbound.Services;
 
@@ -35,6 +36,14 @@ public sealed class ConsentManager
     /// </summary>
     public static bool IsUtilityEvent(string triggerEvent)
         => UtilityEvents.Contains(triggerEvent);
+
+    /// <summary>
+    /// FEAT-J2: Convenience delegate to the shared registry so Outbound callers can
+    /// keep reading through ConsentManager while the source-of-truth list lives in
+    /// <see cref="TransactionalEventRegistry"/> (reused by Automation).
+    /// </summary>
+    public static bool IsTransactionalEvent(string? eventName)
+        => TransactionalEventRegistry.IsTransactional(eventName);
 
     /// <summary>
     /// Check marketing consent for a single phone.

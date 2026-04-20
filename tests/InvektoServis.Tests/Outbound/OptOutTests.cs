@@ -82,4 +82,62 @@ public class OptOutTests : IClassFixture<OutboundTestFactory>
         var content = await response.Content.ReadAsStringAsync();
         content.Should().Contain("false");
     }
+
+    // ───────────────────────── FEAT-J2 ─────────────────────────
+
+    [Fact]
+    public async Task WebhookMessage_StopKeywordWithInstance_EnqueuesInmaOutbox()
+    {
+        // Incoming WA webhook hits /api/v1/webhook/message; instance_id carried
+        // in the payload (FEAT-J2 AC4). STOP keyword triggers opt-out enqueue.
+        var (phone, _, _) = TurkishCustomerGenerator.GenerateCustomer();
+        _factory.FakeRepo.AddOptOutAsync(
+            Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        _factory.FakeRepo.EnqueueOptOutSyncAsync(
+            Arg.Any<int>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var response = await _client.PostAsJsonAsync("/api/v1/webhook/message", new
+        {
+            phone,
+            message_text = "STOP",
+            instance_id = 101,
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await _factory.FakeRepo.Received(1).EnqueueOptOutSyncAsync(
+            Arg.Any<int>(),
+            Arg.Is(phone),
+            Arg.Is(101),
+            Arg.Is("opt_out"),
+            Arg.Is("all"),
+            Arg.Any<string?>(),
+            Arg.Is("whatsapp"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task WebhookMessage_StopKeywordWithoutInstance_SkipsEnqueueButRegisters()
+    {
+        // Legacy caller (no instance_id field): INSE opt-out still succeeds, but
+        // outbox enqueue is skipped with a warn — INMA sync is best-effort.
+        var (phone, _, _) = TurkishCustomerGenerator.GenerateCustomer();
+        _factory.FakeRepo.AddOptOutAsync(
+            Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var response = await _client.PostAsJsonAsync("/api/v1/webhook/message", new
+        {
+            phone,
+            message_text = "STOP",
+            // instance_id omitted
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await _factory.FakeRepo.DidNotReceive().EnqueueOptOutSyncAsync(
+            Arg.Any<int>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
 }

@@ -874,6 +874,35 @@ errors:
   - code: INV-OB-020
     description: Data deletion failed
     user_message: Veri silme işlemi başarısız oldu.
+  # INV-OB-021..023 reserved in ErrorCodes.cs by PKT-6B1 (ecom/clinic triggers, lead follow-up).
+  # FEAT-J2 (INMA opt-out outbox + MessageCategory) starts at INV-OB-024.
+  - code: INV-OB-024
+    description: INMA opt-out outbox row enqueued, awaiting push
+    user_message: Pazarlama kaldırma isteği INMA tarafına aktarılmak üzere sıraya alındı.
+  - code: INV-OB-025
+    description: INMA opt-out push failed (max attempts or INMA 908 contact-not-found)
+    user_message: Pazarlama kaldırma INMA tarafına iletilemedi, destek ekibi inceleyecek.
+  - code: INV-OB-026
+    description: INMA opt-out push deferred (NoOp mode active, Mode=Http ile drain edilecek)
+    user_message: Pazarlama kaldırma isteği kaydedildi, iletim geçici olarak bekliyor.
+  - code: INV-OB-027
+    description: WapCRM chatoperation returned 906 (chat-level marketing block)
+    user_message: Bu sohbet için pazarlama mesajı gönderilemedi (alıcı kapatmış).
+  - code: INV-OB-028
+    description: WapCRM chatoperation returned 907 (contact-level global marketing block)
+    user_message: Bu kişi tüm kanallarda pazarlama mesajı almak istemiyor.
+  - code: INV-OB-029
+    description: Manuel opt-out last-known instance lookup returned null
+    user_message: Bu numara için sistemde geçmiş konuşma yok, önce etkileşim gerekli.
+  - code: INV-OB-030
+    description: Audit — opt-out bypassed for transactional event (informational)
+    user_message: (İşlemsel mesaj izin olmadan iletildi — audit kaydı oluşturuldu.)
+  - code: INV-OB-031
+    description: enforce_message_category=TRUE and event_name null or outside allow-list
+    user_message: Mesaj kategorisi belirsiz — flow yapılandırması güncellenmeli.
+  - code: INV-OB-032
+    description: Audit — admin ops /outbox/retry-skipped invoked (drain trigger)
+    user_message: (Operasyon kaydı — skipped outbox girişleri yeniden kuyruğa alındı.)
 
   # ── IG — Integrations (GR-3.4/3.6) ──
   - code: INV-IG-001

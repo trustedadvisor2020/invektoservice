@@ -136,7 +136,11 @@ public sealed class MessageSenderService : IHostedService, IDisposable
                     MessageText = msg.MessageText,
                     Phone = msg.RecipientPhone,
                     BroadcastId = msg.BroadcastId,
-                    OutboundMessageId = msg.Id
+                    OutboundMessageId = msg.Id,
+                    // FEAT-J2: outbound broadcasts are marketing by definition. Triggered via
+                    // BroadcastId != null; INMA applies opt-out check server-side when this
+                    // category reaches /api/chatoperation (double-guard with INSE opt-out).
+                    MessageCategory = msg.BroadcastId.HasValue ? "marketing" : null,
                 },
                 ProcessingTimeMs = 0,
                 Timestamp = DateTime.UtcNow

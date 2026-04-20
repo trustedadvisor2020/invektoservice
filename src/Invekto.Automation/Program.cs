@@ -86,6 +86,10 @@ builder.Services.AddSingleton<AutomationRepository>();
 // G6: Flow wait state persistence
 builder.Services.AddSingleton<FlowWaitRepository>();
 
+// FEAT-J2: TenantSettingsRepository with IMemoryCache (enforce_message_category flag)
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<TenantSettingsRepository>();
+
 // Register callback client
 var callbackSettings = builder.Configuration.GetSection("Integration:Callback").Get<CallbackSettings>() ?? new CallbackSettings();
 builder.Services.AddSingleton(callbackSettings);
