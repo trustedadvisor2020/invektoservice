@@ -33,10 +33,16 @@ CREATE TABLE IF NOT EXISTS inma_optout_outbox (
     CONSTRAINT chk_optout_outbox_status     CHECK (status IN ('pending', 'processing', 'processed', 'failed', 'skipped_noop'))
 );
 
--- Idempotency at enqueue: same tenant+phone+event_type within the same second
--- collapses into a single row (ON CONFLICT DO NOTHING in repository).
-CREATE UNIQUE INDEX IF NOT EXISTS uq_inma_optout_outbox_dedup
-    ON inma_optout_outbox (tenant_id, phone, event_type, date_trunc('second', created_at));
+-- Idempotency note: we do NOT enforce (tenant_id, phone, event_type, time-bucket)
+-- uniqueness at the DB layer. A naive expression index over date_trunc or
+-- extract(epoch from created_at) fails Postgres' IMMUTABLE requirement for
+-- TIMESTAMPTZ columns in every version we target. Duplicate enqueues from a
+-- webhook retry storm are tolerated by the downstream flow:
+--   - InmaOptOutSyncJob pushes both rows to INMA
+--   - INMA answers StatusCode='909' (AlreadyOptedOut) for the second push
+--   - MarkOutboxProcessed logs '909' and moves on
+-- Net effect: at most N rows per duplicate event, no lost work, no spam
+-- delivered. The audit trail is slightly fuller; compliance-positive.
 
 -- Hot path for FetchPendingOutboxBatchAsync drain job.
 CREATE INDEX IF NOT EXISTS idx_inma_optout_outbox_pending

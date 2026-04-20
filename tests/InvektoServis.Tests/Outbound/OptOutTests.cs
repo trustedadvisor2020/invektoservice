@@ -97,7 +97,7 @@ public class OptOutTests : IClassFixture<OutboundTestFactory>
         _factory.FakeRepo.EnqueueOptOutSyncAsync(
             Arg.Any<int>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<string>(),
             Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(true);
+            .Returns(1L);
 
         var response = await _client.PostAsJsonAsync("/api/v1/webhook/message", new
         {

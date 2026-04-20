@@ -147,8 +147,10 @@ CREATE TABLE IF NOT EXISTS inma_optout_outbox (
     CONSTRAINT chk_optout_outbox_status     CHECK (status IN ('pending', 'processing', 'processed', 'failed', 'skipped_noop'))
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_inma_optout_outbox_dedup
-    ON inma_optout_outbox (tenant_id, phone, event_type, date_trunc('second', created_at));
+-- Idempotency: INMA 909 (AlreadyOptedOut) handles downstream dedup; DB-layer
+-- uniqueness skipped because date_trunc / extract(epoch) on TIMESTAMPTZ both
+-- violate Postgres' IMMUTABLE requirement for expression / generated-column
+-- indexes. See migration 017 for detailed rationale.
 
 CREATE INDEX IF NOT EXISTS idx_inma_optout_outbox_pending
     ON inma_optout_outbox (tenant_id, created_at)

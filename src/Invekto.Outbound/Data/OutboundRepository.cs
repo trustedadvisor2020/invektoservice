@@ -1118,18 +1118,22 @@ public class OutboundRepository
     // ================================================================
 
     /// <summary>
-    /// Idempotent enqueue — ON CONFLICT DO NOTHING on
-    /// (tenant_id, phone, event_type, date_trunc('second', created_at)).
-    /// Returns true when a new row was inserted, false when deduped by the unique index.
+    /// Enqueue a pending opt-out/opt-in sync row. Always inserts — DB-layer
+    /// dedup is deliberately absent because a second-granularity unique index
+    /// cannot be built on TIMESTAMPTZ in Postgres (date_trunc / extract(epoch)
+    /// are STABLE, not IMMUTABLE). Instead, duplicate enqueues from a webhook
+    /// retry storm are tolerated: the drain job pushes both rows to INMA and
+    /// the second one gets StatusCode='909' (AlreadyOptedOut), which we treat
+    /// as a processed success. Net behaviour: no lost opt-outs, a marginally
+    /// fuller audit trail, and zero user-visible duplication.
     /// </summary>
-    public virtual async Task<bool> EnqueueOptOutSyncAsync(
+    public virtual async Task<long> EnqueueOptOutSyncAsync(
         int tenantId, string phone, int instanceId, string eventType,
         string scope, string? reason, string? source, CancellationToken ct = default)
     {
         const string sql = @"
             INSERT INTO inma_optout_outbox (tenant_id, phone, instance_id, event_type, scope, reason, source)
             VALUES (@tid, @phone, @iid, @et, @scope, @reason, @source)
-            ON CONFLICT (tenant_id, phone, event_type, (date_trunc('second', created_at))) DO NOTHING
             RETURNING id";
 
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -1143,7 +1147,7 @@ public class OutboundRepository
         cmd.Parameters.AddWithValue("source", (object?)source ?? DBNull.Value);
 
         var id = await cmd.ExecuteScalarAsync(ct);
-        return id != null;
+        return id is long l ? l : 0L;
     }
 
     /// <summary>
