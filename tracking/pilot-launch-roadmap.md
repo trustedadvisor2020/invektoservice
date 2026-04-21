@@ -52,7 +52,7 @@ Bu dosya **pilot launch boyunca execution queue'nun tek kaynagidir**. Session bo
 
 | # | Paket | Slug | Status | Dep | Deploy | Exit Criteria |
 |---|-------|------|--------|-----|--------|---------------|
-| 1 | FEAT-DMP Cache Poison Fix | `20260422-feat-dmp-cache-poison-fix` | **DONE** (Codex iter 0 PASS, 7/7 test) | - | Backend (pending deploy) | Codex PASS + redeploy + unit test cancellation isolation ✅ |
+| 1 | FEAT-DMP Cache Poison Fix | `20260422-feat-dmp-cache-poison-fix` | **DONE+DEPLOYED+SMOKED** (commit `ca2d2d5`, 2026-04-21 13:04 UTC) | - | Backend 10/10 HEALTHY | Codex iter 0 PASS 12/12 CQ + 4/4 CoVe ✅, 7/7 test ✅, binary fresh ✅, endpoint 401 gate ✅ |
 | 2 | Lessons +6 Kayit (TFM MVP + AUTH HOTFIX) | `20260422-lessons-tfm-auth-hotfix` | PENDING | - | Doc-only | `arch/lessons-learned.md` 6 yeni entry |
 
 ### FAZ 2 — FEAT-TFM Suite Tamamlama (MVP resolver uzerine eklentiler)

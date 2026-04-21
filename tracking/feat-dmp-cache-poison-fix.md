@@ -3,7 +3,7 @@
 > **Slug:** `20260422-feat-dmp-cache-poison-fix` | **Faz:** 1 (Retro-Fix) | **Risk:** LOW
 > **Roadmap:** [`pilot-launch-roadmap.md`](pilot-launch-roadmap.md) P1
 > **Plan JSON:** [`arch/plans/20260422-feat-dmp-cache-poison-fix.json`](../arch/plans/20260422-feat-dmp-cache-poison-fix.json)
-> **Durum:** DONE — Codex iter 0 PASS (12/12 CQ + 4/4 CoVe, 0 blocking), 7/7 test PASS, deploy pending
+> **Durum:** DONE+DEPLOYED+SMOKED — Codex iter 0 PASS (12/12 CQ + 4/4 CoVe), 7/7 test PASS, Backend redeploy 2026-04-21 13:04 UTC, 10/10 servis HEALTHY, endpoint auth gate smoke 401/401
 
 ## Scope
 
