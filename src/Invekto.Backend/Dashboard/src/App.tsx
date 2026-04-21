@@ -48,6 +48,9 @@ const ZohoSyncLogPage = lazy(() => import('./pages/zoho/ZohoSyncLogPage').then(m
 // FEAT-LIW Chunk C: tenant landing settings (lazy).
 const LeadIntakeSettingsPage = lazy(() => import('./pages/settings/LeadIntakeSettingsPage').then(m => ({ default: m.LeadIntakeSettingsPage })));
 
+// FEAT-TFM-UI P3: tenant field mapping editor (lazy).
+const FieldMappingSettingsPage = lazy(() => import('./pages/settings/FieldMappingSettingsPage').then(m => ({ default: m.FieldMappingSettingsPage })));
+
 function ProtectedRoute() {
   const { isAuthenticated } = useAuth();
 
@@ -141,6 +144,8 @@ export default function App() {
         <Route path="/settings" element={<SettingsPage />} />
         {/* FEAT-LIW Chunk C: standalone lead intake settings page (entered via SettingsPage 'Lead Kaynaklari' card). */}
         <Route path="/settings/lead-intake" element={<LeadIntakeSettingsPage />} />
+        {/* FEAT-TFM-UI P3: standalone field mapping editor (entered via SettingsPage 'Field Mapping' card). */}
+        <Route path="/settings/field-mapping" element={<Suspense><FieldMappingSettingsPage /></Suspense>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -9,6 +9,11 @@ import type {
   DryRunResponse as LiwDryRunResponse,
   AuditListResponse as LiwAuditListResponse,
 } from '../types/leadIntake';
+import type {
+  TenantFieldMappingGetResponse,
+  TenantFieldMappingPutRequest,
+  TenantFieldMappingPutResponse,
+} from '../types/tenantFieldMapping';
 
 // API types
 export interface ServiceHealth {
@@ -2085,7 +2090,35 @@ class OpsApiClient {
       method: 'POST',
     });
   }
+
+  // ---- FEAT-TFM-UI: Tenant field mapping (/api/v1/tenant-settings/field-mapping) ----
+  // Backend endpoint DEPLOYED 2026-04-21 (FEAT-TFM MVP + auth hotfix). Envelope shape:
+  //   GET  -> { data: { tenant_id, field_mapping: Record<semantic, entry>, updated_at } }
+  //   PUT  -> same shape; backend upserts the full map atomically.
+  // Validation errors surface via ApiClientError:
+  //   400 INV-BE-096 DUP_SLOT | INV-BE-097 RESERVED_NAME | INV-BE-098 ENUM_EMPTY | INV-BE-099 SRC_RANGE
+  //   403 INV-AUTH-010 cross-tenant
+  async getTenantFieldMapping(): Promise<TenantFieldMappingGetResponse> {
+    return this.request<TenantFieldMappingGetResponse>('/api/v1/tenant-settings/field-mapping');
+  }
+
+  async putTenantFieldMapping(req: TenantFieldMappingPutRequest): Promise<TenantFieldMappingPutResponse> {
+    return this.request<TenantFieldMappingPutResponse>('/api/v1/tenant-settings/field-mapping', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req),
+    });
+  }
 }
+
+// FEAT-TFM-UI type re-exports (pages + components consume from './api' to match the
+// existing LiwSettingsDto / InmaDynamicFieldDto co-location convention).
+export type {
+  TenantFieldMappingEntryDto,
+  TenantFieldMappingGetResponse,
+  TenantFieldMappingPutRequest,
+  TenantFieldMappingPutResponse,
+} from '../types/tenantFieldMapping';
 
 // FEAT-DMP: INMA placeholder descriptor — matches the bridge proxy shape.
 export interface InmaDynamicFieldDto {

@@ -72,7 +72,7 @@ Bu dosya **pilot launch boyunca execution queue'nun tek kaynagidir**. Session bo
 
 | # | Paket | Slug | Status | Migration | Deploy | Exit Criteria |
 |---|-------|------|--------|-----------|--------|---------------|
-| 3 | FEAT-TFM-UI Dashboard Editor | `20260423-feat-tfm-ui-editor` | PENDING | Yok (mevcut `tenant_settings.field_mapping` JSONB) | Backend SPA rebuild | `/settings/field-mapping` 10-slot editor + INMA FieldName label entegrasyonu + E2E add/edit/delete smoke |
+| 3 | FEAT-TFM-UI Dashboard Editor | `20260423-feat-tfm-ui-editor` | **DONE** (Codex iter 1 PASS 12/12 CQ + 5/5 CoVe after iter 0 FAIL 8 blocker) | Yok | Backend SPA rebuild (deploy pending) | `/settings/field-mapping` 10-slot editor + INMA FieldName label entegrasyonu + E2E add/edit/delete smoke ✅ |
 | 4 | FEAT-TFM-FLOW Picker | `20260424-feat-tfm-flow-picker` | PENDING | Yok | Dashboard SPA | FlowBuilder NodePropertyPanel + TemplateCreate'de semantic dropdown; FEAT-DMP PlaceholderPicker TFM-aware variant |
 
 ### FAZ 3 — Pilot Omurgasi Feature'lar (3 kritik)
@@ -223,11 +223,11 @@ Bu dosya **pilot launch boyunca execution queue'nun tek kaynagidir**. Session bo
 | Metric | Value |
 |--------|-------|
 | Total Pilot-Critical Packages | 9 |
-| DONE | 2 (P1, P2) |
+| DONE | 3 (P1, P2, P3) |
 | IN_PROGRESS | 0 |
-| PENDING | 7 |
+| PENDING | 6 |
 | SKIPPED | 0 |
-| Progress | 22% (2/9) |
+| Progress | 33% (3/9) |
 | Backlog Packages | 6 (B0-B5) |
 | Blocked External Deps | 6 |
 

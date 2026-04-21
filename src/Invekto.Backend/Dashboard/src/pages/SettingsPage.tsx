@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { api, ApiClientError, type InstanceDto, type WorkingHoursDto } from '../lib/api';
-import { Settings, RefreshCw, Wifi, WifiOff, Smartphone, Globe, Radio, MessageSquare, Clock, Save, Check, Building2, Phone, Factory, Webhook, ChevronRight } from 'lucide-react';
+import { Settings, RefreshCw, Wifi, WifiOff, Smartphone, Globe, Radio, MessageSquare, Clock, Save, Check, Building2, Phone, Factory, Webhook, ChevronRight, MapPin } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
@@ -450,6 +450,35 @@ function GeneralTab({ session, sector, sectorLoading, sectorSaving, sectorError,
                 <div className="text-sm font-medium text-navy-900">Landing Webhook Ayarlari</div>
                 <div className="text-xs text-navy-400 mt-0.5">
                   API key yonetimi, alan eslemesi (field map), dry-run onizlemesi ve degisiklik gecmisi.
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-navy-400 flex-shrink-0" />
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* FEAT-TFM-UI P3: entry card to standalone /settings/field-mapping page. */}
+      <div>
+        <div className="mb-3">
+          <h2 className="text-base font-semibold text-navy-900 flex items-center gap-2">
+            <MapPin className="w-4 h-4 text-navy-400" />
+            Field Mapping
+          </h2>
+          <p className="text-xs text-navy-400 mt-0.5">
+            INMA custom field slotlarini (cf1..cf10) semantic isimlere bagla (FlowBuilder + Template editor icin).
+          </p>
+        </div>
+        <Card>
+          <CardContent className="py-5">
+            <Link
+              to="/settings/field-mapping"
+              className="flex items-center justify-between gap-3 p-2 -m-2 rounded-lg hover:bg-navy-50 transition-colors"
+            >
+              <div>
+                <div className="text-sm font-medium text-navy-900">Tenant Field Mapping Editor</div>
+                <div className="text-xs text-navy-400 mt-0.5">
+                  10-slot tablo: INMA Label + semantic isim + tip (enum/date/bool/int/string) + enum degerleri.
                 </div>
               </div>
               <ChevronRight className="w-5 h-5 text-navy-400 flex-shrink-0" />

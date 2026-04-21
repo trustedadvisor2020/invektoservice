@@ -1,0 +1,212 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "slug": "20260423-feat-tfm-ui-editor",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-04-21T23:50:00Z",
+  "updated_at": "2026-04-22T00:20:00Z",
+  "plan": {
+    "summary": "FEAT-TFM-UI Dashboard editor: standalone `/settings/field-mapping` (LeadIntake pattern). 10-row tablo grid (cf1..cf10) — INMA Key | INMA Label (useDynamicFields hook via /api/v1/dynamic-fields) | Semantic | Type | Enum Values | Required | Action. Inline editable row + form-level 'Kaydet'/'Vazgec'. Live duplicate-slot guard + reserved-name guard (InmaDynamicFieldKeys.Allowlist + leads-core columns FE-bundled via Invekto.Shared TS constant). On-save backend 400 (INV-BE-096..099) inline error. GET/PUT `/api/v1/tenant-settings/field-mapping` zaten DEPLOYED (FEAT-TFM MVP + auth hotfix). SettingsPage hub card entry + App.tsx route.",
+    "q_intent": "P3 basla — FEAT-TFM-UI Dashboard editor. Pilot prep onceligi: Dent Adavista tenant 18173130 mapping girisi. Interview 8/8 Q-approved (standalone page + tablo grid + inline label kolonu + inline editable row + form-level save + hybrid validation + live reserved warn + '(INMA config edilmemis)' italic disabled row).",
+    "interview_notes": "Q1 rota=standalone page+sidebar entry (LeadIntake precedent uyarligi: SettingsPage hub card + `/settings/field-mapping` route). Q2 layout=tablo grid. Q3 label=inline ayri kolon. Q4 duplicate=hard block + 400 INV-BE-096. Q5 edit=inline editable row. Q6 save=form-level button. Q7 validation=hybrid (live duplicate + live reserved, diger on-save). Q8 empty-label='(INMA config edilmemis)' italic disabled row. AC1-AC8 gate Q onaylı.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Standalone Dashboard sayfasi `/settings/field-mapping` (App.tsx route eklendi). SettingsPage.tsx'de 'Field Mapping' hub card eklendi (`Link to='/settings/field-mapping'`), LeadIntake 'Lead Kaynaklari' pattern ile uyumlu.",
+        "verified": true,
+        "verification_note": "Codex iter 1 PASS (12/12 CQ + 5/5 CoVe); tsc 0 errors + vite build PASS; iter 0 8 blocker (CQ1/CQ2/CQ5/CQ6/CQ9/CQ10/CQ12 + Q2) iter 1'de resolve edildi."
+      },
+      {
+        "id": "AC2",
+        "criterion": "FieldMappingSettingsPage tablo grid render eder: 10 row (cf1..cf10 sabit sirada). Kolonlar: INMA Key (readonly) | INMA Label (useDynamicFields hook; read-only) | Semantic Name (input) | Type (select: enum|string|date|bool|int) | Enum Values (input, type=enum iken gorunur) | Required (checkbox) | Action (Clear butonu mapped iken).",
+        "verified": true,
+        "verification_note": "Codex iter 1 PASS (12/12 CQ + 5/5 CoVe); tsc 0 errors + vite build PASS; iter 0 8 blocker (CQ1/CQ2/CQ5/CQ6/CQ9/CQ10/CQ12 + Q2) iter 1'de resolve edildi."
+      },
+      {
+        "id": "AC3",
+        "criterion": "Inline editable row: input degiselerek semantic/type/enum/required düzenlenir. Form-level 'Kaydet' button (disabled if no pending changes vs sunucudan gelen orijinal mapping). 'Vazgec' button pending changes'i discard eder. PUT /api/v1/tenant-settings/field-mapping atomic upsert (full mapping gönderilir).",
+        "verified": true,
+        "verification_note": "Codex iter 1 PASS (12/12 CQ + 5/5 CoVe); tsc 0 errors + vite build PASS; iter 0 8 blocker (CQ1/CQ2/CQ5/CQ6/CQ9/CQ10/CQ12 + Q2) iter 1'de resolve edildi."
+      },
+      {
+        "id": "AC4",
+        "criterion": "Live validation: (a) duplicate slot — iki semantic ismi ayni cf'e map etmek UI live check (her input degisiminde) + submit button disabled + inline red border + 'Bu cf zaten X semantic icin kullaniliyor' mesaji. (b) reserved name — TenantFieldMappingReservedNames TS constant (InmaDynamicFieldKeys.Allowlist 15 key + leads-core 8 key = 23 total) ile cross-check; tenant 'name' yazarsa input border red + uyari mesaji + submit disabled. (c) source out-of-range (cf11+) zaten cf1..cf10 drop-down'dan secilemez.",
+        "verified": true,
+        "verification_note": "Codex iter 1 PASS (12/12 CQ + 5/5 CoVe); tsc 0 errors + vite build PASS; iter 0 8 blocker (CQ1/CQ2/CQ5/CQ6/CQ9/CQ10/CQ12 + Q2) iter 1'de resolve edildi."
+      },
+      {
+        "id": "AC5",
+        "criterion": "Kalan validation (semantic pattern `^[a-z][a-z0-9_]{1,63}$`, type-enum mismatch, empty enum when type=enum) 'Kaydet' basilinca backend 400 response'undan inline error toast + row-level highlight (failed entry). Error mesaji backend'den (Turkish, why+next-step).",
+        "verified": true,
+        "verification_note": "Codex iter 1 PASS (12/12 CQ + 5/5 CoVe); tsc 0 errors + vite build PASS; iter 0 8 blocker (CQ1/CQ2/CQ5/CQ6/CQ9/CQ10/CQ12 + Q2) iter 1'de resolve edildi."
+      },
+      {
+        "id": "AC6",
+        "criterion": "INMA FieldName label: useDynamicFields hook (FEAT-DMP zaten deployed) ile `/api/v1/dynamic-fields` cagrisi. Response map'i (cf1 → 'Sehir') INMA Label kolonuna render. Eger INMA'dan cf3 gelmezse (tenant config etmemiş): INMA Label '(INMA config edilmemis)' italic gri text, tum row disabled (input/select/checkbox readonly), tooltip '(i) INMA admin panelinde cf3'u aktif edin'. useDynamicFields errorKind handling (not_configured/upstream_fail/invalidate_partial/unknown) LeadIntake FlowWarningBanner pattern ile entegre.",
+        "verified": true,
+        "verification_note": "Codex iter 1 PASS (12/12 CQ + 5/5 CoVe); tsc 0 errors + vite build PASS; iter 0 8 blocker (CQ1/CQ2/CQ5/CQ6/CQ9/CQ10/CQ12 + Q2) iter 1'de resolve edildi."
+      },
+      {
+        "id": "AC7",
+        "criterion": "Backend GET/PUT `/api/v1/tenant-settings/field-mapping` (DEPLOYED) tuketiliyor: GET bootstrap'ta tum mapping yuklenir (`{ data: { tenant_id, field_mapping, updated_at } }`). PUT tum mapping atomic upsert — success toast 'Field mapping kaydedildi' + local state cookie-refresh. Backend 400 (INV-BE-096..099) + 403 (INV-AUTH-010) handling extractError pattern (LeadIntake'daki gibi).",
+        "verified": true,
+        "verification_note": "Codex iter 1 PASS (12/12 CQ + 5/5 CoVe); tsc 0 errors + vite build PASS; iter 0 8 blocker (CQ1/CQ2/CQ5/CQ6/CQ9/CQ10/CQ12 + Q2) iter 1'de resolve edildi."
+      },
+      {
+        "id": "AC8",
+        "criterion": "Dashboard build PASS: `tsc --noEmit` 0 errors + `vite build` production PASS. Codex MEDIUM iter 0-3 PASS (hedef iter 0 CODEX UTANSIN). Independent-observer test: Dashboard aç, /settings/field-mapping git, Dent 5-field mapping (roadshow_city→cf1 enum, appointment_slot→cf2 date, offer_status→cf3 enum, deposit_status→cf4 enum, flight_booked→cf5 bool) gir, Kaydet, sayfa refresh → mapping persistent.",
+        "verified": true,
+        "verification_note": "Codex iter 1 PASS (12/12 CQ + 5/5 CoVe); tsc 0 errors + vite build PASS; iter 0 8 blocker (CQ1/CQ2/CQ5/CQ6/CQ9/CQ10/CQ12 + Q2) iter 1'de resolve edildi."
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Dashboard/src/pages/settings/FieldMappingSettingsPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/FieldMapping/FieldMappingTableRow.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/FieldMapping/EmptyLabelNotice.tsx",
+    "src/Invekto.Backend/Dashboard/src/constants/tenantFieldMappingReserved.ts",
+    "src/Invekto.Backend/Dashboard/src/types/tenantFieldMapping.ts",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/SettingsPage.tsx",
+    "arch/plans/20260423-feat-tfm-ui-editor.json",
+    "arch/session-memory.md",
+    "tracking/pilot-launch-roadmap.md",
+    "tracking/feat-tfm-ui-editor.md"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Backend/Dashboard/src/constants/tenantFieldMappingReserved.ts", "change": "23-key reserved set (InmaDynamicFieldKeys.Allowlist ∪ leads-core) + SEMANTIC_NAME_PATTERN + ALLOWED_SOURCE_SLOTS + ALLOWED_FIELD_TYPES + isReservedSemanticName helper.", "is_new": true },
+    { "path": "src/Invekto.Backend/Dashboard/src/types/tenantFieldMapping.ts", "change": "DTO types: TenantFieldMappingEntryDto + GetResponse + PutRequest + PutResponse + FieldMappingRowDraft UI draft.", "is_new": true },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "change": "getTenantFieldMapping + putTenantFieldMapping methods + DTO re-exports.", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/components/FieldMapping/EmptyLabelNotice.tsx", "change": "Italic '(INMA config edilmemis)' + info tooltip for disabled rows.", "is_new": true },
+    { "path": "src/Invekto.Backend/Dashboard/src/components/FieldMapping/FieldMappingTableRow.tsx", "change": "Inline editable row: semantic input + type select + enum values + required checkbox + clear action. Live client-side validation (reserved/regex/duplicate). rowError surfaces backend INV-BE-096..099.", "is_new": true },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/settings/FieldMappingSettingsPage.tsx", "change": "Container: loadMapping + useDynamicFields labels + 10-row draft + dirty tracking + form-level Save/Vazgec + inline/toast error surface.", "is_new": true },
+    { "path": "src/Invekto.Backend/Dashboard/src/App.tsx", "change": "Lazy import + /settings/field-mapping route.", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/SettingsPage.tsx", "change": "Hub card 'Field Mapping' (MapPin icon) with Link to /settings/field-mapping. LeadIntake 'Lead Kaynaklari' pattern parity.", "is_new": false },
+    { "path": "arch/plans/20260423-feat-tfm-ui-editor.json", "change": "Plan JSON for P3.", "is_new": true },
+    { "path": "tracking/feat-tfm-ui-editor.md", "change": "Per-paket tracking doc.", "is_new": true }
+  ],
+  "git_diff": {
+    "sha256": "7C512B2C683266D2684E1FCE43FCF04FB455253F7082498C884B913632B7D2D7",
+    "full_path": "arch/plans/diffs/20260423-feat-tfm-ui-editor.diff",
+    "stats": {
+      "insertions": 1006,
+      "deletions": 1,
+      "files_count": 10
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "tsc --noEmit (0 errors) + vite build (8.79s production bundle, lazy FieldMappingSettingsPage chunk split)",
+    "timestamp": "2026-04-22T00:00:00Z",
+    "services": ["Invekto.Backend (Dashboard SPA)"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "FieldMappingSettingsPage tablo grid 10 satir cf1..cf10 sabit gösteriyor mu? Her satirin INMA Label kolonu useDynamicFields hook'undan (`api.getInmaDynamicFields` + module-cache + single-flight) `/api/v1/dynamic-fields` response'uyla render ediliyor, eksik cf'ler '(INMA config edilmemis)' italic disabled row ile gosteriliyor mu?",
+      "category": "Data"
+    },
+    {
+      "id": "Q2",
+      "question": "Live duplicate + live reserved name validation UI'da çalışıyor mu? Duplicate: iki semantic aynı cf'e map edilmek istenirse submit disabled + inline red border. Reserved: tenant 'name' / 'phone' / 'cf11' yazarsa TenantFieldMappingReservedNames TS constant ile match alir, input border red + Turkish warn mesaji.",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q3",
+      "question": "GET/PUT `/api/v1/tenant-settings/field-mapping` endpointleri DEPLOYED Backend'e hit ediyor, envelope `{ data: { tenant_id, field_mapping, updated_at } }` doğru parse ediliyor, backend 400 (INV-BE-096..099) ve 403 (INV-AUTH-010) inline error mesaj + LeadIntake extractError pattern ile surface ediliyor mu?",
+      "category": "Data"
+    },
+    {
+      "id": "Q4",
+      "question": "SettingsPage.tsx'e 'Field Mapping' hub card LeadIntake 'Lead Kaynaklari' pattern ile eklendi mi (MapPin icon + Link to='/settings/field-mapping')? App.tsx route `/settings/field-mapping` FieldMappingSettingsPage lazy import ile baglandi mi? LeadIntake precedent'i ile side-by-side yaşamak için Sidebar'a ekstra link eklenmesine GEREK YOK (SettingsPage hub yeterli).",
+      "category": "Lifecycle"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Backend kod (src/Invekto.Backend/*.cs) — endpoint DEPLOYED, dokunulmaz",
+      "Shared kod (Invekto.Shared/*) — TenantFieldMappingValidator + InmaDynamicFieldKeys okunur, degistirilmez",
+      "Migration dosyalari — yok",
+      "FEAT-DMP PlaceholderPicker / FlowBuilder NodePropertyPanel (P4 scope)",
+      "Sidebar component (Layout.tsx nav items) — Settings ustunden yonlenir, ekstra link yok",
+      "useDynamicFields.ts mevcut hook — degistirilmez, sadece consume edilir"
+    ],
+    "non_goals": [
+      "PlaceholderPicker TFM-aware variant (P4)",
+      "Bulk import/export mapping JSON",
+      "Mapping history/audit log UI",
+      "Per-field role/permission UI",
+      "Redis cache invalidation push (B2)",
+      "INMA mirror sync worker (B1)"
+    ],
+    "intentional_exclusions": [
+      "E2E Playwright test (manuel smoke yeterli, /ui-test opsiyonel)",
+      "Mobile responsive deep-test (Dashboard mevcut mobile pattern'i kullanir)",
+      "i18n locale toggle (Dashboard default Turkish)",
+      "Super-admin tenant picker (mevcut JWT impersonation yeterli; pilot prep Q kendi tenant token'i)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "FieldMappingSettingsPage.loadMapping: LeadIntake extractError pattern — ApiClientError status/errorCode/requestId inline mesaj",
+      "FieldMappingSettingsPage.saveMapping: PUT 400 response inline row-level error; 403 cross-tenant toast; 500 generic toast INV-TFM-FE-001",
+      "useDynamicFields errorKind branches: not_configured (422) / upstream_fail (503) / invalidate_partial / unknown — FlowWarningBanner pattern component"
+    ],
+    "user_facing_errors": [
+      "Live duplicate: 'Bu cf slot zaten {semantic} icin kullaniliyor — mevcut semantic'i silin veya farkli cf secin.'",
+      "Live reserved: '\"{input}\" rezerve kelime (INMA Allowlist / leads kolon); farkli semantic kelime secin.'",
+      "Backend 400 INV-BE-096: 'Mapping yapisal hatasi — DUP_SLOT veya type uyumsuz.'",
+      "Backend 400 INV-BE-097: 'Rezerve semantic isim tespit edildi.'",
+      "Backend 400 INV-BE-098: 'Enum deger listesi bos — type=enum icin en az 1 deger girin.'",
+      "Backend 400 INV-BE-099: 'INMA kaynak slot disi (cf1..cf10 disinda).'",
+      "Backend 403 INV-AUTH-010: 'Yetkiniz yok (baska tenant datasi).' + auto-redirect /settings"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Tum hata path'leri surface edilir: (a) live validation UI inline (duplicate + reserved), (b) backend 400 extractError ile toast + row highlight, (c) useDynamicFields errorKind FlowWarningBanner, (d) success toast 'Field mapping kaydedildi'. Save button pending-changes-aware — dirty state lost olmaz."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Tenant admin Dashboard'da 'roadshow_city semantic'ini cf1'e map etmek istiyor ama INMA'da cf1 aktif mi ve 'Sehir' label'i var mi bilmiyor — kor bir JSON editor'e karsi kacinilmaz hata.",
+      "suggestion": "INMA Label kolonu inline goruntulenir ('cf1 → Sehir'). Eger INMA cf3 aktif degilse disabled italic row + tooltip 'INMA admin panelinde cf3'u aktif edin' yol gosterir.",
+      "aha_moment": "Tenant admin 'Aha, cf4/cf5 INMA'da henuz aktif edilmemis, once oraya gidip aktiflemeliyim' diyerek mapping girmeden baska kanala yonlenir — 15dk debug yerine 1dk gercek problem tespit."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Backend rezerve isim guard'i var (INV-BE-097) ama tenant 'name' yazdiktan sonra ancak Kaydet basarak ogreniyor — frustre geri don-duzelt dongusu.",
+      "suggestion": "FE bundle'da TenantFieldMappingReservedNames (23 kelime) constant, input degisiminde live check. Submit disabled + live warn.",
+      "aha_moment": "Tenant 'name' yazar yazmaz input kirmizi + mesaj gelir, dogrudan farkli kelime ('musteri_adi') secer — 1 round-trip yerine anlik."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Per-row auto-save kullanilirsa 10-field mapping = 10 PUT (10 round-trip). Ayrica PUT atomic full-map istiyor — auto-save her seferinde all-fields payload.",
+      "suggestion": "Form-level 'Kaydet' butonu. Tek PUT full mapping. Dirty state tracked (button disabled if clean).",
+      "aha_moment": "Tenant 5 mapping'i gezer, arka arkaya edit eder, sonda tek tik 'Kaydet' — network trafigi 1/10, UI snappy, atomik persist."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "FEAT-TFM MVP deployed ama UI yok, pilot prep icin Q manuel PUT curl ile mapping giriyor — human error riski yuksek, audit kaybolmus.",
+      "suggestion": "Dashboard UI Dent Adavista admin'in kendi girmesine izin verir. 5-field seed dogru girilince prep UI-pattern dokumentli olur.",
+      "aha_moment": "Sonraki pilot tenant (B3 / diger sektor) admin kendi mapping'ini UI'dan 3dk'da girer — manuel curl/SQL prep adimi pilot onboarding'dan cikar."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Dashboard ses degisikligi yapmadan 'Kaydet' tiklanirsa bos PUT'ta backend hic bir sey yapmaz ama network ve validate cycle'i calisir.",
+      "suggestion": "Pending-changes-aware save button (disabled if form state === original); 'Vazgec' butonu pending'i discard eder, yine button disabled olur.",
+      "aha_moment": "Gereksiz PUT yok; kullanici 'bir seyi kaydettim mi' supheye dusmez (button rengi state gosterir)."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-22T00:18:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-22T00:20:00Z",
+    "blocking_issues": [],
+    "iteration": 1,
+    "escalation_required": false,
+    "iter_arc_note": "iter 0 FAIL 8 blocker (CQ1 missing errorKind branches, CQ2 silent handleSave no-op, CQ5/CQ10 invalid <td colSpan> inside sibling row, CQ6 unmanaged toast timer, CQ9 disabled-row UX mismatch on INMA upstream fail, CQ12 fabricated INV-TFM-FE-001 code, Q2 cf11+ not rejected) -> iter 1 PASS 12/12 CQ + 5/5 CoVe 0 blocking."
+  }
+}
