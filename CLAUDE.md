@@ -12,12 +12,20 @@ Her session basladiginda otomatik:
 1. **Auto Workflow aktif** — global `auto` skill kurallari (`~/.claude/skills/auto`)
 2. **Kritik dosyalari oku (TEK STANDART LISTE, shared v6.1 uyumlu):**
    - `arch/session-memory.md` (son durum + execution queue + recently completed)
+   - `tracking/pilot-launch-roadmap.md` **(PILOT MODE AKTIF — execution queue + devam protokolu)**
    - `tracking/README.md` (paket durumu)
    - `arch/lessons-learned.md` (son 100 satir)
    - `.claude/agents/INVEKTO_BASE.prompt.md` (global rules)
-3. **Interview ile basla:** AskUserQuestion ile gri noktalari coz
+3. **PILOT MODE DAVRANIS (2026-04-21 itibariyla):**
+   - `tracking/pilot-launch-roadmap.md` Master Queue'da ilk `PENDING` paketi bul
+   - Q'ya "Siradaki: P{N} {slug} — baslayalim mi?" sor
+   - Onay → `/auto` workflow (interview → plan → dev → build → /rev → commit)
+   - Paket DONE → roadmap Status=DONE + session-memory Recently Completed + `/clear` oner
+   - **Atlamak yasak** — sira roadmap'tedir. Q override icin `SKIP P{N}` / `PAUSE` / `REORDER` komutlari kullanir.
+4. **Interview ile basla:** AskUserQuestion ile gri noktalari coz (roadmap paketine ozel sorular)
 
 > **active-work.md KULLANILMIYOR** (shared v6.1, 2026-03-04). Execution queue session-memory.md icinde.
+> **Pilot Mode:** Tum tracking + queue otoritesi `tracking/pilot-launch-roadmap.md`'dedir. Session-memory son durum detayi.
 
 ## Naming & Roles
 

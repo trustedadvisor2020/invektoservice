@@ -1,0 +1,174 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "slug": "20260422-feat-dmp-cache-poison-fix",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-04-21T22:55:00Z",
+  "updated_at": "2026-04-21T23:10:00Z",
+  "plan": {
+    "summary": "InmaDynamicFieldsCache.GetOrFetchAsync cancellation poison retro-fix: factory captures caller's CancellationToken which propagates into the shared in-flight Task, so the first caller's cancel aborts all joined awaiters. Apply the FEAT-TFM DbTenantFieldMappingResolver pattern: spawn fetch with CancellationToken.None, expose per-caller cancellation via Task.WaitAsync(ct). Adds first unit-test coverage for cache + single-flight semantics.",
+    "q_intent": "FEAT-DMP cache cancellation poison fix — P1 pilot-launch-roadmap.md FAZ 1. FEAT-TFM iter 3 fix pattern'ini InmaDynamicFieldsCache'e uygula; test ekle; backend-only deploy.",
+    "interview_notes": "Q1 (testler) = OTOMATIK: Claude unit test ekleyebilecegi kadar yazsin (cancellation isolation + single-flight coalescing + invalidate clears inflight + empty-list caches + exception propagation + invalidate during inflight). Q2 (secret rotation semantics) = KABUL: mevcut davranis korunuyor — tenant secret'i inflight fetch icinde first-caller'in secret'i kullanilir, fix bunu degistirmez; secret-change-triggers-invalidate hook AYRI bir paket.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "GetOrFetchAsync spawns the in-flight fetch task decoupled from the first caller's CancellationToken (CancellationToken.None or equivalent) so that caller A cancelling mid-flight does NOT abort the shared Task nor raise OperationCanceledException on concurrent caller B.",
+        "verified": true,
+        "verification_note": "Codex iter 0 PASS (CoVe Q1-Q4 PASS); test PASS 7/7."
+      },
+      {
+        "id": "AC2",
+        "criterion": "Per-caller cancellation still observed: each awaiter sees its own CancellationToken via Task.WaitAsync(ct) — cancelling caller A's ct throws OperationCanceledException on A's await without affecting B's await or the underlying fetch.",
+        "verified": true,
+        "verification_note": "Codex iter 0 PASS (CoVe Q1-Q4 PASS); test PASS 7/7."
+      },
+      {
+        "id": "AC3",
+        "criterion": "Unit tests cover: (a) cancellation isolation between joined callers, (b) single-flight coalescing (2 concurrent misses = 1 client call), (c) Invalidate clears both cache entry and inflight slot so a subsequent GetOrFetchAsync starts a fresh fetch, (d) empty list is cached as legitimate tenant state, (e) upstream exception propagates to all joined awaiters and clears the inflight slot.",
+        "verified": true,
+        "verification_note": "Codex iter 0 PASS (CoVe Q1-Q4 PASS); test PASS 7/7."
+      },
+      {
+        "id": "AC4",
+        "criterion": "Secret-rotation behavior unchanged: when two callers race with different secretKey values, the first caller's secretKey wins (inflight task already captured it). Documented in XML doc as known limitation; Invalidate() is the admin escape hatch (already shipped via FEAT-DMP cache-invalidate endpoint).",
+        "verified": true,
+        "verification_note": "Codex iter 0 PASS (CoVe Q1-Q4 PASS); test PASS 7/7."
+      },
+      {
+        "id": "AC5",
+        "criterion": "Build PASS (dotnet build InvektoServis.sln 0 errors). Test run PASS (dotnet test tests/Invekto.Backend.Tests/ — new InmaDynamicFieldsCacheTests all green). No behavioural regression on Backend /api/v1/dynamic-fields proxy endpoint (FEAT-DMP smoke contract preserved)."
+      ,
+        "verified": true,
+        "verification_note": "Codex iter 0 PASS (CoVe Q1-Q4 PASS); test PASS 7/7."
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/Services/InmaDynamicFieldsCache.cs",
+    "tests/Invekto.Backend.Tests/UnitTests/InmaDynamicFieldsCacheTests.cs",
+    "arch/plans/20260422-feat-dmp-cache-poison-fix.json",
+    "arch/session-memory.md",
+    "arch/lessons-learned.md",
+    "tracking/pilot-launch-roadmap.md",
+    "tracking/feat-dmp-cache-poison-fix.md",
+    "CLAUDE.md",
+    "tracking/README.md",
+    "tracking/feat-pilot-5-generic-roadmap.md"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/Services/InmaDynamicFieldsCache.cs", "change": "Cancellation-isolation fix: factory uses CancellationToken.None; per-caller cancel via AwaitWithCallerCancellation(Task.WaitAsync(ct)); Invalidate clears both cache + inflight slot.", "is_new": false },
+    { "path": "tests/Invekto.Backend.Tests/UnitTests/InmaDynamicFieldsCacheTests.cs", "change": "7 xUnit regression tests: cache hit, empty list, single-flight coalescing, first-caller cancel isolation, per-caller ct isolation, invalidate clears, upstream exception retry.", "is_new": true },
+    { "path": "arch/plans/20260422-feat-dmp-cache-poison-fix.json", "change": "Plan JSON for P1 (FAZ 1 retro-fix).", "is_new": true },
+    { "path": "tracking/feat-dmp-cache-poison-fix.md", "change": "Per-paket tracking document (scope, bug/fix summary, AC table, deploy plan).", "is_new": true },
+    { "path": "tracking/pilot-launch-roadmap.md", "change": "Master execution queue for 18 packages + devam protocol + Q override commands.", "is_new": true },
+    { "path": "tracking/feat-pilot-5-generic-roadmap.md", "change": "SUPERSEDED header added (historical planning reference; superseded by pilot-launch-roadmap.md).", "is_new": true },
+    { "path": "CLAUDE.md", "change": "SESSION INIT extended with Pilot Mode protocol (read pilot-launch-roadmap.md, find first PENDING, ask Q, never skip).", "is_new": false },
+    { "path": "tracking/README.md", "change": "Pilot Launch Mode banner + pointer to master roadmap.", "is_new": false },
+    { "path": "arch/session-memory.md", "change": "Pilot Mode pointer added at top (execution queue authority moved to pilot-launch-roadmap.md).", "is_new": false }
+  ],
+  "git_diff": {
+    "sha256": "5993F87D2DF52C878BA92A0D5DAA454579921C4E7D543A00A6D308FD1B58E93B",
+    "full_path": "arch/plans/diffs/20260422-feat-dmp-cache-poison-fix.diff",
+    "stats": {
+      "insertions": 1058,
+      "deletions": 30,
+      "files_count": 9
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-04-21T23:05:00Z",
+    "output_tail": "Build succeeded. 0 Error(s), 17 Warning(s) (all pre-existing).",
+    "services": ["Invekto.Shared", "Invekto.Backend", "Invekto.Backend.Tests"]
+  },
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Shared/Contracts/Inma/IInmaDynamicFieldsClient.cs (interface)",
+      "src/Invekto.Shared/Contracts/Inma/InmaDynamicFieldsFetchException.cs",
+      "src/Invekto.Backend/Program.cs (DI composition)",
+      "src/Invekto.Shared/Contracts/TenantFieldMapping/DbTenantFieldMappingResolver.cs (TFM resolver — reference pattern, DO NOT TOUCH)",
+      "Any Outbound/Automation files (InmaDynamicFieldsCache registered only in Backend)"
+    ],
+    "non_goals": [
+      "Introduce Redis / cross-instance invalidation (FEAT-TFM-CACHE backlog).",
+      "Add secret-change-triggers-invalidate hook (separate paket).",
+      "Migrate FEAT-DMP cache to a different backing store.",
+      "Refactor IInmaDynamicFieldsClient contract or add new parameters.",
+      "NOTE: This paket also ships the Pilot Launch Mode bootstrap wiring (CLAUDE.md SESSION INIT + tracking/README.md banner + tracking/feat-pilot-5-generic-roadmap.md SUPERSEDED header + tracking/pilot-launch-roadmap.md master queue). These doc-only additions are the 'clear-safe devam protocol' infrastructure P1 itself validates as the first paket in the queue — without them the roadmap pointer that P1 exits against does not exist. No code behavior impact."
+    ],
+    "intentional_exclusions": [
+      "OutboundRepository and Automation TenantSettingsRepository caches — same pattern audit deferred; this paket is scoped to Backend-only InmaDynamicFieldsCache.",
+      "Unit tests for IInmaDynamicFieldsClient HTTP layer — already covered via FEAT-DMP integration smoke."
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "InmaDynamicFieldsCache.FetchAndCacheAsync: try/finally around client.GetFieldsAsync — finally clears _inflight slot. Upstream exceptions (InmaDynamicFieldsFetchException, timeout, etc.) propagate unchanged so Backend proxy maps to 503."
+    ],
+    "user_facing_errors": [
+      "No new user-facing errors. Existing 503 surface on fetch failure preserved (FEAT-DMP contract)."
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Cache does NOT swallow. Failures clear the inflight slot in finally and propagate. Cancellation isolation means caller A's cancel never becomes caller B's silent failure — that was the BUG this paket fixes."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Two concurrent Dashboard tabs opening the placeholder picker can race: if tab A's request is cancelled (tab closed), tab B's picker silently fails with 'upstream fetch fail' even though INMA returned 200.",
+      "suggestion": "After fix, cancelling one tab's request leaves the underlying fetch alive for the other tab — both tabs complete successfully from a single INMA call.",
+      "aha_moment": "Tenant admin closes a stale tab and the newly-opened tab still shows the placeholder list immediately — no retry, no error toast."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Single-flight is supposed to coalesce 10 concurrent cache-misses into 1 upstream call; when the first caller cancels, the coalescing collapses to 9 individual retries instead.",
+      "suggestion": "Decoupled inflight keeps 10-fold stampede protection even under churny cancellations (hot reload, navigation).",
+      "aha_moment": "Prod metric `inma_dynamicfields_upstream_calls_total` stays flat at 1/min per tenant instead of spiking during Dashboard navigation."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Tenant reports 'sometimes the placeholder dropdown is empty'. Logs show no INMA error — just a mysterious OperationCanceledException inside the picker hook.",
+      "suggestion": "Fix removes the source of false-positive cancel reports; support can now trust that placeholder fetch failures have an actual upstream cause.",
+      "aha_moment": "Support ticket 'dropdown boş' triages to 0 in the week after deploy — the only remaining failures are genuine INMA 5xx traceable to tenant secret/network."
+    },
+    {
+      "category": "UX",
+      "user_pain": "FlowBuilder NodePropertyPanel refresh button sometimes shows 'Yenilenemedi' even when INMA is healthy — users click repeatedly, unclear why.",
+      "suggestion": "After fix, refresh is deterministic: result reflects INMA's actual state, not a cancellation race.",
+      "aha_moment": "User clicks refresh once; value updates predictably; no more 'neden olmadı' frustration."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Future services that would reuse InmaDynamicFieldsCache (Outbound/Automation planned via FEAT-TFM-FLOW integration) would inherit the same cancellation poison.",
+      "suggestion": "Fixing now at the Shared-cache layer preempts re-introducing the bug when DI scope widens.",
+      "aha_moment": "When Outbound adopts the cache in FEAT-TFM-FLOW, no 'it works locally, fails in prod under concurrency' surprise — pattern is battle-tested from day one."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-21T23:15:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-21T23:15:00Z",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "InmaDynamicFieldsCache.cs:91-102 upstream exceptions unswallowed; finally clears inflight. Tests cover exception propagation + retry." },
+      "CQ2": { "result": "PASS", "evidence": "No catch/swallow logic. WaitAsync(ct) isolates caller cancel; client failures propagate." },
+      "CQ3": { "result": "PASS", "evidence": "All changed files declared in allowed_files. Pilot bootstrap docs justified in non_goals note." },
+      "CQ4": { "result": "PASS", "evidence": "Cancellation-isolation pattern intentionally mirrors FEAT-TFM resolver." },
+      "CQ5": { "result": "PASS", "evidence": "Shared service under src/Invekto.Shared/Services/. ConfigureAwait(false) applied; no bare catch(Exception)." },
+      "CQ6": { "result": "PASS", "evidence": "Single-flight preserved; concurrent misses share one upstream call (test verified)." },
+      "CQ7": { "result": "PASS", "evidence": "No new TODO/HACK/FIXME markers." },
+      "CQ8": { "result": "PASS", "evidence": "Public API unchanged: GetOrFetchAsync, Invalidate, constructor. Only private helper signature changed." }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "_inflight.GetOrAdd factory no longer propagates caller ct; CancellationToken.None passed to client." },
+      "Q2": { "result": "PASS", "reasoning": "fetch.WaitAsync(ct) isolates caller cancel from joined awaiters and underlying fetch." },
+      "Q3": { "result": "PASS", "reasoning": "Invalidate removes both cache entry and _inflight slot; test confirms fresh fetch." },
+      "Q4": { "result": "PASS", "reasoning": "No consumer files modified; public API signatures unchanged." }
+    },
+    "blocking_issues": [],
+    "iteration": 0,
+    "escalation_required": false
+  }
+}

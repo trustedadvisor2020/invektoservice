@@ -3,6 +3,14 @@
 > Multi-tenant SaaS mikro servis platformu. .NET 8, PostgreSQL, React 18.
 > 12 Paket Stratejisi (v5.2). Her paket: interview + plan + dev + build + Codex review.
 
+## 🚀 PILOT LAUNCH MODE AKTIF (2026-04-21)
+
+**Execution queue otoritesi:** [`pilot-launch-roadmap.md`](pilot-launch-roadmap.md)
+18 paket arka arkaya → Dent Adavista pilot full-stack smoke. Session bootstrap zorunlu okuma.
+Siradaki: **P1** `20260422-feat-dmp-cache-poison-fix` (FAZ 1, FEAT-DMP cache cancellation poison retro-fix).
+
+---
+
 ## Master Tracking
 
 | # | Paket | Ad | GR | Durum | Tarih | Codex |
