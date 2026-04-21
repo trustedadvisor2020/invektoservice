@@ -73,7 +73,7 @@ Bu dosya **pilot launch boyunca execution queue'nun tek kaynagidir**. Session bo
 | # | Paket | Slug | Status | Migration | Deploy | Exit Criteria |
 |---|-------|------|--------|-----------|--------|---------------|
 | 3 | FEAT-TFM-UI Dashboard Editor | `20260423-feat-tfm-ui-editor` | **DONE+DEPLOYED+SMOKED** 2026-04-22 12:12 UTC (commit `f4fdc60`, Codex iter 1 PASS 12/12 CQ + 5/5 CoVe after iter 0 FAIL 8 blocker) | Yok | Backend SPA redeploy 10/10 HEALTHY | 10-slot editor + INMA FieldName + auth gate 401/401 ✅ SPA chunk `FieldMappingSettingsPage-D2v_4qCv.js` 13KB prod'da ✅ |
-| 4 | FEAT-TFM-FLOW Picker | `20260424-feat-tfm-flow-picker` | PENDING | Yok | Dashboard SPA | FlowBuilder NodePropertyPanel + TemplateCreate'de semantic dropdown; FEAT-DMP PlaceholderPicker TFM-aware variant |
+| 4 | FEAT-TFM-FLOW Picker | `20260424-feat-tfm-flow-picker` | **DONE** (Codex iter 1 PASS 12/12 CQ + 3/3 CoVe after iter 0 FAIL 1 blocker CQ12) | Yok | Backend SPA rebuild (deploy pending) | PlaceholderPicker tfmAware prop + 2-grup + useFieldMapping hook + 2 consumer opt-in ✅ |
 
 ### FAZ 3 — Pilot Omurgasi Feature'lar (3 kritik)
 
@@ -223,11 +223,11 @@ Bu dosya **pilot launch boyunca execution queue'nun tek kaynagidir**. Session bo
 | Metric | Value |
 |--------|-------|
 | Total Pilot-Critical Packages | 9 |
-| DONE | 3 (P1, P2, P3) |
+| DONE | 4 (P1, P2, P3, P4) |
 | IN_PROGRESS | 0 |
-| PENDING | 6 |
+| PENDING | 5 |
 | SKIPPED | 0 |
-| Progress | 33% (3/9) |
+| Progress | 44% (4/9) |
 | Backlog Packages | 6 (B0-B5) |
 | Blocked External Deps | 6 |
 

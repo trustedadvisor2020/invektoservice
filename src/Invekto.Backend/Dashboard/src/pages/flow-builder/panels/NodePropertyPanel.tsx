@@ -530,7 +530,7 @@ function MessageTextProps({
         />
         <div className="flex items-center justify-between mt-1">
           <MessageLengthCounter text={data.text ?? ''} />
-          <PlaceholderPicker onInsert={insertPlaceholder} position="above" />
+          <PlaceholderPicker onInsert={insertPlaceholder} position="above" tfmAware />
         </div>
       </FieldGroup>
       <FieldGroup label="Davranis">

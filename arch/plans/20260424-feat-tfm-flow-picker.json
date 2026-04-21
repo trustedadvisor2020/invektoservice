@@ -1,0 +1,200 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "slug": "20260424-feat-tfm-flow-picker",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-04-22T00:30:00Z",
+  "updated_at": "2026-04-22T00:55:00Z",
+  "plan": {
+    "summary": "FEAT-TFM-FLOW Picker (P4): PlaceholderPicker'a `tfmAware?: boolean` prop + 2-grup dropdown render (Semantic Alanlar + INMA Ham Alanlar). Yeni `useFieldMapping.ts` hook (useDynamicFields ikizi: module cache + single-flight + errorKind). Semantic token `{{<semantic>}}` literal insert; backend TFM resolver runtime'da cf1'e cevirir (ITenantFieldMappingResolver). INMA ham token mevcut davranis. TFM mapping yoksa empty/fail = semantic grup gizli, sadece INMA ham liste. TemplateCreatePage + flow-builder NodePropertyPanel `tfmAware={true}` explicit opt-in. renderDynamicPreview helper opt-in mapping parametresi: semantic token'lari source cf'in hardcoded demo degeriyle substitute eder.",
+    "q_intent": "P4 basla. Pilot prep: Dent Adavista tenant mapping'i kullanarak FlowBuilder + Template editor'de semantic dropdown ile token insert. Interview 8/8 Q-approved (prop ekleme, 2-grup, semantic literal token, empty fallback INMA-only, useDynamicFields ikizi hook, default false opt-in, preview semantic substitute).",
+    "interview_notes": "Q1 approach = opt-in prop (tek component, 2 consumer tfmAware={true}). Q2 display = 2-grup (Semantic Alanlar / INMA Ham Alanlar). Q3 token = {{semantic}} literal (backend resolver). Q4 empty = INMA-only (semantic grup gizli). Q5 hook = useDynamicFields ikizi module-cache + single-flight + errorKind. Q6 default = false, 2 consumer'da explicit true. Q7 preview = semantic substitute opt-in mapping param. AC1-AC8 Q onayli.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "PlaceholderPicker.tsx'e `tfmAware?: boolean` prop eklendi (default false). tfmAware=true iken dropdown 2-grup render eder: 'Semantic Alanlar' (useFieldMapping'den gelen semantic -> source pairs) + 'INMA Ham Alanlar' (useDynamicFields'den gelen FEAT-DMP mevcut liste). Her grup kendi baslik satiri + separator.",
+        "verified": true,
+        "verification_note": "Codex iter 1 PASS (12/12 CQ + 3/3 CoVe); iter 0 FAIL 1 blocker (CQ12 uncoded errors) iter 1'de wrapError INV-OB-037 fallback + ApiClientError.errorCode preserve ile resolve edildi."
+      },
+      {
+        "id": "AC2",
+        "criterion": "useFieldMapping.ts yeni hook (`src/Invekto.Backend/Dashboard/src/hooks/`): useDynamicFields ikizi — module-level moduleCache + inflight Promise<FieldMapping>. api.getTenantFieldMapping() cagrisi. errorKind: `not_loaded` | `upstream_fail` | `unknown`. State: { mapping, semanticEntries, isLoading, error, errorKind, refresh }. Tek tenant-scoped fetch per session; DBT-UI ile paylasimli degil (iki ayri hook, iki ayri cache).",
+        "verified": true,
+        "verification_note": "Codex iter 1 PASS (12/12 CQ + 3/3 CoVe); iter 0 FAIL 1 blocker (CQ12 uncoded errors) iter 1'de wrapError INV-OB-037 fallback + ApiClientError.errorCode preserve ile resolve edildi."
+      },
+      {
+        "id": "AC3",
+        "criterion": "Semantic entry secildiginde token `{{<semantic>}}` literal insert edilir (lowercase; TFM spec semantic regex zaten lowercase). Backend DynamicMessageValidator runtime'da TFM resolver ile cf1'e cevirir (ITenantFieldMappingResolver.ResolveToInmaKey). UI semantic literal yazar, template stale olmaz.",
+        "verified": true,
+        "verification_note": "Codex iter 1 PASS (12/12 CQ + 3/3 CoVe); iter 0 FAIL 1 blocker (CQ12 uncoded errors) iter 1'de wrapError INV-OB-037 fallback + ApiClientError.errorCode preserve ile resolve edildi."
+      },
+      {
+        "id": "AC4",
+        "criterion": "INMA ham grup entry'leri mevcut FEAT-DMP handleSelect davranisi aynen korur: `{{<fieldKey.toLowerCase()>}}` insert. PlaceholderPicker tfmAware=false default davranisi bozulmaz (geriye donuk uyumlu).",
+        "verified": true,
+        "verification_note": "Codex iter 1 PASS (12/12 CQ + 3/3 CoVe); iter 0 FAIL 1 blocker (CQ12 uncoded errors) iter 1'de wrapError INV-OB-037 fallback + ApiClientError.errorCode preserve ile resolve edildi."
+      },
+      {
+        "id": "AC5",
+        "criterion": "TFM mapping empty veya fetch fail (useFieldMapping errorKind=any) durumunda 'Semantic Alanlar' grup basligi + liste render EDILMEZ. Dropdown sadece INMA Ham Alanlar grubunu gosterir — FEAT-DMP mevcut davranisi degismemis gibi. Soft warn banner YOK (tenant henuz mapping kurmadigi normal durum).",
+        "verified": true,
+        "verification_note": "Codex iter 1 PASS (12/12 CQ + 3/3 CoVe); iter 0 FAIL 1 blocker (CQ12 uncoded errors) iter 1'de wrapError INV-OB-037 fallback + ApiClientError.errorCode preserve ile resolve edildi."
+      },
+      {
+        "id": "AC6",
+        "criterion": "TemplateCreatePage.tsx + flow-builder/panels/NodePropertyPanel.tsx'te PlaceholderPicker cagrilarina `tfmAware={true}` prop eklendi. Baska PlaceholderPicker tuketicisi yok (grep ile teyit edildi; 5 dosya: api.ts, useDynamicFields.ts, PlaceholderPicker.tsx, TemplateCreate, NodePropertyPanel).",
+        "verified": true,
+        "verification_note": "Codex iter 1 PASS (12/12 CQ + 3/3 CoVe); iter 0 FAIL 1 blocker (CQ12 uncoded errors) iter 1'de wrapError INV-OB-037 fallback + ApiClientError.errorCode preserve ile resolve edildi."
+      },
+      {
+        "id": "AC7",
+        "criterion": "renderDynamicPreview helper opt-in 2. parametre: `mapping?: Record<string, string>` (semantic -> source slot cf1..cf10). Semantic token gorunce mapping[semantic] uzerinden source cf'in defaults tablosundaki demo degerini dondurur. Mapping yoksa veya semantic'i mapping'te yoksa match literal olarak kalir (mevcut davranis). Preview tile tenant'a `{{roadshow_city}}` -> 'Istanbul' gosterir (cf1 hardcoded demo).",
+        "verified": true,
+        "verification_note": "Codex iter 1 PASS (12/12 CQ + 3/3 CoVe); iter 0 FAIL 1 blocker (CQ12 uncoded errors) iter 1'de wrapError INV-OB-037 fallback + ApiClientError.errorCode preserve ile resolve edildi."
+      },
+      {
+        "id": "AC8",
+        "criterion": "Dashboard build PASS: tsc --noEmit 0 errors + vite production build 0 errors. Codex MEDIUM review iter 0-3 arasi PASS (hedef iter 0 CODEX UTANSIN). Independent-observer test: Dashboard /settings/field-mapping'den 5-field mapping gir (Dent pilot seed), sonra /templates/new veya /flow-builder/editor acip dropdown'dan 'Semantic Alanlar' grubu altinda 5 semantic gorup birini tiklayinca textarea'ya `{{roadshow_city}}` insert edilir.",
+        "verified": true,
+        "verification_note": "Codex iter 1 PASS (12/12 CQ + 3/3 CoVe); iter 0 FAIL 1 blocker (CQ12 uncoded errors) iter 1'de wrapError INV-OB-037 fallback + ApiClientError.errorCode preserve ile resolve edildi."
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Dashboard/src/hooks/useFieldMapping.ts",
+    "src/Invekto.Backend/Dashboard/src/components/PlaceholderPicker.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/TemplateCreatePage.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/panels/NodePropertyPanel.tsx",
+    "arch/plans/20260424-feat-tfm-flow-picker.json",
+    "arch/session-memory.md",
+    "tracking/pilot-launch-roadmap.md",
+    "tracking/feat-tfm-flow-picker.md"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Backend/Dashboard/src/hooks/useFieldMapping.ts", "change": "New hook (useDynamicFields ikizi) — module cache + single-flight + errorKind + enabled flag for stable hook-order when consumer opts out.", "is_new": true },
+    { "path": "src/Invekto.Backend/Dashboard/src/components/PlaceholderPicker.tsx", "change": "tfmAware prop + 2-group dropdown (Semantic + INMA Ham). renderDynamicPreview opt-in mapping parameter for semantic token substitution.", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/TemplateCreatePage.tsx", "change": "tfmAware={true} on PlaceholderPicker; triggerLabel 'INMA alani' → 'Dinamik alan' since the dropdown may now include semantic entries too.", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/panels/NodePropertyPanel.tsx", "change": "tfmAware={true} on PlaceholderPicker.", "is_new": false },
+    { "path": "arch/plans/20260424-feat-tfm-flow-picker.json", "change": "Plan JSON for P4.", "is_new": true },
+    { "path": "tracking/feat-tfm-flow-picker.md", "change": "Per-paket tracking doc.", "is_new": true }
+  ],
+  "git_diff": {
+    "sha256": "8DC55A3B8B296FB6296E71C851002D76D1E4D7205516BFC861CF2CAF0A0DFD4E",
+    "full_path": "arch/plans/diffs/20260424-feat-tfm-flow-picker.diff",
+    "stats": {
+      "insertions": 472,
+      "deletions": 9,
+      "files_count": 6
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "tsc --noEmit 0 errors + vite build 6.23s",
+    "timestamp": "2026-04-22T00:43:00Z",
+    "services": ["Invekto.Backend (Dashboard SPA)"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does PlaceholderPicker render 2 distinct groups when tfmAware=true (Semantic Alanlar + INMA Ham Alanlar) with clear visual separation, and does tfmAware=false preserve the existing FEAT-DMP single-list behavior exactly (zero regression for TemplateCreate/NodePropertyPanel consumers that don't opt in)?",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q2",
+      "question": "Does useFieldMapping hook mirror useDynamicFields lifecycle (module-level moduleCache, inflight Promise coalescing, errorKind enum, mounted-guard via isMountedRef) without sharing state with useDynamicFields? Does the TFM fetch error gracefully fall back to INMA-only mode in the picker (not a hard picker failure)?",
+      "category": "Data"
+    },
+    {
+      "id": "Q3",
+      "question": "When a semantic entry is clicked, does handleSelect emit `{{<semantic>}}` token literal (NOT `{{cf1}}` raw)? Backend resolver path (ITenantFieldMappingResolver.ResolveToInmaKey -> cf1) is responsible for render-time resolution; UI must NOT pre-resolve.",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q4",
+      "question": "Is the renderDynamicPreview mapping parameter handled correctly: optional + defaults to {} + semantic token lookup maps to source cf demo value via the existing cf1..cf10 defaults table? Unmapped semantic tokens must return the literal match (no silent replacement).",
+      "category": "Data"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Backend kod (*.cs) — tenant_settings.field_mapping GET endpoint DEPLOYED, dokunulmaz",
+      "Shared kod (Invekto.Shared/*) — TenantFieldMappingValidator/Resolver dokunulmaz",
+      "api.ts — getTenantFieldMapping/putTenantFieldMapping P3'de eklendi, P4'de dokunulmaz (AC4 consumer)",
+      "Backend Dashboard cache (FEAT-DMP InmaDynamicFieldsCache) — P1 fix edildi, dokunulmaz",
+      "Yeni migration/error code — yok",
+      "Sidebar/Layout nav — PlaceholderPicker nested component, rota yok"
+    ],
+    "non_goals": [
+      "Flow builder yeni node tipi (tfm-specific)",
+      "Template variant rotation TFM entegrasyonu (P3/FEAT-WTP sonraki pass)",
+      "Semantic token autocomplete (tab tab tab) — dropdown pick yeterli",
+      "TFM mapping CRUD UI (P3 DONE)",
+      "Backend TFM resolver degisiklik (DEPLOYED)",
+      "INMA mirror sync (B1 BACKLOG)"
+    ],
+    "intentional_exclusions": [
+      "E2E Playwright test (manuel smoke yeterli, /ui-test opsiyonel)",
+      "Preview helper unit test (visual verify yeterli)",
+      "Mobile responsive deep-test (mevcut PlaceholderPicker mobile pattern'i korunuyor)",
+      "Dropdown keyboard navigation (mevcut FEAT-DMP davranisi asilmis degildir)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "useFieldMapping fetchMapping try/catch: ApiClientError -> errorKind classification (503 upstream_fail, unexpected unknown); no throw propagate",
+      "PlaceholderPicker tfmAware: useFieldMapping error -> isSoftWarning = false, semantic grup render edilmez, INMA grup canli kalir (no picker crash)",
+      "renderDynamicPreview: mapping defaults yoksa semantic match literal dondurur, error yok"
+    ],
+    "user_facing_errors": [
+      "Semantic group empty + no error -> tenant mapping kurulmamis, sessizce INMA grup gosterilir (Q4 sectim)",
+      "TFM fetch fail -> picker icin fall-back INMA grup; ayri banner YOK (tenant awareness /settings/field-mapping sayfasinda acilir)",
+      "Semantic token secildikten sonra backend resolver cf1'e ceviremezse (runtime): backend DynamicMessageValidator INV-OB-033 warn + fall-through raw match (mevcut davranis)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "TFM fetch fail sessizce fall-back normal — tenant onceki davranisi aynen alir (INMA grup canli). Kullanici semantic mapping'i kurmamis-veya-alinmamissa FEAT-DMP ile aynisini gorur. Ops log errorKind via useFieldMapping state; Dashboard console warn INV-OB-037 pattern (useDynamicFields ile ayni). Silent DEGIL — structured log + errorKind state tracked."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Tenant roadshow_city semantic'ini cf1'e map etti ama Template composer'da hala {{cf1}} yazmak zorunda — semantic isim bilgisi kayboluyor.",
+      "suggestion": "Picker 2-grup gosterir: en ustte Semantic Alanlar ({{roadshow_city}} visible+clickable). Tenant semantic isimle template yazar, contract semantic-anchored.",
+      "aha_moment": "Template'de {{roadshow_city}} okunuyor, cf1 detay teknik bilgi gizleniyor. Baska tenant ayni template'i alsa dahi kendi mapping'i ile dogru render olur."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Tenant mapping'i silip yeni mapping (cf1 -> different_city) kuruyor — eski template'ler `{{cf1}}` literal icerdigi icin stale kaliyor.",
+      "suggestion": "Semantic token {{roadshow_city}} backend resolver ile runtime'da cf1'e cevriliyor. Mapping degisince template update gerekmez.",
+      "aha_moment": "Tenant semantic mapping'i degistirdi ama tum mevcut template/flow otomatik yeni anlamla devam ediyor — operasyonel sifir efor."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Iki picker cagrisinda (TemplateCreate + FlowBuilder) ayri ayri TFM fetch -> 2x GET.",
+      "suggestion": "useFieldMapping module-cache: ilk picker session'da cache populate eder, ikinci picker instant render. useDynamicFields ile ayni pattern.",
+      "aha_moment": "Tenant template yazip flow builder'a gectiginde dropdown <50ms acilir; 'yavas mi?' kaygisi yok."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Pilot prep: Q manuel curl PUT ile mapping kurdu (P3 UI olmadan). Flow builder'i acti ama cf1 olarak gorunuyor, semantic aciklaniyor ek doc kayit.",
+      "suggestion": "UI semantic seceneklerini dogrudan gosteriyor. Q bir 5-dakika screencast'te Dent admin'e 'mapping kur + template yaz' ogretir; teknik semantic jargon gizlenir.",
+      "aha_moment": "Dent pilot launch'ta Adavista admin kendi Template'ini kendi yazar, Q desteksiz; onboarding 3 gun -> 30 dakika."
+    },
+    {
+      "category": "UX",
+      "user_pain": "Preview demo INSE-internal test icin kritik. Semantic token'lar preview'de literal kalirsa tenant 'preview calismiyor' alarmı verir.",
+      "suggestion": "renderDynamicPreview opt-in mapping parametresi: semantic token source cf demo deger ile substitute. Preview tile ile semantic tam-donuklum hissi verir.",
+      "aha_moment": "Tenant preview tile'da '{{roadshow_city}}' yazdiklari mesaji 'Istanbul' olarak gorur; semantic contract + preview fidelity birlesik."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-22T00:52:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-22T00:55:00Z",
+    "blocking_issues": [],
+    "iteration": 1,
+    "escalation_required": false,
+    "iter_arc_note": "iter 0 FAIL 1 blocker (CQ12 'field_mapping_load_failed'/'field_mapping_refresh_failed' uncoded Errors) -> iter 1 PASS 12/12 CQ + 3/3 CoVe: wrapError helper preserves ApiClientError.errorCode + fallback INV-OB-037 + Object.assign .code/.requestId telemetry."
+  }
+}

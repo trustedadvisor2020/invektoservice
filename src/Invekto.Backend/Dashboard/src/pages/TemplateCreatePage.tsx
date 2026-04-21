@@ -430,8 +430,9 @@ export function TemplateCreatePage() {
                 </p>
                 <PlaceholderPicker
                   onInsert={(token) => insertTokenIntoContentJson(token)}
-                  triggerLabel="INMA alani"
+                  triggerLabel="Dinamik alan"
                   position="above"
+                  tfmAware
                 />
               </div>
             </div>

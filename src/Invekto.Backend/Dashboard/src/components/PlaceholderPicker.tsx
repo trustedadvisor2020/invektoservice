@@ -1,13 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
 import { RefreshCw, Variable, Loader2, AlertTriangle } from 'lucide-react';
 import { useDynamicFields } from '../hooks/useDynamicFields';
+import { useFieldMapping } from '../hooks/useFieldMapping';
 import { Button } from './ui/Button';
 
 // FEAT-DMP: dropdown that lists INMA placeholders (name/email/note/pushname/datalistname
 // + active cf1..cf10) and calls onInsert with the raw token wrapper '{{cf1}}'.
 // FieldName (tenant label) is shown as the primary text; FieldKey as subdued monospace.
-// TFM semantic names are out of scope for DMP — a future FEAT-TFM pass can swap the
-// display layer to show 'roadshow_city' while still emitting the INMA-resolved '{{cf1}}'.
+//
+// FEAT-TFM-FLOW (P4): when `tfmAware` is true, a second group "Semantic Alanlar" is
+// rendered ABOVE the INMA Ham Alanlar group, sourced from useFieldMapping. Clicking a
+// semantic entry emits `{{<semantic>}}` literal — the backend DMP pipeline resolves it
+// to the configured cf via ITenantFieldMappingResolver at render time. Raw INMA entries
+// still emit `{{cf1}}` as before (FEAT-DMP contract preserved for tfmAware=false default).
 
 export interface PlaceholderPickerProps {
   onInsert: (token: string) => void;
@@ -17,6 +22,13 @@ export interface PlaceholderPickerProps {
   inline?: boolean;
   /** Position above/below; defaults to below. */
   position?: 'above' | 'below';
+  /**
+   * FEAT-TFM-FLOW (P4): opt-in for 2-group rendering (Semantic Alanlar + INMA Ham Alanlar).
+   * Default false preserves FEAT-DMP single-list behaviour for any consumer that has not
+   * opted in. If the tenant has no mapping or useFieldMapping fails, the Semantic group
+   * is silently hidden (tenant without TFM still sees the raw INMA list unchanged).
+   */
+  tfmAware?: boolean;
 }
 
 export function PlaceholderPicker({
@@ -24,9 +36,15 @@ export function PlaceholderPicker({
   triggerLabel = 'Dinamik alan ekle',
   inline = false,
   position = 'below',
+  tfmAware = false,
 }: PlaceholderPickerProps) {
   const [open, setOpen] = useState(false);
   const { fields, isLoading, error, errorKind, refresh } = useDynamicFields();
+  // useFieldMapping is always called (preserves React hook call order across renders)
+  // but the `enabled` flag gates the actual fetch so FEAT-DMP-only mounts (tfmAware=false)
+  // stay zero-cost on TFM. When enabled the hook mirrors useDynamicFields: module-cache +
+  // single-flight GET coalesced across picker instances in the same session.
+  const tfmState = useFieldMapping(tfmAware);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   // CQ10/CQ2 fix: distinguish "no WapCRM secret" / "INMA unreachable" / "cache drop failed
@@ -54,11 +72,24 @@ export function PlaceholderPicker({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [open]);
 
-  const handleSelect = (fieldKey: string) => {
+  const handleSelectInma = (fieldKey: string) => {
     const token = `{{${fieldKey.toLowerCase()}}}`;
     onInsert(token);
     setOpen(false);
   };
+
+  const handleSelectSemantic = (semanticName: string) => {
+    // Emit semantic literal — backend TFM resolver maps to the configured cf slot at
+    // render time, so template/flow stays stable across tenant mapping changes.
+    const token = `{{${semanticName.toLowerCase()}}}`;
+    onInsert(token);
+    setOpen(false);
+  };
+
+  // AC5: TFM Semantic group is hidden on fetch fail OR empty mapping. FEAT-DMP UX
+  // unchanged for tenants without TFM configured yet — no soft-warn banner inside
+  // the dropdown (awareness lives on /settings/field-mapping).
+  const showSemanticGroup = tfmAware && !tfmState.error && tfmState.entries.length > 0;
 
   return (
     <div ref={containerRef} className="relative inline-block">
@@ -82,7 +113,9 @@ export function PlaceholderPicker({
           } w-72 rounded-md border border-gray-200 bg-white shadow-lg`}
         >
           <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100">
-            <span className="text-xs font-medium text-gray-600">INMA Dinamik Alanlar</span>
+            <span className="text-xs font-medium text-gray-600">
+              {tfmAware ? 'Alanlar' : 'INMA Dinamik Alanlar'}
+            </span>
             <button
               type="button"
               onClick={refresh}
@@ -94,6 +127,35 @@ export function PlaceholderPicker({
           </div>
 
           <div className="max-h-64 overflow-y-auto py-1">
+            {/* Semantic Alanlar group — tfmAware + mapping has entries */}
+            {showSemanticGroup && (
+              <>
+                <div className="px-3 py-1 bg-gray-50 border-b border-gray-100">
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                    Semantic Alanlar
+                  </span>
+                </div>
+                {tfmState.entries.map((entry) => (
+                  <button
+                    key={`semantic-${entry.semanticName}`}
+                    type="button"
+                    onClick={() => handleSelectSemantic(entry.semanticName)}
+                    className="w-full text-left px-3 py-1.5 hover:bg-gray-50 flex items-center justify-between gap-2"
+                    title={`Imlec konumuna {{${entry.semanticName}}} eklenir (INMA kaynak: ${entry.source})`}
+                  >
+                    <span className="text-sm text-gray-900 truncate">{entry.semanticName}</span>
+                    <span className="text-xs font-mono text-gray-500">{`{{${entry.semanticName}}}`}</span>
+                  </button>
+                ))}
+                <div className="px-3 py-1 bg-gray-50 border-y border-gray-100">
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                    INMA Ham Alanlar
+                  </span>
+                </div>
+              </>
+            )}
+
+            {/* INMA Ham Alanlar group — always rendered (or single-list when tfmAware=false). */}
             {isLoading && (
               <div className="flex items-center gap-2 px-3 py-2 text-sm text-gray-500">
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -125,7 +187,7 @@ export function PlaceholderPicker({
               <button
                 key={f.FieldKey}
                 type="button"
-                onClick={() => handleSelect(f.FieldKey)}
+                onClick={() => handleSelectInma(f.FieldKey)}
                 className="w-full text-left px-3 py-1.5 hover:bg-gray-50 flex items-center justify-between gap-2"
                 title={`Imleç konumuna {{${f.FieldKey}}} eklenir`}
               >
@@ -147,8 +209,14 @@ export function PlaceholderPicker({
  * looks like without hitting INMA or exposing a real customer record.
  *
  * Interview Q3 decision (2026-04-20): hardcoded demo values, no INMA round-trip.
+ *
+ * FEAT-TFM-FLOW (P4): optional `mapping` parameter (semantic -> source cf). When
+ * provided, semantic tokens are first resolved to their configured source slot
+ * and then substituted with that slot's demo default. Unknown/unmapped semantic
+ * tokens fall through to `match` (literal) so the preview never silently
+ * replaces unconfigured placeholders with fake data.
  */
-export function renderDynamicPreview(text: string): string {
+export function renderDynamicPreview(text: string, mapping?: Record<string, string>): string {
   if (!text) return '';
   const defaults: Record<string, string> = {
     name: 'Ornek Musteri',
@@ -169,6 +237,13 @@ export function renderDynamicPreview(text: string): string {
   };
   return text.replace(/\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}/g, (match, key: string) => {
     const lower = key.toLowerCase();
-    return defaults[lower] ?? match;
+    if (defaults[lower] !== undefined) return defaults[lower];
+    if (mapping) {
+      const resolved = mapping[lower] ?? mapping[key];
+      if (resolved && defaults[resolved.toLowerCase()] !== undefined) {
+        return defaults[resolved.toLowerCase()];
+      }
+    }
+    return match;
   });
 }
