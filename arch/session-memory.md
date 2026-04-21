@@ -7,7 +7,25 @@
 
 ## Last Update
 
-- **Date:** 2026-04-22 13:00 UTC (P4 FEAT-TFM-FLOW Picker DONE+DEPLOYED+SMOKED — pre-/clear handoff; FAZ 2 FEAT-TFM suite (P3+P4) tamamlandi, Dashboard pilot hazir)
+- **Date:** 2026-04-21 18:50 UTC (P5 FEAT-EFS Drip Sequence DONE — deploy bekliyor, next session; Q seçenek A — /wrap şimdi, deploy ayrı session)
+- **Pre-/clear Session Summary (P5):** Bu session'da yapilanlar:
+  - P5 FEAT-EFS Drip Sequence implementasyon — Marketing (:7112) yeni Hangfire infra + FollowupOrchestrator + FollowupSequenceCache (single-flight CT-safe) + FollowupAbGroupAssigner (SHA256 deterministic) + FollowupStageJob + 4 endpoint (GET/PUT sequences, GET runs, POST internal trigger) + Automation MarketingFollowupClient + NoReplyCheckJob + Backend MarketingFollowupProxyClient + 3 SPA proxy endpoint + jwtRequiredPrefixes + Dashboard SPA FollowupSequenceSettingsPage + useFollowupSequence hook + FollowupStageRow (Fragment + sibling tr)
+  - Migration 029 — event_followup_sequences + event_followup_runs (FKs to tenant_registry + leads + sequences CASCADE) + tenant_settings.efs_test_mode + efs_no_reply_threshold_days + leads.followup_state JSONB + followup_ab_group VARCHAR + partial unique index uq_efs_runs_lead_stage_scheduled (concurrent-trigger race guard) + grants
+  - arch/db/marketing.sql canonical source-of-truth mirror (schema drift guard, Codex iter 2 CQ11 fix)
+  - 9 INV-MK-050..058 error codes (validation/logical-absence/storage-unavailable/upstream-unavailable/reserved ayrı sınıflar)
+  - 5 Shared.Contracts.Followup DTO/enum (FollowupTriggerReason, FollowupRunStatus + wire-values, FollowupStageConfig, FollowupSequenceConfig, FollowupTriggerRequest + Response)
+  - Codex iter arc 0 (10 CQ FAIL + 3 CoVe FAIL) → 1 (6+3) → 2 (6+1) → 3 (1+0) → **iter 4 PASS 12/12 CQ + 7/7 CoVe, 0 blocker**. Total 5 iter. Tokens ~70K per iter.
+  - Kritik bug fix iter 1: SetLeadAbGroupAsync JSONB overwrite → merge (`||`) — opted_out_at silinme bug'ı kapandı (CQ9 + CoVe Q1+Q3)
+  - Typed catches iter 1-3: 3 yerdeki `catch(Exception)` NpgsqlException/JsonException/InvalidOperationException/HttpRequestException/BackgroundJobClientException'a (CQ1+CQ5)
+  - chatops_messages speculative schema dependency iter 2'de TAMAMEN kaldırıldı (NoReplyCheckJob simplified, idempotency Marketing collision guard ile)
+  - Error code taksonomi iter 1-3: INV-MK-056/057/058 eklendi, callers routed (CQ12)
+  - Plan JSON allowed_files self-inclusion iter 4 (CQ3 self-referential scope audit — plan kendi yolu + 10 diff artifact path)
+  - Lessons-learned +5 yeni entry (iter arc pattern, MCP diff_file_path update, allowed_files self-inclusion, JSONB merge pattern, error code taxonomy)
+  - **Progress 4/9 → 5/9 (56%)** — FAZ 3 P5 COMPLETE. P6 FEAT-MCC sıradaki.
+- **Next Task (deploy session):** P5 deploy + smoke. Steps: (1) `/deploy` ile migration 029 + Marketing+Automation+Backend publish — Marketing appsettings.Production.json ilk kez `InternalServices:SharedSecret` key'ine ihtiyaç duyacak (peer service config mirror pattern, lessons 2026-04-20 FEAT-VCP Chunk B). Hangfire connection fallback için `ConnectionStrings:PostgreSQL` zaten mevcut (HangfireSetup.ResolveConnectionString). (2) 10/10 HEALTHY verify. (3) 3-tier auth probe smoke — Marketing /api/v1/followup/sequences + Backend /api/v1/tenant-settings/followup-sequence NoAuth/BadJWT/ValidJWT. (4) jwtRequiredPrefixes audit `/api/v1/tenant/followup/` prod Program.cs'de. (5) Binary freshness + SPA chunk FollowupSequenceSettingsPage-BBB3hJ7E.js index.html'de. (6) DB SELECT verify: tenant_settings.efs_test_mode + efs_no_reply_threshold_days + 2 yeni table + partial unique index + FKs. Sonra session-memory + tracking'i DONE+DEPLOYED+SMOKED'a güncelle.
+- **Status (P5 kodu commit'e hazır — iter 4 PASS):** Branch `work/feat-efs-drip-sequence`. Plan JSON `arch/plans/20260425-feat-efs-drip-sequence.json` verdict=PASS iter 4. Build PASS full sln (14 warning, pre-existing), TSC PASS, Vite PASS (FollowupSequenceSettingsPage chunk 11.13 KB / 3.71 KB gzip). 4611 satır / 244KB diff 32 source dosya + 35 built asset. Commit atılınca `/clear` + next session'da deploy.
+
+- **Previous status (2026-04-22 13:00 UTC):** P4 FEAT-TFM-FLOW Picker DONE+DEPLOYED+SMOKED (commit `783a7ab` + wrap `761b5f7`). FAZ 2 FEAT-TFM suite COMPLETE.
 - **Pre-/clear Session Summary:** Bu session'da yapilanlar:
   - P1 FEAT-DMP Cache Poison Fix (commit `ca2d2d5` + wrap `3a21d2c`) — Codex iter 0 PASS 12/12 CQ + 4/4 CoVe, 7/7 unit test
   - Pilot Launch Mode kurulumu (tracking/pilot-launch-roadmap.md v1 → v2.1 Codex planning review iter 1 PASS, commits `3e2e622` + `a3ca39b`) — 18 paket → 9 pilot-critical + 6 BACKLOG

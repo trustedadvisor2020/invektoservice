@@ -79,7 +79,7 @@ Bu dosya **pilot launch boyunca execution queue'nun tek kaynagidir**. Session bo
 
 | # | Paket | Slug | Status | Migration | Error Codes | Deploy | Exit Criteria |
 |---|-------|------|--------|-----------|-------------|--------|---------------|
-| 5 | FEAT-EFS Drip Sequence | `20260425-feat-efs-drip-sequence` | PENDING | **029**-efs-followup-sequence.sql (`event_followup_sequences`, `event_followup_runs`, `leads.followup_state`, `leads.followup_ab_group`) | **INV-MK-050..055** (Marketing-local; grep-verified collision-free, errors.md'de hic INV-MK kullanimi yok) | Marketing (:7112) + Automation + **Dashboard SPA (`/settings/followup-sequence` editor)** | Hangfire scheduled + A/B + 4 trigger + per-stage metric + pilot yapay delay shortcut param + **UI: stage list + delay days + template picker + A/B slider** |
+| 5 | FEAT-EFS Drip Sequence | `20260425-feat-efs-drip-sequence` | **DONE (code, commit bekliyor)** 2026-04-21 18:50 UTC — Codex iter 4 PASS (arc 0→4, CoVe 7/7 + CQ 12/12, 0 blocker, 5 iter; precedent FEAT-DMP 6 iter). Deploy ayrı session. | **029**-efs-followup-sequence.sql (event_followup_sequences + event_followup_runs + FKs tenant_registry/leads/sequences + tenant_settings.efs_test_mode + efs_no_reply_threshold_days + leads.followup_state JSONB + followup_ab_group + partial unique race guard) + arch/db/marketing.sql canonical mirror (Codex iter 2 CQ11) | **INV-MK-050..058** (9 kod: validation/logical-absence/opt-out/cap/disabled/collision/storage-unavailable-056/upstream-unavailable-057/reserved-058) — iter 0 tek sınıf yanlıştı, iter 1-3 failure-class taksonomisi ayrıştı | Marketing (:7112) + Automation + Backend SPA + Dashboard SPA `/settings/followup-sequence` editor | Hangfire scheduled + SHA256 deterministic A/B + 4 trigger contract (no-reply-welcome auto-emit scheduling deferred follow-up paket; 3 reason ops-manual) + execution-time opt-out dual-signal (inma_optout_outbox.event_type OR followup_state.opted_out_at JSON key) + concurrent-trigger race closed (partial unique index + PostgresException 23505 → INV-MK-055) + test mode (efs_test_mode) → delay_days as minutes + Dashboard TEST MODE banner + stage cap enforcement (max 5 / max 30 unit) + single-flight CT-safe cache + SPA wrapError helper + Fragment+sibling tr row error + existing-data-guard disabled UI ✅ |
 | 6 | FEAT-MCC Multi-City Campaign | `20260425-feat-mcc-multi-city` | PENDING | **030**-tenant-campaign-config.sql (`tenant_settings.campaign_config JSONB` additive) | **INV-BE-118..120** (INV-BE-090..091 Translation COLLISION — grep-verified `errors.md:154-161`; rebase zorunlu) | Backend + Automation + **Dashboard SPA (`/settings/campaigns` editor)** | JSONB config + `{{campaign.*}}` substitution + outbound window guard + pilot Dublin/Cork config set + **UI: campaign list + city/date editor** |
 
 ### FAZ 4 — Cleanup (pilot once temiz)
@@ -223,11 +223,11 @@ Bu dosya **pilot launch boyunca execution queue'nun tek kaynagidir**. Session bo
 | Metric | Value |
 |--------|-------|
 | Total Pilot-Critical Packages | 9 |
-| DONE | 4 (P1, P2, P3, P4) |
+| DONE | 5 (P1, P2, P3, P4, P5 — P5 deploy bekliyor) |
 | IN_PROGRESS | 0 |
-| PENDING | 5 |
+| PENDING | 4 |
 | SKIPPED | 0 |
-| Progress | 44% (4/9) |
+| Progress | 56% (5/9) |
 | Backlog Packages | 6 (B0-B5) |
 | Blocked External Deps | 6 |
 

@@ -14,6 +14,12 @@ import type {
   TenantFieldMappingPutRequest,
   TenantFieldMappingPutResponse,
 } from '../types/tenantFieldMapping';
+import type {
+  FollowupSequenceConfig,
+  FollowupSequenceListResponse,
+  FollowupSequencePutResponse,
+  FollowupRunsResponse,
+} from '../types/followupSequence';
 
 // API types
 export interface ServiceHealth {
@@ -2109,6 +2115,26 @@ class OpsApiClient {
       body: JSON.stringify(req),
     });
   }
+
+  // FEAT-EFS Drip Sequence — proxy to Marketing /api/v1/followup/* via Backend.
+  // Envelope: { data: <T> } on success; ApiClientError on 4xx/5xx with bracket-format
+  // INV-MK-* code surfaced through err.errorCode (matches wrapError convention used
+  // by useFieldMapping / useDynamicFields).
+  async listFollowupSequences(): Promise<FollowupSequenceListResponse> {
+    return this.request<FollowupSequenceListResponse>('/api/v1/tenant-settings/followup-sequence');
+  }
+
+  async upsertFollowupSequence(body: FollowupSequenceConfig): Promise<FollowupSequencePutResponse> {
+    return this.request<FollowupSequencePutResponse>('/api/v1/tenant-settings/followup-sequence', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  }
+
+  async listFollowupRuns(): Promise<FollowupRunsResponse> {
+    return this.request<FollowupRunsResponse>('/api/v1/tenant/followup/runs');
+  }
 }
 
 // FEAT-TFM-UI type re-exports (pages + components consume from './api' to match the
@@ -2119,6 +2145,18 @@ export type {
   TenantFieldMappingPutRequest,
   TenantFieldMappingPutResponse,
 } from '../types/tenantFieldMapping';
+
+// FEAT-EFS Drip Sequence type re-exports.
+export type {
+  FollowupStageConfig,
+  FollowupSequenceConfig,
+  FollowupSequenceListResponse,
+  FollowupSequencePutResponse,
+  FollowupRunSummary,
+  FollowupRunsResponse,
+  FollowupStageDraft,
+  FollowupSequenceDraft,
+} from '../types/followupSequence';
 
 // FEAT-DMP: INMA placeholder descriptor — matches the bridge proxy shape.
 export interface InmaDynamicFieldDto {

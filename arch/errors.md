@@ -1148,6 +1148,35 @@ errors:
     description: Follow-up due query failed
     user_message: Takip listesi alinamadi.
 
+  # ── MK — Marketing FEAT-EFS Drip Sequence (INV-MK-050..055; gap from 024 intentional, reserved 025..049 for future PKT-12/13 follow-up rescue extensions) ──
+  - code: INV-MK-050
+    description: Followup sequence config invalid (slug/stages/template_slug shape)
+    user_message: "Followup sequence yapilandirmasi gecersiz. Stage listesi, delay_days degerleri ve template_slug alanlarini kontrol edip tekrar kaydedin."
+  - code: INV-MK-051
+    description: Scheduled followup stage missing during execution (sequence edited mid-flight)
+    user_message: "Belirtilen sequence stage bulunamadi. Sequence duzenlemesi sonrasi eski scheduled job calisiyor olabilir; etki yok, audit log alindi."
+  - code: INV-MK-052
+    description: Followup stage skipped because lead opted out (execution-time guard)
+    user_message: "Takip mesaji gonderilmedi: musteri opt-out durumunda. Audit log olusturuldu."
+  - code: INV-MK-053
+    description: Followup sequence cap exceeded (max 5 stages OR cumulative window > 30 days/minutes)
+    user_message: "Followup sequence cap asimi: max 5 stage / max 30 gun toplam pencere. Stage sayisini veya delay_days degerlerini dusurun."
+  - code: INV-MK-054
+    description: Followup sequence disabled (enabled=false at trigger time)
+    user_message: "Followup sequence devre disi. Sequence ayarlarindan enable edip tekrar deneyin."
+  - code: INV-MK-055
+    description: Lead already has an active scheduled followup sequence (idempotency collision)
+    user_message: "Lead icin zaten aktif scheduled sequence var. Mevcut sequence tamamlandiginda veya iptal edildiginde tekrar deneyin."
+  - code: INV-MK-056
+    description: Transient DB failure reading/writing followup tables (Npgsql)
+    user_message: "Followup servisi gecici olarak kullanilamiyor (veritabani). Birkac saniye sonra tekrar deneyin."
+  - code: INV-MK-057
+    description: Upstream Marketing service HTTP transient failure (Backend/Automation to Marketing hop)
+    user_message: "Followup servisine baglanilamiyor. Birkac saniye sonra tekrar deneyin."
+  - code: INV-MK-058
+    description: "Reserved: deferred follow-up paket inbound-reply pre-check failure (NoReplyCheckJob scheduling hook will adopt this code when auto-emit paket wires the concrete inbound source; unreferenced in MVP runtime)."
+    user_message: "Takip tetiklenmesi dogrulanamadi (inbound sorgusu basarisiz). Audit log alindi; operator manuel tetikleyebilir."
+
   # ── KN — Knowledge (GR-2.1) ──
   - code: INV-KN-001
     description: Import path not found

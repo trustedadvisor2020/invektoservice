@@ -1,9 +1,13 @@
+using Hangfire;
 using Invekto.Marketing.Data;
+using Invekto.Marketing.Endpoints;
 using Invekto.Marketing.Services;
+using Invekto.Marketing.Services.Jobs;
 using Invekto.Shared.Auth;
 using Invekto.Shared.Constants;
 using Invekto.Shared.Data;
 using Invekto.Shared.DTOs;
+using Invekto.Shared.Hosting;
 using Invekto.Shared.Logging;
 using Invekto.Shared.Middleware;
 using Invekto.Shared.Services;
@@ -87,6 +91,33 @@ builder.Services.AddHttpClient<TourismResponseGenerator>()
         sp.GetRequiredService<JsonLinesLogger>()));
 
 // ============================================
+// FEAT-EFS Drip Sequence — DI + Hangfire
+// ============================================
+//
+// Marketing's Hangfire setup mirrors the queue-per-service topology established by G7
+// (see Invekto.Shared.Hosting.HangfireSetup). Queue name 'marketing-followup' isolates
+// EFS scheduled jobs from any future Marketing recurring work; multiple Marketing
+// instances coexist via Hangfire advisory-lock leader election.
+//
+// Connection string falls back to ConnectionStrings:PostgreSQL when ConnectionStrings:Hangfire
+// is absent, matching the Backend/Appointments pattern.
+
+builder.Services.AddSingleton<FollowupSequenceRepository>();
+builder.Services.AddSingleton<FollowupSequenceCache>();
+builder.Services.AddSingleton<FollowupOrchestrator>();
+builder.Services.AddTransient<FollowupStageJob>();
+
+var hangfireConn = HangfireSetup.ResolveConnectionString(builder.Configuration);
+if (string.IsNullOrWhiteSpace(hangfireConn))
+    throw new InvalidOperationException(
+        "FATAL: Marketing service requires ConnectionStrings:Hangfire (or ConnectionStrings:PostgreSQL fallback) for FEAT-EFS scheduled jobs.");
+
+builder.Services.AddInvektoHangfire(
+    queueName: "marketing-followup",
+    connectionString: hangfireConn,
+    enableScheduler: false /* Backend remains the recurring-jobs leader; Marketing is a worker server only */);
+
+// ============================================
 // APP
 // ============================================
 
@@ -101,6 +132,15 @@ var planCache = new TenantPlanCache(pgConnStr, logger);
 app.UseFeatureGuard(planCache, logger,
     ("/api/v1/", "Marketing"));
 app.UseAuthorization();
+
+// FEAT-EFS: ensure Hangfire JobStorage.Current is initialized before the orchestrator
+// invokes BackgroundJob.Schedule via DI'd IBackgroundJobClient (the static API + the DI
+// API both rely on the same JobStorage; explicit init avoids "JobStorage instance has
+// not been initialized yet" on first request after cold start).
+app.EnsureJobStorageInitialized();
+
+// FEAT-EFS endpoints (3 tenant-scoped + 1 internal trigger).
+app.MapFollowupEndpoints();
 
 _ = app.Services.GetRequiredService<LogCleanupService>();
 

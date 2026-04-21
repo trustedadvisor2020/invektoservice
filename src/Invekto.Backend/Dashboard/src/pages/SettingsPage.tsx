@@ -485,6 +485,24 @@ function GeneralTab({ session, sector, sectorLoading, sectorSaving, sectorError,
             </Link>
           </CardContent>
         </Card>
+
+        {/* FEAT-EFS Drip Sequence: entry card to standalone /settings/followup-sequence page. */}
+        <Card>
+          <CardContent className="py-5">
+            <Link
+              to="/settings/followup-sequence"
+              className="flex items-center justify-between gap-3 p-2 -m-2 rounded-lg hover:bg-navy-50 transition-colors"
+            >
+              <div>
+                <div className="text-sm font-medium text-navy-900">Follow-Up Sequence Editor</div>
+                <div className="text-xs text-navy-400 mt-0.5">
+                  N-asamali drip nurture: stage liste + delay + template_slug + A/B split (deterministik kontrol grubu).
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-navy-400 flex-shrink-0" />
+            </Link>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

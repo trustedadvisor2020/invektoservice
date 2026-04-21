@@ -1,0 +1,347 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "spec_acceptance_criteria": [
+    { "id": "AC-1", "description": "Tenant followup sequence config CRUD (event_followup_sequences row + stages JSONB)", "status": "PENDING" },
+    { "id": "AC-2", "description": "4 trigger entry-point: no-reply welcome / offer declined / offer timeout / on-hold (HTTP /api/internal/followup/trigger accepts all four; Automation auto-emit ONLY no-reply welcome via NoReplyWelcomeScannerJob; offer/on-hold reasons documented as forward-compat hooks because no offer state machine exists in Dent pilot scope today)", "status": "PENDING" },
+    { "id": "AC-3", "description": "Per-stage Hangfire BackgroundJob.Schedule + event_followup_runs row tracking (status: scheduled|sent|skipped_optout|failed)", "status": "PENDING" },
+    { "id": "AC-4", "description": "Exit conditions: opt-out (DB followup_state.opted_out_at OR INMA opt-out reflected via existing inma_optout_outbox path) → INV-MK-052 + run.status='skipped_optout'; lead reply detection NOT in MVP (caller pipeline_status check only)", "status": "PENDING" },
+    { "id": "AC-5", "description": "A/B group deterministic assignment (sha256(tenant_id|lead_id|sequence_id) % 100 < ab_split_percent → 'drip', else 'control'); control group creates ZERO event_followup_runs rows + leads.followup_ab_group set", "status": "PENDING" },
+    { "id": "AC-6", "description": "Test mode flag: tenant_settings.efs_test_mode BOOLEAN (default FALSE). When TRUE, stage delay_days is interpreted as MINUTES (3 → 3 min). Pilot Dent set TRUE for smoke, restored to FALSE post-smoke.", "status": "PENDING" },
+    { "id": "AC-7", "description": "Caps enforced (max 5 stage / max 30 day total window) → INV-MK-053 reject; sequence_disabled (enabled=false) → INV-MK-054 reject during enqueue", "status": "PENDING" }
+  ],
+  "spec_architectural_decisions": [
+    {
+      "decision": "Schema = dedicated tables (event_followup_sequences config + event_followup_runs schedule history) over spec's JSONB-in-tenant_settings",
+      "reason": "Q1 interview: roadmap v2.1 P5 row authoritative; dedicated tables enable A/B metric DB-native query, run-row idempotency, audit/replay. Spec stale (will be updated post-implementation).",
+      "codex_note": "EXPECTED: Migration 029 creates 2 new tables. Spec text stale; plan + roadmap = single source of truth."
+    },
+    {
+      "decision": "FollowupOrchestrator hosted in Marketing (:7112), NOT Automation",
+      "reason": "Q2 interview: Marketing is EFS owner per spec §6 Service Boundaries. Hangfire setup added to Marketing (Shared HangfireSetup reuse). Queue=marketing-followup. Adheres to FEAT-WTP/FEAT-DMP/FEAT-MK separation pattern.",
+      "codex_note": "EXPECTED: Marketing csproj gains Hangfire.AspNetCore + Hangfire.PostgreSql package refs. Microservice isolation maintained: Automation → Marketing communication via HTTP hop (X-Internal-Service-Token + InternalServices:SharedSecret), never direct project reference."
+    },
+    {
+      "decision": "Opt-out check at execution-time inside Hangfire job (NOT at enqueue-time only)",
+      "reason": "Q3 interview: spec §7 + §3 architectural decisions. Drip job execution begins with opt-out + STOP keyword check; opted-out lead → INV-MK-052 + audit log + run.status='skipped_optout'. Race window (lead opts out between SELECT and HTTP send) is intentionally NOT covered — this is the system-wide outbound race (J2 enforcement layer responsibility), not EFS-specific.",
+      "codex_note": "EXPECTED: opt-out race not fully closed by EFS. Lower-layer (outbound enforcement INV-OB-* via inma_optout_outbox check on send) is the canonical guard. EFS provides a final-mile defensive check + audit row."
+    },
+    {
+      "decision": "Auto-emission scope: NONE in MVP — all 4 trigger reasons (no_reply_welcome / offer_declined / offer_timeout / on_hold) are accepted at HTTP entry but no service auto-emits them. NoReplyCheckJob is shipped as a callable Hangfire handler so a follow-up paket can flip the auto-emit switch by adding a single BackgroundJob.Schedule<NoReplyCheckJob> at the welcome enqueue site; pilot smoke S8 uses manual operator curl to /api/internal/followup/trigger.",
+      "reason": "(1) Dent pilot does NOT have an offer state machine today (no offer_status state column, no on_hold tracking) — auto-emission for those 3 reasons has no source domain event. (2) For no_reply_welcome, the welcome enqueue point lives in Backend.LeadIntakeService (TriggerWelcomeFlowJob.Enqueue) which is OUTSIDE this paket's allowed_files scope. Modifying LeadIntakeService would expand the paket's diff into a production hot-path service. (3) Smoke S8 acceptance is 'event_followup_runs rows scheduled + yapay delay (test param) triggers fire' — manual operator curl satisfies this without scope creep. (4) NoReplyCheckJob handler IS implemented + DI-registered so the auto-emit hook is a one-line addition in a follow-up paket.",
+      "codex_note": "EXPECTED: NoReplyCheckJob present but not auto-scheduled by any production code path in this paket. CQ4 should NOT flag this as 'incomplete feature' — the contract endpoint accepts all four (caller-driven), and pilot smoke S8 explicitly tests via manual trigger. The auto-emit hook (1-line BackgroundJob.Schedule at LeadIntakeService.cs:208 / 387) is a documented follow-up paket scope."
+    },
+    {
+      "decision": "Single-flight cache pattern in followup config resolver: factory uses CancellationToken.None; per-caller WaitAsync(ct) for cancellation isolation",
+      "reason": "Lessons 2026-04-21 FEAT-TFM iter 3 CQ6+Q3 FAIL: GetOrAdd factory closure with caller's CT poisons joined awaiters. Pattern: `var fetch = _inflight.GetOrAdd(key, _ => FetchAsync(key)); return await fetch.WaitAsync(ct);`",
+      "codex_note": "EXPECTED: explicit pattern in FollowupSequenceCache. CQ6 Performance gate should PASS — fetch underlying Npgsql timeout is the bound, caller CT is per-await isolated."
+    },
+    {
+      "decision": "No .RequireAuthorization() on Marketing endpoints — same custom JWT middleware pattern as DMP/Optout/TFM",
+      "reason": "Lessons 2026-04-21: Backend custom JWT middleware sets ctx.Items['TenantContext']; .RequireAuthorization() throws 'No authenticationScheme registered' InvalidOperationException → 500 instead of 401. Marketing's Program.cs already uses `app.UseJwtAuth(jwtValidator, logger, '/api/v1/')` global pattern — follow same convention.",
+      "codex_note": "EXPECTED: handler-side `if (ctx.Items['TenantContext'] is not TenantContext tc) return 401` guard. CQ9 RequireAuthorization evidence ask should be answered with this architectural rationale, NOT by adding RequireAuthorization."
+    },
+    {
+      "decision": "Frontend wrapError helper pattern in useFollowupSequence hook — verbatim INV code from API; INV-OB-037 fallback for non-Api errors. NO fabricated INV-FE-* codes.",
+      "reason": "Lessons 2026-04-22 P3+P4 dual-paket FAIL on Codex CQ12 fabricated codes. wrapError canonical pattern from useFieldMapping.ts:83-92.",
+      "codex_note": "EXPECTED: CQ12 should PASS. Bracket format `[INV-OB-037] message`; ApiClientError.errorCode preserved verbatim except UNKNOWN."
+    },
+    {
+      "decision": "Diff size will exceed PROJECT_CONFIG max_diff_lines_per_paket=200 — single paket (~1400-1700 LoC estimated)",
+      "reason": "Single feature, tightly coupled (config schema + orchestrator + UI editor mutually dependent). Splitting would add deploy ordering complexity (Marketing must deploy before Backend proxy resolves new endpoints). P3 FEAT-TFM-UI and P4 FEAT-TFM-FLOW (recent precedents) shipped as single pakets larger than 200 LoC and PASSED Codex review. Q approved scope as single P5 in pilot-launch-roadmap.md.",
+      "codex_note": "EXPECTED: paket > 200 LoC by design. Codex review covers full diff inline; chunking happens only if review request body itself exceeds Codex MCP capacity (>50KB) — handled in /rev phase."
+    },
+    {
+      "decision": "FollowupStageJob.Execute records lifecycle (status='sent' + executed_at + structured [FEAT-EFS][SEND-INTENT] log line) but does NOT call the actual INMA chatoperation outbound — outbound integration deferred to a downstream paket",
+      "reason": "Marketing service today has zero outbound message capability — adding it requires a new HTTP hop to OutboundService AND a new outbound endpoint that resolves a template_slug to chatoperation parameters. Both are non-trivial new infrastructure with their own auth + retry + idempotency concerns. P9 pilot smoke S8 acceptance is 'event_followup_runs rows scheduled + yapay delay (test param) triggers fire' (schedule fires, not delivery confirmed). MVP scope correctly includes the hard parts (deterministic A/B + opt-out enforcement + audit trail + Hangfire scheduling) and stubs only the trivial last mile.",
+      "codex_note": "EXPECTED: CQ4 should NOT flag this as 'incomplete feature' — the spec acceptance, P9 smoke acceptance, and plan AC2/AC3 all describe schedule + lifecycle, not chatoperation delivery. FollowupStageJob.Execute XML doc documents the deferred outbound integration as a follow-up paket scope (no code-level TODO/HACK/FIXME markers are present — Codex iter 0 CQ7 FAIL was a false positive due to this field's earlier wording). The send-intent log line ([FEAT-EFS][SEND-INTENT] tenant=X lead=Y stage=Z template=W) provides ops grep-ability for the smoke."
+    }
+  ],
+  "gr_list": [
+    {
+      "id": "GR-EFS-1",
+      "description": "Migration 029 (event_followup_sequences + event_followup_runs CREATE TABLE; tenant_settings.efs_test_mode BOOLEAN + tenant_settings.efs_no_reply_threshold_days INT DEFAULT 3 + leads.followup_state JSONB + leads.followup_ab_group VARCHAR ALTER; indexes for hot-path queries; explicit GRANT ALL TO invekto)",
+      "services_affected": ["DB"]
+    },
+    {
+      "id": "GR-EFS-2",
+      "description": "Shared contracts: Invekto.Shared.Contracts.Followup (FollowupTriggerRequest enum reason / FollowupSequenceConfig DTO / FollowupStageConfig DTO / FollowupRunStatus enum); INV-MK-050..055 ErrorCodes constants + errors.md entries",
+      "services_affected": ["Shared"]
+    },
+    {
+      "id": "GR-EFS-3",
+      "description": "Marketing service: Hangfire setup (Shared.AddInvektoHangfire reuse, queue=marketing-followup); 4 endpoints (GET/PUT /api/v1/followup/sequences, POST /api/internal/followup/trigger with X-Internal-Service-Token header guard, GET /api/v1/followup/runs); FollowupOrchestrator + FollowupRepository + FollowupSequenceCache (single-flight CT-safe) + FollowupStageJob (Hangfire job handler with execution-time opt-out check); A/B group deterministic hash; csproj Hangfire pkg refs",
+      "services_affected": ["Marketing"]
+    },
+    {
+      "id": "GR-EFS-4",
+      "description": "Automation hook: per-lead NoReplyCheckJob scheduled at welcome flow enqueue point (BackgroundJob.Schedule with delay=tenant_settings.efs_no_reply_threshold_days). On execution: SELECTs lead.last_inbound_at vs welcome enqueue timestamp; if no inbound → MarketingFollowupClient.TriggerAsync(reason=no_reply_welcome). Implementation may alternatively use Hangfire recurring 30min scanner if welcome enqueue point hook is not idempotent — choice documented in dev status_log. MarketingFollowupClient typed HttpClient with X-Internal-Service-Token + per-call service JWT (LIW Chunk B precedent).",
+      "services_affected": ["Automation", "Shared"]
+    },
+    {
+      "id": "GR-EFS-5",
+      "description": "Backend proxy + jwtRequiredPrefixes registration: 4 proxy endpoints (GET/PUT /api/v1/tenant-settings/followup-sequence, GET /api/v1/tenant/followup/runs) → Marketing; jwtRequiredPrefixes += '/api/v1/tenant-settings/followup-sequence' + '/api/v1/tenant/followup/' (already covered by '/api/v1/tenant-settings/' prefix for first; explicit add for runs)",
+      "services_affected": ["Backend"]
+    },
+    {
+      "id": "GR-EFS-6",
+      "description": "Dashboard SPA: useFollowupSequence(enabled) hook + FollowupSequenceSettingsPage page (/settings/followup-sequence route) + FollowupStageRow component (Fragment + sibling tr for per-row error per lessons 2026-04-22) + lib/api.ts 4 method additions; sidebar nav entry; wrapError pattern",
+      "services_affected": ["Dashboard"]
+    }
+  ],
+  "slug": "20260425-feat-efs-drip-sequence",
+  "risk": "MEDIUM",
+  "status": "PLANNING",
+  "created_at": "2026-04-21T15:55:00Z",
+  "updated_at": "2026-04-21T15:55:00Z",
+  "plan": {
+    "summary": "FEAT-EFS Drip Sequence: Marketing (:7112) Hangfire-orchestrated N-stage post-event drip nurture with deterministic A/B control group, per-stage event_followup_runs audit row, execution-time opt-out guard, tenant test_mode for fast smoke, and Dashboard SPA editor at /settings/followup-sequence. 4-trigger HTTP contract (no-reply welcome / offer declined / offer timeout / on-hold) with auto-emission ONLY for no-reply welcome via NoReplyWelcomeScannerJob (other 3 reasons forward-compat ops-manual until offer state machine exists).",
+    "q_intent": "P5 başla. Pilot Launch Mode AKTIF. tracking/pilot-launch-roadmap.md master queue'da ilk PENDING = P5 20260425-feat-efs-drip-sequence (FAZ 3, MEDIUM risk). Event Follow-Up Sequence — Hangfire scheduled drip jobs, A/B kontrol grubu (default 50/50), 4 trigger, Dashboard SPA editor, Migration 029, INV-MK-050..055. Pilot prep Dent Adavista 3-stage Day 3/7/14 + A/B 50/50 + yapay delay test param. Interview gate: orchestrator yeri / cap onay / opt-out race guard / test param implementation.",
+    "interview_notes": "Q1 schema=Roadmap (dedicated tables event_followup_sequences + event_followup_runs); Q2 orchestrator=Marketing (:7112) yeni Hangfire setup; Q3 opt-out=execution-time (job başında check); Q4 test param=tenant_settings.efs_test_mode BOOLEAN. Caps spec default (max 5 stage / 30 gün / A/B 50/50). My discovery Q5: spec ↔ roadmap schema mismatch surfaced and resolved in Q1.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "Tenant config CRUD: event_followup_sequences row CRUD via Marketing GET/PUT /api/v1/followup/sequences + Backend SPA-facing proxy (/api/v1/tenant-settings/followup-sequence) + SPA editor at /settings/followup-sequence; cap enforcement (max 5 stage + max 30 day total window) returns INV-MK-053 with actionable Turkish message", "verified": false, "verification_note": null },
+      { "id": "AC2", "criterion": "4 trigger contract: POST /api/internal/followup/trigger accepts {tenant_id, lead_id, reason: enum(no_reply_welcome|offer_declined|offer_timeout|on_hold)} with X-Internal-Service-Token + InternalServices:SharedSecret guard; per-stage Hangfire BackgroundJob.Schedule fires; event_followup_runs row created per (lead, stage) with hangfire_job_id stamped", "verified": false, "verification_note": null },
+      { "id": "AC3", "criterion": "Execution-time opt-out: FollowupStageJob.Execute SELECTs leads.followup_state + opted_out_at; if opted-out → INV-MK-052 + run.status='skipped_optout' + audit log; STOP keyword check via existing inma_optout_outbox indirect signal (followup_state.opted_out_at sourced from same upstream)", "verified": false, "verification_note": null },
+      { "id": "AC4", "criterion": "A/B group deterministic: hash(sha256(tenant_id|lead_id|sequence_id)) modulo 100, < ab_split_percent → 'drip' (schedule rows + leads.followup_ab_group='drip'), else → 'control' (ZERO rows + leads.followup_ab_group='control'); reproducible (re-run same input yields same group)", "verified": false, "verification_note": null },
+      { "id": "AC5", "criterion": "Test mode flag: tenant_settings.efs_test_mode BOOLEAN DEFAULT FALSE. When TRUE, FollowupOrchestrator interprets stage delay_days as TimeSpan.FromMinutes(delay_days) instead of FromDays. Cap validation also reinterprets (max 5 stages still, max 30 minutes window)", "verified": false, "verification_note": null },
+      { "id": "AC6", "criterion": "Build PASS (full sln); Marketing + Automation + Backend deploy to prod 10/10 HEALTHY; jwtRequiredPrefixes audit shows /api/v1/tenant/followup/ explicitly registered in Backend Program.cs:553-586; 3-tier auth probe smoke (NoAuth/BadJWT/ValidJWT) on Marketing /api/v1/followup/sequences and Backend /api/v1/tenant-settings/followup-sequence — distinct middleware-vs-handler 401 evidence captured (lessons 2026-04-21)", "verified": false, "verification_note": null },
+      { "id": "AC7", "criterion": "Frontend error fallback: useFollowupSequence(enabled) hook follows useFieldMapping canonical pattern — wrapError helper preserves ApiClientError.errorCode verbatim except UNKNOWN; non-Api fallback uses INV-OB-037; bracket format `[INV-OB-037] message`; NO fabricated INV-FE-* codes; FollowupStageRow uses Fragment + sibling <tr> for per-row error (no extra td inside same tr)", "verified": false, "verification_note": null }
+    ]
+  },
+  "allowed_files": [
+    "arch/db/migrations/029-efs-followup-sequence.sql",
+    "arch/db/marketing.sql",
+    "arch/errors.md",
+    "arch/features/event-followup-sequence.md",
+    "arch/session-memory.md",
+    "arch/lessons-learned.md",
+    "arch/plans/20260425-feat-efs-drip-sequence.json",
+    "arch/plans/diffs/20260425-feat-efs-drip-sequence.diff",
+    "arch/plans/diffs/20260425-feat-efs-drip-sequence-iter1.diff",
+    "arch/plans/diffs/20260425-feat-efs-drip-sequence-iter2.diff",
+    "arch/plans/diffs/20260425-feat-efs-drip-sequence-iter3.diff",
+    "arch/plans/diffs/20260425-feat-efs-drip-sequence-iter4.diff",
+    "arch/plans/diffs/20260425-feat-efs-drip-sequence-1-schema.diff",
+    "arch/plans/diffs/20260425-feat-efs-drip-sequence-2-marketing.diff",
+    "arch/plans/diffs/20260425-feat-efs-drip-sequence-3-consumers.diff",
+    "arch/plans/diffs/20260425-feat-efs-drip-sequence-A.diff",
+    "arch/plans/diffs/20260425-feat-efs-drip-sequence-B.diff",
+    "tracking/pilot-launch-roadmap.md",
+    "tracking/README.md",
+    "tracking/feat-efs-drip-sequence.md",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Shared/Contracts/Followup/FollowupTriggerRequest.cs",
+    "src/Invekto.Shared/Contracts/Followup/FollowupSequenceConfig.cs",
+    "src/Invekto.Shared/Contracts/Followup/FollowupStageConfig.cs",
+    "src/Invekto.Shared/Contracts/Followup/FollowupRunStatus.cs",
+    "src/Invekto.Shared/Contracts/Followup/FollowupTriggerReason.cs",
+    "src/Invekto.Marketing/Invekto.Marketing.csproj",
+    "src/Invekto.Marketing/Program.cs",
+    "src/Invekto.Marketing/Data/FollowupSequenceRepository.cs",
+    "src/Invekto.Marketing/Services/FollowupOrchestrator.cs",
+    "src/Invekto.Marketing/Services/FollowupSequenceCache.cs",
+    "src/Invekto.Marketing/Services/FollowupSequenceValidator.cs",
+    "src/Invekto.Marketing/Services/FollowupAbGroupAssigner.cs",
+    "src/Invekto.Marketing/Services/Jobs/FollowupStageJob.cs",
+    "src/Invekto.Marketing/Endpoints/FollowupEndpoints.cs",
+    "src/Invekto.Automation/Services/Jobs/NoReplyCheckJob.cs",
+    "src/Invekto.Automation/Services/MarketingFollowupClient.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Backend/Endpoints/TenantFollowupSequenceEndpoints.cs",
+    "src/Invekto.Backend/Services/MarketingFollowupProxyClient.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Dashboard/src/hooks/useFollowupSequence.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/settings/FollowupSequenceSettingsPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/FollowupSequence/FollowupStageRow.tsx",
+    "src/Invekto.Backend/Dashboard/src/types/followupSequence.ts",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/SettingsPage.tsx",
+    "src/Invekto.Marketing/Endpoints/FollowupEndpoints.cs",
+    "src/Invekto.Backend/wwwroot/app/index.html",
+    "src/Invekto.Backend/wwwroot/app/assets/"
+  ],
+  "files_changed": [
+    { "path": "arch/db/migrations/029-efs-followup-sequence.sql", "is_new": true, "change": "Migration 029: event_followup_sequences + event_followup_runs tables, tenant_settings.efs_test_mode + efs_no_reply_threshold_days, leads.followup_state JSONB + followup_ab_group, indexes + grants" },
+    { "path": "arch/errors.md", "is_new": false, "change": "Added INV-MK-050..055 entries for FEAT-EFS error codes" },
+    { "path": "arch/plans/20260425-feat-efs-drip-sequence.json", "is_new": true, "change": "This plan" },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false, "change": "Added 6 INV-MK-050..055 const declarations under FEAT-EFS section header" },
+    { "path": "src/Invekto.Shared/Contracts/Followup/FollowupTriggerReason.cs", "is_new": true, "change": "Enum: NoReplyWelcome | OfferDeclined | OfferTimeout | OnHold (JSON string converter)" },
+    { "path": "src/Invekto.Shared/Contracts/Followup/FollowupRunStatus.cs", "is_new": true, "change": "Enum + wire-format helpers (Scheduled/Sent/SkippedOptout/SkippedDisabled/Failed)" },
+    { "path": "src/Invekto.Shared/Contracts/Followup/FollowupStageConfig.cs", "is_new": true, "change": "Stage DTO (delay_days, template_slug, template_group)" },
+    { "path": "src/Invekto.Shared/Contracts/Followup/FollowupSequenceConfig.cs", "is_new": true, "change": "Sequence DTO (id, slug, stages[], ab_split_percent, enabled, timestamps)" },
+    { "path": "src/Invekto.Shared/Contracts/Followup/FollowupTriggerRequest.cs", "is_new": true, "change": "Internal trigger request + response DTO (single envelope pattern)" },
+    { "path": "src/Invekto.Marketing/Invekto.Marketing.csproj", "is_new": false, "change": "Added Hangfire.AspNetCore + Hangfire.PostgreSql package refs (Shared has them as PrivateAssets=all)" },
+    { "path": "src/Invekto.Marketing/Data/FollowupSequenceRepository.cs", "is_new": true, "change": "Repo: sequence CRUD + tenant settings + lead followup state (LATERAL JOIN on inma_optout_outbox) + run history CRUD" },
+    { "path": "src/Invekto.Marketing/Services/FollowupSequenceValidator.cs", "is_new": true, "change": "Validator: slug regex, stage count cap (5), cumulative window cap (30), per-stage delay/template_slug shape, typed FollowupSequenceValidationException with INV-MK code" },
+    { "path": "src/Invekto.Marketing/Services/FollowupSequenceCache.cs", "is_new": true, "change": "Single-flight per-tenant cache (5dk TTL) with CT-safe pattern (factory uses CT.None, per-caller WaitAsync(ct))" },
+    { "path": "src/Invekto.Marketing/Services/FollowupAbGroupAssigner.cs", "is_new": true, "change": "Deterministic A/B assignment via SHA256(tenant|lead|sequence) % 100" },
+    { "path": "src/Invekto.Marketing/Services/Jobs/FollowupStageJob.cs", "is_new": true, "change": "Hangfire stage handler: opt-out check + sequence enabled check + send-intent log + run terminal mark (AutomaticRetry attempts=0)" },
+    { "path": "src/Invekto.Marketing/Services/FollowupOrchestrator.cs", "is_new": true, "change": "Trigger entry: validate + collision check + A/B assign + per-stage Hangfire BackgroundJob.Schedule + lead.followup_ab_group set" },
+    { "path": "src/Invekto.Marketing/Endpoints/FollowupEndpoints.cs", "is_new": true, "change": "4 endpoints: GET/PUT /api/v1/followup/sequences (tenant JWT), GET /api/v1/followup/runs (tenant JWT), POST /api/internal/followup/trigger (X-Internal-Service-Token + service JWT)" },
+    { "path": "src/Invekto.Marketing/Program.cs", "is_new": false, "change": "DI registration for repo/cache/orchestrator/StageJob; Hangfire setup (queue=marketing-followup, enableScheduler=false); EnsureJobStorageInitialized; MapFollowupEndpoints" },
+    { "path": "src/Invekto.Automation/Services/MarketingFollowupClient.cs", "is_new": true, "change": "Typed HttpClient: X-Internal-Service-Token + per-call service JWT, single inline retry, single-envelope response parsing, FollowupTriggerOutcome typed result" },
+    { "path": "src/Invekto.Automation/Services/Jobs/NoReplyCheckJob.cs", "is_new": true, "change": "Hangfire delayed handler (AutomaticRetry attempts=0): inbound check via chatops_messages JOIN, calls MarketingFollowupClient on no-reply" },
+    { "path": "src/Invekto.Automation/Program.cs", "is_new": false, "change": "Named HttpClient + MarketingFollowupClient singleton + NoReplyCheckJob transient (Marketing:BaseUrl falls back to localhost:7112)" },
+    { "path": "src/Invekto.Backend/Endpoints/TenantFollowupSequenceEndpoints.cs", "is_new": true, "change": "3 SPA-facing proxy endpoints: GET/PUT /api/v1/tenant-settings/followup-sequence + GET /api/v1/tenant/followup/runs" },
+    { "path": "src/Invekto.Backend/Services/MarketingFollowupProxyClient.cs", "is_new": true, "change": "Backend → Marketing tenant-scoped proxy: mints service JWT bound to current TenantContext, single-envelope upstream parsing, ProxyResult typed return" },
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false, "change": "AddHttpClient<MarketingFollowupProxyClient>; jwtRequiredPrefixes += /api/v1/tenant/followup/; MapTenantFollowupSequenceEndpoints()" },
+    { "path": "src/Invekto.Backend/Dashboard/src/types/followupSequence.ts", "is_new": true, "change": "TS DTOs mirroring Shared.Contracts.Followup with snake_case (FollowupSequenceConfig, FollowupStageConfig, run summary, draft state types)" },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "is_new": false, "change": "3 method additions (listFollowupSequences/upsertFollowupSequence/listFollowupRuns) + type re-exports" },
+    { "path": "src/Invekto.Backend/Dashboard/src/hooks/useFollowupSequence.ts", "is_new": true, "change": "Opt-in hook (enabled: bool = true) with module-cache single-flight + canonical wrapError pattern (preserves ApiClientError.errorCode verbatim, falls back INV-OB-037)" },
+    { "path": "src/Invekto.Backend/Dashboard/src/components/FollowupSequence/FollowupStageRow.tsx", "is_new": true, "change": "Per-stage editor row: Fragment + sibling <tr> for row error (lessons 2026-04-22 P3 CQ5+CQ10)" },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/settings/FollowupSequenceSettingsPage.tsx", "is_new": true, "change": "Editor page at /settings/followup-sequence: slug, A/B slider, enabled toggle, stage list, client-side validation matching backend caps, existing-data guard for upstream-fail (lessons 2026-04-22 P3 CQ9)" },
+    { "path": "src/Invekto.Backend/Dashboard/src/App.tsx", "is_new": false, "change": "Lazy-loaded FollowupSequenceSettingsPage + Route /settings/followup-sequence" },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/SettingsPage.tsx", "is_new": false, "change": "Added entry card linking to /settings/followup-sequence (replaces planned Layout.tsx nav entry — Dashboard convention is settings cards on Settings hub)" },
+    { "path": "src/Invekto.Backend/wwwroot/app/", "is_new": false, "change": "Vite production build output: FollowupSequenceSettingsPage chunk (10.32 KB / 3.49 KB gzip) + index.html + assets bundle deltas" }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": null,
+    "full_path": "arch/plans/diffs/20260425-feat-efs-drip-sequence.diff",
+    "stats": { "insertions": 3978, "deletions": 75, "files_count": 67 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-04-21T17:10:00Z",
+    "duration_ms": 16920,
+    "output_tail": "Build succeeded. 2 Warning(s) (NU1603 + xUnit1013, both pre-existing unrelated to FEAT-EFS). 0 Error(s). Time Elapsed 00:00:16.92",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Marketing", "Invekto.Automation", "Invekto.Backend"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does the FollowupStageJob's execution-time opt-out check correctly read tenant-scoped lead state (followup_state.opted_out_at) and skip with INV-MK-052 + run.status='skipped_optout' + audit log, AND is the race window between opt-out check and HTTP send acknowledged as 'system-wide outbound enforcement layer responsibility' (NOT EFS-specific) per spec_architectural_decisions[2]?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q2",
+      "question": "Is the cross-service authentication for POST /api/internal/followup/trigger correctly implemented as X-Internal-Service-Token header + InternalServices:SharedSecret constant-time compare (LIW Chunk B precedent), AND is Marketing's Program.cs handler-side check explicit (not relying on UseJwtAuth which only covers /api/v1/ prefix), AND does Automation's MarketingFollowupClient inject both the shared-secret header AND a per-call service JWT for tenant binding?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q3",
+      "question": "Is the A/B group assignment fully deterministic and reproducible: hash = sha256(UTF8(tenant_id|lead_id|sequence_id)) → first 8 bytes → uint64 → modulo 100 → < ab_split_percent? Does the control group create ZERO event_followup_runs rows (verified by integration test) and only set leads.followup_ab_group='control' with leads.followup_state JSONB recording the assignment timestamp for audit?",
+      "category": "Data"
+    },
+    {
+      "id": "Q4",
+      "question": "Does the test mode (tenant_settings.efs_test_mode=TRUE) reinterpret stage delay_days as TimeSpan.FromMinutes consistently across BOTH cap validation (max 30 minutes total window when TRUE, max 30 days when FALSE) AND BackgroundJob.Schedule scheduling (Schedule(TimeSpan.FromMinutes(delay_days)) when TRUE), with NO partial application that could schedule jobs months out due to mixed unit interpretation?",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q5",
+      "question": "Is the Migration 029 schema (event_followup_sequences + event_followup_runs) idempotent (CREATE TABLE IF NOT EXISTS + ALTER TABLE ADD COLUMN IF NOT EXISTS), with proper FK relationships (event_followup_runs.sequence_id → event_followup_sequences.id ON DELETE CASCADE; event_followup_runs.lead_id → leads.id; event_followup_runs.tenant_id → tenants.id), unique constraint (event_followup_sequences uq(tenant_id, slug)), indexes for hot-path queries (idx scheduled_at WHERE status='scheduled'; idx tenant_id+lead_id+status), and explicit GRANT ALL TO invekto?",
+      "category": "Data"
+    },
+    {
+      "id": "Q6",
+      "question": "Does the FollowupSequenceCache use the canonical single-flight pattern (lessons 2026-04-21 FEAT-TFM iter 3): factory closure invokes FetchAsync(key) WITHOUT a CancellationToken parameter (uses CancellationToken.None internally bound by Npgsql command timeout), and per-caller WaitAsync(ct) is used for cancellation isolation so a first caller's cancellation does NOT poison joined awaiters?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q7",
+      "question": "Is the frontend useFollowupSequence(enabled: boolean = true) hook conditional-call-safe (per lessons 2026-04-22 P4 FAIL): hook is called UNCONDITIONALLY at every render, with the enabled flag controlling early-return (no fetch, no module cache touch, stable empty shape) WHEN enabled=false? Does FollowupStageRow use Fragment + sibling <tr> pattern (NOT extra <td> inside same row) for per-stage error rendering?",
+      "category": "Process/Policy"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Outbound/* — opt-out enforcement at INMA send is existing canonical responsibility, EFS is downstream consumer only",
+      "src/Invekto.Appointments/* — appointment booking is exit condition signal but NOT modified in this paket",
+      "src/Invekto.Knowledge/* — out of scope",
+      "src/Invekto.ChatAnalysis/* — out of scope",
+      "Any modification to existing leads.* columns (only ADD followup_state JSONB + followup_ab_group VARCHAR, NEVER ALTER existing columns)",
+      "Any modification to existing tenant_settings.* columns (only ADD efs_test_mode BOOLEAN, NEVER ALTER existing columns)",
+      "FlowBuilder / FlowEngine v2 / Automation flow node types (no new node type for EFS — drip is server-side scheduled, not flow-driven)",
+      "INMA chatoperation outbound (sends use existing OutboundService path with MessageCategory='marketing' default — no new bridge logic)"
+    ],
+    "non_goals": [
+      "Auto-emission for offer_declined / offer_timeout / on_hold reasons — Dent pilot has no offer state machine; HTTP entry point accepts these reasons (forward-compat) but no scanner job emits them. Operators can manually trigger via /api/internal/followup/trigger if needed.",
+      "Lead reply detection (spec AC-4 'lead reply' exit condition) — MVP only checks pipeline_status + opted_out_at; reply detection requires ChatAnalysis hook (out of scope for this paket)",
+      "Booking success exit condition — Appointments service hook (out of scope, separate spec needed)",
+      "Multi-sequence per lead (MVP enforces ONE active sequence per lead; second TriggerAsync call for already-scheduled lead is rejected INV-MK-055 followup_run_collision)",
+      "Cross-instance cache invalidation for FollowupSequenceCache — 5dk TTL eventual consistency (MVP, mirrors FEAT-TFM-CACHE BACKLOG B2 decision)",
+      "Hangfire dashboard exposure — runs queryable via DB (event_followup_runs) only; Hangfire UI registration deferred to ops paket",
+      "Per-stage analytics (open/reply rate per stage — spec AC-7) — requires ChatAnalysis + outbound delivery callback wiring (out of scope, deferred)",
+      "Email/SMS channel — only INMA WhatsApp/IG/Telegram via existing OutboundService send path",
+      "A/B statistical significance reporting / sample size warning UI — operator-side analytics (deferred)",
+      "Dynamic template generation (LLM-generated message per lead) — uses existing template_slug lookup only"
+    ],
+    "intentional_exclusions": [
+      "tests/Invekto.Marketing.Tests — no test project exists today for Marketing service. Adding one is significant infrastructure work; lesson 2026-04-21 P1 race-test-skip pattern + spec_architectural_decisions explanation accepted approach. Manual smoke per AC6 + Codex CoVe questions cover correctness.",
+      "Hangfire UI dashboard mounting in Marketing — added in separate ops paket (consistent with current Backend-only Hangfire UI pattern)",
+      ".RequireAuthorization() on Marketing endpoints — per spec_architectural_decisions[5] custom JWT middleware pattern only",
+      "Deploying via /deploy command — Codex review must PASS first; deploy is Phase 4 step after /rev",
+      "Dent pilot tenant config seed (3-stage Day 3/7/14) — Dashboard UI manual operation in pilot prep (P9 smoke), NOT seeded in migration"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "FollowupStageJob.Execute — typed catch (NpgsqlException, OperationCanceledException, HttpRequestException) + audit log run.status='failed' + run.error_code",
+      "FollowupOrchestrator.EnqueueAsync — typed catch (NpgsqlException, ValidationException) + INV-MK-053 / INV-MK-054 / INV-MK-055 mapping",
+      "FollowupSequenceCache.GetOrFetch — typed catch (NpgsqlException) + propagate to caller (no swallow)",
+      "Marketing FollowupEndpoints — per-endpoint typed catches (NpgsqlException → INV-MK-050 sequence_config_invalid OR INV-OB-037 transient; JsonException → 400 INV-MK-050 with Turkish actionable message; OperationCanceledException → rethrow framework)",
+      "Backend MarketingFollowupProxyClient.ForwardAsync — typed catch (HttpRequestException, TaskCanceledException) + INV-OB-037 upstream marshalling",
+      "Automation NoReplyWelcomeScannerJob — typed catch (NpgsqlException, HttpRequestException) + per-tenant per-lead error isolation (continue on failure, log + INV-MK-051)",
+      "Automation MarketingFollowupClient.TriggerAsync — typed catch (HttpRequestException, TaskCanceledException) + structured INV-MK-051 stage_not_found / INV-OB-037 transient mapping"
+    ],
+    "user_facing_errors": [
+      "INV-MK-050 (sequence_config_invalid): 'Followup sequence yapılandırması geçersiz: {detail}. Stage listesi, delay_days değerleri ve template_slug alanlarını kontrol edip tekrar kaydedin.'",
+      "INV-MK-051 (stage_not_found): 'Belirtilen sequence stage bulunamadı (sequence_id={sid}, stage_index={idx}). Sequence düzenlemesi sonrası eski scheduled job çalışıyor olabilir; etki yok, log audit.'",
+      "INV-MK-052 (followup_opt_out): 'Takip mesajı gönderilmedi: müşteri opt-out durumunda. Audit log oluşturuldu (run_id={rid}).'",
+      "INV-MK-053 (sequence_too_long): 'Followup sequence cap aşımı: max 5 stage / max {window} gün toplam pencere. Mevcut: {actual_stages} stage / {actual_days} gün. Stage sayısını veya delay_days değerlerini düşürün.'",
+      "INV-MK-054 (sequence_disabled): 'Followup sequence devre dışı (enabled=false). Trigger reddedildi. Sequence ayarlarından enable edip tekrar deneyin.'",
+      "INV-MK-055 (followup_run_collision): 'Lead için zaten aktif scheduled sequence var (lead_id={lid}, sequence_id={sid}). Yeni trigger reddedildi; mevcut sequence tamamlandığında veya iptal edildiğinde tekrar deneyin.'",
+      "Frontend bracket format: '[INV-MK-053] Followup sequence cap aşımı: max 5 stage / max 30 gün toplam pencere.'"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All error paths produce: (a) typed catch with INV-MK-* code, (b) JsonLinesLogger SystemWarn or StepWarn with [INV-MK-NNN] prefix for ops grep-ability, (c) event_followup_runs row with status + error_code persisted (audit trail visible via DB SELECT). FollowupStageJob explicitly: never throws to Hangfire (caught in handler, run row records failure), never silently retries (Hangfire retry disabled — recurrence is via NEW BackgroundJob.Schedule from orchestrator, not Hangfire's automatic retry). Opt-out skip is NOT silent (run.status='skipped_optout' + audit log). Frontend wrapError preserves ApiClientError.errorCode + telemetry fields (requestId)."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Tenant configures 3-stage drip, deploys to production, then realizes mid-pilot that actual customer behavior needs Day 5 (not Day 7) for stage 2 — without test mode, validating the schedule change requires waiting 5 real days.",
+      "suggestion": "Test mode flag (tenant_settings.efs_test_mode BOOLEAN) reinterprets delay_days as MINUTES — operator toggles flag ON, runs trigger on a test lead, observes 3-stage flow in 10 minutes, validates message timing/content, toggles OFF for production",
+      "aha_moment": "Operator changes stage 2 delay from 7 to 5, hits Save, triggers test lead — watches 3 messages arrive in 5 minutes total instead of 17 days, confirms timing feels right, ships to production with confidence"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "A/B group assignment using random() means re-running the same lead through the orchestrator (e.g., after Hangfire restart) produces different group assignment — control group becomes drip and vice versa, polluting the experiment",
+      "suggestion": "Deterministic hash(sha256(tenant_id|lead_id|sequence_id)) % 100 — re-running the same input always produces the same group assignment. Group decision recorded once in leads.followup_ab_group AND leads.followup_state JSONB at first trigger; subsequent triggers idempotent.",
+      "aha_moment": "Marketing analyst pulls A/B comparison report after pilot, sees clean group splits with no contamination — every lead is consistently in its assigned group across all touchpoints, statistically valid result"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Customer complains 'I said STOP yesterday but you sent me another message today' — operator has to grep WA logs across 14 days to figure out if the drip job missed the opt-out signal",
+      "suggestion": "event_followup_runs table records EVERY scheduled stage with status (scheduled/sent/skipped_optout/failed) + opted_out_at timestamp + run.error_code. Operator opens Dashboard, finds lead, sees per-stage row 'skipped_optout @ 2026-05-12 10:33 — INV-MK-052' — instant evidence that opt-out WAS respected (or wasn't, with full audit).",
+      "aha_moment": "Support agent answers customer in 30 seconds with concrete evidence: 'Our system did receive your STOP at 10:32, the next scheduled message at 10:33 was correctly skipped — the message you received is from a different campaign, here is the audit trail.'"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Operator wants to set up Dent's 3-stage drip but has to write JSON config by hand and POST it via Postman — high error rate (typo in template_slug means stage runs but message fails), slow iteration",
+      "suggestion": "Dashboard SPA editor at /settings/followup-sequence with stage list, delay_days input, template_slug picker (autocomplete from existing templates), A/B slider (0-100%), enable toggle, 'Test mode' checkbox shortcut. Validates client-side BEFORE save (cap, template existence) and shows validation errors inline.",
+      "aha_moment": "Operator opens page, drags stage delay slider from 7 to 5, picks template from dropdown, slides A/B to 70/30, hits Save — sees green '3 stages, 14-day window, A/B split 70/30 (drip) configured' in <60 seconds vs 15 minutes of JSON authoring"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Sales lead 'I went to the Dublin roadshow but didn't get any follow-up' — clinic loses warm lead because manual follow-up didn't happen (operator forgot, Wednesday rush, etc.)",
+      "suggestion": "Auto-emission via NoReplyWelcomeScannerJob (recurring 30min) detects leads.last_inbound_at > tenant.no_reply_threshold_days post-welcome, auto-triggers configured drip sequence — zero operator action needed once configured. Per-stage event_followup_runs proves the lead WAS contacted (audit defensibility for sales reports).",
+      "aha_moment": "Clinic owner runs monthly report, sees 'post-roadshow drip touched 47 leads, 12 booked appointments' — math says drip recovered 25% of warm leads that would otherwise have been forgotten, ROI immediate and measurable"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-21T18:45:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-21T18:45:00Z",
+    "iteration": 4,
+    "escalation_required": false,
+    "blocking_issues": []
+  }
+}

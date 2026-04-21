@@ -237,6 +237,15 @@ builder.Services.AddHttpClient<MarketingClient>(client =>
     client.Timeout = TimeSpan.FromMilliseconds(marketingTimeoutMs);
 });
 
+// FEAT-EFS Drip Sequence: Backend → Marketing SPA-facing proxy. Reuses Marketing
+// base URL + timeout already resolved above; mints per-call service JWT bound to the
+// current request's tenant_id (TenantContext from JwtAuth middleware).
+builder.Services.AddHttpClient<MarketingFollowupProxyClient>(client =>
+{
+    client.BaseAddress = new Uri(marketingUrl);
+    client.Timeout = TimeSpan.FromMilliseconds(marketingTimeoutMs);
+});
+
 // Configure FlowBuilder proxy HTTP client (reuses Automation URL for flow management)
 builder.Services.AddHttpClient<FlowBuilderClient>(client =>
 {
@@ -575,6 +584,12 @@ if (jwtValidator != null)
         "/api/v1/dynamic-fields",
         "/api/v1/optout",
         "/api/v1/payment/",
+        // FEAT-EFS Drip Sequence: SPA-facing run history proxy. Sequence CRUD lives
+        // under /api/v1/tenant-settings/followup-sequence (already covered above);
+        // /api/v1/tenant/followup/ catches GET /runs and any future tenant-scoped
+        // followup browse endpoints. Tenant-scoped JWT required (TenantContext
+        // resolved from claim, never from path/body).
+        "/api/v1/tenant/followup/",
         // FEAT-LIW Chunk B: service-to-service wa-direct internal endpoint REQUIRES JWT.
         // Automation generates a per-call service JWT (JwtGenerator.GenerateServiceToken
         // with tenant_id claim) so the existing JWT middleware enforces tenant binding;
@@ -7811,6 +7826,11 @@ app.MapPost("/api/v1/dynamic-fields/cache-invalidate", (
 // Routes registered as an extension to keep Program.cs scannable. Implementation +
 // validation + cache-invalidation lives in Endpoints/TenantFieldMappingEndpoints.cs.
 app.MapTenantFieldMappingEndpoints();
+
+// FEAT-EFS Drip Sequence: SPA-facing proxy endpoints in front of Marketing's
+// /api/v1/followup/* routes. Implementation in
+// Endpoints/TenantFollowupSequenceEndpoints.cs.
+app.MapTenantFollowupSequenceEndpoints();
 
 // ============================================
 // FEAT-J2: Manual opt-out/opt-in (JWT-scoped dashboard admin action)

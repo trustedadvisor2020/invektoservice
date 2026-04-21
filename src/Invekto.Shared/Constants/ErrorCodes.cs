@@ -488,6 +488,18 @@ public static class ErrorCodes
     public const string MarketingClaudeUnavailable = "INV-MK-023";
     public const string MarketingFollowUpQueryFailed = "INV-MK-024";       // Follow-up due query failed
 
+    // Marketing errors (INV-MK-050..055) -- FEAT-EFS Drip Sequence (gap from 024 → 050 intentional;
+    // reserved 025..049 for future PKT-12/13 follow-up rescue extensions per arch/quality-grades.md)
+    public const string FollowupSequenceConfigInvalid = "INV-MK-050";    // Validation failure (slug/stages/cap/template_slug shape)
+    public const string FollowupStageNotFound = "INV-MK-051";            // Scheduled stage missing during execution (sequence edited mid-flight)
+    public const string FollowupOptOut = "INV-MK-052";                   // Opted-out lead skipped at execution-time guard
+    public const string FollowupSequenceTooLong = "INV-MK-053";          // Cap exceeded (max 5 stages OR cumulative window > 30 days/minutes)
+    public const string FollowupSequenceDisabled = "INV-MK-054";         // Sequence enabled=false at trigger time
+    public const string FollowupRunCollision = "INV-MK-055";             // Lead already has an active scheduled sequence (idempotency guard)
+    public const string FollowupStorageUnavailable = "INV-MK-056";       // Transient DB failure (Npgsql) — distinct from config-invalid; retry-safe class
+    public const string FollowupUpstreamUnavailable = "INV-MK-057";      // Backend↔Marketing or Automation↔Marketing HTTP transient failure
+    public const string FollowupReplyCheckFailed = "INV-MK-058";         // Reserved for deferred follow-up paket: inbound-reply pre-check DB failure inside the scheduling-site hook (NoReplyCheckJob will adopt this code when the auto-emit paket wires the concrete inbound source). Retained for forward-compat; currently unreferenced in MVP runtime code.
+
     // Backend Translation (INV-BE-090+)
     public const string BackendTranslationFailed = "INV-BE-090";            // Claude translation API call failed
     public const string BackendTranslationDetectFailed = "INV-BE-091";      // Language detection failed

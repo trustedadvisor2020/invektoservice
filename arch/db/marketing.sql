@@ -136,6 +136,65 @@ GRANT USAGE, SELECT ON SEQUENCE referrals_id_seq TO invekto;
 GRANT USAGE, SELECT ON SEQUENCE medical_tourism_leads_id_seq TO invekto;
 
 -- =============================================================
+-- FEAT-EFS Drip Sequence (Migration 029 — canonical schema mirror)
+-- =============================================================
+-- This section is the authoritative schema source-of-truth; migration 029 is the
+-- cumulative delta for databases that predate FEAT-EFS. New fresh-create installs
+-- run this full marketing.sql and skip migration 029 entirely.
+
+CREATE TABLE IF NOT EXISTS event_followup_sequences (
+    id                BIGSERIAL PRIMARY KEY,
+    tenant_id         INT NOT NULL REFERENCES tenant_registry(tenant_id) ON DELETE CASCADE,
+    slug              VARCHAR(64) NOT NULL,
+    stages            JSONB NOT NULL,
+    ab_split_percent  SMALLINT NOT NULL DEFAULT 50,
+    enabled           BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT efs_sequences_slug_unique_per_tenant UNIQUE (tenant_id, slug),
+    CONSTRAINT efs_sequences_ab_split_range CHECK (ab_split_percent BETWEEN 0 AND 100)
+);
+
+CREATE TABLE IF NOT EXISTS event_followup_runs (
+    id              BIGSERIAL PRIMARY KEY,
+    tenant_id       INT NOT NULL REFERENCES tenant_registry(tenant_id) ON DELETE CASCADE,
+    sequence_id     BIGINT NOT NULL REFERENCES event_followup_sequences(id) ON DELETE CASCADE,
+    lead_id         BIGINT NOT NULL REFERENCES leads(id),
+    stage_index     SMALLINT NOT NULL,
+    ab_group        VARCHAR(10) NOT NULL,
+    scheduled_at    TIMESTAMPTZ NOT NULL,
+    executed_at     TIMESTAMPTZ NULL,
+    status          VARCHAR(32) NOT NULL DEFAULT 'scheduled',
+    hangfire_job_id VARCHAR(64) NULL,
+    error_code      VARCHAR(32) NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT efs_runs_status_enum CHECK (status IN ('scheduled','sent','skipped_optout','skipped_disabled','failed')),
+    CONSTRAINT efs_runs_ab_group_enum CHECK (ab_group IN ('drip','control')),
+    CONSTRAINT efs_runs_stage_index_nonneg CHECK (stage_index >= 0)
+);
+
+CREATE INDEX IF NOT EXISTS idx_efs_runs_tenant_lead_status
+    ON event_followup_runs (tenant_id, lead_id, status);
+CREATE INDEX IF NOT EXISTS idx_efs_runs_scheduled_at_pending
+    ON event_followup_runs (scheduled_at)
+    WHERE status = 'scheduled';
+CREATE INDEX IF NOT EXISTS idx_efs_runs_sequence_stage
+    ON event_followup_runs (sequence_id, stage_index);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_efs_runs_lead_stage_scheduled
+    ON event_followup_runs (tenant_id, lead_id, stage_index)
+    WHERE status = 'scheduled';
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON event_followup_sequences TO invekto;
+GRANT SELECT, INSERT, UPDATE, DELETE ON event_followup_runs TO invekto;
+GRANT USAGE, SELECT ON SEQUENCE event_followup_sequences_id_seq TO invekto;
+GRANT USAGE, SELECT ON SEQUENCE event_followup_runs_id_seq TO invekto;
+
+-- tenant_settings FEAT-EFS flags (efs_test_mode, efs_no_reply_threshold_days) are
+-- canonical in arch/db/tenant-settings.sql + migration 029.
+-- leads FEAT-EFS columns (followup_state JSONB, followup_ab_group VARCHAR(10)) are
+-- canonical in arch/db/pkt6b1-niche-business.sql + migration 029.
+
+-- =============================================================
 -- Usage Notes
 -- =============================================================
 --
@@ -149,4 +208,9 @@ GRANT USAGE, SELECT ON SEQUENCE medical_tourism_leads_id_seq TO invekto;
 -- 3. medical_tourism_leads: Created via POST /api/v1/tourism/leads.
 --    Pipeline: new -> contacted -> consultation -> booked -> treated -> reviewed.
 --    patient_lang used for response language (EN only in MVP).
+-- 4. event_followup_sequences / event_followup_runs: FEAT-EFS drip nurture.
+--    Sequences are per-tenant + slug; runs are per-lead-per-stage with Hangfire
+--    BackgroundJob.Schedule. Execution-time opt-out guard reads
+--    inma_optout_outbox (arch/db/outbound.sql) latest event by (tenant_id, phone).
+--    Partial unique index closes the concurrent-trigger race at the DB layer.
 -- =============================================================

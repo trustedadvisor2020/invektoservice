@@ -235,6 +235,34 @@ builder.Services.AddSingleton<BackendIntakeClient>(sp =>
         sp.GetRequiredService<JsonLinesLogger>());
 });
 
+// FEAT-EFS Drip Sequence: MarketingFollowupClient — Automation → Marketing trigger
+// hop. Same dual-auth pattern as BackendIntakeClient (X-Internal-Service-Token +
+// per-call service JWT). Reuses the existing Marketing:BaseUrl declared further below
+// for the Marketing /respond hop (PKT-13); shared secret is the cluster-wide
+// InternalServices:SharedSecret already resolved into backendIntakeSharedSecret.
+// Empty shared secret degrades trigger calls to a fail-shaped outcome (logged, no
+// exception thrown) so service startup is not blocked on dev machines.
+var marketingFollowupBaseUrl = builder.Configuration["Marketing:BaseUrl"] ?? "http://localhost:7112";
+builder.Services.AddHttpClient(nameof(MarketingFollowupClient), client =>
+{
+    client.BaseAddress = new Uri(marketingFollowupBaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(5);
+});
+builder.Services.AddSingleton<MarketingFollowupClient>(sp =>
+{
+    var factory = sp.GetRequiredService<IHttpClientFactory>();
+    return new MarketingFollowupClient(
+        factory.CreateClient(nameof(MarketingFollowupClient)),
+        backendIntakeSharedSecret /* same InternalServices:SharedSecret across the cluster */,
+        sp.GetRequiredService<JwtGenerator>(),
+        sp.GetRequiredService<JsonLinesLogger>());
+});
+// NoReplyCheckJob — Hangfire-callable handler. Transient lifecycle so each job invoke
+// gets a fresh instance (matches Marketing's FollowupStageJob convention). Auto-emit
+// scheduling is intentionally NOT wired here in this paket — see plan
+// spec_architectural_decisions[3] (deferred to a follow-up paket).
+builder.Services.AddTransient<Invekto.Automation.Services.Jobs.NoReplyCheckJob>();
+
 // PKT-6A: Register KnowledgeIntentClient (typed HttpClient with 3s timeout)
 var knowledgeBaseUrl = builder.Configuration["Knowledge:BaseUrl"] ?? "http://localhost:7104";
 var knowledgeTimeoutMs = builder.Configuration.GetValue<int>("Knowledge:IntentFetchTimeoutMs", 3000);
