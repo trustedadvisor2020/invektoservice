@@ -1,10 +1,11 @@
-# Pilot Launch Roadmap — Sirali Execution Queue
+# Pilot Launch Roadmap — Sirali Execution Queue (v2, revize 2026-04-21)
 
-> **Slug:** pilot-launch-roadmap | **Mode:** ACTIVE (2026-04-21)
-> **Hedef:** 17 paket arka arkaya DONE → Dent Adavista pilot full-stack smoke (paket 18)
-> **Q tercihi (2026-04-21):** "Hepsini bitirelim, smoke en son"
+> **Slug:** pilot-launch-roadmap | **Mode:** ACTIVE | **Version:** 2.1 (Codex iter 0 FAIL feedback uygulandi)
+> **Hedef:** 9 paket pilota odakli → Dent Adavista full-stack smoke. BACKLOG 6 paket pilot sonrasi.
+> **Q tercihi (2026-04-21):** "Hepsini bitirelim, smoke en son" — pilota giden zincir optimize edildi.
+> **Codex iter 0 feedback (2026-04-21 23:25):** P7 OAuth blocker ile BACKLOG'a tasindi (B0). P5/P6 UI exit criteria'ya dahil. Interview gate P4/P8/P9/P10 eklendi. Smoke S5a/S5b FEAT-TFM resolver dedicated. Error code collision evidence grep-verified.
 
-Bu dosya **pilot launch boyunca execution queue'nun tek kaynagidir**. Session bootstrap zorunlu okuma. `session-memory.md` son durum + detay; roadmap **sira + status** otoritesi.
+Bu dosya **pilot launch boyunca execution queue'nun tek kaynagidir**. Session bootstrap zorunlu okuma.
 
 ---
 
@@ -13,122 +14,207 @@ Bu dosya **pilot launch boyunca execution queue'nun tek kaynagidir**. Session bo
 ### Session Basi (her /clear sonrasi)
 1. `arch/session-memory.md` oku (son paket detayi)
 2. `tracking/pilot-launch-roadmap.md` oku (BU DOSYA — sira + status)
-3. Asagidaki **Master Queue** tablosunda `Status = PENDING` olan **ILK** paketi bul
+3. **Master Queue** tablosunda `Status = PENDING` olan **ILK** paketi bul
 4. Q'ya su formatta sun:
    ```
    Siradaki: P{N} {slug} ({faz})
    Scope: {ozet 1 satir}
    Pre-req: {dep + interview soru sayisi}
+   Migration: {var/yok + numara}
+   Deploy scope: {hangi servisler}
    Baslayalim mi?
    ```
-5. Q onay → `/auto` workflow (interview → plan → dev → build → /rev → commit)
+5. Q onay → `/auto` workflow (interview → plan → dev → build → /rev → commit → deploy → smoke)
 6. Paket DONE → **Paket Tamamlama Checklist** uygula (asagida)
 7. `/clear` + next-session prompt uret
 
 ### Q Override Komutlari
 | Komut | Etki |
 |-------|------|
-| `SKIP P{N}` | O paketin status'unu SKIPPED, Notes'a reason |
+| `SKIP P{N}` | Status=SKIPPED, Notes'a reason |
 | `PAUSE` | Roadmap donar, Q manuel task'a gecer |
 | `RESUME` | Sonraki PENDING paket kaldiginda devam |
-| `REORDER P{A} before P{B}` | Tabloda sira yer degistir |
-| `ADD P{N} {slug}` | Yeni paket ekle (row + per-paket dosya) |
+| `REORDER P{A} before P{B}` | Sira yer degistir |
+| `ADD P{N} {slug}` | Yeni paket ekle |
+| `PROMOTE B{N}` | BACKLOG paketi main queue'ya tasi |
 
 ### Paket Tamamlama Checklist
-- [ ] Kod + build PASS (`dotnet build InvektoServis.sln 0 errors`)
+- [ ] Plan JSON (`arch/plans/{slug}.json`) + per-paket tracking (`tracking/{slug}.md`)
+- [ ] Interview: Q'nun onaylamadigi gri nokta yok
+- [ ] Kod + build PASS (`dotnet build InvektoServis.sln` 0 errors)
+- [ ] **Error code pre-flight check** (`arch/errors.md` + `ErrorCodes.cs` grep — namespace collision YOK)
+- [ ] **Migration pre-flight check** (`arch/db/migrations/` son numara + sequential)
+- [ ] Unit test (yeni code varsa) — eklenebilecek testler eklenmis
 - [ ] `/rev` Codex verdict = PASS (CODEX UTANSIN: iteration=0 hedef)
 - [ ] Commit + push master (HEREDOC message + Co-Authored-By)
-- [ ] Prod deploy (gerekirse) + /health HEALTHY (MCP invekto-ops server-deploy)
-- [ ] `tracking/{slug}.md` guncelle: Status=DONE, deploy date, Codex iter
-- [ ] **`tracking/pilot-launch-roadmap.md` Master Queue satirinda Status=DONE**
+- [ ] **Prod deploy pre-flight** (config audit: yeni key varsa peer-service mirror check)
+- [ ] Deploy (gerekirse) + /health HEALTHY (MCP invekto-ops server-deploy)
+- [ ] **Post-deploy smoke** (binary freshness + endpoint auth gate + integration flow)
+- [ ] `tracking/{slug}.md` Status=DONE+DEPLOYED+SMOKED + Codex iter + deploy date
+- [ ] **Bu dosya** Master Queue satirinda Status guncelle
 - [ ] `arch/session-memory.md`: Last Update + Execution Queue + Recently Completed
 - [ ] `/clear` oner + next-session prompt
 
 ---
 
-## MASTER QUEUE
+## MASTER QUEUE (Pilot Critical Path — 9 Paket)
 
-### FAZ 1 — Retro-Fix & Teknik Borc (context warm, dusuk risk)
+### FAZ 1 — Retro-Fix & Lessons (context warm, dusuk risk)
 
-| # | Paket | Slug | Status | Dep | Deploy | Exit Criteria |
-|---|-------|------|--------|-----|--------|---------------|
-| 1 | FEAT-DMP Cache Poison Fix | `20260422-feat-dmp-cache-poison-fix` | **DONE+DEPLOYED+SMOKED** (commit `ca2d2d5`, 2026-04-21 13:04 UTC) | - | Backend 10/10 HEALTHY | Codex iter 0 PASS 12/12 CQ + 4/4 CoVe ✅, 7/7 test ✅, binary fresh ✅, endpoint 401 gate ✅ |
-| 2 | Lessons +6 Kayit (TFM MVP + AUTH HOTFIX) | `20260422-lessons-tfm-auth-hotfix` | PENDING | - | Doc-only | `arch/lessons-learned.md` 6 yeni entry |
+| # | Paket | Slug | Status | Migration | Deploy | Exit Criteria |
+|---|-------|------|--------|-----------|--------|---------------|
+| 1 | FEAT-DMP Cache Poison Fix | `20260422-feat-dmp-cache-poison-fix` | **DONE+DEPLOYED+SMOKED** 2026-04-21 13:04 UTC (commit `ca2d2d5` + `3a21d2c`) | Yok | Backend 10/10 HEALTHY | Codex iter 0 PASS ✅ 7/7 test ✅ endpoint 401 gate ✅ |
+| 2 | Lessons +3 AUTH-HOTFIX + 1 test-skip + 1 inline update | `20260422-lessons-tfm-auth-hotfix` | PENDING | Yok | Doc-only | 3 yeni entry + 1 update `arch/lessons-learned.md` + Codex PASS (doc-only LOW) |
 
-### FAZ 2 — FEAT-TFM Suite Tamamlama (MVP resolver uzerine eklentiler)
+### FAZ 2 — FEAT-TFM Suite Pilot-Required (resolver MVP uzerine UI + picker)
 
-| # | Paket | Slug | Status | Dep | Deploy | Exit Criteria |
-|---|-------|------|--------|-----|--------|---------------|
-| 3 | FEAT-TFM-UI Dashboard Editor | `20260423-feat-tfm-ui-editor` | PENDING | - | Backend SPA | `/settings/field-mapping` 10-slot editor + E2E smoke |
-| 4 | FEAT-TFM-SYNC INMA Mirror | `20260423-feat-tfm-inma-sync` | PENDING | P3 | Integrations | Hangfire recurring + audit log + INMA /api/dynamicfields/create |
-| 5 | FEAT-TFM-FLOW Picker | `20260424-feat-tfm-flow-picker` | PENDING | P3 | Dashboard SPA | FlowBuilder + TemplateCreate semantic dropdown |
-| 6 | FEAT-TFM-CACHE Redis Invalidate | `20260424-feat-tfm-redis-invalidate` | PENDING (Q onay) | - | Backend+Outbound+Automation | Redis dep + pub/sub + all-instance invalidate |
+**Not:** FEAT-TFM-SYNC ve FEAT-TFM-CACHE BACKLOG'a tasindi (bkz. Audit §1).
 
-### FAZ 3 — Pilot Omurgasi Feature'lar
+| # | Paket | Slug | Status | Migration | Deploy | Exit Criteria |
+|---|-------|------|--------|-----------|--------|---------------|
+| 3 | FEAT-TFM-UI Dashboard Editor | `20260423-feat-tfm-ui-editor` | PENDING | Yok (mevcut `tenant_settings.field_mapping` JSONB) | Backend SPA rebuild | `/settings/field-mapping` 10-slot editor + INMA FieldName label entegrasyonu + E2E add/edit/delete smoke |
+| 4 | FEAT-TFM-FLOW Picker | `20260424-feat-tfm-flow-picker` | PENDING | Yok | Dashboard SPA | FlowBuilder NodePropertyPanel + TemplateCreate'de semantic dropdown; FEAT-DMP PlaceholderPicker TFM-aware variant |
 
-| # | Paket | Slug | Status | Dep | Deploy | Exit Criteria |
-|---|-------|------|--------|-----|--------|---------------|
-| 7 | FEAT-EFS Drip Sequence | `20260425-feat-efs-drip-sequence` | PENDING | - | Marketing+Automation | Hangfire scheduled + A/B + 4 trigger + per-stage metric |
-| 8 | FEAT-MCC Multi-City Campaign | `20260425-feat-mcc-multi-city` | PENDING | - | Backend+Automation | JSONB config + substitution + outbound window guard |
-| 9 | FEAT-VCP Chunk C GoogleMeet OAuth | `20260426-feat-vcp-chunk-c-google-oauth` | PENDING | - | Integrations+Dashboard | Prod OAuth + `/settings/video-provider` UI |
+### FAZ 3 — Pilot Omurgasi Feature'lar (3 kritik)
 
-### FAZ 4 — Cleanup
+| # | Paket | Slug | Status | Migration | Error Codes | Deploy | Exit Criteria |
+|---|-------|------|--------|-----------|-------------|--------|---------------|
+| 5 | FEAT-EFS Drip Sequence | `20260425-feat-efs-drip-sequence` | PENDING | **029**-efs-followup-sequence.sql (`event_followup_sequences`, `event_followup_runs`, `leads.followup_state`, `leads.followup_ab_group`) | **INV-MK-050..055** (Marketing-local; grep-verified collision-free, errors.md'de hic INV-MK kullanimi yok) | Marketing (:7112) + Automation + **Dashboard SPA (`/settings/followup-sequence` editor)** | Hangfire scheduled + A/B + 4 trigger + per-stage metric + pilot yapay delay shortcut param + **UI: stage list + delay days + template picker + A/B slider** |
+| 6 | FEAT-MCC Multi-City Campaign | `20260425-feat-mcc-multi-city` | PENDING | **030**-tenant-campaign-config.sql (`tenant_settings.campaign_config JSONB` additive) | **INV-BE-118..120** (INV-BE-090..091 Translation COLLISION — grep-verified `errors.md:154-161`; rebase zorunlu) | Backend + Automation + **Dashboard SPA (`/settings/campaigns` editor)** | JSONB config + `{{campaign.*}}` substitution + outbound window guard + pilot Dublin/Cork config set + **UI: campaign list + city/date editor** |
 
-| # | Paket | Slug | Status | Dep | Deploy | Exit Criteria |
-|---|-------|------|--------|-----|--------|---------------|
-| 10 | INMA Debug Log Temizligi | `20260427-inma-debug-log-cleanup` | PENDING | - | Dashboard SPA | `[inma-debug]` prefix'li loglar silindi |
-| 11 | Prod Yedek Silme | `20260427-prod-bypass-bak-remove` | PENDING (Q onay) | - | Prod file | `appsettings.Production.json.bak-20260416-inma-bypass` silinmis |
+### FAZ 4 — Cleanup (pilot once temiz)
 
-### FAZ 5 — Marketing (Dent ile alakasiz, paralel kapatilabilir)
+| # | Paket | Slug | Status | Deploy | Exit Criteria |
+|---|-------|------|--------|--------|---------------|
+| 7 | INMA Debug Log Temizligi | `20260427-inma-debug-log-cleanup` | PENDING | Dashboard SPA | `[inma-debug]` prefix'li loglar silindi (inmaBridge + inmaBootstrap + useAuth + App.tsx) + INMA handshake onayi sonrasi |
+| 8 | Prod Yedek Silme | `20260427-prod-bypass-bak-remove` | PENDING (Q onayi) | Prod file op | `appsettings.Production.json.bak-20260416-inma-bypass` sunucudan silinmis |
 
-| # | Paket | Slug | Status | Dep | Deploy | Exit Criteria |
-|---|-------|------|--------|-----|--------|---------------|
-| 12 | PKT-13 Faz 1 Lead Scoring | `20260428-pkt-13-faz-1-lead-scoring` | PENDING | - | Marketing | Scoring engine + dashboard + model call |
+### FAZ 5 — Pilot Smoke (SON — butun feature'lar DEPLOYED ve SMOKED olduktan sonra)
 
-### FAZ 6 — FEAT-ICB (INMA Chat Bridge, 5 faz)
+| # | Paket | Slug | Status | Tenant | Exit Criteria |
+|---|-------|------|--------|--------|---------------|
+| 9 | Dent Adavista Pilot Full-Stack Smoke | `20260428-dent-pilot-smoke` | PENDING | **18173130** (Dent Adavista) | Asagida **Pilot Smoke Step-by-Step** bolumu; 8 feature yesil + prod log trail |
 
-**Interview gate:** 6 acik soru Q cevabi gerekli (media storage, webhook owner, Ecom+Zoho agregasyon, team chat kapsam, prefs sync, sticky note). Faz 1 basi oncesi AskUserQuestion.
-
-| # | Paket | Slug | Status | Dep | Deploy | Exit Criteria |
-|---|-------|------|--------|-----|--------|---------------|
-| 13 | FEAT-ICB Faz 1 Infra | `20260429-feat-icb-faz1-infra` | PENDING | Q interview | Backend | SignalR hub + auth + session + rate limit + 5 D-grup modul |
-| 14 | FEAT-ICB Faz 2 Foundational API | `20260430-feat-icb-faz2-api` | PENDING | P13 | Backend | A-grup 11 contract reuse + 6 B-grup yeni endpoint |
-| 15 | FEAT-ICB Faz 3 Flow/Template/Conv | `20260501-feat-icb-faz3-flow` | PENDING | P14 | Backend+Automation | WTP/DMP extension + 5 B-grup modul |
-| 16 | FEAT-ICB Faz 4 Media/Team/Prefs | `20260502-feat-icb-faz4-media` | PENDING | P15 | Backend | J2 schema ext + 4 B-grup + media storage |
-| 17 | FEAT-ICB Faz 5 Reports/Events | `20260503-feat-icb-faz5-events` | PENDING | P16 | Backend+ChatAnalysis | 7 C-grup SignalR event + customer 360 |
-
-### FAZ 7 — Pilot Smoke (TUM PAKETLER BITTIKTEN SONRA)
-
-| # | Paket | Slug | Status | Dep | Deploy | Exit Criteria |
-|---|-------|------|--------|-----|--------|---------------|
-| 18 | Dent Pilot Full-Stack Smoke | `20260504-dent-pilot-smoke` | PENDING | **1-17 DONE** | Production tenant 18173130 | Translation warmup + 48 template seed + flow wiring + E2E (chunk mesaj + translate + DMP + VCP meeting + EFS drip + MCC city + WTP rotation) + prod log grep |
+> **Note:** Eski P7 FEAT-VCP Chunk C **BACKLOG B0** olarak tasindi (Codex iter 0 Q4 FAIL — OAuth Q-provision blocker fragil). Pilot smoke S6 adimi **Mock link** ile yapilacak (Chunk B Mock provider DEPLOYED 2026-04-20). Gercek Google Meet prod = B0 pilot sonrasi.
 
 ---
 
-## BLOCKED (External Dep, Roadmap'te Degil)
+## PILOT SMOKE STEP-BY-STEP (P10 Detay)
 
-| # | Task | Bloker | Unblock Sinyali |
-|---|------|--------|-----------------|
-| B1 | UP0.3 Tenant Lifecycle Handler | INMA `tenant.created` event | INMA team confirm |
-| B2 | UP0.5 IInmaSendClient | INMA J1/J4 API | INMA endpoint spec + test |
-| B3 | INMA JWT Signature Bypass Rollback | RS256 key/algo | INMA pubkey endpoint |
-| B4 | Zoho P4.2 Adavista Paid-Plan Retest | Adavista plan upgrade | Q'dan plan degisim onayi |
-| B5 | FEAT-J2 Http Mode Flip | Gercek X-CIB-SecretKey | Q'nun provision karari |
+### Pre-Pilot Tenant Prep (P9 baslamadan once)
+1. **Translation warmup:** `POST /ops/translation/warmup?tenantId=18173130&texts=<12 FAQ>&locales=<9>` — cache populate
+2. **FEAT-TFM field mapping set (P3 UI ile):** Dent 5-field mapping (`roadshow_city→cf1`, `appointment_slot→cf2/date`, `offer_status→cf3/enum`, `deposit_status→cf4/enum`, `flight_booked→cf5/bool`). PUT `/api/v1/tenant-settings/field-mapping` call hem UI hem API yoluyla.
+3. **FEAT-MCC campaign config set (P6 Dashboard Campaigns page ile):** `roadshow_ireland` slug, Dublin+Cork cities, 2026-03-14/15 dates, active window 2026-02-28→2026-03-20
+4. **FEAT-VCP provider select:** **Mock provider** (Chunk B DEPLOYED, prod OAuth B0 BACKLOG). Pilot scope'ta sadece Mock link yeterli.
+5. **FEAT-EFS sequence set (P5 Dashboard Followup Sequence page ile):** 3-stage Day 3/7/14, A/B 50/50, yapay delay test param enabled
+6. **Dent template seed:** Dashboard → Templates → Topluca JSON → `DentAdavista/seeds/dent-adavista-templates.json` paste → **index 0 metadata entry sil** (JSON'un ilk eleman`i metadata object'i, kalan 48 template) → Topluca Yukle → `succeeded=48` verify
+7. **Flow wiring (P4 FEAT-TFM-FLOW picker + FlowBuilder manuel):** Welcome node `data.group_tag=welcome_with_date` (roadshow tarihi varsa) / `welcome_no_date`; ai_faq nodes `data.rotation_group_tag=faq_pricing/hours/location/...` (12 FAQ icin 12 rotation grup); placeholder substitution test `{{roadshow_city}}` FEAT-TFM-FLOW picker'dan insert
+
+### Smoke Adimlari (E2E, her biri olcumlenebilir)
+| # | Adim | Kanit (log/DB/UI) | Beklenen |
+|---|------|-------------------|----------|
+| S1 | Test lead intake (FEAT-LIW) `POST /leads/intake/ireland-roadshow-lp` | `liw_audit_log` row + `leads` row with `custom_1=dublin` | 200 + audit trail |
+| S2 | Welcome flow trigger (FEAT-WTP + HFM-1) | `[FEAT-WTP] tenant=18173130` log + rotation counter increment + chunked message (sentinel-free leak check) | 3 chunks arriving, counter ++1 |
+| S3 | Preferred locale upsert (HFM-2) | `leads.preferred_locale=en-IE` (DB SELECT) | Upsert canonical, not detected |
+| S4 | FAQ question + translation hop | `[TRANSLATE hop]` log + cached response on 2nd call | Response <500ms 2nd call, DE locale render |
+| **S5a** | **FEAT-TFM resolver dedicated test** | **(i) `SELECT field_mapping FROM tenant_settings WHERE tenant_id=18173130` JSONB 5-entry verify. (ii) Backend `ITenantFieldMappingResolver.Invalidate` post-PUT verified via WARN log. (iii) `{{roadshow_city}}` placeholder substitution uses **semantic** resolution path (log: `resolver.ResolveToInmaKey("roadshow_city") = cf1`), NOT raw cf1 fallback.** | **Mapping DB set, resolver hit, semantic→cf1 path observed distinct from raw-allowlist fallback** |
+| S5b | FEAT-DMP placeholder substitution (end-to-end) | INMA `dynamicMessage=true` + `dynamicMessageFields=[cf1]` outbound | Real `{{roadshow_city}}` → Dublin substituted (via TFM resolver, not raw) |
+| S6 | FEAT-VCP meeting creation (Mock mode) | `appointments.meeting_link` non-null + ICS file generated + `mock-mock-isipHIJuAo` pattern link | Mock link persist, calendar event mock ICS generated |
+| S7 | FEAT-MCC city substitution + window guard | Template `{{campaign.cities_human}}` → "Dublin & Cork"; out-of-window send → rejected INV-BE-118 | Substitution + guard both active |
+| S8 | FEAT-EFS drip schedule | `event_followup_runs` rows scheduled + yapay delay (test param) triggers fire | 3 stages schedule within 10 min yapay-delay simulation |
+| S9 | Prod log grep final | `[FEAT-WTP] + [INV-MK-050] + [INV-BE-118] + [FEAT-DMP] + [TFM resolver]` unified trace per test lead | All feature tags visible in Kestrel log |
+| S10 | Cleanup | DELETE test lead + tenant_settings reset | Baseline restored |
 
 ---
 
-## Per-Paket Detay
+## BACKLOG (Pilot Sonrasi)
 
-Her PENDING paket kendi `tracking/{slug}.md` dosyasinda:
-- Scope (degisecek dosyalar)
-- Pre-implementation interview (plan session girdisi)
-- AC (Acceptance Criteria)
-- Arch touchpoints
-- Risk watchpoints
-- Codex verdict history (iter arc)
-- Deploy durumu
+| # | Paket | Sebep | Activation Gate |
+|---|-------|-------|-----------------|
+| **B0** | **FEAT-VCP Chunk C Prod GoogleMeet OAuth** | **Codex iter 0 Q4:** Q-provision Google Workspace Client ID/Secret BLOCKER. Main queue'da fragil sequencing. Pilot smoke S6 Mock provider (Chunk B DEPLOYED) ile yeterli | **Q Google Workspace Console'dan OAuth client provision etsin (Client ID + Secret + Authorized Redirect URI)** |
+| B1 | FEAT-TFM-SYNC (scope belirsiz) | INMA `/api/dynamicfields` **sadece READ**. Write/create/update API YOK. cf1-cf10 INMA admin panel tarafindan yonetiliyor. FEAT-DMP zaten READ sync yapiyor. Olasi yeni scope: INMA→INSE `leads.custom_N` sync (webhook veya polling) — ama Dent pilot FEAT-LIW intake ile custom_1 dolduruyor, sync gereksiz | Q interview: "INMA webhook mu, polling mi, hic mi (FEAT-LIW yeterli)?" |
+| B2 | FEAT-TFM-CACHE Redis Invalidate | Spec `tenant-field-mapping.md` 5dk TTL eventual consistency MVP icin yeterli diyor. Redis dep + pub/sub Q onayi gerekli | Q onay: Redis eklensin mi, yoksa PostgreSQL `NOTIFY/LISTEN` pattern mi? |
+| B3 | PKT-13 Faz 1 Lead Scoring | Marketing servisi (:7112) Implemented ama PKT-13 spec dosyasi YOK (`tracking/pkt-13-*` hic yok). Dent ile alakasiz | Q: scope yaz + paket aç |
+| B4 | lessons-learned.md Archive | **422 entry** (arsiv esigi 50). `arch/lessons-learned-archive.md`'ye son 3 ay disi tasinmasi | Doc-hygiene, ops bakim zamani |
+| B5 | FEAT-ICB 5 faz (23 modul) | Spec (`tracking/feat-inma-chat-bridge.md`) acikca "**BACKLOG — Dent pilot bitince**" diyor + UP0.2/0.3/0.5 INMA-BLOCKED (JWT public key bekliyor) | Dent pilot go-live + UP0 unblock |
 
-Dosyalar paket baslama aninda olusturulur (lazy creation). Var olmayan paketi baslarken `tracking/_TEMPLATE.md` referans al.
+---
+
+## EKSIK-GEDIK AUDIT (v2 revizyon kaynagi)
+
+### §1 FEAT-TFM-SYNC / FEAT-TFM-CACHE Degerlendirmesi
+- **Bulgu:** INMA `/api/dynamicfields` **sadece READ** (wapcrm-marketing-api.md satir 161). cf1-cf10 INMA admin panel yonetir. INMA'ya WRITE API YOK.
+- **Karar:** FEAT-TFM-SYNC **BACKLOG** (B1). FEAT-TFM-CACHE Redis **BACKLOG** (B2).
+- **Risk onleyici:** FEAT-LIW Chunk A (DEPLOYED) intake webhook uzerinden `leads.custom_1..custom_5` Dent pilotta doldurulacak. INMA mirror gereksiz.
+
+### §2 Error Code Namespace Audit
+- **Bulgu:** FEAT-MCC spec'inde `INV-BE-090..091` tahsis edilmis. ANCAK `arch/errors.md` satir 154-161: **INV-BE-090..095 zaten Translation + HFM-2 kullaniyor** (FEAT-LIW Chunk A lesson'da da belgeli).
+- **Son kullanilan:** INV-BE-117 (FEAT-LIW FB — commit `9ef615a`).
+- **FEAT-MCC yeni kod:** INV-BE-**118..120** (MCC-specific: out-of-window, invalid campaign, reserved slug).
+- **FEAT-EFS yeni kod:** INV-MK-**050..055** (Marketing-local, collision YOK).
+- **FEAT-VCP Chunk C yeni kod:** INV-INT-**148..150** (OAuth fail, provider misconfig, meet creation fail).
+- **Eylem:** Her paket plan JSON'unda ilk adim error code pre-flight grep (LIW Chunk A lesson'da belgeli).
+
+### §3 Migration Numbering Audit
+- **Son migration:** `028-tenant-field-mapping.sql` (FEAT-TFM MVP, 2026-04-21).
+- **FEAT-EFS (P5):** `029-efs-followup-sequence.sql`
+- **FEAT-MCC (P6):** `030-tenant-campaign-config.sql`
+- **FEAT-VCP Chunk C (P7):** Migration YOK (OAuth config + secrets only). Chunk A Migration 023 + Chunk B Migration 024 DEPLOYED.
+- **P10 Pilot Smoke:** Migration YOK.
+- **Eylem:** Her paket plan JSON'unda migration numberesi sabitle; paralel pack olusursa race yok (sequential implementation).
+
+### §4 Config / Secrets Pre-Flight
+- **FEAT-VCP Chunk C:** Google Workspace **Client ID + Secret + Authorized Redirect URI** Q provision gerekli. Pilot prep'e BLOCKER.
+- **FEAT-MCC:** Config degismedi (JSONB DB only).
+- **FEAT-EFS:** `MarketingService:FollowupQueue` Hangfire queue (appsettings) — Marketing servisinde yeni key, peer service (Backend/Automation) config mirror gereksiz.
+- **FEAT-TFM-UI (P3):** Dashboard SPA env YOK, mevcut Backend endpoint (`/api/v1/tenant-settings/field-mapping` DEPLOYED) tuketiliyor.
+- **Eylem:** Chunk C paket plan'inda "Pre-deploy Q provision" interview sorusu ZORUNLU.
+
+### §5 Test Coverage & Skipped Tests
+- **P1 Invalidate_DuringInflight KALDIRILDI** (deterministik test degil; TFM-MVP pattern'inde de yok). Defensive XML doc + production HttpClient async-boundary guarantee yeterli gorulmus.
+- **FEAT-EFS:** A/B coin flip + opt-out race + Hangfire schedule → integration test (NSubstitute + test DB).
+- **FEAT-MCC:** Substitution render snapshot + window guard unit test.
+- **FEAT-TFM-UI/FLOW:** Dashboard smoke E2E (Playwright) opsiyonel; manuel Q smoke yeterli.
+- **Eylem:** Her paket plan JSON'unda hangi testler yazildi + hangileri "acceptable skip" belgelendi.
+
+### §6 Pilot Smoke Olculebilir Basari Kriteri
+- **Bulgu:** Eski roadmap "pilot smoke green" kriter belirsiz. Yeni plan: yukarida S1-S10 her adim icin kanit (log line + DB row + UI visible) gerekli.
+- **Eylem:** P10 paket plan JSON'unda her adim icin kanit template ve PASS/FAIL checklist.
+
+### §7 Rollback Plan Per Paket
+- **FEAT-EFS:** Feature flag `tenant_settings.enable_followup_sequence` default FALSE → rollback = flag FALSE + Hangfire queue drain.
+- **FEAT-MCC:** `tenant_settings.campaign_config` NULL set → substitution skip, window guard disabled.
+- **FEAT-VCP Chunk C:** Provider select Mock'a geri dondur → Chunk B mock fallback'i aktiflesir.
+- **FEAT-TFM-UI/FLOW:** Dashboard SPA rebuild rollback → prev commit deploy.
+- **INMA debug log cleanup:** Git revert + SPA redeploy.
+- **Eylem:** Her paket plan JSON'unda rollback steps bolumu.
+
+### §8 BLOCKED External Dep Timeline
+| # | Task | Bloker | Unblock Signal | Impact |
+|---|------|--------|----------------|--------|
+| B-INMA-UP0 | UP0.3 Tenant Lifecycle | INMA `tenant.created` event | INMA team confirm | FEAT-ICB B5 prerequisite |
+| B-INMA-J14 | UP0.5 IInmaSendClient | INMA J1/J4 API | INMA endpoint + test | Outbound read-through |
+| B-INMA-JWT | INMA JWT RS256 pubkey | RS256 algo key | INMA pubkey endpoint | Current decode-only bypass accepted |
+| B-ZOHO-PAID | Zoho P4.2 Adavista retest | Adavista plan upgrade | Q plan degisim onayi | Metadata path re-enable |
+| B-J2-SECRET | FEAT-J2 Http flip | X-CIB-SecretKey provision | Q karari | Opt-out actual INMA sync |
+| B-VCP-OAUTH | Google Workspace OAuth Client | Q provision | Google Console creation | **FEAT-VCP Chunk C (P7) BLOCKER** |
+
+### §9 Interview Gates (Q'nun acik cevabi zorunlu)
+| # | Paket | Soru |
+|---|-------|------|
+| P2 | Lessons | 4 entry scope kabul mu yoksa farkli yapi? |
+| P3 | FEAT-TFM-UI | Dashboard'da INMA FieldName label nasil gosterilecek (inline vs tooltip)? Duplicate slot UX (cf1 iki semantic ad)? |
+| **P4** | **FEAT-TFM-FLOW Picker** | **FlowBuilder NodePropertyPanel cursor-aware insert mevcut FEAT-DMP pattern mi? TemplateCreate textarea'da semantic dropdown konumu (toolbar vs inline)? Dropdown sadece field_mapping entry'leri gosterir mi yoksa raw cf1..cf10 + semantic hybrid mi? TFM mapping yoksa dropdown empty-state UX?** |
+| P5 | FEAT-EFS | Marketing servisinde yeni orchestrator mi (FollowupOrchestrator), yoksa Automation'da hook mu? A/B default 50/50 tenant override? Opt-out race guard enqueue-time vs execution-time? Max stage 5 / max window 30 gun cap'ler Dent 3-stage/14-gun icin yeterli? |
+| P6 | FEAT-MCC | Slug uniqueness tenant-scope mi? Active window inclusive/exclusive? `{{campaign.cities}}` render comma-sep mi JSON array mi? Cache invalidate push vs poll? |
+| **P7 (cleanup)** | **INMA Debug Log Temizligi** | **INMA handshake onayi geldi mi (test sonrasi log temizligi yapilabilir mi)? `[inma-debug]` disinda baska loglar da silinmeli mi? Git commit + SPA redeploy sadece kod seviyesi mi yoksa log config degisikligi de var mi?** |
+| **P8 (cleanup)** | **Prod Yedek Silme** | **Gerçekten silinmesine hazir mi `appsettings.Production.json.bak-20260416-inma-bypass`? Yedek alinarak silinsin mi yoksa direkt delete mi? Rollback senaryosunda bu yedek gerekecek mi?** |
+| **P9 (smoke)** | **Dent Pilot Full-Stack Smoke** | **Tenant data reset yetkisi kimde (Q mi, yoksa Claude DELETE SQL ile mi cleanup edecek)? Smoke FAIL threshold (kac S-adimi FAIL = rollback trigger)? Rollback authority (Q manuel mi, otomatik mi)? Pilot lead verilerini real customer'lara sizdirma riski var mi (fake tenant/number gerekir mi)?** |
+| B0 | FEAT-VCP Chunk C | Q Google Workspace OAuth client provision ne zaman? Provision tamamlandiginda main queue'ya dondur (PROMOTE B0) |
+| B1 | FEAT-TFM-SYNC | INMA webhook mu, polling mi, hic mi? |
+| B2 | FEAT-TFM-CACHE | Redis dep OK mi, yoksa PostgreSQL NOTIFY/LISTEN pattern? |
+| B3 | PKT-13 | Scope yaz (Marketing servisinde zaten ne var, ne yok)? |
+| B5 | FEAT-ICB | 6 acik soru (media storage, webhook owner, Ecom+Zoho agregasyon, team chat kapsam, prefs sync, sticky note) |
 
 ---
 
@@ -136,26 +222,37 @@ Dosyalar paket baslama aninda olusturulur (lazy creation). Var olmayan paketi ba
 
 | Metric | Value |
 |--------|-------|
-| Total Packages | 18 |
-| DONE | 1 |
+| Total Pilot-Critical Packages | 9 |
+| DONE | 1 (P1) |
 | IN_PROGRESS | 0 |
-| PENDING | 17 |
+| PENDING | 8 |
 | SKIPPED | 0 |
-| Progress | 5.5% (1/18) — P1 DONE, Backend deploy pending |
+| Progress | 11% (1/9) |
+| Backlog Packages | 6 (B0-B5) |
+| Blocked External Deps | 6 |
 
-_Her paket DONE olunca bu tablo guncellenir._
+**Pilot tahmini timeline (revize, Codex CQ9 feedback):**
+- P2 (lessons doc) — 1 session
+- P3-P4 FEAT-TFM suite (UI + picker) — 2 session
+- P5-P6 pilot omurgasi (EFS + MCC — her biri migration + deploy + UI) — **3-4 session** (eski 3-session tahmini fazla iyimserdi)
+- P7-P8 cleanup — 1 session
+- P9 smoke prep + execution — 1-2 session
+- **Toplam:** ~8-10 session (2-3 hafta, paralel degil sequential)
+- **VCP Chunk C (B0):** pilot disi, OAuth provision edildiginde ayri 1 session
 
 ---
 
 ## References
 
-- [Session Memory](../arch/session-memory.md) — son durum + detay log
-- [Tracking Master](README.md) — tum paket tablosu
-- [Lessons Learned](../arch/lessons-learned.md) — tekrarlanan hata onleme
-- [INVEKTO_BASE.prompt.md](../.claude/agents/INVEKTO_BASE.prompt.md) — global rules (CODEX UTANSIN + CQ + AQ)
-- [Codex Context](../arch/codex-context.md) — review guidance
-- Eski planlama dosyasi: [feat-pilot-5-generic-roadmap.md](feat-pilot-5-generic-roadmap.md) — historical (FEAT-5 generic planning, artik kapsama dahil)
+- [Session Memory](../arch/session-memory.md)
+- [Tracking Master](README.md)
+- [Lessons Learned](../arch/lessons-learned.md) (422 entry — archive B4 backlog)
+- [INVEKTO_BASE.prompt.md](../.claude/agents/INVEKTO_BASE.prompt.md)
+- [Codex Context](../arch/codex-context.md)
+- [WAP CRM Marketing API](../wapcrm-marketing-api.md) — INMA contract truth
+- Eski v1 roadmap: commit `ca2d2d5` tracking/pilot-launch-roadmap.md (superseded)
 
 ---
 
-**Hazirlayan:** Claude 2026-04-21 22:55 UTC | **Ilk baslangic:** P1 `20260422-feat-dmp-cache-poison-fix`
+**Hazirlayan:** Claude 2026-04-21 23:20 UTC (post-P1 deep audit + Codex planning review)
+**Ilk PENDING:** P2 `20260422-lessons-tfm-auth-hotfix`
