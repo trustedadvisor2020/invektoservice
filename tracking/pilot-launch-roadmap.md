@@ -72,7 +72,7 @@ Bu dosya **pilot launch boyunca execution queue'nun tek kaynagidir**. Session bo
 
 | # | Paket | Slug | Status | Migration | Deploy | Exit Criteria |
 |---|-------|------|--------|-----------|--------|---------------|
-| 3 | FEAT-TFM-UI Dashboard Editor | `20260423-feat-tfm-ui-editor` | **DONE** (Codex iter 1 PASS 12/12 CQ + 5/5 CoVe after iter 0 FAIL 8 blocker) | Yok | Backend SPA rebuild (deploy pending) | `/settings/field-mapping` 10-slot editor + INMA FieldName label entegrasyonu + E2E add/edit/delete smoke ✅ |
+| 3 | FEAT-TFM-UI Dashboard Editor | `20260423-feat-tfm-ui-editor` | **DONE+DEPLOYED+SMOKED** 2026-04-22 12:12 UTC (commit `f4fdc60`, Codex iter 1 PASS 12/12 CQ + 5/5 CoVe after iter 0 FAIL 8 blocker) | Yok | Backend SPA redeploy 10/10 HEALTHY | 10-slot editor + INMA FieldName + auth gate 401/401 ✅ SPA chunk `FieldMappingSettingsPage-D2v_4qCv.js` 13KB prod'da ✅ |
 | 4 | FEAT-TFM-FLOW Picker | `20260424-feat-tfm-flow-picker` | PENDING | Yok | Dashboard SPA | FlowBuilder NodePropertyPanel + TemplateCreate'de semantic dropdown; FEAT-DMP PlaceholderPicker TFM-aware variant |
 
 ### FAZ 3 — Pilot Omurgasi Feature'lar (3 kritik)

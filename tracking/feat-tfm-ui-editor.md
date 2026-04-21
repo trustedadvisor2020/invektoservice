@@ -3,7 +3,7 @@
 > **Slug:** `20260423-feat-tfm-ui-editor` | **Faz:** 2 | **Risk:** MEDIUM
 > **Roadmap:** [`pilot-launch-roadmap.md`](pilot-launch-roadmap.md) P3
 > **Plan JSON:** [`arch/plans/20260423-feat-tfm-ui-editor.json`](../arch/plans/20260423-feat-tfm-ui-editor.json)
-> **Durum:** DONE — Codex iter 1 PASS (12/12 CQ + 5/5 CoVe, 0 blocking), iter 0 FAIL 8 blocker resolved. Deploy pending.
+> **Durum:** DONE+DEPLOYED+SMOKED 2026-04-22 12:12 UTC — Codex iter 1 PASS, Backend redeploy 10/10 HEALTHY, SPA bundle `FieldMappingSettingsPage-D2v_4qCv.js` 13,269 bytes prod'da, auth gate 401/401 (middleware reachable).
 
 ## Scope
 
