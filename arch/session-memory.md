@@ -7,7 +7,16 @@
 
 ## Last Update
 
-- **Date:** 2026-04-22 12:37 UTC (P4 FEAT-TFM-FLOW Picker DONE+DEPLOYED+SMOKED — Codex iter 1 PASS, Backend redeploy 10/10 HEALTHY, SPA bundle prod'da, TFM+DMP auth gate 401/401)
+- **Date:** 2026-04-22 13:00 UTC (P4 FEAT-TFM-FLOW Picker DONE+DEPLOYED+SMOKED — pre-/clear handoff; FAZ 2 FEAT-TFM suite (P3+P4) tamamlandi, Dashboard pilot hazir)
+- **Pre-/clear Session Summary:** Bu session'da yapilanlar:
+  - P1 FEAT-DMP Cache Poison Fix (commit `ca2d2d5` + wrap `3a21d2c`) — Codex iter 0 PASS 12/12 CQ + 4/4 CoVe, 7/7 unit test
+  - Pilot Launch Mode kurulumu (tracking/pilot-launch-roadmap.md v1 → v2.1 Codex planning review iter 1 PASS, commits `3e2e622` + `a3ca39b`) — 18 paket → 9 pilot-critical + 6 BACKLOG
+  - P2 Lessons +4 TFM AUTH-HOTFIX + P1 test-skip (commit `ac36a3a`) — Codex iter 0 PASS 12/12 CQ + 3/3 CoVe
+  - P3 FEAT-TFM-UI Dashboard Editor (commit `f4fdc60` + wrap `22530ac`) — Codex iter 1 PASS after iter 0 FAIL 8 blocker, Backend redeploy 2026-04-22 12:12 UTC 10/10 HEALTHY, SPA bundle FieldMappingSettingsPage-CpuXabJ8.js + auth gate smoke PASS
+  - P4 FEAT-TFM-FLOW Picker (commit `783a7ab` + wrap `761b5f7`) — Codex iter 1 PASS after iter 0 FAIL 1 blocker CQ12, Backend redeploy 12:37 UTC 10/10 HEALTHY, PlaceholderPicker-DW65pAcx.js 6KB + useFieldMapping hook + 2 consumer tfmAware={true} + TFM+DMP auth gate 401/401
+  - Lessons-learned +4 kritik lesson (P3+P4 arka arkaya CQ12 uncoded error pattern + React hook enabled-flag pattern + table row Fragment pattern + disabled-row existing-data guard) — formal Codex review yapilmadi, Q acelede /clear icin inline eklendi; gelecek P2-benzeri lessons paketinde formal review olabilir
+  - MEMORY.md Q preference "POWERSHELL HEP IZINLI" eklendi + .claude/settings.local.json allow listesinde `PowerShell(*)` satiri eklendi (Q sorusuz bekletmek istemiyor)
+  - **Progress 0/9 → 4/9 (44%)** — FAZ 1 (P1+P2) + FAZ 2 (P3+P4) COMPLETE. FAZ 3 basliyor.
 - **Next Task:** **P5** `20260425-feat-efs-drip-sequence` (FAZ 3, MEDIUM risk). Scope: Event Follow-Up Sequence — Hangfire scheduled drip jobs + A/B + 4 trigger (no-reply/declined/timeout/on-hold) + Dashboard SPA `/settings/followup-sequence` editor (stage list + delay days + template picker + A/B slider) + migration 029 (`event_followup_sequences`, `event_followup_runs`, `leads.followup_state`, `leads.followup_ab_group`) + INV-MK-050..055. Deploy scope: Marketing (:7112) + Automation + Backend SPA. Pilot prep: Dent 3-stage Day 3/7/14 A/B 50/50 yapay delay shortcut param.
 - **Status:** **P4 FEAT-TFM-FLOW Picker DONE**. Slug `20260424-feat-tfm-flow-picker`. PlaceholderPicker.tsx `tfmAware?: boolean` prop (default false) + 2-grup dropdown render (Semantic Alanlar + INMA Ham Alanlar). Yeni useFieldMapping.ts hook (useDynamicFields ikizi: module-cache + single-flight + errorKind + enabled flag for React hook-order stability). Semantic literal token `{{<semantic>}}` insert — backend TFM resolver runtime'da cf1'e cevirir. TemplateCreatePage + flow-builder NodePropertyPanel `tfmAware={true}` explicit opt-in. renderDynamicPreview opt-in mapping param. Dashboard-only; 6 files 472+ ins / 9 del. tsc 0 + vite 6.35s PASS. Codex arc: iter 0 FAIL CQ12 uncoded 'field_mapping_*_failed' Errors → iter 1 wrapError helper ApiClientError.errorCode preserve + INV-OB-037 fallback + Object.assign .code/.requestId (useDynamicFields line 99 pattern parity). Tokens 16844+16796. Deploy bekliyor (Backend publish + server-deploy MCP, SPA rebuild). **Roadmap progress 3/9 → 4/9 (44%).**
 
