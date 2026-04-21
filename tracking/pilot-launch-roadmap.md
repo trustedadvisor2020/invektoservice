@@ -73,7 +73,7 @@ Bu dosya **pilot launch boyunca execution queue'nun tek kaynagidir**. Session bo
 | # | Paket | Slug | Status | Migration | Deploy | Exit Criteria |
 |---|-------|------|--------|-----------|--------|---------------|
 | 3 | FEAT-TFM-UI Dashboard Editor | `20260423-feat-tfm-ui-editor` | **DONE+DEPLOYED+SMOKED** 2026-04-22 12:12 UTC (commit `f4fdc60`, Codex iter 1 PASS 12/12 CQ + 5/5 CoVe after iter 0 FAIL 8 blocker) | Yok | Backend SPA redeploy 10/10 HEALTHY | 10-slot editor + INMA FieldName + auth gate 401/401 ✅ SPA chunk `FieldMappingSettingsPage-D2v_4qCv.js` 13KB prod'da ✅ |
-| 4 | FEAT-TFM-FLOW Picker | `20260424-feat-tfm-flow-picker` | **DONE** (Codex iter 1 PASS 12/12 CQ + 3/3 CoVe after iter 0 FAIL 1 blocker CQ12) | Yok | Backend SPA rebuild (deploy pending) | PlaceholderPicker tfmAware prop + 2-grup + useFieldMapping hook + 2 consumer opt-in ✅ |
+| 4 | FEAT-TFM-FLOW Picker | `20260424-feat-tfm-flow-picker` | **DONE+DEPLOYED+SMOKED** 2026-04-22 12:37 UTC (commit `783a7ab`, Codex iter 1 PASS after iter 0 FAIL 1 blocker CQ12) | Yok | Backend SPA redeploy 10/10 HEALTHY | PlaceholderPicker `tfmAware` prop + 2-grup + useFieldMapping + 2 consumer opt-in ✅ SPA chunks `PlaceholderPicker-DW65pAcx.js` 6KB prod'da ✅ TFM+DMP auth gate 401/401 ✅ |
 
 ### FAZ 3 — Pilot Omurgasi Feature'lar (3 kritik)
 

@@ -3,7 +3,7 @@
 > **Slug:** `20260424-feat-tfm-flow-picker` | **Faz:** 2 | **Risk:** MEDIUM
 > **Roadmap:** [`pilot-launch-roadmap.md`](pilot-launch-roadmap.md) P4
 > **Plan JSON:** [`arch/plans/20260424-feat-tfm-flow-picker.json`](../arch/plans/20260424-feat-tfm-flow-picker.json)
-> **Durum:** DONE — Codex iter 1 PASS (12/12 CQ + 3/3 CoVe, 0 blocking), iter 0 FAIL 1 blocker CQ12 resolved. Deploy pending.
+> **Durum:** DONE+DEPLOYED+SMOKED 2026-04-22 12:37 UTC — Codex iter 1 PASS, Backend redeploy 10/10 HEALTHY, PlaceholderPicker-DW65pAcx.js 6081 bytes prod'da, TFM+DMP auth gate 401/401.
 
 ## Scope
 
