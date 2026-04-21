@@ -64,7 +64,7 @@ Bu dosya **pilot launch boyunca execution queue'nun tek kaynagidir**. Session bo
 | # | Paket | Slug | Status | Migration | Deploy | Exit Criteria |
 |---|-------|------|--------|-----------|--------|---------------|
 | 1 | FEAT-DMP Cache Poison Fix | `20260422-feat-dmp-cache-poison-fix` | **DONE+DEPLOYED+SMOKED** 2026-04-21 13:04 UTC (commit `ca2d2d5` + `3a21d2c`) | Yok | Backend 10/10 HEALTHY | Codex iter 0 PASS ✅ 7/7 test ✅ endpoint 401 gate ✅ |
-| 2 | Lessons +3 AUTH-HOTFIX + 1 test-skip + 1 inline update | `20260422-lessons-tfm-auth-hotfix` | PENDING | Yok | Doc-only | 3 yeni entry + 1 update `arch/lessons-learned.md` + Codex PASS (doc-only LOW) |
+| 2 | Lessons +3 AUTH-HOTFIX + 1 test-skip + 1 inline update | `20260422-lessons-tfm-auth-hotfix` | **DONE** 2026-04-21 23:42 UTC (Codex iter 0 PASS 12/12 CQ + 3/3 CoVe) | Yok | Doc-only | 4 yeni entry (satir 16-19) + 1 inline update (satir 21) `arch/lessons-learned.md` ✅ |
 
 ### FAZ 2 — FEAT-TFM Suite Pilot-Required (resolver MVP uzerine UI + picker)
 
@@ -223,11 +223,11 @@ Bu dosya **pilot launch boyunca execution queue'nun tek kaynagidir**. Session bo
 | Metric | Value |
 |--------|-------|
 | Total Pilot-Critical Packages | 9 |
-| DONE | 1 (P1) |
+| DONE | 2 (P1, P2) |
 | IN_PROGRESS | 0 |
-| PENDING | 8 |
+| PENDING | 7 |
 | SKIPPED | 0 |
-| Progress | 11% (1/9) |
+| Progress | 22% (2/9) |
 | Backlog Packages | 6 (B0-B5) |
 | Blocked External Deps | 6 |
 

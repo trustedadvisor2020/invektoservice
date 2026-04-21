@@ -1,0 +1,146 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "slug": "20260422-lessons-tfm-auth-hotfix",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-04-21T23:35:00Z",
+  "updated_at": "2026-04-21T23:42:00Z",
+  "plan": {
+    "summary": "Doc-only paket P2 (FAZ 1): arch/lessons-learned.md'ye 4 yeni entry + 1 inline update. Kaynak: FEAT-TFM AUTH HOTFIX (3 lesson: Items['TenantId'] latent bug + jwtRequiredPrefixes registration + 3-tier auth probe) + P1 FEAT-DMP Cache Poison Fix (1 lesson: Invalidate_DuringInflight non-deterministic test skipped; race-test-infrastructure limitation) + inline update satir 17 cancellation poison lesson'unda 'retro-fix paket onerisi' → 'retro-fix uygulandi commit ca2d2d5 2026-04-21 (P1)'.",
+    "q_intent": "P2 basla. Pilot Launch Mode aktif, ilk PENDING = P2 20260422-lessons-tfm-auth-hotfix. 4 yeni entry + 1 inline update scope (Codex-approved v2.1 roadmap).",
+    "interview_notes": "Q1 scope = 4+1 (Recommended, seçildi). Q2 format = prose (mevcut satir 16-18 pattern). Q3 update = kisa SHA + tarih. Q4 archive = B4 BACKLOG kalsin (P2 ile birlestirme). AC gate = 4 AC yeterli, Q onayi aldi.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "arch/lessons-learned.md'ye 4 yeni entry eklendi (3 AUTH-HOTFIX: ctx.Items['TenantId'] latent bug, jwtRequiredPrefixes registration, 3-tier auth probe; 1 test-skip: Invalidate_DuringInflight non-deterministic). Hepsi mevcut Date | Mistake | Solution | Prevention tablo format'inda (prose Prevention, kalin inline ibareler Pattern/Lesson).",
+        "verified": true,
+        "verification_note": "Codex iter 0 PASS (CoVe Q1-Q3 PASS); lessons-learned.md AC1 (4 new entries at lines 16-19) + AC2 (inline update line 21 retro-fix commit ca2d2d5) + AC3 (chronology preserved, old TFM-MVP entries shifted to 20-23) all verified via git diff."
+      },
+      {
+        "id": "AC2",
+        "criterion": "Satir 17 cancellation poison lesson'unda 'FEAT-DMP InmaDynamicFieldsCache ayni bug — retro-fix paket onerisi' ifadesi 'retro-fix uygulandi commit `ca2d2d5` 2026-04-21 (P1 pilot-launch-roadmap)' olarak guncellendi. Minimal metin edit, mevcut prose korundu.",
+        "verified": true,
+        "verification_note": "Codex iter 0 PASS (CoVe Q1-Q3 PASS); lessons-learned.md AC1 (4 new entries at lines 16-19) + AC2 (inline update line 21 retro-fix commit ca2d2d5) + AC3 (chronology preserved, old TFM-MVP entries shifted to 20-23) all verified via git diff."
+      },
+      {
+        "id": "AC3",
+        "criterion": "Yeni entries tarih kronolojisinde dogru yere yerlestirildi: 2026-04-21 bloku uste (satir 16'dan once 4 yeni satir), mevcut TFM-MVP 3 entry'leri (satir 16-18 eski numaralari) korundu, 2026-04-20 FEAT-DMP/J2/VCP entries etkilenmedi.",
+        "verified": true,
+        "verification_note": "Codex iter 0 PASS (CoVe Q1-Q3 PASS); lessons-learned.md AC1 (4 new entries at lines 16-19) + AC2 (inline update line 21 retro-fix commit ca2d2d5) + AC3 (chronology preserved, old TFM-MVP entries shifted to 20-23) all verified via git diff."
+      },
+      {
+        "id": "AC4",
+        "criterion": "Codex review doc-only LOW dahil iter 0-3 arasi PASS (hedef iteration=0 CODEX UTANSIN). Build N/A. Deploy yok. Commit + push master + P2 Status=DONE roadmap.",
+        "verified": true,
+        "verification_note": "Codex iter 0 PASS (CoVe Q1-Q3 PASS); lessons-learned.md AC1 (4 new entries at lines 16-19) + AC2 (inline update line 21 retro-fix commit ca2d2d5) + AC3 (chronology preserved, old TFM-MVP entries shifted to 20-23) all verified via git diff."
+      }
+    ]
+  },
+  "allowed_files": [
+    "arch/lessons-learned.md",
+    "arch/plans/20260422-lessons-tfm-auth-hotfix.json",
+    "arch/session-memory.md",
+    "tracking/pilot-launch-roadmap.md",
+    "tracking/lessons-tfm-auth-hotfix.md"
+  ],
+  "files_changed": [
+    { "path": "arch/lessons-learned.md", "change": "4 new entries (satir 16-19): TFM AUTH-HOTFIX 3 lesson + P1 race-test-skip lesson. Inline update satir 21: 'retro-fix paket onerisi' -> 'retro-fix uygulandi commit ca2d2d5 2026-04-21 (P1)'.", "is_new": false },
+    { "path": "arch/plans/20260422-lessons-tfm-auth-hotfix.json", "change": "Plan JSON for P2 (FAZ 1 lessons doc).", "is_new": true },
+    { "path": "tracking/lessons-tfm-auth-hotfix.md", "change": "Per-paket tracking document.", "is_new": true }
+  ],
+  "git_diff": {
+    "sha256": "27FA58C51369994EAFA53351398005CDFA8C63E992E9FD409011CD77FD71DADC",
+    "full_path": "arch/plans/diffs/20260422-lessons-tfm-auth-hotfix.diff",
+    "stats": {
+      "insertions": 179,
+      "deletions": 1,
+      "files_count": 3
+    }
+  },
+  "build": {
+    "status": "N/A",
+    "services": []
+  },
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Herhangi kod dosyasi (.cs) — paket doc-only",
+      "arch/errors.md (error code namespace lessons P2'nin parcasi degil)",
+      "arch/codex-context.md (FEATURE-SPECIFIC INTENT update ayri paket)",
+      "Mevcut lessons-learned.md entries satir 19+ (satir 17 hariç inline update)",
+      "Archive (arch/lessons-learned-archive.md) — B4 BACKLOG"
+    ],
+    "non_goals": [
+      "Lessons-learned.md'nin tamami yeniden duzenleme",
+      "422 entry arsiv tasima (B4 BACKLOG)",
+      "Mevcut prose format'i degistirip checklist'e cevirme",
+      "FEAT-TFM MVP veya FEAT-DMP icin yeni kod/test ekleme"
+    ],
+    "intentional_exclusions": [
+      "FEAT-DMP iter arc lesson (satir 19, 2026-04-21) — Codex planning review lesson'i ayri ele alinmadi (Q sectim: 4+1 scope, ek pattern lesson dahil edilmedi)",
+      "TFM-MVP test-infra eksikligi lesson'u — Q sectim: 4+1 scope",
+      "lessons-learned.md top-level header/metadata update (arsiv kurali not'u, format aciklamasi vb.)"
+    ]
+  },
+  "error_handling": {
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Doc-only paket. Kod path'i yok, silent failure yok. Edit dogruluk denetimi AC1-AC3 verification'inda yapilir: dosya diff git diff --cached ile inspect edilir, yanlis satir insertion'i veya format kirilmasi commit oncesi yakalanir."
+  },
+  "aha_moments": [
+    {
+      "category": "SUPPORT",
+      "user_pain": "Gelecek session'da TFM-AUTH-HOTFIX tipindeki latent bug ile karsilasilinca (grep'te write match = 0 anahtar tespit), developer bu pattern'i yeniden kesfetmek zorunda kalmak istemiyor.",
+      "suggestion": "Lesson A (ctx.Items['TenantId'] latent bug) grep recipe + instant-detection heuristic ile ayni senaryoyu 5dk'da teshise indirecek sekilde yaziliyor.",
+      "aha_moment": "Developer gelecek oturumda handler-401 alinca once grep yapiyor, result 0 gordugunde bug'i dogrudan lesson'a baglayip 5dk'da cozuyor — 2 saat debug kurtariliyor."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Deploy smoke test 'endpoint 401 donuyor, OK' diyip middleware-reachable vs handler-guard ayrimi yapmazsa sessiz prod outage mumkun (FEAT-DMP 5/5 smoke yaniltiydi).",
+      "suggestion": "Lesson C (3-tier auth probe: NoAuth middleware-401 / BadJWT middleware-500 / ValidJWT 200) her deploy smoke'unda calistirilacak recipe olarak belgeleniyor.",
+      "aha_moment": "Gelecek deploy'da developer 3-tier probe'u default smoke checklist'ine ekliyor, middleware path-skip kaynakli sahte 'HEALTHY' raporlari tamamen ortadan kalkiyor."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "jwtRequiredPrefixes listesine yeni prefix eklemek unutulunca (FEAT-TFM MVP'de 4 prefix unutuldu) hot fix hem code hem deploy iki kat zaman aliyor.",
+      "suggestion": "Lesson B (prefix registration audit) checklist: her yeni tenant-scoped handler eklerken plan JSON allowed_files'inda Program.cs + prefix registration + handler paired olarak belirtilir.",
+      "aha_moment": "Plan JSON'dan sanity-scan ile prefix registration atlama anaklari derin-paket implementation'da bile tesis ediliyor, hot fix ihtiyaci sifirlaniyor."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Race tests deterministic yazilmayan fake'lerle hang edip CI'i tikiyor (P1 Invalidate_DuringInflight bizi 2 iterasyonda yordu).",
+      "suggestion": "Lesson D (race-test-infra limitation): BlockUntilReleased + callObserved TCS pattern'i 2 fetch gate'i desteklemiyor — ya daha karmasik fake (per-call gate dictionary) gerekli, ya test skip (defensive doc + prod async-boundary guarantee yeterli).",
+      "aha_moment": "Developer sonraki race-test denemesinde fake-infra limit'lerini lesson'dan gorup dogrudan per-call gate ile basliyor veya bilinc'le skip ediyor — tikaniklik tekrari yok."
+    },
+    {
+      "category": "UX",
+      "user_pain": "Lessons-learned.md'de ayni bug tekrar tekrar ortaya ciktiginda (FEAT-DMP iter arc lesson gibi) satir 17 'retro-fix paket onerisi' gibi unresolved notlar stale kaliyor.",
+      "suggestion": "AC2 inline update pattern: lesson'larda kayitli 'onerisi/takip edilecek/kaldi' ifadeleri takibinde sonraki paket tamamlandiginda commit hash + tarih ile immutable update.",
+      "aha_moment": "lessons-learned.md aktif dokuman haline donusuyor — arkeolojik degil, follow-up status referans edilen commit'lerle canli."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-21T23:41:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-21T23:42:00Z",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "Doc-only, no runtime error paths." },
+      "CQ2": { "result": "PASS", "evidence": "No catch/swallow/early return logic." },
+      "CQ3": { "result": "PASS", "evidence": "Changed files match allowed_files + files_changed exactly." },
+      "CQ4": { "result": "PASS", "evidence": "New rows follow existing lessons prose pattern." },
+      "CQ5": { "result": "PASS", "evidence": "Date|Mistake|Solution|Prevention table preserved + bold inline phrases." },
+      "CQ6": { "result": "PASS", "evidence": "No runtime code, no performance impact." },
+      "CQ7": { "result": "PASS", "evidence": "No new TODO/HACK/FIXME markers." },
+      "CQ8": { "result": "PASS", "evidence": "No interface/API/schema/DTO change." }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "4 new rows preserve table structure + prose/bold inline format." },
+      "Q2": { "result": "PASS", "reasoning": "Single-line substitution in line 21, surrounding prose unchanged." },
+      "Q3": { "result": "PASS", "reasoning": "All 3 technical details concretely present (grep heuristic + registration audit + 3-tier probe)." }
+    },
+    "blocking_issues": [],
+    "iteration": 0,
+    "escalation_required": false
+  }
+}
