@@ -14,8 +14,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Windows Service restart support -->
-    <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.1" />
+    <!-- Windows Service restart support (9.0.0 aligns with transitive from Invekto.Marketing -> Microsoft.Extensions.Hosting.WindowsServices 9.0.0). -->
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="9.0.0" />
     <!-- INMA WaClient.Management SQL Server readonly access -->
     <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
     <!-- G7: Hangfire runtime + dashboard (Shared's refs are PrivateAssets=all; opt-in per consumer). -->
