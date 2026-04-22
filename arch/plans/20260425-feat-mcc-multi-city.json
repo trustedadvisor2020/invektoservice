@@ -93,13 +93,14 @@
   ],
   "slug": "20260425-feat-mcc-multi-city",
   "risk": "MEDIUM",
-  "status": "DONE",
+  "status": "DONE_DEPLOYED_SMOKED",
   "created_at": "2026-04-22T11:30:00Z",
-  "updated_at": "2026-04-22T12:30:00Z",
+  "updated_at": "2026-04-22T12:49:00Z",
   "status_log": [
     { "at": "2026-04-22T11:04:00Z", "status": "PLANNING", "note": "Pilot mode P6 start; interview gates (4+4 questions) answered" },
     { "at": "2026-04-22T11:30:00Z", "status": "REVIEW", "note": "Code complete; build PASS (0 errors, 17 pre-existing warnings); SPA build PASS (CampaignConfigSettingsPage 13.24kB chunk emitted)" },
-    { "at": "2026-04-22T12:30:00Z", "status": "DONE", "note": "Codex 4-chunk review ALL PASS. Chunk 1 iter 2 (FAIL iter 1 CQ5 null-forgiving + CQ12 silent null-config -> fixed). Chunk 2 iter 0. Chunk 3 iter 1 (FAIL iter 0 chunk-isolation false positive on INV-BE-119 -> re-submitted with chunk 1 evidence). Chunk 4 iter 0. 48/48 CQ gates + 13/13 CoVe gates across all chunks." }
+    { "at": "2026-04-22T12:30:00Z", "status": "DONE", "note": "Codex 4-chunk review ALL PASS. Chunk 1 iter 2 (FAIL iter 1 CQ5 null-forgiving + CQ12 silent null-config -> fixed). Chunk 2 iter 0. Chunk 3 iter 1 (FAIL iter 0 chunk-isolation false positive on INV-BE-119 -> re-submitted with chunk 1 evidence). Chunk 4 iter 0. 48/48 CQ gates + 13/13 CoVe gates across all chunks." },
+    { "at": "2026-04-22T12:49:00Z", "status": "DONE_DEPLOYED_SMOKED", "note": "Prod deploy 12:43-12:44 UTC: Migration 030 (column add + GIN index), tenant_settings empty → Dent seed explicit INSERT post-migration. Backend+Automation+Marketing publish (Marketing --no-build caught stale, re-publish fresh 12:42:36). 10/10 HEALTHY. Pilot Smoke S7 PASS 7/7 (validator 4 reject + PUT round-trip + 3-tier auth probe + seed GET verify). INV-BE-119 window-closed direct smoke deferred (requires real flow). Pre-existing Hangfire latent bug flagged (HangfireSetup.cs:89 boundary, NOT P6-introduced; follow-up paket)." }
   ],
   "plan": {
     "summary": "FEAT-MCC Multi-City Campaign: tenant_settings.campaign_config JSONB additive column with full Dashboard editor at /settings/campaigns; locale-aware {{campaign.cities_human|cities_csv|cities_json|name|slug|start_date|end_date|event_date|event_hours}} substitution in Automation outbound dispatch; active-window guard (start_date/end_date inclusive in tenant timezone, plus operator active flag) firing in BOTH Automation SendCallbackAsync AND Marketing FollowupStageJob.ExecuteAsync. Push-cache pattern (Backend PUT → resolver.Invalidate). Dent pilot seed (roadshow_ireland_2026 / Dublin+Cork) loaded idempotently via migration 030.",
