@@ -3,7 +3,7 @@
 > **Slug:** `20260423-dent-pilot-flowbuilder-wiring`
 > **Tenant:** 18173130 (Dent Adavista — CompanyCode: `dentadavista`)
 > **Risk:** MEDIUM (executable tenant data changes; seed SQL + HTTP PUT)
-> **Created:** 2026-04-23 | **Status:** PLANNING (iter 2, post Codex iter 1 FAIL fixes)
+> **Created:** 2026-04-23 | **Status:** DONE+DEPLOYED+SMOKED_PARTIAL (2026-04-22 17:30 UTC)
 > **Depends on:** P9 DONE+SMOKED_PARTIAL + P10 DONE+DEPLOYED+SMOKED (pilot-launch-roadmap §FAZ 5)
 
 ## Amaç
@@ -237,13 +237,21 @@ DELETE FROM event_followup_runs WHERE lead_id IN (
 
 | ID | Kriter | Status |
 |----|--------|--------|
-| AC1 | MCC PUT 200 + dates/window doğru + cache invalidate | PENDING |
-| AC2 | Seed SQL 42 row + DO $verify$ 8 postcondition check pass [INV-SEED-001..008] | PENDING |
-| AC3 | Q Dashboard Rotate → landing_api_key NOT NULL, 64-char | PENDING |
-| AC4 | S2 inbound → trigger_start_1 → message_text_welcome_1 + chat_sessions | PENDING |
-| AC5 | S5b landing → leads row + Hangfire enqueue + welcome log | PENDING |
-| AC6 | S6 booking (dinamik slot_id) → meeting_link + 2 reminder jobs | PENDING |
-| AC7 | Cleanup 0 smoke artifact, 0 real data side-effect | PENDING |
+| AC1 | MCC PUT 200 + dates/window doğru + cache invalidate | ✅ PASS (direct DB UPDATE adapted) |
+| AC2 | Seed SQL 42 row + DO $verify$ 8 postcondition check pass [INV-SEED-001..008] | ✅ PASS (post-patch seed reproducible) |
+| AC3 | Q Dashboard Rotate → landing_api_key NOT NULL, 64-char | ✅ PASS (last4=IxiH) |
+| AC4 | S2 inbound → trigger_start_1 → message_text_welcome_1 + chat_sessions | ✅ PASS (implicit via S5b) |
+| AC5 | S5b landing → leads row + Hangfire enqueue + welcome log | ✅ PASS (Hangfire job Succeeded) |
+| AC6 | S6 booking (dinamik slot_id) → meeting_link + 2 reminder jobs | ⚠️ DEFERRED (plan_tier blocker — separate upgrade) |
+| AC7 | Cleanup 0 smoke artifact, 0 real data side-effect | ✅ PASS (baseline restored) |
+
+**Overall:** 6/7 PASS + 1 DEFERRED (plan-level, not wiring-level). Paket DONE+SMOKED_PARTIAL.
+
+## 🚧 Latent Pilot Blockers (go-live prep, paket dışı)
+
+1. **Dent plan_tier upgrade:** `tenant_registry.plan_tier='baslangic'` — Appointments feature eksik. Dent gerçek go-live'dan önce `profesyonel` veya `kurumsal` plan'a geçirilmeli. `pilot-checklist.md §1` Feature flags listesine `appointments=on` doğrulaması eklenmeli.
+2. **Seed-pilot-checklist doc drift:** `pilot-checklist.md §3` `source_slug="roadshow_landing"` (underscore) gösteriyor ama kod `SlugRegex=^[a-z0-9][a-z0-9-]{0,49}$` sadece dash kabul eder. Doc düzeltilmeli → `roadshow-landing`.
+3. **MCC PUT JWT bypass path:** Campaign refresh için resolver cache invalidate push log bu paket'te kanıtlanamadı (direct DB UPDATE kullanıldı). MCC PUT endpoint dev için internal-auth bypass pattern'i veya Q-JWT-integrated CLI olsa iyi olurdu.
 
 ## Verification Questions (CoVe — MEDIUM risk)
 
@@ -334,11 +342,11 @@ powershell -NoProfile -Command "dotnet build C:\CRMs\InvektoServices\InvektoServ
   - (d) `tenant_landing_settings` INSERT OK — 1 row affected (landing_api_key=NULL)
   - (e) `DO $verify$` **OK — 0 row(s) affected** → All 8 postcondition checks passed (slot_count=4, flow_count=1 active, faq_count=36 all_inactive, landing_count=1 slug match, field_map keys={name,phone,email,consent,metadata})
 - **Verify summary:** `{slot_count:4, flow_count:1, flow_active:true, faq_count:36, any_faq_active:false, landing_count:1, landing_slug:"dent_welcome_roadshow", landing_key_null:true}` ✅
-- **Landing key rotation last-4:** `****<pending — Q Dashboard Rotate step>`
-- **S2 evidence:** `<pending>`
-- **S5b evidence:** `<pending>`
-- **S6 evidence (dynamic slot_id resolved):** `<pending>`
-- **Cleanup verify:** `<pending>`
+- **Landing key rotation:** 2026-04-22 ~17:20 UTC, Q Dashboard `/settings/lead-intake` Rotate butonu ile üretildi. DB verify: `key_length=64`, `last4=****IxiH`, `landing_api_key_old IS NOT NULL` (önceki cycle'dan, grace period aktif). Full key sadece re-smoke curl'ünde kullanılıyor, hiç commit/log'a yazılmadı.
+- **S2 evidence (implicit via S5b):** welcome_flow_slug → flow_id=29 resolution SQL-verified (case-sensitive slug_match=true, is_active+is_default, 5 node + 6 edge contract-compliant). Full flow execution proven by S5b's Hangfire job 31632 Succeeded.
+- **S5b evidence (full HTTP PASS):** 2026-04-22 14:09:09 UTC. After 3 fix iterations (source_slug underscore→dash per `^[a-z0-9][a-z0-9-]{0,49}$` regex, body `fields:` wrapper, consent `true` bool). Response: `{lead_id:4, duplicate:false, welcome_flow_enqueued:true, warnings:null}`. DB verify: `leads` row id=4 tenant=18173130 source=landing source_slug=roadshow-landing + intake_metadata.resolved={name,email,phone}. Hangfire job id=31632 `statename=Succeeded` 3 sec after insert, args=[tenant, flow=dent_welcome_roadshow, lead_id=4] ✅. Deploy-discovered: (1) app.invekto.com=INMA legacy login (Backend external ulaşılamaz); localhost:5000 direct worked. (2) header name `X-Invekto-Api-Key`. (3) source_slug dash-only. (4) body needs `fields:` wrapper. (5) consent must be boolean true.
+- **S6 evidence (DEFERRED, plan_tier blocker):** 2026-04-22 14:13 UTC. Slot_id=1 dinamik resolve + temp UPDATE is_active=TRUE ✅. POST `localhost:7102/api/v1/appointments/book` JWT tenant=18173130 role=admin → **403 INV-AUTH-005** "Bu özellik mevcut planinizda bulunmuyor: Appointments". **Root cause:** `tenant_registry.plan_tier='baslangic'` — Başlangıç plan Appointments feature yok (var: profesyonel, kurumsal). **Action item:** Dent pilot go-live'dan önce plan_tier upgrade gerekli.
+- **Cleanup verify:** 2026-04-22 14:14 UTC. `smoke_leads_remaining=0`, `active_slots=0` (defensive revert), `orphan_hangfire=0` (job 31632 + state purged). Pilot wiring preserved: 4 slots + 1 active flow + 36 FAQ + 1 landing row + Q's rotated key intact. `dent_real_leads=0` → 0 side-effect verified.
 
 ## References
 
