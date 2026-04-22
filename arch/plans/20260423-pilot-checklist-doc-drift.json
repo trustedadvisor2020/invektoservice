@@ -1,0 +1,168 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "slug": "20260423-pilot-checklist-doc-drift",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-04-23T09:00:00Z",
+  "updated_at": "2026-04-23T09:15:00Z",
+  "plan": {
+    "summary": "Dent pilot go-live prep — DentAdavista/plan/pilot-checklist.md 3 drift noktasını koda hizala: §1 Feature flags listesine appointments=true ekle, §3 Lead Intake endpoint+JSON shape dash'e + flat storage shape'e fix (slug-keyed wrapper tamamen fictional), §3 yeni 'Contract Quirks (5 nokta)' callout block (header X-Invekto-Api-Key, body fields wrapper, consent bool only, slug regex dash-only, smoke localhost:5000). Zero code, pre-pilot mental-model alignment.",
+    "q_intent": "pilot-checklist.md doc drift fixes — (a) §1 feature flags listesine appointments=on ekle, (b) §3 source_slug roadshow_landing→roadshow-landing (dash), (c) §3 5 LIW contract quirks notu (header, fields wrapper, consent bool, regex dash-only, backend localhost:5000). Q tercihi: doc-only paket B.",
+    "interview_notes": "3 gri nokta Q'ya AskUserQuestion ile soruldu ve onaylandı: (1) §1 scope = sadece appointments=true (plan_tier verify ayrı paket A), (2) §3 contract quirks format = ayrı callout block (inline list değil, pre-smoke verify gate'i görsel olarak vurgular), (3) §3 JSON field_map key = tam shape fix (outer 'landing_field_map' ve inner 'roadshow_landing' wrapper'ı kaldır — FieldMapResolver.ParseMap flat object bekliyor, slug-keyed wrapper fictional). Code verify: src/Invekto.Backend/Services/FieldMapResolver.cs:15-36 (ParseMap flat iterate), src/Invekto.Shared/Contracts/Leads/TenantLandingSettingsDto.cs:33-43 (FieldMap source→canonical UI-natural), src/Invekto.Backend/Services/LeadIntakeService.cs:21 (SlugRegex dash-only), src/Invekto.Backend/Program.cs:5090 (intake endpoint path) + :5097 (X-Invekto-Api-Key header).",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "§1 Feature flags listesi 5. item 'appointments=true' eklendi ve mevcut 4 flag korundu (ai_agent_enabled, flow_builder, multi_city_campaign, followup_sequence). Satır format consistency.",
+        "verified": true,
+        "verification_note": "Codex iter 0 PASS 12/12 CQ + 0 blocker (CQ3 scope match, CQ8 no breaking, CQ9 doc aligns with existing contracts, CQ12 existing error codes referenced correctly)."
+      },
+      {
+        "id": "AC2",
+        "criterion": "§3 Endpoint path line 'POST /api/v1/leads/intake/roadshow_landing' → 'POST /api/v1/leads/intake/roadshow-landing' (underscore → dash). SlugRegex uyumu.",
+        "verified": true,
+        "verification_note": "Codex iter 0 PASS 12/12 CQ + 0 blocker (CQ3 scope match, CQ8 no breaking, CQ9 doc aligns with existing contracts, CQ12 existing error codes referenced correctly)."
+      },
+      {
+        "id": "AC3",
+        "criterion": "§3 JSON field_map shape fix: outer 'landing_field_map' wrapper VE inner 'roadshow_landing' wrapper kaldırıldı. Flat DTO shape'e dönüştü (field_map dict + phone_country_hint). Kod gerçekliği ile uyumlu, fictional nested yapı yok.",
+        "verified": true,
+        "verification_note": "Codex iter 0 PASS 12/12 CQ + 0 blocker (CQ3 scope match, CQ8 no breaking, CQ9 doc aligns with existing contracts, CQ12 existing error codes referenced correctly)."
+      },
+      {
+        "id": "AC4",
+        "criterion": "§3 yeni 'Contract Quirks' callout block eklendi — 5 madde: (i) header 'X-Invekto-Api-Key' (not X-Api-Key), (ii) body 'fields:' wrapper zorunlu (flat payload INV-BE-109 rejected), (iii) consent boolean only (yes/1/on string reject, bool.TryParse accepts only 'true'/'false'), (iv) slug regex ^[a-z0-9][a-z0-9-]{0,49}$ dash-only (underscore reject INV-BE-101), (v) smoke/debug localhost:5000 direct (app.invekto.com = INMA legacy login IIS).",
+        "verified": true,
+        "verification_note": "Codex iter 0 PASS 12/12 CQ + 0 blocker (CQ3 scope match, CQ8 no breaking, CQ9 doc aligns with existing contracts, CQ12 existing error codes referenced correctly)."
+      },
+      {
+        "id": "AC5",
+        "criterion": "Doc-only edit — kod değişikliği YOK, build N/A. Markdown format integrity (heading hierarchy, code fence closure, link integrity).",
+        "verified": true,
+        "verification_note": "Codex iter 0 PASS 12/12 CQ + 0 blocker (CQ3 scope match, CQ8 no breaking, CQ9 doc aligns with existing contracts, CQ12 existing error codes referenced correctly)."
+      }
+    ]
+  },
+  "allowed_files": [
+    "DentAdavista/plan/pilot-checklist.md",
+    "arch/plans/20260423-pilot-checklist-doc-drift.json",
+    "tracking/20260423-pilot-checklist-doc-drift.md"
+  ],
+  "files_changed": [
+    {
+      "path": "DentAdavista/plan/pilot-checklist.md",
+      "change": "§1 Feature flags listesine appointments=true eklendi; §3 endpoint path + JSON field_map shape flat DTO shape'e fix (fictional slug-keyed wrapper kaldırıldı); §3 yeni 'Contract Quirks (5 nokta)' callout block eklendi (header, fields wrapper, consent bool, slug regex, localhost:5000).",
+      "is_new": false
+    },
+    {
+      "path": "arch/plans/20260423-pilot-checklist-doc-drift.json",
+      "change": "Plan JSON (bu dosya).",
+      "is_new": true
+    },
+    {
+      "path": "tracking/20260423-pilot-checklist-doc-drift.md",
+      "change": "Per-paket tracking doc.",
+      "is_new": true
+    }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": null,
+    "full_path": null,
+    "stats": {
+      "insertions": 23,
+      "deletions": 13,
+      "files_count": 1
+    }
+  },
+  "build": {
+    "status": "N/A",
+    "command": null,
+    "timestamp": null,
+    "duration_ms": null,
+    "output_tail": null,
+    "error_summary": "Doc-only paket, build çalıştırılmadı.",
+    "services": []
+  },
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/** (kod dokunulmaz — doc-only scope)",
+      "arch/db/** (schema dokunulmaz)",
+      "arch/errors.md (yeni INV kodu yok)",
+      "arch/contracts/** (contract JSON dokunulmaz — doc reflects contract, not vice versa)",
+      "arch/features/lead-intake-webhook.md (generic feature spec — Dent-specific pilot-checklist.md dokunulur, feature spec ayrı)"
+    ],
+    "non_goals": [
+      "tenant_registry.plan_tier upgrade (ayrı paket A scope'u — DB UPDATE)",
+      "46 welcome + 36 FAQ placeholder content bind (ayrı paket C scope'u)",
+      "Feature spec düzenleme (DentAdavista/plan/pilot-checklist.md Dent-specific, generic spec değil)",
+      "Yeni error code ekleme (INV-BE-101/109 zaten mevcut, referenced)"
+    ],
+    "intentional_exclusions": [
+      "Line 16 INMA webhook URL ('https://app.invekto.com/api/inbound/inma/dentadavista') — bu Dent'in INMA'daki webhook URL'si, Invekto Backend call'ı değil; ayrı context. Müşteri-facing domain doğruluğu INMA admin scope'u.",
+      "Line 36 multi-city-campaign feature spec ref (zaten correct)",
+      "Line 64 lead-intake-webhook feature spec ref (generic spec, bu paketin scope'u değil)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Doc-only paket — kod path'i yok, silent failure risk yok. Doc integrity markdown renderer tarafından render edilir; broken syntax renderer'da görünür (loud fail)."
+  },
+  "aha_moments": [
+    {
+      "category": "SUPPORT",
+      "user_pain": "Operator/tenant pilot-checklist.md §3'ten LIW kurulumu kopyalıyor, contract drift (underscore/wrapper/header adı) nedeniyle smoke curl'ları fail ediyor — debug cycle başına ~5dk kayıp.",
+      "suggestion": "Contract Quirks callout block'u pre-smoke verify gate olarak işlev görür; doc okuyan kişi setup çalıştırmadan ÖNCE 5 maddeyi tick eder.",
+      "aha_moment": "Operator callout bloğunu okur okumaz 'ah, X-Invekto-Api-Key, X-Api-Key değil' görür → curl'u düzeltir → ilk çağrı 200 döner (debug cycle yok)."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "46 template + 36 FAQ bind paketinde (C) ekip source_slug'ı doc'tan kopyalayıp Dashboard'a girecek; underscore formatında girerse tenant_landing_settings upsert 400 reject + config tutarsızlığı.",
+      "suggestion": "Endpoint path dash + slug regex citation Contract Quirks'te; tek source of truth pilot go-live doc'u olarak işaret eder.",
+      "aha_moment": "Ekip setup sırasında 'dash-only' uyarısını görür → roadshow-landing slug kaydeder → intake flow ilk request'te 200 döner."
+    },
+    {
+      "category": "UX",
+      "user_pain": "Dashboard field_map editor tenant'ın kendi form field adlarını (source_field) yazdırıyor; pilot-checklist.md doc ise 'roadshow_landing' slug wrapper ile nested JSON gösteriyor → Q/operator Dashboard'daki UI ile doc'u karşılaştırıp kafası karışıyor.",
+      "suggestion": "DTO shape'e düzelt (field_map: source→canonical flat) — doc Dashboard UI ile 1:1 eşleşir, operator 'aha aynı alan' mental model hızı.",
+      "aha_moment": "Operator Dashboard LeadIntakeSettingsPage açar, doc JSON örneği ile UI field listesi identical görür → 5dk config kurar, 30dk debug'a girmez."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "S6 re-smoke plan_tier upgrade sonrasi tekrar denenecek; plan upgrade sırasında Q kendi Feature flags listesini cross-reference ediyor → appointments=on eksikse ikinci smoke'da da ayni gap (INV-AUTH-005) alır, loop.",
+      "suggestion": "§1 appointments=true flag satırı + pilot readiness 4-layer checklist — plan upgrade adımı bu flag'i cross-reference eder, ikinci smoke loop yok.",
+      "aha_moment": "Q plan upgrade sonrası doc'un §1'ine bakar, appointments=true işaretler → S6 smoke ilk denemede 200 döner (feature unlock kanıtı)."
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Gelecek tenant onboarding'larında (ilk Dent'ten sonra) yeni müşteri benzer contract drift tuzaklarına düşüp support'a ticket açacak; onboarding time savings kaybı.",
+      "suggestion": "Contract Quirks callout tenant-agnostic generic LIW pattern — generic feature spec arch/features/lead-intake-webhook.md'ye de mirror ederek onboarding template haline gelir (bu paket scope'unda değil, future lesson).",
+      "aha_moment": "2. tenant onboarding kickoff call'da operator 'bu 5 quirk'i oku + curl'unu hazırla' deyince müşteri 10dk'da 200 alır (vs Dent'te harcanan 4 saat)."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-23T09:14:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-23T09:15:00Z",
+    "raw_text": "OVERALL_VERDICT: PASS | 12/12 CQ PASS | BLOCKING_ISSUES: NONE | model=gpt-5.4-2026-03-05 | tokens=7972",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "Doc-only diff; existing INV-BE-100/101/105/109 refs documented." },
+      "CQ2": { "result": "PASS", "evidence": "No executable code path changes." },
+      "CQ3": { "result": "PASS", "evidence": "Scope match: pilot-checklist.md + plan JSON + tracking doc only." },
+      "CQ4": { "result": "PASS", "evidence": "Intentional reference material, no code duplication." },
+      "CQ5": { "result": "PASS", "evidence": "Doc/planning/tracking area convention-compliant." },
+      "CQ6": { "result": "PASS", "evidence": "No runtime impact (doc-only)." },
+      "CQ7": { "result": "PASS", "evidence": "No TODO/HACK/FIXME markers added." },
+      "CQ8": { "result": "PASS", "evidence": "No DTO/route/DI/schema breaking changes; doc now aligns with existing contracts." }
+    },
+    "cove_verification": {},
+    "blocking_issues": [],
+    "iteration": 0,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}

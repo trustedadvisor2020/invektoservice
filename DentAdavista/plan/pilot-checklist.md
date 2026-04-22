@@ -19,7 +19,7 @@ Bu dokuman **sadece Dent Adavista tenant'inin ozel configuration + go-live check
 - [ ] `tenants` row'unu event-driven auto-provision dogrula (INMA firma create event tetikler)
 - [ ] `locale_default = en-US`, `locale_fallback = tr-TR`
 - [ ] `timezone_primary = Europe/Dublin` (operasyon), `timezone_clinic = Europe/Istanbul` (dentist)
-- [ ] Feature flags: `ai_agent_enabled=true`, `flow_builder=true`, `multi_city_campaign=true`, `followup_sequence=true`
+- [ ] Feature flags: `ai_agent_enabled=true`, `flow_builder=true`, `multi_city_campaign=true`, `followup_sequence=true`, `appointments=true`
 
 ### Branding
 - [ ] Logo upload (tenant assets)
@@ -65,23 +65,33 @@ Bu dokuman **sadece Dent Adavista tenant'inin ozel configuration + go-live check
 
 ### Source: musteri landing page
 - [ ] API key uret + musteriye teslim (secure channel)
-- [ ] Endpoint: `POST /api/v1/leads/intake/roadshow_landing`
+- [ ] Endpoint: `POST /api/v1/leads/intake/roadshow-landing`
 - [ ] Musteri backend'ine webhook entegrasyonu
-- [ ] Field mapping tenant config:
+- [ ] Field mapping tenant config (Dashboard `/settings/lead-intake` editor'un kaydettigi shape — GET `/api/v1/tenant/landing/settings` response ile 1:1):
   ```json
   {
-    "landing_field_map": {
-      "roadshow_landing": {
-        "full_name": "name",
-        "phone_number": "phone",
-        "email_address": "email",
-        "city_preference": "custom_1",
-        "country_code": "custom_2",
-        "consent_marketing": "consent_marketing"
-      }
-    }
+    "field_map": {
+      "full_name": "name",
+      "phone_number": "phone",
+      "email_address": "email",
+      "city_preference": "custom_1",
+      "country_code": "custom_2",
+      "consent_marketing": "consent_marketing"
+    },
+    "phone_country_hint": "IE"
   }
   ```
+  > **Direction:** `{ source_field → canonical }` (UI-natural — tenant kendi form field adi once yazar). Storage JSONB shape ters yonde (`canonical → source_field`); Backend otomatik cevirir (`LiwSettingsService.SerializeFieldMapForStorage`). Doc'ta slug-keyed wrapper (`"roadshow-landing": {...}`) **YOK** — tek `tenant_landing_settings.landing_field_map` JSONB kolonu var (per-tenant, slug-agnostic).
+
+### Contract Quirks (5 nokta — pre-smoke verify gate)
+
+Smoke/debug curl hazirlarken bu 5 maddeyi ONCE tick et. Her biri gercek bir drift cycle'in kaynagi (lessons 2026-04-22 P9 wiring):
+
+- [ ] **Header adi:** `X-Invekto-Api-Key` (NOT `X-Api-Key`). Missing/bozuk key → 401 `INV-BE-100`. Ref: `src/Invekto.Backend/Program.cs:5097`.
+- [ ] **Body wrapper:** Payload `{ "fields": { ... } }` icinde olmak zorunda (flat `{ "name": "...", ... }` 400 `INV-BE-109` reddedilir). UTM + referer + submitted_at ayri top-level field. Ref: `src/Invekto.Shared/Contracts/Leads/LeadIntakeRequest.cs:15`.
+- [ ] **Consent tipi:** `consent_marketing` alani **boolean** `true`/`false` (JSON `true` veya string `"true"`/`"false"` case-insensitive kabul edilir; string `"yes"`, `"1"`, `"on"` REDDEDILIR → `INV-BE-105`). Ref: `src/Invekto.Backend/Services/FieldMapResolver.cs:128-144` (`bool.TryParse`).
+- [ ] **Slug regex:** `{source_slug}` path parametresi `^[a-z0-9][a-z0-9-]{0,49}$` (kucuk harf + digit + **sadece tire** — underscore REDDEDILIR → 400 `INV-BE-101`). `roadshow_landing` ❌ `roadshow-landing` ✅. Ref: `src/Invekto.Backend/Services/LeadIntakeService.cs:21`.
+- [ ] **Smoke/debug URL:** Prod sunucuda MCP `invekto-ops server-exec` icinden Backend'e direkt `http://localhost:5000/...` kullan. `https://app.invekto.com` INMA legacy login IIS surface'i (Backend reverse proxy DEGIL) — external URL ile test etmek 404/kimlik kontrolu hatasina takilir.
 
 ### Source: WhatsApp direct (reklam CTA)
 - [ ] WA numarasi: `+44 7547 762090`
