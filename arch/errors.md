@@ -31,6 +31,7 @@ services:
   WA:   { name: WhatsAppAnalytics, description: "WA Analytics pipeline + Revenue Intelligence hataları" }
   VA:   { name: VoiceAI,          description: "PKT-11: Voice Message AI — STT + intent hataları" }
   JOB:  { name: HangfireJob,      description: "G7: Hangfire recurring/enqueued job altyapı hataları" }
+  SEED: { name: DeploymentSeed,   description: "Tenant seed SQL postcondition assertions (one-shot deploy; PL/pgSQL RAISE EXCEPTION — no ErrorCodes.cs mirror)" }
 ```
 
 ## Error Registry
@@ -1353,6 +1354,36 @@ errors:
   - code: INV-EXT-002
     description: External timeout
     user_message: Dış servis yanıt vermedi.
+
+  # ── SEED — Deployment Seed Postconditions ──
+  # NOT: SEED codes are raised by PL/pgSQL DO blocks at deployment time. They are
+  # not consumed by runtime C# code and therefore have NO ErrorCodes.cs mirror.
+  # These are operator-facing assertions that fail the seed transaction loudly
+  # rather than allowing a silent no-op when existing state diverges.
+  - code: INV-SEED-001
+    description: Appointment slot postcondition failure (expected 4 slots, mismatch)
+    user_message: Slot seed doğrulaması başarısız — beklenen 4 satır oluşmadı.
+  - code: INV-SEED-002
+    description: Chatbot flow postcondition failure (expected 1 row for flow_name, mismatch)
+    user_message: Flow seed doğrulaması başarısız — tek satır beklendi.
+  - code: INV-SEED-003
+    description: Chatbot flow is_active=TRUE postcondition failure
+    user_message: Flow seed doğrulaması başarısız — is_active beklentiyle eşleşmedi.
+  - code: INV-SEED-004
+    description: FAQ entries postcondition failure (expected >=36 rows)
+    user_message: FAQ seed doğrulaması başarısız — satır sayısı yetersiz.
+  - code: INV-SEED-005
+    description: FAQ entries all-inactive postcondition failure (placeholder guard broken)
+    user_message: FAQ seed doğrulaması başarısız — placeholder koruması kırıldı.
+  - code: INV-SEED-006
+    description: Tenant landing settings postcondition failure (expected 1 row)
+    user_message: Landing seed doğrulaması başarısız — tek satır beklendi.
+  - code: INV-SEED-007
+    description: Tenant landing settings welcome_flow_slug divergent from expected
+    user_message: Landing seed doğrulaması başarısız — mevcut slug beklentiyle uyuşmuyor, operator müdahalesi gerekli.
+  - code: INV-SEED-008
+    description: Tenant landing settings landing_field_map keys set mismatch
+    user_message: Landing seed doğrulaması başarısız — field_map canonical keys setiyle uyuşmuyor.
 
 ```
 

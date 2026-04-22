@@ -1,0 +1,245 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260423-dent-pilot-flowbuilder-wiring",
+  "risk": "MEDIUM",
+  "status": "REVIEW",
+  "created_at": "2026-04-23T00:00:00Z",
+  "updated_at": "2026-04-22T17:00:00Z",
+  "plan": {
+    "summary": "Dent Adavista tenant 18173130 post-P9 FlowBuilder wiring paketi. P9 pilot smoke'da tenant-wiring 3 katman eksik (chatbot_flows=0, appointment_slots=0, tenant_landing_settings=0) oldugu icin DEFERRED kalan S2/S5b/S6 adimlarini unlock eder. DELIVERABLES: (a) MCC campaign date refresh HTTP PUT (roadshow_ireland_2026 slug korunur, dates 2026-06-06 Dublin / 2026-06-07 Cork, window 2026-05-20..06-15). (b) Idempotent seed SQL 42 row tenant_id=18173130 scoped + DO block postcondition RAISE EXCEPTION [INV-SEED-001..008] silent-noop guard. (c) Q manual Dashboard Rotate step (crypto-random 64-char, last-4 masked tracking). (d) Post-wiring re-smoke S2+S5b+S6 + SMOKE_TEST_% cleanup. RISK=MEDIUM (executable data changes per review-policy; codex iter 0 CQ5 correction from initial LOW). SCOPE: src/**/arch/db/migrations/**/arch/contracts/** FORBIDDEN (scope_discipline.forbidden_areas), 0 code changes (build PASS 38 pre-existing warnings 0 errors). 3 review files NEW (plan + tracking + seed).",
+    "q_intent": "Dent pilot gercek go-live icin FlowBuilder wiring paketi acalim. Hybrid (3): slots + landing + faq seed SQL, welcome flow Dashboard FlowBuilder'dan rafine. Post-wiring re-smoke S2+S5b+S6 ayni pakete dahil (S4 haric). Campaign dates +45 gun ileri: 2026-06-06/07. Landing key Dashboard Rotate buton. Welcome flow contract-compliant skeleton seed. AI FAQ ai_faq node + Automation faq_entries 36 row.",
+    "interview_notes": "Round 1 (4 Q): campaign dates +45 ileri / slots haftalik+window guard / flow seed JSON + rafine / re-smoke ayni paket S2+S5b+S6. Round 2 (4 Q): tarih=2026-06-06/07 (+45), key=Dashboard UI Rotate, FAQ=ai_faq+faq_entries, flow_seed=full skeleton. Contract discovery (iter 0 learning): arch/contracts/automation-flow-v2.json §FlowNodeType enum (lines 114-123) = {trigger_start | message_text | message_menu | logic_condition | logic_switch | ai_intent | ai_faq | action_handoff | action_api_call | action_delay | utility_set_variable | utility_note}. Node-data shapes: TriggerStartData{label}; MessageTextData{label, text}; LogicSwitchData{label, variable, cases[{value, handle_id}], default_handle_id}; AiFaqData{label, min_confidence, search_source}; ActionHandoffData{label, summary_template}; ActionDelayData{label, seconds INT 1-300 MAX}. KEY ARCHITECTURAL FINDING: action_delay max=300s (5dk), Dent nurture wait 1.5d/1d contract sinirini asar -> FEAT-EFS Drip Sequence (P5 DONE Hangfire marketing-followup queue) long-horizon wait'i yonetir, flow sadece anlik turn-by-turn. Flow skeleton 5 node. Iter 2 fixes (CQ9 business-logic): appointment_slots weekly schema'nin date-bound-olmayan mimari risk'i icin defensive is_active=FALSE seed default, Q Dashboard'dan go-live'da (2026-05-20) is_active=TRUE flip + post-event (2026-06-08) revert operational pattern. Smoke S6 temp activation UPDATE + revert cleanup. Iter 2 fixes (CQ1/CQ12): INV-SEED-001..008 codes canonical entries arch/errors.md SEED service category (no ErrorCodes.cs mirror; PL/pgSQL RAISE EXCEPTION only). Iter 2 fixes (CQ5/CQ11): seed SQL comments embed verbatim schema excerpts from arch/db/appointments.sql + automation.sql + tenant-landing-settings.sql (constraint names: uq_chatbot_flows_name + tenant_id PK). Resolver bilgisi: welcome_flow_slug<->chatbot_flows.flow_name case-sensitive verbatim (AutomationRepository.cs:57-58). FieldMapValidator.AllowedCanonicals=name/phone/email/consent/utm_*/referer/metadata (custom_1..10 HARIC). Baseline 2026-04-22 15:34 UTC MCC seed dates 2026-03-14/15 pasifte -> refresh sart.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Campaign date refresh: MCC PUT /api/v1/tenant-settings/campaign-config 200 dondurdu; DB tenant_settings.campaign_config -> roadshow_ireland_2026 dates [{'city':'dublin','date':'2026-06-06',...},{'city':'cork','date':'2026-06-07',...}], start_date='2026-05-20', end_date='2026-06-15'; diger field'lar (cities, hours, lunch_gap, slots_per_hour, name, active) korundu; resolver cache invalidate push log'u Marketing+Automation'da gorundu.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "criterion": "Seed SQL 42 row prod'a idempotent yazildi: (a) appointment_slots 4 row (Sat 6 Dublin morn+aft + Sun 0 Cork morn+aft, max_bookings=8 her biri, **is_active=FALSE defensive default** — Q Dashboard'dan go-live zamani flip TRUE, post-event flip FALSE; doctor_id NULL; created_at/updated_at explicit NOW()) NOT EXISTS guard; (b) chatbot_flows 1 row (flow_name='dent_welcome_roadshow', is_active=TRUE, is_default=TRUE, flow_config v2 5-node contract-compliant, current_version=1) ON CONFLICT ON CONSTRAINT uq_chatbot_flows_name DO NOTHING; (c) faq_entries 36 row (12 intent x 3 varyant, [EDIT:<intent>_vN] placeholder, is_active=FALSE content-paket-flip guard) NOT EXISTS guard on (tenant_id, question, sort_order); (d) tenant_landing_settings 1 row (welcome_flow_slug='dent_welcome_roadshow', landing_api_key=NULL, landing_field_map 5 canonical, intake_dup_window_days=30) ON CONFLICT (tenant_id, PRIMARY KEY target) DO NOTHING; (e) DO $verify$ block RAISE EXCEPTION [INV-SEED-001..008] postcondition checks pass (8 checks: slot shape count=4 regardless of is_active state, flow_count=1+is_active=TRUE, faq_count>=36+all_inactive, landing_count=1+slug_match+map_keys_exact). Error codes canonicalized in arch/errors.md SEED service category.",
+        "id": "AC2",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC3",
+        "criterion": "Q Dashboard /settings/lead-intake Rotate butonu ile landing_api_key uretti; son 4 hane tracking doc'a maskelenerek yazildi (full key hic bir commit/log'a yazilmadi); rotation sonrasi DB'de landing_api_key IS NOT NULL, landing_api_key_old IS NULL (ilk rotate cycle), 64-char crypto-random format.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC4",
+        "criterion": "Post-wiring re-smoke S2 PASS: fake WA inbound message -> flow trigger_start_1 hit -> message_text_welcome_1 HTTP 200 -> chat_sessions 1 row inserted (tenant 18173130, status='active', current_node asamaya gore set). Evidence: Automation/current jsonl log 'welcome flow matched slug=dent_welcome_roadshow' + SELECT count chat_sessions WHERE tenant=18173130 AND phone matches smoke prefix.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC5",
+        "criterion": "Post-wiring re-smoke S5b PASS: rotated landing_api_key ile POST /api/v1/leads/intake (X-Source: roadshow_landing) -> 200 {'status':'accepted','lead_id':N} -> leads row insert + TriggerWelcomeFlowJob enqueue (Hangfire backend queue, INV-AT-0XX AutomationWelcomeFlowSlugMissing warn YOK) + chat_sessions bounce. Evidence: prod DB leads WHERE name LIKE 'SMOKE_TEST_%' = 1 + Hangfire job row + Automation log 'welcome flow matched'.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC6",
+        "criterion": "Post-wiring re-smoke S6 PASS: (i) PRE-SMOKE: dinamik resolve edilen slot_id (SELECT id FROM appointment_slots WHERE tenant_id=18173130 AND day_of_week=6 AND start_time='09:00' LIMIT 1 — SERIAL value env-specific, is_active filter yok cunku defensive FALSE default; hard-code ETMEZ) uzerinde temp activation: UPDATE appointment_slots SET is_active=TRUE, updated_at=NOW() WHERE id=<RESOLVED>. (ii) SMOKE: S5b smoke lead uzerinde POST /api/v1/appointments slot_id=<RESOLVED> appointment_date='2026-06-06' -> 200 appointment row + meeting_link generated (video_provider='mock' SHA256 deterministic) + video_reminder_24h_job_id + video_reminder_1h_job_id scheduled (Hangfire appointments queue). (iii) CLEANUP: UPDATE appointment_slots SET is_active=FALSE, updated_at=NOW() WHERE id=<RESOLVED> — defensive default'a geri doner (CQ9 date-bound compensation). Evidence: appointments row + meeting_link NOT NULL + 2 Hangfire job row + Appointments log + pre/post state snapshot.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC7",
+        "criterion": "Smoke cleanup: SMOKE_TEST_% prefix tum artefaktlar silindi (leads, chat_sessions, appointments, Hangfire jobs, event_followup_runs eger EFS trigger fired ise); Dent real-customer data'ya 0 side-effect (tenant_id=18173130 scope + SMOKE_TEST_% filter); pilot config preserved (42 wiring row + 48 template + 5 TFM + MCC seed + landing_api_key Q-rotated + video_provider='mock').",
+        "verified": false,
+        "verification_note": null
+      }
+    ]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does the seed SQL achieve true idempotency — appointment_slots NOT EXISTS composite (tenant_id, day_of_week, start_time, end_time, doctor_id) avoids SERIAL id bump on rerun; chatbot_flows uses explicit ON CONFLICT ON CONSTRAINT uq_chatbot_flows_name DO NOTHING (naming the intentional target so a silent suppression from partial unique index uq_chatbot_flows_active surfaces as loud failure instead of false idempotency); faq_entries NOT EXISTS on composite (tenant_id, question, sort_order) identifies seeded rows without relying on a non-existent unique index; tenant_landing_settings ON CONFLICT (tenant_id) DO NOTHING coupled with postcondition DO $verify$ block assertion on (welcome_flow_slug, landing_field_map keys) raises [INV-SEED-007/008] if a prior row diverges — eliminating silent no-op risk?",
+      "category": "Data"
+    },
+    {
+      "id": "Q2",
+      "question": "Does the seeded flow_config JSON conform to arch/contracts/automation-flow-v2.json — node 'type' values in FlowNodeType enum (trigger_start, message_text, logic_switch, ai_faq, action_handoff all valid per contract lines 114-123); node 'data' fields match per-type schemas (TriggerStartData{label}, MessageTextData{label,text} lines 139-147, LogicSwitchData{label,variable,cases[{value,handle_id}],default_handle_id} lines 188-209, AiFaqData{label,min_confidence,search_source} lines 222-231, ActionHandoffData{label,summary_template} lines 233-241); edges reference defined node ids; sourceHandle values (h_dublin/h_cork/h_default/no_match) are free-form strings per contract line 95 (no enum restriction); and flow_name='dent_welcome_roadshow' matches tenant_landing_settings.welcome_flow_slug verbatim case-sensitive per AutomationRepository.cs:57-58?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q3",
+      "question": "Does the landing_api_key=NULL default correctly prevent unauthorized landing intake until Q rotates (per tenant-landing-settings.sql:10-12 FindByApiKeyAsync IS NOT NULL guard — NULL key never matches inbound request, Backend 401 response); does the landing_field_map direction {canonical:source} match JSONB storage contract per migration 021 comment AND FieldMapValidator.AllowedCanonicals (name/phone/email/consent/utm_*/referer/metadata — NO custom_1..10) so a hypothetical Dashboard save-validation round-trip would pass without INV-BE-096..099 errors; and does DO $verify$ block's SELECT jsonb_object_keys check enforce exactly {name,phone,email,consent,metadata} with no extras that would trip validator on next authenticated PUT?",
+      "category": "Auth"
+    }
+  ],
+  "allowed_files": [
+    "arch/plans/20260423-dent-pilot-flowbuilder-wiring.json",
+    "arch/plans/diffs/20260423-dent-pilot-flowbuilder-wiring.diff",
+    "tracking/20260423-dent-pilot-flowbuilder-wiring.md",
+    "tracking/pilot-launch-roadmap.md",
+    "tracking/README.md",
+    "arch/session-memory.md",
+    "arch/lessons-learned.md",
+    "arch/errors.md",
+    "DentAdavista/seeds/flowbuilder-wiring.sql"
+  ],
+  "files_changed": [
+    {
+      "path": "arch/plans/20260423-dent-pilot-flowbuilder-wiring.json",
+      "change": "NEW plan JSON schema v5.1 MEDIUM risk — AC1-7 (MCC refresh + 42-row seed w/ RAISE EXCEPTION postcondition + Q rotate + S2/S5b/S6 re-smoke dinamik slot_id + cleanup), scope_discipline forbidden_areas, 5 aha_moments, 3 verification_questions (Data/Lifecycle/Auth), build.status=PASS, git_diff SHA256 + stats",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "tracking/20260423-dent-pilot-flowbuilder-wiring.md",
+      "change": "NEW per-paket tracking doc — 8 Q interview karar ozeti + 5-section deliverables (MCC PUT payload, 42-row seed + postcondition DO block, Q Dashboard Rotate flow, 3-step re-smoke w/ dynamic slot resolution, 4-tier rollback) + architectural note (EFS vs flow-delay separation) + evidence slots",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "DentAdavista/seeds/flowbuilder-wiring.sql",
+      "change": "UPDATED iter 2 — BEGIN/COMMIT 5 block: (a) appointment_slots 4 row DEFENSIVE is_active=FALSE (was TRUE; CQ9 date-bound compensation — Q Dashboard flip TRUE at go-live 2026-05-20, revert FALSE post-event 2026-06-08) + explicit created_at/updated_at NOW() (CQ5) + verbatim schema excerpt embedded in comments (CQ11) + NOT EXISTS composite guard. (b) chatbot_flows 1 row ON CONFLICT ON CONSTRAINT uq_chatbot_flows_name DO NOTHING (dent_welcome_roadshow, contract-compliant 5-node v2 flow_config: trigger_start_1 > message_text_welcome_1 > logic_switch_city_1 {h_dublin->handoff, h_cork->handoff, h_default->ai_faq_1}, ai_faq_1 (no_match) > handoff; contract-compliant per FlowNodeType enum lines 114-123) + verbatim schema excerpt incl. uq_chatbot_flows_name + uq_chatbot_flows_active partial unique (CQ11). (c) faq_entries 36 row INSERT ... NOT EXISTS guard unchanged (is_active=FALSE content-paket-flip guard). (d) tenant_landing_settings 1 row ON CONFLICT (tenant_id) DO NOTHING with explicit note that (tenant_id) target = PRIMARY KEY constraint (schema excerpt shows tenant_id INT PRIMARY KEY) (CQ11). (e) DO $verify$ block 8 postcondition checks with RAISE EXCEPTION [INV-SEED-001..008] now referencing canonical arch/errors.md SEED service entries (not pseudo-codes); INV-SEED-001 updated to shape-count assertion (not is_active=TRUE count); post-seed helper section documents smoke S6 temp UPDATE activation + post-smoke revert. Dollar-quoted JSONB ($flow$/$map$). Architectural note: ActionDelayData.seconds max=300s, Dent 1.5d/1d waits owned by FEAT-EFS (Hangfire marketing-followup queue) not flow.",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "arch/errors.md",
+      "change": "ITER 2 MODIFY — Added SEED service code at line 33 of Service Codes YAML block (SEED: {name: DeploymentSeed, description: 'Tenant seed SQL postcondition assertions (one-shot deploy; PL/pgSQL RAISE EXCEPTION — no ErrorCodes.cs mirror)'}). Added INV-SEED-001..008 entries at the end of Error Registry (before closing backtick-fence) with NOT comment explaining why these are PL/pgSQL-only and have no ErrorCodes.cs mirror. 8 entries: Appointment slot count, Flow count, Flow is_active, FAQ count, FAQ all-inactive, Landing count, Landing slug divergent, Landing field_map keys mismatch. Addresses Codex iter 1 CQ1/CQ12 blockers.",
+      "is_new": false,
+      "deleted": false
+    },
+    {
+      "path": "arch/plans/diffs/20260423-dent-pilot-flowbuilder-wiring.diff",
+      "change": "NEW diff artifact for Codex review iter 2 — regenerated after iter 1 FAIL (6 blocker) fixes: INV-SEED canonical entries in arch/errors.md, verbatim schema excerpts embedded (CQ5/CQ11), defensive is_active=FALSE slots + Q go-live flip pattern (CQ9), explicit created_at/updated_at",
+      "is_new": true,
+      "deleted": false
+    }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "0ba9a4bebbd423e9739c118d3426cb72a41fc883b8f456b3845d24ae5a38b1c6",
+    "full_path": "arch/plans/diffs/20260423-dent-pilot-flowbuilder-wiring.diff",
+    "stats": {
+      "insertions": 1071,
+      "deletions": 0,
+      "files_count": 4
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-04-22T15:45:00Z",
+    "duration_ms": 39200,
+    "output_tail": "38 Warning(s)\n0 Error(s)\nTime Elapsed 00:00:39.20",
+    "error_summary": "0 errors. 38 warnings are all pre-existing (MSB3277 Microsoft.Extensions.Options.ConfigurationExtensions 8.0 vs 9.0 version conflict in tests/InvektoServis.Tests + xUnit1013 LogReaderTests.Dispose). No code files changed in this paket (seed SQL + docs only); build re-verify after iter 1 fixes unchanged (seed SQL not compiled into service binaries).",
+    "services": []
+  },
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/** (kod degisikligi YASAK — seed + config-only paket)",
+      "arch/db/migrations/** (schema degisikligi YASAK — tenant wiring schema-neutral)",
+      "arch/db/*.sql (canonical schema dokunulmaz)",
+      "arch/contracts/** (contract degisikligi YASAK — seed contract'a UYAR, contract'i degistirmez)",
+      "src/Invekto.Shared/** (DTO/constant degisikligi YASAK)",
+      "Baska tenant'larin data'si (tenant_id=18173130 disinda hicbir SQL)"
+    ],
+    "non_goals": [
+      "46 template gercek icerik upload (ROADSHOW DocX'ten) — ayri post-wiring content paket",
+      "S4 AI FAQ translation hop smoke — content paket sonrasi",
+      "B0 FEAT-VCP Chunk C real Google Meet OAuth — Q-provision blocker",
+      "Schema extension (date-specific appointment_slots) — haftalik+window guard yeterli",
+      "Welcome template pack 10 varyant gercek metinleri — skeleton [EDIT] placeholder yeterli",
+      "FlowBuilder skeleton'i otomatik refine — Q Dashboard'dan opsiyonel rafine eder",
+      "FEAT-TFM semantic overlay degisikligi — 5 key aktif, paket kapsam disi",
+      "Long-horizon 1.5d/1d wait nodes flow icinde — contract ActionDelay max=300s, EFS kanali kullanir"
+    ],
+    "intentional_exclusions": [
+      "chatbot_flows flow_config production template slug binding — skeleton [EDIT:*] placeholder (Q rafine eder)",
+      "faq_entries gercek cevap metni — placeholder [EDIT:<intent>_v<N>] is_active=FALSE guard ile baslayip content paketinde update eder",
+      "landing_api_key SQL seed (plaintext risk) — Q manual Dashboard Rotate (crypto-random prod-only)",
+      "S4 FAQ smoke icin Knowledge service upstream translation warm-up — S4 ayri paket",
+      "appointment_slots doctor_id (GR-3.19 henuz yok) — NULL birakildi",
+      "appointment_slots is_active=TRUE seed — defensive FALSE + Q go-live Dashboard flip + post-event revert pattern (CQ9 compensation, symmetry with faq_entries)",
+      "ErrorCodes.cs mirror for INV-SEED-001..008 — SEED codes are PL/pgSQL RAISE EXCEPTION only (no runtime C# consumer); intentionally excluded per arch/errors.md SEED service description",
+      "Campaign 'roadshow_ireland_2026' slug degisikligi — hist continuity icin slug korundu, sadece dates/window refresh",
+      "Post-wiring Q FlowBuilder template bind UX adimi — manual ops, paket DONE tanimina dahil degil (AC7 ile sinirlandirildi)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [
+      "Seed SQL [INV-SEED-001..008]: postcondition RAISE EXCEPTION — slot count, flow count+active, faq count+all_inactive, landing count+slug_match+map_keys — silent-noop guard",
+      "S5b landing intake: landing_api_key NULL ise LIW FindByApiKeyAsync IS NOT NULL guard match etmez -> 401 (Q rotate sonrasi resolve)",
+      "S2/S5b: welcome_flow_slug not matching flow_name -> Automation INV-AT-0XX AutomationWelcomeFlowSlugMissing warn (fatal degil, flow skip)",
+      "MCC PUT campaign-config: slug regex/reserved INV-BE-118/120 + window inverted INV-BE-118 — validation error uygun HTTP 400",
+      "Flow engine contract violation (degilse seed sonrasi, runtime'da): INV-FLOW-VALIDATION-XXX (skeleton contract'a uyuyor, flow engine validation'dan gecer)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Seed + config-only paket; iter 0 FAIL CQ2 feedback uygulandi: (a) chatbot_flows ON CONFLICT ON CONSTRAINT uq_chatbot_flows_name DO NOTHING — partial unique uq_chatbot_flows_active fire ederse loud error; (b) tenant_landing_settings ON CONFLICT (tenant_id) DO NOTHING kombine DO $verify$ postcondition assertion — divergent slug/map RAISE EXCEPTION [INV-SEED-007/008]; (c) tum tablolar icin DO block 8 assertion (count matches, is_active guards, slug_match, map_keys_exact) RAISE EXCEPTION silent-noop vektorunu elimine eder. Runtime: (d) MCC PUT validation -> HTTP 400 visible; (e) landing_api_key rotation -> Q Dashboard UI interactive feedback; (f) re-smoke FAIL -> rollback plan §4 tier'e gore acilim. Silent path elimine edildi."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Dent pilotu hazir sanildiginda 3 layer wiring eksik (chatbot_flows=0, appointment_slots=0, tenant_landing_settings=0) -> P9 smoke %50 DEFERRED. Go-live gunu 'neden mesaj atmiyor?' paniği.",
+      "suggestion": "Paket sonunda Dashboard /ops/tenant/{tenantId}/readiness sayfasi backlog'a ekle — 3 wiring layer + 48 template + 5 TFM + MCC config + landing key 'go-live checklist' kartlari (yesil/sari/kirmizi). Bu paket disi ama backlog'a not dusulur.",
+      "aha_moment": "Q yeni tenant onboarding'inde Dashboard acar -> 7 karttan 5 yesil 2 kirmizi gorur -> hangisinin eksik oldugunu bilir, dogru adima 1 tiklama."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Post-wiring Q Dashboard Rotate basacak ama key'i manuel not alip curl'e gecmesi ekstra adim — smoke icin 2-3 dakika surecek el-kopyala.",
+      "suggestion": "Tracking doc'ta MCP invekto-ops 'server-exec' komutunu one-liner sablonla: Q 'Rotate' basar, clipboard'a 64-char key koyar, tracking doc template'ine yapistirir, command hazir.",
+      "aha_moment": "Q 'Rotate' basar, clipboard'a key koyar, tracking doc template'ine yapistirir, command hazir — smoke S5b 30sn'de calisir. Interactive UI gecisi yok."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "FAQ rotation 36 [EDIT:*] placeholder'i ile canli gidiyor — musteri gercek FAQ sorarsa 'EDIT: is_it_free_v1' cevabi alir, klinik itibarina zarar.",
+      "suggestion": "Seed SQL'de is_active=FALSE default guard — content paketi gercek metinleri yazinca is_active=TRUE flip. Ayrica DO $verify$ block bool_or(is_active) FALSE assertion ile ek katman (bir row yanlislikla TRUE ise seed fail).",
+      "aha_moment": "Q seed sonra yanlislikla canli deplu ettiginde ai_faq_1 no_match path -> action_handoff_1 (coordinator). Placeholder metin hic ekranda gorunmez. Musteri guvenligi korundu."
+    },
+    {
+      "category": "UX",
+      "user_pain": "Welcome flow skeleton [EDIT:*] placeholder'larini Q FlowBuilder'da aciyor ama hangi placeholder'in hangi DocX kaynaginden geldigini tracking doc'a bakmak icin context-switch yapmasi gerek.",
+      "suggestion": "message_text_welcome_1 node'un 'text' placeholder'ina yerlesik guide: '[EDIT:welcome_with_date_vN] — Hi {{lead.name}}, welcome! Ireland Roadshow: {{campaign.cities_human}} ...' — Q FlowBuilder'da node'a tiklar, placeholder template'in {{variable}} substitution iskeleti net gorur.",
+      "aha_moment": "Q FlowBuilder'da node'a tiklar -> template iskeleti + variable slotlari + DocX referans hint'i gorur -> dokümana donmeden direkt DocX'ten metni kopyalar, skeleton'u gercek iceriğe donusturur."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Campaign date refresh (2026-06-06/07) ileriki dateler; Q unutup 2026-05-20 oncesi go-live'a baslarsa MCC window_guard SKIP'lenir (INV-BE-119) — 'neden outbound yok' diagnosis yine basa doner (P10 patterndaki gibi).",
+      "suggestion": "Tracking doc'ta 'live-ready date = 2026-05-20' belirgin vurgula; ayrica Dashboard /settings/campaigns 'Next window starts in <X days>' banner backlog'a ekle (kucuk UI patch).",
+      "aha_moment": "Q Dashboard acar -> 'Ireland Roadshow 2026 window baslama: 26 gun sonra' banner gorur -> erken test mode mi yoksa date refresh mi gerektigini anliyor. P10 hypothesis paniği tekrarlanmaz."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-22T17:05:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-22T17:05:00Z",
+    "raw_text": "Iter 3 PASS: 12/12 CQ + 3/3 CoVe. Iter 0 FAIL (10 blocker) -> iter 1 FAIL (6 blocker) -> iter 2 NEAR-PASS (1 blocker: CQ3 allowed_files gap) -> iter 3 PASS. Blocking issues resolved progressively: CQ5 risk LOW->MEDIUM / node-count drift 9->5 contract-compliant / node type names + data fields corrected to automation-flow-v2.json; CQ1+CQ9+CQ10 faq_entries is_active=FALSE uniform; CQ2+CQ11 ON CONFLICT ON CONSTRAINT explicit + schema excerpts embedded; CQ8 slot_id hard-code removed -> dynamic resolve; CQ12 INV-SEED-001..008 canonical arch/errors.md SEED service entries; CQ9 weekly slot is_active=FALSE defensive + Q go-live flip lifecycle; CQ5 explicit created_at/updated_at; CQ3 arch/errors.md added to allowed_files. Final summary per Codex: 'Iteration 3 resolves the prior CQ3 scope-discipline blocker... all checklist items and verification questions pass'.",
+    "code_quality_gate": {
+      "CQ1": {"result": "PASS", "evidence": "INV-SEED-001..008 canonical arch/errors.md SEED service + actionable RAISE EXCEPTION messages"},
+      "CQ2": {"result": "PASS", "evidence": "ON CONFLICT ON CONSTRAINT uq_chatbot_flows_name explicit + DO $verify$ postcondition"},
+      "CQ3": {"result": "PASS", "evidence": "allowed_files matches diff exactly (4 files: plan + tracking + seed + arch/errors.md)"},
+      "CQ4": {"result": "PASS", "evidence": "Centralized error registry pattern; no runtime duplication"},
+      "CQ5": {"result": "PASS", "evidence": "snake_case + PostgreSQL-native constructs + canonical registry placement"},
+      "CQ6": {"result": "PASS", "evidence": "Bounded inserts (4+1+36+1) + constant-time verification"},
+      "CQ7": {"result": "PASS", "evidence": "No new TODO/HACK/FIXME"},
+      "CQ8": {"result": "PASS", "evidence": "Additive only, no runtime contract changes"},
+      "CQ9": {"result": "PASS", "evidence": "Tenant-scoped tenant_id=18173130 + is_active=FALSE defensive default"},
+      "CQ10": {"result": "PASS", "evidence": "No UI changes, preserved operational UX"},
+      "CQ11": {"result": "PASS", "evidence": "Verbatim schema excerpts embedded (slots, flows, landing)"},
+      "CQ12": {"result": "PASS", "evidence": "Canonical codes + actionable mismatch details"}
+    },
+    "cove_verification": {
+      "Q1": {"result": "PASS", "reasoning": "allowed_files now includes arch/errors.md; diff files match exactly"},
+      "Q2": {"result": "PASS", "reasoning": "Idempotency proven: NOT EXISTS composites + explicit constraint + schema-backed PK target + canonical INV-SEED codes"},
+      "Q3": {"result": "PASS", "reasoning": "Defensive is_active=FALSE + Q go-live lifecycle + smoke temp activation + rationale triplicate (seed SQL, tracking, plan)"}
+    },
+    "blocking_issues": [],
+    "iteration": 3,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}
