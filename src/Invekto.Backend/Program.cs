@@ -530,6 +530,35 @@ if (hangfireEnabled)
     {
         app.Logger.LogWarning(ex, "Hangfire score=-1 nudge failed (non-fatal).");
     }
+
+    // P10 orphan 'default' queue guard — microservice topology uses named queues
+    // (backend, marketing-followup, automation, appointments, integrations,
+    // waanalytics); no server listens to the 'default' queue. Any job scheduled
+    // without an explicit queue (missing [Queue(...)] attribute on the class or
+    // RecurringJobOptions.Queue on the registration) accumulates silently in
+    // hangfire.jobqueue until an operator notices. This non-blocking startup
+    // probe surfaces orphans early so deploys catch regressions before a latent
+    // build-up (P9 S7b: 4-day, 1019-row accumulation).
+    try
+    {
+        using var orphanConn = new Npgsql.NpgsqlConnection(hangfireConnStr);
+        orphanConn.Open();
+        using var orphanCmd = orphanConn.CreateCommand();
+        orphanCmd.CommandText = "SELECT COUNT(*) FROM hangfire.jobqueue WHERE queue = 'default';";
+        var orphanCount = Convert.ToInt64(orphanCmd.ExecuteScalar() ?? 0L);
+        if (orphanCount > 0)
+        {
+            app.Logger.LogWarning(
+                "[INV-JOB-006] {Count} job(s) stuck on 'default' queue — no server listens to it. " +
+                "Missing [Queue(...)] attribute on job class/method or RecurringJobOptions.Queue on registration. " +
+                "Drain via: DELETE FROM hangfire.jobqueue WHERE queue='default';",
+                orphanCount);
+        }
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        app.Logger.LogWarning(ex, "[INV-JOB-006] Guard probe failed (non-fatal).");
+    }
 }
 
 // Enable traffic logging middleware (logs all HTTP request/response)
@@ -698,6 +727,11 @@ if (hangfireEnabled)
     // Pre-DB limiter accepts raw unknown keys (brute-force shield); Sweep bounds
     // dictionary growth so the MaxTrackedKeys cap doesn't stay saturated with
     // single-hit buckets from an attacker who has since stopped probing.
+    // P10: Queue routing comes from the [Queue("backend")] attribute on
+    // ApiKeyRateLimiter.SweepNow (same pattern as named job classes elsewhere);
+    // without it, Hangfire defaults to "default" and no server listens to it —
+    // the orphan-queue accumulation root cause of P9 S7b (1019 stuck rows
+    // since 2026-04-18).
     RecurringJob.AddOrUpdate<ApiKeyRateLimiter>(
         "lead-intake:rate-limiter-sweep",
         limiter => limiter.SweepNow(),

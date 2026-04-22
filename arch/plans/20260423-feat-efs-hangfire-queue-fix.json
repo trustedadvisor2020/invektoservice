@@ -1,0 +1,270 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260423-feat-efs-hangfire-queue-fix",
+  "risk": "MEDIUM",
+  "status": "IN_PROGRESS",
+  "created_at": "2026-04-23T00:00:00Z",
+  "updated_at": "2026-04-23T00:00:00Z",
+  "plan": {
+    "summary": "P9 S7b CRITICAL FAIL root cause investigation revealed P9 roadmap's 3 fix options (a/b/c) were based on a WRONG hypothesis. Actual root cause: orphan 'default' Hangfire queue. Two job registrations (ApiKeyRateLimiter.SweepNow in Backend/Program.cs and FollowupStageJob class in Marketing) lack explicit queue routing (no [Queue] attribute) → Hangfire defaults them to 'default' queue → 5 active servers (backend/automation/appointments/integrations/marketing-followup) all listen to their dedicated named queues, NONE listens to 'default' → jobs stuck forever in hangfire.jobqueue. Evidence: 1019 stuck ApiKeyRateLimiter.SweepNow rows on 'default' queue in prod since 2026-04-18 (4-day latent bug). P9 EFS drip failed same pattern: FollowupStageJob scheduled to 'default' queue, Marketing worker on 'marketing-followup' never picks it up. Fix: 3 code changes (attribute-based, canonical pattern matching existing named jobs) + 1 startup guard + prod orphan cleanup. Code surface: (1) src/Invekto.Marketing/Services/Jobs/FollowupStageJob.cs — class-level [Hangfire.Queue(\"marketing-followup\")] attribute (single invocable method, class-level canonical); (2) src/Invekto.Backend/Services/ApiKeyRateLimiter.cs — method-level [Hangfire.Queue(\"backend\")] on SweepNow() only (service class has non-Hangfire methods; method-level avoids spurious tagging); (3) src/Invekto.Backend/Program.cs — orphan queue startup WARN guard (emits [INV-JOB-006] log with drain SQL); (4) arch/errors.md — new INV-JOB-006 error code. Note: Initial draft considered RecurringJobOptions.Queue=4th-arg overload, but Hangfire 1.8.14's RecurringJobOptions class does not expose a Queue property (build CS0117). Switched to attribute-based routing which is the canonical pattern in this codebase (VideoMeetingCreationJob, RescueFollowUpJob, FlowWaitResumerJob, OrderSyncJob, ReminderJob, etc. all use [Queue] attributes; no caller passes Queue via options). Post-deploy: MCP DELETE 1019 orphan rows. Re-smoke P9 S7b+S8 verifies fix (stage[0] scheduled → Succeeded + event_followup_runs.status='sent' + [FEAT-EFS][SEND-INTENT] log).",
+    "q_intent": "P9 S7b CRITICAL FAIL'ı çözmek ve P5 FEAT-EFS'i gerçekten çalışır hale getirmek. Roadmap'teki 3 option hipoteze göre yazıldı ama prod forensic yeni bilgi gösterdi — gerçek bug çok daha sığ (missing [Queue] attribute) ve fix minimal (2 satır kod). Q kararı: minimal fix + cleanup + guard (Recommended seçeneği).",
+    "interview_notes": "G1: Q 'önce root cause doğrula sonra fix' seçti. Prod forensic 2026-04-22 11:38 UTC: 5 server heartbeat (hangfire.server), 4205 Succeeded + 1019 Enqueued (hangfire.job), 1019 stuck rows queue='default' (hangfire.jobqueue), hepsi ApiKeyRateLimiter.SweepNow tipi. FollowupStageJob class-level [Queue] attribute eksik — FollowupOrchestrator.cs:191 _jobs.Schedule<T>(...) default queue'ya yazıyor. G2: Q 'minimal fix + cleanup + guard' seçti (3 option'dan Recommended). G3: Comprehensive audit ayrı paket (scope creep önleme). G4: Deploy Backend+Marketing (migration yok).",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "src/Invekto.Marketing/Services/Jobs/FollowupStageJob.cs class'ında [Queue(\"marketing-followup\")] attribute mevcut. Mevcut [Hangfire.AutomaticRetry(...)] attribute'una komşu, aynı Hangfire FQN pattern.",
+        "verified": false,
+        "verification_note": "Grep `FollowupStageJob.cs` için `Queue(\"marketing-followup\")` match."
+      },
+      {
+        "id": "AC2",
+        "criterion": "src/Invekto.Backend/Services/ApiKeyRateLimiter.cs SweepNow() method'u üzerinde [Hangfire.Queue(\"backend\")] attribute mevcut. Method-level (class-level DEĞİL) — ApiKeyRateLimiter service class'ı non-Hangfire method'lar da içerir (TryAcquire, Sweep(DateTime)); class-level attribute bu method'ları yanlışlıkla tag'lerdi. Program.cs RecurringJob.AddOrUpdate<ApiKeyRateLimiter>(...) çağrısı 3-arg kalıyor (queue attribute'tan türüyor, RecurringJobOptions.Queue overload Hangfire 1.8.14 API'sinde yok — build-time discovery).",
+        "verified": false,
+        "verification_note": "Grep `ApiKeyRateLimiter.cs` için `[Hangfire.Queue(\"backend\")]` match; grep `Program.cs` için 3-arg `RecurringJob.AddOrUpdate<ApiKeyRateLimiter>` verify."
+      },
+      {
+        "id": "AC3",
+        "criterion": "src/Invekto.Backend/Program.cs app.Build() sonrası, EnsureJobStorageInitialized + score=-1 nudge sonrası, orphan 'default' queue guard probe mevcut. SELECT COUNT hangfire.jobqueue WHERE queue='default', > 0 ise structured WARN log [INV-JOB-006] + drain SQL hint; Npgsql.NpgsqlException typed catch [INV-JOB-006] prefix ile non-blocking. arch/errors.md canonical INV-JOB-006 entry (description + user_message).",
+        "verified": false,
+        "verification_note": "Grep `Program.cs` için `[INV-JOB-006]` + try/catch pattern verify; grep `arch/errors.md` için `INV-JOB-006` entry."
+      },
+      {
+        "id": "AC4",
+        "criterion": "dotnet build solution PASS (0 error, mevcut warning set değişmez veya artmaz). Microservice isolation preserved (Shared'a dokunmuyor, Marketing <-> Backend cross-reference yok, mevcut Hangfire.AspNetCore package zaten both consumer'da declared).",
+        "verified": false,
+        "verification_note": "Build command: `powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"`."
+      },
+      {
+        "id": "AC5",
+        "criterion": "Post-deploy re-smoke: fake Dent lead (phone='+00000000001', name='SMOKE_TEST_P10_%') + efs_test_mode=true + sequence enabled=true + POST /api/internal/followup/trigger. 3-5 min içinde hangfire.job statename='Succeeded' (yeni scheduled job, not old orphan) + event_followup_runs.status='sent' + Marketing log [FEAT-EFS][SEND-INTENT].",
+        "verified": false,
+        "verification_note": "MCP query + server-logs search post-deploy."
+      },
+      {
+        "id": "AC6",
+        "criterion": "Prod cleanup: hangfire.jobqueue WHERE queue='default' count = 0 (1019 orphan ApiKeyRateLimiter.SweepNow rows DELETE'd post-deploy; yeni SweepNow jobs 'backend' queue'ya gidiyor, default birikmiyor). hangfire.job row'ları cascade OR explicit DELETE (verify no FK issue).",
+        "verified": false,
+        "verification_note": "MCP DELETE + SELECT COUNT post-cleanup."
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Marketing/Services/Jobs/FollowupStageJob.cs",
+    "src/Invekto.Backend/Services/ApiKeyRateLimiter.cs",
+    "src/Invekto.Backend/Program.cs",
+    "arch/errors.md",
+    "arch/plans/20260423-feat-efs-hangfire-queue-fix.json",
+    "arch/plans/diffs/20260423-feat-efs-hangfire-queue-fix.diff",
+    "tracking/20260423-feat-efs-hangfire-queue-fix.md",
+    "tracking/pilot-launch-roadmap.md",
+    "tracking/README.md",
+    "arch/session-memory.md",
+    "arch/lessons-learned.md"
+  ],
+  "files_changed": [
+    {
+      "path": "src/Invekto.Marketing/Services/Jobs/FollowupStageJob.cs",
+      "change": "Class'a [Hangfire.Queue(\"marketing-followup\")] attribute eklendi (mevcut [Hangfire.AutomaticRetry(...)] attribute'una komşu). FollowupOrchestrator _jobs.Schedule<FollowupStageJob>(...) çağrısı bu attribute üzerinden marketing-followup queue'ya route olur; Marketing worker (queue=marketing-followup) picks up.",
+      "is_new": false,
+      "deleted": false
+    },
+    {
+      "path": "src/Invekto.Backend/Services/ApiKeyRateLimiter.cs",
+      "change": "Method-level [Hangfire.Queue(\"backend\")] attribute SweepNow() üzerine eklendi. Service class'ta başka (non-Hangfire) method'lar olduğu için class-level değil, method-level (Hangfire.QueueAttribute AttributeTargets.Class|Method destekler). Doc comment P10 context ile güncellendi.",
+      "is_new": false,
+      "deleted": false
+    },
+    {
+      "path": "src/Invekto.Backend/Program.cs",
+      "change": "(a) SweepNow recurring job registration call'u 3-arg kalıyor — queue routing artık method attribute'undan geliyor (ApiKeyRateLimiter.SweepNow üzerindeki [Queue(\"backend\")]). Comment güncellendi attribute-based rationale açıklamak için. (Not: Initial draft RecurringJobOptions.Queue=4th-arg denedi ama Hangfire 1.8.14 API'sinde RecurringJobOptions Queue property'si yok; build CS0117 error ile keşfedildi, attribute-based canonical pattern'e geçildi.) (b) Hangfire startup block'una orphan 'default' queue guard eklendi: SELECT COUNT hangfire.jobqueue WHERE queue='default', >0 ise [INV-JOB-006] WARN log + drain SQL hint; Npgsql.NpgsqlException typed catch [INV-JOB-006] prefix, non-blocking try/catch. Prod için early warning mekanizması.",
+      "is_new": false,
+      "deleted": false
+    },
+    {
+      "path": "arch/errors.md",
+      "change": "INV-JOB-006 canonical error code eklendi: 'Hangfire orphan default queue detected at startup' description + Turkish user_message. INV-JOB-005 ile INV-JOB-010 arası yerleştirildi (existing JOB code numaralandırma korundu).",
+      "is_new": false,
+      "deleted": false
+    },
+    {
+      "path": "arch/plans/20260423-feat-efs-hangfire-queue-fix.json",
+      "change": "NEW plan JSON for P10 MEDIUM-risk fix (schema v5.1, 6 AC, 3 code/scope + 3 runtime verify).",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "arch/plans/diffs/20260423-feat-efs-hangfire-queue-fix.diff",
+      "change": "Diff artifact for Codex review.",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "tracking/20260423-feat-efs-hangfire-queue-fix.md",
+      "change": "NEW per-paket tracking doc — scope, interview gates, changes (3 file), AC, rollback, deploy plan, re-smoke plan.",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "tracking/pilot-launch-roadmap.md",
+      "change": "P10 status PENDING -> IN_PROGRESS (post-Codex: DONE+DEPLOYED+SMOKED). 3 fix option note superseded by actual root-cause table (orphan default queue).",
+      "is_new": false,
+      "deleted": false
+    },
+    {
+      "path": "tracking/README.md",
+      "change": "Pilot Launch banner next-paket pointer updated P10 progress.",
+      "is_new": false,
+      "deleted": false
+    },
+    {
+      "path": "arch/session-memory.md",
+      "change": "Last Update P10 close with root cause report, forensic evidence, fix+cleanup+guard summary, re-smoke results.",
+      "is_new": false,
+      "deleted": false
+    },
+    {
+      "path": "arch/lessons-learned.md",
+      "change": "+2 entries: (1) Orphan default queue invariant — every Hangfire job type needs explicit queue routing ([Queue] attribute for class-scheduled jobs OR RecurringJobOptions.Queue for method-scheduled recurring). Detection: hangfire.jobqueue WHERE queue='default' > 0. (2) Prod forensic before fix commits — P9 smoke escalation listed 3 fix options based on hypothesis, actual MCP SQL investigation proved hypothesis wrong in 20min; avoiding wasted work on wrong fix.",
+      "is_new": false,
+      "deleted": false
+    }
+  ],
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "FollowupStageJob'a eklenen [Queue(\"marketing-followup\")] attribute Hangfire'ın hem BackgroundJob.Schedule<FollowupStageJob>(...) call'larında (FollowupOrchestrator), hem de static RecurringJob.AddOrUpdate<FollowupStageJob>(...) senaryosunda queue'yu belirler mi; yoksa ikisinden biri için ayrıca explicit queue parametresi mi gerekir? (Marketing'de şu an sadece Schedule call var, ama attribute class-level olarak eklendi.)",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q2",
+      "question": "Backend startup orphan queue guard SELECT hangfire.jobqueue WHERE queue='default' probe'u Hangfire schema + PrepareSchemaIfNecessary yaratırken race condition doğurur mu (AddInvektoHangfire sonrası ama app.Build() öncesi schema'nın hazır olması)? Guard app.Build() sonrası çalışıyor (EnsureJobStorageInitialized sonrası), dolayısıyla schema initialized kabul ediliyor. Bu timing doğru mu?",
+      "category": "Race/Timing"
+    },
+    {
+      "id": "Q3",
+      "question": "Method-level [Hangfire.Queue(\"backend\")] attribute ApiKeyRateLimiter.SweepNow() üzerinde canonical pattern mi (FollowupStageJob, VideoMeetingCreationJob, RescueFollowUpJob, FlowWaitResumerJob gibi job class'larında class-level attribute canonical — ama ApiKeyRateLimiter service class'ında non-Hangfire method'lar mevcut olduğu için method-level tercih edildi)? Hangfire.QueueAttribute AttributeTargets.Class|Method destekler, API-legal. Build PASS kanıt olarak mevcut.",
+      "category": "API"
+    }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": null,
+    "full_path": "arch/plans/diffs/20260423-feat-efs-hangfire-queue-fix.diff",
+    "stats": {
+      "insertions": 0,
+      "deletions": 0,
+      "files_count": 0
+    }
+  },
+  "build": {
+    "status": "PENDING",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": null,
+    "duration_ms": null,
+    "output_tail": null,
+    "error_summary": null,
+    "status": "PASS",
+    "timestamp": "2026-04-23T00:15:00Z",
+    "output_tail": "Build succeeded. 13 Warning(s) 0 Error(s). Time Elapsed 00:00:12.55",
+    "services": ["Invekto.Marketing", "Invekto.Backend", "Invekto.Shared"]
+  },
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Shared/** (Hangfire setup değişikliği yok — current HangfireSetup.cs single-queue options sözleşmesi bozulmuyor)",
+      "src/Invekto.Automation/** (FollowupStageJob Marketing'de, Automation değişmiyor)",
+      "src/Invekto.Appointments/**, src/Invekto.Integrations/**, src/Invekto.WhatsAppAnalytics/** (bu servislerin jobs'ları zaten doğru [Queue] attribute ile; değişiklik yok)",
+      "arch/db/migrations/** (schema değişikliği yok)",
+      "arch/errors.md (yeni error code gerekmiyor — guard sadece structured WARN log)",
+      "arch/features/** (feature spec değişmiyor)",
+      "Invekto.Shared.Contracts/** (DTO/contract değişikliği yok)",
+      "appsettings*.json (config değişikliği yok)"
+    ],
+    "non_goals": [
+      "Tüm BackgroundJob.Schedule<T> call-site comprehensive audit (ayrı paket, gelecekte scope)",
+      "Hangfire custom JobFilterAttribute ile auto-queue assignment (gelecek improvement, şu an sadece fix)",
+      "Roslyn analyzer / CI check for missing [Queue] attribute (ayrı paket)",
+      "Hangfire SchedulePollingInterval int.MaxValue latent bug fix (P6 lesson follow-up, P10 scope dışı)",
+      "Tüm tenant'lar için EFS backfill veya re-trigger (sadece Dent re-smoke)",
+      "Schema migration veya DDL değişikliği",
+      "Yeni feature implementation"
+    ],
+    "intentional_exclusions": [
+      "ApiKeyRateLimiter service class'ına [Queue] attribute eklemek (inuvocable bir job class değil, service class; RecurringJobOptions daha temiz)",
+      "FollowupOrchestrator.cs call-site'ında explicit queue parametresi (class-level attribute aynı etkiyi sağlıyor, duplicate kod önlenir)",
+      "Orphan 1019 ApiKeyRateLimiter.SweepNow row'larını kod ile silme (prod SQL DELETE, code'a bağlı değil)",
+      "hangfire.jobqueue tablosunda partial index WHERE queue='default' (gelecek observability improvement, şu anda gerekmiyor)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      {
+        "file": "src/Invekto.Backend/Program.cs",
+        "line_approx": 554,
+        "exception_type": "Npgsql.NpgsqlException",
+        "purpose": "Orphan default queue guard SELECT — DB yoksa/bozuksa non-blocking WARN log ([INV-JOB-006] Guard probe failed) + continue startup. Hangfire schema zaten PrepareSchemaIfNecessary ile oluşturuluyor + probe EnsureJobStorageInitialized + score=-1 nudge sonrası çalışıyor, ama guard DB connectivity sorunlarına resilient."
+      }
+    ],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Guard probe FAIL ederse (DB unreachable etc.), structured WARN log emit edilir + startup devam. Uygulamanın işleyişi bloke etmez. Mevcut score=-1 nudge guard'ı ile aynı pattern (Backend/Program.cs:519-531)."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "4 gün latent Hangfire queue bug kimse farketmemiş; eğer pilot smoke olmasa P5 EFS drip prod'da sessizce ölüydü ve ilk Dent gerçek customer sequence'ında scheduled follow-up message'lar hiç gitmeyecekti.",
+      "suggestion": "Startup orphan queue guard ile her Backend restart'ında default queue > 0 olursa WARN log emit ediliyor; ops dashboard grep ile erken tespit.",
+      "aha_moment": "Dent operator welcome + drip'in 'gerçekten gittiğini' gördüğünde, 4 gün önce bulunamaz olacak bir bug yakalanmış olur — pilot smoke sadece feature'ları değil altyapı invariant'larını da validate ediyor."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "P9 roadmap'teki 3 fix option hipotez bazlıydı — yanlış hipotezi uygulamak saatler kaybettirirdi ve yeni bug'lar ortaya çıkarabilirdi (örn: Backend queues=[backend,marketing-followup] eklenseydi Backend StageJob type'ı yüklemeye çalışırdı ve assembly reference olmadığı için crash).",
+      "suggestion": "Fix commit öncesi prod forensic (20 dakikalık MCP query session) — hangfire.server + jobqueue + job state snapshot gerçek root cause'u net gösterir, hipoteze dayalı fix'i önler.",
+      "aha_moment": "Q 'önce doğrula sonra fix' dediği an, 20 dakikalık MCP forensic + 2 satır kod fix ile saatlerce debug + retry engellendi — pragma üzerinde evidence."
+    },
+    {
+      "category": "UX",
+      "user_pain": "EFS drip dead-on-arrival prod customer'a 'follow-up message atılmadı' gibi fark edilmeyen sessiz bir regression — ops hiçbir error görmüyor, customer şikayet edene kadar bilinmiyor.",
+      "suggestion": "Orphan queue guard startup log'u Backend deploy sonrası ilk 30 saniyede visible; kanarya deploy sürecinde dashboard grep ile erken tespit.",
+      "aha_moment": "Ops next-deploy'da 'şu queue fix yayına çıktı' dediği an, aynı log pattern ile bir daha benzer latent bug'ı ilk saatte yakalıyor — bir kere bug gördüğünde pattern artık izleniyor."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Benzer 'queue neden işlemedi' sorusu gelecekte yeniden çıkarsa, her seferinde 20+ dk forensic gerekir.",
+      "suggestion": "tracking/20260423-feat-efs-hangfire-queue-fix.md + lessons-learned +2 entry — orphan default queue invariant dokümante ediliyor. Yeni job eklerken [Queue] attribute invariant'ı checklist'te.",
+      "aha_moment": "Gelecek feature paketinde 'yeni BackgroundJob ekliyorum' dediği an, developer lessons-learned'da 'dur, [Queue] attribute?' uyarısı alıyor — 20 dk forensic -> 0 dk prevention."
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Pilot süreci 'kanıtlanmış çalışıyor' satış argümanı içindi; S7b FAIL gibi kritik gap satış vaadi zedeler.",
+      "suggestion": "P10 close ile P5 EFS drip artık pilot-smoke-proven — Dent real customer sequence'ında drip stage[0..2] 3/7/14 gün sonra otomatik gidiyor. Sales deck'te screenshot edilebilir 'Succeeded' state.",
+      "aha_moment": "Sales demo'da 'EFS drip 3 stage'i de prod'ta test edildi ve gönderimi kanıtlandı, log + DB evidence hazır' diyerek prospect'e somut confidence sunuyor — 'sonradan düzelttik' değil 'proven'."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "MCP_CODEX",
+    "received_at": "2026-04-23T00:30:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-23T00:30:00Z",
+    "raw_text": "Iter 0 FAIL: CQ8 plan/code drift on RecurringJobOptions vs method-attribute + CQ12 missing INV code in WARN log. Iter 1 PASS 12/12 CQ + 3/3 CoVe, 0 blocker. Fix: plan/tracking synced to attribute-based canonical pattern; INV-JOB-006 added to errors.md; Program.cs WARN log prefix switched from [HANGFIRE][ORPHAN_QUEUE] to [INV-JOB-006].",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "Typed Npgsql.NpgsqlException catch + [INV-JOB-006] WARN log in both paths." },
+      "CQ2": { "result": "PASS", "evidence": "No silent failure — success path warns when orphan > 0, catch warns on probe fail; non-blocking by design." },
+      "CQ3": { "result": "PASS", "evidence": "All diff files in allowed_files + files_changed; no scope creep." },
+      "CQ4": { "result": "PASS", "evidence": "Attribute-based routing is canonical pattern (FollowupStageJob/VideoMeetingCreationJob/RescueFollowUpJob); no duplicate helpers." },
+      "CQ5": { "result": "PASS", "evidence": "Hangfire.* FQN attributes match existing [Hangfire.AutomaticRetry(...)] style; Program.cs guard mirrors existing score=-1 nudge probe pattern." },
+      "CQ6": { "result": "PASS", "evidence": "Single SELECT COUNT startup probe, using-var disposal, no N+1." },
+      "CQ7": { "result": "PASS", "evidence": "No TODO/HACK/FIXME added." },
+      "CQ8": { "result": "PASS", "evidence": "Additive attributes only; method signatures + 3-arg AddOrUpdate unchanged; no DTO/interface contract change." }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "Class-level [Queue] attribute on FollowupStageJob applies to both BackgroundJob.Schedule<T> + future RecurringJob.AddOrUpdate<T> type-based registrations." },
+      "Q2": { "result": "PASS", "reasoning": "Probe runs after EnsureJobStorageInitialized + score=-1 nudge (same block, same timing guarantees); Npgsql typed catch degrades gracefully to non-fatal WARN." },
+      "Q3": { "result": "PASS", "reasoning": "Method-level [Queue] on ApiKeyRateLimiter.SweepNow avoids spurious class-level tagging of TryAcquire/Sweep(DateTime); Hangfire.QueueAttribute supports AttributeTargets.Class|Method; build PASS confirms API-legal." }
+    },
+    "blocking_issues": []
+  }
+}

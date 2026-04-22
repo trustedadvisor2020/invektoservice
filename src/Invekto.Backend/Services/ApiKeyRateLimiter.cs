@@ -92,8 +92,14 @@ public sealed class ApiKeyRateLimiter
     /// <summary>
     /// Hangfire-callable entry that calls <see cref="Sweep"/> with wall-clock
     /// UtcNow. Kept parameterless so RecurringJob.AddOrUpdate can target it
-    /// without serialization gymnastics around DateTime.
+    /// without serialization gymnastics around DateTime. [Queue("backend")]
+    /// pins the job to Backend's named queue; without it Hangfire routes to
+    /// the "default" queue, which has no listening server in this topology
+    /// (P10 fix — prior orphan accumulation: 1019 rows since 2026-04-18).
+    /// Attribute sits at method-level (not class-level) because the surrounding
+    /// service exposes other methods that are not Hangfire-invoked.
     /// </summary>
+    [Hangfire.Queue("backend")]
     public void SweepNow() => Sweep(DateTime.UtcNow);
 
     /// <summary>

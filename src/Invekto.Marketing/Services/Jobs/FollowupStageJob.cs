@@ -32,6 +32,7 @@ namespace Invekto.Marketing.Services.Jobs;
 /// row, operator inspects + re-triggers manually if needed. This avoids duplicate
 /// outbound message risk under retry storms.
 /// </summary>
+[Hangfire.Queue("marketing-followup")]
 [Hangfire.AutomaticRetry(Attempts = 0, OnAttemptsExceeded = Hangfire.AttemptsExceededAction.Fail)]
 public sealed class FollowupStageJob
 {

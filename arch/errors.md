@@ -1330,6 +1330,9 @@ errors:
   - code: INV-JOB-005
     description: Recurring job final failure (retries exhausted)
     user_message: Zamanlanmış görev başarısız oldu; tekrar deneme limiti aşıldı.
+  - code: INV-JOB-006
+    description: Hangfire orphan 'default' queue detected at startup. Jobs scheduled without explicit queue routing (missing [Queue(...)] attribute on the job class/method OR missing RecurringJobOptions.Queue on the registration) accumulate on the 'default' queue that no service worker listens to in this named-queue microservice topology. Surfaced as a structured WARN log at Backend startup (`[INV-JOB-006]` tag) with the stuck row count and drain SQL so ops can detect and remediate within the first deploy window rather than after a multi-day accumulation. Non-blocking probe; does not fail startup.
+    user_message: Zamanlanmış görev altyapısında dinlenmeyen bir kuyrukta bekleyen iş tespit edildi (operasyonel uyarı).
   - code: INV-JOB-010
     description: DbBackup pg_dump exited non-zero or stderr signalled failure
     user_message: Veritabanı yedeği alınamadı.
