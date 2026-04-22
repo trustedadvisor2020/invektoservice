@@ -86,7 +86,7 @@ Bu dosya **pilot launch boyunca execution queue'nun tek kaynagidir**. Session bo
 
 | # | Paket | Slug | Status | Deploy | Exit Criteria |
 |---|-------|------|--------|--------|---------------|
-| 7 | INMA Debug Log Temizligi | `20260427-inma-debug-log-cleanup` | PENDING | Dashboard SPA | `[inma-debug]` prefix'li loglar silindi (inmaBridge + inmaBootstrap + useAuth + App.tsx) + INMA handshake onayi sonrasi |
+| 7 | INMA Debug Log Temizligi | `20260418-inma-debug-log-cleanup` | **DONE+DEPLOYED** 2026-04-18 (commit `2b078b2` — retroactively verified 2026-04-22) | Dashboard SPA | `[inma-debug]` prefix'li loglar silindi (inmaBridge + inmaBootstrap + useAuth + App.tsx). Verify: `grep [inma-debug] src/Invekto.Backend/Dashboard/src/` → 0 match. Deploy: P5 `29e8d18` 2026-04-22 07:50 + P6 `d84e304` 12:43 Backend+SPA redeploy'larıyla temiz bundle prod'a 2× yollandı. Plan `arch/plans/20260418-inma-debug-log-cleanup.json` status=DONE (pre-pilot, stale roadmap status fix'i 2026-04-22). ✅ |
 | 8 | Prod Yedek Silme | `20260427-prod-bypass-bak-remove` | PENDING (Q onayi) | Prod file op | `appsettings.Production.json.bak-20260416-inma-bypass` sunucudan silinmis |
 
 ### FAZ 5 — Pilot Smoke (SON — butun feature'lar DEPLOYED ve SMOKED olduktan sonra)
@@ -223,11 +223,11 @@ Bu dosya **pilot launch boyunca execution queue'nun tek kaynagidir**. Session bo
 | Metric | Value |
 |--------|-------|
 | Total Pilot-Critical Packages | 9 |
-| DONE | 6 (P1, P2, P3, P4, P5, P6 — tumu DEPLOYED+SMOKED) |
+| DONE | 7 (P1, P2, P3, P4, P5, P6 DEPLOYED+SMOKED; P7 DEPLOYED retroactive 2026-04-18 commit `2b078b2`) |
 | IN_PROGRESS | 0 |
-| PENDING | 3 (P7 cleanup, P8 cleanup, P9 smoke) |
+| PENDING | 2 (P8 prod yedek silme, P9 pilot smoke) |
 | SKIPPED | 0 |
-| Progress | 67% (6/9 deployed+smoked) |
+| Progress | 78% (7/9 deployed) |
 | Backlog Packages | 6 (B0-B5) |
 | Blocked External Deps | 6 |
 

@@ -7,7 +7,7 @@
 
 **Execution queue otoritesi:** [`pilot-launch-roadmap.md`](pilot-launch-roadmap.md)
 9 paket arka arkaya → Dent Adavista pilot full-stack smoke. Session bootstrap zorunlu okuma.
-Siradaki: **P7** `20260427-inma-debug-log-cleanup` (FAZ 4 cleanup) → sonra **P8** prod yedek silme → **P9** pilot full-stack smoke.
+Siradaki: **P8** `20260427-prod-bypass-bak-remove` (FAZ 4 cleanup — prod .bak file delete, Q onayi bekliyor) → **P9** pilot full-stack smoke. P7 INMA debug log cleanup zaten 2026-04-18 commit `2b078b2` ile DONE+DEPLOYED (stale status fix 2026-04-22).
 
 ---
 
