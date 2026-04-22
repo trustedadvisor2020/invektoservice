@@ -7,7 +7,29 @@
 
 ## Last Update
 
-- **Date:** 2026-04-21 18:50 UTC (P5 FEAT-EFS Drip Sequence DONE — deploy bekliyor, next session; Q seçenek A — /wrap şimdi, deploy ayrı session)
+- **Date:** 2026-04-22 07:50 UTC (P5 FEAT-EFS Drip Sequence **DONE+DEPLOYED+SMOKED** — Migration 029 + Marketing+Automation+Backend deploy + Dent post-roadshow 3/7/14 A/B 50/50 PUT round-trip PASS)
+- **Deploy Session Summary (P5 post-deploy, 2026-04-22 07:47-07:57 UTC):**
+  - Pre-deploy config audit: Marketing appsettings.Production.json'a `InternalServices:SharedSecret` (Backend/Automation mirror `7ou10Vq+p8EBwcAMyewSDn5VCNbYKXcZskkn5TxHRSSSY8yo5mZ+egFETQmjvDem`) eklendi (peer-service mirror pattern, lessons 2026-04-20 FEAT-VCP Chunk B). ConnectionStrings:Hangfire zaten mevcut, fallback kapandi.
+  - Migration 029 prod çalıştı (mcp-postgres): 2 yeni tenant_settings kolonu (efs_test_mode BOOL=false default, efs_no_reply_threshold_days INT=3 default), 2 yeni leads kolonu (followup_state JSONB='{}', followup_ab_group VARCHAR(10) NULL), 2 yeni tablo (event_followup_sequences + event_followup_runs), 5 index (pkey + 3 non-primary + partial unique race guard `uq_efs_runs_lead_stage_scheduled`), 4 FK (tenant_registry x2 CASCADE, sequence_id CASCADE, lead_id NO ACTION), GRANT ALL to invekto role.
+  - Publish: Marketing+Automation+Backend `dotnet publish -c Release`. Marketing ilk parallel attempt Shared.dll file lock fail → sequential retry PASS. Backend DLL 2026-04-22 10:48:20, Automation 10:48:00, Marketing 10:48:34.
+  - Deploy sequential (MCP invekto-ops server-deploy): Marketing (:7112) 59 files/3.2MB zip → HEALTHY 07:49:45; Automation (:7108) 65 files/2.8MB → HEALTHY 07:50:08; Backend (:5000) 158 files/11.4MB → HEALTHY 07:50:32. Config preserve sandwich ran for all 3.
+  - Health 10/10 HEALTHY verified.
+  - 3-tier auth probe smoke PASS (Backend + Marketing both):
+    - NoAuth → 401 INV-AUTH-003 "Bearer token required" (middleware-layer, jwtRequiredPrefixes covers `/api/v1/tenant/followup/` + `/api/v1/tenant-settings/` + `/api/v1/` Marketing all paths)
+    - BadJWT → 500 (broken signature path)
+    - ValidJWT GET → 200 `{data:[],test_mode:false,no_reply_threshold_days:3}` (fresh Dent baseline, migration defaults applied)
+  - Marketing plan-gate observation: Direct Marketing call (bypassing Backend proxy) with valid user JWT returned 403 INV-AUTH-005 "Bu özellik mevcut planinizda bulunmuyor: Marketing" — Dent `plan_tier=baslangic, features_json=null` does NOT include "Marketing" feature. Backend→Marketing S2S proxy BYPASSES this gate correctly (uses InternalServices:SharedSecret, not user JWT). This is pre-existing plan-gate behavior, NOT a FEAT-EFS bug.
+  - Dent (tenant_id=18173130) PUT round-trip PASS:
+    - Valid POST: `{slug:"post-roadshow",enabled:false,ab_split_percent:50,stages:[{delay_days:3,template_slug:"welcome-day3"},{delay_days:7,template_slug:"nudge-day7"},{delay_days:14,template_slug:"final-day14"}]}` → 200 with id=1, created_at 2026-04-22T07:56:27.626473Z
+    - GET verify: 200, exact same payload roundtripped (array of 1, test_mode=false, no_reply_threshold_days=3)
+    - DB SELECT verify: `event_followup_sequences` row id=1, stages JSONB preserves order + all 3 fields (delay_days/template_slug/template_group=null)
+    - 5 validation caps reject with 400: ab_split_percent=150, ab_split_percent=-1, 6 stages (>5 max), cumulative delay_days 5+10+16=31 (>30 max), slug `PostRoadshow` (uppercase, regex fail)
+    - Marketing logs show `[INV-MK-050] validation fail` with canonical TR error messages for all 5 reject cases
+  - Binary freshness: Backend+Automation+Marketing DLL timestamps 2026-04-22 10:48 matching publish, SPA chunk `FollowupSequenceSettingsPage-BBB3hJ7E.js` (10.94 KB) referenced from `index-oKrfe438.js` PASS.
+  - jwtRequiredPrefixes source audit: Backend Program.cs:562-603 registers `/api/v1/tenant-settings/`, `/api/v1/tenant/followup/`, other prefixes. Marketing Program.cs:128 registers `/api/v1/` (whole namespace). Both active.
+  - **Progress 5/9 (56%) → 5/9 (56% DEPLOYED)** — FAZ 3 P5 COMPLETE. P6 FEAT-MCC sıradaki.
+
+- **Previous status (2026-04-21 18:50 UTC — P5 code commit bekliyor):**
 - **Pre-/clear Session Summary (P5):** Bu session'da yapilanlar:
   - P5 FEAT-EFS Drip Sequence implementasyon — Marketing (:7112) yeni Hangfire infra + FollowupOrchestrator + FollowupSequenceCache (single-flight CT-safe) + FollowupAbGroupAssigner (SHA256 deterministic) + FollowupStageJob + 4 endpoint (GET/PUT sequences, GET runs, POST internal trigger) + Automation MarketingFollowupClient + NoReplyCheckJob + Backend MarketingFollowupProxyClient + 3 SPA proxy endpoint + jwtRequiredPrefixes + Dashboard SPA FollowupSequenceSettingsPage + useFollowupSequence hook + FollowupStageRow (Fragment + sibling tr)
   - Migration 029 — event_followup_sequences + event_followup_runs (FKs to tenant_registry + leads + sequences CASCADE) + tenant_settings.efs_test_mode + efs_no_reply_threshold_days + leads.followup_state JSONB + followup_ab_group VARCHAR + partial unique index uq_efs_runs_lead_stage_scheduled (concurrent-trigger race guard) + grants

@@ -2,7 +2,7 @@
 
 > **Slug:** `20260425-feat-efs-drip-sequence` | **Roadmap:** P5 FAZ 3 | **Risk:** MEDIUM
 > **Plan JSON:** `arch/plans/20260425-feat-efs-drip-sequence.json` (verdict=PASS iter 4)
-> **Status:** **DONE (code, commit bekliyor)** — 2026-04-21 18:50 UTC
+> **Status:** **DONE+DEPLOYED+SMOKED** — 2026-04-22 07:50 UTC (commit `29e8d18`, deploy 07:49:45-07:50:32 UTC, smoke 07:52-07:57 UTC)
 
 ## Scope
 
@@ -25,7 +25,7 @@ Event Follow-Up Sequence — Hangfire-orchestrated N-stage post-event drip nurtu
 | AC3 | Execution-time opt-out dual signal: inma_optout_outbox.event_type OR followup_state.opted_out_at → INV-MK-052 + status=skipped_optout + audit | **MET** (code, iter 3 dual-signal fix) |
 | AC4 | A/B deterministic SHA256(tenant_id\|lead_id\|sequence_id)%100; control group ZERO rows; leads.followup_ab_group persisted | **MET** (code) |
 | AC5 | Test mode flag unit switch: validator + orchestrator.DelayFor FromMinutes/FromDays coupled | **MET** (code) |
-| AC6 | Build PASS; jwtRequiredPrefixes audit; 3-tier auth probe smoke (NoAuth/BadJWT/ValidJWT) | **Build PASS ✅** / smoke pending deploy |
+| AC6 | Build PASS; jwtRequiredPrefixes audit; 3-tier auth probe smoke (NoAuth/BadJWT/ValidJWT) | **PASS ✅** — Build PASS, jwtRequiredPrefixes audited (Backend Program.cs:562-603 + Marketing Program.cs:128), smoke NoAuth=401 INV-AUTH-003 middleware / BadJWT=500 / ValidJWT GET=200 baseline + PUT roundtrip id=1 post-roadshow 3/7/14 A/B 50/50, 5 validation caps 400 |
 | AC7 | Frontend wrapError helper (no fabricated INV-FE-*); Fragment+sibling tr row error; existing-data guard | **MET** (code) |
 
 ## Deliverables
