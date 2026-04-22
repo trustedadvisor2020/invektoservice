@@ -93,7 +93,8 @@ Bu dosya **pilot launch boyunca execution queue'nun tek kaynagidir**. Session bo
 
 | # | Paket | Slug | Status | Tenant | Exit Criteria |
 |---|-------|------|--------|--------|---------------|
-| 9 | Dent Adavista Pilot Full-Stack Smoke | `20260428-dent-pilot-smoke` | PENDING | **18173130** (Dent Adavista) | Asagida **Pilot Smoke Step-by-Step** bolumu; 8 feature yesil + prod log trail |
+| 9 | Dent Adavista Pilot Full-Stack Smoke | `20260428-dent-pilot-smoke` | **DONE+SMOKED_PARTIAL** 2026-04-22 11:13 UTC | **18173130** (Dent Adavista) | 8/13 step PASS (S0.1/0.2/0.3/0.5 prep, S1 intake adapted, S3 locale, S5a TFM resolver CRITICAL, S7+S8 trigger+scheduling CRITICAL). 4 DEFERRED (S2/S4/S5b/S6 flow+slot blockers, Q-approved post-P9 FlowBuilder wiring paketi). **1 CRITICAL FAIL** S7b Hangfire marketing-followup queue pickup gap — escalated to new P10 paket. S10 cleanup PASS (0 SMOKE_TEST residual). |
+| 10 | FEAT-EFS Hangfire Marketing-Followup Queue Fix | `20260423-feat-efs-hangfire-queue-fix` | PENDING (P9 escalation) | Marketing + Backend | Fix: Marketing enableScheduler=false + Backend queues=[default]: Scheduled jobs never promote to Enqueued for marketing-followup queue. Options: (a) Backend queues=[default, marketing-followup]; (b) Marketing advisory-lock leader scheduler; (c) DelayedJobScheduler queue-global patch. Re-smoke P9 S7b + S8 stage[0..2] execution after fix. |
 
 > **Note:** Eski P7 FEAT-VCP Chunk C **BACKLOG B0** olarak tasindi (Codex iter 0 Q4 FAIL — OAuth Q-provision blocker fragil). Pilot smoke S6 adimi **Mock link** ile yapilacak (Chunk B Mock provider DEPLOYED 2026-04-20). Gercek Google Meet prod = B0 pilot sonrasi.
 
@@ -222,13 +223,13 @@ Bu dosya **pilot launch boyunca execution queue'nun tek kaynagidir**. Session bo
 
 | Metric | Value |
 |--------|-------|
-| Total Pilot-Critical Packages | 9 |
-| DONE | 8 (P1, P2, P3, P4, P5, P6 DEPLOYED+SMOKED; P7 DEPLOYED retroactive 2026-04-18 commit `2b078b2`; P8 DEPLOYED 2026-04-22 13:35 UTC — 6 stale bak prod file op) |
+| Total Pilot-Critical Packages | 10 (P10 added as P9 escalation 2026-04-22) |
+| DONE | 9 (P1-P6 DEPLOYED+SMOKED; P7 retroactive; P8 prod file op; P9 DONE+SMOKED_PARTIAL 2026-04-22 11:13 UTC) |
 | IN_PROGRESS | 0 |
-| PENDING | 1 (P9 pilot smoke) |
+| PENDING | 1 (P10 Hangfire marketing-followup queue fix) |
 | SKIPPED | 0 |
-| Progress | 89% (8/9 deployed) |
-| Backlog Packages | 6 (B0-B5) |
+| Progress | 90% (9/10, P10 blocks go-live drip execution) |
+| Backlog Packages | 6 (B0-B5) + new: Dent FlowBuilder wiring (chatbot_flows + appointment_slots seed for S2/S4/S5b/S6 re-smoke) |
 | Blocked External Deps | 6 |
 
 **Pilot tahmini timeline (revize, Codex CQ9 feedback):**

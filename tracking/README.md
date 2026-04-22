@@ -7,7 +7,7 @@
 
 **Execution queue otoritesi:** [`pilot-launch-roadmap.md`](pilot-launch-roadmap.md)
 9 paket arka arkaya → Dent Adavista pilot full-stack smoke. Session bootstrap zorunlu okuma.
-Siradaki: **P8** `20260427-prod-bypass-bak-remove` (FAZ 4 cleanup — prod .bak file delete, Q onayi bekliyor) → **P9** pilot full-stack smoke. P7 INMA debug log cleanup zaten 2026-04-18 commit `2b078b2` ile DONE+DEPLOYED (stale status fix 2026-04-22).
+Siradaki: **P10** `20260423-feat-efs-hangfire-queue-fix` (P9 escalation — Hangfire marketing-followup queue pickup gap fix). P9 **DONE+SMOKED_PARTIAL** 2026-04-22 11:13 UTC (8/13 step PASS, 4 DEFERRED flow/slot blockers Q-approved post-P9 FlowBuilder wiring paketi, 1 CRITICAL FAIL S7b Hangfire pickup gap → P10). P8 (6 stale bak cleanup) + P7 (INMA debug log) zaten DONE.
 
 ---
 
