@@ -464,6 +464,14 @@ builder.Services.AddSingleton<Invekto.Shared.Contracts.TenantFieldMapping.DbTena
 builder.Services.AddSingleton<Invekto.Shared.Contracts.TenantFieldMapping.ITenantFieldMappingResolver>(sp =>
     sp.GetRequiredService<Invekto.Shared.Contracts.TenantFieldMapping.DbTenantFieldMappingResolver>());
 
+// FEAT-MCC Multi-City Campaign: tenant_settings.campaign_config resolver. Backend uses
+// it from PUT to invalidate the local-instance cache after a successful upsert. The
+// same Shared resolver type is wired in Automation + Marketing (each with its own
+// process-local IMemoryCache, eventual consistency MVP).
+builder.Services.AddSingleton<Invekto.Shared.Contracts.Campaigns.DbTenantCampaignResolver>();
+builder.Services.AddSingleton<Invekto.Shared.Contracts.Campaigns.ITenantCampaignResolver>(sp =>
+    sp.GetRequiredService<Invekto.Shared.Contracts.Campaigns.DbTenantCampaignResolver>());
+
 builder.Services.AddAuthorization();
 
 // G7: Hangfire infrastructure — Backend hosts the dashboard and a placeholder server
@@ -2114,6 +2122,10 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
             // FEAT-TFM MVP: tenant-scoped semantic field-mapping CRUD
             new() { Method = "GET", Path = "/api/v1/tenant-settings/field-mapping", Description = "Read tenant semantic→INMA field mapping", Auth = "Bearer", Category = "API" },
             new() { Method = "PUT", Path = "/api/v1/tenant-settings/field-mapping", Description = "Upsert tenant semantic→INMA field mapping (validate + cache invalidate)", Auth = "Bearer", Category = "API" },
+
+            // FEAT-MCC: tenant-scoped multi-city campaign config CRUD
+            new() { Method = "GET", Path = "/api/v1/tenant-settings/campaign-config", Description = "Read tenant multi-city campaign config (campaigns[], cities[], dates[])", Auth = "Bearer", Category = "API" },
+            new() { Method = "PUT", Path = "/api/v1/tenant-settings/campaign-config", Description = "Upsert tenant multi-city campaign config (validate + cache invalidate)", Auth = "Bearer", Category = "API" },
 
             // Appointments proxy endpoints (GR-2.4)
             new() { Method = "GET", Path = "/api/v1/appointments/slots", Description = "List slots proxy (Backend -> Appointments)", Auth = "Bearer", Category = "API" },
@@ -7831,6 +7843,11 @@ app.MapTenantFieldMappingEndpoints();
 // /api/v1/followup/* routes. Implementation in
 // Endpoints/TenantFollowupSequenceEndpoints.cs.
 app.MapTenantFollowupSequenceEndpoints();
+
+// FEAT-MCC Multi-City Campaign: tenant-scoped /api/v1/tenant-settings/campaign-config
+// CRUD. JWT covered by the existing /api/v1/tenant-settings/ prefix in
+// jwtRequiredPrefixes; handler-side TenantContext guard inside the endpoint.
+app.MapTenantCampaignConfigEndpoints();
 
 // ============================================
 // FEAT-J2: Manual opt-out/opt-in (JWT-scoped dashboard admin action)

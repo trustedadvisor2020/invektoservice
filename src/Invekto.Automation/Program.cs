@@ -100,6 +100,13 @@ builder.Services.AddSingleton<Invekto.Shared.Contracts.TenantFieldMapping.ITenan
     Invekto.Shared.Contracts.TenantFieldMapping.DbTenantFieldMappingResolver>();
 builder.Services.AddSingleton<Invekto.Shared.Services.DynamicMessageValidator>();
 
+// FEAT-MCC: Multi-City Campaign resolver + applier (window guard + {{campaign.X}} substitution
+// in SendCallbackAsync). Resolver is the same Shared type wired in Backend; Automation carries
+// its own process-local IMemoryCache (5dk TTL, eventual consistency vs Backend invalidate).
+builder.Services.AddSingleton<Invekto.Shared.Contracts.Campaigns.ITenantCampaignResolver,
+    Invekto.Shared.Contracts.Campaigns.DbTenantCampaignResolver>();
+builder.Services.AddSingleton<CampaignTemplateApplier>();
+
 // Register callback client
 var callbackSettings = builder.Configuration.GetSection("Integration:Callback").Get<CallbackSettings>() ?? new CallbackSettings();
 builder.Services.AddSingleton(callbackSettings);

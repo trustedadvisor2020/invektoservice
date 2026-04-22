@@ -105,6 +105,18 @@ builder.Services.AddHttpClient<TourismResponseGenerator>()
 builder.Services.AddSingleton<FollowupSequenceRepository>();
 builder.Services.AddSingleton<FollowupSequenceCache>();
 builder.Services.AddSingleton<FollowupOrchestrator>();
+
+// FEAT-MCC: Campaign resolver — used by FollowupStageJob.ExecuteAsync to suppress drip
+// stages whose campaign window has closed (interview Q6: window guard fires in EFS
+// scheduler too, not just Automation dispatch). Same Shared resolver type as
+// Backend/Automation, each instance carries its own process-local cache (5dk TTL).
+// AddMemoryCache() is the first IMemoryCache registration in Marketing — Backend and
+// Automation get it via their MVC stack defaults, Marketing's minimal-API setup needs
+// the explicit add (DbTenantCampaignResolver depends on it).
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<Invekto.Shared.Contracts.Campaigns.ITenantCampaignResolver,
+    Invekto.Shared.Contracts.Campaigns.DbTenantCampaignResolver>();
+
 builder.Services.AddTransient<FollowupStageJob>();
 
 var hangfireConn = HangfireSetup.ResolveConnectionString(builder.Configuration);

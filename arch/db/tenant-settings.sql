@@ -31,6 +31,19 @@ CREATE TABLE tenant_settings (
     -- Reserved name guard (InmaDynamicFieldKeys.Allowlist ∪ leads core columns) enforced app-side
     -- by TenantFieldMappingValidator (INV-BE-096..099).
     field_mapping             JSONB       NOT NULL DEFAULT '{}'::jsonb,
+    -- FEAT-MCC (migration 030): per-tenant multi-city campaign config. Shape:
+    --   { "campaigns": [
+    --       { "slug": "...", "name": "...", "active": true,
+    --         "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD",
+    --         "cities": [{ "slug","name","country","timezone" }],
+    --         "dates":  [{ "city","date","hours" }] }
+    --     ] }
+    -- Empty default = zero campaigns; window guard / {{campaign.*}} substitution become no-ops.
+    -- App-side validation (TenantCampaignConfigValidator: INV-BE-118..120) enforces tenant-scope
+    -- unique slug, lowercase regex, max 8 campaigns, max 20 cities/dates per campaign,
+    -- start_date <= end_date, dates[].city referencing a campaigns[].cities[].slug.
+    -- Window guard (INV-BE-119) lives in Automation outbound dispatch + Marketing EFS scheduler.
+    campaign_config           JSONB       NOT NULL DEFAULT '{"campaigns":[]}'::jsonb,
     created_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at                TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

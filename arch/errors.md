@@ -552,6 +552,22 @@ errors:
     description: /api/v1/tenant/landing/apikey/rotate|revoke or /api/v1/tenant/landing/fieldmap (PUT) pre-check — JWT-bound tenant_id has no row in tenant_registry (auth drift, stale test JWT, or JWT minted for a deleted tenant). Pre-check runs BEFORE opening the settings transaction via TenantRegistryRepository.TenantExistsAsync; on miss the service returns 400 without touching tenant_landing_settings. Classifies caller-bug scenarios distinctly from real DB connectivity failures (INV-DB-001/503).
     user_message: Tanimsiz tenant. Lutfen sistem yoneticisine basvurun.
 
+  # FEAT-MCC: Multi-City Campaign config (INV-BE-118..120 + INV-BE-121 transient)
+  # Codes intentionally allocated AFTER INV-BE-117 (LIW Chunk C) — earlier spec draft
+  # used INV-BE-090..091 which collide with Translation (INV-BE-090..095).
+  - code: INV-BE-118
+    description: /api/v1/tenant-settings/campaign-config PUT validation failure — campaign slug regex/uniqueness, max-campaigns cap (8), max cities/dates per campaign cap (20), date ordering (start_date <= end_date), or dates[].city referencing a non-existent campaigns[].cities[].slug. Endpoint returns 400 with the offending campaign slug + field in the error envelope. Same code surfaces in Automation when a {{campaign.X}} placeholder cannot resolve because the referenced slug/city/date is missing post-edit.
+    user_message: Kampanya tanımı geçersiz veya bulunamadı; kampanya alanlarını gözden geçirin.
+  - code: INV-BE-119
+    description: Outbound message dispatch (Automation SendCallbackAsync OR Marketing FollowupStageJob.ExecuteAsync) is bound to a campaign whose active window has not started yet OR has already ended (NOW outside [start_date, end_date] inclusive in tenant_settings.timezone, OR campaign.active=false). Outbound is rejected without delivery; ops grep this code to count off-window suppressions. The check fires only when the rendered message contains a `{{campaign.*}}` placeholder OR the caller explicitly tagged the dispatch with a campaign slug; campaign-agnostic outbound is unaffected.
+    user_message: Bu kampanyanın gönderim penceresi şu anda kapalı; mesaj gönderilmedi.
+  - code: INV-BE-120
+    description: /api/v1/tenant-settings/campaign-config PUT validation failure — campaign slug uses a reserved token (canonical reserved set: 'primary' kept for spec-default backward-compat; 'system'; 'default'; 'all'; tenant must pick a domain-meaningful slug). Endpoint returns 400 with the rejected slug.
+    user_message: Bu kampanya adı sistem rezerv kelimesi; lütfen farklı bir slug seçin.
+  - code: INV-BE-121
+    description: tenant_settings.campaign_config DB read/write transient failure (Npgsql exception during GET/PUT or resolver fetch). Distinct from generic INV-BE-001 so ops dashboards can isolate campaign-config storage outages from broader Backend microservice unavailability. Resolver fall-through behaviour on read failure is to return an empty campaigns list (window guard becomes no-op, substitution renders empty string), preserving outbound flow continuity at the cost of stale config until the DB recovers.
+    user_message: Kampanya ayarları geçici olarak okunamıyor/kaydedilemiyor; birkaç saniye sonra tekrar deneyin.
+
   # ── AA — AgentAI ──
   - code: INV-AA-001
     description: Invalid request payload

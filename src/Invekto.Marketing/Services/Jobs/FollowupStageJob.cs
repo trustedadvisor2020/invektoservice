@@ -1,5 +1,6 @@
 using Invekto.Marketing.Data;
 using Invekto.Shared.Constants;
+using Invekto.Shared.Contracts.Campaigns;
 using Invekto.Shared.Contracts.Followup;
 using Invekto.Shared.Logging;
 using Npgsql;
@@ -35,6 +36,7 @@ namespace Invekto.Marketing.Services.Jobs;
 public sealed class FollowupStageJob
 {
     private readonly FollowupSequenceRepository _repo;
+    private readonly ITenantCampaignResolver _campaignResolver;
     private readonly JsonLinesLogger _log;
 
     // Note: FollowupSequenceCache is NOT injected here. The slug-keyed cache lives on
@@ -44,9 +46,11 @@ public sealed class FollowupStageJob
     // justify it (Codex iter 2 CQ5 feedback: avoid unused DI dependencies).
     public FollowupStageJob(
         FollowupSequenceRepository repo,
+        ITenantCampaignResolver campaignResolver,
         JsonLinesLogger log)
     {
         _repo = repo;
+        _campaignResolver = campaignResolver;
         _log = log;
     }
 
@@ -186,6 +190,32 @@ public sealed class FollowupStageJob
                 $"[{ErrorCodes.FollowupOptOut}] FollowupStageJob: lead {run.LeadId} opted out (inma_optout_outbox latest=opt_out), run {runId} skipped.",
                 ct).ConfigureAwait(false);
             return;
+        }
+
+        // FEAT-MCC: campaign window guard. EFS sequences scheduled days/weeks in advance
+        // can otherwise fire AFTER a campaign window closed (e.g. Dent roadshow ends
+        // 2026-03-20, but a stage scheduled for 2026-03-25 would still execute). When the
+        // tenant has at least one campaign configured AND no campaign currently covers
+        // NOW, the run is suppressed with INV-BE-119 and the row is marked
+        // 'skipped_disabled' (existing terminal status — semantically "stage suppressed by
+        // operator-side gate", same bucket as sequence.enabled=false). Tenants WITHOUT
+        // campaign config (campaigns[] empty) bypass this guard entirely so existing
+        // EFS pilots (no MCC adoption) keep firing — interview Q6 answered guard runs in
+        // both Automation dispatch AND EFS scheduler when campaigns exist.
+        var campaignConfig = await _campaignResolver.GetAsync(run.TenantId, ct).ConfigureAwait(false);
+        if (campaignConfig.Campaigns.Count > 0)
+        {
+            var inWindow = await _campaignResolver
+                .IsWithinWindowAsync(run.TenantId, campaignSlug: null, DateTimeOffset.UtcNow, ct)
+                .ConfigureAwait(false);
+            if (!inWindow)
+            {
+                await TerminalMarkAsync(runId, FollowupRunStatusValues.SkippedDisabled,
+                    ErrorCodes.CampaignWindowClosed,
+                    $"[{ErrorCodes.CampaignWindowClosed}] FollowupStageJob: tenant {run.TenantId} has campaigns configured but no active window covers NOW; run {runId} suppressed (campaign-aware skip).",
+                    ct).ConfigureAwait(false);
+                return;
+            }
         }
 
         // (4) SEND (MVP stub) — see class XML doc + plan spec_architectural_decisions[8].

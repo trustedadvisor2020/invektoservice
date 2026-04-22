@@ -1,0 +1,313 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "spec_acceptance_criteria": [
+    { "id": "AC-1", "description": "Tenant campaign_config JSONB column + Dashboard editor (campaigns[], cities[], dates[], start_date, end_date, active)", "status": "PENDING" },
+    { "id": "AC-2", "description": "Flow variable {{campaign.cities_human}} substitution renders locale-aware list (en: 'Dublin and Cork', tr: 'Dublin ve Cork'); plus {{campaign.cities_csv}} and {{campaign.cities_json}} sub-namespace", "status": "PENDING" },
+    { "id": "AC-3", "description": "Outbound active-window guard: dispatch with campaign placeholders is rejected (INV-BE-119) when no active campaign covers NOW in tenant timezone", "status": "PENDING" },
+    { "id": "AC-4", "description": "1+ campaign per tenant (array shape); tenant-scope unique slug; reserved slug guard ('primary'/'system'/'default'/'all') → INV-BE-120", "status": "PENDING" },
+    { "id": "AC-5", "description": "Cache invalidate push pattern: Backend PUT calls ITenantCampaignResolver.Invalidate(tenantId); peer Automation/Marketing on 5dk TTL", "status": "PENDING" },
+    { "id": "AC-6", "description": "EFS scheduler window guard: Marketing FollowupStageJob.ExecuteAsync suppresses runs when tenant has campaigns AND none in window; status='skipped_disabled' + INV-BE-119", "status": "PENDING" },
+    { "id": "AC-7", "description": "Dent pilot seed (tenant_id=18173130, slug='roadshow_ireland_2026', Dublin+Cork 2026-03-14/15, window 2026-03-01..2026-03-20) loaded by migration 030 idempotently", "status": "PENDING" }
+  ],
+  "spec_architectural_decisions": [
+    {
+      "decision": "Top-level wrapper { campaigns: [...] } over direct array shape",
+      "reason": "Forward-compat: future tenant-global flags (default_campaign_slug, substitution_rendering_mode) land as siblings without a JSONB shape break. Empty default '{\"campaigns\":[]}' keeps every existing tenant on a no-op window guard.",
+      "codex_note": "EXPECTED: CampaignConfig DTO has only Campaigns property in v1; the wrapper key exists for additive extension."
+    },
+    {
+      "decision": "Substitution implemented via dedicated CampaignTemplateApplier (Automation) instead of extending ExpressionEvaluator",
+      "reason": "ExpressionEvaluator works on per-flow-session variable dictionaries (lead-stage scope) and is heavily covered by existing flow tests. Campaign substitution runs in SendCallbackAsync (after KVKK, before DMP) where flow variables are out of scope. Putting substitution in a focused helper keeps SendCallbackAsync small, reuses the resolver across Automation + Marketing, and avoids regressing flow-variable semantics.",
+      "codex_note": "EXPECTED: CQ4 should not flag CampaignTemplateApplier as duplication of ExpressionEvaluator — it operates at the dispatch boundary, not the flow-variable scope."
+    },
+    {
+      "decision": "Automation dispatch passes leadCity=null + locale derived from leads.preferred_locale",
+      "reason": "SendCallbackAsync does not carry the lead row in scope (chat-message hot path). The resolver is fully lead-aware (interview Q7) but Automation invokes RenderPlaceholderAsync with leadCity=null so the resolver falls back to the campaign's first dates[] entry — which satisfies pilot smoke S7 (substitution non-empty + window guard active). A follow-up paket can plumb leads.custom_1 through to enable strict lead-aware date selection without resolver changes.",
+      "codex_note": "EXPECTED: leadCity=null is intentional MVP — resolver handles both null and lead-supplied paths. Documenting this as deferred plumbing, not as missing capability."
+    },
+    {
+      "decision": "Window guard fires in BOTH Automation outbound AND Marketing FollowupStageJob (interview Q6)",
+      "reason": "EFS schedules drip stages days/weeks in advance — without a guard, a stage scheduled for 2026-03-25 would still execute even though Dent roadshow ended 2026-03-20. Both call sites use the same Shared resolver; tenants without campaigns configured (campaigns[] empty) bypass the guard so existing EFS pilots without MCC adoption keep firing.",
+      "codex_note": "EXPECTED: Marketing FollowupStageJob carries a new ITenantCampaignResolver dependency. Job uses status='skipped_disabled' (existing terminal status) for the suppression so no new run-status enum value is needed."
+    },
+    {
+      "decision": "Window guard scoped to messages containing {{campaign.X}} OR explicit slug — campaign-agnostic outbound is unaffected",
+      "reason": "Tenants run transactional and existing flows that have nothing to do with campaigns (appointment reminders, FAQ replies). A blanket guard would break those during off-window weeks. CampaignTemplateApplier.ApplyAsync returns NoOp when no token is present — guard short-circuits.",
+      "codex_note": "EXPECTED: CQ7 should not flag the conditional guard as inconsistent — it is the documented contract per spec §5 Out of Scope alignment."
+    },
+    {
+      "decision": "Dent pilot seed lives inside migration 030 (interview Q8 — Q chose migration over manual Dashboard seed)",
+      "reason": "Q's explicit choice in interview: post-deploy smoke (Pilot Smoke S7) finds the config already present, no manual operator step. Idempotent: only writes when slug not already in campaigns[]; tenants other than 18173130 untouched. Schema/data co-mingling is bounded to this single Dent-specific seed and matches the wider 'pilot config land in migrations' pattern (e.g. 023 video_provider seeded NULL via DEFAULT).",
+      "codex_note": "EXPECTED: CQ7 may flag schema+data mix; the Dent seed is the explicit Q-authorised exception. Idempotency check via jsonb_path_exists prevents drift on re-run."
+    },
+    {
+      "decision": "Single-flight CT-safe cache pattern in resolver: factory uses CancellationToken.None; per-caller WaitAsync(ct)",
+      "reason": "Lessons 2026-04-21 FEAT-TFM iter 3 CQ6+Q3 FAIL: GetOrAdd factory with caller's CT poisons joined awaiters. Same pattern reused verbatim from DbTenantFieldMappingResolver.",
+      "codex_note": "EXPECTED: CQ6 Performance gate PASS — the underlying Npgsql timeout bounds the fetch; caller cancel is per-await isolated."
+    },
+    {
+      "decision": "INV-BE-118..121 (4 codes) instead of roadmap's INV-BE-118..120 (3 codes)",
+      "reason": "Validator/window/reserved-slug fit 118/119/120; INV-BE-121 added for tenant_settings.campaign_config DB transient (NpgsqlException) so dashboards can isolate campaign-config storage outages from generic INV-BE-001 (FEAT-TFM precedent: INV-BE-110 plays the same role for field_mapping).",
+      "codex_note": "EXPECTED: 4 codes registered in errors.md + ErrorCodes.cs. Roadmap 'INV-BE-118..120' was a minimum; INV-BE-121 is forward-compat with TFM-style transient classification."
+    },
+    {
+      "decision": "Marketing csproj already has Invekto.Shared reference; no new package adds for FEAT-MCC",
+      "reason": "Marketing only consumes Shared.Contracts.Campaigns + Shared.Logging types; both are already in the existing ProjectReference scope. Marketing additionally needed builder.Services.AddMemoryCache() — which it didn't have before — because DbTenantCampaignResolver depends on IMemoryCache.",
+      "codex_note": "EXPECTED: Marketing Program.cs gains AddMemoryCache(); no other package or csproj change."
+    }
+  ],
+  "gr_list": [
+    {
+      "id": "GR-MCC-1",
+      "description": "Migration 030 (tenant_settings.campaign_config JSONB additive + GIN jsonb_path_ops index + idempotent Dent pilot seed via DO $$ block) + arch/db/tenant-settings.sql canonical mirror",
+      "services_affected": ["DB"]
+    },
+    {
+      "id": "GR-MCC-2",
+      "description": "Shared contracts: Invekto.Shared.Contracts.Campaigns (CampaignCity / CampaignDate / CampaignEntry / CampaignConfig DTOs + ITenantCampaignResolver interface + DbTenantCampaignResolver impl + TenantCampaignConfigValidationException) + TenantCampaignConfigValidator service + INV-BE-118..121 ErrorCodes + errors.md entries",
+      "services_affected": ["Shared"]
+    },
+    {
+      "id": "GR-MCC-3",
+      "description": "Backend service: TenantSettingsRepository.GetCampaignConfigAsync + UpsertCampaignConfigAsync; TenantCampaignConfigEndpoints (GET/PUT /api/v1/tenant-settings/campaign-config) with bracket INV-BE-* + cross-tenant 403 + cache invalidate; Program.cs DI (DbTenantCampaignResolver + ITenantCampaignResolver) + endpoint mapping + API endpoint metadata listing",
+      "services_affected": ["Backend"]
+    },
+    {
+      "id": "GR-MCC-4",
+      "description": "Automation service: CampaignTemplateApplier (regex {{campaign.X}} detect + window guard + locale-aware substitution); AutomationOrchestrator.SendCallbackAsync hook (between KVKK and DMP); Program.cs DI (resolver + applier)",
+      "services_affected": ["Automation"]
+    },
+    {
+      "id": "GR-MCC-5",
+      "description": "Marketing service: FollowupStageJob.ExecuteAsync window guard (after opt-out gate, before SEND-INTENT); Program.cs DI (AddMemoryCache + ITenantCampaignResolver)",
+      "services_affected": ["Marketing"]
+    },
+    {
+      "id": "GR-MCC-6",
+      "description": "Dashboard SPA: types/campaignConfig.ts wire types + UI drafts; lib/api.ts getCampaignConfig + putCampaignConfig + type re-exports; hooks/useCampaignConfig.ts (module cache + wrapError + save invalidate); pages/settings/CampaignConfigSettingsPage.tsx (multi-card editor with city + date sub-rows, slug regex + cap validation, INV-BE-* bracket display); App.tsx route /settings/campaigns; SettingsPage.tsx entry card",
+      "services_affected": ["Dashboard"]
+    }
+  ],
+  "slug": "20260425-feat-mcc-multi-city",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-04-22T11:30:00Z",
+  "updated_at": "2026-04-22T12:30:00Z",
+  "status_log": [
+    { "at": "2026-04-22T11:04:00Z", "status": "PLANNING", "note": "Pilot mode P6 start; interview gates (4+4 questions) answered" },
+    { "at": "2026-04-22T11:30:00Z", "status": "REVIEW", "note": "Code complete; build PASS (0 errors, 17 pre-existing warnings); SPA build PASS (CampaignConfigSettingsPage 13.24kB chunk emitted)" },
+    { "at": "2026-04-22T12:30:00Z", "status": "DONE", "note": "Codex 4-chunk review ALL PASS. Chunk 1 iter 2 (FAIL iter 1 CQ5 null-forgiving + CQ12 silent null-config -> fixed). Chunk 2 iter 0. Chunk 3 iter 1 (FAIL iter 0 chunk-isolation false positive on INV-BE-119 -> re-submitted with chunk 1 evidence). Chunk 4 iter 0. 48/48 CQ gates + 13/13 CoVe gates across all chunks." }
+  ],
+  "plan": {
+    "summary": "FEAT-MCC Multi-City Campaign: tenant_settings.campaign_config JSONB additive column with full Dashboard editor at /settings/campaigns; locale-aware {{campaign.cities_human|cities_csv|cities_json|name|slug|start_date|end_date|event_date|event_hours}} substitution in Automation outbound dispatch; active-window guard (start_date/end_date inclusive in tenant timezone, plus operator active flag) firing in BOTH Automation SendCallbackAsync AND Marketing FollowupStageJob.ExecuteAsync. Push-cache pattern (Backend PUT → resolver.Invalidate). Dent pilot seed (roadshow_ireland_2026 / Dublin+Cork) loaded idempotently via migration 030.",
+    "q_intent": "P6 başla. Pilot Launch Mode AKTIF. tracking/pilot-launch-roadmap.md master queue'da ilk PENDING = P6 20260425-feat-mcc-multi-city (FAZ 3, MEDIUM risk). Multi-city campaign config — JSONB additive, {{campaign.*}} substitution, outbound window guard, pilot Dublin/Cork config set, Dashboard SPA /settings/campaigns editor, Migration 030, INV-BE-118..120. Interview gate: slug uniqueness scope, active window edges, cities render format, cache invalidate pattern + config shape, window guard scope, override priority, pilot seed.",
+    "interview_notes": "Q1 slug uniqueness=tenant-scope unique; Q2 active window=inclusive [start,end] + tenant timezone; Q3 cities render=human readable + cities_human/cities_csv/cities_json sub-namespace (locale-aware en:'and' / tr:'ve'); Q4 cache invalidate=push (PUT → IMemoryCache.Remove); Q5 config shape=array of campaigns 1..N (max 8); Q6 window guard=Automation dispatch + EFS scheduler; Q7 substitution priority=Lead.custom_1 (city) > tenant default (resolver supports both, Automation hot path passes leadCity=null for MVP, EFS just guards window); Q8 pilot seed=migration with idempotent Dent INSERT.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "tenant_settings.campaign_config JSONB additive column (default '{\"campaigns\":[]}') with GIN jsonb_path_ops index; canonical schema mirror updated; migration idempotent (re-run safe); Dent pilot seed (slug=roadshow_ireland_2026, cities Dublin+Cork, dates 2026-03-14/15, window 2026-03-01..2026-03-20) loaded only when row exists for tenant_id=18173130 AND slug not already present", "verified": false, "verification_note": null },
+      { "id": "AC2", "criterion": "Backend GET/PUT /api/v1/tenant-settings/campaign-config returns SnakeCaseLower envelope { data: { tenant_id, campaign_config, updated_at } }; PUT validates via TenantCampaignConfigValidator (slug regex / reserved set INV-BE-120 / max 8 campaigns / max 20 cities&dates / start<=end / dates.city must be a known city.slug) and invalidates resolver cache; cross-tenant body.tenant_id mismatch → 403 INV-AUTH-010; Npgsql failure → 500 INV-BE-121", "verified": false, "verification_note": null },
+      { "id": "AC3", "criterion": "Automation AutomationOrchestrator.SendCallbackAsync hook between KVKK and DMP: messages containing {{campaign.X}} placeholders trigger CampaignTemplateApplier.ApplyAsync; window-closed → INV-BE-119 + return false (dispatch dropped); window-open → render placeholders via resolver (locale from leads.preferred_locale, fallback 'en'); messages without placeholders bypass entirely (NoOp)", "verified": false, "verification_note": null },
+      { "id": "AC4", "criterion": "Marketing FollowupStageJob.ExecuteAsync window guard fires AFTER opt-out check, BEFORE SEND-INTENT log: when tenant has campaigns configured AND none cover NOW → run terminal-marked 'skipped_disabled' with INV-BE-119; tenants with empty campaigns[] bypass (existing EFS pilots unaffected)", "verified": false, "verification_note": null },
+      { "id": "AC5", "criterion": "ITenantCampaignResolver implementation: 5dk IMemoryCache TTL + ConcurrentDictionary single-flight (CT.None factory + WaitAsync per caller — FEAT-TFM lessons 2026-04-21 iter 3); Backend PUT calls Invalidate; Npgsql failure → empty config + INV-BE-121 WARN (window guard becomes no-op); JsonException → empty config + INV-BE-118 WARN", "verified": false, "verification_note": null },
+      { "id": "AC6", "criterion": "Build PASS (full sln dotnet build): 0 errors, no NEW warnings (17 pre-existing). SPA build PASS (Vite): CampaignConfigSettingsPage chunk emitted under wwwroot/app/assets. No new csproj ProjectReference outside Invekto.Shared (microservice isolation preserved)", "verified": false, "verification_note": null },
+      { "id": "AC7", "criterion": "Dashboard SPA editor at /settings/campaigns: useCampaignConfig hook follows useFollowupSequence module-cache + wrapError pattern (no fabricated INV-FE-* codes; INV-OB-037 fallback for non-Api errors; bracket format); page renders multi-card editor with city/date sub-rows, slug+cap+date-order client validation, save invalidates module cache + refreshes; SettingsPage entry card links to the route", "verified": false, "verification_note": null }
+    ]
+  },
+  "allowed_files": [
+    "arch/db/migrations/030-tenant-campaign-config.sql",
+    "arch/db/tenant-settings.sql",
+    "arch/errors.md",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Shared/Contracts/Campaigns/Dtos/CampaignCity.cs",
+    "src/Invekto.Shared/Contracts/Campaigns/Dtos/CampaignDate.cs",
+    "src/Invekto.Shared/Contracts/Campaigns/Dtos/CampaignEntry.cs",
+    "src/Invekto.Shared/Contracts/Campaigns/Dtos/CampaignConfig.cs",
+    "src/Invekto.Shared/Contracts/Campaigns/ITenantCampaignResolver.cs",
+    "src/Invekto.Shared/Contracts/Campaigns/DbTenantCampaignResolver.cs",
+    "src/Invekto.Shared/Contracts/Campaigns/TenantCampaignConfigValidationException.cs",
+    "src/Invekto.Shared/Services/TenantCampaignConfigValidator.cs",
+    "src/Invekto.Backend/Data/TenantSettingsRepository.cs",
+    "src/Invekto.Backend/Endpoints/TenantCampaignConfigEndpoints.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Automation/Services/CampaignTemplateApplier.cs",
+    "src/Invekto.Automation/Services/AutomationOrchestrator.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Marketing/Services/Jobs/FollowupStageJob.cs",
+    "src/Invekto.Marketing/Program.cs",
+    "src/Invekto.Backend/Dashboard/src/types/campaignConfig.ts",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/hooks/useCampaignConfig.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/settings/CampaignConfigSettingsPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/SettingsPage.tsx",
+    "src/Invekto.Backend/wwwroot/app/**",
+    "arch/plans/20260425-feat-mcc-multi-city.json",
+    "tracking/feat-mcc-multi-city.md",
+    "tracking/pilot-launch-roadmap.md",
+    "arch/session-memory.md"
+  ],
+  "files_changed": [
+    { "path": "arch/db/migrations/030-tenant-campaign-config.sql", "is_new": true, "change": "tenant_settings.campaign_config JSONB additive + GIN index + idempotent Dent pilot seed (DO $$ block, jsonb_path_exists guard) + GRANT re-assertion" },
+    { "path": "arch/db/tenant-settings.sql", "is_new": false, "change": "Canonical schema mirror: campaign_config column + comment block referencing migration 030" },
+    { "path": "arch/errors.md", "is_new": false, "change": "INV-BE-118..121 entries (validation / window-closed / reserved slug / DB transient) inserted after INV-BE-117" },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false, "change": "4 new const declarations CampaignConfigInvalid / CampaignWindowClosed / CampaignSlugReserved / CampaignConfigDbUnavailable" },
+    { "path": "src/Invekto.Shared/Contracts/Campaigns/Dtos/CampaignCity.cs", "is_new": true, "change": "Per-city DTO (slug/name/country/timezone) with snake_case JsonPropertyName" },
+    { "path": "src/Invekto.Shared/Contracts/Campaigns/Dtos/CampaignDate.cs", "is_new": true, "change": "Per-date DTO (city/date/hours)" },
+    { "path": "src/Invekto.Shared/Contracts/Campaigns/Dtos/CampaignEntry.cs", "is_new": true, "change": "Top-level campaign DTO (slug/name/active/start_date/end_date/cities/dates)" },
+    { "path": "src/Invekto.Shared/Contracts/Campaigns/Dtos/CampaignConfig.cs", "is_new": true, "change": "Wrapper { campaigns: [...] } + Empty() factory" },
+    { "path": "src/Invekto.Shared/Contracts/Campaigns/ITenantCampaignResolver.cs", "is_new": true, "change": "Interface: GetAsync + Invalidate + RenderPlaceholderAsync + IsWithinWindowAsync" },
+    { "path": "src/Invekto.Shared/Contracts/Campaigns/DbTenantCampaignResolver.cs", "is_new": true, "change": "DB-backed impl with 5dk MemoryCache + CT-safe single-flight + locale-aware cities_human + lead-aware ResolveDateField + Npgsql/JsonException → empty fallback" },
+    { "path": "src/Invekto.Shared/Contracts/Campaigns/TenantCampaignConfigValidationException.cs", "is_new": true, "change": "Structured exception (ErrorCode + CampaignSlug + FieldPath)" },
+    { "path": "src/Invekto.Shared/Services/TenantCampaignConfigValidator.cs", "is_new": true, "change": "Static validator: slug regex / reserved set / max 8 campaigns / max 20 cities&dates / date format & ordering / dates.city referential check" },
+    { "path": "src/Invekto.Backend/Data/TenantSettingsRepository.cs", "is_new": false, "change": "Added GetCampaignConfigAsync + UpsertCampaignConfigAsync mirroring field-mapping pattern" },
+    { "path": "src/Invekto.Backend/Endpoints/TenantCampaignConfigEndpoints.cs", "is_new": true, "change": "GET/PUT endpoints with TenantContext guard, body parse + cross-tenant 403, validator integration, resolver Invalidate after upsert, snake_case JSON contract" },
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false, "change": "DI registration (DbTenantCampaignResolver + ITenantCampaignResolver alias) + MapTenantCampaignConfigEndpoints() + API endpoint listing entries (GET/PUT)" },
+    { "path": "src/Invekto.Automation/Services/CampaignTemplateApplier.cs", "is_new": true, "change": "Helper class wrapping regex detect + window guard + render-and-replace; CampaignApplyResult record (NoOp/Substituted/Skip)" },
+    { "path": "src/Invekto.Automation/Services/AutomationOrchestrator.cs", "is_new": false, "change": "Added _campaignApplier ctor param + invocation in SendCallbackAsync between KVKK and DMP layers; Skip → log INV-BE-119 + return false" },
+    { "path": "src/Invekto.Automation/Program.cs", "is_new": false, "change": "DI registration (ITenantCampaignResolver + CampaignTemplateApplier)" },
+    { "path": "src/Invekto.Marketing/Services/Jobs/FollowupStageJob.cs", "is_new": false, "change": "Added _campaignResolver ctor param + window guard between opt-out check and SEND-INTENT log; suppression marks status='skipped_disabled' with INV-BE-119" },
+    { "path": "src/Invekto.Marketing/Program.cs", "is_new": false, "change": "Added AddMemoryCache() + ITenantCampaignResolver registration" },
+    { "path": "src/Invekto.Backend/Dashboard/src/types/campaignConfig.ts", "is_new": true, "change": "Dashboard wire DTOs + UI draft types" },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "is_new": false, "change": "getCampaignConfig + putCampaignConfig methods + type imports/re-exports" },
+    { "path": "src/Invekto.Backend/Dashboard/src/hooks/useCampaignConfig.ts", "is_new": true, "change": "Module-cached hook with wrapError + save invalidate (mirrors useFollowupSequence pattern)" },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/settings/CampaignConfigSettingsPage.tsx", "is_new": true, "change": "Multi-card editor with city/date sub-rows, slug regex + cap + date-order client validation, save error surfacing, accessibility attributes (aria-label on remove buttons)" },
+    { "path": "src/Invekto.Backend/Dashboard/src/App.tsx", "is_new": false, "change": "Added lazy import + Route /settings/campaigns" },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/SettingsPage.tsx", "is_new": false, "change": "Added entry card to /settings/campaigns" },
+    { "path": "arch/plans/20260425-feat-mcc-multi-city.json", "is_new": true, "change": "This plan JSON" },
+    { "path": "tracking/feat-mcc-multi-city.md", "is_new": true, "change": "Per-paket tracking doc with interview answers + AC + deliverables" }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "bc86b540151d490feb2be9b40b4b489b2e1c5d1d0c91a61542ff98eb731d8d0c",
+    "full_path": "arch/plans/diffs/20260425-feat-mcc-multi-city.diff",
+    "stats": {
+      "insertions": 2880,
+      "deletions": 70,
+      "files_count": 63
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-04-22T11:25:00Z",
+    "duration_ms": 50850,
+    "output_tail": "Build succeeded. 17 Warning(s) 0 Error(s) Time Elapsed 00:00:50.85",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Backend", "Invekto.Automation", "Invekto.Marketing"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does the migration 030 idempotency branch correctly preserve a tenant's pre-existing campaigns[] when re-running while the seed slug is absent? Trace: existing campaigns[] read → seed slug not in jsonb_path_exists → COALESCE(existing -> 'campaigns', '[]'::jsonb) || jsonb_build_array(seed_payload) appends without overwriting.",
+      "category": "Data"
+    },
+    {
+      "id": "Q2",
+      "question": "Does the cross-tenant defensive 403 in TenantCampaignConfigEndpoints PUT correctly fire BEFORE validation/upsert when body.tenant_id mismatches JWT? Confirm the early-return order (TenantContext → body parse → cross-tenant check → validator → resolver Invalidate).",
+      "category": "Auth"
+    },
+    {
+      "id": "Q3",
+      "question": "Does CampaignTemplateApplier.ApplyAsync correctly short-circuit (NoOp) when text contains no {{campaign.X}} tokens, preserving existing campaign-agnostic outbound traffic? Confirm matches.Count == 0 → CampaignApplyResult.NoOp(text) returned with ShouldSkip=false.",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q4",
+      "question": "Does FollowupStageJob.ExecuteAsync window guard correctly bypass for tenants with empty campaigns[] (no MCC adoption)? Confirm 'if (campaignConfig.Campaigns.Count > 0)' check skips the IsWithinWindowAsync call entirely so existing EFS pilots without campaign config keep firing.",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q5",
+      "question": "Does DbTenantCampaignResolver.GetAsync return CampaignConfig.Empty() (not null) on Npgsql failure so SendCallbackAsync's window guard correctly evaluates to 'inWindow=false → drop' for campaign-bound messages? Trace: NpgsqlException → log INV-BE-121 → CachedTenantCampaign.EmptyFor(null) → 0 campaigns → IsWithinWindowAsync returns false.",
+      "category": "Process/Policy"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Outbound/**",
+      "src/Invekto.Appointments/**",
+      "src/Invekto.Knowledge/**",
+      "src/Invekto.Integrations/**",
+      "src/Invekto.AgentAI/**",
+      "src/Invekto.ChatAnalysis/**",
+      "src/Invekto.WebChat/**",
+      "src/Invekto.WhatsAppAnalytics/**",
+      "src/Invekto.VoiceAI/**",
+      "arch/db/migrations/[0-9]*.sql except 030-tenant-campaign-config.sql"
+    ],
+    "non_goals": [
+      "Campaign analytics / reporting (separate PKT backlog)",
+      "Per-city dynamic slot booking (use FEAT-AP appointments)",
+      "Multi-language per-campaign template authoring (v2)",
+      "Lead.custom_1 plumbing through Automation chat hot path (resolver supports it; caller passes null in MVP)",
+      "Cross-instance cache invalidation (5dk TTL eventual consistency, MVP — same trade-off as FEAT-TFM-CACHE backlog)"
+    ],
+    "intentional_exclusions": [
+      "No PostgreSQL NOTIFY/LISTEN cross-process invalidation (B2 backlog pattern)",
+      "No campaign-list browsing endpoint beyond GET (GET returns full config; client renders the list)",
+      "No campaign-runs analytics view (no per-campaign dispatch counter table)",
+      "No automatic campaign archival on end_date+N (operator can flip active=false manually)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "src/Invekto.Backend/Endpoints/TenantCampaignConfigEndpoints.cs:GET (Npgsql, JsonException, OperationCanceledException)",
+      "src/Invekto.Backend/Endpoints/TenantCampaignConfigEndpoints.cs:PUT (body parse JsonException, OperationCanceledException, validator TenantCampaignConfigValidationException, repo NpgsqlException)",
+      "src/Invekto.Shared/Contracts/Campaigns/DbTenantCampaignResolver.cs:FetchAndCacheAsync (NpgsqlException → INV-BE-121, JsonException → INV-BE-118, finally _inflight cleanup)",
+      "src/Invekto.Shared/Contracts/Campaigns/DbTenantCampaignResolver.cs:ToTenantLocal (TimeZoneNotFoundException + InvalidTimeZoneException → fall back to UTC date)",
+      "src/Invekto.Marketing/Services/Jobs/FollowupStageJob.cs:campaign guard (resolver swallows exceptions; job receives empty config and lets opt-out flow complete)"
+    ],
+    "user_facing_errors": [
+      "INV-BE-118 — Kampanya tanımı geçersiz veya bulunamadı; kampanya alanlarını gözden geçirin.",
+      "INV-BE-119 — Bu kampanyanın gönderim penceresi şu anda kapalı; mesaj gönderilmedi.",
+      "INV-BE-120 — Bu kampanya adı sistem rezerv kelimesi; lütfen farklı bir slug seçin.",
+      "INV-BE-121 — Kampanya ayarları geçici olarak okunamıyor/kaydedilemiyor; birkaç saniye sonra tekrar deneyin.",
+      "INV-AUTH-010 — Cross-tenant yazma engellendi."
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Resolver fall-through (NpgsqlException → empty config) is documented + logged at WARN with INV-BE-121; window guard becomes no-op, but campaign-bound messages with placeholders will still observe inWindow=false and be dropped (operator visible via INV-BE-119 log). The only 'silent' path is when a tenant has zero campaigns configured — then guard is intentionally no-op (campaign-agnostic outbound continues). Pilot Smoke S7 explicitly tests both substitution and guard activation."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Operator wants to launch a roadshow but doesn't know if their config is currently active or how the customer will see {{campaign.cities_human}}.",
+      "suggestion": "Add a 'Live Preview' card under the editor that resolves placeholders against the current config and shows the rendered text + window status (Aktif / Henüz başlamadı / Sona erdi) per campaign.",
+      "aha_moment": "Operator types a slug and sees the customer-facing 'Dublin ve Cork — 14 Mart' immediately, knowing exactly what will be sent before any traffic flows."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Cross-instance cache lag (5dk) means Backend operator updates the config but Automation/Marketing instances keep substituting the old cities for up to 5 minutes after PUT.",
+      "suggestion": "Add a Backend-broadcast endpoint /api/internal/campaign-config/invalidate-broadcast that uses InternalServices:SharedSecret to call peer Automation + Marketing /api/internal/campaign-config/invalidate routes (mirroring FEAT-TFM-CACHE backlog pattern). Push-only, no NOTIFY/LISTEN dependency.",
+      "aha_moment": "Operator hits Save → resolves on every instance within 1 second → next dispatched message uses fresh config."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Operator needs to type out city slugs (dublin, cork, ...) and remember IANA timezone strings — high friction for non-technical operators.",
+      "suggestion": "City slug autoderived from name (lowercase + ascii fold + spaces→underscores); timezone autodetected from country (IE→Europe/Dublin, TR→Europe/Istanbul) via a small client-side lookup table.",
+      "aha_moment": "Operator types 'Dublin' into name, slug field auto-fills 'dublin' and timezone 'Europe/Dublin' — saves 30 seconds + zero typos per city."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Customer complains 'I got an SMS about a roadshow that doesn't exist' — support has no way to trace which campaign+window the dispatch was bound to.",
+      "suggestion": "Persist a per-dispatch audit row campaign_dispatch_log (tenant_id, lead_id, campaign_slug, rendered_text, sent_at, window_at_dispatch JSON snapshot) so support can SELECT and replay the exact context of a complained message.",
+      "aha_moment": "Support pastes the customer's complaint + phone, gets back the exact campaign slug + cities + dates that the message rendered with at the moment of dispatch."
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Sales onboarding a new tenant for a multi-city tour wants to demo the full flow but has to manually wire up the config + a flow that uses placeholders.",
+      "suggestion": "Add a one-click 'Roadshow Template' button on the editor that seeds (a) a sample campaign with 3 mock cities + dates and (b) a paired chatbot flow that uses {{campaign.cities_human}} + {{campaign.event_date}} so the prospect sees end-to-end behaviour in 30 seconds.",
+      "aha_moment": "Prospect demoing the platform clicks one button, sends a test message to themselves, sees the rendered roadshow text on their phone — 'we can launch this for our 8-city Q3 tour next week'."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-22T12:30:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-22T12:30:00Z",
+    "raw_text": "4-chunk review — chunk 1 iter 2 PASS, chunk 2 iter 0 PASS, chunk 3 iter 1 PASS, chunk 4 iter 0 PASS. 48/48 CQ + 13/13 CoVe. Chunk 1 iter 1 FAIL fixed (CQ5 null-forgiving operator removed; CQ12 null-config now throws INV-BE-118). Chunk 3 iter 0 FAIL was chunk-isolation false positive on INV-BE-119 prefix; re-submitted with chunk 1 errors.md+ErrorCodes.cs evidence -> PASS.",
+    "iteration": 1
+  }
+}

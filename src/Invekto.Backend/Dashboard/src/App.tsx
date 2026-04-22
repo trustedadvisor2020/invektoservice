@@ -54,6 +54,9 @@ const FieldMappingSettingsPage = lazy(() => import('./pages/settings/FieldMappin
 // FEAT-EFS Drip Sequence P5: follow-up sequence editor (lazy).
 const FollowupSequenceSettingsPage = lazy(() => import('./pages/settings/FollowupSequenceSettingsPage').then(m => ({ default: m.FollowupSequenceSettingsPage })));
 
+// FEAT-MCC Multi-City Campaign P6: campaign config editor (lazy).
+const CampaignConfigSettingsPage = lazy(() => import('./pages/settings/CampaignConfigSettingsPage').then(m => ({ default: m.CampaignConfigSettingsPage })));
+
 function ProtectedRoute() {
   const { isAuthenticated } = useAuth();
 
@@ -150,6 +153,8 @@ export default function App() {
         {/* FEAT-TFM-UI P3: standalone field mapping editor (entered via SettingsPage 'Field Mapping' card). */}
         <Route path="/settings/field-mapping" element={<Suspense><FieldMappingSettingsPage /></Suspense>} />
         <Route path="/settings/followup-sequence" element={<Suspense><FollowupSequenceSettingsPage /></Suspense>} />
+        {/* FEAT-MCC Multi-City Campaign P6: campaign + city/date editor (entered via SettingsPage). */}
+        <Route path="/settings/campaigns" element={<Suspense><CampaignConfigSettingsPage /></Suspense>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -20,6 +20,11 @@ import type {
   FollowupSequencePutResponse,
   FollowupRunsResponse,
 } from '../types/followupSequence';
+import type {
+  CampaignConfigGetResponse,
+  CampaignConfigPutRequest,
+  CampaignConfigPutResponse,
+} from '../types/campaignConfig';
 
 // API types
 export interface ServiceHealth {
@@ -2135,6 +2140,26 @@ class OpsApiClient {
   async listFollowupRuns(): Promise<FollowupRunsResponse> {
     return this.request<FollowupRunsResponse>('/api/v1/tenant/followup/runs');
   }
+
+  // ---- FEAT-MCC: Multi-City Campaign config (/api/v1/tenant-settings/campaign-config) ----
+  // Envelope shape (matches FieldMapping/Followup convention):
+  //   GET -> { data: { tenant_id, campaign_config: { campaigns: [...] }, updated_at } }
+  //   PUT -> same shape; backend upserts the full config atomically.
+  // Validation errors surface via ApiClientError:
+  //   400 INV-BE-118 invalid (slug/cap/structure) | INV-BE-120 reserved slug
+  //   403 INV-AUTH-010 cross-tenant
+  //   500 INV-BE-121 DB transient
+  async getCampaignConfig(): Promise<CampaignConfigGetResponse> {
+    return this.request<CampaignConfigGetResponse>('/api/v1/tenant-settings/campaign-config');
+  }
+
+  async putCampaignConfig(req: CampaignConfigPutRequest): Promise<CampaignConfigPutResponse> {
+    return this.request<CampaignConfigPutResponse>('/api/v1/tenant-settings/campaign-config', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req),
+    });
+  }
 }
 
 // FEAT-TFM-UI type re-exports (pages + components consume from './api' to match the
@@ -2157,6 +2182,21 @@ export type {
   FollowupStageDraft,
   FollowupSequenceDraft,
 } from '../types/followupSequence';
+
+// FEAT-MCC Multi-City Campaign type re-exports.
+export type {
+  CampaignCityDto,
+  CampaignDateDto,
+  CampaignEntryDto,
+  CampaignConfigDto,
+  CampaignConfigGetResponse,
+  CampaignConfigPutRequest,
+  CampaignConfigPutResponse,
+  CampaignCityDraft,
+  CampaignDateDraft,
+  CampaignEntryDraft,
+  CampaignConfigDraft,
+} from '../types/campaignConfig';
 
 // FEAT-DMP: INMA placeholder descriptor — matches the bridge proxy shape.
 export interface InmaDynamicFieldDto {

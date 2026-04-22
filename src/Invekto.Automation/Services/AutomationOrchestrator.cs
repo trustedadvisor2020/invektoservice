@@ -37,6 +37,7 @@ public sealed class AutomationOrchestrator
     private readonly BackendIntakeClient _backendIntake;
     private readonly TenantSettingsRepository _tenantSettings;
     private readonly DynamicMessageValidator _dynamicValidator;
+    private readonly CampaignTemplateApplier _campaignApplier;
     private readonly JsonLinesLogger _logger;
 
     // GR-2.6: KVKK health tenant cache (tenant_id -> isHealthTenant)
@@ -63,6 +64,7 @@ public sealed class AutomationOrchestrator
         BackendIntakeClient backendIntake,
         TenantSettingsRepository tenantSettings,
         DynamicMessageValidator dynamicValidator,
+        CampaignTemplateApplier campaignApplier,
         JsonLinesLogger logger)
     {
         _repo = repo;
@@ -80,6 +82,7 @@ public sealed class AutomationOrchestrator
         _backendIntake = backendIntake;
         _tenantSettings = tenantSettings;
         _dynamicValidator = dynamicValidator;
+        _campaignApplier = campaignApplier;
         _logger = logger;
     }
 
@@ -1465,6 +1468,25 @@ public sealed class AutomationOrchestrator
         {
             var isHealth = await IsHealthTenantCachedAsync(tenantId, ct);
             finalMessageText = KvkkHelper.AppendDisclaimerIfHealth(messageText, isHealth);
+        }
+
+        // FEAT-MCC: substitute {{campaign.X}} placeholders + active-window guard. Runs AFTER
+        // KVKK disclaimer (so disclaimer text never carries unresolved campaign tokens) and
+        // BEFORE DMP validation (DMP sees the rendered text, not template tokens that aren't
+        // INMA reserved keys). Campaign-agnostic outbound (no {{campaign.X}} in text) bypasses
+        // this entirely (NoOp result). Window-closed dispatch is dropped with INV-BE-119.
+        if (action == CallbackActions.SendMessage && !string.IsNullOrEmpty(finalMessageText))
+        {
+            var campaignResult = await _campaignApplier.ApplyAsync(
+                tenantId, phone: chatId, finalMessageText, DateTimeOffset.UtcNow, ct);
+            if (campaignResult.ShouldSkip)
+            {
+                _logger.StepError(
+                    $"[{campaignResult.ErrorCode ?? ErrorCodes.CampaignWindowClosed}] FEAT-MCC outbound dropped: tenant={tenantId} chat={chatId} reason=campaign_window_closed",
+                    requestId, processingTimeMs);
+                return false;
+            }
+            finalMessageText = campaignResult.RenderedText;
         }
 
         // FEAT-DMP: resolve INMA DynamicMessage placeholders for SendMessage.

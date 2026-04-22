@@ -94,6 +94,14 @@ public static class ErrorCodes
     public const string LeadIntakeDryRunPayloadInvalid = "INV-BE-116";           // Dry-run payload JSON parse failure
     public const string LeadIntakeSettingsUnknownTenant = "INV-BE-117";          // LIW settings mutation (rotate/revoke/fieldmap): JWT-bound tenant_id has no row in tenant_registry (auth drift / stale test JWT); pre-check via TenantExistsAsync before opening settings tx
 
+    // FEAT-MCC: Multi-City Campaign config (INV-BE-118..121)
+    // Allocated AFTER INV-BE-117 (LIW Chunk C). Earlier feature spec drafted INV-BE-090..091
+    // which collided with Translation (INV-BE-090..095) — see arch/errors.md and roadmap §2 audit.
+    public const string CampaignConfigInvalid = "INV-BE-118";          // Validation failure: slug regex/uniqueness, max-campaigns cap, max cities/dates per campaign cap, date ordering, dates[].city not referencing a known city slug. Also surfaced from Automation when {{campaign.X}} placeholder cannot resolve post-edit.
+    public const string CampaignWindowClosed = "INV-BE-119";           // Outbound dispatch bound to a campaign whose active window is in the future, in the past, or active=false. Fires only for campaign-bound dispatch (template contains {{campaign.*}} or caller passed an explicit slug).
+    public const string CampaignSlugReserved = "INV-BE-120";           // Slug uses a reserved token ('primary'/'system'/'default'/'all').
+    public const string CampaignConfigDbUnavailable = "INV-BE-121";    // tenant_settings.campaign_config DB read/write transient (Npgsql). Distinct from generic INV-BE-001 so dashboards isolate campaign-config storage outages.
+
     // ChatAnalysis errors (INV-CA-xxx)
     public const string ChatAnalysisInvalidPayload = "INV-CA-001";
     public const string ChatAnalysisProcessingFailed = "INV-CA-002";
