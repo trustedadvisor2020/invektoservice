@@ -80,7 +80,7 @@ Bu dosya **pilot launch boyunca execution queue'nun tek kaynagidir**. Session bo
 | # | Paket | Slug | Status | Migration | Error Codes | Deploy | Exit Criteria |
 |---|-------|------|--------|-----------|-------------|--------|---------------|
 | 5 | FEAT-EFS Drip Sequence | `20260425-feat-efs-drip-sequence` | **DONE+DEPLOYED+SMOKED** 2026-04-22 07:50 UTC (commit `29e8d18`, Codex iter 4 PASS arc 0→4, CoVe 7/7 + CQ 12/12, 0 blocker). Migration 029 run, Marketing+Automation+Backend deploy 10/10 HEALTHY, 3-tier auth smoke PASS (middleware-401/BadJWT500/ValidJWT200), Dent PUT round-trip PASS (id=1 post-roadshow 3/7/14 A/B 50/50), 5 validation caps 400, SPA chunk FollowupSequenceSettingsPage-BBB3hJ7E.js referenced from index-oKrfe438.js. | **029**-efs-followup-sequence.sql (event_followup_sequences + event_followup_runs + FKs tenant_registry/leads/sequences + tenant_settings.efs_test_mode + efs_no_reply_threshold_days + leads.followup_state JSONB + followup_ab_group + partial unique race guard) + arch/db/marketing.sql canonical mirror (Codex iter 2 CQ11) | **INV-MK-050..058** (9 kod: validation/logical-absence/opt-out/cap/disabled/collision/storage-unavailable-056/upstream-unavailable-057/reserved-058) — iter 0 tek sınıf yanlıştı, iter 1-3 failure-class taksonomisi ayrıştı | Marketing (:7112) + Automation + Backend SPA + Dashboard SPA `/settings/followup-sequence` editor | Hangfire scheduled + SHA256 deterministic A/B + 4 trigger contract (no-reply-welcome auto-emit scheduling deferred follow-up paket; 3 reason ops-manual) + execution-time opt-out dual-signal (inma_optout_outbox.event_type OR followup_state.opted_out_at JSON key) + concurrent-trigger race closed (partial unique index + PostgresException 23505 → INV-MK-055) + test mode (efs_test_mode) → delay_days as minutes + Dashboard TEST MODE banner + stage cap enforcement (max 5 / max 30 unit) + single-flight CT-safe cache + SPA wrapError helper + Fragment+sibling tr row error + existing-data-guard disabled UI ✅ |
-| 6 | FEAT-MCC Multi-City Campaign | `20260425-feat-mcc-multi-city` | PENDING | **030**-tenant-campaign-config.sql (`tenant_settings.campaign_config JSONB` additive) | **INV-BE-118..120** (INV-BE-090..091 Translation COLLISION — grep-verified `errors.md:154-161`; rebase zorunlu) | Backend + Automation + **Dashboard SPA (`/settings/campaigns` editor)** | JSONB config + `{{campaign.*}}` substitution + outbound window guard + pilot Dublin/Cork config set + **UI: campaign list + city/date editor** |
+| 6 | FEAT-MCC Multi-City Campaign | `20260425-feat-mcc-multi-city` | **DONE** 2026-04-22 12:30 UTC (commit `d84e304`, Codex 4-chunk review ALL PASS 48/48 CQ + 13/13 CoVe; deploy pending) | **030**-tenant-campaign-config.sql (`tenant_settings.campaign_config JSONB` additive + GIN jsonb_path_ops + idempotent Dent seed via `DO $$ jsonb_path_exists` block) | **INV-BE-118..121** (INV-BE-118 validation, INV-BE-119 window-closed, INV-BE-120 reserved slug, INV-BE-121 DB transient — collision-free, allocated AFTER INV-BE-117 LIW Chunk C) | Backend + Automation + Marketing + **Dashboard SPA (`/settings/campaigns` editor)** | Array-of-campaigns JSONB config (max 8/tenant, max 20 cities&dates each) + locale-aware `{{campaign.cities_human|cities_csv|cities_json|name|slug|start_date|end_date|event_date|event_hours}}` substitution (en `and` / tr `ve`) + dual-layer outbound window guard (Automation SendCallbackAsync + Marketing FollowupStageJob; campaign-agnostic outbound bypass + empty-campaigns tenant bypass for backward compat) + push cache invalidate (Backend PUT → resolver.Invalidate; peers 5dk TTL) + Dent pilot seed (roadshow_ireland_2026, Dublin+Cork dates 2026-03-14/15, window 2026-03-01..2026-03-20) loaded by migration 030 idempotently + Dashboard multi-card editor with city/date sub-rows (slug+cap+date-order client validation, bracket INV-BE-* error display, accessibility aria-label, disabled-only-during-save guard preserving operator access on transient errors per lessons 2026-04-22 P3) ✅ |
 
 ### FAZ 4 — Cleanup (pilot once temiz)
 
@@ -223,11 +223,11 @@ Bu dosya **pilot launch boyunca execution queue'nun tek kaynagidir**. Session bo
 | Metric | Value |
 |--------|-------|
 | Total Pilot-Critical Packages | 9 |
-| DONE | 5 (P1, P2, P3, P4, P5 — P5 deploy bekliyor) |
+| DONE | 6 (P1, P2, P3, P4, P5, P6 — P6 deploy bekliyor) |
 | IN_PROGRESS | 0 |
-| PENDING | 4 |
+| PENDING | 3 (P7 cleanup, P8 cleanup, P9 smoke) |
 | SKIPPED | 0 |
-| Progress | 56% (5/9) |
+| Progress | 67% (6/9 code complete; 5/9 deployed) |
 | Backlog Packages | 6 (B0-B5) |
 | Blocked External Deps | 6 |
 
