@@ -9,6 +9,7 @@
     <ProjectReference Include="..\Invekto.Appointments\Invekto.Appointments.csproj" PrivateAssets="all" />
     <ProjectReference Include="..\Invekto.Automation\Invekto.Automation.csproj" PrivateAssets="all" />
     <ProjectReference Include="..\Invekto.Integrations\Invekto.Integrations.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\Invekto.Marketing\Invekto.Marketing.csproj" PrivateAssets="all" />
     <ProjectReference Include="..\Invekto.WhatsAppAnalytics\Invekto.WhatsAppAnalytics.csproj" PrivateAssets="all" />
   </ItemGroup>
 
