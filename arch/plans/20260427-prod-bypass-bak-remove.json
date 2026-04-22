@@ -1,0 +1,167 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "slug": "20260427-prod-bypass-bak-remove",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-04-22T13:20:00Z",
+  "updated_at": "2026-04-22T13:45:00Z",
+  "plan": {
+    "summary": "Ops-only paket P8 (FAZ 4 cleanup): Prod sunucudan 6 stale appsettings.Production.json.bak dosyasini MCP invekto-ops server-exec Remove-Item ile sil. Kod degisikligi yok, build yok, deploy yok, service restart yok. Scope: (1) Backend/bak-inma-companycode (2026-04-16, P8 roadmap hedef dosyasi — isim varyanti bak-20260416-inma-bypass olarak roadmap'te yazilmis), (2) Backend/bak-20260419-precheck, (3-4) Appointments/current VCP Chunk B 2 bak, (5) Integrations/bak-20260419-vcp-chunk-a, (6) Integrations/current/bak-20260420-vcp-chunk-b. Repo tarafinda 5 dosya (plan/tracking/lessons/session-memory/roadmap) guncellenecek. Rollback kaynagi: git history (appsettings.Production.json Config Preserve Sandwich canonical truth; bak'lar 10 gun oncesi pre-hotfix snapshot'lari, regression icin gereksiz).",
+    "q_intent": "P8 basla. Pilot Launch Mode aktif, next PENDING = P8 20260427-prod-bypass-bak-remove. Q interview: 3/3 Recommended (evet sil / direkt sil / git history yeter). Scope genisletme: hedef dosya + VCP/P-checkpoint bak'lar (6 dosya).",
+    "interview_notes": "Q1 silme onay = evet (Recommended). Q2 silme yontemi = direkt sil MCP server-exec (Recommended). Q3 rollback source = git history yeter (Recommended). Surprise bulgu: roadmap'te belirtilen bak-20260416-inma-bypass prod'da bu exact isimle yok; yerine Backend/bak-inma-companycode (2026-04-16 timestamp, Backend Production config snapshot — PostgreSQL+JWT+Claude secrets). Ayni semantic hedef (INMA companycode investigation sirasinda alinan pre-hotfix snapshot). Scope genisletme gerekcesi: 7+ stale bak tespit, son 10 gundeki deploy sandwich artifact'lari secrets leak surface'i azaltmak icin temizleniyor; scripts/tmp/* ve staging/* ve WebChat 2026-03-02 bak dokunulmuyor (daha eski, ayri operational context).",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "6 hedef bak dosyasi MCP invekto-ops server-exec Remove-Item ile prod sunucudan silindi: (1) C:\\Invekto\\Backend\\appsettings.Production.json.bak-inma-companycode, (2) C:\\Invekto\\Backend\\appsettings.Production.json.bak-20260419-precheck, (3) C:\\Invekto\\Appointments\\current\\appsettings.Production.json.bak-20260420-170856-vcp-chunk-b, (4) C:\\Invekto\\Appointments\\current\\appsettings.Production.json.bak-20260420-171005-add-shared-secret, (5) C:\\Invekto\\Integrations\\appsettings.Production.json.bak-20260419-vcp-chunk-a, (6) C:\\Invekto\\Integrations\\current\\appsettings.Production.json.bak-20260420-170923-vcp-chunk-b.",
+        "verified": true,
+        "verification_note": "MCP server-exec Remove-Item -Force ile 6/6 dosya silindi (2026-04-22 13:33 UTC). Output log 'DELETED | <path>' her 6 satir icin."
+      },
+      {
+        "id": "AC2",
+        "criterion": "Silme sonrasi Test-Path her 6 dosya icin False donuyor (MCP server-exec Test-Path verification). Aktif appsettings.Production.json dosyalari (Backend/Appointments/Integrations/current/appsettings.Production.json) degismedi — sadece bak suffix'li dosyalar silindi.",
+        "verified": true,
+        "verification_note": "MCP server-exec Test-Path batch verify (2026-04-22 13:34 UTC): 6/6 GONE. Active files intact — Backend/current/appsettings.Production.json 3001B 2026-04-18T23:18 + Appointments/current/appsettings.Production.json 1172B 2026-04-20T14:10 + Integrations/current/appsettings.Production.json 2849B 2026-04-20T14:09."
+      },
+      {
+        "id": "AC3",
+        "criterion": "Silme sonrasi tum 10 servis HEALTHY (MCP invekto-ops server-health all). Bak dosyalari deploy config scan'e girmez (NSSM sadece appsettings.Production.json okur) ama safety check olarak post-delete health probe yapilir.",
+        "verified": true,
+        "verification_note": "MCP server-health all (2026-04-22 10:26 UTC server clock): Backend/ChatAnalysis/Appointments/Knowledge/AgentAI/Integrations/Outbound/Automation/WhatsAppAnalytics/Marketing 10/10 OK status=ok. Post-delete tum servisler steady — bak dosyalari runtime'a etkisiz (NSSM config scan sadece exact appsettings.Production.json okur)."
+      },
+      {
+        "id": "AC4",
+        "criterion": "Repo tarafinda 5 dosya guncellendi: (a) arch/plans/20260427-prod-bypass-bak-remove.json (bu plan), (b) tracking/20260427-prod-bypass-bak-remove.md (per-paket tracking), (c) tracking/pilot-launch-roadmap.md (P8 Status=DONE+DEPLOYED + P9 progress guncellemesi), (d) arch/session-memory.md (Last Update + Recently Completed), (e) arch/lessons-learned.md (1 yeni entry: prod bak dosyalari stale cleanup cadence + secrets leak surface).",
+        "verified": true,
+        "verification_note": "5/5 dosya guncellendi (2026-04-22 13:40 UTC). lessons-learned.md satir 16'ya yeni 2026-04-22 P8 entry (stale cleanup cadence + roadmap-slug vs actual filename semantic-match pattern). Roadmap P8 row Status=DONE+DEPLOYED + Progress 7/9->8/9. Session-memory Last Update bu paket icin."
+      },
+      {
+        "id": "AC5",
+        "criterion": "Codex review LOW risk dahil iter 0 PASS (CODEX UTANSIN iteration=0 hedef). Commit + push master (P8 DONE signal).",
+        "verified": true,
+        "verification_note": "Codex iter 0 PASS (12/12 CQ + 3/3 CoVe, 0 blocking). Model gpt-5.4-2026-03-05, tokens 18906 (17210 prompt + 1696 completion). Summary: 'Diff is documentation-only and stays within declared plan scope; no code, schema, auth, tenant, or microservice behavior changed.' CODEX UTANSIN iter=0 hedef tutuldu."
+      }
+    ]
+  },
+  "allowed_files": [
+    "arch/plans/20260427-prod-bypass-bak-remove.json",
+    "arch/plans/diffs/20260427-prod-bypass-bak-remove.diff",
+    "tracking/20260427-prod-bypass-bak-remove.md",
+    "tracking/pilot-launch-roadmap.md",
+    "arch/session-memory.md",
+    "arch/lessons-learned.md"
+  ],
+  "files_changed": [
+    { "path": "arch/plans/20260427-prod-bypass-bak-remove.json", "change": "New plan JSON for P8 (FAZ 4 prod bak cleanup).", "is_new": true },
+    { "path": "tracking/20260427-prod-bypass-bak-remove.md", "change": "New per-paket tracking doc with scope / AC / deploy log.", "is_new": true },
+    { "path": "tracking/pilot-launch-roadmap.md", "change": "P8 Status=DONE+DEPLOYED (prod file op only, no service deploy) + Progress 7/9 (78%) -> 8/9 (89%).", "is_new": false },
+    { "path": "arch/session-memory.md", "change": "Last Update entry for P8 completion + Recently Completed + Next PENDING = P9.", "is_new": false },
+    { "path": "arch/lessons-learned.md", "change": "New entry 2026-04-22: Prod bak dosyalari (appsettings.Production.json.bak-*) stale cleanup cadence — Config Preserve Sandwich operasyonu her deploy'da eski bak'i asmiyor; manuel cleanup paketi gerekli. Secrets leak surface azaltma.", "is_new": false }
+  ],
+  "git_diff": {
+    "sha256": "711620A90F455623605F20759E72AC7D8935093E7DA0F59419D3484754061B5D",
+    "full_path": "arch/plans/diffs/20260427-prod-bypass-bak-remove.diff",
+    "stats": {
+      "insertions": 278,
+      "deletions": 5,
+      "files_count": 5
+    }
+  },
+  "build": {
+    "status": "N/A",
+    "services": []
+  },
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Herhangi kod dosyasi (.cs, .ts, .sql, .tsx) — paket ops-only",
+      "Aktif appsettings.Production.json dosyalari (sadece .bak suffix'li dosyalar silinir)",
+      "scripts/tmp/ dizini (daha eski context, ayri cleanup)",
+      "staging/ ve _staging/ dizinleri (2026-04-13 eski baseline, ayri paket)",
+      "WebChat/appsettings.Production.json.bak (2026-03-02, ayri paket)",
+      "arch/errors.md / ErrorCodes.cs (yeni error code yok)",
+      "arch/codex-context.md (P8 scope disinda)",
+      "Backend+Automation+Marketing canonical appsettings dosyalari",
+      "Dashboard SPA (kod yok)",
+      "Migration (arch/db/migrations/ — yeni SQL yok)"
+    ],
+    "non_goals": [
+      "Tum 18+ stale bak dosyasinin temizlenmesi (sadece 6 hedef + yakin-deploy bak)",
+      "scripts/tmp/*-appsettings-bak.json dosyalari (Q secmedi, ayri context)",
+      "staging ve _staging baseline bak temizligi (2026-04-13 eski context, ayri paket)",
+      "Active appsettings.Production.json icerigi degistirme",
+      "NSSM service restart veya binary redeploy (bak dosyalari deploy config scan'e girmez)",
+      "Yeni bak rotation policy implementasyonu (elle cleanup yeterli Dent pilotuna kadar)",
+      "Git history'den secrets rotate (ayri security paket)"
+    ],
+    "intentional_exclusions": [
+      "scripts/tmp/Automation-appsettings-bak.json + Backend-appsettings-bak.json + Outbound-appsettings-bak.json (Q secim 'Hedef + VCP/P-checkpoint bak'lar' — scripts/tmp dahil degil)",
+      "C:\\Invekto\\staging\\*.bak (5 dosya, 2026-04-13 baseline, daha eski context)",
+      "C:\\Invekto\\_staging\\*.bak-20260418-142252 (3 dosya, pre-VCP baseline, ayri context)",
+      "C:\\Invekto\\WebChat\\appsettings.Production.json.bak (2026-03-02, WebChat servis mevcut durumu paket kapsami disinda)",
+      "Bak rotation policy / retention config / automated cleanup cron"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Ops-only paket: MCP server-exec Remove-Item operasyonu senkron, exit code PowerShell cmdlet RemoveItemCommand tarafindan kontrol edilir. Her dosya icin ayri Test-Path verification (AC2) ile silme idempotent dogrulanir — bir dosya zaten yoksa Remove-Item -ErrorAction SilentlyContinue ile no-op olur (AC3 health probe dogrulamasi). Silent failure yok: (a) MCP RPC exception throw eder, (b) Test-Path verification dogrulama yapar, (c) active appsettings.Production.json'a yanlislikla dokunma riski yok (exact-path Remove-Item). Rollback kaynagi: git history (lock: aktif appsettings.Production.json Config Preserve Sandwich ile git'e senk)."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Prod sunucuda 18+ stale appsettings.Production.json.bak dosyasi birikmis — hepsinde plaintext DB password + JWT secret + Claude API key. Saldirgan dosya sistemi enumerate edince (NSSM directory list veya workspace mount) eski credential'lara erisim kazanabilir.",
+      "suggestion": "P8 ile 6 yakin-deploy bak temizleniyor + sonraki ops paketinde (post-pilot) staging/* + _staging/* + scripts/tmp/* + WebChat eski bak'lar icin scheduled cleanup script (7-day retention + explicit prod path whitelist).",
+      "aha_moment": "Prod dosya sisteminde artik eski credential snapshot'lari kalmiyor — Dent pilot oncesi security posture belirgin iyilesiyor, compliance auditor'e 'canli secrets sadece aktif appsettings'de' garantisi veriliyor."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Deploy sandwich sirasinda alinmis bak dosyalari hatali rollback icin 'son bilinen iyi durum' niyetiyle tutulmus ama hiçbir rollback senaryosunda kullanilmadi — stale artifact ops noise.",
+      "suggestion": "Lesson entry 2026-04-22: Config Preserve Sandwich pattern git history'yi otoritatif rollback kaynagi olarak iptal etti; bak dosyalari 48 saat sonra silinmeli (her paket deploy sonrasi cleanup hook veya sonraki paket interview gate).",
+      "aha_moment": "Gelecek deploy'larda bak artifact stale kalmıyor; ops crew deploy_output/ benzeri 'bu dosya artik tutulmuyor' checkmark gorup pattern'i repeat ediyor."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "P8 interview sirasinda Claude prod'da exact file name'i roadmap-slug'indan aradi ama `bak-20260416-inma-bypass` isim exact match etmedi (gercek isim `bak-inma-companycode`, ayni tarih). Recursive glob scan + filter gerekti.",
+      "suggestion": "Lesson takvim: Roadmap slug'lari aproximate isim referansi olabilir; ops paketinin ilk adimi 'prod ls + semantic match verification' olmali (timestamp + content grep).",
+      "aha_moment": "Gelecek ops paketlerinde paket kickoff'unda 'prod dosya sistemini dogrula' adimi prefetch ediliyor — sonradan surprise bulgular ile interview durma durumu ortadan kalkiyor."
+    },
+    {
+      "category": "UX",
+      "user_pain": "tracking/pilot-launch-roadmap.md P8 row 'Gerçekten silinmesine hazır mı?' interview sorusu Q onayindan once belirsiz — Q 3 ayri soruya cevap vermek zorunda, tek onay yerine.",
+      "suggestion": "Post-pilot cleanup paketlerinde roadmap template: 'Scope dosya listesi + yontem + rollback' single-click approval; Q 3 ayri soru yerine 1 table view gorup tek onay veriyor.",
+      "aha_moment": "Pilot sonrasi cleanup paketleri Q icin <30 saniye decision — 3 soru yerine tablo gorup 'Onay' butonu."
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Dent pilot oncesi compliance audit (eger musteri talep ederse) prod dosya sistemi scanlerinde 18+ stale credential snapshot bulursa 'secrets rotation policy' sorusuna yanit vermek zor.",
+      "suggestion": "P8 + post-pilot scheduled cleanup ile compliance posture: 'Active credentials are ONLY in active appsettings.Production.json + git history (encrypted at rest)'.",
+      "aha_moment": "Dent (ve sonraki enterprise musteri) compliance review'da '7-day retention + manual cleanup + git-based rollback' seklinde temiz hikaye anlatiliyor."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-22T13:42:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-22T13:45:00Z",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "No application code changed; diff limited to doc/tracking files." },
+      "CQ2": { "result": "PASS", "evidence": "No code paths changed; verification documented (Remove-Item -ErrorAction Stop + post-delete Test-Path)." },
+      "CQ3": { "result": "PASS", "evidence": "Diff 5 files, all in plan allowed_files. No .cs/.ts/.sql/.tsx changed." },
+      "CQ4": { "result": "PASS", "evidence": "No code added; duplication concern N/A." },
+      "CQ5": { "result": "PASS", "evidence": "Follows repo doc/planning structure (arch/plans/, tracking/, roadmap/session-memory/lessons in place)." },
+      "CQ6": { "result": "PASS", "evidence": "No runtime code, queries, loops, allocations." },
+      "CQ7": { "result": "PASS", "evidence": "No new TODO/HACK/FIXME markers." },
+      "CQ8": { "result": "PASS", "evidence": "No interfaces/DTOs/endpoints/contracts/schema/exports changed." }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "Diff 5 doc files; 6 deleted bak paths consistent across plan/tracking; active config files documented intact." },
+      "Q2": { "result": "PASS", "reasoning": "allowed_files 6 entries (incl. diff artifact); actual diff 5 files exact match; lessons-learned entry matches prose format." },
+      "Q3": { "result": "PASS", "reasoning": "Rollback narrative coherent: git history + active appsettings.Production.json intact; Config Preserve Sandwich canonical source." }
+    },
+    "blocking_issues": [],
+    "iteration": 0,
+    "escalation_required": false
+  }
+}

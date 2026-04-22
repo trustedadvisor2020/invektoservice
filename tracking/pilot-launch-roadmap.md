@@ -87,7 +87,7 @@ Bu dosya **pilot launch boyunca execution queue'nun tek kaynagidir**. Session bo
 | # | Paket | Slug | Status | Deploy | Exit Criteria |
 |---|-------|------|--------|--------|---------------|
 | 7 | INMA Debug Log Temizligi | `20260418-inma-debug-log-cleanup` | **DONE+DEPLOYED** 2026-04-18 (commit `2b078b2` — retroactively verified 2026-04-22) | Dashboard SPA | `[inma-debug]` prefix'li loglar silindi (inmaBridge + inmaBootstrap + useAuth + App.tsx). Verify: `grep [inma-debug] src/Invekto.Backend/Dashboard/src/` → 0 match. Deploy: P5 `29e8d18` 2026-04-22 07:50 + P6 `d84e304` 12:43 Backend+SPA redeploy'larıyla temiz bundle prod'a 2× yollandı. Plan `arch/plans/20260418-inma-debug-log-cleanup.json` status=DONE (pre-pilot, stale roadmap status fix'i 2026-04-22). ✅ |
-| 8 | Prod Yedek Silme | `20260427-prod-bypass-bak-remove` | PENDING (Q onayi) | Prod file op | `appsettings.Production.json.bak-20260416-inma-bypass` sunucudan silinmis |
+| 8 | Prod Yedek Silme | `20260427-prod-bypass-bak-remove` | **DONE+DEPLOYED** 2026-04-22 13:35 UTC (prod file op only, no service deploy) | Prod file op | 6 stale bak dosyasi MCP `invekto-ops server-exec Remove-Item` ile silindi: Backend `bak-inma-companycode` (2026-04-16 hedef, roadmap slug'inda `bak-20260416-inma-bypass` varyanti yazilmis, gercek isim farkli) + Backend `bak-20260419-precheck` + Appointments/current VCP Chunk B (2) + Integrations (2). Active `appsettings.Production.json` dosyalari intact. 10/10 services HEALTHY post-delete. Repo: plan JSON + tracking + lessons +1 entry (stale bak cleanup cadence + slug-semantic mismatch pattern). scripts/tmp/* + staging/* + _staging/* + WebChat/*.bak (12 dosya) ayri post-pilot cleanup icin beklemekte. ✅ |
 
 ### FAZ 5 — Pilot Smoke (SON — butun feature'lar DEPLOYED ve SMOKED olduktan sonra)
 
@@ -223,11 +223,11 @@ Bu dosya **pilot launch boyunca execution queue'nun tek kaynagidir**. Session bo
 | Metric | Value |
 |--------|-------|
 | Total Pilot-Critical Packages | 9 |
-| DONE | 7 (P1, P2, P3, P4, P5, P6 DEPLOYED+SMOKED; P7 DEPLOYED retroactive 2026-04-18 commit `2b078b2`) |
+| DONE | 8 (P1, P2, P3, P4, P5, P6 DEPLOYED+SMOKED; P7 DEPLOYED retroactive 2026-04-18 commit `2b078b2`; P8 DEPLOYED 2026-04-22 13:35 UTC — 6 stale bak prod file op) |
 | IN_PROGRESS | 0 |
-| PENDING | 2 (P8 prod yedek silme, P9 pilot smoke) |
+| PENDING | 1 (P9 pilot smoke) |
 | SKIPPED | 0 |
-| Progress | 78% (7/9 deployed) |
+| Progress | 89% (8/9 deployed) |
 | Backlog Packages | 6 (B0-B5) |
 | Blocked External Deps | 6 |
 
