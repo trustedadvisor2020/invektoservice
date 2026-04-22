@@ -5,9 +5,9 @@
   "spec_ref": null,
   "slug": "20260423-feat-efs-hangfire-queue-fix",
   "risk": "MEDIUM",
-  "status": "IN_PROGRESS",
+  "status": "DONE",
   "created_at": "2026-04-23T00:00:00Z",
-  "updated_at": "2026-04-23T00:00:00Z",
+  "updated_at": "2026-04-22T12:26:00Z",
   "plan": {
     "summary": "P9 S7b CRITICAL FAIL root cause investigation revealed P9 roadmap's 3 fix options (a/b/c) were based on a WRONG hypothesis. Actual root cause: orphan 'default' Hangfire queue. Two job registrations (ApiKeyRateLimiter.SweepNow in Backend/Program.cs and FollowupStageJob class in Marketing) lack explicit queue routing (no [Queue] attribute) → Hangfire defaults them to 'default' queue → 5 active servers (backend/automation/appointments/integrations/marketing-followup) all listen to their dedicated named queues, NONE listens to 'default' → jobs stuck forever in hangfire.jobqueue. Evidence: 1019 stuck ApiKeyRateLimiter.SweepNow rows on 'default' queue in prod since 2026-04-18 (4-day latent bug). P9 EFS drip failed same pattern: FollowupStageJob scheduled to 'default' queue, Marketing worker on 'marketing-followup' never picks it up. Fix: 3 code changes (attribute-based, canonical pattern matching existing named jobs) + 1 startup guard + prod orphan cleanup. Code surface: (1) src/Invekto.Marketing/Services/Jobs/FollowupStageJob.cs — class-level [Hangfire.Queue(\"marketing-followup\")] attribute (single invocable method, class-level canonical); (2) src/Invekto.Backend/Services/ApiKeyRateLimiter.cs — method-level [Hangfire.Queue(\"backend\")] on SweepNow() only (service class has non-Hangfire methods; method-level avoids spurious tagging); (3) src/Invekto.Backend/Program.cs — orphan queue startup WARN guard (emits [INV-JOB-006] log with drain SQL); (4) arch/errors.md — new INV-JOB-006 error code. Note: Initial draft considered RecurringJobOptions.Queue=4th-arg overload, but Hangfire 1.8.14's RecurringJobOptions class does not expose a Queue property (build CS0117). Switched to attribute-based routing which is the canonical pattern in this codebase (VideoMeetingCreationJob, RescueFollowUpJob, FlowWaitResumerJob, OrderSyncJob, ReminderJob, etc. all use [Queue] attributes; no caller passes Queue via options). Post-deploy: MCP DELETE 1019 orphan rows. Re-smoke P9 S7b+S8 verifies fix (stage[0] scheduled → Succeeded + event_followup_runs.status='sent' + [FEAT-EFS][SEND-INTENT] log).",
     "q_intent": "P9 S7b CRITICAL FAIL'ı çözmek ve P5 FEAT-EFS'i gerçekten çalışır hale getirmek. Roadmap'teki 3 option hipoteze göre yazıldı ama prod forensic yeni bilgi gösterdi — gerçek bug çok daha sığ (missing [Queue] attribute) ve fix minimal (2 satır kod). Q kararı: minimal fix + cleanup + guard (Recommended seçeneği).",
@@ -16,37 +16,37 @@
       {
         "id": "AC1",
         "criterion": "src/Invekto.Marketing/Services/Jobs/FollowupStageJob.cs class'ında [Queue(\"marketing-followup\")] attribute mevcut. Mevcut [Hangfire.AutomaticRetry(...)] attribute'una komşu, aynı Hangfire FQN pattern.",
-        "verified": false,
+        "verified": true,
         "verification_note": "Grep `FollowupStageJob.cs` için `Queue(\"marketing-followup\")` match."
       },
       {
         "id": "AC2",
         "criterion": "src/Invekto.Backend/Services/ApiKeyRateLimiter.cs SweepNow() method'u üzerinde [Hangfire.Queue(\"backend\")] attribute mevcut. Method-level (class-level DEĞİL) — ApiKeyRateLimiter service class'ı non-Hangfire method'lar da içerir (TryAcquire, Sweep(DateTime)); class-level attribute bu method'ları yanlışlıkla tag'lerdi. Program.cs RecurringJob.AddOrUpdate<ApiKeyRateLimiter>(...) çağrısı 3-arg kalıyor (queue attribute'tan türüyor, RecurringJobOptions.Queue overload Hangfire 1.8.14 API'sinde yok — build-time discovery).",
-        "verified": false,
+        "verified": true,
         "verification_note": "Grep `ApiKeyRateLimiter.cs` için `[Hangfire.Queue(\"backend\")]` match; grep `Program.cs` için 3-arg `RecurringJob.AddOrUpdate<ApiKeyRateLimiter>` verify."
       },
       {
         "id": "AC3",
         "criterion": "src/Invekto.Backend/Program.cs app.Build() sonrası, EnsureJobStorageInitialized + score=-1 nudge sonrası, orphan 'default' queue guard probe mevcut. SELECT COUNT hangfire.jobqueue WHERE queue='default', > 0 ise structured WARN log [INV-JOB-006] + drain SQL hint; Npgsql.NpgsqlException typed catch [INV-JOB-006] prefix ile non-blocking. arch/errors.md canonical INV-JOB-006 entry (description + user_message).",
-        "verified": false,
+        "verified": true,
         "verification_note": "Grep `Program.cs` için `[INV-JOB-006]` + try/catch pattern verify; grep `arch/errors.md` için `INV-JOB-006` entry."
       },
       {
         "id": "AC4",
         "criterion": "dotnet build solution PASS (0 error, mevcut warning set değişmez veya artmaz). Microservice isolation preserved (Shared'a dokunmuyor, Marketing <-> Backend cross-reference yok, mevcut Hangfire.AspNetCore package zaten both consumer'da declared).",
-        "verified": false,
+        "verified": true,
         "verification_note": "Build command: `powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"`."
       },
       {
         "id": "AC5",
         "criterion": "Post-deploy re-smoke: fake Dent lead (phone='+00000000001', name='SMOKE_TEST_P10_%') + efs_test_mode=true + sequence enabled=true + POST /api/internal/followup/trigger. 3-5 min içinde hangfire.job statename='Succeeded' (yeni scheduled job, not old orphan) + event_followup_runs.status='sent' + Marketing log [FEAT-EFS][SEND-INTENT].",
-        "verified": false,
+        "verified": true,
         "verification_note": "MCP query + server-logs search post-deploy."
       },
       {
         "id": "AC6",
         "criterion": "Prod cleanup: hangfire.jobqueue WHERE queue='default' count = 0 (1019 orphan ApiKeyRateLimiter.SweepNow rows DELETE'd post-deploy; yeni SweepNow jobs 'backend' queue'ya gidiyor, default birikmiyor). hangfire.job row'ları cascade OR explicit DELETE (verify no FK issue).",
-        "verified": false,
+        "verified": true,
         "verification_note": "MCP DELETE + SELECT COUNT post-cleanup."
       }
     ]

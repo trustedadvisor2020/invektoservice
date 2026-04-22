@@ -7,7 +7,7 @@
 
 **Execution queue otoritesi:** [`pilot-launch-roadmap.md`](pilot-launch-roadmap.md)
 9 paket arka arkaya → Dent Adavista pilot full-stack smoke. Session bootstrap zorunlu okuma.
-Siradaki: **P10** `20260423-feat-efs-hangfire-queue-fix` (P9 escalation — Hangfire marketing-followup queue pickup gap fix). P9 **DONE+SMOKED_PARTIAL** 2026-04-22 11:13 UTC (8/13 step PASS, 4 DEFERRED flow/slot blockers Q-approved post-P9 FlowBuilder wiring paketi, 1 CRITICAL FAIL S7b Hangfire pickup gap → P10). P8 (6 stale bak cleanup) + P7 (INMA debug log) zaten DONE.
+**Pilot Launch Mode 10/10 paket DONE (100%)** — P10 DONE+DEPLOYED+SMOKED 2026-04-22 12:26 UTC (commits `22dba6a` + `ac390e7` + `a6ed4ea`; Codex iter 0 FAIL → iter 1/2 PASS; end-to-end re-smoke verified stage[0] Succeeded in 16s + INV-BE-119 log). **Siradaki milestone:** Dent pilot go-live için **Post-P9 FlowBuilder wiring paketi** (chatbot_flows + appointment_slots + tenant_landing_settings seed — S2/S4/S5b/S6 flow-blocked smoke step'lerin açılması için). **Backlog:** B0 FEAT-VCP Chunk C Google Meet OAuth (Q-provision).
 
 ---
 
