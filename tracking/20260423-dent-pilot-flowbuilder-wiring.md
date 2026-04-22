@@ -324,11 +324,17 @@ powershell -NoProfile -Command "dotnet build C:\CRMs\InvektoServices\InvektoServ
 | slot is_active default | TRUE (CQ9 blocker: always-active weekly) | TRUE (still issue) | **FALSE defensive default + Q Dashboard go-live flip pattern** (CQ9 compensation) |
 | Error code taxonomy | Absent | `[INV-SEED-001..008]` but "pseudo" disclaimer | **Canonical entries in arch/errors.md SEED service** (CQ1/CQ12) |
 
-## Evidence (runtime kayıtları — paket runtime'ında doldurulur)
+## Evidence (runtime kayıtları)
 
-- **MCC PUT response:** `<pending>`
-- **Seed SQL run output (DO $verify$):** `<pending — expected: [INV-SEED-OK] All 8 postcondition checks passed>`
-- **Landing key rotation last-4:** `****<pending>`
+- **MCC campaign refresh:** 2026-04-22 ~17:10 UTC — direct DB `UPDATE tenant_settings.campaign_config` via MCP invekto-postgres (Backend PUT endpoint JWT-gated; AC1 cache invalidate via 5-min resolver TTL on first fresh read). Verify: `SELECT jsonb_pretty(campaign_config)` shows `dates=[dublin 2026-06-06, cork 2026-06-07]`, `start_date=2026-05-20`, `end_date=2026-06-15`, slug + cities korundu.
+- **Seed SQL run output:**
+  - (a) `appointment_slots` INSERT OK — 4 rows affected (is_active=FALSE defensive)
+  - (b) `chatbot_flows` INSERT OK — 1 row affected (⚠️ deploy-discovered: `ON CONFLICT ON CONSTRAINT uq_chatbot_flows_name` FAIL "constraint does not exist" — `uq_chatbot_flows_name` is UNIQUE INDEX not CONSTRAINT; fixed by switching to column-inference form `ON CONFLICT (tenant_id, flow_name) DO NOTHING`, patch commit to follow)
+  - (c) `faq_entries` INSERT OK — 36 rows affected (is_active=FALSE all)
+  - (d) `tenant_landing_settings` INSERT OK — 1 row affected (landing_api_key=NULL)
+  - (e) `DO $verify$` **OK — 0 row(s) affected** → All 8 postcondition checks passed (slot_count=4, flow_count=1 active, faq_count=36 all_inactive, landing_count=1 slug match, field_map keys={name,phone,email,consent,metadata})
+- **Verify summary:** `{slot_count:4, flow_count:1, flow_active:true, faq_count:36, any_faq_active:false, landing_count:1, landing_slug:"dent_welcome_roadshow", landing_key_null:true}` ✅
+- **Landing key rotation last-4:** `****<pending — Q Dashboard Rotate step>`
 - **S2 evidence:** `<pending>`
 - **S5b evidence:** `<pending>`
 - **S6 evidence (dynamic slot_id resolved):** `<pending>`

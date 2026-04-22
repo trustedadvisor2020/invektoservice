@@ -115,11 +115,18 @@ WHERE NOT EXISTS (
 --   | utility_set_variable | utility_note
 -- flow_name MUST MATCH tenant_landing_settings.welcome_flow_slug case-sensitive
 --   (AutomationRepository.cs:57-58) — both set to 'dent_welcome_roadshow'.
--- Idempotency: explicit `ON CONFLICT ON CONSTRAINT uq_chatbot_flows_name DO NOTHING`
---   binds to the intentional (tenant_id, flow_name) uniqueness only. If the
---   partial-unique `uq_chatbot_flows_active` (WHERE is_active=true) would fire
---   — meaning tenant already has a different active flow — insert fails loudly
---   rather than silently no-op, surfacing the conflict for Q's action.
+-- Idempotency: `ON CONFLICT (tenant_id, flow_name) DO NOTHING` column-inference
+--   form. Important: `uq_chatbot_flows_name` is created as UNIQUE INDEX (not
+--   UNIQUE CONSTRAINT — see CREATE UNIQUE INDEX above). PostgreSQL `ON CONFLICT
+--   ON CONSTRAINT <name>` requires an actual named CONSTRAINT and fails on
+--   indexes with "constraint does not exist" (discovered at deploy time
+--   2026-04-22; fixed by switching to column-inference form). The column form
+--   is equally specific: PostgreSQL infers the unique index covering exactly
+--   (tenant_id, flow_name), which is `uq_chatbot_flows_name`. The partial-unique
+--   `uq_chatbot_flows_active` (covers only (tenant_id) with predicate WHERE
+--   is_active=true) cannot match because column-inference requires exact index
+--   column coverage — so conflicting active-flow insertions still fail loudly
+--   rather than silently no-op, preserving the defensive property.
 -- Skeleton scope: 5 nodes (trigger -> welcome -> city_switch -> {handoff | ai_faq
 --   -> handoff}). Long-horizon drip (day3/7/14) is FEAT-EFS-owned, NOT flow.
 --   Q refines node `data.text` placeholders from ROADSHOW DocX in FlowBuilder.
@@ -202,7 +209,7 @@ $flow$::jsonb,
     TRUE,   -- is_default
     1       -- current_version
 )
-ON CONFLICT ON CONSTRAINT uq_chatbot_flows_name DO NOTHING;
+ON CONFLICT (tenant_id, flow_name) DO NOTHING;
 
 
 -- =============================================================
