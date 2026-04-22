@@ -93,9 +93,16 @@
   ],
   "slug": "20260425-feat-efs-drip-sequence",
   "risk": "MEDIUM",
-  "status": "PLANNING",
+  "status": "DONE",
   "created_at": "2026-04-21T15:55:00Z",
-  "updated_at": "2026-04-21T15:55:00Z",
+  "updated_at": "2026-04-22T07:57:00Z",
+  "status_log": [
+    { "at": "2026-04-21T15:55:00Z", "status": "PLANNING", "note": "Interview completed, plan drafted" },
+    { "at": "2026-04-21T18:50:00Z", "status": "CODE_DONE", "note": "Codex iter 4 PASS (arc 0 to 4, 7/7 CoVe + 12/12 CQ, 0 blocker)" },
+    { "at": "2026-04-22T00:00:00Z", "status": "COMMITTED", "note": "commit 29e8d18 pushed to master" },
+    { "at": "2026-04-22T07:50:32Z", "status": "DEPLOYED", "note": "Migration 029 + Marketing+Automation+Backend deploy 10/10 HEALTHY" },
+    { "at": "2026-04-22T07:57:00Z", "status": "DONE", "note": "Dent PUT round-trip PASS (id=1 post-roadshow 3/7/14 A/B 50/50), 5 validation caps 400, wrap commit 9a77e6d" }
+  ],
   "plan": {
     "summary": "FEAT-EFS Drip Sequence: Marketing (:7112) Hangfire-orchestrated N-stage post-event drip nurture with deterministic A/B control group, per-stage event_followup_runs audit row, execution-time opt-out guard, tenant test_mode for fast smoke, and Dashboard SPA editor at /settings/followup-sequence. 4-trigger HTTP contract (no-reply welcome / offer declined / offer timeout / on-hold) with auto-emission ONLY for no-reply welcome via NoReplyWelcomeScannerJob (other 3 reasons forward-compat ops-manual until offer state machine exists).",
     "q_intent": "P5 başla. Pilot Launch Mode AKTIF. tracking/pilot-launch-roadmap.md master queue'da ilk PENDING = P5 20260425-feat-efs-drip-sequence (FAZ 3, MEDIUM risk). Event Follow-Up Sequence — Hangfire scheduled drip jobs, A/B kontrol grubu (default 50/50), 4 trigger, Dashboard SPA editor, Migration 029, INV-MK-050..055. Pilot prep Dent Adavista 3-stage Day 3/7/14 + A/B 50/50 + yapay delay test param. Interview gate: orchestrator yeri / cap onay / opt-out race guard / test param implementation.",
