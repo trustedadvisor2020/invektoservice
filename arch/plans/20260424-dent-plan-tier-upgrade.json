@@ -1,0 +1,203 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260424-dent-plan-tier-upgrade",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-04-24T11:00:00Z",
+  "updated_at": "2026-04-24T11:25:00Z",
+  "plan": {
+    "summary": "Paket A (post-P9 Dent pilot go-live prep): tenant_registry.plan_tier='baslangic'→'kurumsal' upgrade (Q Dashboard UI tarafından uygulandı 2026-04-24 11:15:35Z) + Claude tarafından S6 re-smoke ile plan_guard kanıtı (POST /api/v1/appointments/book önceki 403 INV-AUTH-005 → şimdi 201 confirmed) + smoke artifacts full cleanup. Scope: ops-only, kod/migration/deploy yok. Tier seçimi gerekçesi: profesyonel feature matrix Marketing içermez (sadece Appointments+AgentAI+Outbound basic+FlowBuilder+Knowledge+Integrations basic+WebChat+Analytics) → Dent EFS drip P5/P10 SMOKED Marketing servisini kullanıyor → kurumsal zorunlu (Appointments + Marketing + Outbound basic+premium + Knowledge basic+premium + AgentAI on+premium dahil). VCP meeting_link populate `doctors` tablo eksikliği nedeniyle FAIL (schema/code drift latent bug, AppointmentsRepository.cs:1199-1202) — Paket A scope DIŞI, yeni paket B-VCP-DOCTORS'a escalate.",
+    "q_intent": "Paket A başla. Pilot Launch Mode post-P9 wiring DONE+SMOKED_PARTIAL sonrası AC6 DEFERRED→PASS unlock için Dent plan_tier upgrade. Q tercihi sırası: Paket A önce, Paket C sonra. Tier seçimi: kurumsal (Recommended) — profesyonel Marketing içermiyor, EFS drip için zorunlu. UPDATE method: Q Dashboard UI'dan upgrade. Auth: appsettings.Production.json'dan oku (Backend JWT secret + iss/aud).",
+    "interview_notes": "G1 (Tier): plan_definitions matrix evaluate (4 row: baslangic/profesyonel/kurumsal/test_tier) → profesyonel Marketing key YOK (sadece Appointments/AgentAI/Outbound basic/FlowBuilder/Knowledge basic/Integrations basic/WebChat/Analytics) → kurumsal Marketing:[on] dahil → Dent FEAT-EFS P5/P10 SMOKED Marketing servisini kullandığı için kurumsal zorunlu. G2 (Method): Q Dashboard UI'dan upgrade — Backend Ops endpoint built-in cache invalidate (planCache.Invalidate(tenant)) tetiklendi. G3 (Auth): appsettings.Production.json'dan Jwt:SecretKey + Issuer + Audience oku → prod sunucuda PowerShell HMAC-SHA256 JWT gen → curl POST localhost:7102. G4 (Smoke scope): plan_guard PASS + booking 201 kanıtı yeterli; VCP meeting_link populate AYRI bug (doctors tablo schema drift), Paket A scope dışı. G5 (Cleanup): smoke artifacts full purge (appointment row + hangfire job + state + queue + slot defensive FALSE revert) + pilot config preserve (plan_tier=kurumsal, 4 slots inactive, 1 active flow, 36 inactive FAQ, 1 landing row, 48 templates, 5 TFM, MCC seed). G6 (VCP scope): doctors tablo eksikliği yeni paket B-VCP-DOCTORS'a escalate (migration 031 + LEFT JOIN guard analysis), Paket A scope korunur.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "tenant_registry.plan_tier='baslangic'→'kurumsal' upgrade prod DB'de uygulandı + verify (MCP invekto-postgres SELECT). Q Dashboard UI tarafından yapıldı, Backend Ops PUT endpoint built-in planCache.Invalidate(tenant) tetiklendi.",
+        "verified": true,
+        "verification_note": "PASS 2026-04-24 11:15:35Z. MCP query: tenant_id=18173130, tenant_name='dentadavista', plan_tier='kurumsal', is_active=true, features_json=null (tier'dan miras), updated_at='2026-04-24T11:15:35.072Z'. Q UI flow: Dashboard /ops/licenses → Plan → Upgrade. Cache invalidate: Q UI Backend Ops PUT endpoint çağırdı, Program.cs:6798 planCache?.Invalidate(id) tetiklendi (built-in)."
+      },
+      {
+        "id": "AC2",
+        "criterion": "Tier seçimi gerekçesi belgeli: profesyonel feature matrix Dent EFS drip için yetersiz (Marketing key YOK), kurumsal zorunlu. plan_definitions tablosundan 4 tier matrix MCP query ile alındı + Q'ya AskUserQuestion ile sunuldu, Q kurumsal seçti.",
+        "verified": true,
+        "verification_note": "PASS. plan_definitions MCP query 4 row: baslangic (WebChat+Analytics:basic+FlowBuilder:basic+Integrations:basic), profesyonel (+Appointments:on+AgentAI:on+Outbound:basic+FlowBuilder:basic+premium+Knowledge:basic+Integrations:basic, MARKETING YOK), kurumsal (+Marketing:on+Appointments:on+AgentAI:on+premium+Outbound:basic+premium+FlowBuilder:basic+premium+Knowledge:basic+premium+Integrations:basic+premium), test_tier (is_active=false). Dent FEAT-EFS P5/P10 SMOKED Marketing servisini kullanıyor → kurumsal zorunlu seçim Q'ya gerekçeyle sunuldu, Q kurumsal seçti."
+      },
+      {
+        "id": "AC3",
+        "criterion": "S6 re-smoke booking endpoint plan_guard kanıtı: POST /api/v1/appointments/book (slot_id=1, day_of_week=6 Saturday 2026-04-25, JWT tenant=18173130 role=admin) → önceki post-P9 wiring 403 INV-AUTH-005 'Bu özellik mevcut planinizda bulunmuyor: Appointments' → şimdi 201 confirmed. AC6 DEFERRED→PASS flip kanıtlandı (plan_guard layer).",
+        "verified": true,
+        "verification_note": "PASS 2026-04-24 11:17:46Z. JWT generated via prod PowerShell HMAC-SHA256 (secret from appsettings.Production.json Jwt:SecretKey + iss=InvektoServis + aud=InvektoServis + 10min exp). Slot id=1 temp activate (UPDATE is_active=TRUE). curl POST localhost:7102/api/v1/appointments/book body {slot_id:1, patient_name:'SMOKE_TEST_S6_141746', patient_phone:'+00000000099', appointment_date:'2026-04-25', notes:'pilot S6 re-smoke post-plan-upgrade'} → STATUS 201, RESPONSE {id:1, status:'confirmed'}. DB verify: appointments.id=1, tenant_id=18173130, slot_id=1, status='confirmed', day_of_week=6 match, capacity check PASS (0/8). Plan guard layer PASS — önceki 403 fail mode artık tetiklenmiyor."
+      },
+      {
+        "id": "AC4",
+        "criterion": "VCP meeting_link populate hop NEW BUG raporu: VideoMeetingCreationJob enqueue → execute → FAIL Npgsql 42P01 'relation \"doctors\" does not exist'. AppointmentsRepository.cs:1199-1202 SQL'i `LEFT JOIN doctors d` içeriyor — PostgreSQL parse-time'da tablo varlığı zorunlu. Hem prod DB'de hem arch/db/migrations/ altında doctors tablo migration'ı YOK. Latent schema/code drift. Paket A scope DIŞI, yeni paket B-VCP-DOCTORS'a escalate (migration 031 + LEFT JOIN guard analysis + re-smoke).",
+        "verified": true,
+        "verification_note": "PASS (bug discovered + escalated, Paket A AC4 = bug raporu correctness). hangfire.state jobid=38169 trace: createdat 11:17:46.988Z (enqueue) → 11:17:47.011Z Enqueued queue=appointments → 11:17:47.031Z Processing serverid=win-6ltncjgrrc3:9632 → 11:17:47.126Z Failed exception_type=Npgsql.PostgresException message='42P01: relation \"doctors\" does not exist POSITION: 558' file=parse_relation.c routine=parserOpenTable. Stack: AppointmentsRepository.GetAppointmentVideoRowAsync line 1210/1213 → VideoMeetingCreationJob.RunAsync line 90. Retry attempt 1 of 10 scheduled +60sec; 2 retry cycle observed (38169 11:18:27 fail again) before cleanup truncate. Information_schema query: 0 rows match table_name LIKE '%doctor%' (tablo yok). grep arch/db/ for 'CREATE TABLE doctors': 0 match (migration eksik). VCP Chunk B spec referansı: roadmap satır 59 FEAT-VCP Chunk B 'appointments ALTER (pending)' — doctors tablo eklemesi spec'te belirsiz. Paket B-VCP-DOCTORS roadmap entry önerisi: Migration 031 doctors tablosu (id+tenant_id+name+is_active boilerplate) + AppointmentsRepository.cs SQL guard (LEFT JOIN doctors d ON ... AND s.doctor_id IS NOT NULL veya doctors_view fallback) + Backend.csproj Appointments PrivateAssets pattern verify + re-smoke."
+      },
+      {
+        "id": "AC5",
+        "criterion": "Smoke artifacts full cleanup + pilot config preserve. Cleanup: appointment row DELETE + hangfire job 38169 + state + queue purge + slot id=1 is_active=FALSE defensive revert. Preserve: plan_tier='kurumsal' (Q'nun upgrade'i), 4 slots inactive, 1 active flow, 36 inactive FAQ, 1 landing row, 48 templates, 5 TFM, MCC seed.",
+        "verified": true,
+        "verification_note": "PASS 2026-04-24 11:25Z. MCP execute: DELETE FROM hangfire.state WHERE jobid=38169 + DELETE FROM hangfire.jobqueue WHERE jobid=38169 + DELETE FROM hangfire.job WHERE id=38169 + DELETE FROM appointments WHERE tenant_id=18173130 AND id=1 AND patient_name LIKE 'SMOKE_TEST_S6_%' + UPDATE appointment_slots SET is_active=FALSE WHERE id=1. Verify query: dent_appointments=0, hf_job=0, hf_state=0, hf_queue=0, slot1_active=false, plan_tier='kurumsal'. Pilot config preserve baseline match: plan_tier=kurumsal (UPGRADED, intentional), 4 slots all is_active=FALSE (post-P9 wiring defensive default restored), 1 active flow + 36 inactive FAQ + 1 landing row + 48 templates + 5 TFM + MCC seed (post-P9 wiring intact, untouched by Paket A)."
+      },
+      {
+        "id": "AC6",
+        "criterion": "Repo dosyaları update + Codex review LOW risk dahil iter 0 PASS (CODEX UTANSIN iteration=0 hedef). Doc-only paket: plan JSON + tracking doc + roadmap (Paket A done + B-VCP-DOCTORS yeni entry) + session-memory + lessons-learned. Commit + push master.",
+        "verified": true,
+        "verification_note": "PASS 2026-04-24 11:35Z. Codex iter 0 PASS 12/12 CQ + 3/3 CoVe + 0 blocker (model=gpt-5.4-2026-03-05, 29155 tokens). Summary: 'Diff is within declared LOW-risk doc/plan scope, follows existing packet documentation patterns, and provides sufficient evidence for scope discipline, AC closure, and tier-selection rationale. The discovered doctors schema drift is properly documented as an existing out-of-scope defect and escalated without introducing code, schema, or contract changes.' CODEX UTANSIN iter=0 hedef tutuldu. CQ3 evidence: 5 file diff all in allowed_files; CQ8 evidence: no contracts changed; CQ11 evidence: schema drift documented + escalated, not introduced. CoVe Q1/Q2/Q3 PASS (allowed_files match + AC closure pattern + tier rationale query-derived). Commit + push pending."
+      }
+    ]
+  },
+  "allowed_files": [
+    "arch/plans/20260424-dent-plan-tier-upgrade.json",
+    "arch/plans/diffs/20260424-dent-plan-tier-upgrade.diff",
+    "tracking/20260424-dent-plan-tier-upgrade.md",
+    "tracking/pilot-launch-roadmap.md",
+    "arch/session-memory.md",
+    "arch/lessons-learned.md"
+  ],
+  "files_changed": [
+    {
+      "path": "arch/plans/20260424-dent-plan-tier-upgrade.json",
+      "change": "NEW plan JSON Paket A (LOW risk, ops-only, AC1-AC6).",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "tracking/20260424-dent-plan-tier-upgrade.md",
+      "change": "NEW per-paket tracking doc (interview gates + smoke evidence + bug report + cleanup verify + B-VCP-DOCTORS escalation).",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "tracking/pilot-launch-roadmap.md",
+      "change": "Paket A entry DONE+SMOKED_PARTIAL (plan_guard PASS, VCP meeting_link DEFERRED to B-VCP-DOCTORS); BACKLOG section: B-VCP-DOCTORS new row (doctors tablo migration + LEFT JOIN guard, blocker B-VCP-DOCTORS for full Dent pilot meeting flow).",
+      "is_new": false,
+      "deleted": false
+    },
+    {
+      "path": "arch/session-memory.md",
+      "change": "Last Update entry Paket A close 2026-04-24 11:25 UTC + smoke evidence + bug B-VCP-DOCTORS escalation + Q UI upgrade flow + Recently Completed.",
+      "is_new": false,
+      "deleted": false
+    },
+    {
+      "path": "arch/lessons-learned.md",
+      "change": "+1 entry 2026-04-24: Latent schema/code drift reveal pattern — Dent ilk Appointments user oldu, AppointmentsRepository.cs:1199-1202 SQL'i 'doctors' tablosuna LEFT JOIN ediyor, ama tablo hem prod DB'de hem migration'da YOK. Daha önce hiç tetiklenmemiş çünkü hiçbir tenant Appointments slot booking yapmamış. Pre-pilot: yeni feature ilk-kullanıcı senaryosunda repository SQL parse-time tablo dependency grep yapılmalı (CREATE TABLE migration ↔ FROM/JOIN clause cross-check).",
+      "is_new": false,
+      "deleted": false
+    }
+  ],
+  "git_diff": {
+    "sha256": null,
+    "full_path": "arch/plans/diffs/20260424-dent-plan-tier-upgrade.diff",
+    "stats": {
+      "insertions": 361,
+      "deletions": 6,
+      "files_count": 5
+    }
+  },
+  "build": {
+    "status": "N/A",
+    "services": []
+  },
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Herhangi kod dosyası (.cs, .ts, .sql, .tsx) — paket ops-only",
+      "arch/db/migrations/ (yeni SQL yok — doctors migration B-VCP-DOCTORS scope'unda)",
+      "Active appointment_slots seed kompozisyonu (4 slots is_active=FALSE defensive default korunur, smoke için temp activate + revert)",
+      "Active chatbot_flows / faq_entries / tenant_landing_settings (post-P9 wiring intact)",
+      "tenant_settings.field_mapping / campaign_config (post-P5/P6 SMOKED, untouched)",
+      "AppointmentsRepository.cs SQL fix (B-VCP-DOCTORS scope — LEFT JOIN guard veya doctors_view)",
+      "Backend.csproj Appointments ProjectReference (B-VCP-DOCTORS scope — pattern verify)",
+      "arch/errors.md / ErrorCodes.cs (Paket A yeni error code yok)",
+      "Dashboard SPA (kod yok)"
+    ],
+    "non_goals": [
+      "VCP meeting_link populate hop fix (yeni paket B-VCP-DOCTORS)",
+      "doctors tablo migration 031 (yeni paket B-VCP-DOCTORS)",
+      "AppointmentsRepository SQL refactor (LEFT JOIN guard veya doctors_view fallback)",
+      "Reminder job scheduling completeness (24h+1h ID set hop) — VCP populate öncesi ulaşılamıyor",
+      "Diğer tenant'lara plan_tier değişikliği — sadece Dent (tenant_id=18173130) scope",
+      "Service redeploy / NSSM restart (config değişmedi)",
+      "Backend Hangfire scheduler queue topology değişikliği"
+    ],
+    "intentional_exclusions": [
+      "VCP Chunk C Google Meet OAuth (B0 backlog, bu paketle alakasız)",
+      "Paket C template content bind (sıradaki paket, ayrı session)",
+      "Doctor entity domain spec (multi-doctor pratisyen senaryosu — pilot kapsamında değil, tek doktor varsayımı yeterli)",
+      "Hangfire orphan default queue audit (P10 closed, baseline temiz)",
+      "P9 S2/S4/S5b deferred re-smoke (post-P9 wiring evidence yeterli)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Ops-only paket: tüm operasyonlar idempotent ve doğrulanabilir. (a) plan_tier upgrade Q UI üzerinden Backend Ops PUT endpoint, built-in tier validation + plan_definitions exists check + planCache.Invalidate(tenant) + structured log. (b) S6 smoke booking 201/4xx/5xx response code ile kesin sinyal. (c) Hangfire job state DB'de tam audit trail (Enqueued/Processing/Failed/Scheduled retry chain). (d) Cleanup MCP execute idempotent (DELETE WHERE filter, UPDATE SET specific values). Silent failure yok: bug report (AC4 doctors table missing) Paket A scope dışı ama tam belgelendi + B-VCP-DOCTORS escalate edildi (Q'ya rapor + AskUserQuestion onayı + roadmap entry)."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Dent ilk gerçek Appointments tenant'ı oldu — repository SQL'inde 'doctors' tablo dependency hem migration'da hem prod DB'de eksikti, ama daha önce hiçbir tenant slot booking yapmadığı için latent kalmıştı. Pilot go-live'da musteri ilk randevu booking'inde meeting_link gelmediğini fark ederse 'video link nereden geliyor?' destek talebi açar.",
+      "suggestion": "Lesson entry 2026-04-24: Yeni feature ilk-kullanıcı senaryosunda repository SQL parse-time tablo dependency grep yapılmalı — CREATE TABLE migration ↔ FROM/JOIN clause cross-check. Pre-pilot script: `grep -rE 'JOIN|FROM' src/Invekto.Appointments/Data/*.cs | extract table names | diff with arch/db/migrations/ CREATE TABLE | report missing`.",
+      "aha_moment": "Pilot ilk müşteri booking'i yaparken meeting_link async populate gelir — destek talebi açılmaz, müşteri Google Meet linkinden direkt katılır. B-VCP-DOCTORS migration + smoke ile bu hop kapanır."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Q dashboard UI'dan plan_tier upgrade yaptıktan sonra Backend ops endpoint planCache invalidate yapsa bile, smoke testi Claude tarafından koşulurken cache durumunu kontrol eden tek kanıt 'booking 201 dönüyor'du. Cache TTL ile race olsaydı false negative riski vardı.",
+      "suggestion": "Q UI upgrade akışında 'cache invalidated' UI feedback (toast veya badge) — operator hangi tenant cache'i ne zaman invalidate edildiğini görsün. Backend ops endpoint zaten log'luyor, UI surface görünürlük artırır.",
+      "aha_moment": "Q tenant plan değişikliğini yaptıktan sonra ekran üstünde 'Cache invalidated for tenant 18173130 at 11:15:35Z' bildirimi → smoke öncesi cache freshness'a güven."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "S6 smoke için JWT generate edilmesi gerekti — Backend appsettings.Production.json'dan Jwt:SecretKey + iss + aud manuel okunup PowerShell HMAC-SHA256 ile build edildi. Bu adım her smoke için tekrarlandı, scriptable değildi.",
+      "suggestion": "Ops smoke helper script: `tools/smoke/Make-PilotJwt.ps1 -TenantId 18173130 -Role admin -ExpiresMinutes 10` → JWT print + clipboard. Backend appsettings'i otomatik MCP server-download ile çekip secret okur.",
+      "aha_moment": "Pilot smoke koşan operator/Claude: tek komut JWT al, curl yap, response gör. JWT gen 5sn'den 1sn'ye iner, smoke hızlanır."
+    },
+    {
+      "category": "UX",
+      "user_pain": "tenant_registry.plan_tier='baslangic' default tüm yeni tenant'lara — operator 'baslangic'ın hangi feature'ları içerdiğini bilmiyorsa pilot konfigürasyonunda Appointments+Marketing özellikleri açık sanıp gerçek booking ya da drip akışında 403 INV-AUTH-005 görür.",
+      "suggestion": "Dashboard /ops/tenants/{id} sayfasında 'Aktif feature matrix' kartı (plan_tier'dan miras alınan feature listesi + override'lar) — operator pilot prep'te tek bakışta 'bu tenant Appointments yapabilir mi?' sorusunu cevaplasın. plan_definitions tablosundan render edilir.",
+      "aha_moment": "Operator Dent için /ops/tenants/18173130 açar → 'Plan: kurumsal | Feature: Appointments✅ Marketing✅ AgentAI✅...' kartı görür → smoke öncesi 403 sürprizi olmaz."
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Pilot kapsamında 'tüm fiyat planlarımız Appointments + Marketing + Drip Sequence içerir' demek istiyoruz ama 'profesyonel' planın Marketing key eksik — aday müşteri 'profesyonel ile başlayıp upgrade ederim' derse drip sequence çalışmaz, müşteri hayal kırıklığına uğrar.",
+      "suggestion": "Sales playbook + pricing page revision: 'Pilot scope (Appointments + Drip + Multi-City) için 'kurumsal' plan zorunlu' clarification. Veya 'profesyonel' tier'a Marketing:[on] eklenip premium-tier feature ile farklılaştırılması (Marketing:[basic] vs Marketing:[premium] segmentation).",
+      "aha_moment": "Pilot sonrası enterprise satış konuşmasında: 'Roadshow drip + appointment booking için kurumsal plan' — fiyatlama net, müşteri downgrade sürprizi yaşamaz."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-24T11:35:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-24T11:35:00Z",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "Doc-only changes consistently document concrete failure details (42P01, B-VCP-DOCTORS escalation); no code-path error handling modified." },
+      "CQ2": { "result": "PASS", "evidence": "No executable code changed; bug surfaced + escalated, no silent-failure path introduced." },
+      "CQ3": { "result": "PASS", "evidence": "5 file diff all in allowed_files (plan + tracking + roadmap + session-memory + lessons); diff artifact path normative not scope creep." },
+      "CQ4": { "result": "PASS", "evidence": "Doc/plan entries follow existing packet-documentation pattern; no harmful duplication." },
+      "CQ5": { "result": "PASS", "evidence": "Plan JSON + tracking doc structure mirror prior packet docs; service/code conventions intact." },
+      "CQ6": { "result": "PASS", "evidence": "No runtime code/SQL/config changed; retry-loop documented as existing bug not new perf issue." },
+      "CQ7": { "result": "PASS", "evidence": "No new TODO/HACK/FIXME markers in added lines." },
+      "CQ8": { "result": "PASS", "evidence": "No interfaces/DTOs/endpoints/schemas/contracts changed." },
+      "CQ9": { "result": "PASS", "evidence": "Documents (not alters) business logic; doctors issue explicitly out-of-scope escalation, no tenant/data logic modified." },
+      "CQ10": { "result": "PASS", "evidence": "No UI code changed; Q Dashboard refs documentation only." },
+      "CQ11": { "result": "PASS", "evidence": "Existing schema/code drift recorded + escalated; no new drift introduced." },
+      "CQ12": { "result": "PASS", "evidence": "No API/runtime error-handling code changed; existing error identifiers (403 INV-AUTH-005, 42P01) preserved verbatim." }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "5 changed files all listed under allowed_files; 6th allowed entry (diff artifact) consistent with plan metadata, no PLAN_OUTDATED." },
+      "Q2": { "result": "PASS", "reasoning": "Packet explicitly scoped ops-only/doc-only; AC4 written as discovery/escalation criterion not 'fix VCP'; B-VCP-DOCTORS separate backlog entry created. Documenting + escalating is acceptable AC closure pattern; scope expansion would violate stated package boundaries." },
+      "Q3": { "result": "PASS", "reasoning": "Rationale query-derived not speculative; plan JSON records 'plan_definitions MCP query 4 row' evidence enumerating tier capabilities; same matrix snapshot in tracking doc satisfies evidence requirement." }
+    },
+    "blocking_issues": [],
+    "iteration": 0,
+    "escalation_required": false
+  }
+}
