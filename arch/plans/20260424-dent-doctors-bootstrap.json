@@ -1,0 +1,250 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260424-dent-doctors-bootstrap",
+  "risk": "MEDIUM",
+  "status": "IN_PROGRESS",
+  "created_at": "2026-04-24T14:45:00Z",
+  "updated_at": "2026-04-24T15:10:00Z",
+  "plan": {
+    "summary": "Paket B (post-Paket A follow-up): B-VCP-DOCTORS — doctors tablo minimal bootstrap (migration 031) + canonical mirror arch/db/doctors.sql + arch/db/appointments.sql comment sync (doctors bootstrap reference) + Dent pilot seed (1 placeholder 'Dr. Dent Adavista' via ON CONFLICT DO NOTHING deterministic idempotency + 4 slot doctor_id backfill via idempotent DO block) + 4 postcondition verify check (INV-SEED-009..012) with actionable why+next-step guidance in RAISE EXCEPTION. Paket A S6 re-smoke sırasında latent schema/code drift yüzeye çıktı: AppointmentsRepository.GetAppointmentVideoRowAsync (src/Invekto.Appointments/Data/AppointmentsRepository.cs:1199-1202) SQL `LEFT JOIN doctors d` içeriyor ama doctors tablosu hem prod DB'de hem arch/db/migrations/ altında YOKTU (appointments.sql:22,50,153 'Reserved for GR-3.19' comment — hiç materialize edilmemiş; şimdi sync'lendi). Dent ilk gerçek Appointments tenant olarak hangfire.state jobid=38169 üzerinden 42P01 'relation doctors does not exist' patladı (parse_relation.c parserOpenTable), meeting_link + video_reminder_24h/1h_job_id NULL kaldı. Kod değişikliği YOK: LEFT JOIN natural çalışır (reader.IsDBNull guard already handles NULL-doctor case, line 1230-1231). Post-migration Appointments service NSSM restart zorunlu (Codex iter 0 CQ8 + CoVe Q3 feedback — Npgsql connection pool + prepared statement cache deterministic flush garantisi için cold start; runtime no-redeploy hypothesis replaced with explicit restart AC). S6 re-smoke post-migration + post-restart: meeting_link non-null + video_reminder_24h/1h_job_id non-null kanıtı + appointment+hangfire artifacts cleanup + pilot config preserve (plan_tier=kurumsal + 4 slots inactive + doctor seed kalıcı).",
+    "q_intent": "B-VCP-DOCTORS önce (Recommended). Paket A'da escalate edilen backlog entry'yi çöz. Interview gate G1: Minimal boilerplate + no FK. G2: 1 placeholder doctor 'Dr. Dent Adavista' + 4 slot doctor_id backfill. Pilot meeting_link populate hop kritik, Paket C öncesi tamamlanmalı.",
+    "interview_notes": "G1 (Schema scope) Q-approved via AskUserQuestion 2026-04-24 14:42: Minimal boilerplate + no FK (id, tenant_id, name, is_active, timestamps) + UNIQUE(tenant_id, name) constraint (Codex iter 0 CQ2 feedback — deterministic seed idempotency anchor). Rationale: FK appointment_slots.doctor_id → doctors.id legacy orphan data olabilir (diğer tenant slot'ları doctor_id NULL olmayan değer içerebilir sweep yapmadan), GR-3.19 full packet (specialty + license_no + calendar_id + schedule_template_id + FK + orphan sweep) post-pilot. G2 (Dent seed) Q-approved: 1 placeholder 'Dr. Dent Adavista' + 4 Dent slot doctor_id backfill (tek-doktor pilot varsayımı yeterli, multi-doctor scenario GR-3.19 scope). Seed pattern INSERT ... ON CONFLICT (tenant_id, name) DO NOTHING RETURNING id + fallback SELECT (Codex iter 0 CQ2 feedback — previous IF NOT EXISTS / SELECT LIMIT 1 nondeterministic). G3 (Code change, Claude decision): YOK — LEFT JOIN natural NULL-safe (IsDBNull guards AppointmentsRepository.cs:1230-1231), SQL guard overhead gereksiz. G4 (Appointments redeploy, revised 2026-04-24 15:10 per Codex iter 0 CQ8 + CoVe Q3 feedback): **Appointments service NSSM restart zorunlu** post-migration, pre-smoke. Önceki 'Npgsql per-connection plan cache transparent' hypothesis runtime deterministic safety için yeterli evidence sağlamıyor (prepared statement + connection pool state retention riski). Cold restart garantili Npgsql pool flush + fresh parse plan. Ops cost düşük (NSSM restart ~3sn + HEALTHY verify). G5 (4 slot doctor_id UPDATE): tümü aynı Dent placeholder doctor (tek-doktor varsayımı). G6 (Re-smoke methodology): Paket A cleanup sonrası temiz state → migration execute → Appointments NSSM restart + HEALTHY → slot1 temp activate → fresh JWT gen (appsettings.Production.json Jwt:SecretKey HMAC-SHA256) → curl POST localhost:7102/api/v1/appointments/book → hangfire state poll (VideoMeetingCreationJob → Succeeded) → meeting_link + reminder job IDs non-null verify → smoke artifacts full cleanup (appointment + hangfire + slot revert). G7 (Risk): MEDIUM (prod schema ADDITIVE + data seed + Appointments restart + integration re-smoke, ADDITIVE-only rollback simple). G8 (G7 SCHEDULER HOST EXCEPTION verify): Backend.csproj line 9 `Invekto.Appointments PrivateAssets=\"all\"` ProjectReference VAR — yeni satır eklenmez, sadece grep snapshot kanıtı AC'ye dahil. G9 (Error codes): INV-SEED-009..012 (deployment-time postcondition assertions with actionable why+next-step RAISE EXCEPTION guidance per Codex iter 0 CQ12 feedback, no ErrorCodes.cs mirror per SEED namespace convention — post-P9 wiring INV-SEED-001..008 precedent). **V11 relaxed (Codex iter 0 CQ9 feedback):** 'Dent slots with doctor_id IS NULL expected 0' generic invariant replaces previous hardcoded 'expected 4 slots with doctor_id' — removes tenant-specific mutable-data coupling while preserving seed correctness guarantee. **arch/db/appointments.sql canonical comment sync (Codex iter 0 CQ11 feedback):** lines 22/50/153 updated from 'Reserved for GR-3.19' / 'Currently always NULL' to 'bootstrap doctors table in migration 031, FK pending GR-3.19' — resolves schema source-of-truth drift.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Migration 031 arch/db/migrations/031-doctors-bootstrap.sql + canonical mirror arch/db/doctors.sql NEW files created with matching schema (CREATE TABLE doctors: id SERIAL PK + tenant_id INT NOT NULL REFERENCES tenant_registry(tenant_id) ON DELETE CASCADE + name VARCHAR(200) NOT NULL + is_active BOOL DEFAULT TRUE + created_at/updated_at TIMESTAMPTZ DEFAULT now() + **CONSTRAINT uq_doctors_tenant_name UNIQUE (tenant_id, name)**; partial index idx_doctors_tenant_active WHERE is_active=TRUE; GRANT ALL to invekto + sequence USAGE,SELECT). Interview gate G1 minimal boilerplate + no FK enforced (no appointment_slots.doctor_id FK add — deferred to GR-3.19). arch/db/appointments.sql lines 22/50/153 comment sync (doctors bootstrap reference — Codex iter 0 CQ11 feedback).",
+        "verified": false,
+        "verification_note": "PENDING — dosyalar yazıldı, Codex iter 1 review sonrası prod execute."
+      },
+      {
+        "id": "AC2",
+        "criterion": "Migration 031 deterministic Dent seed block: INSERT INTO doctors (...) VALUES (18173130, 'Dr. Dent Adavista', TRUE) ON CONFLICT (tenant_id, name) DO NOTHING RETURNING id → fallback SELECT when ON CONFLICT suppresses RETURNING (UNIQUE constraint guarantees single-row by uq_doctors_tenant_name; Codex iter 0 CQ2 feedback deterministic idempotency) + UPDATE appointment_slots SET doctor_id=<id>, updated_at=now() WHERE tenant_id=18173130 AND doctor_id IS NULL (rerun-safe, only NULL slots). Post-seed DO $verify$ block asserts with actionable RAISE EXCEPTION messages (Codex iter 0 CQ12 feedback): V9 table_exists, V10 Dent doctor count=1, **V11 Dent slots WHERE doctor_id IS NULL expected 0** (generic invariant, CQ9 feedback removes tenant-specific mutable data coupling), V12 GRANT ALL invekto on doctors present.",
+        "verified": false,
+        "verification_note": "PENDING — prod execute sonrası DO $verify$ pass + MCP postgres query ile verify."
+      },
+      {
+        "id": "AC3",
+        "criterion": "Migration 031 prod DB'de execute edildi + DO $verify$ block 4/4 postcondition PASS (no RAISE EXCEPTION). MCP invekto-postgres execute sonucu `[B-VCP-DOCTORS] postcondition verify PASS (table=ok, dent_doctors=1, dent_slots_null=0, grant=ok)` RAISE NOTICE çıktısı ile kanıtlanır. **Post-migration Appointments service NSSM restart** via MCP invekto-ops server-exec `Restart-Service Invekto-Appointments` (Codex iter 0 CQ8 + CoVe Q3 feedback — connection pool + prepared statement cache deterministic flush garantisi, G4 revised) + `/health` endpoint HEALTHY 200 verify.",
+        "verified": false,
+        "verification_note": "PENDING — migration execute + Appointments restart aşamasında doldurulur."
+      },
+      {
+        "id": "AC4",
+        "criterion": "S6 fresh re-smoke: slot_id=1 temp activate (UPDATE is_active=TRUE) + JWT gen (prod appsettings.Production.json Jwt:SecretKey HMAC-SHA256, tenant=18173130 role=admin 10min exp) + POST localhost:7102/api/v1/appointments/book body {slot_id:1, patient_name:'SMOKE_TEST_B_*', patient_phone:'+00000000099', appointment_date:'2026-04-25', notes:'B-VCP-DOCTORS smoke'} → STATUS 201 + RESPONSE {id:<n>, status:'confirmed'}. Plan guard PASS (Paket A kanıtladı, re-kanıtlanır).",
+        "verified": false,
+        "verification_note": "PENDING — post-migration re-smoke."
+      },
+      {
+        "id": "AC5",
+        "criterion": "VideoMeetingCreationJob SUCCESS kanıtı: hangfire.state jobid=<new> trace Enqueued→Processing→Succeeded (42P01 FAIL yok). appointments.meeting_link non-null + meeting_provider='mock' (Dent video_provider='mock') + calendar_event_id non-null + video_reminder_24h_job_id non-null + video_reminder_1h_job_id non-null. 2 reminder Hangfire Scheduled job DB'de mevcut (hangfire.job statename='Scheduled').",
+        "verified": false,
+        "verification_note": "PENDING — re-smoke evidence collection aşamasında doldurulur."
+      },
+      {
+        "id": "AC6",
+        "criterion": "Smoke artifacts full cleanup + pilot config preserve. Cleanup: DELETE FROM appointments WHERE tenant_id=18173130 AND patient_name LIKE 'SMOKE_TEST_B_%' + DELETE FROM hangfire.state/jobqueue/job WHERE jobid IN (booking, video_creation, reminder_24h, reminder_1h) + UPDATE appointment_slots SET is_active=FALSE WHERE id=1 (defensive revert). Preserve baseline: plan_tier='kurumsal' (Paket A upgrade) + 4 slots inactive (doctor_id=<seed_id> PRESERVED post-smoke — seed kalıcı, sadece is_active revert) + 1 doctor row Dent + 1 active flow + 36 inactive FAQ + 1 landing row + 48 templates + 5 TFM + MCC seed.",
+        "verified": false,
+        "verification_note": "PENDING — smoke post-cleanup verify aşamasında doldurulur."
+      },
+      {
+        "id": "AC7",
+        "criterion": "G7 SCHEDULER HOST EXCEPTION invariant verify (grep snapshot): src/Invekto.Backend/Invekto.Backend.csproj line 9 `<ProjectReference Include=\"..\\Invekto.Appointments\\Invekto.Appointments.csproj\" PrivateAssets=\"all\" />` VAR. Yeni satır eklenmez — VideoMeetingCreationJob type reflection Backend DelayedJobScheduler'dan promote için mevcut Marketing+Appointments+Automation+Integrations+WhatsAppAnalytics pattern intact (P10 lesson, commits 22dba6a/ac390e7/a6ed4ea).",
+        "verified": true,
+        "verification_note": "PASS — grep 2026-04-24 14:42: `<ProjectReference Include=\"..\\Invekto.Appointments\\Invekto.Appointments.csproj\" PrivateAssets=\"all\" />` Backend.csproj:9 mevcut. G7 pattern intact, yeni ekleme gerekmez."
+      },
+      {
+        "id": "AC8",
+        "criterion": "Codex review MEDIUM risk iter 1 PASS hedef (iter 0 FAIL 5 CQ blocker + 2 CoVe FAIL — CQ2 seed LIMIT 1 nondeterministic, CQ8 no-redeploy unproven, CQ9 V11 hardcoded=4 fragile, CQ11 appointments.sql canonical drift, CQ12 raw exception messages; all resolved in iter 1: UNIQUE constraint + ON CONFLICT DO NOTHING + Appointments restart + V11 generic invariant + appointments.sql comment sync + actionable RAISE EXCEPTION messages). 8 file diff all in allowed_files: plan JSON + diff artifact + migration 031 SQL + canonical mirror doctors.sql + arch/db/appointments.sql (comment sync) + errors.md +4 entry + tracking doc + roadmap update + session-memory entry. Build N/A (SQL + comment-only, no .cs/.ts).",
+        "verified": false,
+        "verification_note": "PENDING — /rev MCP Codex iter 1 review aşamasında doldurulur."
+      }
+    ]
+  },
+  "allowed_files": [
+    "arch/plans/20260424-dent-doctors-bootstrap.json",
+    "arch/plans/diffs/20260424-dent-doctors-bootstrap.diff",
+    "arch/db/migrations/031-doctors-bootstrap.sql",
+    "arch/db/doctors.sql",
+    "arch/db/appointments.sql",
+    "arch/errors.md",
+    "tracking/20260424-dent-doctors-bootstrap.md",
+    "tracking/pilot-launch-roadmap.md",
+    "arch/session-memory.md",
+    "arch/lessons-learned.md"
+  ],
+  "files_changed": [
+    {
+      "path": "arch/plans/20260424-dent-doctors-bootstrap.json",
+      "change": "NEW plan JSON Paket B (MEDIUM risk, schema migration + data seed + re-smoke, AC1-AC8).",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "arch/db/migrations/031-doctors-bootstrap.sql",
+      "change": "NEW migration 031: CREATE TABLE doctors minimal bootstrap (id+tenant_id FK CASCADE+name+is_active+timestamps+**CONSTRAINT uq_doctors_tenant_name UNIQUE**) + partial index idx_doctors_tenant_active + GRANT ALL invekto + sequence grant + **deterministic idempotent Dent seed DO block (INSERT ... ON CONFLICT (tenant_id, name) DO NOTHING RETURNING + fallback SELECT)** + 4 slot doctor_id backfill + DO $verify$ postcondition block INV-SEED-009..012 with **actionable why+next-step RAISE EXCEPTION messages** + **V11 generic 'Dent slots doctor_id IS NULL expected 0' invariant** (Codex iter 1 fixes: CQ2 UNIQUE anchor + CQ9 tenant-agnostic invariant + CQ12 actionable exception text).",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "arch/db/doctors.sql",
+      "change": "NEW canonical mirror source-of-truth for doctors table (schema drift guard, FEAT-EFS marketing.sql precedent). Full CREATE TABLE + **UNIQUE (tenant_id, name) constraint** + partial index + GRANT ALL + intentional exclusions documented (no FK from appointment_slots.doctor_id, no specialty/license/calendar fields — GR-3.19 scope).",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "arch/db/appointments.sql",
+      "change": "Comment sync (Codex iter 0 CQ11 feedback — schema source-of-truth drift resolution): line 16 header comment + line 22 appointment_slots.doctor_id comment + line 50 appointments.doctor_id comment + lines 153-159 Usage Notes §4 — 'Reserved for GR-3.19' / 'Currently always NULL' → 'bootstrap doctors table in migration 031 (FK pending GR-3.19)' + Dent pilot seed note. No CREATE TABLE / schema shape change; documentation-only.",
+      "is_new": false,
+      "deleted": false
+    },
+    {
+      "path": "arch/errors.md",
+      "change": "+4 INV-SEED-009..012 entries in SEED namespace (deployment-time postcondition assertions, no ErrorCodes.cs mirror per SEED convention): V9 doctors table_exists check, V10 Dent doctor count=1 (UNIQUE constraint anchor), V11 **Dent slots WHERE doctor_id IS NULL expected 0** (generic invariant, Codex iter 1 CQ9/CQ12 fix — catalog description+user_message synced in iter 2 to match migration V11 semantics 1:1), V12 GRANT ALL invekto on doctors.",
+      "is_new": false,
+      "deleted": false
+    },
+    {
+      "path": "tracking/20260424-dent-doctors-bootstrap.md",
+      "change": "NEW per-paket tracking doc (interview gates G1-G9 + bug context + migration schema + Dent seed rationale + re-smoke methodology + cleanup + G7 verify + Codex review).",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "tracking/pilot-launch-roadmap.md",
+      "change": "Master Queue Paket B row added (B-VCP-DOCTORS, slug 20260424-dent-doctors-bootstrap, migration 031, MEDIUM risk); Backlog B-VCP-DOCTORS entry cross-linked to Master Queue (PROMOTED); Progress Tracker 12→13/13 paket (smoke sonrası DONE flip).",
+      "is_new": false,
+      "deleted": false
+    },
+    {
+      "path": "arch/session-memory.md",
+      "change": "Last Update entry Paket B kickoff 2026-04-24 14:45 UTC + Execution Queue rollforward + Recently Completed preserve Paket A + B-VCP-DOCTORS IN_PROGRESS.",
+      "is_new": false,
+      "deleted": false
+    },
+    {
+      "path": "arch/lessons-learned.md",
+      "change": "(Post-smoke) +1 entry 2026-04-24: Migration-only fix pattern — schema drift reveal (42P01) latent first-tenant execution path sonrası minimal additive migration + canonical mirror + seed + DO $verify$ yeterli; kod değişikliği gereksiz çünkü LEFT JOIN natural NULL-safe + Npgsql per-connection plan cache yeni query'de plan alır (service redeploy skip).",
+      "is_new": false,
+      "deleted": false
+    }
+  ],
+  "git_diff": {
+    "sha256": null,
+    "full_path": "arch/plans/diffs/20260424-dent-doctors-bootstrap.diff",
+    "stats": {
+      "insertions": 763,
+      "deletions": 12,
+      "files_count": 8
+    }
+  },
+  "build": {
+    "status": "N/A",
+    "services": []
+  },
+  "scope_discipline": {
+    "forbidden_areas": [
+      "AppointmentsRepository.cs SQL refactor (LEFT JOIN guard, doctors_view) — scope dışı, LEFT JOIN natural NULL-safe",
+      "GR-3.19 full doctor domain (specialty + license_no + calendar_id + schedule_template_id + FK + orphan sweep) — post-pilot packet",
+      "appointment_slots.doctor_id → doctors.id FK eklenmesi — legacy orphan veri riski, GR-3.19 scope",
+      "waitlist.doctor_id FK güncellemesi — appointments-v2 stub, GR-3.19 rework",
+      "Diğer tenant'lara doctor seed — sadece Dent (tenant_id=18173130) pilot scope",
+      "Backend / Automation service redeploy — sadece Appointments NSSM restart (iter 1 fix, CQ8 feedback)",
+      "Backend DLL swap — binary aynı",
+      "Backend.csproj yeni ProjectReference (G7 pattern intact, grep snapshot'ta kanıtlandı)",
+      "tenant_registry.plan_tier değişikliği — Paket A'da kurumsal'a upgrade edildi, preserve",
+      "tenant_settings.video_provider değişikliği — 'mock' preserve",
+      "Dashboard SPA kod — yok",
+      "Shared.Contracts yeni DTO — yok"
+    ],
+    "non_goals": [
+      "Paket C template content bind (46 welcome + 36 FAQ placeholder → DocX flip) — ayrı paket, sıradaki",
+      "B0 FEAT-VCP Chunk C Prod GoogleMeet OAuth — Q-provision backlog, pilot sonrası",
+      "Hangfire scheduler queue topology değişikliği — P10 closed",
+      "Multi-doctor senaryosu — GR-3.19 scope",
+      "Doctor CRUD UI / Dashboard editor — GR-3.19 scope",
+      "AppointmentsRepository.cs doctor_name COALESCE fallback — gereksiz, NULL tolerant already",
+      "appointment_slots.doctor_id NOT NULL constraint — GR-3.19 scope"
+    ],
+    "intentional_exclusions": [
+      "arch/db/appointments.sql comment update (doctor_id 'Nullable (future GR-3.19)' → 'Nullable (GR-3.19 FK pending, doctors table bootstrap in migration 031)') — documentation drift, ayrı doc-only paket scope (bu paket ops-focused)",
+      "CI pre-pilot schema dependency grep script (lesson aha_moment) — ayrı infra packet",
+      "VCP Chunk C Google Meet OAuth prod (B0) — yet another packet",
+      "GR-3.19 doctor-based slot routing business logic — post-pilot"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [
+      "INV-SEED-009 doctors table not created (migration failure, RAISE EXCEPTION)",
+      "INV-SEED-010 Dent doctor count!=1 (seed divergence, RAISE EXCEPTION)",
+      "INV-SEED-011 Dent slots with doctor_id!=4 (backfill divergence, RAISE EXCEPTION)",
+      "INV-SEED-012 GRANT ALL invekto not applied on doctors (role grant drift, RAISE EXCEPTION)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "SQL + documentation comment sync paket + post-migration Appointments NSSM restart + deployment-time DO $verify$ block RAISE EXCEPTION üzerinden transaction abort. (a) Migration 031 deterministic idempotent: CREATE TABLE IF NOT EXISTS + **UNIQUE (tenant_id, name) CONSTRAINT** + seed INSERT ... ON CONFLICT (tenant_id, name) DO NOTHING RETURNING (single-row guarantee, Codex iter 0 CQ2 fix) + fallback SELECT + UPDATE WHERE doctor_id IS NULL — rerun safe + concurrent-safe. (b) DO $verify$ 4 postcondition check EXCEPTION ile tam fail-loud + **actionable why+next-step guidance in each RAISE EXCEPTION** (Codex iter 0 CQ12 fix). V11 generic invariant 'Dent slots doctor_id IS NULL expected 0' (Codex iter 0 CQ9 fix — removes tenant-specific mutable-data coupling). (c) Runtime: LEFT JOIN doctors natural çalışır post-migration (AppointmentsRepository IsDBNull guard already handles NULL-doctor) + **Appointments service NSSM restart (iter 1 fix, CQ8 feedback)** garantili Npgsql connection pool + prepared statement cache flush → fresh SQL parse on first post-restart booking. (d) Re-smoke VideoMeetingCreationJob Hangfire.State='Succeeded' + meeting_link non-null + reminder job IDs non-null kanıt zinciri. (e) Cleanup MCP execute idempotent (DELETE WHERE specific filter, UPDATE SET specific values). (f) Silent failure yok — 42P01 latent bug tam belgelendi (Paket A AC4), re-smoke post-migration + post-restart pozitif kanıt veya explicit ExceptionMessage ile fail-loud."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Dent ilk-kullanıcı (first-tenant execution path) pattern'i 2026-04-24 latent bug'ı expose etti — AppointmentsRepository.cs:1199-1202 SQL 8+ ay önce (FEAT-VCP Chunk B migration 024 + GR-3.19 reserved) yazıldı ama hiçbir tenant Appointments booking yapmadığı için test edilmedi. Aynı pattern başka servislerde (waitlist, doctor-scoped slot query, specialty-scoped filter) gizli kalabilir.",
+      "suggestion": "Pre-pilot schema dependency grep script: `scripts/check-sql-table-deps.ps1` — repository *.cs içindeki FROM/JOIN clause'larını parse eder + arch/db/migrations/ CREATE TABLE listesiyle diff eder + missing table'ları rapor eder. CI hook: dev branch'e push öncesi yeni repository SQL eklendiyse otomatik çalışır. Pilot onboarding öncesi manuel çalıştırılır.",
+      "aha_moment": "Operator yeni bir tenant Appointments aktive etmeden önce `pnpm pre-pilot-check --tenant=<id>` komutu çalıştırır → 'doctors table missing for SQL reference at line 1199' gibi rapor alır → migration yazıp deploy eder, pilot ilk gün sessiz fail yaşamaz."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Migration-only SQL paket için Codex review 'code yok' göründüğü için skip edilmek istenebilir, ama prod DB schema değişikliği MEDIUM risk — invariant check, grant drift, constraint interaction, seed idempotency hepsi Codex gözünden geçmesi gereken alanlar. INVEKTO_BASE kuralı 'LOW dahil tüm risk Codex review alır' bu paketle somut örneklendi.",
+      "suggestion": "Plan-schema review: build.status='N/A' + files_changed'da *.sql veya arch/db/migrations/* var → plan template'ine otomatik 'SCHEMA_ONLY_CHECKLIST' eklenir (partial index coverage, GRANT drift, constraint rename, seed idempotency, FK cascade direction, RAISE EXCEPTION coverage). Codex review instruction prefix'e SQL-specific context gömülür.",
+      "aha_moment": "Plan JSON oluşturulurken `build.status='N/A'` seçildi → schema CHECKLIST auto-expand → Claude+Codex migration-only riskleri tam tarar (silent no-op guard, transaction abort guarantee, partial index coverage) → Q schema migration'lara güven duyar."
+    },
+    {
+      "category": "UX",
+      "user_pain": "Dent pilot 'Dr. Dent Adavista' placeholder doctor name pilot sonrası gerçek doktor ismiyle güncellenecek — ama şu anda Dashboard'da Doctor CRUD UI yok (GR-3.19 scope). Operator doktor ismini değiştirmek için doğrudan DB UPDATE yapmak zorunda.",
+      "suggestion": "Dashboard /ops/tenants/{id}/doctors minimal table view: doctor rows listele, inline rename butonu (PUT /api/v1/tenant/doctors/{id} name). GR-3.19 full CRUD öncesi patch-only editor — operator ilk pilot'a görsel rahatlık ile başlar, sonradan tam CRUD'a geçer.",
+      "aha_moment": "Dent müşteri pilot sonrası 'benim ismim Dr. Ali Yılmaz, güncelleyebilir misiniz?' derse → operator Dashboard'dan inline edit → 5sn'de biter, DB direct UPDATE yok, audit trail otomatik."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "VideoMeetingCreationJob 42P01 Hangfire retry loop (2 cycle observed, Scheduled+retry) Paket A'da manuel cleanup edildi — ama benzer bir hatayla karşılaşılırsa operator hangfire.state trace'i görmeden 'Hangfire scheduler işlemiyor' diye P10'la karıştırabilir. 42P01 schema drift göstergesi ayrıştırılmalı.",
+      "suggestion": "Hangfire Failed job pattern detector: background task (daily) hangfire.state WHERE statename='Failed' AND exception_type LIKE 'Npgsql%42P01%' → alert (Slack/email) + arch/db/migrations/ grep hint. Veya hangfire Dashboard custom panel 'Schema Drift Detection' filter.",
+      "aha_moment": "Prod 42P01 Failed state 1 adet bile oluştuğunda → operator otomatik Slack alert'i alır → 'table X missing, migration Y needed' hint ile hızla migration yazar → müşteri hiç fark etmez."
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Pilot kapsamında 'Google Meet link her randevu için otomatik üretilir' demek istiyoruz — ama backend'de doctors tablo eksikti → meeting_link NULL → müşteri randevu gününde 'video link nerede?' diye panik atağı yaşardı. Latent schema/code drift pilot credibility riski.",
+      "suggestion": "Sales playbook + pre-pilot checklist: 'Go-live öncesi smoke test 100% path coverage (booking → video_creation → reminder scheduling → meeting_link populate)'. Pilot proposal'a 'Pre-flight check certification' ekle — satış conversion'da güven artışı.",
+      "aha_moment": "Aday müşteri 'pilot'unuz güvenli mi?' sorduğunda → operator 'Pre-flight 8-step smoke + postcondition verify runs → success rate 100%' cevabı → müşteri confidence yükselir, pilot'a adım atar."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_MCP",
+    "received_at": "2026-04-24T15:40:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-24T15:40:00Z",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "migration RAISE EXCEPTION INV-SEED-009..012 with actionable why+next-step guidance; errors.md canonical catalog synced 1:1 (iter 2 V11 wording fix)." },
+      "CQ2": { "result": "PASS", "evidence": "UNIQUE (tenant_id, name) CONSTRAINT + ON CONFLICT DO NOTHING RETURNING + fallback SELECT — deterministic single-row guarantee, concurrent-safe, no silent swallow. DO $verify$ fails loudly on divergence." },
+      "CQ3": { "result": "PASS", "evidence": "8 file diff all in allowed_files; no out-of-scope service/code files changed." },
+      "CQ4": { "result": "PASS", "evidence": "Canonical mirror pattern (doctors.sql + migration 031) follows established project DB source-of-truth convention (marketing.sql precedent)." },
+      "CQ5": { "result": "PASS", "evidence": "snake_case columns, GRANT ALL + sequence grants present, static SQL/DDL PostgreSQL-specific, tenant-scoped seed/update." },
+      "CQ6": { "result": "PASS", "evidence": "Partial index idx_doctors_tenant_active for tenant-scoped lookups; single-row UPSERT + tenant-scoped UPDATE, no N+1." },
+      "CQ7": { "result": "PASS", "evidence": "No new TODO/HACK/FIXME markers." },
+      "CQ8": { "result": "PASS", "evidence": "Additive schema + docs; no interface/export removal; Appointments NSSM restart requirement explicit in plan AC3 + migration header." },
+      "CQ9": { "result": "PASS", "evidence": "Seed/verify tenant-scoped tenant_id=18173130; V11 generic 'doctor_id IS NULL expected 0' invariant removes hardcoded slot-count coupling; catalog + migration + plan metadata 3-way sync." },
+      "CQ10": { "result": "PASS", "evidence": "Error catalog user_message + migration RAISE EXCEPTION consistency preserved; no UI envelope/style drift." },
+      "CQ11": { "result": "PASS", "evidence": "doctors table canonical schema in doctors.sql + migration 031; appointments.sql comments synced (lines 16/22/50/153); GRANT ALL present; plan metadata V11 wording updated." },
+      "CQ12": { "result": "PASS", "evidence": "INV-SEED-009..012 registered in errors.md + used verbatim in migration RAISE EXCEPTION with actionable what/why/next-step; plan files_changed[errors.md] note synced to V11 semantics." }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "Migration V11 text 'doctor_id IS NULL expected 0' matches errors.md INV-SEED-011 description + user_message + plan files_changed note. 3-way semantic consistency achieved." },
+      "Q2": { "result": "PASS", "reasoning": "Cumulative 8-file diff all in allowed_files; iter 2→3 no regression; iter 3 change metadata-only (1 plan JSON files_changed text fix)." },
+      "Q3": { "result": "PASS", "reasoning": "6 production-readiness legs preserved: (a) additive migration, (b) deterministic idempotency UNIQUE+ON CONFLICT, (c) 4 fail-loud actionable RAISE EXCEPTION, (d) Appointments NSSM restart documented, (e) Q-approved tek-doktor varsayımı, (f) GR-3.19 scope deferral intact." }
+    },
+    "blocking_issues": [],
+    "iteration": 3,
+    "escalation_required": false
+  }
+}

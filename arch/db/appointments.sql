@@ -13,13 +13,15 @@
 -- =============================================================
 -- appointment_slots: Weekly recurring slot definitions
 -- One slot = one bookable time window per day_of_week.
--- doctor_id nullable for future GR-3.19 (doktor bazli slot yonetimi).
+-- doctor_id nullable; doctors table bootstrap created in migration 031
+-- (B-VCP-DOCTORS, 2026-04-24). FK appointment_slots.doctor_id → doctors.id
+-- deferred to GR-3.19 (full domain + orphan sweep packet).
 -- =============================================================
 
 CREATE TABLE IF NOT EXISTS appointment_slots (
     id                  SERIAL PRIMARY KEY,
     tenant_id           INTEGER NOT NULL REFERENCES tenant_registry(tenant_id),
-    doctor_id           INTEGER,                           -- Nullable (future GR-3.19)
+    doctor_id           INTEGER,                           -- Nullable; bootstrap doctors table in migration 031 (FK pending GR-3.19)
     day_of_week         SMALLINT NOT NULL,                 -- 0=Sunday, 1=Monday ... 6=Saturday
     start_time          TIME NOT NULL,
     end_time            TIME NOT NULL,
@@ -47,7 +49,7 @@ CREATE TABLE IF NOT EXISTS appointments (
     id                  BIGSERIAL PRIMARY KEY,
     tenant_id           INTEGER NOT NULL REFERENCES tenant_registry(tenant_id),
     slot_id             INTEGER NOT NULL REFERENCES appointment_slots(id),
-    doctor_id           INTEGER,                           -- Nullable (future GR-3.19)
+    doctor_id           INTEGER,                           -- Nullable; bootstrap doctors table in migration 031 (FK pending GR-3.19)
     patient_name        VARCHAR(200) NOT NULL,
     patient_phone       VARCHAR(20) NOT NULL,
     appointment_date    DATE NOT NULL,
@@ -150,8 +152,14 @@ GRANT USAGE, SELECT ON SEQUENCE appointments_id_seq TO invekto;
 -- 3. Reminders: ReminderSchedulerService checks reminder_48h_sent and
 --    reminder_2h_sent flags every 5 minutes. POSTs to Outbound trigger API
 --    with event='appointment_reminder'.
--- 4. doctor_id: Nullable in both tables. Reserved for GR-3.19 (doctor-based
---    slot management, specialist vs general). Currently always NULL.
+-- 4. doctor_id: Nullable in both tables. doctors table bootstrap materialized
+--    in migration 031 (B-VCP-DOCTORS, 2026-04-24) with minimal schema
+--    (id, tenant_id, name, is_active). FK appointment_slots.doctor_id →
+--    doctors.id + full domain columns (specialty, license_no, calendar_id,
+--    schedule_template_id) deferred to GR-3.19 (doctor-based slot management,
+--    specialist vs general, orphan sweep). Dent pilot has 1 placeholder
+--    doctor seeded (2026-04-24); other tenants' doctor_id remain NULL until
+--    GR-3.19 onboarding.
 -- 5. KVKK data minimization: Only name, phone, date/time stored.
 --    No medical records, diagnosis, treatment details, or patient photos.
 -- =============================================================

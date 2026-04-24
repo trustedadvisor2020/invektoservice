@@ -1385,6 +1385,20 @@ errors:
     description: Tenant landing settings landing_field_map keys set mismatch
     user_message: Landing seed doğrulaması başarısız — field_map canonical keys setiyle uyuşmuyor.
 
+  # B-VCP-DOCTORS (migration 031 — 2026-04-24)
+  - code: INV-SEED-009
+    description: doctors table creation postcondition failure (CREATE TABLE not present in information_schema.tables)
+    user_message: Doctors seed doğrulaması başarısız — tablo oluşmadı, migration CREATE TABLE adımı sessizce atlanmış olabilir.
+  - code: INV-SEED-010
+    description: Dent doctor row count postcondition failure (expected 1 row for tenant_id=18173130, seed INSERT guard divergence)
+    user_message: Doctors seed doğrulaması başarısız — beklenen tek Dent doctor satırı oluşmadı, seed INSERT NOT EXISTS guard tetiklenmiş ya da duplikasyon var.
+  - code: INV-SEED-011
+    description: Dent slots backfill postcondition failure (expected 0 rows WHERE doctor_id IS NULL — all Dent slots must be backfilled to placeholder doctor; generic invariant independent of slot count)
+    user_message: Doctors seed doğrulaması başarısız — Dent slots arasında doctor_id=NULL kalan satır var; seed DO block UPDATE atlandı veya post-seed manuel slot INSERT doctor_id olmadan yapıldı.
+  - code: INV-SEED-012
+    description: GRANT ALL invekto privilege postcondition failure on doctors (expected INSERT grant for invekto role, prod role grant drift)
+    user_message: Doctors seed doğrulaması başarısız — invekto role'a GRANT ALL uygulanmamış, runtime INSERT/UPDATE permission denied riski.
+
 ```
 
 ## Adding New Codes
