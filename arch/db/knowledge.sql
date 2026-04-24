@@ -79,6 +79,12 @@ CREATE INDEX IF NOT EXISTS idx_chunks_tenant
 -- ============================================================
 -- 3. faqs: FAQ entries from WA-3 cluster import + manual CRUD
 --    Core table for Knowledge Service retrieval API.
+--    AI FAQ runtime authority for ai_faq node (AiFaqHandler.MatchAndRoute → KnowledgeSearchClient.SearchAsync
+--    → hybrid pgvector cosine + ts_vector keyword search). Other surfaces (faq_entries legacy migration source,
+--    template_catalog group_tag='faq_*' FEAT-WTP rotation pool) are inactive runtime by default — they only
+--    activate when explicit migration script copy or rotation_group_tag flow data attach is performed.
+--    Paket C1 Migration 032 (2026-04-24) uses uq_faqs_tenant_question UNIQUE constraint for fail-loud
+--    duplicate detection + chk_faqs_source CHECK ('manual'|'wa_import') — both defined below.
 -- ============================================================
 CREATE TABLE IF NOT EXISTS faqs (
     id                  SERIAL PRIMARY KEY,

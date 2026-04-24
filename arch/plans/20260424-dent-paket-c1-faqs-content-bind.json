@@ -1,0 +1,164 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260424-dent-paket-c1-faqs-content-bind",
+  "risk": "MEDIUM",
+  "status": "IN_PROGRESS",
+  "created_at": "2026-04-24T16:30:00Z",
+  "updated_at": "2026-04-24T16:30:00Z",
+  "plan": {
+    "summary": "Paket C1 (post-Paket B follow-up): Dent (tenant_id=18173130) AI FAQ runtime content bind. Migration 032 atomik tx (BEGIN..COMMIT) ile (1) `dent_paket_c1_archive_20260424` archive table create + pre-state snapshot (36 faq_entries + 1 chatbot_flows row_to_json::jsonb), (2) `faqs` 36 row INSERT (12 intent x 3 A/B/C variant from DocX `DentAdavista/ROADSHOW Aİ AGENT KARŞILAMA MESAJI.docx` source-of-truth via python-docx parse, JSON intermediate `DentAdavista/seeds/dent-roadshow-content.json`; question text disambiguated with ' (Variant A/B/C)' suffix per UNIQUE(tenant_id, question) constraint; embedding=NULL pre-populated by POST endpoint; source_metadata jsonb {intent_slug, variant, source, paket}), (3) `chatbot_flows` flow_id=29 message_text_welcome_1 placeholder UPDATE via jsonb_set $.nodes[1].data.text → DocX welcome-wdate-1 verbatim + canonical token rename {{Name}} → {{lead.name}} (defensive WHERE clause `text LIKE '%[EDIT:%'` only updates if still placeholder), (4) `faq_entries` 36 row [EDIT:*] is_inactive DELETE (Q-approved G12 MID cleanup, defensive triple-filter tenant + is_active=FALSE + answer LIKE '%[EDIT%'), (5) DO $verify$ 5 postcondition assertions (INV-SEED-013..017) actionable RAISE EXCEPTION with Root cause + Next step guidance per Codex Paket B CQ12 lesson. **POST-COMMIT HTTP HOP:** POST /api/v1/knowledge/18173130/generate-embeddings (Bearer JWT) → embedding=vector(3072) populate (OpenAI text-embedding-3-large) for 36 inserted rows. AI FAQ runtime (AiFaqHandler.MatchAndRoute → KnowledgeSearchClient.SearchAsync → KnowledgeRepository hybrid pgvector + ts_vector search FROM faqs) requires populated embedding. **POST-EMBEDDINGS S4 SMOKE:** Mid scope 3 FAQ × 3 locale = 9 call (intents: pricing/hours/location → en/en-IE/tr translation hop verify via TranslationHopClient HFM-2 chain). Cleanup baseline restore expected. **5 mimari surprise discovery (this session):** (s1) DocX file `DentAdavista/ROADSHOW Aİ AGENT KARŞILAMA MESAJI.docx` exists (24KB Turkish casing path) — initial G1 'no DocX, Claude generate' answer was wrong info; revised G1 → DocX parse source-of-truth. (s2) `template_catalog` 48 Dent rows ZATEN content-populated + is_active=TRUE (P9 prep paste); session-memory '46 welcome [EDIT:*] placeholder' claim was STALE for templates. (s3) `chatbot_flows` flow_id=29 nodes[1].data.text DOES contain `[EDIT:welcome_with_date_vN]` placeholder (claim verified); single node update scope. (s4) `faq_entries` schema is FAR simpler than session-memory implied: only `question`/`answer`/`keywords[]`/`sort_order` (NO intent_slug/variant_index/lang columns); `question` field stores intent SLUG verbatim (e.g. 'bring_xray'), not real question. (s5) **CRITICAL:** AI FAQ runtime reads `faqs` table (Knowledge service pgvector + ts_vector hybrid search, src/Invekto.Knowledge/Data/KnowledgeRepository.cs:49,69,84,219,264), NOT `faq_entries` (legacy migration source via arch/db/faq-entries-to-knowledge-migration.sql) NOR `template_catalog faq_*` (FEAT-WTP rotation pool only when `rotation_group_tag` set in flow node data, currently NOT set in flow_id=29 ai_faq_1). Three FAQ surfaces — runtime authority is `faqs`, currently EMPTY for Dent → S4 smoke would FAIL pre-Paket-C1. **Q-approved scope decision (G13: 'iki ayri paket C1 + C2'):** C1 = `faqs` INSERT + flow node fix + faq_entries cleanup + S4 smoke. C2 (post-pilot) = welcome templates 12→15 overhaul + persona-rich content overwrite + flow rotation_group_tag attach + template_catalog faq_* refresh. **Risk MEDIUM:** Prod content INSERT 36 row + flow_config jsonb update + cross-table DELETE + post-migration HTTP embedding hop + S4 smoke verification chain. Atomik tx all-or-nothing + DO $verify$ fail-loud + archive snapshot rollback evidence. **No code change, no service redeploy/restart** — Knowledge service Npgsql per-connection plan cache transparent for INSERT (parse plan reuse for SELECT only, INSERT auto-replan on schema-stable rows; READ-only path); embedding HTTP endpoint stateless.",
+    "q_intent": "Paket C1 (FAQ surface bind) Q-approved. Tek-shot final decisions after 5-surprise debug: G1-revize='DocX parse source-of-truth (python-docx)', G5='templates dokunma scope dışı', G6='real soru cümlesi yaz', G7='flow node generic neutral inline DocX-1', G8='`faqs` 36 row INSERT + embeddings generate', G11='MIN templates dokunma + flow node inline DocX-1', G12='MID faq_entries 36 DELETE legacy noise', G13='iki ayri paket C1 (FAQ) + C2 (welcome overhaul post-pilot)'. C1 hedefi: S4 AI FAQ smoke unblocker — pilot go-live için son içerik gap'i kapanır.",
+    "interview_notes": "**11 interview gate Q-approved via 2 AskUserQuestion rounds (initial 4 + revised 4 + extended 4):** Initial round (G1-G4): G1='Claude generate Q review' (REVIZE edildi after surprise s1 — DocX exists), G2='Mid scope 3 FAQ × 3 locale (9 call)', G3='template_id+faq_id PK match' (REVIZE edildi after schema surprise s4 — faq_entries doesn't have intent_slug/variant_index, faqs UNIQUE(tenant_id, question) anchor used instead), G4='Snapshot+atomic tx+is_active=TRUE flip' (preserved). Revize round (G1-revize, G5-G7): G1-revize='DocX parse source-of-truth python-docx', G5='templates DocX compare' (REVIZE edildi after surprise s5 — Q chose MIN scope in extended G11), G6='real soru cümlesi (12×3 fresh question text)' (preserved, applied via faqs INSERT not faq_entries UPDATE), G7='generic neutral inline DocX-1' (preserved). Extended round (G8-G13): G8='`faqs` 36 INSERT + embeddings (Recommended)', G11='MIN dokunma flow inline DocX-1', G12='MID faq_entries DELETE', G13='Iki ayri paket C1 + C2'. **Revisions justification (full transparency to Q):** initial G1 'no DocX' → discovered DocX file exists, Q re-decided based on full info; G3 schema assumption wrong → faqs UNIQUE(tenant_id, question) is the actual idempotency anchor, suffix variant disambiguation; G5 'templates compare' → revised to MIN after seeing 12 prod rows are generic vs DocX 15 persona-rich (full overhaul scope creep, deferred to C2). **Architectural decisions (Claude judgment within Q boundaries):** (a) `faqs` source 'manual' (CHECK constraint allows 'manual'|'wa_import'|'migration'; 'manual' chosen since DocX is hand-curated content not bulk import). (b) `category` = 'roadshow' (descriptive Dent-specific category, not generic 'general'). (c) `lang` = 'en' (DocX content English; tr translations via post-match TranslationHopClient HFM-2 hop, not pre-stored). (d) `keywords[]` = same per intent across A/B/C variants (matches DocX pilot-agent-config.md mapping). (e) `source_metadata` jsonb with intent_slug/variant/source/paket fields for forensic traceability. (f) Question disambiguation suffix '(Variant A/B/C)' chosen over alternatives (intent_slug suffix would conflict with G6 'real question text' decision; numeric suffix less semantic). (g) Flow welcome text canonical token: DocX `{{Name}}` → Invekto canonical `{{lead.name}}` (existing TFM resolver semantic, FEAT-DMP placeholder pattern preserved). (h) DELETE filter triple-defensive: tenant + is_active=FALSE + LIKE '[EDIT' (any future hand-edited row preserved). (i) Archive table TIMESTAMPTZ + JSONB row_to_json for full row restoration capability + COMMENT ON TABLE for post-pilot ops cleanup hint. (j) DO $verify$ 5 assertions cover: count, embedding NULL state, cleanup completion, flow placeholder absence, archive snapshot completeness — symmetric Paket B pattern (CQ9 generic invariant + CQ12 actionable RAISE EXCEPTION).",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "DocX parse + JSON intermediate produced: `DentAdavista/seeds/dent-roadshow-content.json` NEW file (192 lines, JSON with welcomes_with_date_10 array + welcomes_no_date_5 array + faqs_12x3 array of {intent_slug, question_real, keywords, variants:{A,B,C}}). All 12 intent_slug entries match Dent pilot-agent-config.md FAQ Intent Map table 1:1. Variant A/B/C extracted from DocX paragraph A/B/C section markers. Validation count: welcomes_with_date_10=10, welcomes_no_date_5=5, faqs_12x3=12 (each variant 30+ chars). python-docx 1.2.0 used (one-shot pip install, read-only parse, ASCII-path copy via PowerShell to bypass Turkish-casing path UnicodeEncodeError).",
+        "verified": false,
+        "verification_note": "Source: c:\\tmp\\extract_content.py (script archived) + c:\\tmp\\roadshow.docx (ASCII-path copy via Get-ChildItem LiteralPath + Copy-Item). Output: DentAdavista/seeds/dent-roadshow-content.json (committed). Counts confirmed via script stdout: welcomes_with_date=10/10, welcomes_no_date=5/5, faqs=12 intents (all A=30+ char, all B=30+ char, all C=30+ char). 12 intent_slug list matches pilot-agent-config.md exactly: is_it_free, location_where, what_happens, any_treatment, payment_after, bring_xray, bring_companion, duration, why_ireland, price_quote, safety_concern, hotel_transfers."
+      },
+      {
+        "id": "AC2",
+        "criterion": "Migration 032 file `arch/db/migrations/032-dent-paket-c1-faqs-content-bind.sql` NEW (220 lines, atomik tx BEGIN..COMMIT) with 5 sections: §1 archive table create + 36+1 row pre-state snapshot, §2 36 row faqs INSERT (UNIQUE(tenant_id, question) + ON CONFLICT DO NOTHING + question variant suffix + source_metadata jsonb + embedding NULL + keywords[] arrays + 'manual' source + 'roadshow' category + 'en' lang), §3 chatbot_flows flow_id=29 jsonb_set $.nodes[1].data.text UPDATE with defensive `LIKE '%[EDIT:%'` WHERE clause, §4 faq_entries DELETE with triple-defensive filter (tenant + is_active=FALSE + answer LIKE '[EDIT'), §5 DO $verify$ 5 postcondition (V13 faqs count=36, V14 all embedding NULL=36, V15 faq_entries cleanup=0, V16 flow welcome no [EDIT, V17 archive >=37). Rollback procedure documented at bottom (commented manual run via row_to_json restore from archive). Header docstring 22 lines documents scope+risk+rollback+POST-RUN embedding hop requirement.",
+        "verified": false,
+        "verification_note": "Pre-execute. Script generation: c:\\tmp\\generate_sql.py (Python source, archived). 220 SQL lines confirmed via wc -l. Header purpose section documents POST-RUN HTTP embedding hop dependency."
+      },
+      {
+        "id": "AC3",
+        "criterion": "`arch/errors.md` +5 entries (INV-SEED-013..017) appended to SEED service block (after INV-SEED-012 from Paket B). Each entry: `code` + `description` (root cause + invariant detail) + `user_message` (Turkish operator-friendly). No ErrorCodes.cs mirror per SEED namespace convention (post-P9 wiring INV-SEED-001..008 + Paket B INV-SEED-009..012 precedent). Codes: 013 faqs count, 014 embedding NULL state, 015 faq_entries cleanup, 016 flow welcome placeholder, 017 archive snapshot.",
+        "verified": false,
+        "verification_note": "Pre-Codex. Inserted at errors.md:1401 (after INV-SEED-012 entry). YAML block syntax preserved (closing ``` fence after INV-SEED-017)."
+      },
+      {
+        "id": "AC4",
+        "criterion": "Migration 032 prod execute via MCP invekto-postgres (single-shot atomik tx) + DO $verify$ 5/5 postcondition PASS. Expected RAISE NOTICE output: `[DENT-PAKET-C1] postcondition verify PASS: faqs=36 (all embedding NULL=36), faq_entries_cleaned=0 (was 36), flow_welcome_no_placeholder=true, archive_rows=37 (rollback evidence preserved). Next ops: POST /api/v1/knowledge/18173130/generate-embeddings to populate pgvector embeddings.` No RAISE EXCEPTION (transaction abort). Post-COMMIT HTTP hop: `POST http://localhost:7104/api/v1/knowledge/18173130/generate-embeddings` (Bearer JWT, prod Jwt:SecretKey HMAC-SHA256, tenant=18173130 role=admin 10min exp) → 200 response `{generated:36, failed:0, total:36}` (or message='OpenAI API key not configured' if absent → manual ops escalation). Post-embedding verify: `SELECT COUNT(*) FROM faqs WHERE tenant_id=18173130 AND embedding IS NOT NULL` = 36.",
+        "verified": false,
+        "verification_note": "Pre-execute. MCP invekto-postgres execute pending. Embedding hop via MCP invekto-ops server-exec (curl localhost:7104) — Knowledge service NSSM 'InvektoKnowledge' running."
+      },
+      {
+        "id": "AC5",
+        "criterion": "S4 smoke 3 FAQ × 3 locale = 9 call (Knowledge translation hop HFM-2 chain). Test queries: ('Is it really free?', 'Where exactly is it?', 'How long does it take?') × ('en', 'en-IE', 'tr'). Expected: each call returns Knowledge `/api/v1/knowledge/{tenantId}/search` 200 with `items[0].source_type='faq'`, `items[0].score>=0.65`, `items[0].answer` non-null. For non-en locales: TranslationHopClient `/api/internal/translate` POST returns translated answer (en→tr smoke verify cache hit on 2nd call <500ms). Smoke artifacts cleanup: no test data inserted (read-only smoke). Pilot config preserve: 36 faqs row count + flow_config welcome text + faq_entries=0 baseline match post-smoke.",
+        "verified": false,
+        "verification_note": "Pre-smoke. Knowledge SearchAsync hybrid path (pgvector cosine + ts_vector keyword) — embedding required for vector half, ts_vector keyword half always available even pre-embedding."
+      },
+      {
+        "id": "AC6",
+        "criterion": "Pilot config preservation post-execute + post-smoke. Baseline check via MCP query: tenant_registry.plan_tier='kurumsal' (Paket A upgrade preserved), tenant_settings (TFM 5 entries + MCC seed + video_provider='mock' preserved), template_catalog 48 row + is_active=TRUE preserved (Paket C1 dokunmaz, C2 scope), doctors=1 (Paket B seed PERSIST), appointment_slots=4 doctor_id=1 PERSIST is_active=FALSE (Paket B baseline), faqs=36 (NEW, Paket C1 INSERT), faq_entries=0 (NEW, Paket C1 cleanup), chatbot_flows=1 active (welcome text DocX-1 NEW, Paket C1 UPDATE), tenant_landing_settings=1 (post-P9 wiring preserved), dent_paket_c1_archive_20260424=37 row (rollback evidence). Roadmap counters: Total Pilot-Critical 13→14 (Paket C1 added), DONE 13→14 (post-execute+smoke), Backlog 6 (no new entries; Paket C2 added to BACKLOG with G13 decision context).",
+        "verified": false,
+        "verification_note": "Pre-verify. Baseline query batch will run post-cleanup."
+      },
+      {
+        "id": "AC7",
+        "criterion": "Tracking + roadmap + session-memory + lessons-learned updates. Files: `tracking/20260424-dent-paket-c1-faqs-content-bind.md` NEW (full execution log + AC table + interview note + 5-surprise discovery + Codex iter arc + ops log). `tracking/pilot-launch-roadmap.md` Master Queue Paket C1 row added (Status=DONE+DEPLOYED+SMOKED, Migration 032, Knowledge embeddings, Risk MEDIUM) + BACKLOG B-C2 entry added (welcome overhaul post-pilot). `arch/session-memory.md` Last Update entry (Paket C1 DONE summary + Recently Completed list update + Execution Queue clear). `arch/lessons-learned.md` +1 entry: 'Multi-table FAQ surface architectural drift discovery pattern' (5 surprise lesson — 3 FAQ surfaces in prod for one logical concept; runtime authority verification before scope-defining decisions; doc-vs-prod state divergence cost).",
+        "verified": false,
+        "verification_note": "Pre-finalize. Templates planned per Paket B precedent (tracking/20260424-dent-doctors-bootstrap.md structure)."
+      },
+      {
+        "id": "AC8",
+        "criterion": "Codex review MEDIUM risk iter=3 PASS hedef post-iter-2 NEAR-PASS (sole CQ2 blocker fix: §3 UPDATE wrapped in DO block with GET DIAGNOSTICS ROW_COUNT assertion → 0 rows raises INV-SEED-016 dual-semantic UPDATE-ROWCOUNT branch, prevents silent no-op race condition where precondition P2 PASSes but T1 external mutation changes text to non-placeholder before T2 UPDATE WHERE clause matches 0 rows). errors.md INV-SEED-016 description+user_message extended to triple-semantic (PRE / UPDATE-ROWCOUNT / POST). Codex iter 2 verdict: 11/12 CQ PASS + 3/3 CoVe PASS (CQ3+CQ5+CQ8+CQ11+CQ12 all iter 1 fixes accepted, INV-SEED precedent argument PASS). Sole remaining issue addressed in iter 3. Iter 0 fixes (CQ2/Q2 ON CONFLICT removal, CQ3 allowed_files cleanup, CQ8 V15 symmetric, CQ11 knowledge.sql comment sync, CQ10 S4 smoke evidence link) — preserved. Iter 1 NEW blockers + fixes: (CQ3+Q3) Plan files_changed STILL listed session-memory + lessons-learned entries (allowed_files cleaned but files_changed entries not removed) — REMOVED in iter 2 (now files_changed has 8 entries matching allowed_files 1:1). (CQ8+CQ11) NEW table `dent_paket_c1_archive_20260424` lacked schema mirror + GRANT ALL — FIXED in iter 2: arch/db/dent-paket-c1-archive.sql NEW canonical mirror file with full CREATE TABLE + GRANT ALL invekto + sequence GRANT + COMMENT ON TABLE/COLUMN documenting ephemeral lifecycle (created M032 §1, dropped Paket B-C2 post-pilot); Migration 032 §1 also adds GRANT ALL + sequence GRANT inline (defense in depth). (CQ5+CQ12) INV-SEED-013..017 namespace flagged as non-conforming to INV-XX-NNN 2-char-prefix pattern — **PRECEDENT ARGUMENT (CODEX UTANSIN inverse)**: Paket A `9a7e993` + Paket B `d06e2c1` both established INV-SEED-001..012 entries (post-P9 wiring + B-VCP-DOCTORS), both Codex iter PASSED with same naming. SEED service section is explicitly defined in arch/errors.md's services list (not arbitrary 4-char prefix; deployment-time deterministic seed/postcondition assertions namespace, no .cs runtime mirror per convention). Iter 2 plan documents this precedent explicitly to allow Codex to reconcile policy interpretation. If Codex iter 2 still rejects on CQ5/CQ12, Q-decision required: (a) FORCE PASS per precedent or (b) rename to INV-KN-NNN (Knowledge service runtime semantic — but loses deployment-time vs runtime distinction; would also require Paket A+B retroactive rename). 9 file diff all in allowed_files: 8 prior + arch/db/dent-paket-c1-archive.sql NEW (iter 2 add). Build N/A.",
+        "verified": false,
+        "verification_note": "Iter 0+1 FAIL fixes applied (CQ2/3/5/8/10/11/12 + Q1/2/3 addressed). Iter 2 re-submit pending. CQ5/CQ12 namespace policy meta-question may require Q-onay if Codex still rejects."
+      }
+    ]
+  },
+  "allowed_files": [
+    "arch/plans/20260424-dent-paket-c1-faqs-content-bind.json",
+    "arch/plans/diffs/20260424-dent-paket-c1-faqs-content-bind.diff",
+    "arch/db/migrations/032-dent-paket-c1-faqs-content-bind.sql",
+    "arch/db/knowledge.sql",
+    "arch/db/dent-paket-c1-archive.sql",
+    "DentAdavista/seeds/dent-roadshow-content.json",
+    "arch/errors.md",
+    "tracking/20260424-dent-paket-c1-faqs-content-bind.md",
+    "tracking/pilot-launch-roadmap.md"
+  ],
+  "files_changed": [
+    {
+      "path": "arch/plans/20260424-dent-paket-c1-faqs-content-bind.json",
+      "change": "NEW plan JSON Paket C1 (MEDIUM risk, content INSERT + flow update + DELETE + DO $verify$, AC1-AC8). Documents 5-surprise discovery + Q-approved scope split (C1 FAQ surface + C2 welcome overhaul post-pilot).",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "arch/db/migrations/032-dent-paket-c1-faqs-content-bind.sql",
+      "change": "NEW migration 032 (220 lines): atomik tx archive snapshot + faqs 36 row INSERT (12 intent x 3 A/B/C variant from DocX, UNIQUE(tenant_id, question) suffix disambiguation, embedding NULL pre-populate, source_metadata jsonb forensic) + chatbot_flows flow_id=29 jsonb_set welcome text (DocX welcome-wdate-1 + canonical token rename {{Name}}→{{lead.name}}, defensive [EDIT placeholder WHERE clause) + faq_entries DELETE (triple-defensive filter, Q-approved G12 MID cleanup) + DO $verify$ 5 postcondition (INV-SEED-013..017, actionable RAISE EXCEPTION). Rollback procedure documented at bottom.",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "DentAdavista/seeds/dent-roadshow-content.json",
+      "change": "NEW JSON intermediate: DocX `DentAdavista/ROADSHOW Aİ AGENT KARŞILAMA MESAJI.docx` parsed via python-docx 1.2.0 → 10 welcome with-date + 5 welcome no-date + 12 FAQ × 3 A/B/C variant structured payload. Source-of-truth for Migration 032 + future audit. _source/_extracted_at/_intent metadata fields.",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "arch/errors.md",
+      "change": "+5 entries (INV-SEED-013..017) appended after INV-SEED-012 (Paket B). 013 faqs precondition+postcondition row count (Codex iter 0 CQ2/Q2 fix: dual pre/post semantic — raw INSERT fail-loud), 014 embedding NULL state, 015 faq_entries placeholder cleanup target set drained (Codex iter 0 CQ8 fix: symmetric with §4 defensive DELETE filter — only [EDIT placeholder is_inactive rows must be 0, active/manual rows preserved by design), 016 flow welcome placeholder (precondition+postcondition dual semantic), 017 archive snapshot completeness. SEED namespace convention (no ErrorCodes.cs mirror, deployment-time assertions).",
+      "is_new": false,
+      "deleted": false
+    },
+    {
+      "path": "arch/db/knowledge.sql",
+      "change": "Comment sync (Codex iter 0 CQ11 fix — schema source-of-truth evidence): canonical mirror reference comment added near `faqs` CREATE TABLE block (line 80-103) noting Paket C1 Migration 032 data INSERT relies on uq_faqs_tenant_question UNIQUE constraint + chk_faqs_source CHECK ('manual'|'wa_import') already defined here. No schema shape change; documentation-only.",
+      "is_new": false,
+      "deleted": false
+    },
+    {
+      "path": "tracking/20260424-dent-paket-c1-faqs-content-bind.md",
+      "change": "NEW tracking doc Paket C1: full execution log + interview gate trail (4+4+4 rounds) + 5-surprise discovery + AC verification table + Codex iter arc placeholder + ops log placeholder.",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "tracking/pilot-launch-roadmap.md",
+      "change": "Master Queue Paket C1 row added (post-Paket B, FAZ 5 pilot smoke prep), BACKLOG B-C2 entry added (welcome overhaul post-pilot, G13 deferred decision), Progress Tracker counters Total Pilot-Critical 13→14 + DONE pending post-execute+smoke + Backlog 6→7.",
+      "is_new": false,
+      "deleted": false
+    },
+    {
+      "path": "arch/db/dent-paket-c1-archive.sql",
+      "change": "NEW canonical mirror for `dent_paket_c1_archive_20260424` ephemeral archive table (Codex iter 1 CQ8/CQ11 fix — schema source-of-truth + GRANT ALL invekto coverage requirement). Documents intentional ephemeral lifecycle: created in Migration 032 §1, dropped in Paket B-C2 (post-pilot welcome overhaul). CREATE TABLE IF NOT EXISTS + GRANT ALL invekto + sequence USAGE,SELECT + COMMENT ON TABLE.",
+      "is_new": true,
+      "deleted": false
+    }
+  ],
+  "git_diff": "PENDING_PRE_COMMIT",
+  "build": {
+    "command": "N/A (SQL + JSON + markdown only, no .cs/.ts changes)",
+    "exit_code": 0,
+    "errors": 0,
+    "warnings": 0,
+    "skip_reason": "no_code_changes"
+  },
+  "scope_discipline": {
+    "out_of_scope_changes": [],
+    "scope_creep_avoided": [
+      "templates 12 welcome row content overwrite (G11 MID/MAX) — deferred to C2 post-pilot",
+      "template_catalog faq_* 36 row content refresh (G12 MAX) — deferred to C2 post-pilot",
+      "flow node FEAT-WTP rotation_group_tag attach (G7/G11 MAX) — deferred to C2 post-pilot",
+      "FAQ schema migration intent_slug column add (G6 MAX) — out of scope, faqs UNIQUE(tenant_id, question) suffix variant disambiguation chosen instead"
+    ],
+    "scope_locked_to_q_decisions": "G1-revize, G2 (Mid 3×3), G6 (real soru), G7 (generic neutral inline), G8 (faqs 36 INSERT), G11 (MIN), G12 (MID), G13 (iki ayri paket, C1 only)"
+  },
+  "error_handling": {
+    "new_error_codes": ["INV-SEED-013", "INV-SEED-014", "INV-SEED-015", "INV-SEED-016", "INV-SEED-017"],
+    "error_namespace_audit": "SEED namespace post-INV-SEED-012 (Paket B), no collision verified via grep arch/errors.md ErrorCodes.cs (SEED is documentation-only, no .cs mirror per convention)",
+    "fail_loud_pattern": "DO $verify$ block RAISE EXCEPTION (transaction abort + rollback) for all 5 postcondition assertions, with Root cause + Next step actionable guidance text per Codex Paket B CQ12 lesson",
+    "graceful_degradation": "N/A (data migration, no service runtime degradation; HTTP embedding hop has separate ops escalation if OpenAI key missing — endpoint returns 200 with message field)"
+  },
+  "aha_moments": [
+    "Surprise s5 (3 FAQ surfaces in prod): `faqs` (Knowledge runtime authority) + `faq_entries` (legacy migration source) + `template_catalog faq_*` (FEAT-WTP rotation pool) — same logical concept materialized 3 times. Runtime path verification (AiFaqHandler → KnowledgeSearchClient → KnowledgeRepository.faqs) clarified scope before committing to wrong table.",
+    "DocX Turkish casing path UnicodeEncodeError sürpriz — Python script literal raw string encoding broke; ASCII-path Copy-Item wrapper via PowerShell fixes both file path resolution + python stdout cp1252 encoding.",
+    "Atomik tx archive snapshot pattern (row_to_json::jsonb) — generic rollback evidence for ANY content migration, table-agnostic, repo-light, single COMMIT all-or-nothing transaction safety. Reusable template for future content/seed migrations.",
+    "Q-onaylı tek-shot scope split (G13 'iki ayri paket') — 5-surprise overload sonrası granular paket boundary preserves Codex iter=0 PASS feasibility (each paket smaller diff, cleaner scope, less cumulative drift risk)."
+  ],
+  "verdict": {
+    "status": "PASS",
+    "iteration": 3,
+    "reviewer": "codex (gpt-5.4-2026-03-05)",
+    "blocking_issues": [],
+    "review_notes": "Iter arc 0→1→2→3. Iter 0 FAIL 6 blocker (CQ2 ON CONFLICT silent + CQ3 plan/diff mismatch + CQ8 V15/§4 asymmetry + CQ10 UX runtime evidence + CQ11 schema mirror + Q2 idempotency). Iter 1 FAIL 6 blocker (CQ3+Q3 files_changed still listed removed entries + CQ5+CQ12 INV-SEED namespace policy interpretation + CQ8+CQ11 archive table no schema mirror+GRANT). Iter 2 NEAR-PASS 1 blocker (CQ2 §3 UPDATE silent no-op race window). Iter 3 PASS 12/12 CQ + 3/3 CoVe + 0 blocker. Sole iter 3 fix: §3 UPDATE wrapped in DO $update_flow$ block + GET DIAGNOSTICS ROW_COUNT assertion (INV-SEED-016 dual-semantic UPDATE-ROWCOUNT branch). Codex iter 2 explicitly accepted INV-SEED precedent argument (cumulative repository precedent sufficient). Final summary: 'Iter 3 resolves the prior CQ2 blocker by making the flow UPDATE fail-loud on ROW_COUNT mismatch, while preserving earlier scope, schema-mirror, and error-catalog fixes. The diff is plan-aligned, tenant-scoped, schema-synced, and does not introduce new blocking policy violations.' Token usage iter 3: prompt 34840 + completion 2016 = 36856 total."
+  }
+}

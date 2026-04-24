@@ -1398,6 +1398,21 @@ errors:
   - code: INV-SEED-012
     description: GRANT ALL invekto privilege postcondition failure on doctors (expected INSERT grant for invekto role, prod role grant drift)
     user_message: Doctors seed doğrulaması başarısız — invekto role'a GRANT ALL uygulanmamış, runtime INSERT/UPDATE permission denied riski.
+  - code: INV-SEED-013
+    description: Dent paket C1 faqs precondition/postcondition row count failure (PRE: expected 0 pre-existing rows for tenant_id=18173130 — duplicate run/race/manual seed implies state divergence; POST: expected 36 rows = 12 intent x 3 A/B/C variant from DocX content bind, raw INSERT means UNIQUE violation aborts tx fail-loud)
+    user_message: Paket C1 faqs content bind doğrulaması başarısız — Dent için beklenmeyen pre-existing FAQ satırı (precondition) veya 36 INSERT eksik (postcondition); raw INSERT pattern UNIQUE çakışmasını fail-loud aborts.
+  - code: INV-SEED-014
+    description: Dent paket C1 faqs embedding state postcondition failure (expected 36 NULL embeddings post-INSERT, will be populated by POST /api/v1/knowledge/{tenantId}/generate-embeddings; pre-existing rows with embeddings indicate UNIQUE conflict skipped INSERT step)
+    user_message: Paket C1 faqs embedding state doğrulaması başarısız — embedding kolonu beklenmeyen şekilde dolu, pre-existing FAQ rows mevcut olabilir.
+  - code: INV-SEED-015
+    description: Dent paket C1 faq_entries placeholder cleanup target set incomplete (expected 0 rows matching DELETE filter post-execute = `tenant_id=18173130 AND is_active=FALSE AND answer LIKE '%[EDIT%'`; symmetric assertion with §4 defensive DELETE filter — active/manual rows are intentionally preserved by Q-approved G12 MID scope; failure implies DELETE statement did not drain target set)
+    user_message: Paket C1 faq_entries placeholder cleanup hedef seti boşalmadı — DELETE statement başarısız (lock contention, race re-insert?), aktif/manuel rows korunur ama placeholder rows silinmeli.
+  - code: INV-SEED-016
+    description: Dent paket C1 chatbot_flows welcome node placeholder precondition/UPDATE-rowcount/postcondition failure (PRE: flow_id=29 row missing OR nodes[1].data.text NOT containing '[EDIT' implies duplicate run/external update; UPDATE-ROWCOUNT: GET DIAGNOSTICS row_count != 1 means race condition between precondition check and UPDATE WHERE clause filter — text changed externally to non-placeholder value, UPDATE matched 0 rows silent no-op; POST: text still contains '[EDIT:' marker after UPDATE means jsonb_set path mismatch or WHERE clause excluded row)
+    user_message: Paket C1 flow welcome node doğrulaması başarısız — flow_id=29 row eksik veya placeholder durumu beklenmiyor (precondition), UPDATE 0 row matched (race condition silent no-op), ya da UPDATE atlandı (postcondition).
+  - code: INV-SEED-017
+    description: Dent paket C1 archive snapshot postcondition failure (expected >=37 rows in dent_paket_c1_archive_20260424 = 36 faq_entries + 1 chatbot_flows; rollback evidence insufficient before COMMIT)
+    user_message: Paket C1 archive snapshot doğrulaması başarısız — pre-state snapshot eksik, rollback evidence yetersiz, COMMIT öncesi durum güvenli değil.
 
 ```
 

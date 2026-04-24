@@ -1,0 +1,192 @@
+{
+  "_source": "DentAdavista/ROADSHOW Ai AGENT KARSILAMA MESAJI.docx (parsed via python-docx 1.2.0)",
+  "_extracted_at": "2026-04-24",
+  "_intent": "Paket C content bind: 36 FAQ (12 intent x 3 variant) + 15 welcome variants (10 with-date + 5 no-date) source-of-truth.",
+  "welcomes_with_date_10": [
+    "Hi {{Name}} 😊 How are you?\nI’m Güneş from Dent Adavista Dental Clinic (Kuşadası). We’re hosting a free 1-to-1 dental Roadshow with our founder dentist Dr. Özge Yılmazoğlu — Dublin (14 March) and Cork (15 March).\nWould you like me to save you a free spot? Dublin or Cork?",
+    "Hi {{Name}}! 👋 How are you?\nThis is Güneş from Dent Adavista Dental Clinic. Thank you for filling out our form.\nWe’ll be in Dublin on 14 March and Cork on 15 March for a free face-to-face consultation Roadshow with Dr. Özge Yılmazoğlu.\nWhich city works best for you — Dublin or Cork?",
+    "Hello {{Name}} 🌿 How are you doing today?\nI’m Güneş from Dent Adavista Dental Clinic. We’re coming to Ireland for our FREE Roadshow: Dublin (14 March) & Cork (15 March).\nYou can come alone or bring a friend/family member — totally free.\nWould you like to join? If yes, which day should I book for you?",
+    "Hi {{Name}} 😊 How are you?\nGüneş here from Dent Adavista Dental Clinic. We’re meeting patients in person in Ireland for a free dental Q&A + check with our founder dentist Dr. Özge Yılmazoğlu.\nDublin 14 March / Cork 15 March.\nWould you like the exact hotel details & time for Dublin or Cork?",
+    "Hey {{Name}}! 👋 Hope you’re well.\nThis is Güneş from Dent Adavista. We’re doing a free 1-to-1 Roadshow in Ireland: Dublin (14 March) and Cork (15 March).\nIf you’re curious about dental treatment in Turkey, you can ask everything directly to our dentist.\nShall I reserve a free appointment for you? Dublin or Cork?",
+    "Hi {{Name}} 💛 How are you today?\nI’m Güneş from Dent Adavista Dental Clinic. We’ll be in Dublin (14 March) and Cork (15 March) for our FREE dental Roadshow with Dr. Özge Yılmazoğlu.\nDo you want to attend — and if yes, which city suits you?",
+    "Hello {{Name}} 🙂 How are you?\nThank you for your interest! I’m Güneş from Dent Adavista Dental Clinic.\nWe’re hosting a free in-person Roadshow in Ireland: Dublin 14 March & Cork 15 March.\nWould you like to come yourself, or would you like to bring someone with you as well? (Both free.)",
+    "Hi {{Name}} 👋 How are you?\nGüneş from Dent Adavista Dental Clinic here. Our founder dentist Dr. Özge Yılmazoğlu is coming to Ireland for a FREE face-to-face Roadshow:\n📍 Dublin — 14 March\n📍 Cork — 15 March\nWould you like me to send the available time slots for Dublin or Cork?",
+    "Hello {{Name}} 😊 Hope you’re doing well.\nI’m Güneş from Dent Adavista. We’re meeting people in Ireland for a free dental consultation Roadshow (no cost, no obligation).\nDublin 14 March / Cork 15 March.\nAre you interested in joining? If yes, which date should I put you down for?",
+    "Hi {{Name}} 🌸 How are you?\nThis is Güneş from Dent Adavista Dental Clinic. We’ll be in Ireland for a FREE Roadshow with our dentist Dr. Özge Yılmazoğlu — Dublin (14 March) and Cork (15 March).\nWould you like to attend? Just reply with “Dublin” or “Cork” and I’ll arrange it for you."
+  ],
+  "welcomes_no_date_5": [
+    "Hi {{Name}} 😊 How are you?\nThis is Güneş from Dent Adavista Dental Clinic.\nThank you for registering for our Dental Roadshow in Ireland with our founder dentist Dr. Özge Yılmazoğlu.\nWe’re now organising the schedule — will you be attending in Dublin or Cork?",
+    "Hello {{Name}} 👋 Hope you’re well.\nGüneş here from Dent Adavista Dental Clinic.\nI’m confirming your attendance for our upcoming Dental Roadshow in Ireland.\nCould you please let me know which city suits you best — Dublin or Cork?",
+    "Hi {{Name}} 🌿 How are you doing today?\nThis is Güneş from Dent Adavista Dental Clinic (Kuşadası, Turkey).\nThank you for signing up for our Dental Roadshow in Ireland.\nI’m arranging your visit with Dr. Özge Yılmazoğlu — should I schedule you for Dublin or Cork?",
+    "Hey {{Name}} 🙂\nGüneş from Dent Adavista Dental Clinic here.\nWe’re finalising the guest list for our Ireland Dental Roadshow.\nPlease confirm — Dublin or Cork?",
+    "Hi {{Name}} 💛 How are you?\nThis is Güneş from Dent Adavista Dental Clinic.\nI’m coordinating your appointment for our Dental Roadshow in Ireland with Dr. Özge Yılmazoğlu.\nWhich location should I reserve for you — Dublin or Cork?"
+  ],
+  "faqs_12x3": [
+    {
+      "intent_slug": "is_it_free",
+      "question_real": "Is it really free?",
+      "keywords": [
+        "free",
+        "cost",
+        "pay",
+        "charge"
+      ],
+      "variants": {
+        "A": "Yes, it really is free. We genuinely believe that anyone considering dental treatment abroad should have the chance to understand the process clearly before making a decision. That’s exactly why we organise these Roadshows — so you can meet our dentist, ask everything openly, and leave with clarity. There’s no fee and no obligation.",
+        "B": "Yes, there’s absolutely no charge to attend. The consultation is free, and you’re not committing to anything. It’s simply an opportunity to get honest, professional information face to face.",
+        "C": "Yes, it’s completely free to attend. You can ask all your questions, discuss your situation, and receive guidance without paying anything."
+      }
+    },
+    {
+      "intent_slug": "location_where",
+      "question_real": "Where exactly is it?",
+      "keywords": [
+        "where",
+        "address",
+        "hotel"
+      ],
+      "variants": {
+        "A": "It will take place in a hotel meeting room in the city centre. Once I confirm your attendance, I’ll send you the full address, time, and location link.",
+        "B": "We’re hosting it in a central hotel venue for private one-to-one meetings. As soon as your slot is confirmed, I’ll share the exact location details with you.",
+        "C": "It’s being held in a hotel conference room so we can meet comfortably and privately. I’ll send you the full details right after we schedule your time."
+      }
+    },
+    {
+      "intent_slug": "what_happens",
+      "question_real": "What happens there?",
+      "keywords": [
+        "what happens",
+        "agenda"
+      ],
+      "variants": {
+        "A": "You’ll meet Dr. Özge Yılmazoğlu face to face. If you have an X-ray, you can bring it and review it together. You’ll talk through possible treatment options, timelines, travel arrangements, aftercare — everything from A to Z. It’s really about making sure you fully understand the journey before deciding anything.",
+        "B": "Think of it as a clarity meeting. We’ll look at your current situation, discuss what might be suitable for you, and explain the full treatment process in Turkey — including how many days you’d need, how it works step by step, and what happens afterwards.",
+        "C": "It’s a private one-to-one conversation with the dentist. If you have reports or X-rays, we’ll review them. Then you’ll receive a clear explanation of the treatment approach, the process, and what to expect — so there are no surprises later."
+      }
+    },
+    {
+      "intent_slug": "any_treatment",
+      "question_real": "Will any treatment be done there?",
+      "keywords": [
+        "treatment there",
+        "procedure"
+      ],
+      "variants": {
+        "A": "No treatment will be carried out during the Roadshow 🙂 It’s purely a consultation and planning session, so you can make an informed decision before travelling.",
+        "B": "No procedures take place there. It’s just an in-person discussion and evaluation to understand your options clearly.",
+        "C": "Nothing clinical will be done at the event. It’s simply a chance to meet the dentist and plan properly. Any treatment would take place later at our clinic in Turkey."
+      }
+    },
+    {
+      "intent_slug": "payment_after",
+      "question_real": "Do I need to pay anything after?",
+      "keywords": [
+        "obligation",
+        "commit",
+        "after"
+      ],
+      "variants": {
+        "A": "No, there’s no obligation at all. After the Roadshow, you’ll have all the information you need — and then the decision is entirely yours. We only move forward if you feel comfortable.",
+        "B": "You’re not required to commit to anything. The purpose is to give you clarity, not pressure.",
+        "C": "No payment is required unless you decide to proceed with treatment later on. And that choice is completely up to you."
+      }
+    },
+    {
+      "intent_slug": "bring_xray",
+      "question_real": "Should I bring my X-ray?",
+      "keywords": [
+        "xray",
+        "x-ray",
+        "scan"
+      ],
+      "variants": {
+        "A": "If you have a recent X-ray, that’s very helpful — it allows the dentist to give more detailed guidance. But if you don’t have one, that’s absolutely fine too.",
+        "B": "Yes, please bring it if you have one. If not, don’t worry — we can still have a very useful discussion.",
+        "C": "An X-ray helps us be more precise, but it’s not mandatory. You’re welcome either way."
+      }
+    },
+    {
+      "intent_slug": "bring_companion",
+      "question_real": "Can I bring someone with me?",
+      "keywords": [
+        "friend",
+        "family",
+        "bring"
+      ],
+      "variants": {
+        "A": "Of course — you’re very welcome to bring a family member or a friend. Many people do, and it’s completely free for them as well.",
+        "B": "Yes, absolutely. If it makes you feel more comfortable, please bring someone along.",
+        "C": "You can definitely bring someone with you. We’re happy to answer their questions too."
+      }
+    },
+    {
+      "intent_slug": "duration",
+      "question_real": "How long does it take?",
+      "keywords": [
+        "how long",
+        "time",
+        "minutes"
+      ],
+      "variants": {
+        "A": "Appointments usually take around 20–30 minutes. If you have more questions, we can take a little longer — we won’t rush you.",
+        "B": "Around half an hour on average, depending on how detailed the discussion is.",
+        "C": "It’s typically 20–30 minutes, but we adjust based on your needs."
+      }
+    },
+    {
+      "intent_slug": "why_ireland",
+      "question_real": "Why are you doing this in Ireland?",
+      "keywords": [
+        "why ireland",
+        "why here"
+      ],
+      "variants": {
+        "A": "That’s a very fair question. We’ve treated many patients from Ireland over the years, and we’ve learned that people really value meeting the dentist before travelling. We believe important health decisions should start with trust and clarity — that’s why we come to meet you in person.",
+        "B": "We know travelling abroad for treatment comes with questions. Instead of asking you to decide from a distance, we prefer to meet face to face and answer everything properly.",
+        "C": "Ireland has been one of the countries where many of our patients come from. Hosting a Roadshow allows us to connect directly, answer concerns honestly, and build confidence before any travel happens."
+      }
+    },
+    {
+      "intent_slug": "price_quote",
+      "question_real": "How much is this treatment?",
+      "keywords": [
+        "price",
+        "how much",
+        "cost of"
+      ],
+      "variants": {
+        "A": "The cost depends on your specific case — the number of teeth involved, the type of treatment, materials used, and your overall oral condition. That’s why we prefer to evaluate properly first, so we can give you accurate information instead of guessing.",
+        "B": "I completely understand wanting to know the price. The exact cost becomes clear once the dentist reviews your situation and outlines the treatment plan. That way, everything is transparent and tailored to you.",
+        "C": "Because every case is different, we avoid giving random estimates. During the Roadshow, once we understand your needs, we can explain the pricing structure clearly."
+      }
+    },
+    {
+      "intent_slug": "safety_concern",
+      "question_real": "Is treatment in Turkey safe?",
+      "keywords": [
+        "safe",
+        "trust",
+        "legit"
+      ],
+      "variants": {
+        "A": "That’s a very reasonable question. Healthcare decisions should never feel rushed or uncertain. Dent Adavista Dental Clinic is fully licensed, experienced in treating international patients, and led by Dr. Özge Yılmazoğlu. I’m happy to share our official pages so you can review our work and patient feedback: website https://dentadavista.com/ and Instagram https://www.instagram.com/dentadavistaclinic/ (Facebook: https://www.facebook.com/profile.php?id=61554804412823). And please feel free to ask anything openly.",
+        "B": "Your concern makes sense. Travelling for treatment is a big decision. We operate under strict medical standards and focus strongly on patient safety and long-term results. If you’d like, you can check our official pages: https://dentadavista.com/ and https://www.instagram.com/dentadavistaclinic/ (Facebook: https://www.facebook.com/profile.php?id=61554804412823).",
+        "C": "It’s good that you’re asking this. We always encourage patients to research properly. I can share our clinic details and official channels so you can feel confident: https://dentadavista.com/ and https://www.instagram.com/dentadavistaclinic/ (Facebook: https://www.facebook.com/profile.php?id=61554804412823). If you have any questions, you can also reach us on +90 545 343 09 09."
+      }
+    },
+    {
+      "intent_slug": "hotel_transfers",
+      "question_real": "Do you organise hotel and transfers?",
+      "keywords": [
+        "hotel",
+        "transfer",
+        "flight"
+      ],
+      "variants": {
+        "A": "If you’d like, we can guide you through the whole process — from airport transfers to accommodation options. Some patients prefer to organise everything themselves, others prefer support. We’re flexible. If you want, you can also reach us on +90 545 343 09 09.",
+        "B": "Yes, we assist with planning if needed. During the Roadshow, we explain how the travel and clinic schedule works step by step.",
+        "C": "We’re happy to help coordinate the process so it feels smooth and stress-free. You can choose the level of support you prefer."
+      }
+    }
+  ]
+}
