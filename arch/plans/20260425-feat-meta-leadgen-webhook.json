@@ -1,0 +1,444 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260425-feat-meta-leadgen-webhook",
+  "risk": "MEDIUM",
+  "status": "PLANNING",
+  "created_at": "2026-04-24T17:45:00Z",
+  "updated_at": "2026-04-24T17:45:00Z",
+  "plan": {
+    "summary": "Meta Lead Ads native webhook entegrasyonu (Zapier/3rd-party bridge YOK). GET + POST /api/inbound/meta/leadgen/{tenantId:int} endpoint (Meta webhook verify handshake + signed payload ingress), X-Hub-Signature-256 HMAC-SHA256 constant-time validate (App Secret), Hangfire async job (queue=automation) MetaLeadgenIntakeJob → Graph API GET /{leadgen_id}?fields=field_data → canonical mapping (field_id_map JSONB) → LeadIntakeService.IntakeAsync hop (source_slug='meta-leadgen'). Migration 033: tenant_settings.meta_leadgen_config JSONB (plaintext LIW pattern: verify_token/app_secret/page_access_token/page_id/field_id_map) + NEW meta_leadgen_events table (tenant_id + leadgen_id + form_id + received_at + http_status + error_code + raw_payload JSONB + 7-day retention partial idx). Error codes INV-META-001..006 yeni namespace (signature/verify_token/graph_api/parse/tenant/access_token). ZohoLifecycleDispatcher.DispatchEvent(tenantId, leadId, zohoEvent) yeni metot (welcome_sent dahil 7 event whitelist); TriggerWelcomeFlowJob (Automation) terminal status success + messages.Count > 0 → Backend /api/internal/lifecycle/welcome-sent HTTP hop (cross-service via existing internal auth middleware pattern, MarketingFollowupClient precedent) → ZohoLifecycleDispatcher.DispatchEvent(welcome_sent). Dashboard SPA /settings/meta-leadgen sayfa (verify_token rotate + app_secret + page_access_token + page_id + field_id_map editor + [Keşfet: Form Fields] GET /api/v1/tenant-settings/meta-leadgen/discover-forms + [Test Events] GET /api/v1/tenant-settings/meta-leadgen/events?limit=5). Tek atomik paket (backend + migration + dispatch hook + SPA), Q override max_diff_lines=200 (tahmin ~760 line, pilot timeline 3 gün korunur).",
+    "q_intent": "Bölüm A'daki Meta Leadgen webhook micro-paketini /auto ile açıp kod faz'ına geç (2026-04-24 17:30 UTC). Q kararı: Zapier yerine native Invekto endpoint. DentAdavista/plan/pilot-stage1-prep.md Bölüm A scope.",
+    "interview_notes": "G1 (URL path param, AskUserQuestion 2026-04-24 17:35): tenant_id (int) — migration yok, signature verify asıl güvenlik (app_secret tenant-scoped). Alternatif tenant_slug yeni UNIQUE kolon gerektirir; opaque webhook_token rotate edilebilir ama reverse-lookup karmaşıklığı. Q: 'tenant_id (int, mevcut)'. G2 (welcome_sent dispatch kosul): messages.Count > 0 — literal 'mesaj atıldı' semantiği. error durumunda bile 1. mesaj gittiyse transition geçerli. finalStatus==completed aşırı muhafazakar, IsTerminal aşırı agresif. Q: 'messages.Count > 0 (önerilir)'. G3 (secret storage): Plaintext JSONB (LIW pattern) — DB-level access-controlled, LIW api_key precedent. Encrypt at rest yeni pattern, pilot timeline'a yersiz kompleksite. Q: 'Plaintext JSONB'. G4 (form discover backend pattern): Dedicated endpoint GET /api/v1/tenant-settings/meta-leadgen/discover-forms + GET /events — backend page_access_token attach, Graph API call, 10dk cache. Q: 'Dedicated endpoint (önerilir)'. G5 (migration scope): tenant_settings.meta_leadgen_config JSONB key + NEW meta_leadgen_events table (7-day retention). Persistent event log Test Webhook UI için şart. Q: 'meta_leadgen_events tablosu ekle'. G6 (queue): automation (mevcut) — TriggerWelcomeFlowJob ile aynı queue, Automation dinliyor. Backend.csproj zaten Automation ProjectReference (G7 pattern intact). Q: 'automation'. G7 (error prefix): INV-META-001..006 yeni namespace — INV-SEED precedent'i gibi yeni namespace Codex CQ11 PASS. INV-INT Zoho ile karışmasın. Q: 'INV-META-001..006 (yeni)'. G8 (SPA scope): Full SPA + backend + migration atomik — 1 paket 1 commit 1 Codex review, pilot 3 gün timeline korunur. max_diff_lines=200 aşılır, Q override kabul. Q: 'Tek paket (Q override, 760 line)'. G9 (AC1 revize): Commit-time verify için prod curl 3 test PASS (verify handshake + bozuk signature 401 + geçerli signed mock → 200 accepted + event row INSERT + Hangfire job enqueued). Müşteri HSM/Graph API dep pakete bağlı değil. Pilot Stage 1 smoke = AC1b (gerçek Meta form → WhatsApp delivered + zoho_sync_log welcome_sent success). G10 (AC2 revize): Unit test TriggerWelcomeFlowJob 2 scenario (success messages=2 → DispatchEvent called; error messages=0 → DispatchEvent NOT called). Stage 1 verify = AC2b (zoho_sync_log row welcome_sent success OR blueprint_not_configured). G11 (AC3): Q manuel 5-tik Dashboard smoke (login + rotate + app_secret gir + save 200 + discover INV-META-006 graceful + test empty list). G12 (cross-service dispatch hop pattern): Automation TriggerWelcomeFlowJob → Backend HTTP hop /api/internal/lifecycle/welcome-sent (internal auth middleware + body {tenantId,leadId}). MarketingFollowupClient precedent (Automation→Marketing HTTP hop LIW Chunk B'de çalışıyor). ZohoLifecycleDispatcher Backend'te kalır, cross-service erişilmez.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Prod curl 3 test PASS (commit-time verify): (a) GET /api/inbound/meta/leadgen/18173130?hub.mode=subscribe&hub.verify_token=<correct>&hub.challenge=test123 → 200 text/plain body 'test123' (verify handshake). (b) POST /api/inbound/meta/leadgen/18173130 header X-Hub-Signature-256=sha256=BOZUK_HEX body '{}' → 401 INV-META-001 signature_invalid (constant-time HMAC-SHA256 compare reject). (c) POST with valid HMAC signature (app_secret ile hesapla) body '{\"entry\":[{\"changes\":[{\"field\":\"leadgen\",\"value\":{\"leadgen_id\":\"FAKE123\",\"form_id\":\"F456\",\"page_id\":\"P789\",\"created_time\":1745500000}}]}]}' → 200 accepted + meta_leadgen_events row INSERT (http_status=200, error_code=null, raw_payload JSONB populated) + Hangfire job MetaLeadgenIntakeJob enqueued (automation queue). Graph API hop mock/fail-soft: leadgen_id fetch başarısız ise event row error_code=INV-META-003 yazılır (Meta'ya 200 zaten dönmüş).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC1b",
+        "criterion": "Pilot Stage 1 smoke (post-paket, HSM+Blueprint+Graph API müşteri hazırlığı sonrası): gerçek Meta test lead Form → Invekto webhook 200 → MetaLeadgenIntakeJob success → LeadIntakeService.IntakeAsync UPSERT lead → TriggerWelcomeFlowJob success messages>0 → outbound HSM WhatsApp delivered tick + zoho_sync_log welcome_sent row (status=success OR blueprint_not_configured — her iki durum dispatch attempted kanıtı). **Bu AC commit-time verify EDİLMEZ, Stage 1 smoke checklist maddesi.**",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC2",
+        "criterion": "TriggerWelcomeFlowJob unit test — 2 scenario PASS: (a) Success scenario: FlowEngineV2.ExecuteAsync result.Messages.Count=2 + IsTerminal=true + NeedsHandoff=false → ZohoLifecycleDispatcher (mock) DispatchEvent(tenantId, leadId, 'welcome_sent') 1x çağrıldı verify. (b) Error scenario: result.Messages.Count=0 + IsTerminal=true + ErrorCode!=null → DispatchEvent 0x çağrıldı verify. Test double (mock/fake ZohoLifecycleDispatcher) kullanılır — prod Zoho call yok. Test file: src/Invekto.Automation.Tests/Jobs/TriggerWelcomeFlowJobTests.cs (NEW veya mevcut dosyaya +2 test).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC2b",
+        "criterion": "Pilot Stage 1 smoke (post-paket): Dent test lead için zoho_sync_log tablosunda welcome_sent event row INSERT. status='success' (Blueprint kurulu + transition execute) VEYA status='failed' error_code='INV-INT-121' (Blueprint not configured — dispatch attempted kanıtı, müşteri side Blueprint eksikliği). Her iki case'de Backend dispatch hop çalıştı kanıtı. **Commit-time verify EDİLMEZ.**",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC3",
+        "criterion": "Q manuel 5-tik Dashboard smoke (commit-time verify): (1) login Dent tenant admin → /settings/meta-leadgen URL render (SPA chunk MetaLeadgenSettingsPage-*.js prod'da referenced from index-*.js). (2) [Rotate Verify Token] click → 32-char random token generate + state update + save hint görünür. (3) app_secret + page_access_token + page_id kutularına test değer yaz → [Kaydet] click → PUT /api/v1/tenant-settings/meta-leadgen → 200 + toast success. (4) [Keşfet: Form Fields] click → Graph API call fail (fake page_access_token) → INV-META-006 access_token_missing/invalid graceful error display (toast + inline hint). (5) [Test Events] panel → son 5 event boş liste render (henüz event yok, empty state message). Q screenshot veya console log kanıtı.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC4",
+        "criterion": "Build PASS: `powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"` → 0 errors, 0 warnings (yeni kod veya shared etki yok). SPA build: `npm run build` Dashboard dir → prod bundle produced (MetaLeadgenSettingsPage-*.js chunk + index-*.js reference).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC5",
+        "criterion": "Codex review MEDIUM risk iter=0 PASS hedef (CODEX UTANSIN). 12/12 CQ + 3/3 CoVe + 0 blocker. allowed_files dışı dosya yok. Cross-service hop pattern justification (Automation→Backend HTTP /api/internal/lifecycle/welcome-sent) MarketingFollowupClient precedent referansı ile açıklanır. Signature validate timing-safe (CryptographicOperations.FixedTimeEquals) kullanımı CQ2/CQ8 PASS. Secret logging guard: app_secret / page_access_token jsonl log'a düşmez (CQ9 privacy). Raw payload JSONB PII note (phone/email 7-day retention + tenant-scoped partial index DELETE job) CQ9 data protection.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC6",
+        "criterion": "Deploy scope: Backend + Automation NSSM restart (Backend: endpoint + dispatcher + SPA chunk, Automation: TriggerWelcomeFlowJob hook + MetaLeadgenIntakeJob). Migration 033 prod execute (MCP invekto-postgres) + DO $verify$ postcondition 3 assertion (INV-SEED-018..020): V1 meta_leadgen_events table_exists, V2 tenant_settings.meta_leadgen_config JSONB key addition (ALTER DDL success), V3 GRANT ALL invekto on meta_leadgen_events + sequence grant. Backend + Automation /health HEALTHY post-restart.",
+        "verified": false,
+        "verification_note": null
+      }
+    ]
+  },
+  "allowed_files": [
+    "arch/plans/20260425-feat-meta-leadgen-webhook.json",
+    "arch/plans/diffs/20260425-feat-meta-leadgen-webhook.diff",
+    "arch/db/migrations/033-meta-leadgen-webhook.sql",
+    "arch/db/tenant-settings.sql",
+    "arch/errors.md",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Shared/Contracts/MetaLeadgen/MetaLeadgenConfigDto.cs",
+    "src/Invekto.Shared/Contracts/MetaLeadgen/MetaLeadgenEventDto.cs",
+    "src/Invekto.Shared/Contracts/MetaLeadgen/MetaLeadgenDiscoverFormsResponse.cs",
+    "src/Invekto.Shared/Contracts/Lifecycle/WelcomeSentNotification.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Services/MetaLeadgen/MetaLeadgenEndpoints.cs",
+    "src/Invekto.Backend/Services/MetaLeadgen/MetaLeadgenWebhookService.cs",
+    "src/Invekto.Backend/Services/MetaLeadgen/MetaLeadgenSignatureValidator.cs",
+    "src/Invekto.Backend/Services/MetaLeadgen/MetaLeadgenConfigRepository.cs",
+    "src/Invekto.Backend/Services/MetaLeadgen/MetaLeadgenEventRepository.cs",
+    "src/Invekto.Backend/Services/MetaLeadgen/IMetaGraphApiClient.cs",
+    "src/Invekto.Backend/Services/MetaLeadgen/MetaGraphApiClient.cs",
+    "src/Invekto.Backend/Services/Zoho/ZohoLifecycleDispatcher.cs",
+    "src/Invekto.Backend/Services/Lifecycle/LifecycleInternalEndpoints.cs",
+    "src/Invekto.Automation/Services/Jobs/MetaLeadgenIntakeJob.cs",
+    "src/Invekto.Automation/Services/Jobs/TriggerWelcomeFlowJob.cs",
+    "src/Invekto.Automation/Services/Lifecycle/LifecycleBackendClient.cs",
+    "src/Invekto.Automation/Services/Lifecycle/ILifecycleBackendClient.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Automation.Tests/Jobs/TriggerWelcomeFlowJobTests.cs",
+    "src/Invekto.Backend/Dashboard/src/pages/settings/MetaLeadgenSettingsPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "tracking/20260425-feat-meta-leadgen-webhook.md",
+    "tracking/pilot-launch-roadmap.md",
+    "arch/session-memory.md",
+    "arch/lessons-learned.md"
+  ],
+  "files_changed": [
+    {
+      "path": "arch/plans/20260425-feat-meta-leadgen-webhook.json",
+      "change": "NEW plan JSON (MEDIUM risk, Meta Leadgen webhook native entegrasyon, AC1-AC6 + AC1b/AC2b Stage 1 smoke markers).",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "arch/db/migrations/033-meta-leadgen-webhook.sql",
+      "change": "NEW migration 033: (1) ALTER TABLE tenant_settings ADD COLUMN IF NOT EXISTS meta_leadgen_config JSONB DEFAULT '{}'::jsonb; (2) CREATE TABLE meta_leadgen_events (id BIGSERIAL PK + tenant_id INT FK tenant_registry CASCADE + leadgen_id VARCHAR(64) NOT NULL + form_id VARCHAR(64) + page_id VARCHAR(64) + received_at TIMESTAMPTZ DEFAULT now() + http_status SMALLINT + error_code VARCHAR(20) + raw_payload JSONB + lead_id INT NULL FK leads SET NULL); (3) partial index idx_meta_leadgen_events_tenant_recent ON meta_leadgen_events (tenant_id, received_at DESC) WHERE received_at > now() - INTERVAL '7 days'; (4) GRANT ALL invekto + sequence grant; (5) DO $verify$ block INV-SEED-018..020 postcondition (table_exists + JSONB column present + GRANT ok) with actionable RAISE EXCEPTION messages.",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "arch/db/tenant-settings.sql",
+      "change": "Canonical mirror: +meta_leadgen_config JSONB DEFAULT '{}' column documentation + example JSON shape (verify_token / app_secret / page_access_token / page_id / field_id_map object). Partial comment update for Meta Leadgen scope (schema source-of-truth drift guard).",
+      "is_new": false,
+      "deleted": false
+    },
+    {
+      "path": "arch/errors.md",
+      "change": "+6 INV-META-001..006 entries (yeni namespace, INV-SEED precedent'i gibi dedicated): INV-META-001 signature_invalid (401), INV-META-002 verify_token_mismatch (403), INV-META-003 graph_api_fetch_failed (502), INV-META-004 field_data_parse_failed (422), INV-META-005 tenant_unknown_or_inactive (404), INV-META-006 access_token_missing_or_expired (500). +3 INV-SEED-018..020 postcondition entries.",
+      "is_new": false,
+      "deleted": false
+    },
+    {
+      "path": "src/Invekto.Shared/Constants/ErrorCodes.cs",
+      "change": "+9 const string: MetaSignatureInvalid='INV-META-001', MetaVerifyTokenMismatch='INV-META-002', MetaGraphApiFetchFailed='INV-META-003', MetaFieldDataParseFailed='INV-META-004', MetaTenantUnknown='INV-META-005', MetaAccessTokenMissing='INV-META-006' + 3 INV-SEED (postcondition refs only).",
+      "is_new": false,
+      "deleted": false
+    },
+    {
+      "path": "src/Invekto.Shared/Contracts/MetaLeadgen/MetaLeadgenConfigDto.cs",
+      "change": "NEW DTO: MetaLeadgenConfigDto (public record, string? VerifyToken/AppSecret/PageAccessToken/PageId + Dictionary<string,string> FieldIdMap). Used for PUT /settings/meta-leadgen request + GET response. Secrets never logged (secret-scan hook guard).",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "src/Invekto.Shared/Contracts/MetaLeadgen/MetaLeadgenEventDto.cs",
+      "change": "NEW DTO: MetaLeadgenEventDto (id, leadgen_id, form_id, page_id, received_at, http_status, error_code, lead_id?, payload_keys[] for UI display without PII leak).",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "src/Invekto.Shared/Contracts/MetaLeadgen/MetaLeadgenDiscoverFormsResponse.cs",
+      "change": "NEW DTO: DiscoverFormsResponse ({ Forms: [ { id, name, questions: [ { id, label, type } ] } ] }). Frontend mapping dropdown populate kaynağı.",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "src/Invekto.Shared/Contracts/Lifecycle/WelcomeSentNotification.cs",
+      "change": "NEW DTO: WelcomeSentNotification (TenantId, LeadId, TriggeredAt). Automation → Backend /api/internal/lifecycle/welcome-sent body shape. Minimal: sadece dispatcher için gerekli field'lar.",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "src/Invekto.Backend/Program.cs",
+      "change": "(1) MapGet + MapPost /api/inbound/meta/leadgen/{tenantId:int} endpoint'leri MetaLeadgenEndpoints.Map extension'ına delegate. (2) /api/v1/tenant-settings/meta-leadgen GET/PUT + /discover-forms + /events endpoint'leri (admin JWT auth gated). (3) /api/internal/lifecycle/welcome-sent POST endpoint (IntakeInternalAuth middleware pattern, body → ZohoLifecycleDispatcher.DispatchEvent). (4) DI singleton + scoped registrations (MetaLeadgenWebhookService, SignatureValidator, ConfigRepository, EventRepository, MetaGraphApiClient + HttpClientFactory named 'meta-graph' base=https://graph.facebook.com/v21.0/). (5) ZohoLifecycleDispatcher intact — yeni endpoint dispatcher'a forward eder.",
+      "is_new": false,
+      "deleted": false
+    },
+    {
+      "path": "src/Invekto.Backend/Services/MetaLeadgen/MetaLeadgenEndpoints.cs",
+      "change": "NEW endpoint handler class (static Map extension). GET verify handshake (hub.mode=subscribe + hub.verify_token == config.verify_token → 200 text/plain hub.challenge body; mismatch → 403 INV-META-002; tenant unknown → 404 INV-META-005). POST webhook (signature validate → config load → event row INSERT placeholder → Hangfire enqueue MetaLeadgenIntakeJob → return 200 within 3s target). Meta-spec text/plain content for verify response. async/await, typed try-catch.",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "src/Invekto.Backend/Services/MetaLeadgen/MetaLeadgenWebhookService.cs",
+      "change": "NEW orchestrator: ProcessWebhookAsync(tenantId, rawBody, signatureHeader). Sequence: config load (404 if missing) → signature validate (SignatureValidator.Verify constant-time) → event row INSERT (meta_leadgen_events http_status=200 placeholder) → extract leadgen_id from payload → Hangfire Enqueue<MetaLeadgenIntakeJob>(tenantId, leadgenId, eventId, CancellationToken.None). Defensive: signature fail → event row http_status=401 + error_code=INV-META-001 INSERT (audit) + return fail. Meta at-least-once: same leadgen_id duplicate allowed — LeadIntakeService.UpsertIntakeLeadAsync already idempotent (phone-based).",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "src/Invekto.Backend/Services/MetaLeadgen/MetaLeadgenSignatureValidator.cs",
+      "change": "NEW service: Verify(string appSecret, byte[] rawBody, string? signatureHeader). HMACSHA256 compute → parse X-Hub-Signature-256 'sha256=<hex>' → **CryptographicOperations.FixedTimeEquals** constant-time compare. Missing/malformed header → false. No timing side-channel. Unit testable (IHmacComputer interface not needed — static method sufficient).",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "src/Invekto.Backend/Services/MetaLeadgen/MetaLeadgenConfigRepository.cs",
+      "change": "NEW repository: GetConfigAsync(tenantId) → MetaLeadgenConfigDto? (null if meta_leadgen_config jsonb empty/null). UpsertConfigAsync(tenantId, config) → jsonb_set upsert. Defensive: secrets JSON.Serialize için [JsonIgnore] değil — DTO'lardan log yazılmaz (logging guard service caller'da).",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "src/Invekto.Backend/Services/MetaLeadgen/MetaLeadgenEventRepository.cs",
+      "change": "NEW repository: InsertEventAsync(...) → BIGSERIAL id dön. ListRecentAsync(tenantId, limit=5) → MetaLeadgenEventDto[] (payload_keys only, raw_payload leak etmez). PurgeExpiredAsync() — Hangfire daily job için placeholder (bu pakette scheduled değil, schema retention partial index yeterli; purge job ayrı paket).",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "src/Invekto.Backend/Services/MetaLeadgen/IMetaGraphApiClient.cs",
+      "change": "NEW interface: FetchLeadAsync(tenantId, leadgenId, CancellationToken) → MetaLeadData (field_data array) or null + error_code. DiscoverFormsAsync(tenantId) → MetaLeadgenDiscoverFormsResponse. Interface to enable unit test mock.",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "src/Invekto.Backend/Services/MetaLeadgen/MetaGraphApiClient.cs",
+      "change": "NEW HTTP client wrapper (HttpClientFactory named 'meta-graph'). FetchLeadAsync: GET /v21.0/{leadgenId}?access_token=<page_access_token>&fields=field_data,created_time,form_id — error mapping: 400/401/403 → INV-META-006 access_token; 404 → INV-META-003 (Meta form_id deprecated edge); 5xx → INV-META-003 transient; timeout 10s → INV-META-003. DiscoverFormsAsync: GET /v21.0/{pageId}/leadgen_forms?access_token=<token>&fields=id,name,questions{id,label,type}. Response JSON parse typed. 10dk MemoryCache wrap (CT-safe single-flight optional, pilot için basit).",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "src/Invekto.Backend/Services/Zoho/ZohoLifecycleDispatcher.cs",
+      "change": "+ public void DispatchEvent(int tenantId, int leadId, string zohoEvent) yeni metot. AllowedEvents whitelist (7 event: welcome_sent, engaged, qualified, offer_sent, deposit_paid, closed_won, closed_lost) kontrol — unknown event → INV-GEN-003 warn log + return. Fire-and-forget Task.Run pattern (DispatchLeadStatusChange ile aynı güvenlik: RequestAborted bind YOK, 15s timeout). Mevcut DispatchLeadStatusChange intact (backward-compat). RunAsync çağrısı mevcut private metot'a forward (kod reuse).",
+      "is_new": false,
+      "deleted": false
+    },
+    {
+      "path": "src/Invekto.Backend/Services/Lifecycle/LifecycleInternalEndpoints.cs",
+      "change": "NEW endpoint class: Map /api/internal/lifecycle/welcome-sent POST (IntakeInternalAuth middleware — existing pattern FEAT-LIW Chunk B wa-direct). Body WelcomeSentNotification → ZohoLifecycleDispatcher.DispatchEvent(tenantId, leadId, 'welcome_sent'). 202 Accepted (fire-and-forget). Cross-service Automation→Backend hop alıcı yüzü.",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "src/Invekto.Automation/Services/Jobs/MetaLeadgenIntakeJob.cs",
+      "change": "NEW Hangfire job [Queue(\"automation\")] [AutomaticRetry(Attempts = 3, DelaysInSeconds = new[] {30, 120, 600})]. ExecuteAsync(tenantId, leadgenId, eventId, ct): (1) Load config from Backend HTTP hop (veya Shared repository layer — pattern kararı: Automation'da Backend DB'sine direct erişim yok, HTTP hop pattern LIW'deki gibi). (2) IMetaGraphApiClient.FetchLeadAsync → field_data. (3) field_id_map ile canonical mapping (Dictionary<source_id, canonical>). (4) LeadIntakeService hop: LIW mevcut endpoint'i reuse DEĞİL (internal bypass) — yeni internal endpoint /api/internal/leads/intake/meta-leadgen (IntakeInternalAuth, body LeadIntakeRequest). (5) lead_id al → meta_leadgen_events.lead_id UPDATE (audit zinciri). (6) Error handling typed catch: Graph API fail → INV-META-003 + event row UPDATE + retry automatic. Parse fail → INV-META-004 terminal. AccessToken missing → INV-META-006 terminal (retry gereksiz, config fix gerekli).",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "src/Invekto.Automation/Services/Jobs/TriggerWelcomeFlowJob.cs",
+      "change": "ExecuteFlowAsync post-ExecuteAsync: result.Messages.Count > 0 branch'inde (IsTerminal + NeedsHandoff check before) → ILifecycleBackendClient.SendWelcomeSentAsync(tenantId, leadId, ct) fire-and-forget. messages.Count==0 → skip (dispatch yok). Cross-service hop HTTP POST /api/internal/lifecycle/welcome-sent. try-catch typed HttpRequestException + OperationCanceledException → structured warn log [INV-META-xxx yok — INV-INT namespace kullanılır veya yeni INV-AT-072 lifecycle_hop_failed ekle], best-effort silent fail (welcome mesajı zaten gönderildi, Zoho sync retry worker sorumluluğu değil bu hop — iter 0 Codex feedback'e göre re-değerlendirilir).",
+      "is_new": false,
+      "deleted": false
+    },
+    {
+      "path": "src/Invekto.Automation/Services/Lifecycle/ILifecycleBackendClient.cs",
+      "change": "NEW interface: SendWelcomeSentAsync(tenantId, leadId, ct) Task. Automation → Backend internal HTTP hop contract. MarketingFollowupClient precedent.",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "src/Invekto.Automation/Services/Lifecycle/LifecycleBackendClient.cs",
+      "change": "NEW HTTP client (HttpClientFactory named 'backend-internal'). POST /api/internal/lifecycle/welcome-sent body WelcomeSentNotification. Internal auth header (X-Invekto-Internal-Key from appsettings.Backend.InternalApiKey — existing IntakeInternalAuth pattern). Timeout 5s. 202/200 success, non-2xx → log warn + return (no throw to caller, Task.Run fire-and-forget).",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "src/Invekto.Automation/Program.cs",
+      "change": "DI registration: AddHttpClient<ILifecycleBackendClient, LifecycleBackendClient>('backend-internal') + BaseAddress from Backend service URL (existing pattern: services:backend:baseUrl). AddScoped<IMetaGraphApiClient, MetaGraphApiClient> (if Automation needs to call Graph API directly in job — plan: MetaGraphApiClient lives in Backend, Automation calls Backend's internal Graph-proxy endpoint OR Automation has its own Graph API client. Decision: **Backend-hosted Graph client** Backend has config access, Automation hits Backend /api/internal/meta-leadgen/fetch-lead internal endpoint — cleaner: Automation knows only about 'fetch lead by id', no Meta surface leak to Automation). Revised in A.2.",
+      "is_new": false,
+      "deleted": false
+    },
+    {
+      "path": "src/Invekto.Automation.Tests/Jobs/TriggerWelcomeFlowJobTests.cs",
+      "change": "NEW unit test file (veya existing'e +2 test). Test 1: ExecuteAsync success path with mock FlowEngineV2 returning Messages.Count=2 → ILifecycleBackendClient.SendWelcomeSentAsync mock verify 1x called with correct (tenantId, leadId). Test 2: Error path FlowEngineV2 returning Messages.Count=0 + ErrorCode set → SendWelcomeSentAsync mock verify 0x called.",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "src/Invekto.Backend/Dashboard/src/pages/settings/MetaLeadgenSettingsPage.tsx",
+      "change": "NEW SPA page component. Sections: (1) Webhook URL display (read-only, copyable: https://app.invekto.com/api/inbound/meta/leadgen/<tenantId>). (2) Verify Token + [Rotate] button (crypto.randomUUID or server-side rotate endpoint). (3) App Secret + Page Access Token + Page ID password-style inputs. (4) Field ID Map editor (add/remove rows, left=Meta question_id, right=canonical dropdown: name/phone/email/custom_1..5/consent_marketing). (5) [Keşfet: Form Fields] button → GET /discover-forms → form dropdown + field auto-populate. (6) [Test Events] collapsible panel → GET /events?limit=5 list (received_at, form_id, http_status, error_code; raw_payload hidden). (7) [Kaydet] button → PUT /settings/meta-leadgen + toast. Error envelope ({code, message}) bracket-format display. Loading skeleton + disabled-during-save guard (lessons 2026-04-22 P3 accessibility pattern). Fragment+sibling tr/div error row.",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "src/Invekto.Backend/Dashboard/src/App.tsx",
+      "change": "+Route <Route path='/settings/meta-leadgen' element={<MetaLeadgenSettingsPage/>} /> + sidebar nav entry Ayarlar menu altında 'Meta Leadgen'.",
+      "is_new": false,
+      "deleted": false
+    },
+    {
+      "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+      "change": "+getMetaLeadgenConfig(), +putMetaLeadgenConfig(cfg), +rotateMetaVerifyToken(), +discoverMetaForms(), +listMetaLeadgenEvents(limit). Typed fetch wrappers, 401/403 handling via existing middleware, error envelope parse.",
+      "is_new": false,
+      "deleted": false
+    },
+    {
+      "path": "tracking/20260425-feat-meta-leadgen-webhook.md",
+      "change": "NEW per-paket tracking doc. Sections: Interview gates G1-G12, architecture (cross-service hop diagram), migration 033 schema, Meta Graph API surface, error code registry, AC1-AC6 verification, Stage 1 smoke plan AC1b/AC2b, deploy rollout (Backend+Automation NSSM restart), Q override log (max_diff_lines=200 aşımı, atomic paket rationale).",
+      "is_new": true,
+      "deleted": false
+    },
+    {
+      "path": "tracking/pilot-launch-roadmap.md",
+      "change": "Backlog section +1 entry: B-META Meta Leadgen Webhook (slug 20260425-feat-meta-leadgen-webhook, MEDIUM, pre-req: pilot Stage 1 launch). Status flip PLANNING → IN_PROGRESS → DONE paket bittiğinde. Stage 1 Launch dependency note: 'Bu paket commit edildikten sonra müşteri Meta App + HSM template + Zoho Blueprint hazırlıklarıyla paralel yürür.'",
+      "is_new": false,
+      "deleted": false
+    },
+    {
+      "path": "arch/session-memory.md",
+      "change": "Last Update 2026-04-24 18:15 UTC Paket B-META kickoff + interview complete + plan JSON DRAFT + next session Phase 2 Dev start. Execution Queue +1 IN_PROGRESS. Recently Completed Paket C1 preserve.",
+      "is_new": false,
+      "deleted": false
+    },
+    {
+      "path": "arch/lessons-learned.md",
+      "change": "(Post-Codex) +1 entry 2026-04-24: Meta Leadgen native-first pattern — Zapier/3rd-party bridge yerine Invekto içinde Graph API client + Hangfire intake job + cross-service Automation→Backend lifecycle hop. 3 micro-decision pattern: (a) URL path=tenant_id int (signature verify asıl güvenlik, migration tasarruf), (b) secret storage=plaintext JSONB (LIW precedent, encrypt overhead pilot timeline dışı), (c) form discover=dedicated backend endpoint (frontend Graph API leak yok).",
+      "is_new": false,
+      "deleted": false
+    }
+  ],
+  "git_diff": {
+    "sha256": null,
+    "full_path": "arch/plans/diffs/20260425-feat-meta-leadgen-webhook.diff",
+    "stats": {
+      "insertions": 760,
+      "deletions": 15,
+      "files_count": 28
+    }
+  },
+  "build": {
+    "status": null,
+    "services": ["Invekto.Backend", "Invekto.Automation", "Invekto.Shared", "Invekto.Automation.Tests"]
+  },
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Existing LIW /api/v1/leads/intake/{source_slug} endpoint modification — Meta flow kendi internal path'ini kullanır, LIW contract dokunulmaz",
+      "Zoho Blueprint schema or transition definition — sadece müşteri Zoho Console tarafı (pilot-stage1-prep Bölüm C)",
+      "INMA bridge /api/v1/callback/wapcrm modification — WhatsApp outbound path intact",
+      "Meta HSM template approval workflow — müşteri Meta Business Manager tarafı",
+      "Encrypt at rest for secrets (plaintext JSONB LIW precedent chosen, encryption future packet)",
+      "tenant_slug column on tenant_registry — tenant_id (int) URL path kararı",
+      "Separate meta-leadgen Hangfire queue — automation queue reuse",
+      "ZohoStageMappingService welcome_sent whitelist modification — zaten allowed (7 event)",
+      "LeadStatusEventMap.cs pipeline_status mapping — welcome_sent pipeline_status bağımsız, direct DispatchEvent",
+      "Dashboard yeni nav category — Ayarlar altında ek menu item yeterli",
+      "Meta Graph API caching layer beyond simple MemoryCache 10min (per-tenant partitioning etc) — pilot için basit",
+      "meta_leadgen_events PurgeExpiredAsync Hangfire scheduled — partial index 7-day retention yeterli pilot için, daily purge ayrı paket",
+      "Frontend npm dependency add (zod, react-hook-form vb.) — mevcut LIW SPA pattern reuse",
+      "Automation servisi yeni microservice create — mevcut Automation içine eklenir",
+      "Invekto.Integrations içinde Meta kod — Backend'de lives (LIW pattern, IntegrationsServis Zoho-only)"
+    ],
+    "non_goals": [
+      "Google Ads Lead Form entegrasyonu — ayrı feature",
+      "Typeform/SurveyMonkey webhook — ayrı feature",
+      "Meta Instant Experience / Collection Ads entegrasyonu — sadece Lead Ads scope",
+      "Meta CAPI (Conversion API) upload — ayrı feature, sales attribution için",
+      "Multi-page Meta account support (1 tenant birden fazla Facebook Page) — v2 scope",
+      "Meta Insights API (campaign performance) — ayrı feature",
+      "Webhook event replay UI — Test Events sadece read-only list",
+      "Webhook throttling / rate limit per-tenant — Meta tarafı rate limit (tenant'ın sorumluluğu)",
+      "Bulk CSV import Meta leadgen history — ayrı tool",
+      "Dashboard admin-level tenant'lar arası Meta config copy — ayrı ops feature"
+    ],
+    "intentional_exclusions": [
+      "meta_leadgen_events 7-day purge Hangfire daily job — partial index yeterli pilot scope, purge job ayrı paket (DB storage hemen dolmaz)",
+      "Meta Graph API client CT-safe single-flight cache — pilot Stage 1'de MemoryCache 10dk yeterli, production scale öncesi paket",
+      "Secret rotation workflow (app_secret/page_access_token expiry handling) — Meta tarafı 60-day expiry, manuel renewal dashboard form yeterli pilot için",
+      "Webhook signature replay attack window (timestamp check) — Meta nonce gönderiyor, header timestamp check future hardening",
+      "SPA Meta Leadgen sayfa i18n — dashboard primary locale tr/en, pilot hardcode tr yeterli (L10N paket ayrı)",
+      "Meta webhook subscription self-service UI (Invekto'dan Meta App oluştur) — müşteri Meta Business Manager tarafı (dokümante edildi)",
+      "Automation→Backend hop için gRPC / message bus — HTTP internal pattern LIW Chunk B precedent, sufficient"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "MetaLeadgenWebhookService.ProcessWebhookAsync — signature validate exception, config null, repository NpgsqlException, Hangfire enqueue BackgroundJobClientException — all typed + event row error INSERT + return fail (endpoint seviyesinde 200 Meta'ya best-effort)",
+      "MetaGraphApiClient.FetchLeadAsync — HttpRequestException + TaskCanceledException + JsonException typed catch + map INV-META-003/004/006 + no silent fail",
+      "MetaLeadgenIntakeJob.ExecuteAsync — LIW internal hop HttpRequestException + NpgsqlException on event row UPDATE + Hangfire typed retry via [AutomaticRetry]",
+      "ZohoLifecycleDispatcher.DispatchEvent — AllowedEvents whitelist guard early return + Task.Run existing RunAsync typed catches (NpgsqlException + OperationCanceledException + InvalidOperationException + JsonException)",
+      "LifecycleBackendClient.SendWelcomeSentAsync — HttpRequestException + TaskCanceledException typed + structured warn log + return (fire-and-forget semantics preserved)",
+      "TriggerWelcomeFlowJob post-execute hook — try-catch around ILifecycleBackendClient.SendWelcomeSentAsync, welcome flow success zaten observable via existing logs, hop failure best-effort"
+    ],
+    "user_facing_errors": [
+      "INV-META-001 signature_invalid (401) — Meta webhook signature mismatch. Dashboard Test Events panelinde görünür. Fix: App Secret yanlış veya body tampered.",
+      "INV-META-002 verify_token_mismatch (403) — Meta webhook verify handshake token yanlış. Subscription setup sırasında Meta Business Manager'da token güncellenmeli.",
+      "INV-META-003 graph_api_fetch_failed (502) — Graph API lead fetch başarısız. Retry via Hangfire [AutomaticRetry]. 3x fail sonrası terminal, ops alert.",
+      "INV-META-004 field_data_parse_failed (422) — Graph API response field_data unexpected shape (Meta API schema change veya form corrupted). Terminal, no retry.",
+      "INV-META-005 tenant_unknown_or_inactive (404) — URL path tenantId tenant_registry'de yok veya deactivated. Config fix gerekli.",
+      "INV-META-006 access_token_missing_or_expired (500) — page_access_token config'te yok veya Meta expired. Dashboard'dan renew gerekli. Terminal, no retry until config update.",
+      "INV-SEED-018 meta_leadgen_events table_not_created (postcondition) — migration 033 fail.",
+      "INV-SEED-019 tenant_settings.meta_leadgen_config JSONB missing (postcondition) — ALTER DDL fail.",
+      "INV-SEED-020 GRANT ALL invekto on meta_leadgen_events not applied (postcondition) — role grant drift."
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "6-layer explicit fail-loud: (1) Endpoint layer: signature fail → event row http_status=401 + error_code=INV-META-001 INSERT + 401 return (Meta tarafı gözler). Verify handshake mismatch → 403 INV-META-002. Tenant unknown → 404 INV-META-005. (2) Hangfire job layer: MetaLeadgenIntakeJob [AutomaticRetry 3x] → Graph API transient fail retry, terminal fail event row UPDATE error_code=INV-META-003. Parse fail → INV-META-004 terminal. AccessToken fail → INV-META-006 terminal + ops alert. (3) Cross-service hop layer: Automation→Backend /api/internal/lifecycle/welcome-sent failure → structured warn log, welcome flow zaten outbound gönderdiği için silent non-critical; Zoho transition eksikliği ops dashboard'ta zoho_sync_log'ta görünmeyecek ama welcome mesajı müşteriye ulaştı (business continuity). (4) Dispatcher layer: ZohoLifecycleDispatcher.DispatchEvent existing RunAsync typed catches + zoho_sync_log failed row (INV-INT-125 transport or INV-INT-121 blueprint not configured). (5) Migration layer: DO $verify$ INV-SEED-018..020 RAISE EXCEPTION with actionable why+next-step guidance → transaction abort fail-loud. (6) Secret storage: plaintext JSONB LIW precedent — app_secret + page_access_token DB-level access-controlled, jsonl log explicit guard (DTO [JsonIgnore] yok — caller responsibility, SystemWarn log'lara token yazılmaz, unit test bu davranışı pin'ler)."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Meta webhook at-least-once delivery — aynı leadgen_id 2x push edilebilir (Meta 10s timeout aşılırsa retry). Naive implementation duplicate lead row veya çift welcome mesajı gönderir. Pilot credibility riski.",
+      "suggestion": "MetaLeadgenIntakeJob idempotency anchor: meta_leadgen_events UNIQUE INDEX ON (tenant_id, leadgen_id) — duplicate INSERT ON CONFLICT DO NOTHING. LeadIntakeService.UpsertIntakeLeadAsync zaten phone-based idempotent. TriggerWelcomeFlowJob 24h dup-window guard (tls.DupWindowDays) zaten mevcut. 3-layer dedup.",
+      "aha_moment": "Meta 10s timeout retry → 2. request geldiğinde event row UNIQUE constraint trigger → event zaten işlenmiş → 200 OK + Hangfire enqueue skip (duplicate guard). Aynı lead için welcome 1x, Zoho transition 1x. Pilot'ta '2 welcome mesajı aldım' şikayeti olmaz."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Pilot müşterisi Meta App setup için 2 gün Meta Business Manager onay süreci bekleyecek (app verification + HSM template approval). Bu süre Invekto kod paketini bloke eder mi?",
+      "suggestion": "AC1 (commit-time verify) müşteri dep'inden decouple: prod curl 3 test + unit test + Q manuel 5-tik Dashboard smoke. AC1b (Stage 1 smoke) müşteri hazırlık sonrası. Pilot 3 gün timeline: Gün 0 kod + deploy, Gün 1-2 müşteri paralel hazırlık, Gün 3 Stage 1 smoke.",
+      "aha_moment": "Paket commit edildiği an 'Biz hazırız, sıra sizde' mesajı müşteriye gider (Meta App + HSM submit). 2 gün onay bekleme paralel. Stage 1 göne adar pilot launch sağlam süregi."
+    },
+    {
+      "category": "SECURITY",
+      "user_pain": "Meta webhook public endpoint — signature validate yanlış/zayıf yapılırsa attacker sahte lead injection yapabilir, spoof welcome mesajı, Zoho spam transition. HMAC compare naive (==) timing side-channel.",
+      "suggestion": "CryptographicOperations.FixedTimeEquals constant-time byte compare. App Secret rotation support (verify_token/app_secret config'te ayrı). Signature validate BEFORE config load — tenantId URL'den + app_secret DB'den + raw body HMAC. Event row signature-fail case'inde de INSERT (audit trail attacker attempt tracking).",
+      "aha_moment": "Meta webhook endpoint prod'da açık olsa bile app_secret olmadan attacker geçemez. Timing attack FixedTimeEquals ile neutralize. Audit trail meta_leadgen_events http_status=401 rows üzerinden attacker behavior görünür → ops alert."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Müşteri 'Meta form'dan submit ettim, welcome mesajı gelmedi' dediğinde root cause 6 yerde olabilir: Meta signature, Graph API token, field map mismatch, LIW intake fail, welcome flow config, INMA bridge. Debug zinciri uzun.",
+      "suggestion": "Dashboard /settings/meta-leadgen [Test Events] paneli son 5 event (received_at, leadgen_id, http_status, error_code, lead_id). Müşteri 'welcome gelmedi' → ops panel açar, son event INV-META-006 access_token expired görür → 30sn fix. 6-step debug → 1-step.",
+      "aha_moment": "Müşteri destek ticket açtığında ops 1 ekran açar, root cause 5sn'de. Ticket resolution time 20dk'dan 2dk'ya düşer. Pilot sonrası NPS score için kritik."
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Invekto satış ekibi aday müşteriye 'Meta Lead Ads entegre' dediğinde Zapier/Make gibi 3rd-party ücretli tool gerektiğini açıklamak zorunda kalıyordu → aylık extra $20-50 maliyet, kompleksite, 3rd-party dependency. Aday müşteri konversiyonunda friction.",
+      "suggestion": "Sales playbook update: 'Meta Lead Ads native — 0 ek maliyet, 0 3rd-party tool, Dashboard 1 sayfa config'. Pilot reference case Dent Adavista + screencast (Meta form → Invekto event → WhatsApp delivered 30sn içinde).",
+      "aha_moment": "Aday müşteri demo'da 'Zapier/Make gerek var mı?' sorusuna 'Hayır, Invekto native endpoint' cevabı → pricing objection ortadan kalkar → konversiyon rate artar. Dent pilot screencast pazarlama asset'i."
+    }
+  ],
+  "overrides": [
+    {
+      "type": "max_diff_lines_per_paket",
+      "limit": 200,
+      "estimated": 760,
+      "multiplier": "3.8x",
+      "reason": "Atomik paket — endpoint + config + cross-service dispatch + SPA mutually dependent. Split 2-3 paket pilot 3-gün timeline'ı aşar (her split +1 gün Codex review + deploy), müşteri HSM onayı paralel. Tek paket tek commit tek Codex review → pilot Stage 1 launch günü korunur. Codex review 760 line tek seferde yapılır (gpt-5.4 context penceresi yeterli, iter=0 PASS hedefi agresif yazma disiplini zorunlu kılar).",
+      "approved_by": "Q",
+      "approved_at": "2026-04-24T17:40:00Z",
+      "commit_trailer": "Q-override: max_diff_lines=200 → ~760 (atomic paket, pilot timeline)"
+    }
+  ],
+  "verdict": {
+    "status": null,
+    "source": null,
+    "received_at": null,
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-24T17:45:00Z",
+    "code_quality_gate": {
+      "CQ1": { "result": null, "evidence": null },
+      "CQ2": { "result": null, "evidence": null },
+      "CQ3": { "result": null, "evidence": null },
+      "CQ4": { "result": null, "evidence": null },
+      "CQ5": { "result": null, "evidence": null },
+      "CQ6": { "result": null, "evidence": null },
+      "CQ7": { "result": null, "evidence": null },
+      "CQ8": { "result": null, "evidence": null },
+      "CQ9": { "result": null, "evidence": null },
+      "CQ10": { "result": null, "evidence": null },
+      "CQ11": { "result": null, "evidence": null },
+      "CQ12": { "result": null, "evidence": null }
+    },
+    "cove_verification": {
+      "Q1": { "result": null, "reasoning": null },
+      "Q2": { "result": null, "reasoning": null },
+      "Q3": { "result": null, "reasoning": null }
+    },
+    "blocking_issues": [],
+    "iteration": 0,
+    "escalation_required": false
+  }
+}
