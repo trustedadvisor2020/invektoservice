@@ -94,6 +94,17 @@ public static class ErrorCodes
     public const string LeadIntakeDryRunPayloadInvalid = "INV-BE-116";           // Dry-run payload JSON parse failure
     public const string LeadIntakeSettingsUnknownTenant = "INV-BE-117";          // LIW settings mutation (rotate/revoke/fieldmap): JWT-bound tenant_id has no row in tenant_registry (auth drift / stale test JWT); pre-check via TenantExistsAsync before opening settings tx
 
+    // Paket B-META: Meta Leadgen Webhook Native (INV-META-001..006, migration 033)
+    // Dedicated namespace (not INV-INT / INV-IG) so Meta webhook failures are
+    // dashboard-separable from Zoho / e-commerce integrations. Surfaced in the
+    // meta_leadgen_events audit trail + Dashboard /settings/meta-leadgen [Test Events].
+    public const string MetaSignatureInvalid           = "INV-META-001"; // X-Hub-Signature-256 HMAC-SHA256 mismatch (endpoint rejects with 401)
+    public const string MetaVerifyTokenMismatch        = "INV-META-002"; // GET handshake hub.verify_token != config.verify_token (endpoint rejects with 403)
+    public const string MetaGraphApiFetchFailed        = "INV-META-003"; // Graph API /v21.0/{leadgen_id}?fields=field_data transient fail (4xx non-auth, 5xx, timeout) — Hangfire retries 3x
+    public const string MetaFieldDataParseFailed       = "INV-META-004"; // Graph API response field_data unexpected shape (schema drift, form corruption) — terminal, no retry
+    public const string MetaTenantUnknown              = "INV-META-005"; // URL path tenantId not in tenant_registry or is_active=FALSE (endpoint 404)
+    public const string MetaAccessTokenMissing         = "INV-META-006"; // page_access_token missing or expired (Meta 401/403) — terminal, Dashboard operator renewal required
+
     // FEAT-MCC: Multi-City Campaign config (INV-BE-118..121)
     // Allocated AFTER INV-BE-117 (LIW Chunk C). Earlier feature spec drafted INV-BE-090..091
     // which collided with Translation (INV-BE-090..095) — see arch/errors.md and roadmap §2 audit.
@@ -245,6 +256,9 @@ public static class ErrorCodes
     public const string AutomationWelcomeFlowDefinitionMissing = "INV-AT-069"; // chatbot_flows row not found for tenant+slug (or inactive); lead created, dispatch skipped
     public const string AutomationBackendIntakeUnavailable = "INV-AT-070";     // AutomationOrchestrator wa-direct hook: Backend /api/internal/leads/intake/wa-direct unreachable; flow continues with leadId=null
     public const string AutomationWelcomeFlowDispatchFailed = "INV-AT-071";    // TriggerWelcomeFlowJob execution-time infra failure (DB error during lookup, parse/build error on flow_config, cancellation, InvalidOperationException during ExecuteAsync). Distinct from -069 (which is strictly "row not found").
+
+    // Paket B-META: Lifecycle welcome-sent hop (Automation → Backend fire-and-forget)
+    public const string AutomationLifecycleHopFailed = "INV-AT-072";           // TriggerWelcomeFlowJob post-execute lifecycle hop to Backend /api/internal/lifecycle/welcome-sent failed (HttpRequestException / OperationCanceledException / non-2xx). Welcome WA message already delivered; Zoho "1. Mesaj Atildi" transition dispatch missed, next inbound engagement re-fires lifecycle events. Best-effort, no retry.
 
     // AgentAI errors (INV-AA-xxx)
     public const string AgentAIInvalidPayload = "INV-AA-001";

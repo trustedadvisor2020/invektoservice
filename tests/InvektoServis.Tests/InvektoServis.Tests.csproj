@@ -30,6 +30,11 @@
     <ProjectReference Include="..\..\src\Invekto.Outbound\Invekto.Outbound.csproj" />
     <ProjectReference Include="..\..\src\Invekto.Integrations\Invekto.Integrations.csproj" />
     <ProjectReference Include="..\..\src\Invekto.Appointments\Invekto.Appointments.csproj" />
+    <!-- Paket B-META: Automation ref for TriggerWelcomeFlowJob.ShouldDispatchWelcomeSent
+         AC2 invariant pin. Backend already takes Automation via PrivateAssets="all" for
+         the G7 SCHEDULER HOST EXCEPTION, but that reference is private and doesn't flow
+         through to the test project, so an explicit entry is required here. -->
+    <ProjectReference Include="..\..\src\Invekto.Automation\Invekto.Automation.csproj" />
     <ProjectReference Include="..\..\src\Invekto.Shared\Invekto.Shared.csproj" />
   </ItemGroup>
 

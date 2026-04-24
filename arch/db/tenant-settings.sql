@@ -44,6 +44,19 @@ CREATE TABLE tenant_settings (
     -- start_date <= end_date, dates[].city referencing a campaigns[].cities[].slug.
     -- Window guard (INV-BE-119) lives in Automation outbound dispatch + Marketing EFS scheduler.
     campaign_config           JSONB       NOT NULL DEFAULT '{"campaigns":[]}'::jsonb,
+    -- Paket B-META (migration 033): per-tenant Meta Leadgen webhook config. Shape:
+    --   { "verify_token":     "<32-char random, Dashboard rotate>",
+    --     "app_secret":       "<Meta App Secret, HMAC-SHA256 key for X-Hub-Signature-256>",
+    --     "page_access_token":"<Page Access Token for Graph API /{leadgen_id}?fields=field_data>",
+    --     "page_id":          "<Facebook Page id>",
+    --     "field_id_map":     { "<meta_question_id>": "<canonical: name|phone|email|custom_1..5|consent_marketing>" } }
+    -- Empty default ({}) = no Meta integration; webhook GET handshake returns 403
+    -- (verify_token empty => INV-META-002) and POST returns 401 (signature mismatch
+    -- => INV-META-001), both with meta_leadgen_events audit row INSERT.
+    -- Secret storage is plaintext per LIW precedent (G3 2026-04-24); DB-level
+    -- access-controlled (GRANT ALL invekto only). Application layer guards against
+    -- jsonl logging (MetaLeadgenConfigDto never serialized verbatim to System* logs).
+    meta_leadgen_config       JSONB       NOT NULL DEFAULT '{}'::jsonb,
     created_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at                TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

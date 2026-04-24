@@ -2160,6 +2160,40 @@ class OpsApiClient {
       body: JSON.stringify(req),
     });
   }
+
+  // ---- Paket B-META: Meta Leadgen webhook settings ----
+  // Envelope shape:
+  //   GET  -> { data: { tenant_id, webhook_url, config: { ...last4 secrets, field_id_map }, updated_at } }
+  //   PUT  -> { data: { tenant_id, updated_at } } — null-means-keep on secret fields
+  //   POST rotate-verify-token -> { data: { tenant_id, verify_token, updated_at } }  (fresh token returned once)
+  //   GET  discover-forms      -> { data: { forms: [...] } }                          (Graph API hop)
+  //   GET  events?limit=N      -> { data: MetaLeadgenEventDto[] }                     (last-N audit rows)
+  // Errors surface via ApiClientError with INV-META-* bracket codes.
+  async getMetaLeadgenConfig(): Promise<MetaLeadgenConfigGetResponse> {
+    return this.request<MetaLeadgenConfigGetResponse>('/api/v1/tenant-settings/meta-leadgen');
+  }
+
+  async putMetaLeadgenConfig(req: MetaLeadgenConfigPutRequest): Promise<MetaLeadgenConfigPutResponse> {
+    return this.request<MetaLeadgenConfigPutResponse>('/api/v1/tenant-settings/meta-leadgen', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req),
+    });
+  }
+
+  async rotateMetaVerifyToken(): Promise<MetaLeadgenRotateTokenResponse> {
+    return this.request<MetaLeadgenRotateTokenResponse>('/api/v1/tenant-settings/meta-leadgen/rotate-verify-token', {
+      method: 'POST',
+    });
+  }
+
+  async discoverMetaForms(): Promise<MetaLeadgenDiscoverFormsResponse> {
+    return this.request<MetaLeadgenDiscoverFormsResponse>('/api/v1/tenant-settings/meta-leadgen/discover-forms');
+  }
+
+  async listMetaLeadgenEvents(limit: number = 5): Promise<MetaLeadgenEventsResponse> {
+    return this.request<MetaLeadgenEventsResponse>(`/api/v1/tenant-settings/meta-leadgen/events?limit=${limit}`);
+  }
 }
 
 // FEAT-TFM-UI type re-exports (pages + components consume from './api' to match the
@@ -2197,6 +2231,75 @@ export type {
   CampaignEntryDraft,
   CampaignConfigDraft,
 } from '../types/campaignConfig';
+
+// Paket B-META: Meta Leadgen webhook DTOs. Inline (no separate types file)
+// because the full surface is 6 interfaces — tightly scoped to one SPA page
+// so the types/ split-out overhead isn't justified.
+export interface MetaLeadgenConfigMasked {
+  verify_token_last4: string | null;
+  app_secret_last4: string | null;
+  page_access_token_last4: string | null;
+  page_id: string | null;
+  field_id_map: Record<string, string>;
+}
+export interface MetaLeadgenConfigGetResponse {
+  data: {
+    tenant_id: number;
+    webhook_url: string;
+    config: MetaLeadgenConfigMasked;
+    updated_at: string | null;
+  };
+}
+export interface MetaLeadgenConfigPutRequest {
+  // null = keep server value (secrets); field_id_map is always the full map.
+  verify_token: string | null;
+  app_secret: string | null;
+  page_access_token: string | null;
+  page_id: string | null;
+  field_id_map: Record<string, string>;
+}
+export interface MetaLeadgenConfigPutResponse {
+  data: {
+    tenant_id: number;
+    updated_at: string;
+  };
+}
+export interface MetaLeadgenRotateTokenResponse {
+  data: {
+    tenant_id: number;
+    verify_token: string;
+    updated_at: string;
+  };
+}
+export interface MetaLeadgenFormQuestion {
+  id: string;
+  label: string;
+  type: string;
+}
+export interface MetaLeadgenForm {
+  id: string;
+  name: string;
+  questions: MetaLeadgenFormQuestion[];
+}
+export interface MetaLeadgenDiscoverFormsResponse {
+  data: {
+    forms: MetaLeadgenForm[];
+  };
+}
+export interface MetaLeadgenEventDto {
+  id: number;
+  leadgen_id: string;
+  form_id: string | null;
+  page_id: string | null;
+  received_at: string;
+  http_status: number | null;
+  error_code: string | null;
+  lead_id: number | null;
+  payload_keys: string[];
+}
+export interface MetaLeadgenEventsResponse {
+  data: MetaLeadgenEventDto[];
+}
 
 // FEAT-DMP: INMA placeholder descriptor — matches the bridge proxy shape.
 export interface InmaDynamicFieldDto {

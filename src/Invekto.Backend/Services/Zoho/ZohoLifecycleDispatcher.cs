@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Invekto.Backend.Data;
+using Invekto.Shared.Constants;
 using Invekto.Shared.Contracts.Zoho;
 using Invekto.Shared.Logging;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +20,30 @@ namespace Invekto.Backend.Services.Zoho;
 public sealed class ZohoLifecycleDispatcher
 {
     private static readonly TimeSpan BackgroundTimeout = TimeSpan.FromSeconds(15);
+
+    /// <summary>
+    /// Paket B-META whitelist: events that <see cref="DispatchEvent"/> will forward
+    /// to the Zoho sync pipeline. Prevents arbitrary strings (e.g. typo'd
+    /// <c>"welcomee_sent"</c>) from reaching <see cref="ZohoSyncRequest"/> where
+    /// they would silently disappear into an unknown-event log line at the
+    /// Integrations service.
+    ///
+    /// Pipeline status flow still routes through <see cref="DispatchLeadStatusChange"/>
+    /// + <see cref="LeadStatusEventMap"/>; this whitelist is for the direct-dispatch
+    /// path only (Automation post-welcome hook currently; future lifecycle
+    /// notifications to sit alongside as new handlers get added).
+    /// </summary>
+    private static readonly HashSet<string> AllowedDirectEvents =
+        new(StringComparer.Ordinal)
+        {
+            "welcome_sent",
+            "engaged",
+            "qualified",
+            "offer_sent",
+            "deposit_paid",
+            "closed_won",
+            "closed_lost"
+        };
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly JsonLinesLogger _logger;
@@ -39,7 +64,30 @@ public sealed class ZohoLifecycleDispatcher
         {
             // Audit trail: pipeline_status outside Zoho scope (not a failure, but must be visible).
             _logger.SystemWarn(
-                $"[INV-GEN-003] Zoho sync skipped: pipeline_status '{pipelineStatus}' is not mapped to a zoho_event. tenant={tenantId} lead={leadId}");
+                $"[{ErrorCodes.GeneralValidation}] Zoho sync skipped: pipeline_status '{pipelineStatus}' is not mapped to a zoho_event. tenant={tenantId} lead={leadId}");
+            return;
+        }
+
+        _ = Task.Run(() => RunAsync(tenantId, leadId, zohoEvent));
+    }
+
+    /// <summary>
+    /// Paket B-META: direct-dispatch entry used by lifecycle hooks that already
+    /// know the target zoho_event (no pipeline_status translation needed).
+    /// Triggered by <c>LifecycleInternalEndpoints /welcome-sent</c> when Automation
+    /// reports a completed welcome flow.
+    ///
+    /// Unknown event (outside <see cref="AllowedDirectEvents"/>) → warn log + no-op
+    /// so a caller bug with a typo'd event name is visible without polluting Zoho
+    /// state. Task.Run fire-and-forget mirrors <see cref="DispatchLeadStatusChange"/>
+    /// — callers never block on transport latency.
+    /// </summary>
+    public void DispatchEvent(int tenantId, int leadId, string zohoEvent)
+    {
+        if (string.IsNullOrWhiteSpace(zohoEvent) || !AllowedDirectEvents.Contains(zohoEvent))
+        {
+            _logger.SystemWarn(
+                $"[{ErrorCodes.GeneralValidation}] Zoho DispatchEvent skipped: event '{zohoEvent}' not in allowlist. tenant={tenantId} lead={leadId}");
             return;
         }
 

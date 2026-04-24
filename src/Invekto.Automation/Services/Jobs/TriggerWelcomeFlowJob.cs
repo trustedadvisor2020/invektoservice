@@ -1,5 +1,6 @@
 using Hangfire;
 using Invekto.Automation.Data;
+using Invekto.Automation.Services.Lifecycle;
 using Invekto.Shared.Constants;
 using Invekto.Shared.Logging;
 using Npgsql;
@@ -60,6 +61,7 @@ public sealed class TriggerWelcomeFlowJob
 
     private readonly AutomationRepository _repo;
     private readonly FlowEngineV2 _engine;
+    private readonly ILifecycleBackendClient _lifecycleClient;
     private readonly JsonLinesLogger _logger;
 
     // Welcome-trigger synthetic chat_id counter; range chosen to never overlap
@@ -69,10 +71,12 @@ public sealed class TriggerWelcomeFlowJob
     public TriggerWelcomeFlowJob(
         AutomationRepository repo,
         FlowEngineV2 engine,
+        ILifecycleBackendClient lifecycleClient,
         JsonLinesLogger logger)
     {
         _repo = repo;
         _engine = engine;
+        _lifecycleClient = lifecycleClient;
         _logger = logger;
     }
 
@@ -198,6 +202,35 @@ public sealed class TriggerWelcomeFlowJob
             _logger.SystemInfo(
                 $"TriggerWelcomeFlowJob: tenant={tenantId} flow={flowId} slug={slug} lead={leadId} " +
                 $"status={finalStatus} messages={result.Messages.Count} path={state.ExecutionPath.Count}");
+
+            // Paket B-META: lifecycle welcome-sent hop. Fires ONLY when the
+            // welcome flow actually emitted at least one outbound message —
+            // Q-approved literal "mesaj atildi" semantic over IsTerminal (too
+            // aggressive: includes error branches) and finalStatus==completed
+            // (too conservative: misses valid partial-success runs). Transport
+            // failures are logged as INV-AT-072 inside the client and returned
+            // as false; we intentionally don't retry here because the welcome
+            // message already reached the user and the next inbound engagement
+            // triggers its own lifecycle events.
+            if (ShouldDispatchWelcomeSent(result))
+            {
+                try
+                {
+                    await _lifecycleClient.SendWelcomeSentAsync(tenantId, leadId, ct);
+                }
+                catch (HttpRequestException ex)
+                {
+                    _logger.SystemWarn(
+                        $"[{ErrorCodes.AutomationLifecycleHopFailed}] TriggerWelcomeFlowJob: " +
+                        $"lifecycle welcome-sent transport (tenant={tenantId}, lead={leadId}): {ex.Message}");
+                }
+                catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
+                {
+                    _logger.SystemWarn(
+                        $"[{ErrorCodes.AutomationLifecycleHopFailed}] TriggerWelcomeFlowJob: " +
+                        $"lifecycle welcome-sent timeout (tenant={tenantId}, lead={leadId}): {ex.Message}");
+                }
+            }
         }
         catch (NpgsqlException ex)
         {
@@ -220,6 +253,25 @@ public sealed class TriggerWelcomeFlowJob
                 $"tenant={tenantId} flow={flowId} slug={slug} lead={leadId}: {ex.Message}");
             await TryEndSessionOnErrorAsync(sessionId);
         }
+    }
+
+    /// <summary>
+    /// Paket B-META: AC2 invariant — welcome_sent lifecycle dispatch fires iff
+    /// the welcome flow actually emitted at least one outbound message. Public
+    /// static so Invekto.Automation.Tests can pin the semantic without setting
+    /// up the full FlowEngineV2 + AutomationRepository mock graph (both sealed,
+    /// not NSubstitute-mockable). Callers that already have an EngineStepResult
+    /// should prefer this overload over inline <c>result.Messages.Count &gt; 0</c>
+    /// so the decision stays in one place.
+    ///
+    /// Null-safe: a null result (caller bug / serialization gap) returns false
+    /// rather than throwing — fire-and-forget Zoho dispatch must never crash
+    /// the welcome job's cleanup path.
+    /// </summary>
+    public static bool ShouldDispatchWelcomeSent(EngineStepResult? result)
+    {
+        if (result is null) return false;
+        return result.Messages.Count > 0;
     }
 
     private async Task TryEndSessionOnErrorAsync(int sessionId)

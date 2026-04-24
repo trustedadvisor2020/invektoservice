@@ -57,6 +57,9 @@ const FollowupSequenceSettingsPage = lazy(() => import('./pages/settings/Followu
 // FEAT-MCC Multi-City Campaign P6: campaign config editor (lazy).
 const CampaignConfigSettingsPage = lazy(() => import('./pages/settings/CampaignConfigSettingsPage').then(m => ({ default: m.CampaignConfigSettingsPage })));
 
+// Paket B-META: Meta Leadgen webhook settings (lazy).
+const MetaLeadgenSettingsPage = lazy(() => import('./pages/settings/MetaLeadgenSettingsPage').then(m => ({ default: m.MetaLeadgenSettingsPage })));
+
 function ProtectedRoute() {
   const { isAuthenticated } = useAuth();
 
@@ -155,6 +158,8 @@ export default function App() {
         <Route path="/settings/followup-sequence" element={<Suspense><FollowupSequenceSettingsPage /></Suspense>} />
         {/* FEAT-MCC Multi-City Campaign P6: campaign + city/date editor (entered via SettingsPage). */}
         <Route path="/settings/campaigns" element={<Suspense><CampaignConfigSettingsPage /></Suspense>} />
+        {/* Paket B-META: Meta Leadgen webhook settings (entered via SettingsPage). */}
+        <Route path="/settings/meta-leadgen" element={<Suspense><MetaLeadgenSettingsPage /></Suspense>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

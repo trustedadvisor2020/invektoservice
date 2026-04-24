@@ -270,6 +270,38 @@ builder.Services.AddSingleton<MarketingFollowupClient>(sp =>
 // spec_architectural_decisions[3] (deferred to a follow-up paket).
 builder.Services.AddTransient<Invekto.Automation.Services.Jobs.NoReplyCheckJob>();
 
+// Paket B-META: Automation → Backend internal HTTP hop client for lifecycle events
+// (welcome_sent). Shares the InternalServices:SharedSecret already resolved into
+// backendIntakeSharedSecret above. Named HttpClient "backend-internal" is reused
+// by MetaLeadgenIntakeJob below for the process-lead hop so both call paths share
+// one connection pool and one BaseAddress resolution rule.
+builder.Services.AddHttpClient(
+    Invekto.Automation.Services.Lifecycle.LifecycleBackendClient.HttpClientName,
+    client =>
+    {
+        client.BaseAddress = new Uri(backendBaseUrl);
+        client.Timeout = TimeSpan.FromSeconds(5);
+    });
+builder.Services.AddSingleton<
+    Invekto.Automation.Services.Lifecycle.ILifecycleBackendClient>(sp =>
+{
+    var factory = sp.GetRequiredService<IHttpClientFactory>();
+    return new Invekto.Automation.Services.Lifecycle.LifecycleBackendClient(
+        factory.CreateClient(Invekto.Automation.Services.Lifecycle.LifecycleBackendClient.HttpClientName),
+        backendIntakeSharedSecret,
+        sp.GetRequiredService<JwtGenerator>(),
+        sp.GetRequiredService<JsonLinesLogger>());
+});
+
+// Paket B-META: MetaLeadgenIntakeJob — Hangfire-callable thin wrapper over Backend's
+// /api/internal/meta-leadgen/process-lead. Transient lifecycle (matches Hangfire
+// job convention). Reuses the "backend-internal" named HttpClient above (single
+// pool, single BaseAddress). Shared-secret is exposed via a dedicated holder type
+// because the DI container refuses to inject bare strings into constructors.
+builder.Services.AddSingleton(
+    new Invekto.Automation.Services.Jobs.MetaLeadgenSharedSecretHolder(backendIntakeSharedSecret));
+builder.Services.AddTransient<Invekto.Automation.Services.Jobs.MetaLeadgenIntakeJob>();
+
 // PKT-6A: Register KnowledgeIntentClient (typed HttpClient with 3s timeout)
 var knowledgeBaseUrl = builder.Configuration["Knowledge:BaseUrl"] ?? "http://localhost:7104";
 var knowledgeTimeoutMs = builder.Configuration.GetValue<int>("Knowledge:IntentFetchTimeoutMs", 3000);

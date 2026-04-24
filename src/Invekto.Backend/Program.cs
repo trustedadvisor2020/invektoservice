@@ -472,6 +472,26 @@ builder.Services.AddSingleton<Invekto.Shared.Contracts.Campaigns.DbTenantCampaig
 builder.Services.AddSingleton<Invekto.Shared.Contracts.Campaigns.ITenantCampaignResolver>(sp =>
     sp.GetRequiredService<Invekto.Shared.Contracts.Campaigns.DbTenantCampaignResolver>());
 
+// Paket B-META: Meta Leadgen webhook native integration
+// Config + event repositories share the same PostgresConnectionFactory pattern as
+// TenantSettingsRepository above. MetaGraphApiClient uses IHttpClientFactory +
+// IMemoryCache (already registered at line ~309) so Singleton lifecycle is safe.
+// MetaLeadgenWebhookService resolves IBackgroundJobClient from DI to enqueue the
+// async MetaLeadgenIntakeJob onto the automation queue.
+builder.Services.AddSingleton<Invekto.Backend.Services.MetaLeadgen.MetaLeadgenConfigRepository>();
+builder.Services.AddSingleton<Invekto.Backend.Services.MetaLeadgen.MetaLeadgenEventRepository>();
+builder.Services.AddSingleton<Invekto.Backend.Services.MetaLeadgen.MetaLeadgenWebhookService>();
+builder.Services.AddSingleton<
+    Invekto.Backend.Services.MetaLeadgen.IMetaGraphApiClient,
+    Invekto.Backend.Services.MetaLeadgen.MetaGraphApiClient>();
+builder.Services.AddHttpClient(
+    Invekto.Backend.Services.MetaLeadgen.MetaGraphApiClient.HttpClientName,
+    c =>
+    {
+        c.BaseAddress = new Uri("https://graph.facebook.com/v21.0/");
+        c.Timeout = TimeSpan.FromSeconds(10);
+    });
+
 builder.Services.AddAuthorization();
 
 // G7: Hangfire infrastructure — Backend hosts the dashboard and a placeholder server
@@ -7882,6 +7902,18 @@ app.MapTenantFollowupSequenceEndpoints();
 // CRUD. JWT covered by the existing /api/v1/tenant-settings/ prefix in
 // jwtRequiredPrefixes; handler-side TenantContext guard inside the endpoint.
 app.MapTenantCampaignConfigEndpoints();
+
+// Paket B-META: Meta Leadgen webhook native integration — public inbound handshake +
+// signed POST (under /api/inbound/meta/leadgen/, NOT JWT-covered), admin settings CRUD
+// under /api/v1/tenant-settings/meta-leadgen/* (JWT via the /api/v1/tenant-settings/
+// prefix), and the internal process-lead hop under /api/internal/meta-leadgen/*
+// (JWT + IntakeInternalAuth shared-secret dual auth).
+Invekto.Backend.Services.MetaLeadgen.MetaLeadgenEndpoints.MapMetaLeadgenEndpoints(app);
+
+// Paket B-META: Automation → Backend lifecycle notifications receiver
+// (/api/internal/lifecycle/welcome-sent). Forwards to ZohoLifecycleDispatcher
+// .DispatchEvent for the "welcome_sent" Zoho Blueprint transition.
+Invekto.Backend.Services.Lifecycle.LifecycleInternalEndpoints.MapLifecycleInternalEndpoints(app);
 
 // ============================================
 // FEAT-J2: Manual opt-out/opt-in (JWT-scoped dashboard admin action)

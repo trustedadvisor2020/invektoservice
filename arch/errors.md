@@ -476,6 +476,11 @@ errors:
     description: TriggerWelcomeFlowJob hit an execution-time infra failure (NpgsqlException during slug lookup, FlowGraphV2.Build returning null due to malformed flow_config, OperationCanceledException mid-execution, or InvalidOperationException from FlowEngineV2.ExecuteAsync). Distinct from INV-AT-069 which is strictly "no matching active row in chatbot_flows". Lead row already exists; welcome dispatch did not complete.
     user_message: Hosgeldin akisi calistirilamadi.
 
+  # Paket B-META: Automation → Backend lifecycle welcome-sent hop (fire-and-forget post welcome flow)
+  - code: INV-AT-072
+    description: TriggerWelcomeFlowJob lifecycle welcome-sent HTTP hop to Backend /api/internal/lifecycle/welcome-sent failed (HttpRequestException transient, OperationCanceledException timeout, or non-2xx response). Welcome message already delivered to user; Zoho "1. Mesaj Atildi" transition dispatch missed. Best-effort silent non-critical — next inbound engagement triggers its own lifecycle events. Distinct from INV-AT-071 (flow dispatch infra) and INV-INT-* (Zoho transport).
+    user_message: Hosgeldin mesaji gonderildi; CRM transition guncellemesi gecici olarak gecikebilir.
+
   # HFM-2: Backend Translation Warmup ops endpoint
   - code: INV-BE-090
     description: /ops/translation/warmup body invalid (tenantId/texts/locales missing or empty).
@@ -1347,6 +1352,30 @@ errors:
     description: DbBackup skipped - required configuration is missing (e.g. ConnectionStrings:PostgreSQL)
     user_message: Yedek yapılandırması eksik.
 
+  # ── META — Meta Lead Ads Native Webhook (Paket B-META, migration 033) ──
+  # Dedicated namespace (not INV-INT or INV-IG) so Meta webhook failures are
+  # dashboard-separable from Zoho / e-commerce integrations. Codes cover signature
+  # verify (endpoint layer), handshake verify token, Graph API fetch (Automation
+  # job layer), field_data parse, tenant lookup, and access_token renewal.
+  - code: INV-META-001
+    description: X-Hub-Signature-256 HMAC-SHA256 signature mismatch at /api/inbound/meta/leadgen/{tenantId}. Constant-time compare via CryptographicOperations.FixedTimeEquals; rejects spoofed webhook posts. Written into meta_leadgen_events audit row with http_status=401 so attacker attempts are observable.
+    user_message: Meta webhook imzası doğrulanamadı (app_secret yanlış veya gövde değiştirilmiş).
+  - code: INV-META-002
+    description: GET /api/inbound/meta/leadgen/{tenantId} verify handshake token mismatch (hub.verify_token != tenant_settings.meta_leadgen_config.verify_token). Dashboard rotate flow must be followed by Meta Subscription setup token update on the App side.
+    user_message: Meta webhook handshake verify token uyuşmuyor — Dashboard'dan rotate edip Meta Subscription ayarında güncelleyin.
+  - code: INV-META-003
+    description: Graph API /v21.0/{leadgen_id}?fields=field_data lead fetch failed (HTTP 4xx non-auth, 5xx transient, or timeout). Hangfire [AutomaticRetry] retries 3x (30/120/600s backoff); terminal fail writes error_code into meta_leadgen_events row + ops alert.
+    user_message: Meta lead detayları alınamadı — geçici Graph API hatası, yeniden deneniyor.
+  - code: INV-META-004
+    description: field_data parse failure — Graph API returned a shape that doesn't match the expected schema (Meta API version change, form corruption, or unsupported field type). Terminal, no retry; operator must inspect raw_payload + update field_id_map or re-test with a simpler lead form.
+    user_message: Meta lead alanları beklenen formatta değil — form yapılandırması incelenmeli.
+  - code: INV-META-005
+    description: URL path tenantId not found in tenant_registry or is_active=FALSE. Endpoint rejects before config load so an attacker scanning tenant_ids sees a uniform 404 shape. Audit row still INSERTed (with http_status=404) for forensic observability.
+    user_message: Meta webhook URL'sindeki tenant bilinmiyor veya pasif.
+  - code: INV-META-006
+    description: Page Access Token missing from meta_leadgen_config or Meta rejected it (401/403 on Graph API call). ~60-day Meta token expiry; Dashboard surfaces this code and prompts operator to re-paste a fresh token. Terminal on Automation side — no retry until config update since retrying would just repeat the auth failure.
+    user_message: Meta Page Access Token eksik veya süresi dolmuş — Dashboard'dan yenileyin.
+
   # ── EXT — External ──
   - code: INV-EXT-001
     description: External API error
@@ -1413,6 +1442,17 @@ errors:
   - code: INV-SEED-017
     description: Dent paket C1 archive snapshot postcondition failure (expected >=37 rows in dent_paket_c1_archive_20260424 = 36 faq_entries + 1 chatbot_flows; rollback evidence insufficient before COMMIT)
     user_message: Paket C1 archive snapshot doğrulaması başarısız — pre-state snapshot eksik, rollback evidence yetersiz, COMMIT öncesi durum güvenli değil.
+
+  # Paket B-META (migration 033 — 2026-04-25)
+  - code: INV-SEED-018
+    description: meta_leadgen_events table / UNIQUE constraint / recent-events index postcondition failure (CREATE TABLE skipped; or table exists but UNIQUE (tenant_id, leadgen_id) dedup anchor missing => at-least-once dedup broken; or idx_meta_leadgen_events_tenant_recent absent => Dashboard [Test Events] panel hot path degrades). Index is a full B-tree on (tenant_id, received_at DESC); a partial predicate using now() was rejected per PostgreSQL 40.7 Immutability of Index Functions, retention deferred to a scheduled DELETE job (post-pilot packet).
+    user_message: Meta Leadgen migration doğrulaması başarısız — audit tablosu, UNIQUE constraint veya recent-events index oluşmadı.
+  - code: INV-SEED-019
+    description: tenant_settings.meta_leadgen_config JSONB column postcondition failure (ALTER TABLE skipped, column exists with wrong type, or table missing). Endpoint + settings API cannot function without this column.
+    user_message: Meta Leadgen migration doğrulaması başarısız — tenant_settings.meta_leadgen_config sütunu eklenmedi.
+  - code: INV-SEED-020
+    description: GRANT ALL invekto privilege postcondition failure on meta_leadgen_events. Runtime INSERT/UPDATE from Backend / Automation will fail with permission denied at ingest time.
+    user_message: Meta Leadgen migration doğrulaması başarısız — invekto role'a GRANT ALL uygulanmamış.
 
 ```
 
