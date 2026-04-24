@@ -2,8 +2,9 @@
 
 > **Slug:** 20260425-feat-meta-leadgen-webhook
 > **Risk:** MEDIUM
-> **Status:** PLANNING (Phase 1 Plan complete, Phase 2 Dev pending next session)
+> **Status:** **DONE+DEPLOYED+SMOKED** (commit `9763012` 2026-04-24 22:30 UTC; Codex 4-chunk merged PASS; Migration 033 + Backend/Automation deploy HEALTHY; AC1 4/4 PASS)
 > **Created:** 2026-04-24 17:45 UTC
+> **Completed:** 2026-04-24 22:30 UTC
 > **Paket scope:** Zapier/3rd-party bridge YOK. Invekto içinde Meta Lead Ads native webhook entegrasyonu.
 
 ## Scope
@@ -172,17 +173,23 @@ Bu paket commit edildikten sonra paralel yürür:
 
 ## Post-Codex Checklist
 
-- [ ] Codex iter=0 PASS (CODEX UTANSIN hedef) 12/12 CQ + 3/3 CoVe + 0 blocker
-- [ ] Build full solution 0 errors
-- [ ] Unit test Automation.Tests PASS (TriggerWelcomeFlowJobTests +2 scenario)
-- [ ] Migration 033 prod execute + DO $verify$ PASS
-- [ ] Backend + Automation NSSM restart + HEALTHY
-- [ ] AC1 prod curl 3 test pass
-- [ ] AC3 Q manuel 5-tik Dashboard smoke
-- [ ] Commit + push master (HEREDOC message + Co-Authored-By + Q-override trailer)
-- [ ] roadmap + session-memory update
-- [ ] lessons-learned +1 entry (Meta Leadgen native-first pattern)
-- [ ] /wrap next-session prompt üret
+- [x] Codex 4-chunk merged PASS (chunk-1 iter 2 + chunk-2 iter 5 + chunk-3 iter 2 + chunk-4 iter 3; CODEX UTANSIN iter=0 hedefi NOT achieved — iter 5 chunk 2 max; real bugs + chunking communication noise birlikte fix edildi)
+- [x] Build full solution 0 errors
+- [x] Unit test TriggerWelcomeFlowJobTests 5/5 PASS (helper-level AC2 invariant)
+- [x] Migration 033 prod execute + DO $verify$ 5/5 postcondition PASS (table_exists + unique_constraint + recent_index + jsonb_col + grant_ok)
+- [x] Backend + Automation NSSM restart + /health HEALTHY (Backend 213 files 12.7MB + Automation 65 files 2.9MB)
+- [x] AC1 prod curl 4/4 PASS (handshake 200 'test123' + bozuk 401 INV-META-001 actionable + valid HMAC 200 accepted + wrong-token 403 INV-META-002 bonus; end-to-end audit chain validated via test event_row with downstream INV-META-006)
+- [ ] AC3 Q manuel 5-tik Dashboard smoke (Q müsait zamanda `/settings/meta-leadgen` 5-step; commit-time config seed Q tercihi, ops seed ayrı)
+- [x] Commit + push master (`9763012` — 64 file / 3761 ins / 77 del, HEREDOC message + Co-Authored-By + 3 Q-override trailer)
+- [x] roadmap + session-memory update (B-META backlog entry → DONE with full summary)
+- [x] lessons-learned +3 entries (pending commit — a/ PostgreSQL 40.7 Immutability Index Functions rejects partial predicate with now(); b/ Codex chunked review needs explicit chunking-context injection; c/ curl.exe --data body-modification vs --data-binary @file for HMAC smoke)
+- [x] /wrap next-session prompt üretildi (Stage 1 launch müşteri prep paralel)
+
+## AC Pending (post-commit, customer-side dependency)
+
+- [ ] AC1b Stage 1 smoke — gerçek Meta test lead → WhatsApp delivered + zoho_sync_log welcome_sent row (müşteri Meta App + HSM template onayı 24-48h bekleniyor)
+- [ ] AC2b Stage 1 smoke — Dent test lead zoho_sync_log welcome_sent status=success OR blueprint_not_configured (müşteri Zoho Blueprint kurulumu bekleniyor)
+- [ ] AC3 Q Dashboard manuel 5-tik — Q müsait zamanda Dent tenant admin login + /settings/meta-leadgen 5 adım
 
 ## References
 
