@@ -23,6 +23,7 @@ Her session basladiginda otomatik:
    - Paket DONE → roadmap Status=DONE + session-memory Recently Completed + `/clear` oner
    - **Atlamak yasak** — sira roadmap'tedir. Q override icin `SKIP P{N}` / `PAUSE` / `REORDER` komutlari kullanir.
 4. **Interview ile basla:** AskUserQuestion ile gri noktalari coz (roadmap paketine ozel sorular)
+5. **Token disiplini:** Buyuk dosyalarda (>10k token / >500 satir) once **Grep** ile hedefli arama, sonra gerekirse offset/limit ile sinirli **Read**. Tam dosya Read yalnizca <10k token dosyalar icin. **Archive dosyalarini ASLA tam Read etme** (`arch/lessons-learned-archive.md`, `arch/session-memory-archive.md`, `arch/platform/**/archive/*.md`) — Grep ile tara.
 
 > **active-work.md KULLANILMIYOR** (shared v6.1, 2026-03-04). Execution queue session-memory.md icinde.
 > **Pilot Mode:** Tum tracking + queue otoritesi `tracking/pilot-launch-roadmap.md`'dedir. Session-memory son durum detayi.
@@ -143,6 +144,21 @@ Bu skill'ler tüm projelerde ortak çalışır, local karşılığı YOKTUR.
 
 Birden fazla servisi arastiran sorgularda `Explore` subagent kullan.
 Ana context sadece sonuclari alir, arastirma detaylarini degil.
+
+### Lesson Lookup via Sub-Agent
+
+Karmasik debug baslarken (incident, crash, regression, Codex review FAIL root cause arama) **once Explore sub-agent** ile lesson/history taramasi yap — main context'i kirletmeden:
+
+```
+Agent(subagent_type="Explore", description="Lesson scan for <problem>",
+  prompt="arch/lessons-learned.md + arch/lessons-learned-archive.md + arch/session-memory-archive.md tara.
+          Problem: <kisa aciklama + semptom + hata kodu>.
+          Relevant olanlarin baslik + 1-2 cumle ozeti + tarih dondur.
+          Irrelevant olanlari atla. Under 300 words.")
+```
+
+**Ne zaman:** Yeni incident/debug, Codex review FAIL root cause, "bu hatayi daha once gormustuk", unfamiliar error pattern.
+**Ne zaman degil:** Basit CRUD, tek dosya degisiklik, UI tweak, routine paket implementasyonu.
 
 ## Hooks (Mekanik Zorlama)
 
