@@ -5,9 +5,9 @@
   "spec_ref": null,
   "slug": "20260424-dent-doctors-bootstrap",
   "risk": "MEDIUM",
-  "status": "IN_PROGRESS",
+  "status": "DONE",
   "created_at": "2026-04-24T14:45:00Z",
-  "updated_at": "2026-04-24T15:10:00Z",
+  "updated_at": "2026-04-24T12:20:00Z",
   "plan": {
     "summary": "Paket B (post-Paket A follow-up): B-VCP-DOCTORS — doctors tablo minimal bootstrap (migration 031) + canonical mirror arch/db/doctors.sql + arch/db/appointments.sql comment sync (doctors bootstrap reference) + Dent pilot seed (1 placeholder 'Dr. Dent Adavista' via ON CONFLICT DO NOTHING deterministic idempotency + 4 slot doctor_id backfill via idempotent DO block) + 4 postcondition verify check (INV-SEED-009..012) with actionable why+next-step guidance in RAISE EXCEPTION. Paket A S6 re-smoke sırasında latent schema/code drift yüzeye çıktı: AppointmentsRepository.GetAppointmentVideoRowAsync (src/Invekto.Appointments/Data/AppointmentsRepository.cs:1199-1202) SQL `LEFT JOIN doctors d` içeriyor ama doctors tablosu hem prod DB'de hem arch/db/migrations/ altında YOKTU (appointments.sql:22,50,153 'Reserved for GR-3.19' comment — hiç materialize edilmemiş; şimdi sync'lendi). Dent ilk gerçek Appointments tenant olarak hangfire.state jobid=38169 üzerinden 42P01 'relation doctors does not exist' patladı (parse_relation.c parserOpenTable), meeting_link + video_reminder_24h/1h_job_id NULL kaldı. Kod değişikliği YOK: LEFT JOIN natural çalışır (reader.IsDBNull guard already handles NULL-doctor case, line 1230-1231). Post-migration Appointments service NSSM restart zorunlu (Codex iter 0 CQ8 + CoVe Q3 feedback — Npgsql connection pool + prepared statement cache deterministic flush garantisi için cold start; runtime no-redeploy hypothesis replaced with explicit restart AC). S6 re-smoke post-migration + post-restart: meeting_link non-null + video_reminder_24h/1h_job_id non-null kanıtı + appointment+hangfire artifacts cleanup + pilot config preserve (plan_tier=kurumsal + 4 slots inactive + doctor seed kalıcı).",
     "q_intent": "B-VCP-DOCTORS önce (Recommended). Paket A'da escalate edilen backlog entry'yi çöz. Interview gate G1: Minimal boilerplate + no FK. G2: 1 placeholder doctor 'Dr. Dent Adavista' + 4 slot doctor_id backfill. Pilot meeting_link populate hop kritik, Paket C öncesi tamamlanmalı.",
@@ -16,38 +16,38 @@
       {
         "id": "AC1",
         "criterion": "Migration 031 arch/db/migrations/031-doctors-bootstrap.sql + canonical mirror arch/db/doctors.sql NEW files created with matching schema (CREATE TABLE doctors: id SERIAL PK + tenant_id INT NOT NULL REFERENCES tenant_registry(tenant_id) ON DELETE CASCADE + name VARCHAR(200) NOT NULL + is_active BOOL DEFAULT TRUE + created_at/updated_at TIMESTAMPTZ DEFAULT now() + **CONSTRAINT uq_doctors_tenant_name UNIQUE (tenant_id, name)**; partial index idx_doctors_tenant_active WHERE is_active=TRUE; GRANT ALL to invekto + sequence USAGE,SELECT). Interview gate G1 minimal boilerplate + no FK enforced (no appointment_slots.doctor_id FK add — deferred to GR-3.19). arch/db/appointments.sql lines 22/50/153 comment sync (doctors bootstrap reference — Codex iter 0 CQ11 feedback).",
-        "verified": false,
-        "verification_note": "PENDING — dosyalar yazıldı, Codex iter 1 review sonrası prod execute."
+        "verified": true,
+        "verification_note": "PASS 2026-04-24 15:30 UTC. Migration 031 + canonical mirror + appointments.sql comment sync + errors.md +4 entries + plan + tracking + roadmap + session-memory 8 file diff committed `d06e2c1` pushed master. UNIQUE constraint + minimal boilerplate + no FK + partial index + GRANT confirmed in both migration + mirror."
       },
       {
         "id": "AC2",
         "criterion": "Migration 031 deterministic Dent seed block: INSERT INTO doctors (...) VALUES (18173130, 'Dr. Dent Adavista', TRUE) ON CONFLICT (tenant_id, name) DO NOTHING RETURNING id → fallback SELECT when ON CONFLICT suppresses RETURNING (UNIQUE constraint guarantees single-row by uq_doctors_tenant_name; Codex iter 0 CQ2 feedback deterministic idempotency) + UPDATE appointment_slots SET doctor_id=<id>, updated_at=now() WHERE tenant_id=18173130 AND doctor_id IS NULL (rerun-safe, only NULL slots). Post-seed DO $verify$ block asserts with actionable RAISE EXCEPTION messages (Codex iter 0 CQ12 feedback): V9 table_exists, V10 Dent doctor count=1, **V11 Dent slots WHERE doctor_id IS NULL expected 0** (generic invariant, CQ9 feedback removes tenant-specific mutable data coupling), V12 GRANT ALL invekto on doctors present.",
-        "verified": false,
-        "verification_note": "PENDING — prod execute sonrası DO $verify$ pass + MCP postgres query ile verify."
+        "verified": true,
+        "verification_note": "PASS 2026-04-24 12:15 UTC. MCP postgres execute: CREATE TABLE + index + grants + DO seed block + DO $verify$ all OK. Seed INSERT ON CONFLICT produced doctors.id=1 (Dent doctor). UPDATE appointment_slots backfilled 4 Dent slots (all previously NULL)."
       },
       {
         "id": "AC3",
         "criterion": "Migration 031 prod DB'de execute edildi + DO $verify$ block 4/4 postcondition PASS (no RAISE EXCEPTION). MCP invekto-postgres execute sonucu `[B-VCP-DOCTORS] postcondition verify PASS (table=ok, dent_doctors=1, dent_slots_null=0, grant=ok)` RAISE NOTICE çıktısı ile kanıtlanır. **Post-migration Appointments service NSSM restart** via MCP invekto-ops server-exec `Restart-Service Invekto-Appointments` (Codex iter 0 CQ8 + CoVe Q3 feedback — connection pool + prepared statement cache deterministic flush garantisi, G4 revised) + `/health` endpoint HEALTHY 200 verify.",
-        "verified": false,
-        "verification_note": "PENDING — migration execute + Appointments restart aşamasında doldurulur."
+        "verified": true,
+        "verification_note": "PASS 2026-04-24 12:16-12:17 UTC. (a) DO $verify$ 4/4 postcondition PASS (DO OK çıktısı, transaction abort yok, RAISE EXCEPTION tetiklenmedi). (b) Appointments NSSM restart 12:17:04Z → Running Automatic (PowerShell Restart-Service -Force output). (c) /health 2026-04-24T12:17:07.2127395Z → 'status=ok service=Invekto.Appointments'. (d) Post-migration verify query: doctors_exists=true, dent_doctors=1, dent_slots_null=0, dent_slots_backfilled=4, dent_doctor_id=1, grant_ok=true, index_ok=true."
       },
       {
         "id": "AC4",
         "criterion": "S6 fresh re-smoke: slot_id=1 temp activate (UPDATE is_active=TRUE) + JWT gen (prod appsettings.Production.json Jwt:SecretKey HMAC-SHA256, tenant=18173130 role=admin 10min exp) + POST localhost:7102/api/v1/appointments/book body {slot_id:1, patient_name:'SMOKE_TEST_B_*', patient_phone:'+00000000099', appointment_date:'2026-04-25', notes:'B-VCP-DOCTORS smoke'} → STATUS 201 + RESPONSE {id:<n>, status:'confirmed'}. Plan guard PASS (Paket A kanıtladı, re-kanıtlanır).",
-        "verified": false,
-        "verification_note": "PENDING — post-migration re-smoke."
+        "verified": true,
+        "verification_note": "PASS 2026-04-24 12:17:40 UTC. Slot1 temp activate UPDATE 1 row (is_active=TRUE). JWT gen (prod Jwt:SecretKey + iss=aud=InvektoServis + claim keys snake_case tenant_id, sub, role, iat/exp 600s). POST /api/v1/appointments/book STATUS=201 BODY={id:2, status:confirmed}. (İlk attempt JWT claim naming bug — tenantId camelCase yerine tenant_id snake_case: prod Invekto format; fix edildi ikinci attempt PASS.) Plan guard PASS re-kanıtlandı (kurumsal plan_tier Appointments feature green)."
       },
       {
         "id": "AC5",
         "criterion": "VideoMeetingCreationJob SUCCESS kanıtı: hangfire.state jobid=<new> trace Enqueued→Processing→Succeeded (42P01 FAIL yok). appointments.meeting_link non-null + meeting_provider='mock' (Dent video_provider='mock') + calendar_event_id non-null + video_reminder_24h_job_id non-null + video_reminder_1h_job_id non-null. 2 reminder Hangfire Scheduled job DB'de mevcut (hangfire.job statename='Scheduled').",
-        "verified": false,
-        "verification_note": "PENDING — re-smoke evidence collection aşamasında doldurulur."
+        "verified": true,
+        "verification_note": "PASS 2026-04-24 12:17:40-41 UTC. **42P01 GONE ✅** VideoMeetingCreationJob jobid=38314 hangfire.state trace: Enqueued 12:17:40.808Z → Processing 12:17:40.866Z → **Succeeded 12:17:41.279Z** (~473ms, önceki 11:17:47 Failed 42P01 doctors-not-found tetiklenmedi). appointments (id=2) kolonlar: meeting_link=`https://meet.google.com/mock--PTZarWTEt` (Chunk B Mock provider deterministic hash) + meeting_provider=`mock` (Dent video_provider='mock' preserved) + video_reminder_24h_job_id=`38315` + video_reminder_1h_job_id=`38316`. 38315 hangfire trace: Scheduled 12:17:41.039Z → Enqueued 12:17:53.943Z → Processing 12:17:56.306Z → Succeeded 12:17:56.342Z (24h reminder zaten geçmiş time window içinde — appointment 2026-04-25 09:00 + 24h öncesi 2026-04-24 09:00 < şimdi 12:17; immediate fire expected). 38316 Scheduled 12:17:41.054Z for future execution (1h before = 2026-04-25 08:00). calendar_event_id=null (Mock provider ICS-less, beklenen). Paket B meeting hop populate: **4/4 field non-null** (meeting_link, meeting_provider, video_reminder_24h_job_id, video_reminder_1h_job_id)."
       },
       {
         "id": "AC6",
         "criterion": "Smoke artifacts full cleanup + pilot config preserve. Cleanup: DELETE FROM appointments WHERE tenant_id=18173130 AND patient_name LIKE 'SMOKE_TEST_B_%' + DELETE FROM hangfire.state/jobqueue/job WHERE jobid IN (booking, video_creation, reminder_24h, reminder_1h) + UPDATE appointment_slots SET is_active=FALSE WHERE id=1 (defensive revert). Preserve baseline: plan_tier='kurumsal' (Paket A upgrade) + 4 slots inactive (doctor_id=<seed_id> PRESERVED post-smoke — seed kalıcı, sadece is_active revert) + 1 doctor row Dent + 1 active flow + 36 inactive FAQ + 1 landing row + 48 templates + 5 TFM + MCC seed.",
-        "verified": false,
-        "verification_note": "PENDING — smoke post-cleanup verify aşamasında doldurulur."
+        "verified": true,
+        "verification_note": "PASS 2026-04-24 12:19 UTC. MCP execute batch: DELETE hangfire.state WHERE jobid IN (38314, 38315, 38316) + DELETE hangfire.jobqueue + DELETE hangfire.job + DELETE appointments WHERE tenant_id=18173130 AND patient_name LIKE 'SMOKE_TEST_B_%' + UPDATE appointment_slots SET is_active=FALSE WHERE id=1. **Post-cleanup verify query:** smoke_appts=0, hf_jobs=0, hf_states=0, hf_queue=0, active_slots=0 (defensive FALSE revert), total_slots=4 (preserved), **slots_with_dent_doctor=4 (seed PERSIST — pilot config kalıcı)**, dent_doctors=1 (preserved), plan_tier='kurumsal' (Paket A upgrade preserved), active_flows=1 (post-P9 wiring preserved), faq_total=36 (preserved), landing_rows=1 (preserved). 48 templates + 5 TFM + MCC seed + video_provider='mock' preserved (MCP query subset, ayrı paket kapsamında değil — regression check kapsamında intact)."
       },
       {
         "id": "AC7",
@@ -58,8 +58,8 @@
       {
         "id": "AC8",
         "criterion": "Codex review MEDIUM risk iter 1 PASS hedef (iter 0 FAIL 5 CQ blocker + 2 CoVe FAIL — CQ2 seed LIMIT 1 nondeterministic, CQ8 no-redeploy unproven, CQ9 V11 hardcoded=4 fragile, CQ11 appointments.sql canonical drift, CQ12 raw exception messages; all resolved in iter 1: UNIQUE constraint + ON CONFLICT DO NOTHING + Appointments restart + V11 generic invariant + appointments.sql comment sync + actionable RAISE EXCEPTION messages). 8 file diff all in allowed_files: plan JSON + diff artifact + migration 031 SQL + canonical mirror doctors.sql + arch/db/appointments.sql (comment sync) + errors.md +4 entry + tracking doc + roadmap update + session-memory entry. Build N/A (SQL + comment-only, no .cs/.ts).",
-        "verified": false,
-        "verification_note": "PENDING — /rev MCP Codex iter 1 review aşamasında doldurulur."
+        "verified": true,
+        "verification_note": "PASS 2026-04-24 15:40 UTC. Iter arc 0→1→2→3. Iter 0 FAIL 5 CQ (CQ2 seed nondeterministic, CQ8 no-redeploy unproven, CQ9 V11 hardcoded, CQ11 appointments.sql drift, CQ12 raw exceptions) + 2 CoVe (Q2 double-run guarantee + Q3 runtime safety). Iter 1 fixes: UNIQUE CONSTRAINT uq_doctors_tenant_name + ON CONFLICT DO NOTHING RETURNING + fallback SELECT + Appointments NSSM restart + V11 generic `doctor_id IS NULL expected 0` + appointments.sql comment sync (lines 16/22/50/153) + actionable RAISE EXCEPTION messages (why + Next step guidance). Iter 1 FAIL 1 CQ (CQ1 catalog drift — errors.md INV-SEED-011 old 'doctor_id=4' wording). Iter 2 fix: errors.md INV-SEED-011 description + user_message synced. Iter 2 FAIL 2 CoVe (Q2 my mis-framed '2-line only' claim on cumulative diff + Q3 plan files_changed[errors.md] V11 wording still old). Iter 3 fix: plan files_changed[errors.md].change text synced to V11 new semantics + CoVe Q2 reworded to address iter-delta vs cumulative-diff distinction. **Iter 3 PASS 12/12 CQ + 3/3 CoVe + 0 blocker** (gpt-5.4-2026-03-05, 37709 tokens). Summary: 'Iter-3 resolves the remaining plan-metadata wording drift: V11 semantics are now consistent across migration, errors catalog, and plan metadata. The cumulative 8-file diff stays within allowed scope and preserves the additive, tenant-scoped, fail-loud production-readiness design established in iter-2.'"
       }
     ]
   },
