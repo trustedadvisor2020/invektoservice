@@ -30,6 +30,7 @@ import {
   Globe,
   Key,
   Clock,
+  Kanban,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { InvektoLogo } from './ui/InvektoLogo';
@@ -69,6 +70,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { path: '/integrations',    label: 'Entegrasyonlar',   icon: Link2,        feature: 'Integrations', section: 'Diğer' },
   // — Ops: Yönetim —
   { path: '/tenants',         label: 'Firmalar',         icon: Building2,     opsOnly: true, section: 'Yönetim' },
+  { path: '/pilot-kanban',    label: 'Pilot Kanban',      icon: Kanban,        opsOnly: true },
   { path: '/licenses',        label: 'Lisanslama',        icon: Key,           opsOnly: true },
   { path: '/ops/zoho',        label: 'Zoho Yönetim',      icon: Link2,         opsOnly: true },
   // — Ops: İçerik —

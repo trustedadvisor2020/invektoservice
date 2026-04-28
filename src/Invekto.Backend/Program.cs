@@ -411,6 +411,10 @@ if (!string.IsNullOrEmpty(pgConnectionString))
     // SuperAdmin: Tenant registry (list + impersonate)
     builder.Services.AddSingleton<TenantRegistryRepository>();
 
+    // FEAT-PILOT-KANBAN: SuperAdmin pilot tracking board (Migration 035).
+    // Read-only Dashboard surface; mutation tek path /wrap workflow Step 3.5.
+    builder.Services.AddSingleton<KanbanRepository>();
+
     // Instance management (tenant_instances table: filtering + flow routing)
     builder.Services.AddSingleton<InstanceRepository>();
 
@@ -6416,6 +6420,20 @@ app.MapPost("/api/ops/tenants/{id}/impersonate", async (HttpContext ctx, int id,
             statusCode: 500);
     }
 });
+
+// ============================================
+// FEAT-PILOT-KANBAN: SuperAdmin pilot tracking board (Migration 035)
+// ============================================
+// Read-only Dashboard surface (PilotKanbanPage + KanbanDrawer); Q manuel
+// kart edit yapmaz. Mutation tek path: /wrap workflow Step 3.5 hibrit
+// (otomatik oner + Q onayla -> PATCH).
+//
+//   GET   /api/ops/kanban/{board_key}                      -> KanbanBoardDto
+//   PATCH /api/ops/kanban/{board_key}/cards/{card_slug}     -> KanbanCardDto
+//
+// Auth: ValidateOpsAuth + OpsUnauthorized helper`lari Func parametresi olarak
+// MapKanbanEndpoints`e gecirilir (lesson: pattern duplication`u onler).
+app.MapKanbanEndpoints(ValidateOpsAuth, OpsUnauthorized);
 
 // ============================================
 // PLAN CRUD + TENANT PLAN MANAGEMENT (Faz 1 Paket 2)

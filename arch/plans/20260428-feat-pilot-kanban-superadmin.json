@@ -1,0 +1,247 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260428-feat-pilot-kanban-superadmin",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-04-28T11:13:11Z",
+  "updated_at": "2026-04-28T13:00:00Z",
+  "plan": {
+    "summary": "SuperAdmin Dashboard'a 'Pilot Kanban' sayfası ekle: 5 kolonlu (BLOCKED/TODO/IN_PROGRESS/BACKLOG/DONE) read-only board, kart click sağdan slide-in drawer ile tüm detayı gösterir. Dent pilot için ~48 seed kart. /wrap workflow Step 3.5 olarak otomatik kart status güncelleme önerir, Q onayı sonrası API PATCH gönderir.",
+    "q_intent": "super içine güzel bir kanban sayfası yap ve sol nav a ekle. tüm gidişatı ordan takip edeyim. bunları kategozize et. detayları tıklayınca görecek şekilde UI planla. wrap içine bu kanbanı güncelleyecek bölümü ekle. Sonra: super admin tarafına ekle hepsini. Kararlar: 1a (platform-level board_key) + 2a (PostgreSQL) + 3c (hibrit /wrap). G1=drawer (modal+drag-drop YOK, /wrap otomatik), G2=history YOK (sadece updated_at), G3=tüm detay drawer'da, G4=migration'da seed.",
+    "interview_notes": "Drawer slide-in (sağdan), drag-drop YOK. /wrap kart status'unu otomatik öner+Q onayla+API PATCH ile günceller; Dashboard READ-ONLY (Q manual edit yapmıyor). History/audit YOK, sadece updated_at + completed_at. Tüm kart detayı (markdown body, source_file/anchor, owner, eta, summary) drawer içinde inline render. Migration 035 idempotent INSERT'ler — ~48 kart Dent pilot için. board_key='dent-pilot' (platform-level, tenant_id NULL). API endpoint pattern: /api/ops/kanban/{board_key} (Ops auth — same as TenantsPage).",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Migration 035 idempotent çalışır (re-run ON CONFLICT DO NOTHING). kanban_cards tablosu (id, board_key, card_slug UNIQUE per board, status, category, title, summary, body_markdown, owner, eta, source_file, source_anchor, position, priority, created_at, updated_at, completed_at) + 2 index (board_key+status, board_key+position). board_key='dent-pilot' için >=40 seed kart insert edilir.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC2",
+        "criterion": "GET /api/ops/kanban/{board_key} → 200 + KanbanBoardDto (cards: KanbanCardDto[], updated_at). Auth: Ops mode (TenantsPage ile aynı pattern). Cards status+position'a göre sıralı.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC3",
+        "criterion": "PATCH /api/ops/kanban/{board_key}/cards/{cardSlug} body { status, completed_at? } → 200 + güncellenmiş card. Geçersiz status → 400. Status DONE'a geçince completed_at otomatik dolar (override edilebilir). updated_at her PATCH'te tazelenir. Card bulunamazsa 404.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC4",
+        "criterion": "Dashboard SuperAdmin nav'da 'Pilot Kanban' entry görünür (opsOnly: true, section: 'Yönetim', icon: lucide Kanban). Tenant mode'da gizli. Click → /pilot-kanban route render eder PilotKanbanPage'i.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC5",
+        "criterion": "PilotKanbanPage 5 kolon grid (BLOCKED/TODO/IN_PROGRESS/BACKLOG/DONE) render eder. Her kart: title + category tag + owner + eta. Kart click → sağdan slide-in drawer açılır, tüm detay (title, status, category, owner, eta, summary, body_markdown, source_file → tıklanabilir link). Drawer ESC veya overlay click ile kapanır. Loading skeleton + empty state + error fallback. Polling 60s.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC6",
+        "criterion": "/wrap workflow'a Step 3.5 'Project Kanban Sync' eklenir (commands/wrap.md). Step Conditional: dent-golive.html veya kanban_cards tablosu varlığı kontrol → varsa session değişikliklerini (commit message + plan JSON status + execution queue completion) tara → eşleşen kart slug'larını bul → Q'ya 'Kanban: X kart önerilen güncelleme — onaylıyor musun?' sun → onay sonrası PATCH gönder. Hiçbir match yoksa 1 satır 'Kanban sync: değişiklik yok'.",
+        "verified": false,
+        "verification_note": null
+      }
+    ]
+  },
+  "allowed_files": [
+    "arch/db/migrations/035-kanban-cards.sql",
+    "arch/plans/20260428-feat-pilot-kanban-superadmin.json",
+    "tracking/20260428-feat-pilot-kanban-superadmin.md",
+    "tracking/README.md",
+    "src/Invekto.Shared/Contracts/Kanban/KanbanCardDto.cs",
+    "src/Invekto.Shared/Contracts/Kanban/KanbanBoardDto.cs",
+    "src/Invekto.Shared/Contracts/Kanban/KanbanStatus.cs",
+    "src/Invekto.Shared/Contracts/Kanban/KanbanCategory.cs",
+    "src/Invekto.Shared/Contracts/Kanban/KanbanPatchRequest.cs",
+    "src/Invekto.Backend/Data/KanbanRepository.cs",
+    "src/Invekto.Backend/Endpoints/KanbanEndpoints.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/PilotKanbanPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/KanbanDrawer.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/Layout.tsx",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "C:/Users/taner/.claude/commands/wrap.md"
+  ],
+  "files_changed": [
+    { "path": "arch/db/migrations/035-kanban-cards.sql", "is_new": true, "change": "DDL kanban_cards + 4 constraint + 2 index + ~50 seed (dent-pilot board) + INV-SEED-024..025 postcondition" },
+    { "path": "arch/plans/20260428-feat-pilot-kanban-superadmin.json", "is_new": true, "change": "Plan JSON" },
+    { "path": "tracking/20260428-feat-pilot-kanban-superadmin.md", "is_new": true, "change": "Tracking doc" },
+    { "path": "src/Invekto.Shared/Contracts/Kanban/KanbanCardDto.cs", "is_new": true, "change": "Card payload DTO" },
+    { "path": "src/Invekto.Shared/Contracts/Kanban/KanbanBoardDto.cs", "is_new": true, "change": "Board response DTO" },
+    { "path": "src/Invekto.Shared/Contracts/Kanban/KanbanStatus.cs", "is_new": true, "change": "5-deger status enum + DB mapping" },
+    { "path": "src/Invekto.Shared/Contracts/Kanban/KanbanCategory.cs", "is_new": true, "change": "6-deger category enum + DB mapping" },
+    { "path": "src/Invekto.Shared/Contracts/Kanban/KanbanPatchRequest.cs", "is_new": true, "change": "PATCH body (status + completed_at?)" },
+    { "path": "src/Invekto.Backend/Data/KanbanRepository.cs", "is_new": true, "change": "GetCards + UpdateCardStatus + GetBoardUpdatedAt (status sort by enum order)" },
+    { "path": "src/Invekto.Backend/Endpoints/KanbanEndpoints.cs", "is_new": true, "change": "GET + PATCH /api/ops/kanban/{board_key} — Func parametreli Ops auth" },
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false, "change": "DI register KanbanRepository + MapKanbanEndpoints(ValidateOpsAuth, OpsUnauthorized)" },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "is_new": false, "change": "KanbanCard/Board/PatchRequest interface + getKanbanBoard + patchKanbanCard" },
+    { "path": "src/Invekto.Backend/Dashboard/src/components/KanbanDrawer.tsx", "is_new": true, "change": "Sagdan slide-in drawer + ESC close + body markdown lite render (XSS-safe)" },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/PilotKanbanPage.tsx", "is_new": true, "change": "5 kolon grid + 60s polling + category filter + stat pills + drawer entegrasyonu" },
+    { "path": "src/Invekto.Backend/Dashboard/src/components/Layout.tsx", "is_new": false, "change": "Kanban icon import + nav entry /pilot-kanban (opsOnly, Yonetim section)" },
+    { "path": "src/Invekto.Backend/Dashboard/src/App.tsx", "is_new": false, "change": "Lazy import PilotKanbanPage + Route /pilot-kanban" },
+    { "path": "C:/Users/taner/.claude/commands/wrap.md", "is_new": false, "change": "Step 3.5 Project Kanban Sync (hibrit: aday match + Q onay + API PATCH)" }
+  ],
+  "git_diff": {
+    "sha256": "10153bcab9e430d72f9698372f197b4e56a7a43660304b13ba7e0b218c4e03e7",
+    "full_path": "arch/plans/diffs/20260428-feat-pilot-kanban-superadmin.diff",
+    "stats": {
+      "insertions": 2406,
+      "deletions": 0,
+      "files_count": 19
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q && tsc --noEmit (Dashboard)",
+    "timestamp": "2026-04-28T12:30:00Z",
+    "services": ["Invekto.Shared", "Invekto.Backend", "Dashboard (TypeScript)"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "kanban_cards tablosu tenant_registry FK olmadan (tenant_id NULL allowed) doğru tasarlandı mı? board_key='dent-pilot' platform-level, ileride tenant-scoped board'lar (board_key='tenant-X-pilot') eklenebilir mi?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "GET /api/ops/kanban/{board_key} ve PATCH endpoint'leri Ops authentication (TenantsPage ile aynı admin/admin123 hostname/header gate) kullanıyor mu? SuperAdmin olmayan tenant kullanıcı bu endpoint'lere erişemez mi (401/403)?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Migration 035 idempotent mi (re-run ON CONFLICT DO NOTHING + DROP IF EXISTS guard)? Card seed slug'ları unique mi (board_key + card_slug composite UNIQUE)? Yeni kart insert ettiğimizde mevcut updated_at'i kırıyor mu?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "/wrap Step 3.5 false positive üretmemek için: commit message'da 'feat(b-meta)' geçince hangi kart match edilir? Birden fazla candidate varsa Q'ya seçim sunar mı yoksa hepsini önerir mi? Q 'no' derse skip eder mi (regret-free)?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Marketing/**",
+      "src/Invekto.Automation/**",
+      "src/Invekto.AgentAI/**",
+      "src/Invekto.Backend/Endpoints/**.cs (KanbanEndpoints.cs HARİÇ)",
+      "src/Invekto.Backend/Data/**.cs (KanbanRepository.cs HARİÇ)",
+      "DentAdavista/**",
+      "tracking/pilot-launch-roadmap.md (bu paket roadmap'i etkilemez, ayrı feature)",
+      "arch/db/migrations/0*.sql (önceki migration'lar)",
+      "arch/lessons-learned*.md"
+    ],
+    "non_goals": [
+      "Drag-drop UI (Q acık olarak HAYIR dedi)",
+      "Dashboard'dan kart düzenleme/silme/oluşturma (read-only — /wrap ile güncellenir)",
+      "History/audit log (Q acık olarak HAYIR dedi)",
+      "Tenant-scoped board'lar (ileri faz, şu an sadece platform-level dent-pilot)",
+      "Drawer içinde inline status değiştirme (read-only drawer)",
+      "Markdown WYSIWYG editor (sadece markdown render)",
+      "WebSocket/SSE realtime push (60s polling yeterli)",
+      "Notification/alert (kart status değişince)",
+      "Diğer board'lar için generic UI (sadece dent-pilot board)",
+      "Kanban export/import (PDF/CSV)"
+    ],
+    "intentional_exclusions": [
+      "kanban_card_history tablosu — Q HAYIR dedi (sadece updated_at + completed_at)",
+      "Drag-drop kütüphanesi (react-beautiful-dnd) — bağımlılık eklenmiyor",
+      "External link (golive.html#anchor) — drawer inline detay yeterli",
+      "Card create/delete API endpoint'leri — seed migration ile gelir, /wrap güncellesin",
+      "Frontend optimistic update — read-only sayfa, polling yeterli",
+      "Drawer inline edit form — Q manuel edit istemiyor"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "KanbanEndpoints.cs:GetBoard — 404 if board_key bulunamazsa",
+      "KanbanEndpoints.cs:PatchCard — 404 if card slug yoksa, 400 if invalid status",
+      "KanbanRepository.cs:UpdateCard — DB exception → propagate (endpoint generic 500 handle eder)",
+      "PilotKanbanPage.tsx:fetchBoard — try/catch + setError state + error UI",
+      "KanbanDrawer.tsx:open — null guard if card prop yoksa render etme"
+    ],
+    "user_facing_errors": [
+      "Dashboard: 'Kanban yüklenemedi (network error)' — retry butonu",
+      "Dashboard: 'Bağlantı koptu, 60sn sonra tekrar deneniyor' (polling fail)",
+      "API: 400 'Geçersiz status' (invalid enum)",
+      "API: 404 'Kart bulunamadı' (slug yoksa)",
+      "/wrap: 'Kanban sync: 0 match — atlanıyor' (false positive yoksa)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "PATCH endpoint hata durumunda 400/404/500 döner — silent skip yok. /wrap step 3.5 hibrit (Q onaylar) — false positive durumunda Q 'no' derse explicit skip log'lanır. Polling fail durumunda Dashboard error state göster + retry."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Q pilot durumunu takip etmek için 5 farklı dosya açıyor: pilot-launch-roadmap.md + dent-golive.html + tracking/README.md + session-memory.md + arch/plans/. Hangisi güncel kayıyor.",
+      "suggestion": "SuperAdmin > Pilot Kanban tek dashboard — Q login olur olmaz tüm gidişat tek bakışta görünür. /wrap kart'ları otomatik günceller, dosya güncelleme hataları sıfırlanır.",
+      "aha_moment": "Q sabah login oluyor → Pilot Kanban sayfasını açıyor → 5 saniyede 'B.8 HSM hala BLOCKED' + 'B-VCP-DOCTORS DONE' + 'P10 IN_PROGRESS' okur → işe kalınan yerden devam eder."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Pilot kart'ları markdown dosyalarında manuel güncelleniyor — 3 farklı dosyada aynı status farklı yazılmış olabilir (drift). Q hangisi doğru bilmiyor.",
+      "suggestion": "Tek source of truth = kanban_cards tablosu. Migration ile seed → /wrap ile güncelle. Markdown dosyalar artık 'rapor için' okunur, Source DB.",
+      "aha_moment": "Q tracking'de 2 farklı sayı görünce kafası karışıyor → Pilot Kanban'a gidiyor → 'gerçek burada' diyor → şüphe biter."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Q session sonunda /wrap çalıştırıyor — kanban'ı manuel güncellemek için 3-5 dakika ek iş (hangi kart DONE oldu, hangi BLOCKED'a takıldı listele).",
+      "suggestion": "/wrap Step 3.5 commit message + plan JSON status'ten otomatik aday kart'ları çıkarıp Q'ya öneri sunar. Q sadece 'OK' der, PATCH gönderilir.",
+      "aha_moment": "Q /wrap çalıştırıyor → 'Kanban: B-VCP-DOCTORS=DONE, P10=IN_PROGRESS önerildi' → 'evet' → 2 saniyede 2 kart güncel. Commit + push tamamlanır."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Q bir kart'ın detayını görmek için tracking dosyalarına gidiyor (yolu hatırlaması zor) → uzun MD dosyasında scroll → ilgili section bul.",
+      "suggestion": "Kart click → sağdan drawer slide-in → tüm detay (title, summary, body_markdown, source_file link) inline. Tek tıkla görme + ESC ile kapatma.",
+      "aha_moment": "Q 'B.8 HSM nedir hatırlamıyorum' → kart'a tıklar → drawer açılır → 'Meta Welcome Template onayı, 24-48h, P0 BLOCKER' → 'tamam' der ESC basar."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Yeni session başlayınca Q execution queue'yu okumak için session-memory.md'yi açıyor — uzun, dağınık. 'Şimdi ne yapıyorum?' sorusu 30 saniye sürüyor.",
+      "suggestion": "Pilot Kanban'da IN_PROGRESS + BLOCKED kolonları en üst öncelik. Q login olur olmaz '3 IN_PROGRESS, 5 BLOCKED' → en kritik olanı seçer.",
+      "aha_moment": "Sabah session: Q Dashboard'a girer → IN_PROGRESS kolonunda 'B-VCP-DOCTORS commit pending' kart görür → 'evet bunu kapatmam lazım' → /auto başlar."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-28T13:30:00Z",
+    "updated_at": "2026-04-28T13:30:00Z",
+    "iteration": 3,
+    "iteration_2_blocking": [
+      "CQ8/Q4 chunk 3 iter2: KanbanRepository optional tenantId parameter CancellationToken'dan once konuldu -> 3 CS1503 compile error 'cannot convert from CancellationToken to long?' (FIXED iter3: parameter sirasi swap, tenantId ct'den sonra)",
+      "CQ5/Q1/Q3 chunk 5 iter2: tracking MD'de eski Dashboard/src/api.ts path + schema bloku tenant_id'siz (FIXED iter3: path Dashboard/src/lib/api.ts + tenant_id kolonu eklendi tracking schema bloguna)"
+    ],
+    "iteration_1_blocking": [
+      "CQ9 chunk 3: KanbanRepository SELECT/UPDATE'te tenant_id WHERE clause yoktu — sadece projection eklendi (FIXED iter2: 3 metoda tenant_id parametre + 'tenant_id IS NOT DISTINCT FROM @tenant' null-safe equality WHERE clause; default null platform-level board)",
+      "Chunk 5 docs CQ3/CQ5: plan allowed_files yanlis path src/Invekto.Backend/Dashboard/src/api.ts (FIXED iter2: src/lib/api.ts)",
+      "Chunk 5 docs CQ5: tracking MD Status PLANNING vs plan REVIEW (FIXED iter2: tracking MD Status REVIEW)",
+      "Chunk 1 CoVe Q3: kart sayim metaverisinde TODO 14 yazdi gercekte 15 (NON-BLOCKING doc-only — postcondition >=40 zaten karsilaniyor toplam 64)"
+    ],
+    "iteration_0_blocking": [
+      "CQ5/Q3: seed INSERT'lerde ON CONFLICT DO NOTHING eksik — re-run idempotent degil (FIXED iter1: 5 INSERT bloguna ON CONFLICT (board_key, card_slug) DO NOTHING eklendi)",
+      "CQ9/Q1: tenant_id sutunu yok (Q karari 1a tenant_id NULL allowed) (FIXED iter1: tenant_id BIGINT NULL eklendi + idx_kanban_cards_tenant partial index)",
+      "CQ11: arch/db/{service}.sql canonical schema yok (FIXED iter1: arch/db/kanban-board.sql olusturuldu)",
+      "CQ12: KanbanStatus/Category exception messages INV code yok (FIXED iter1: INV-KB-001/002 eklendi + messages actionable)",
+      "CQ12: KanbanEndpoints generic error messages (FIXED iter1: INV-KB-003/004/005 + actionable text)",
+      "INV-SEED-024..025 + INV-KB-001..005 arch/errors.md kayit yoktu (FIXED iter1: KB service code + 7 yeni entry)",
+      "Chunk artifact: MEDIUM 3+ Q kurali per-chunk uygulanacak (iter1: tum 4 verification Q her chunk'a gonderilir)"
+    ]
+  }
+}

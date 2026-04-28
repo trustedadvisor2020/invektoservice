@@ -28,6 +28,7 @@ services:
   MT:   { name: Metrics,       description: "PKT-3: Analitik/metrik hataları" }
   WC:   { name: WebChat,       description: Website webchat hataları }
   EXT:  { name: External,      description: Dış servis hataları }
+  KB:   { name: Kanban,        description: "FEAT-PILOT-KANBAN: SuperAdmin pilot tracking board hataları" }
   WA:   { name: WhatsAppAnalytics, description: "WA Analytics pipeline + Revenue Intelligence hataları" }
   VA:   { name: VoiceAI,          description: "PKT-11: Voice Message AI — STT + intent hataları" }
   JOB:  { name: HangfireJob,      description: "G7: Hangfire recurring/enqueued job altyapı hataları" }
@@ -1509,6 +1510,31 @@ errors:
   - code: INV-SEED-023
     description: GRANT ALL invekto privilege postcondition failure on photo_inbound_idempotency. PhotoInboundHandler runtime INSERT permission denied — INMA webhook 503 doner, at-least-once redelivery sonraki window'da yeniden gonderir ama dedup anchor calismadigi icin photo_count guvensiz.
     user_message: Foto migration doğrulaması başarısız — invekto role'a photo_inbound_idempotency üzerinde GRANT ALL uygulanmamış.
+
+  # FEAT-PILOT-KANBAN (migration 035 — 2026-04-28)
+  - code: INV-SEED-024
+    description: kanban_cards seed postcondition failure — board_key='dent-pilot' icin beklenen ~50 kart insert edilmedi (en az 40 esik). Migration 035 INSERT bloklarindan biri sessizce atlanmis VEYA ON CONFLICT DO NOTHING idempotency tetiklenmis ama gerek satir sayisi tutturulamamis. SuperAdmin Pilot Kanban sayfasi bos / yariakla yuklenir.
+    user_message: Kanban migration doğrulaması başarısız — dent-pilot board için yeterli kart seed edilmedi.
+  - code: INV-SEED-025
+    description: kanban_cards constraint postcondition failure — uq_kanban_cards_board_slug UNIQUE / chk_kanban_cards_status, _category, _priority CHECK constraint'lerinden biri eksik. ALTER TABLE DO blocklarindan biri silently no-op olmus (constraint zaten farkli isimle var, role privilege yetersiz). Re-run idempotency icin uq_kanban_cards_board_slug zorunlu; eksikse ON CONFLICT DO NOTHING calismaz.
+    user_message: Kanban migration doğrulaması başarısız — kanban_cards UNIQUE veya CHECK constraint oluşmadı.
+
+  # FEAT-PILOT-KANBAN runtime (KanbanEndpoints + Repository — 2026-04-28)
+  - code: INV-KB-001
+    description: KanbanStatusExtensions.ToDbValue called with a value outside the declared enum range. Defensive guard — should be unreachable through normal API paths because PATCH endpoint TryParse rejects unknown strings with INV-KB-003. Indicates an internal serialization or refactor bug.
+    user_message: Kanban kart durumu geçersiz (sistem hatası).
+  - code: INV-KB-002
+    description: KanbanCategoryExtensions.ToDbValue called with a value outside the declared enum range. Same defensive guard semantics as INV-KB-001 for category enum. Indicates internal bug; user input never reaches this path because category is migration seed only (not user-mutable).
+    user_message: Kanban kart kategorisi geçersiz (sistem hatası).
+  - code: INV-KB-003
+    description: KanbanEndpoints PATCH body status field is not one of BLOCKED|TODO|IN_PROGRESS|BACKLOG|DONE. /wrap workflow Step 3.5 hibrit kanban sync veya manual API caller invalid string gondermis. 400 user-facing; expected enum listed in error message for actionable feedback.
+    user_message: Kanban kart durumu geçersiz — beklenen değerler BLOCKED, TODO, IN_PROGRESS, BACKLOG veya DONE.
+  - code: INV-KB-004
+    description: KanbanEndpoints PATCH /api/ops/kanban/{board_key}/cards/{card_slug} card_slug bulunamadi (composite UNIQUE board_key + card_slug). /wrap workflow Step 3.5 yanlis slug onerdi VEYA manual API caller mevcut olmayan kart slug gonderdi. 404 user-facing; aksiyon: kart slug mevcut mi diye GET ile dogrula.
+    user_message: Kanban kartı bulunamadı — board veya card_slug değeri geçersiz.
+  - code: INV-KB-005
+    description: KanbanEndpoints GET /api/ops/kanban/{board_key} VEYA PATCH NpgsqlException (DB connection drop / query timeout / table missing). 503 user-facing; aksiyon: PostgreSQL servis durumu kontrolu + Migration 035 uygulanmis mi dogrulamasi.
+    user_message: Kanban veritabanı geçici olarak kullanılamıyor — birkaç dakika sonra tekrar deneyin.
 
 ```
 

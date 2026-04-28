@@ -278,6 +278,13 @@ public static class ErrorCodes
     public const string PhotoInboundUpdateMiss = "INV-AT-084";                 // PhotoInboundHandler atomic UPDATE leads matched 0 rows (lead silinmis OR photo_status='rejected' OR cross-tenant). Idempotency anchor yazildi ama leads state degismedi — 422 doner, INMA caller incident audit.
     public const string PhotoRequestRejectedLock = "INV-AT-085";               // PhotoEndpoints POST /photos/request — lead photo_status='rejected' lock'unda; 'Tekrar Iste' butonu opt-out override yapamaz. 409 user-facing; koordinator manuel inceleyecek.
 
+    // FEAT-PILOT-KANBAN: SuperAdmin pilot tracking board (Migration 035, 2026-04-28) — INV-KB-xxx
+    public const string KanbanStatusUnknown   = "INV-KB-001";                  // KanbanStatusExtensions.ToDbValue defensive guard; enum dışı değer (sistem hatası — PATCH endpoint TryParse zaten INV-KB-003 ile reddediyor). Internal serialization/refactor bug indikatoru.
+    public const string KanbanCategoryUnknown = "INV-KB-002";                  // KanbanCategoryExtensions.ToDbValue defensive guard; user input bu path'e ulaşmaz (category yalnız migration seed). Internal bug indikatoru.
+    public const string KanbanInvalidStatus   = "INV-KB-003";                  // KanbanEndpoints PATCH body status field BLOCKED|TODO|IN_PROGRESS|BACKLOG|DONE dışında — 400 user-facing, beklenen enum listesi error message'da.
+    public const string KanbanCardNotFound    = "INV-KB-004";                  // KanbanEndpoints PATCH composite (board_key, card_slug) bulunamadı — 404. /wrap workflow Step 3.5 yanlış slug önerebilir; aksiyon: GET ile kart slug doğrula.
+    public const string KanbanDatabaseError   = "INV-KB-005";                  // KanbanEndpoints GET/PATCH NpgsqlException (DB drop / timeout / table missing) — 503. Aksiyon: PostgreSQL durumu + Migration 035 dogrulama.
+
     // AgentAI errors (INV-AA-xxx)
     public const string AgentAIInvalidPayload = "INV-AA-001";
     public const string AgentAIReplyGenerationFailed = "INV-AA-002";

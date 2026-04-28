@@ -220,6 +220,44 @@ export interface TenantEntry {
   createdAt: string;
 }
 
+// FEAT-PILOT-KANBAN: SuperAdmin pilot tracking board (Migration 035).
+// Read-only Dashboard surface; mutation tek path /wrap workflow Step 3.5.
+export type KanbanStatusValue = 'BLOCKED' | 'TODO' | 'IN_PROGRESS' | 'BACKLOG' | 'DONE';
+export type KanbanCategoryValue = 'CUSTOMER' | 'OPS' | 'DEV' | 'DECISION' | 'UI' | 'DOC';
+export type KanbanPriorityValue = 'P0' | 'P1' | 'P2' | 'P3';
+
+export interface KanbanCard {
+  id: number;
+  board_key: string;
+  card_slug: string;
+  tenant_id: number | null;       // null = platform-level board (e.g. 'dent-pilot' SuperAdmin only)
+  status: KanbanStatusValue;
+  category: KanbanCategoryValue;
+  priority: KanbanPriorityValue;
+  position: number;
+  title: string;
+  summary: string | null;
+  body_markdown: string | null;
+  owner: string | null;
+  eta: string | null;
+  source_file: string | null;
+  source_anchor: string | null;
+  created_at: string;
+  updated_at: string;
+  completed_at: string | null;
+}
+
+export interface KanbanBoard {
+  board_key: string;
+  cards: KanbanCard[];
+  updated_at: string;
+}
+
+export interface KanbanPatchRequest {
+  status: KanbanStatusValue;
+  completed_at?: string | null;
+}
+
 export interface IntentPatternDto {
   id: number;
   tenant_id: number;
@@ -1416,6 +1454,29 @@ class OpsApiClient {
   // SuperAdmin: Tenant list
   async getOpsTenants(): Promise<{ tenants: TenantEntry[] }> {
     return this.request<{ tenants: TenantEntry[] }>('/api/ops/tenants');
+  }
+
+  // FEAT-PILOT-KANBAN: SuperAdmin pilot tracking board.
+  // GET /api/ops/kanban/{board_key} — cards status+position'a gore sirali.
+  async getKanbanBoard(boardKey: string): Promise<KanbanBoard> {
+    return this.request<KanbanBoard>(`/api/ops/kanban/${encodeURIComponent(boardKey)}`);
+  }
+
+  // PATCH /api/ops/kanban/{board_key}/cards/{card_slug} — status update.
+  // /wrap workflow Step 3.5 hibrit kanban sync bu metodu cagirir.
+  async patchKanbanCard(
+    boardKey: string,
+    cardSlug: string,
+    body: KanbanPatchRequest,
+  ): Promise<KanbanCard> {
+    return this.request<KanbanCard>(
+      `/api/ops/kanban/${encodeURIComponent(boardKey)}/cards/${encodeURIComponent(cardSlug)}`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      },
+    );
   }
 
   // SuperAdmin: Channel list for filter dropdown

@@ -60,6 +60,9 @@ const CampaignConfigSettingsPage = lazy(() => import('./pages/settings/CampaignC
 // Paket B-META: Meta Leadgen webhook settings (lazy).
 const MetaLeadgenSettingsPage = lazy(() => import('./pages/settings/MetaLeadgenSettingsPage').then(m => ({ default: m.MetaLeadgenSettingsPage })));
 
+// FEAT-PILOT-KANBAN: SuperAdmin pilot tracking board (lazy, opsOnly).
+const PilotKanbanPage = lazy(() => import('./pages/PilotKanbanPage').then(m => ({ default: m.PilotKanbanPage })));
+
 function ProtectedRoute() {
   const { isAuthenticated } = useAuth();
 
@@ -138,6 +141,7 @@ export default function App() {
         <Route path="/messages" element={<MessagesPage />} />
         <Route path="/webchat" element={<WebChatPage />} />
         <Route path="/tenants" element={<TenantsPage />} />
+        <Route path="/pilot-kanban" element={<Suspense><PilotKanbanPage /></Suspense>} />
         <Route path="/ops/zoho" element={<OpsZohoPage />} />
         <Route path="/licenses" element={<LicensesPage />} />
         <Route path="/payment" element={<PaymentPage />} />
