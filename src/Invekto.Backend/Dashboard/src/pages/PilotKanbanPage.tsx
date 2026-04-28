@@ -19,12 +19,15 @@ import { cn } from '../lib/utils';
  */
 const DEFAULT_BOARD_KEY = 'dent-pilot';
 
-const COLUMNS: { id: KanbanStatusValue; label: string; cls: string; dot: string }[] = [
-  { id: 'BLOCKED',     label: 'Blocked',     cls: 'border-slate-200/70 bg-white',         dot: 'bg-red-300' },
-  { id: 'TODO',        label: 'Todo',        cls: 'border-slate-200/70 bg-white',         dot: 'bg-blue-300' },
-  { id: 'IN_PROGRESS', label: 'In Progress', cls: 'border-slate-200/70 bg-white',         dot: 'bg-amber-300' },
-  { id: 'BACKLOG',     label: 'Backlog',     cls: 'border-slate-200/70 bg-white',         dot: 'bg-purple-300' },
-  { id: 'DONE',        label: 'Done',        cls: 'border-slate-200/70 bg-white',         dot: 'bg-emerald-300' },
+// Audit fix D036 (2026-04-29 Batch C): cls field dead code temizlik. Light/minimal
+// redesign sonrası rendering hardcoded bg-slate-50 / min-h-[200px] kullaniyor;
+// col.cls hicbir yerde okunmuyor. Field interface ve initializer'dan kaldirildi.
+const COLUMNS: { id: KanbanStatusValue; label: string; dot: string }[] = [
+  { id: 'BLOCKED',     label: 'Blocked',     dot: 'bg-red-300' },
+  { id: 'TODO',        label: 'Todo',        dot: 'bg-blue-300' },
+  { id: 'IN_PROGRESS', label: 'In Progress', dot: 'bg-amber-300' },
+  { id: 'BACKLOG',     label: 'Backlog',     dot: 'bg-purple-300' },
+  { id: 'DONE',        label: 'Done',        dot: 'bg-emerald-300' },
 ];
 
 const CATEGORY_LABEL: Record<string, string> = {

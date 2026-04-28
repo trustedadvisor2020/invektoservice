@@ -136,27 +136,10 @@ public class KanbanRepository
         return ReadCard(reader);
     }
 
-    /// <summary>
-    /// Board son guncelleme zamani (header / cache check icin). Bos board ->
-    /// DateTime.MinValue (epoch). Endpoint bunu KanbanBoardDto.UpdatedAt
-    /// alanina yansitir.
-    /// </summary>
-    public virtual async Task<DateTime> GetBoardUpdatedAtAsync(
-        string boardKey, CancellationToken ct = default, long? tenantId = null)
-    {
-        const string sql = @"
-            SELECT COALESCE(MAX(updated_at), '0001-01-01T00:00:00Z'::timestamptz)
-              FROM kanban_cards
-             WHERE board_key = @board
-               AND tenant_id IS NOT DISTINCT FROM @tenant";
-
-        await using var conn = await _db.OpenConnectionAsync(ct);
-        await using var cmd = new NpgsqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("board", boardKey);
-        cmd.Parameters.AddWithValue("tenant", (object?)tenantId ?? DBNull.Value);
-        var result = await cmd.ExecuteScalarAsync(ct);
-        return result is DateTime dt ? dt : DateTime.MinValue;
-    }
+    // Audit fix D037 (2026-04-29 Batch C): GetBoardUpdatedAtAsync dead code silindi.
+    // Tek caller (KanbanEndpoints GET handler) artik cards.Max(c => c.UpdatedAt)
+    // ile in-memory hesaplar — 1 DB call yeterli (onceki: 2 ayri call). Bos board
+    // durumda DateTime.MinValue eski helper davranisi korunur.
 
     private static KanbanCardDto ReadCard(NpgsqlDataReader r) => new KanbanCardDto
     {

@@ -1,0 +1,175 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260429-feat-roadmap-audit-batch-c",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-04-29T01:15:00Z",
+  "updated_at": "2026-04-29T01:25:00Z",
+  "status_log": [
+    {
+      "status": "PLANNING",
+      "at": "2026-04-29T01:15:00Z",
+      "note": "Audit handoff Batch C = Paket 4 Kanban UI hijyen (D030 drawer dependency text yumusatma + D035 /pilot-kanban Navigate redirect + D036 COLUMNS.cls dead code + D037 GET single-query optimize). 5 file scope: KanbanDrawer.tsx + App.tsx + PilotKanbanPage.tsx + KanbanEndpoints.cs + KanbanRepository.cs."
+    },
+    {
+      "status": "DONE",
+      "at": "2026-04-29T01:25:00Z",
+      "note": "4 fix uygulandi. Build PASS (Backend 0 errors / 17 warnings pre-existing) + SPA Vite rebuild PASS (6.37s). Service deploy gerekecek (Backend kod degisikligi var: KanbanEndpoints + KanbanRepository)."
+    }
+  ],
+  "plan": {
+    "summary": "Audit Paket 4: Kanban UI hijyen 5 file. (D030) KanbanDrawer 'Bagimliliklar' bolum baslık 'Ilgili Kartlar' + 'planning ipucu, runtime engel degil' yumusatma — Q karari gorsel-only dependency. (D035) App.tsx /pilot-kanban Suspense PilotKanbanPage render -> Navigate to /yol-haritasi/dent-pilot replace redirect (canonical URL consistency + analytics). (D036) PilotKanbanPage COLUMNS.cls dead code temizlik (light/minimal redesign sonrasi rendering hardcoded bg-slate-50 / min-h-[200px], col.cls hicbir yerde okunmuyor). (D037) KanbanEndpoints GET single-query optimize: 2 ayri DB call (GetCardsAsync + GetBoardUpdatedAtAsync) -> tek call + cards.Max(c => c.UpdatedAt) in-memory; KanbanRepository.GetBoardUpdatedAtAsync metod silindi (caller yok).",
+    "q_intent": "tek sessionda devam edelim. batching: 4 commit. LOW risk grupla. Gorsel-only dependency Q karari (audit interview 22:50).",
+    "interview_notes": "Q kararı G3 (2026-04-29 00:25 UTC): 4-commit batching. Onceki interview 2026-04-28 22:50 UTC (audit-fixes paketi reverted): gorsel-only dependency + drawer metni yumusat. Bu Batch C audit handoff §3 P1#7 D030 + §3 LOW#12-14 D035/D036/D037 toplami; 5 file scope, build + SPA rebuild + deploy gerekecek.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "D030 KanbanDrawer.tsx 'Bagimliliklar' header -> 'Ilgili Kartlar' + italic uyari metni 'Planning ipucu — bu kart yukaridaki kart(lar) ile iliskili. Runtime engel degil.' (onceki: 'Bu kart yukaridaki kart(lar) tamamlanmadan ilerleyemez.' runtime engel imaji veriyordu).",
+        "verified": true,
+        "verification_note": "src/Invekto.Backend/Dashboard/src/components/KanbanDrawer.tsx line 183-205 surgical edit; Q gorsel-only dependency karari (interview 2026-04-28 22:50 UTC) tutarlanmis."
+      },
+      {
+        "id": "AC2",
+        "criterion": "D035 App.tsx Route '/pilot-kanban' Suspense PilotKanbanPage render -> Navigate replace redirect to '/yol-haritasi/dent-pilot'. Eski bookmark/link calismaya devam, URL bar canonical URL'e guncellenir.",
+        "verified": true,
+        "verification_note": "src/Invekto.Backend/Dashboard/src/App.tsx line 160-167 surgical edit; Navigate component zaten import (no new import). SPA Vite rebuild PASS."
+      },
+      {
+        "id": "AC3",
+        "criterion": "D036 PilotKanbanPage COLUMNS array dead 'cls' field kaldirildi: interface { id, label, dot } (cls field cikartildi) + 5 row literal dan cls property cikartildi. Rendering kod (line 158-160 + 184-198) hardcoded bg-slate-50 / min-h-[200px] kullanmaya devam ediyor; col.cls hicbir yerde okunmuyordu (dead code).",
+        "verified": true,
+        "verification_note": "src/Invekto.Backend/Dashboard/src/pages/PilotKanbanPage.tsx line 22-29 surgical edit; 5 column literal cls remove; SPA Vite rebuild PASS."
+      },
+      {
+        "id": "AC4",
+        "criterion": "D037 KanbanEndpoints.cs GET handler single-query: var cards = await repo.GetCardsAsync(...) tek call + var updatedAt = cards.Count > 0 ? cards.Max(c => c.UpdatedAt) : DateTime.MinValue (in-memory hesap). KanbanRepository.GetBoardUpdatedAtAsync metod silindi (caller yok). Eski helper davranisi (bos board DateTime.MinValue) korunur.",
+        "verified": true,
+        "verification_note": "src/Invekto.Backend/Endpoints/KanbanEndpoints.cs line 52-65 + src/Invekto.Backend/Data/KanbanRepository.cs line 139-159 surgical edit. Build PASS Backend 0 errors. KanbanCardDto.UpdatedAt field zaten available (Invekto.Shared.Contracts.Kanban)."
+      }
+    ]
+  },
+  "gr_list": [],
+  "allowed_files": [
+    "src/Invekto.Backend/Dashboard/src/components/KanbanDrawer.tsx",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/PilotKanbanPage.tsx",
+    "src/Invekto.Backend/Endpoints/KanbanEndpoints.cs",
+    "src/Invekto.Backend/Data/KanbanRepository.cs",
+    "src/Invekto.Backend/wwwroot/app/**",
+    "arch/plans/20260429-feat-roadmap-audit-batch-c.json",
+    "tracking/20260429-feat-roadmap-audit-batch-c.md"
+  ],
+  "files_changed": [
+    "src/Invekto.Backend/Dashboard/src/components/KanbanDrawer.tsx",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/PilotKanbanPage.tsx",
+    "src/Invekto.Backend/Endpoints/KanbanEndpoints.cs",
+    "src/Invekto.Backend/Data/KanbanRepository.cs",
+    "src/Invekto.Backend/wwwroot/app/**"
+  ],
+  "git_diff": {
+    "patch_truncated": false,
+    "sha256": "",
+    "full_path": "(stage time generated)",
+    "stats": { "insertions": 0, "deletions": 0, "files_count": 5 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\src\\Invekto.Backend\\Invekto.Backend.csproj --no-restore -v q\"",
+    "timestamp": "2026-04-29T01:23:00Z",
+    "duration_ms": 23390,
+    "output_tail": "Build succeeded. 17 Warning(s). 0 Error(s). Time Elapsed 00:00:23.39",
+    "error_summary": null,
+    "services": ["Invekto.Backend"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "D030 drawer text yumusatma davranis degisikligi yapmiyor — sadece etiket. Q gorsel-only dependency karari (audit interview 2026-04-28 22:50) backend PATCH ve /wrap step dependency-aware DEGIL; bu fix bunu pekistirir. Kullanici regression riski var mi?",
+      "category": "UX",
+      "codex_answer": "",
+      "codex_result": "PENDING"
+    },
+    {
+      "id": "Q2",
+      "question": "D035 /pilot-kanban URL Navigate replace redirect: eski bookmark/link kullaniciyi /yol-haritasi/dent-pilot'a yonlendirir. URL bar guncellemesi dogru — replace kullanildi (back button geri gitmez), istenilen davranis.",
+      "category": "Process/Policy",
+      "codex_answer": "",
+      "codex_result": "PENDING"
+    },
+    {
+      "id": "Q3",
+      "question": "D036 COLUMNS.cls dead code: rendering kod kontrol edildi (PilotKanbanPage line 158-160 + 184-198) col.cls hicbir yerde okunmuyor. SPA Vite rebuild PASS — TypeScript compile error yok. Field kaldirma backward-compat icin guvenli mi?",
+      "category": "Process/Policy",
+      "codex_answer": "",
+      "codex_result": "PENDING"
+    },
+    {
+      "id": "Q4",
+      "question": "D037 GET single-query optimize: cards.Max(c => c.UpdatedAt) in-memory hesap eski helper'in MAX(updated_at) SQL sonucu ile birebir ayni mi? Bos board durumda DateTime.MinValue korunur (cards.Count > 0 guard). KanbanRepository.GetBoardUpdatedAtAsync metod silindi (no caller). DB call sayisi 2 -> 1.",
+      "category": "Performance",
+      "codex_answer": "",
+      "codex_result": "PENDING"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Marketing/**",
+      "src/Invekto.Automation/**",
+      "src/Invekto.AgentAI/**",
+      "arch/db/migrations/* (Batch A 038 + Batch B 036/037 retroaktif zaten yapildi)",
+      "Migration prod execute (no DB migration in this batch)",
+      "src/Invekto.Shared/Contracts/Kanban/* (KanbanCardDto.UpdatedAt zaten available, modification gerekmez)"
+    ],
+    "non_goals": [
+      "Drawer redesign (sadece text yumusatma, layout aynı)",
+      "Multi-board picker UI (bu paket scope'u dışı)",
+      "Kanban GET response shape degisikligi (KanbanBoardDto aynı, UpdatedAt field aynı)",
+      "Repository diger metod'lar (sadece GetBoardUpdatedAtAsync silindi)"
+    ],
+    "intentional_exclusions": [
+      "K kodu kategori vs status karışıklığı 035-kanban-cards.sql §40-48 docstring fix (audit handoff #11; Q non-goal Batch A scope dışı)",
+      "Kanban PATCH endpoint dependency enforce (Q kararı görsel-only, runtime engel YOK)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "src/Invekto.Backend/Endpoints/KanbanEndpoints.cs:GET handler try/catch (NpgsqlException -> 503 + INV-KB-005, mevcut path korundu); single-query optimize sadece try block icindeki 2 await'i 1 await'a indirgedi"
+    ],
+    "user_facing_errors": [
+      "Drawer 'İlgili Kartlar' header (eski 'Bağımlılıklar' yerine) + 'Planning ipucu — runtime engel değil' italic uyarı",
+      "/pilot-kanban URL bar guncellemesi: kullaniciyi /yol-haritasi/dent-pilot'a yonlendirir (eski bookmark/link calismaya devam)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "D030 sadece text yumusatma; davranis degisikligi yok. D035 Navigate replace canonical URL'e yonlendirme. D036 dead code remove (rendering etkilenmiyor). D037 GET handler 2 DB call -> 1 DB call + in-memory Max; eski helper davranisi korunur (bos board DateTime.MinValue)."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Drawer 'Bağımlılıklar' başlığı + 'tamamlanmadan ilerleyemez' metin runtime engel imajı veriyordu — koordinator 'sistem K012 onaylanmadıkca O004'ü TODO'ya cevirmez' diye düşünüyordu, ama backend hiç enforce etmiyor.",
+      "suggestion": "'İlgili Kartlar' başlığı + 'planning ipucu, runtime engel değil' yumuşatma. Mental model + reality alignment.",
+      "aha_moment": "Koordinator artık bağımlılık görünce 'planning yap, sıralamayı düşün, ama PATCH atmak istersem atabilirim' diye anlar. Doğru deneyim."
+    },
+    {
+      "category": "PERFORMANCE",
+      "user_pain": "GET /api/ops/kanban/dent-pilot 2 DB call yapıyordu (cards + max(updated_at)). DB round-trip 2x, ufak ama gereksiz.",
+      "suggestion": "cards.Max(c => c.UpdatedAt) in-memory hesap. 1 call + 1 LINQ pass. Bos board guard MinValue.",
+      "aha_moment": "Aslında MAX(updated_at) cards listesinin bir property'si, DB tek kez sorgulayip in-memory hesaplamak daha temiz. GetBoardUpdatedAtAsync metod silinince Repository surface küçülür."
+    }
+  ],
+  "verdict": {
+    "status": "PENDING",
+    "source": null,
+    "received_at": null,
+    "updated_by": null,
+    "updated_at": null,
+    "raw_text": "",
+    "iteration": 0,
+    "escalation_required": false,
+    "escalation_reason": null,
+    "blocking_issues": []
+  }
+}

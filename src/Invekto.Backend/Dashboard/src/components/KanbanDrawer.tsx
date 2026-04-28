@@ -180,11 +180,15 @@ export function KanbanDrawer({ card, onClose }: KanbanDrawerProps) {
             </div>
           )}
 
-          {/* Bağımlılıklar — bu kartın ilerlemesi için gereken diğer ref_code'lar */}
+          {/* İlgili Kartlar — planning ipucu (görsel-only, runtime engel değil).
+               Audit fix D030 (2026-04-29 Batch C): metni "Bağımlılıklar" ve
+               "ilerleyemez" ifadeleri runtime engel imajı veriyordu, oysa Q kararı
+               görsel-only (backend PATCH ve /wrap step dependency-aware DEĞİL).
+               "İlgili Kartlar" + "planning ipucu" yumuşatma. */}
           {card.depends_on && (
             <div>
               <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
-                Bağımlılıklar
+                İlgili Kartlar
               </h3>
               <div className="flex flex-wrap items-center gap-1.5 text-sm">
                 <span className="text-slate-400 mr-0.5">↳</span>
@@ -198,7 +202,7 @@ export function KanbanDrawer({ card, onClose }: KanbanDrawerProps) {
                 ))}
               </div>
               <p className="text-[11px] text-slate-400 mt-1.5 italic">
-                Bu kart yukarıdaki kart(lar) tamamlanmadan ilerleyemez.
+                Planning ipucu — bu kart yukarıdaki kart(lar) ile ilişkili. Runtime engel değil.
               </p>
             </div>
           )}

@@ -51,8 +51,14 @@ public static class KanbanEndpoints
 
             try
             {
+                // Audit fix D037 (2026-04-29 Batch C): GET single-query optimize.
+                // Onceki: GetCardsAsync + GetBoardUpdatedAtAsync 2 ayri DB call.
+                // Yeni: GetCardsAsync tek call, updated_at = cards.Max(updated_at).
+                // Bos board durumda DateTime.MinValue (eski helper davranisiyla ayni).
                 var cards = await repo.GetCardsAsync(boardKey, ctx.RequestAborted);
-                var updatedAt = await repo.GetBoardUpdatedAtAsync(boardKey, ctx.RequestAborted);
+                var updatedAt = cards.Count > 0
+                    ? cards.Max(c => c.UpdatedAt)
+                    : DateTime.MinValue;
                 return Results.Ok(new KanbanBoardDto
                 {
                     BoardKey  = boardKey,
