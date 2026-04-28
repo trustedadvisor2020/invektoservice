@@ -1,0 +1,214 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260428-feat-clinic-metadata",
+  "risk": "LOW",
+  "status": "PLANNING",
+  "created_at": "2026-04-28T23:55:00Z",
+  "updated_at": "2026-04-28T23:55:00Z",
+  "status_log": [
+    {
+      "status": "PLANNING",
+      "at": "2026-04-28T23:55:00Z",
+      "note": "Plan-only commit (dev sonraki session). Tracking md zaten interview-grade detay tasiyor (5 AC + 6 implementation step + 5 aha + 8 smoke senaryosu + 4 verification questions + dependencies + intentional exclusions + non-goals). Q kararlari (2026-04-28 23:50): (1) Migration numara 040 (buffer slot — audit-fixes paketi 038, clinic-metadata 040 buffer 039 reserved); (2) Tracking md icerigi schema 5.1 formatina aktarildi, ek interview yapilmadi."
+    }
+  ],
+  "plan": {
+    "summary": "Multi-tenant hardcoded cleanup. Pilot icin yapilan tum ozellikler tum dis/saglik kliniklerinin ortak ihtiyaci. Sistemin %95'i multi-tenant uyumlu — tek eksik FAQ metinleri + flow welcome text icindeki 3 hardcoded Dent-specific veri (klinik iletisim bilgileri, persona isimleri, roadshow tarihleri+sehirler). Bu paket bunlari placeholder-driven yapar; 2. musteri (baska klinik) gelirken sifir SQL kopyalama olmadan, sadece Dashboard config ile calisir olur. Migration 040 tenant_settings tablosuna 2 yeni JSONB sutun ekler (clinic_contact + team_members) + DMP resolver namespace genisletir ({{clinic.*}} + {{team.*}}) + Dashboard /settings/clinic-metadata UI ekler + Dent seed + 36 FAQ + 15 welcome variant template refactor.",
+    "q_intent": "1+2 beraber. FEAT-PHOTO wire-up tamamlandi, sonra feat-clinic-metadata planning. Plan-only bu session'da, dev sonraki session.",
+    "interview_notes": "Q approved 2026-04-28 23:50 UTC: Migration 040 (buffer slot — audit-fixes 038, buffer 039 reserved; sequential migration disiplini korunur). Tracking md icerigi schema 5.1 formatina aktarildi. Pilot blocker DEGIL — Dent zaten hardcoded degerlerle calisir, hata vermez. Ancak 2. musteri oncesi MUTLAKA tamamlanmali. Stage yerlesim: Stage 1 dahil degil (pilot mevcut hardcoded ile baslar), Stage 2 paralel insa (Dent operasyonu etkilenmez), Stage 3 DONE durumunda olmali (2. musteri sirada).",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Migration 040 prod'da uygulandiktan sonra tenant_settings tablosunda iki yeni JSONB sutun bulunur: clinic_contact JSONB DEFAULT '{}' + team_members JSONB DEFAULT '[]'. Postcondition INV-SEED-029..031 PASS (sutun varlik + Dent seed satir kontrolu + canonical mirror sync). arch/db/tenant-settings.sql canonical mirror update.",
+        "verified": false,
+        "verification_note": ""
+      },
+      {
+        "id": "AC2",
+        "criterion": "Dent seed (Migration 040 sonu): tenant_settings.clinic_contact 5 alan (phone +90 545 343 09 09, website https://dentadavista.com, instagram, facebook, address Kusadasi/Aydin) + team_members 2 uye (Dr. Ozge Yilmazoglu role=dentist + Gunes role=receptionist, language=en, pronouns=she/her, title belirtilmis). Existing tenant'lar icin '{}' ve '[]' default kalir (multi-tenant guvenli).",
+        "verified": false,
+        "verification_note": ""
+      },
+      {
+        "id": "AC3",
+        "criterion": "DynamicMessageResolver iki yeni namespace destekler: {{clinic.phone}}, {{clinic.website}}, {{clinic.instagram}}, {{clinic.facebook}}, {{clinic.address}}, {{team.dentist.name}}, {{team.receptionist.name}}, {{team.dentist.title}}, {{team.receptionist.title}}. Render edildiginde tenant_settings tablosundan 5dk MemoryCache TTL ile okur (TFM precedent), fallback bos string (alan yoksa template render bozulmaz). Backward compatibility: mevcut {{name}}, {{cf1}}..{{cf10}}, {{campaign.*}} lookup path'i bozulmaz; namespace genisletmesi additive.",
+        "verified": false,
+        "verification_note": ""
+      },
+      {
+        "id": "AC4",
+        "criterion": "FAQ + welcome metinleri icindeki hardcoded string'ler placeholder'a donusturuldu (Migration 040 sonu SQL UPDATE): 'Dr. Ozge Yilmazoglu' -> {{team.dentist.name}}, '+90 545 343 09 09' -> {{clinic.phone}}, 'https://dentadavista.com' -> {{clinic.website}}, 'Dublin (14 March)' -> {{campaign.cities[0].name}} ({{campaign.dates[0] | format}}). Smoke: Dent icin render edildiginde eski metin ile birebir ayni cikti (regression yok).",
+        "verified": false,
+        "verification_note": ""
+      },
+      {
+        "id": "AC5",
+        "criterion": "Dashboard /settings/clinic-metadata sayfasi: iletisim bilgileri formu (5 input phone/website/instagram/facebook/address) + team members CRUD (ekle/duzenle/sil/siralama/dil dropdown TR/EN/AR/DE/FR + diger) + form validation phone E.164 format URL valid. Cross-tenant 403 guard. Backend GET/PUT /api/v1/tenant-settings/clinic-metadata endpoint tenant-scoped.",
+        "verified": false,
+        "verification_note": ""
+      },
+      {
+        "id": "AC6",
+        "criterion": "Multi-tenant validation: 2. test tenant acilir (mock veya gercek), Dashboard uzerinden clinic_contact + team_members doldurulur, mevcut Dent FAQ template'leri o tenant icin render edildiginde DOGRU klinik bilgilerini gosterir (Dent'inkini DEGIL). Pre-existing Dent render aynen calismaya devam eder (no regression).",
+        "verified": false,
+        "verification_note": ""
+      }
+    ]
+  },
+  "gr_list": [],
+  "allowed_files": [
+    "arch/db/migrations/040-clinic-metadata.sql",
+    "arch/db/tenant-settings.sql",
+    "arch/errors.md",
+    "arch/features/clinic-metadata.md",
+    "arch/plans/20260428-feat-clinic-metadata.json",
+    "src/Invekto.Shared/Services/DynamicMessageResolver.cs",
+    "src/Invekto.Shared/Contracts/ClinicMetadata/ClinicContactDto.cs",
+    "src/Invekto.Shared/Contracts/ClinicMetadata/TeamMemberDto.cs",
+    "src/Invekto.Backend/Endpoints/ClinicMetadataEndpoints.cs",
+    "src/Invekto.Backend/Dashboard/src/pages/settings/ClinicMetadataSettingsPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/api/clinic-metadata.ts",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "DentAdavista/seeds/clinic-metadata-dent.json",
+    "tracking/feat-clinic-metadata.md",
+    "tracking/README.md"
+  ],
+  "files_changed": [],
+  "git_diff": {
+    "patch_truncated": false,
+    "sha256": "",
+    "full_path": "arch/plans/diffs/20260428-feat-clinic-metadata.diff",
+    "stats": {
+      "insertions": 0,
+      "deletions": 0,
+      "files_count": 0
+    }
+  },
+  "build": {
+    "status": "PENDING",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": null,
+    "duration_ms": null,
+    "output_tail": null,
+    "error_summary": null,
+    "services": [
+      "Invekto.Shared",
+      "Invekto.Backend"
+    ]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "DynamicMessageResolver namespace genislemesi mevcut {{name}}, {{cf1}}..{{cf10}}, {{campaign.*}} lookup path'lerini bozar mi? Backward compatibility nasil korunuyor (existing template'ler regression test'i ile dogrulanmis mi)?",
+      "category": "Lifecycle",
+      "codex_answer": "",
+      "codex_result": "PENDING"
+    },
+    {
+      "id": "Q2",
+      "question": "team_members JSONB array icinde ayni role iki kayit varsa (orn. 2 dentist) {{team.dentist.name}} hangisini doner? Determinism guarantee var mi (array order persistence + first-match rule)? Multi-dentist klinikler icin {{team.dentist[0].name}} vs {{team.dentist[1].name}} index syntax destekleniyor mu yoksa Phase 2 backlog mi?",
+      "category": "Data",
+      "codex_answer": "",
+      "codex_result": "PENDING"
+    },
+    {
+      "id": "Q3",
+      "question": "Tenant A koordinatoru PUT /api/v1/tenant-settings/clinic-metadata ile tenant B JSONB'ini modify etmeyi denerse hangi katman engeller (JWT TenantContext ctx.Items + endpoint inline tenant_id filter + SQL WHERE tenant_id = @tid)? Cross-tenant guard layered defense?",
+      "category": "Auth",
+      "codex_answer": "",
+      "codex_result": "PENDING"
+    },
+    {
+      "id": "Q4",
+      "question": "Migration 040 prod'da calistirildiginda mevcut 36 FAQ + 15 welcome variant SQL UPDATE'i bir kismi basarisiz olursa transaction rollback olur mu (BEGIN/COMMIT atomic) yoksa partial state mi kalir? Idempotent re-run safe mi (ALTER TABLE IF NOT EXISTS + UPDATE WHERE clause)?",
+      "category": "Process/Policy",
+      "codex_answer": "",
+      "codex_result": "PENDING"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "INMA tarafi (read-only) — tenant_settings INSE'ye ozel",
+      "Mevcut FEAT-DMP altyapisi modifikasyon (sadece namespace ekleme)",
+      "Mevcut FEAT-MCC campaign config (zaten calisiyor, dokunulmaz)",
+      "Mevcut FEAT-TFM resolver (pattern referansi olarak alinir, modifikasyon yok)",
+      "Pilot Dent mevcut hardcoded render (regression smoke S1 ile koruma)"
+    ],
+    "non_goals": [
+      "Cok dilli template render (welcome locale switch) — ayri paket",
+      "Team members rol-bazli yetki (RBAC) — sadece template render icin kullanilir, auth degil",
+      "Klinik logo upload — sadece URL alani, dosya storage degil",
+      "Roadshow tarih takvim UI — campaign config sayfasinda zaten var",
+      "Multi-dentist index syntax {{team.dentist[0].name}} — ilk match doner, edge case post-pilot Phase 2"
+    ],
+    "intentional_exclusions": [
+      "Migration 040 rollback scripti — postcondition INV-SEED-029..031 RAISE EXCEPTION ile self-validating (031/033/034/036/037/038 pattern)",
+      "5+ team member ayni role pattern (orn. 3 dentist) — array filter ilk match doner, edge case post-pilot",
+      "Phone format internationalization beyond E.164",
+      "Migration 039 reserved buffer slot (audit-fixes paketi 038 + 039 buffer + clinic-metadata 040 — Q karari 2026-04-28 23:50)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "src/Invekto.Backend/Endpoints/ClinicMetadataEndpoints.cs:GET/PUT /api/v1/tenant-settings/clinic-metadata (NpgsqlException -> 503 + INV-DB-001, JsonException -> 400 + INV-* validation, cross-tenant -> 403 + INV-AUTH-010)",
+      "src/Invekto.Shared/Services/DynamicMessageResolver.cs:Resolve (Cache miss + DB read NpgsqlException -> log + bos string fallback, malformed JSONB -> log + bos string fallback)",
+      "Migration 040 prod execute: BEGIN/COMMIT atomic; postcondition DO $verify$ block INV-SEED-029..031 RAISE EXCEPTION fail-loud"
+    ],
+    "user_facing_errors": [
+      "Dashboard ClinicMetadataSettingsPage GET 503 -> 'Veritabani gecici kullanilamiyor; birkac saniye sonra tekrar deneyin'",
+      "PUT 400 phone format invalid -> 'Telefon numarasi E.164 formatinda olmali (orn. +90 555 123 4567)'",
+      "PUT 400 URL invalid -> 'Web sitesi URL'i gecerli format olmali (https:// ile baslamali)'",
+      "Cross-tenant 403 -> 'Bu kayda erisim izniniz yok' (INV-AUTH-010 + INV-AT-080 audit)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Tum yollar log + INV code emit ediyor: (1) DB transient -> NpgsqlException + 503; (2) Validation fail -> 400 + INV code; (3) Cross-tenant -> 403 + INV-AUTH-010; (4) DMP resolver cache miss + fallback empty string log + audit; (5) Migration postcondition fail-loud RAISE EXCEPTION. Hicbir adim sessiz fail etmez."
+  },
+  "aha_moments": [
+    {
+      "category": "SALES",
+      "user_pain": "2. musteri icin sistem hazirlamak 1 hafta SQL/seed kopyalama (36 FAQ + 15 welcome variant + 3 hardcoded yerini bulup degistir).",
+      "suggestion": "Dashboard /settings/clinic-metadata + campaign config formu doldurmak 1 saat. SQL kopyalama YOK.",
+      "aha_moment": "Sales 1 gunde yeni klinik aktive ediyor; demo to live <1 gun. 'Bizim sistem multi-tenant' iddiasi gerceklik kazaniyor."
+    },
+    {
+      "category": "UX",
+      "user_pain": "Dent koordinatoru WhatsApp'taki Gunes'in iletisim bilgilerini guncellemek icin support ticket aciyor (yazılım ekibi SQL UPDATE yapiyor, 1-2 gun gecikme).",
+      "suggestion": "/settings/clinic-metadata self-service form. Koordinator dogrudan PUT, anlik render.",
+      "aha_moment": "Koordinator dogrudan degistirip 'Anında WhatsApp'ta gorüyorum' diyor. Support ticket %0."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Roadshow tarihi degisti ama 12 FAQ + 15 welcome metni elle guncellendi -> 27 dosya, kopyalama hatasi (Dr. Ozge eski tarihte 'Dublin 14 March', yeni tarihte 'Dublin 21 March' bazi FAQ'larda kaldi).",
+      "suggestion": "Tarih campaign config'de tek yerde, FAQ'lar otomatik render. Single source of truth.",
+      "aha_moment": "Tek alan degistirince tum metinler guncellendi. Q UI'da 1 click + tum 27 dosya senkron."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Multi-tenant pilot 2. musteri destek bileti: 'Bizim FAQ'da Dent Adavista yaziyor, kendi klinik adimizi gormüyoruz'.",
+      "suggestion": "Hardcoded olmayinca, 2. musteri default '{}' ile baslar; kendi config'ini doldurana kadar bos alan gorunur (placeholder fallback empty).",
+      "aha_moment": "Bu hatayla hic karsilasmiyoruz. Yeni klinik onboarding'de 'sizin bilgilerinizi doldurmadan bos goruyorsunuz' onboarding wizard step ile guidance."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "FEAT-DMP altyapisi zaten hazir (DONE 2026-04-20); yeni placeholder eklemek 1 gun.",
+      "suggestion": "Existing pattern reuse — minimum kod. DMP resolver namespace handler additive, mevcut code path'i degisiyor degil.",
+      "aha_moment": "Refactor risk dusuk, paket 6 gunde DONE. Codex iter 0 PASS hedefi (CODEX UTANSIN)."
+    }
+  ],
+  "verdict": {
+    "status": "PENDING",
+    "source": null,
+    "received_at": null,
+    "updated_by": null,
+    "updated_at": null,
+    "raw_text": "",
+    "iteration": 0,
+    "escalation_required": false,
+    "escalation_reason": null,
+    "blocking_issues": []
+  }
+}

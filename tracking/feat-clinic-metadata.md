@@ -1,9 +1,12 @@
 # FEAT-CLINIC-METADATA — Multi-Tenant Hardcoded Cleanup
 
-> **Status:** DRAFT (planlama)
+> **Status:** PLANNING (plan JSON committed; dev sonraki session)
 > **Created:** 2026-04-28
 > **Risk:** LOW (additive migration + content refactor; runtime kod minimum değişir)
 > **Slug:** `20260428-feat-clinic-metadata`
+> **Plan:** [`arch/plans/20260428-feat-clinic-metadata.json`](../arch/plans/20260428-feat-clinic-metadata.json) (schema 5.1, 6 AC, 4 verification questions)
+> **Migration:** 040 (Q kararı 2026-04-28 23:50 — audit-fixes paketi 038, buffer 039 reserved, clinic-metadata 040)
+> **Paralel paket notu:** `20260428-feat-roadmap-audit-fixes` (Migration 038, HIGH risk REVIEW pending) bu session'dan ayrıldı (Q kararı C); ayrı session'da devam edecek.
 
 ## 1. Amaç
 
@@ -23,7 +26,7 @@ Pilot için yapılan tüm özellikler tüm diş/sağlık kliniklerinin ortak iht
 
 | ID | Kriter | Doğrulama |
 |----|--------|-----------|
-| AC1 | Migration 035 prod'da uygulandıktan sonra `tenant_settings` tablosunda iki yeni JSONB sütun bulunur: `clinic_contact JSONB DEFAULT '{}'` + `team_members JSONB DEFAULT '[]'`; postcondition INV-SEED-024..026 PASS. | SELECT column_name FROM information_schema.columns |
+| AC1 | Migration 040 prod'da uygulandıktan sonra `tenant_settings` tablosunda iki yeni JSONB sütun bulunur: `clinic_contact JSONB DEFAULT '{}'` + `team_members JSONB DEFAULT '[]'`; postcondition INV-SEED-024..026 PASS. | SELECT column_name FROM information_schema.columns |
 | AC2 | Dent için seed: `tenant_settings.clinic_contact` doldurulu (5 alan: phone, website, instagram, facebook, address) + `team_members` 2 üye içerir (dentist Özge + receptionist Güneş, language=en). Existing tenant'lar için `'{}'` ve `'[]'` default kalır. | SELECT clinic_contact, team_members FROM tenant_settings WHERE tenant_id=18173130 |
 | AC3 | DMP resolver (`DynamicMessageResolver`) iki yeni namespace destekler: `{{clinic.phone}}`, `{{clinic.website}}`, `{{clinic.instagram}}`, `{{clinic.facebook}}`, `{{team.dentist.name}}`, `{{team.receptionist.name}}`. Render edildiğinde DB'den okur, fallback boş string (hata fırlatmaz). | Unit test: PlaceholderResolverTests |
 | AC4 | FAQ + welcome metinleri içindeki hardcoded string'ler placeholder'a dönüştürüldü (SQL UPDATE migration 035 sonu): "Dr. Özge Yılmazoğlu" → `{{team.dentist.name}}`, "+90 545 343 09 09" → `{{clinic.phone}}`, "https://dentadavista.com" → `{{clinic.website}}`, "Dublin (14 March)" → `{{campaign.cities[0].name}} ({{campaign.dates[0] \| format}})`. Smoke: Dent için render edildiğinde aynı çıktıyı verir (regression yok). | E2E smoke: `safety_concern` FAQ variant C render → eski metinle birebir aynı |
@@ -32,14 +35,14 @@ Pilot için yapılan tüm özellikler tüm diş/sağlık kliniklerinin ortak iht
 
 ## 4. Implementation Adımları (~6 iş günü)
 
-### Adım 1: Migration 035 (~0.5 gün)
-- Dosya: `arch/db/migrations/035-clinic-metadata.sql`
+### Adım 1: Migration 040 (~0.5 gün)
+- Dosya: `arch/db/migrations/040-clinic-metadata.sql`
 - ALTER TABLE tenant_settings ADD COLUMN IF NOT EXISTS clinic_contact JSONB DEFAULT '{}'
 - ALTER TABLE tenant_settings ADD COLUMN IF NOT EXISTS team_members JSONB DEFAULT '[]'
 - Postcondition DO $verify$ block (INV-SEED-024..026): kolonların varlığı + Dent seed satır kontrolü
 - Canonical mirror: `arch/db/tenant-settings.sql`
 
-### Adım 2: Dent Seed (Migration 035 sonu, ~0.5 gün)
+### Adım 2: Dent Seed (Migration 040 sonu, ~0.5 gün)
 ```sql
 UPDATE tenant_settings
 SET clinic_contact = '{
@@ -57,7 +60,7 @@ WHERE tenant_id = 18173130;
 ```
 
 ### Adım 3: Template Refactor (~1 gün)
-- Dosya: `arch/db/migrations/035-clinic-metadata.sql` (aynı migration sonu)
+- Dosya: `arch/db/migrations/040-clinic-metadata.sql` (aynı migration sonu)
 - 36 FAQ + 15 welcome variant + roadshow content seed UPDATE
 - Hardcoded string → placeholder dönüşümü
 - Smoke öncesi: snapshot al (rollback için)
@@ -85,7 +88,7 @@ WHERE tenant_id = 18173130;
 ## 5. Allowed Files
 
 ```
-arch/db/migrations/035-clinic-metadata.sql
+arch/db/migrations/040-clinic-metadata.sql
 arch/db/tenant-settings.sql
 arch/errors.md
 arch/features/clinic-metadata.md
@@ -102,7 +105,7 @@ tracking/feat-clinic-metadata.md
 
 ## 6. Error Codes
 
-- INV-SEED-024..026: Migration 035 postcondition (kolonlar + Dent seed kontrolü)
+- INV-SEED-024..026: Migration 040 postcondition (kolonlar + Dent seed kontrolü)
 - INV-BE-{nextfree}..: Endpoint validation (cross-tenant 403, phone format, URL invalid)
 
 ## 7. Scope Discipline
@@ -119,7 +122,7 @@ tracking/feat-clinic-metadata.md
 - Roadshow tarih takvim UI — campaign config sayfasında zaten var
 
 **Intentional exclusions:**
-- Migration 035 rollback scripti — postcondition INV-SEED-024..026 RAISE EXCEPTION ile self-validating
+- Migration 040 rollback scripti — postcondition INV-SEED-024..026 RAISE EXCEPTION ile self-validating
 - 5+ team member aynı role pattern (örn. 3 dentist) — array filter ilk match döner, edge case post-pilot
 - Phone format internationalization beyond E.164
 
@@ -143,7 +146,7 @@ tracking/feat-clinic-metadata.md
 | S4 | Cross-tenant guard: tenant A koordinatörü `/api/v1/tenant-settings/clinic-metadata` ile tenant B verisini okumaya çalışır | 403 + INV-AUTH log |
 | S5 | Phone validation: `+invalid-format` → 400 + INV-BE-{code} |
 | S6 | Team member sıralama: 3 üye eklendi, sıra değiştirildi, FAQ render `{{team.dentist.name}}` doğru üyeyi gösterir | Array order persistence |
-| S7 | Migration 035 idempotent re-run (ALTER TABLE IF NOT EXISTS + UPDATE re-execution) | İki kez çalıştırılabilir, hata yok |
+| S7 | Migration 040 idempotent re-run (ALTER TABLE IF NOT EXISTS + UPDATE re-execution) | İki kez çalıştırılabilir, hata yok |
 | S8 | Dent için 36 FAQ + 15 welcome variant render → eski hardcoded metinlerle 36 + 15 eşleşme karşılaştırması | %100 match, sadece formatlama farkı yok |
 
 ## 10. Dependencies
@@ -171,7 +174,7 @@ Risk LOW (additive migration + content refactor + minimum runtime kod). Tek iter
 | Q1 | DynamicMessageResolver namespace genişletmesi mevcut `{{name}}`, `{{cf1}}` lookup path'ini bozar mı? Backward compatibility nasıl korunuyor? | Lifecycle |
 | Q2 | `team_members` JSONB array içinde aynı role 2 kayıt varsa (örn. 2 dentist) `{{team.dentist.name}}` hangisini döner? Determinism guarantee var mı? | Data |
 | Q3 | Tenant A koordinatörü PUT /api/v1/tenant-settings/clinic-metadata ile tenant B JSONB'ı modify etmeyi deneyebilir mi? Cross-tenant guard hangi katmanda? | Auth |
-| Q4 | Migration 035 prod'da çalıştırıldığında mevcut 36 FAQ + 15 welcome variant SQL UPDATE'i başarısız olursa transaction rollback olur mu, yoksa partial state mı kalır? | Process/Policy |
+| Q4 | Migration 040 prod'da çalıştırıldığında mevcut 36 FAQ + 15 welcome variant SQL UPDATE'i başarısız olursa transaction rollback olur mu, yoksa partial state mı kalır? | Process/Policy |
 
 ## 13. Tracking
 
