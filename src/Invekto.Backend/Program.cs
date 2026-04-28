@@ -424,6 +424,13 @@ if (!string.IsNullOrEmpty(pgConnectionString))
     // Translation cache + G7 Faz 4 cleanup job (7-day TTL) — see Hangfire block below
     builder.Services.AddSingleton<TranslationCacheRepository>();
 
+    // FEAT-PHOTO wire-up patch (2026-04-28): inbound media handler DI register.
+    // Parent paket (commit 1da0da6) compiled-in code; runtime DI burada. Singleton
+    // PostgresConnectionFactory + JsonLinesLogger consumer ortakligi (LeadRepository
+    // pattern). Plan arch/plans/20260428-feat-photo-wireup-patch.json AC3.
+    builder.Services.AddSingleton<Invekto.Backend.Services.Photos.IPhotoInboundHandler,
+        Invekto.Backend.Services.Photos.PhotoInboundHandler>();
+
 }
 
 // Callback client for async results to Main App
@@ -824,8 +831,6 @@ bool ValidateOpsAuth(HttpContext ctx)
         }
 
         // inma JWT fallback (direct token from main app) — welcome-endpoint introspection.
-        // Sync-over-async is intentional here: ValidateOpsAuth has 30+ call sites (async refactor
-        // would be scope creep). ASP.NET Core has no SynchronizationContext, so no deadlock.
         // Cache hit (~95% of calls) is fully synchronous; cache-miss network wait is acceptable
         // for low-frequency ops auth.
         var introspector = ctx.RequestServices.GetService<InmaTokenIntrospector>();
@@ -1887,6 +1892,137 @@ app.MapPost("/api/v1/webhook/event", async (HttpContext ctx, JsonLinesLogger jso
                 if (t.IsFaulted)
                     jsonLogger.SystemWarn($"MessageLog insert failed: {t.Exception?.InnerException?.Message}");
             }, TaskContinuationOptions.OnlyOnFaulted);
+        }
+
+        // FEAT-PHOTO wire-up patch (2026-04-28, iter 1 fix CQ1+CQ2+CQ6+CQ12): media
+        // event hop. Iter 0 implementation fire-and-forget Task.Run + bare catch idi;
+        // Codex iter 0 FAIL: (a) lifecycle loss on shutdown, (b) unbounded ThreadPool
+        // pressure, (c) typed catch ihlali, (d) silent skip paths. Iter 1: synchronous
+        // await; INMA webhook latency'si idempotency INSERT + leads UPDATE icin 50-200ms
+        // artar — INMA at-least-once timeout politikasi (>= 30s) icinde rahatlikla
+        // tolere edilir. Tum skip path'lerinde INV-AT-086 audit log; failure path'inde
+        // tipli catch (NpgsqlException + JsonException + OperationCanceledException +
+        // InvalidOperationException + HttpRequestException). PhotoInboundHandler kendi
+        // katmanindaki idempotency tablosu (lead_id, media_url_hash) UNIQUE INSERT
+        // ON CONFLICT DO NOTHING ile at-least-once dedup'i hallediyor; bu hop sadece
+        // ingress wiring. Plan arch/plans/20260428-feat-photo-wireup-patch.json AC4 + Q2.
+        // CQ6 (Codex iter 2) fix: BATCHED lead lookup. Iter 1/2 implementation per-
+        // message SELECT yapiyordu (N+1). Iter 3'de tum media events'in distinct
+        // phone'lari toplandi -> tek SELECT id, phone FROM leads WHERE tenant_id=@tid
+        // AND phone = ANY(@phones) -> in-memory dict ile match. PostgreSQL ANY array
+        // operator native batched lookup; tek round-trip + tek connection. Pilot ve
+        // post-pilot her olcekte uygun.
+        //
+        // CQ12/Q3 (Codex iter 2) fix: INV-AT-086 SADECE semantic 'lead not matched'
+        // icin; DI-null/TenantContext-null/malformed paths INV-AT-087 PhotoRequestHook
+        // Transient kullanir (canonical errors.md kontrati).
+        var photoHandler = ctx.RequestServices.GetService<Invekto.Backend.Services.Photos.IPhotoInboundHandler>();
+        if (photoHandler == null || pgFactory == null)
+        {
+            // Defensive: DI hic register edilmediyse (test ortami / partial config)
+            // hop atla + audit log (INV-AT-087 transient infra mis-config; INV-AT-086
+            // sadece semantic lead-not-matched icin).
+            if (webhookEvent.Messages.Any(m => Invekto.Backend.Endpoints.InmaInboundMediaEndpoint.IsMediaMessage(m)))
+            {
+                jsonLogger.SystemWarn(
+                    $"[{ErrorCodes.PhotoRequestHookTransient}] /webhook/event media hop: " +
+                    $"PhotoInboundHandler DI not configured (photoHandler={photoHandler != null}, " +
+                    $"pgFactory={pgFactory != null}) tenant={tenantContext.TenantId} — media events skipped");
+            }
+        }
+        else
+        {
+            // §1. Collect valid media events; INV-AT-087 log for malformed (transient
+            // payload bug, distinct from semantic skip).
+            var mediaEvents = new List<(WebhookMessage Msg, string Phone)>();
+            foreach (var msg in webhookEvent.Messages)
+            {
+                if (!Invekto.Backend.Endpoints.InmaInboundMediaEndpoint.IsMediaMessage(msg))
+                    continue;
+
+                var phone = Invekto.Backend.Endpoints.InmaInboundMediaEndpoint.ExtractPhoneFromChatId(msg.ChatId);
+                if (string.IsNullOrEmpty(phone) || string.IsNullOrEmpty(msg.ImageUrl))
+                {
+                    jsonLogger.SystemWarn(
+                        $"[{ErrorCodes.PhotoRequestHookTransient}] /webhook/event media hop: " +
+                        $"malformed media event tenant={tenantContext.TenantId} chat_id={msg.ChatId} " +
+                        $"phone_present={!string.IsNullOrEmpty(phone)} url_present={!string.IsNullOrEmpty(msg.ImageUrl)} " +
+                        $"(skipping — INMA payload bug)");
+                    continue;
+                }
+                mediaEvents.Add((msg, phone));
+            }
+
+            if (mediaEvents.Count > 0)
+            {
+                try
+                {
+                    // §2. Single batched lookup — distinct phones -> id map.
+                    var distinctPhones = mediaEvents.Select(e => e.Phone).Distinct().ToArray();
+                    var phoneToLead = new Dictionary<string, int>(distinctPhones.Length);
+
+                    await using (var conn = await pgFactory.OpenConnectionAsync(ctx.RequestAborted))
+                    await using (var cmd = new Npgsql.NpgsqlCommand(
+                        "SELECT id, phone FROM leads WHERE tenant_id = @tid AND phone = ANY(@phones)",
+                        conn))
+                    {
+                        cmd.Parameters.AddWithValue("tid", tenantContext.TenantId);
+                        cmd.Parameters.AddWithValue("phones", distinctPhones);
+                        await using var reader = await cmd.ExecuteReaderAsync(ctx.RequestAborted);
+                        while (await reader.ReadAsync(ctx.RequestAborted))
+                        {
+                            phoneToLead[reader.GetString(1)] = reader.GetInt32(0);
+                        }
+                    }
+
+                    // §3. Loop media events; lookup from dict + handler call.
+                    foreach (var (msg, phone) in mediaEvents)
+                    {
+                        // CQ5 (Codex iter 3) fix: explicit local null guard yerine
+                        // null-forgiving operator project policy ihlali. msg.ImageUrl
+                        // null/empty collection step'inde (line 1944-1951) zaten elendi;
+                        // defensive local copy ile null-forgiving kaldiriliyor.
+                        var imageUrl = msg.ImageUrl;
+                        if (string.IsNullOrEmpty(imageUrl)) continue;
+
+                        if (!phoneToLead.TryGetValue(phone, out var leadId))
+                        {
+                            jsonLogger.StepInfo(
+                                $"[{ErrorCodes.PhotoRequestLeadResolveSkip}] /webhook/event media hop: " +
+                                $"no lead matches phone tenant={tenantContext.TenantId} phone={phone} " +
+                                $"(media event dropped — lead henuz olusmamis veya phone normalization mismatch)",
+                                requestId);
+                            continue;
+                        }
+
+                        await photoHandler.HandleInboundMediaAsync(
+                            tenantContext.TenantId, leadId, imageUrl, ctx.RequestAborted);
+                    }
+                }
+                catch (Npgsql.NpgsqlException ex)
+                {
+                    // DB transient — INMA at-least-once redelivery sonraki window'da
+                    // retry yapacak (idempotency anchor henuz yazilmadi -> safe).
+                    jsonLogger.SystemWarn(
+                        $"[{ErrorCodes.PhotoInboundHandlerDbError}] /webhook/event media hop: " +
+                        $"batched DB error tenant={tenantContext.TenantId} count={mediaEvents.Count}: {ex.Message}");
+                }
+                catch (OperationCanceledException) when (ctx.RequestAborted.IsCancellationRequested)
+                {
+                    // Caller canceled — INMA at-least-once retry pattern'i kapsar.
+                    jsonLogger.SystemWarn(
+                        $"[{ErrorCodes.PhotoInboundCancelled}] /webhook/event media hop: " +
+                        $"cancelled tenant={tenantContext.TenantId} processed_count={mediaEvents.Count}");
+                }
+                catch (InvalidOperationException ex)
+                {
+                    // PhotoInboundHandler DI mis-config veya pgFactory state hatasi —
+                    // non-DB transient (INV-AT-087).
+                    jsonLogger.SystemWarn(
+                        $"[{ErrorCodes.PhotoRequestHookTransient}] /webhook/event media hop: " +
+                        $"DI/state error tenant={tenantContext.TenantId}: {ex.Message}");
+                }
+            }
         }
     }
 
@@ -4670,8 +4806,215 @@ app.MapDelete("/api/v1/appointments/slots/{id:int}", async (HttpContext ctx, App
     await AppointmentsProxyDelete(ctx, apClient, jsonLog, $"/api/v1/slots/{id}"));
 
 // Appointments
+// FEAT-PHOTO wire-up patch (2026-04-28): /api/v1/appointments/book proxy expanded
+// to schedule PhotoRequestDispatchJob 30sn after a successful booking.
+//
+// G7 SCHEDULER HOST EXCEPTION (Backend.csproj line 5-13, see also EFS lesson
+// 2026-04-22): Backend is the SOLE Hangfire scheduler in this monorepo and holds
+// PrivateAssets="all" ProjectReference to Invekto.Automation, Invekto.Appointments,
+// Invekto.Marketing, Invekto.Integrations, Invekto.WhatsAppAnalytics. Hangfire
+// DelayedJobScheduler reflects on job [Queue] attributes when promoting Scheduled
+// -> Enqueued; without these compile-time refs Backend throws FileNotFoundException
+// "Could not resolve assembly 'Invekto.<service>'" at promotion-time. Worker
+// servers (Automation, Appointments, etc.) load only their own queue (queue-per-
+// service topology, AddInvektoHangfire). The G7 exception is the SINGLE documented
+// place where direct cross-service compile-references are allowed; CLAUDE.md's
+// "no using Invekto.<other>" rule has G7 as its named carve-out.
+//
+// Therefore: trigger lives here (Backend), NOT in Invekto.Appointments. Appointments
+// service stays Invekto.Shared-only (csproj has only Invekto.Shared ref). The same
+// rule applies to webhook media hop above (PhotoInboundHandler is Backend-internal
+// so no cross-service issue there).
+//
+// Plan arch/plans/20260428-feat-photo-wireup-patch.json AC5.
+//
+// Lead lookup: SELECT id FROM leads WHERE tenant_id=@tid AND phone=@phone LIMIT 1.
+// No match -> graceful skip + INV-AT-086 log (manuel koordinator booking veya
+// FlowBuilder disi kanaldan gelen rezervasyonlar foto akisini atlar). Transient
+// failures (NpgsqlException / JsonException / InvalidOperationException) typed
+// catches with distinct INV codes (INV-AT-078 / INV-AT-087 / INV-AT-087).
+//
+// Lead lookup: SELECT id FROM leads WHERE tenant_id=@tid AND phone=@phone LIMIT 1.
+// No match -> graceful skip + INV log (manuel koordinator booking veya FlowBuilder
+// disi kanaldan gelen rezervasyonlar foto akisini atlar).
 app.MapPost("/api/v1/appointments/book", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
-    await AppointmentsProxyPost(ctx, apClient, jsonLog, "/api/v1/appointments/book"));
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+
+    string requestBody;
+    using (var reader = new StreamReader(ctx.Request.Body))
+        requestBody = await reader.ReadToEndAsync();
+
+    // CQ1 (Codex iter 1) fix: typed catch around proxy call — Appointments servisi
+    // unreachable / 5xx / timeout durumunda actionable INV-coded response don.
+    // Mevcut generic AppointmentsProxyPost helper'i da try/catch yapmiyor; bu
+    // expanded handler defense-in-depth ekliyor. Response shape (statusCode + body)
+    // generic helper ile birebir ayni — sadece headers ekleme YOK (helper de yok),
+    // CQ8 parity korunuyor.
+    int statusCode;
+    string? body;
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    try
+    {
+        (statusCode, body) = await apClient.ProxyPostAsync("/api/v1/appointments/book", requestBody, authHeader, requestId);
+    }
+    catch (HttpRequestException ex)
+    {
+        sw.Stop();
+        jsonLog.SystemWarn(
+            $"[{ErrorCodes.AppointmentsProxyTransient}] Appointments proxy /book transport error: {ex.Message} time={sw.ElapsedMilliseconds}ms");
+        // CQ12 (Codex iter 3) fix: requestId client-controlled (X-Request-Id header
+        // line 4849); manuel string interpolation yerine JsonSerializer.Serialize
+        // ile guvenli JSON construction (response-field injection riskini elimine
+        // eder, ozel karakterler escape edilir).
+        ctx.Response.StatusCode = 503;
+        ctx.Response.ContentType = "application/json";
+        await ctx.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(new
+        {
+            error_code = ErrorCodes.AppointmentsProxyTransient,
+            message = "Appointments servisi gecici olarak kullanilamiyor; birkac saniye sonra tekrar deneyin",
+            request_id = requestId
+        }));
+        return Results.Empty;
+    }
+    catch (TaskCanceledException ex)
+    {
+        sw.Stop();
+        jsonLog.SystemWarn(
+            $"[{ErrorCodes.AppointmentsProxyTransient}] Appointments proxy /book timeout: {ex.Message} time={sw.ElapsedMilliseconds}ms");
+        ctx.Response.StatusCode = 504;
+        ctx.Response.ContentType = "application/json";
+        await ctx.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(new
+        {
+            error_code = ErrorCodes.AppointmentsProxyTransient,
+            message = "Appointments servisi yanit vermedi; birkac saniye sonra tekrar deneyin",
+            request_id = requestId
+        }));
+        return Results.Empty;
+    }
+    sw.Stop();
+
+    jsonLog.StepInfo($"Appointments proxy POST /api/v1/appointments/book: status={statusCode}, time={sw.ElapsedMilliseconds}ms", requestId);
+
+    // Photo dispatch hook (post-201 only). CQ2 + CQ12 (Codex iter 1) fix: TUM skip
+    // path'lerinde INV-AT-086 audit log; silent skip yok. Failure modes are logged
+    // but never bubble to the caller — booking 201 stays the source of truth.
+    //
+    // CQ11 (Codex iter 1) DB-code sync: leads tablosu schema referansi:
+    //   arch/db/pkt6b1-niche-business.sql — leads(id integer PK, tenant_id integer
+    //   NOT NULL, phone text NOT NULL, ...) — pre-existing tablo, FEAT-PHOTO
+    //   migration 034 sadece foto-state kolonlari ekledi (photo_status, photo_count,
+    //   photo_received_at). Phone parametresi raw (E.164 normalization caller
+    //   sorumlulugunda; AutomationRepository.cs:907 SELECT preferred_locale FROM
+    //   leads WHERE phone=@phone precedent — pilot pattern).
+    if (statusCode == 201)
+    {
+        try
+        {
+            // CQ12/Q3 (Codex iter 2) fix: INV-AT-086 SADECE semantic 'lead not matched';
+            // DI-null / TenantContext-null / missing patient_phone (infra/auth/payload
+            // misconfiguration paths) INV-AT-087 PhotoRequestHookTransient kullanir.
+            var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+            if (tenantContext == null)
+            {
+                jsonLog.SystemWarn(
+                    $"[{ErrorCodes.PhotoRequestHookTransient}] PhotoRequestDispatchJob hook skipped: " +
+                    $"missing TenantContext post-201 (auth middleware bypass scenario; booking " +
+                    $"already accepted, photo flow skipped)");
+            }
+            else if (pgFactory == null)
+            {
+                jsonLog.SystemWarn(
+                    $"[{ErrorCodes.PhotoRequestHookTransient}] PhotoRequestDispatchJob hook skipped: " +
+                    $"pgFactory DI not configured tenant={tenantContext.TenantId} (booking " +
+                    $"accepted, photo flow skipped — production'da bu path'e duslmemeli)");
+            }
+            else
+            {
+                // Parse patient_phone from request body for lead lookup.
+                using var reqDoc = System.Text.Json.JsonDocument.Parse(requestBody);
+                var patientPhone = reqDoc.RootElement.TryGetProperty("patient_phone", out var phoneEl)
+                    ? phoneEl.GetString()
+                    : null;
+
+                if (string.IsNullOrWhiteSpace(patientPhone))
+                {
+                    jsonLog.SystemWarn(
+                        $"[{ErrorCodes.PhotoRequestHookTransient}] PhotoRequestDispatchJob hook skipped: " +
+                        $"missing patient_phone in booking request body tenant={tenantContext.TenantId} " +
+                        $"(booking accepted, photo flow skipped — INMA payload bug)");
+                }
+                else
+                {
+                    int? leadId = null;
+                    await using (var conn = await pgFactory.OpenConnectionAsync())
+                    await using (var cmd = new Npgsql.NpgsqlCommand(
+                        "SELECT id FROM leads WHERE tenant_id = @tid AND phone = @phone LIMIT 1",
+                        conn))
+                    {
+                        cmd.Parameters.AddWithValue("tid", tenantContext.TenantId);
+                        cmd.Parameters.AddWithValue("phone", patientPhone);
+                        var result = await cmd.ExecuteScalarAsync();
+                        if (result != null && result != DBNull.Value)
+                            leadId = Convert.ToInt32(result);
+                    }
+
+                    if (leadId.HasValue)
+                    {
+                        BackgroundJob.Schedule<Invekto.Automation.Services.Jobs.PhotoRequestDispatchJob>(
+                            j => j.ExecuteAsync(tenantContext.TenantId, leadId.Value, CancellationToken.None),
+                            TimeSpan.FromSeconds(30));
+                        jsonLog.StepInfo(
+                            $"PhotoRequestDispatchJob scheduled tenant={tenantContext.TenantId} " +
+                            $"lead={leadId.Value} delay=30s (post-booking)",
+                            requestId);
+                    }
+                    else
+                    {
+                        jsonLog.StepInfo(
+                            $"[{ErrorCodes.PhotoRequestLeadResolveSkip}] PhotoRequestDispatchJob skipped: " +
+                            $"no lead matches patient_phone tenant={tenantContext.TenantId} (booking " +
+                            $"accepted, photo flow skipped — manuel koordinator booking veya FlowBuilder " +
+                            $"disi kanal)",
+                            requestId);
+                    }
+                }
+            }
+        }
+        catch (Npgsql.NpgsqlException ex)
+        {
+            // DB transient — distinct from semantic skip (INV-AT-086).
+            jsonLog.SystemWarn(
+                $"[{ErrorCodes.PhotoInboundHandlerDbError}] PhotoRequestDispatchJob hook: " +
+                $"DB error: {ex.Message}");
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            // Caller payload bug — non-DB transient.
+            jsonLog.SystemWarn(
+                $"[{ErrorCodes.PhotoRequestHookTransient}] PhotoRequestDispatchJob hook: " +
+                $"request body parse fail: {ex.Message}");
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Hangfire JobStorage not initialised veya DI state hatasi — non-DB transient.
+            jsonLog.SystemWarn(
+                $"[{ErrorCodes.PhotoRequestHookTransient}] PhotoRequestDispatchJob hook: " +
+                $"Hangfire JobStorage not initialised: {ex.Message}");
+        }
+    }
+
+    // CQ8 (Codex iter 1) parity: response shape generic AppointmentsProxyPost helper
+    // ile birebir aynidir — sadece statusCode + body + ContentType='application/json'
+    // yazilir; helper de zaten upstream response headers'i preserve etmiyor (line
+    // 4592-4611 reference). Hicbir behavior degisikligi yok; sadece photo hook
+    // genisletildi.
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (body != null) await ctx.Response.WriteAsync(body);
+    return Results.Empty;
+});
 
 app.MapGet("/api/v1/appointments/list", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
     await AppointmentsProxyGet(ctx, apClient, jsonLog, "/api/v1/appointments"));
@@ -8695,6 +9038,19 @@ app.MapGet("/integrations/zoho/callback", async (HttpContext ctx, IHttpClientFac
             "text/html; charset=utf-8", statusCode: 504);
     }
 });
+
+// ============================================
+// FEAT-PHOTO wire-up patch (2026-04-28)
+// ============================================
+// Parent paket (commit 1da0da6) compiled-in route handlers; runtime Map zincirine
+// burada baglaniyor. Plan arch/plans/20260428-feat-photo-wireup-patch.json AC3.
+// (a) MapInmaInboundMediaEndpoint: POST /api/v1/inma/inbound/media — INMA dogrudan
+//     forward variant (localhost or X-Internal-Api-Key); ana /webhook/event
+//     handler'ina alternatif test layer'i.
+// (b) MapPhotoEndpoints: GET/POST /api/v1/leads/{leadId:int}/photos — Dashboard
+//     LeadDetailPage PhotoTab tuketicisi (JWT TenantContext required).
+Invekto.Backend.Endpoints.InmaInboundMediaEndpoint.MapInmaInboundMediaEndpoint(app, internalApiKey);
+Invekto.Backend.Endpoints.PhotoEndpoints.MapPhotoEndpoints(app);
 
 // ============================================
 // SPA FALLBACK ROUTES

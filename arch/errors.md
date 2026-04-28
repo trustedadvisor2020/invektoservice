@@ -1488,6 +1488,15 @@ errors:
   - code: INV-AT-085
     description: PhotoEndpoints POST /api/v1/leads/{id}/photos/request — lead photo_status='rejected' lock'unda. 'Tekrar Iste' butonu opt-out override yapamaz; 409 doner, koordinator manuel takdir.
     user_message: Bu lead reddedilmis durumda; tekrar istek gonderilemez.
+  - code: INV-AT-086
+    description: FEAT-PHOTO wire-up patch (2026-04-28, iter 1) — SADECE semantic "lead not matched" skip. Backend /api/v1/appointments/book proxy post-201 hook ve /api/v1/webhook/event media-route hop'ta patient_phone leads tablosunda eslesmedi. Booking 201 korunur (foto dispatch best-effort). Skip kaynaklari (a) manuel koordinator booking — patient lead olarak henuz kayitli degil; (b) FlowBuilder disi kanaldan gelen rezervasyon — phone normalization mismatch; (c) lead silinmis. Non-blocking; ops audit signal. Transient/infra failure ICIN INV-AT-087 kullanilir (Codex iter 0 CQ12 feedback split).
+    user_message: (yok — backend audit only; user-facing not surfaced)
+  - code: INV-AT-087
+    description: FEAT-PHOTO wire-up patch (2026-04-28, iter 1) — infra/state transient failure (non-DB). Backend /api/v1/appointments/book proxy hook veya /api/v1/webhook/event media hop'unda JsonException (request body parse) VEYA InvalidOperationException (Hangfire JobStorage not initialised, DI mis-config). NpgsqlException icin INV-AT-078, OperationCanceledException icin INV-AT-082 kullanilir. Non-blocking; ops audit signal — sonraki request retry'inde kendiliginden duzelir.
+    user_message: (yok — backend audit only; user-facing not surfaced)
+  - code: INV-AP-021
+    description: FEAT-PHOTO wire-up patch (2026-04-28, iter 2) — Backend /api/v1/appointments/book proxy hop'unda Appointments servisine cagri HttpRequestException (transport error) VEYA TaskCanceledException (timeout). 503/504 user-facing; SPA caller'a actionable INV code doner. Distinct from INV-AP-010 AppointmentOutboundUnavailable (Appointments tarafindan outbound).
+    user_message: Appointments servisi gecici olarak kullanilamiyor; birkac saniye sonra tekrar deneyin.
 
   # Paket B-META (migration 033 — 2026-04-25)
   - code: INV-SEED-018

@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, Outlet, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet, useNavigate, useParams } from 'react-router-dom';
 import { lazy, Suspense, useEffect } from 'react';
 import { inmaBridge, inmaBootstrap, INMA_ERRORS } from './inma';
 import { inmaErrorMessage } from './inma/inmaErrors';
@@ -63,6 +63,10 @@ const MetaLeadgenSettingsPage = lazy(() => import('./pages/settings/MetaLeadgenS
 // FEAT-PILOT-KANBAN: SuperAdmin pilot tracking board (lazy, opsOnly).
 const PilotKanbanPage = lazy(() => import('./pages/PilotKanbanPage').then(m => ({ default: m.PilotKanbanPage })));
 
+// FEAT-PHOTO wire-up patch (2026-04-28): Lead detay sayfasi (PhotoTab tuketicisi).
+// Parent paket commit 1da0da6 component-ready; runtime route binding burada.
+const LeadDetailPage = lazy(() => import('./pages/leads/LeadDetailPage').then(m => ({ default: m.LeadDetailPage })));
+
 function ProtectedRoute() {
   const { isAuthenticated } = useAuth();
 
@@ -86,6 +90,18 @@ function HomeDashboard() {
   const { session } = useAuth();
   // Ops mode: /tenants acilis sayfasi. Tenant mode: TenantDashboardPage.
   return session ? <TenantDashboardPage /> : <Navigate to="/tenants" replace />;
+}
+
+// FEAT-PHOTO wire-up patch (2026-04-28): /leads/:id route wrapper.
+// LeadDetailPage `leadId: number` prop bekliyor; URL `:id` string'ini integer'a
+// cevir. Invalid id (NaN veya <=0) durumunda /tenants ana sayfaya yonlendir.
+function LeadDetailRoute() {
+  const { id } = useParams<{ id: string }>();
+  const leadId = Number(id);
+  if (!Number.isFinite(leadId) || leadId <= 0) {
+    return <Navigate to="/tenants" replace />;
+  }
+  return <LeadDetailPage leadId={leadId} />;
 }
 
 function TenantDashboardPage() {
@@ -167,6 +183,8 @@ export default function App() {
         <Route path="/settings/campaigns" element={<Suspense><CampaignConfigSettingsPage /></Suspense>} />
         {/* Paket B-META: Meta Leadgen webhook settings (entered via SettingsPage). */}
         <Route path="/settings/meta-leadgen" element={<Suspense><MetaLeadgenSettingsPage /></Suspense>} />
+        {/* FEAT-PHOTO wire-up patch (2026-04-28): Lead detay sayfasi (PhotoTab tuketicisi). */}
+        <Route path="/leads/:id" element={<Suspense><LeadDetailRoute /></Suspense>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

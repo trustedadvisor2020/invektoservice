@@ -487,6 +487,12 @@ app.MapPost("/api/v1/appointments/book", async (
             $"tenant={tenantContext.TenantId} id={id}: {ex.Message}");
     }
 
+    // FEAT-PHOTO wire-up patch (2026-04-28): slot booking sonrasi PhotoRequestDispatchJob
+    // enqueue ISLE BURADA DEGIL — mikro servis izolasyonu (CLAUDE.md: 'Servisler arasi
+    // dogrudan referans YASAK'). Trigger Backend'in /api/v1/appointments/book proxy'sinde
+    // (Backend.csproj zaten Invekto.Automation PrivateAssets='all' ref var — G7 SCHEDULER
+    // HOST EXCEPTION). Plan arch/plans/20260428-feat-photo-wireup-patch.json AC5.
+
     return Results.Json(new { id, status = "confirmed" }, statusCode: 201);
 });
 

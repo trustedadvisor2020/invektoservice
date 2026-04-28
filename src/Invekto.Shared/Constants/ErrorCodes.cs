@@ -277,6 +277,8 @@ public static class ErrorCodes
     public const string PhotoInboundLeadMismatch = "INV-AT-083";               // PhotoInboundHandler lead_id resolve edildi ama leads.tenant_id != caller tenant_id. Cross-tenant pollution attempt veya caller bug. 422 + audit log; idempotency INSERT yapilmaz.
     public const string PhotoInboundUpdateMiss = "INV-AT-084";                 // PhotoInboundHandler atomic UPDATE leads matched 0 rows (lead silinmis OR photo_status='rejected' OR cross-tenant). Idempotency anchor yazildi ama leads state degismedi — 422 doner, INMA caller incident audit.
     public const string PhotoRequestRejectedLock = "INV-AT-085";               // PhotoEndpoints POST /photos/request — lead photo_status='rejected' lock'unda; 'Tekrar Iste' butonu opt-out override yapamaz. 409 user-facing; koordinator manuel inceleyecek.
+    public const string PhotoRequestLeadResolveSkip = "INV-AT-086";            // FEAT-PHOTO wire-up patch (2026-04-28, iter 1): SADECE semantic "lead not matched" skip — Backend /api/v1/appointments/book proxy ve /api/v1/webhook/event media hop'ta patient_phone leads tablosunda eslesmedi. Booking 201 korunur, foto dispatch atlanir (manuel koordinator booking veya FlowBuilder disi kanal veya phone normalization mismatch). Non-blocking; ops audit signal. Transient/infra failure ICIN INV-AT-087 KULLAN (Codex iter 0 CQ12 split).
+    public const string PhotoRequestHookTransient = "INV-AT-087";              // FEAT-PHOTO wire-up patch (2026-04-28, iter 1): infra/state transient failure — JsonException (request body parse), InvalidOperationException (Hangfire JobStorage not initialised veya DI mis-config), benzeri non-DB hook failure'lari. NpgsqlException icin INV-AT-078 PhotoInboundHandlerDbError, OperationCanceledException icin INV-AT-082 PhotoInboundCancelled kullanilir. Non-blocking; ops audit signal — sonraki request retry'inda kendiliginden duzelir.
 
     // FEAT-PILOT-KANBAN: SuperAdmin pilot tracking board (Migration 035, 2026-04-28) — INV-KB-xxx
     public const string KanbanStatusUnknown   = "INV-KB-001";                  // KanbanStatusExtensions.ToDbValue defensive guard; enum dışı değer (sistem hatası — PATCH endpoint TryParse zaten INV-KB-003 ile reddediyor). Internal serialization/refactor bug indikatoru.
@@ -499,6 +501,7 @@ public static class ErrorCodes
     public const string LifecycleAlreadyFinished = "INV-AP-018";
     public const string LifecycleInvalidType = "INV-AP-019";
     public const string LifecycleStepSendFailed = "INV-AP-020";
+    public const string AppointmentsProxyTransient = "INV-AP-021";             // FEAT-PHOTO wire-up patch (2026-04-28, iter 2): Backend /api/v1/appointments/book proxy hop'unda Appointments servisine cagri HttpRequestException (transport error) VEYA TaskCanceledException (timeout). 503/504 user-facing; SPA caller'a actionable INV code doner. Distinct from INV-AP-010 AppointmentOutboundUnavailable (Appointments tarafindan outbound).
 
     // Metrics/Analytics errors (INV-MT-xxx) -- PKT-3
     public const string MetricsAggregationFailed = "INV-MT-001";

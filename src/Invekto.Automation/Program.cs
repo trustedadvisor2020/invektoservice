@@ -196,6 +196,18 @@ builder.Services.AddScoped<FlowWaitResumerJob>();
 builder.Services.AddSingleton<CronSchedulerJob>();
 builder.Services.AddScoped<RescueFollowUpJob>();
 
+// FEAT-PHOTO wire-up patch (2026-04-28): photo dispatch + reminder + escalation
+// Hangfire jobs + IPhotoRequestService DI. Parent paket (commit 1da0da6)
+// compiled-in code; runtime DI register burada. Jobs Scoped (FlowWaitResumerJob /
+// RescueFollowUpJob pattern); IPhotoRequestService Singleton (AutomationOrchestrator
+// pattern — MainAppCallbackClient typed HttpClient typed-client kullanim ortakligi
+// kabul edilen trade-off). Plan arch/plans/20260428-feat-photo-wireup-patch.json AC2.
+builder.Services.AddSingleton<Invekto.Automation.Services.Photos.IPhotoRequestService,
+    Invekto.Automation.Services.Photos.PhotoRequestService>();
+builder.Services.AddScoped<Invekto.Automation.Services.Jobs.PhotoRequestDispatchJob>();
+builder.Services.AddScoped<Invekto.Automation.Services.Jobs.PhotoRequestReminderJob>();
+builder.Services.AddScoped<Invekto.Automation.Services.Jobs.PhotoEscalationJob>();
+
 // PKT-6A: Register JwtGenerator for service-to-service auth
 var jwtGenerator = new JwtGenerator(jwtSettings);
 builder.Services.AddSingleton(jwtGenerator);

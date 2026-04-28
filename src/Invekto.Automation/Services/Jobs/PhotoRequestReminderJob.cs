@@ -26,7 +26,10 @@ namespace Invekto.Automation.Services.Jobs;
 /// ile +24h gecikmeli PhotoEscalationJob enqueue (toplam 48h: dispatch + 24h
 /// reminder + 24h escalation).
 /// </summary>
-[Queue("photo-request-reminders")]
+// FEAT-PHOTO wire-up patch (2026-04-28): queue rename 'photo-request-reminders' ->
+// 'automation' (G7 single-queue-per-service topology). Plan
+// arch/plans/20260428-feat-photo-wireup-patch.json AC1.
+[Queue("automation")]
 [AutomaticRetry(Attempts = 0)]
 public sealed class PhotoRequestReminderJob
 {

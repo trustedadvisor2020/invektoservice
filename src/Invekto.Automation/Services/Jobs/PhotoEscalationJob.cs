@@ -26,7 +26,11 @@ namespace Invekto.Automation.Services.Jobs;
 /// Hangfire AutomaticRetry=0 (transient fail = manuel re-trigger). Reminder
 /// pattern aynen.
 /// </summary>
-[Queue("photo-request-reminders")]
+// FEAT-PHOTO wire-up patch (2026-04-28): queue rename 'photo-request-reminders' ->
+// 'automation' (G7 single-queue-per-service topology; PhotoEscalationJob ayni
+// queue'yu PhotoRequestReminderJob ile paylasir cunku ayni servis dinler). Plan
+// arch/plans/20260428-feat-photo-wireup-patch.json AC1.
+[Queue("automation")]
 [AutomaticRetry(Attempts = 0)]
 public sealed class PhotoEscalationJob
 {

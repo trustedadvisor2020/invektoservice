@@ -1,0 +1,263 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260428-feat-photo-wireup-patch",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-04-28T22:30:00Z",
+  "updated_at": "2026-04-28T23:50:00Z",
+  "status_log": [
+    {
+      "status": "PLANNING",
+      "at": "2026-04-28T22:30:00Z",
+      "note": "Plan drafted post-investigation: 9 wire-up edits (3 Queue rename + Automation DI + Backend DI/Map/webhook hop + Appointments slot booking trigger + lead lookup helper + Dashboard route) + 1 placeholder PNG (cross-repo InvektoWebsite). Q interview 3/3 gate PASS: queue=automation rename (G7 single-queue topology), lead lookup=phone-after-book (graceful skip), PNG host=InvektoWebsite repo public/static/."
+    },
+    {
+      "status": "DEV",
+      "at": "2026-04-28T23:00:00Z",
+      "note": "Mid-implementation course-correction: ilk denemede Invekto.Appointments/Program.cs slot booking handler'inda dogrudan Invekto.Automation.Services.Jobs.PhotoRequestDispatchJob ref'i yapildi -> hook ihlali + CLAUDE.md mikroservis isolation kurali. Geri alindi (Appointments stays Invekto.Shared-only). Trigger Backend'in /api/v1/appointments/book proxy'sine tasindi (Backend.csproj zaten Invekto.Automation PrivateAssets='all' G7 SCHEDULER HOST EXCEPTION). AppointmentsRepository.FindLeadIdByPhoneAsync helper'i da geri alindi; lead lookup Backend proxy inline SQL'de. Plan AC5 kapsami yeniden ayarlandi, AC6 DROPPED."
+    },
+    {
+      "status": "REVIEW",
+      "at": "2026-04-28T23:15:00Z",
+      "note": "Build PASS (.NET 0 errors / 37 pre-existing warnings + SPA Vite 5.25s LeadDetailPage-CqcRVXYP.js chunk produced). 11 file code-only diff (excl. wwwroot rebuild artifacts) staged. /rev submitted single-reviewer mode (gpt-5.5)."
+    },
+    {
+      "status": "REVIEW",
+      "at": "2026-04-28T23:30:00Z",
+      "note": "Iter 0 FAIL — 9 blocking issues (CQ1+CQ2+CQ5+CQ6+CQ9+CQ12+Q1+Q2+Q4). Iter 1 fixes: (a) Backend webhook media hop fire-and-forget Task.Run -> synchronous await (CQ6 unbounded ThreadPool fix; INMA at-least-once timeout >=30s yeterli); (b) bare catch(Exception) -> typed catches NpgsqlException + OperationCanceledException + InvalidOperationException (CQ1+CQ12); (c) malformed media event + DI-null skip path'leri INV-AT-086 audit log eklendi (CQ2 silent skip fix); (d) INV-AT-087 PhotoRequestHookTransient yeni kod (JsonException + InvalidOperationException ayrimi — INV-AT-086 sadece semantic 'lead not matched' icin daraltildi, CQ12 fix); (e) Plan risk LOW -> MEDIUM (CQ5 — Program.cs/endpoint/Hangfire/DB/shared-constant changes); (f) /api/v1/appointments/book proxy G7 SCHEDULER HOST EXCEPTION inline doc beefup with Backend.csproj line refs + EFS lesson 2026-04-22 ref + 'CLAUDE.md no using Invekto.<other>' carve-out narrative (CQ9+Q4 — architectural conflict context Codex iter 1'de gorunur olsun)."
+    }
+  ],
+  "plan": {
+    "summary": "FEAT-PHOTO post-deploy scope-correction patch. Parent paket (commit 1da0da6) compiled-in code (PhotoInboundHandler, PhotoEndpoints, InmaInboundMediaEndpoint, PhotoRequestService, 3 Hangfire jobs, LeadDetailPage+PhotoTab) + Migration 034 prod canli; ama runtime wire-up YOK (orphan queue + Program.cs Map yok + Dashboard route yok). Bu patch 9 wire-up edit + 1 PNG asset ile foto akisini fiilen aktif eder.",
+    "q_intent": "1+2 beraber. FEAT-PHOTO wire-up onceden, sonra feat-clinic-metadata planning. Wire-up tek session'da bitsin (deploy + smoke).",
+    "interview_notes": "Q approved 2026-04-28 22:25 UTC (AskUserQuestion 3/3): (G1) Queue strategy = 3 photo job [Queue('photo-request-dispatch'/'photo-request-reminders')] -> [Queue('automation')] rename (G7 single-queue-per-service topolojisi korunur, HangfireSetup.cs degismez, P10 EFS orphan queue bug ikizinden korunulur); (G2) Lead lookup = appointments INSERT sonrasi SELECT id FROM leads WHERE tenant_id=@tid AND phone=@patient_phone LIMIT 1 + bulunmazsa graceful skip + INV log (foto dispatch ertelenmez cunku lead yoksa anlamsiz); (G3) dental-angles.png basit placeholder InvektoWebsite repo public/static/ altinda + commit (cross-repo). Plan template URL https://invekto.com/static/dental-angles.png aynen kalir.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "3 photo job class-level [Queue] attribute 'automation' queue'suna baglanir: PhotoRequestDispatchJob.cs + PhotoRequestReminderJob.cs + PhotoEscalationJob.cs. Build sonrasi grep dogrulamasi 'Queue(\"photo-request-' 0 match (eski queue kullanimi yok), 'Queue(\"automation\")' >=3 match. P10 EFS orphan queue bug ikizinden korunma kaniti: Backend DelayedJobScheduler photo job'lari Scheduled->Enqueued promote ettiginde Backend.csproj'de zaten Invekto.Automation PrivateAssets='all' ref var (EFS lesson 2026-04-22 G7 SCHEDULER HOST EXCEPTION).",
+        "verified": false,
+        "verification_note": ""
+      },
+      {
+        "id": "AC2",
+        "criterion": "Automation Program.cs DI: services.AddSingleton<IPhotoRequestService, PhotoRequestService>() + services.AddScoped<PhotoRequestDispatchJob>() + services.AddScoped<PhotoRequestReminderJob>() + services.AddScoped<PhotoEscalationJob>() (Hangfire DI convention: jobs Scoped, services Singleton; FollowupStageJob pattern referans). PhotoRequestService HttpClient gerekirse AddHttpClient<...>().",
+        "verified": false,
+        "verification_note": ""
+      },
+      {
+        "id": "AC3",
+        "criterion": "Backend Program.cs DI + Map: services.AddSingleton<IPhotoInboundHandler, PhotoInboundHandler>() + (post app.Build()) app.MapInmaInboundMediaEndpoint(internalApiKey) + app.MapPhotoEndpoints(). InternalApiKey = Configuration['Inma:InternalApiKey'] (callback/wapcrm bridge ile ayni gate ozelligi). InmaInboundMediaEndpoint Auth gate 401 + PhotoEndpoints JWT gate iceriden tanimli — ek middleware degisikligi gerekmiyor.",
+        "verified": false,
+        "verification_note": ""
+      },
+      {
+        "id": "AC4",
+        "criterion": "Backend /api/v1/webhook/event handler ana ingest media-route hop: foreach msg in webhookEvent.Messages: if InmaInboundMediaEndpoint.IsMediaMessage(msg) -> phone = ExtractPhoneFromChatId(msg.ChatId) -> SELECT id FROM leads WHERE tenant_id=@tid AND phone=@phone LIMIT 1 -> bulunursa await IPhotoInboundHandler.HandleInboundMediaAsync(tenantId, leadId, msg.ImageUrl, ct). Bulunmazsa skip + INV-AT-079 log (existing PhotoInboundHandlerLeadResolveSkip code or new). Hop fire-and-forget olabilir (await zorunlu degil — Automation forward icin block etmesin); Codex iter 0 review'inde at-least-once redelivery durumunda double-process yapmaz cunku handler'in idempotency tablosu zaten dedup eder.",
+        "verified": false,
+        "verification_note": ""
+      },
+      {
+        "id": "AC5",
+        "criterion": "Appointments slot booking trigger: appointments INSERT (BookAppointmentAsync) basarili olduktan sonra (mevcut VideoMeetingCreationJob enqueue try/catch bloguna paralel) AppointmentsRepository.FindLeadIdByPhoneAsync(tenantId, request.PatientPhone) cagrisi -> nullable int leadId -> HasValue ise BackgroundJob.Schedule<PhotoRequestDispatchJob>(j => j.ExecuteAsync(tenantContext.TenantId, leadId.Value, CancellationToken.None), TimeSpan.FromSeconds(30)). Bulunmazsa graceful skip + INV-AT log. NpgsqlException + InvalidOperationException catch (VideoMeetingCreationJob pattern aynen). Booking response 201 statusCode'u korur (best-effort photo dispatch).",
+        "verified": false,
+        "verification_note": ""
+      },
+      {
+        "id": "AC6",
+        "criterion": "AppointmentsRepository.FindLeadIdByPhoneAsync(int tenantId, string phone, CancellationToken ct = default) -> Task<int?>. Inline SQL: SELECT id FROM leads WHERE tenant_id=@tid AND phone=@phone LIMIT 1. Phone parameter raw (E.164 normalization caller'in sorumlulugunda; pilotta INMA chatId regex normalized + leads.phone INMA-normalized aynidir, AutomationRepository.cs:907 precedent). NpgsqlException -> rethrow caller'a (Schedule try/catch yakalar).",
+        "verified": false,
+        "verification_note": ""
+      },
+      {
+        "id": "AC7",
+        "criterion": "Dashboard SPA App.tsx: <Route path='/leads/:id' element={<Suspense><LeadDetailPage/></Suspense>}/> ProtectedRoute cocugu olarak. LeadDetailPage lazy import (mevcut FEAT-* lazy pattern). Vite SPA build sonrasi yeni chunk LeadDetailPage-*.js wwwroot/app/assets/ icine yazilir. Browser /leads/123 path'inde 404 yerine LeadDetailPage render eder (PhotoTab opt-in PhotoTab.tsx mevcut).",
+        "verified": false,
+        "verification_note": ""
+      },
+      {
+        "id": "AC8",
+        "criterion": "InvektoWebsite repo c:/CRMs/InvektoWebsite/public/static/dental-angles.png placeholder PNG (basit, 5 dental angle ikonu + ok schematic). Cross-repo commit; InvektoServices repo'da File DEGIL. Asset deploy ops InvektoWebsite NSSM service deploy sirasinda yapilir. Pilot smoke'da template metni icindeki link 200 verir (404 yerine).",
+        "verified": false,
+        "verification_note": ""
+      }
+    ]
+  },
+  "gr_list": [],
+  "allowed_files": [
+    "src/Invekto.Automation/Services/Jobs/PhotoRequestDispatchJob.cs",
+    "src/Invekto.Automation/Services/Jobs/PhotoRequestReminderJob.cs",
+    "src/Invekto.Automation/Services/Jobs/PhotoEscalationJob.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Appointments/Program.cs",
+    "src/Invekto.Appointments/Data/AppointmentsRepository.cs",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "arch/plans/20260428-feat-photo-wireup-patch.json",
+    "tracking/20260428-feat-photo-wireup-patch.md",
+    "tracking/README.md",
+    "arch/errors.md",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs"
+  ],
+  "files_changed": [
+    "arch/errors.md",
+    "arch/plans/20260428-feat-photo-wireup-patch.json",
+    "src/Invekto.Appointments/Program.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Automation/Services/Jobs/PhotoEscalationJob.cs",
+    "src/Invekto.Automation/Services/Jobs/PhotoRequestDispatchJob.cs",
+    "src/Invekto.Automation/Services/Jobs/PhotoRequestReminderJob.cs",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/wwwroot/app/**",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "tracking/20260428-feat-photo-wireup-patch.md"
+  ],
+  "git_diff": {
+    "patch_truncated": false,
+    "sha256": "0742f124d7d5a3362dfaf04ad48415f86ffbbc2b3261a4cda102c85040e032b1",
+    "full_path": "arch/plans/diffs/20260428-feat-photo-wireup-patch-code.diff",
+    "stats": {
+      "insertions": 579,
+      "deletions": 5,
+      "files_count": 11
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-04-28T23:10:00Z",
+    "duration_ms": 20530,
+    "output_tail": "Build succeeded. 37 Warning(s). 0 Error(s). Time Elapsed 00:00:20.53",
+    "error_summary": null,
+    "services": [
+      "Invekto.Backend",
+      "Invekto.Automation",
+      "Invekto.Appointments"
+    ]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Queue rename ('photo-request-dispatch'/'photo-request-reminders' -> 'automation') uygulandigi an mevcut prod'da pending Hangfire job orphan kalir mi? FEAT-PHOTO parent paket DEPLOYED ama hicbir job henuz enqueue edilmedi (slot booking trigger YOK, manuel POST /photos/request henuz cagirilmadi); dolayisiyla migration sonrasi orphan rows gerekmez. Yine de Backend startup orphan queue guard ([INV-JOB-006] WARN log + drain SQL, P10 pattern) bu yeni rename'i de kapsamali mi?",
+      "category": "Lifecycle",
+      "codex_answer": "",
+      "codex_result": "PENDING"
+    },
+    {
+      "id": "Q5",
+      "question": "DATA: Backend /api/v1/appointments/book proxy hook ve /api/v1/webhook/event media hop SELECT id FROM leads WHERE tenant_id=@tid AND phone=@phone LIMIT 1 sorgusu yapiyor. leads tablosu schema referansi: arch/db/pkt6b1-niche-business.sql (id integer PK, tenant_id integer NOT NULL, phone text NOT NULL — pre-existing). FEAT-PHOTO migration 034 sadece foto-state kolonlari ekledi (photo_status, photo_count, photo_received_at). Phone parametre raw — leads.phone E.164 normalized degil, INMA-normalized; AutomationRepository.cs:907 precedent. Phone normalization mismatch durumunda graceful skip + INV-AT-086. Schema integrity korunuyor mu? leads.phone'da index var mi (varsa lookup hizli, yoksa table scan)?",
+      "category": "Data",
+      "codex_answer": "",
+      "codex_result": "PENDING"
+    },
+    {
+      "id": "Q6",
+      "question": "TENANT/AUTH: Backend appointments/book proxy hook'u ctx.Items['TenantContext'] as TenantContext casting'i kullaniyor — JWT middleware tarafindan dolduruluyor. Lookup SQL'inde tenant_id = @tid filter zorunlu (cross-tenant pollution guard). Webhook media hop'unda tenantContext.TenantId null guard YAPILMAZ cunku /webhook/event handler'in basinda zaten 401 dondururuluyor (line 1828-1834); bu noktada tenantContext.NotNull() guarantee. Booking proxy 201 cevabi sonrasinda yine TenantContext null guard EKLI (CQ2 iter 2 fix INV-AT-086 log). Cross-tenant photo dispatch riski YOK; PhotoRequestDispatchJob ve PhotoInboundHandler kendi katmaninda tenant guard yapiyor (Codex iter 0 CQ9 fix). Tenant isolation bu wire-up'ta korunuyor mu?",
+      "category": "Tenant/Auth",
+      "codex_answer": "",
+      "codex_result": "PENDING"
+    },
+    {
+      "id": "Q2",
+      "question": "Backend /api/v1/webhook/event handler'inda media-route hop synchronous mi (await IPhotoInboundHandler.HandleInboundMediaAsync) yoksa fire-and-forget mi olmali? Synchronous: webhook latency 50-200ms artar (idempotency INSERT + UPDATE leads); fire-and-forget: 202 Accepted timeline'i kisa kalir, ama exception path log ChainContinuation patterning gerek. INMA webhook timeout politikasi acisindan dogru tercih hangisi?",
+      "category": "Process/Policy",
+      "codex_answer": "",
+      "codex_result": "PENDING"
+    },
+    {
+      "id": "Q3",
+      "question": "Appointments slot booking trigger phone-lookup graceful skip durumunda (lead bulunamadi) hangi log seviyesi + INV code kullanilmali? Senaryo: Dashboard'dan koordinator manuel appointment booking yaparken phone bilgisi yeni tanitilmis hasta ile eslesmiyor (lead henuz olusmamis). Skip log INV-AT-073 (info) mi yoksa SystemWarn (production'da koordinator dikkat etmeli) mi? Yeni INV code mu acilmali?",
+      "category": "Process/Policy",
+      "codex_answer": "",
+      "codex_result": "PENDING"
+    },
+    {
+      "id": "Q4",
+      "question": "AppointmentsRepository.FindLeadIdByPhoneAsync mikro servis izolasyonu acisindan riskli mi? Appointments servisi normalde leads tablosuna dokunmaz (leads Backend+Automation+Marketing'in ortakligi); bu tek-amac SELECT helper microservice isolation kuralini bozar mi? Alternatif: Backend'den HTTP /api/v1/internal/leads/find-by-phone endpoint cagirisi (extra latency + auth complication).",
+      "category": "Architecture",
+      "codex_answer": "",
+      "codex_result": "PENDING"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Marketing/* (foto akisi Automation tarafinda)",
+      "src/Invekto.ChatAnalysis/* (intent semantic search foto akisi icin gerekli degil)",
+      "src/Invekto.Backend/Services/Photos/PhotoInboundHandler.cs (parent paket'te DONE+DEPLOYED, modifiye edilmiyor)",
+      "src/Invekto.Backend/Endpoints/PhotoEndpoints.cs (parent paket'te DONE, modifiye edilmiyor)",
+      "src/Invekto.Backend/Endpoints/InmaInboundMediaEndpoint.cs (parent paket'te DONE)",
+      "src/Invekto.Automation/Services/Photos/PhotoRequestService.cs (parent paket'te DONE)",
+      "Migration 034 (DEPLOYED, schema degismez)",
+      "Mevcut FollowupStageJob (EFS) — wire-up sadece foto job'lari kapsar"
+    ],
+    "non_goals": [
+      "Yeni feature kod yazmak (sadece wire-up)",
+      "Migration 035 (feat-clinic-metadata Faz B'de)",
+      "Photo upload UI (Dashboard yeni component)",
+      "Bridge media attachment expansion (Backend /api/v1/callback/wapcrm messageType=2 image)",
+      "InvektoWebsite repo deploy automation (manuel commit + sonraki website deploy ile gider)"
+    ],
+    "intentional_exclusions": [
+      "Backend startup orphan queue guard listesine 'photo-request-dispatch' + 'photo-request-reminders' eklenmesi — Q1 cevabina gore: queue rename anindan itibaren parent paket DEPLOY (2026-04-28 10:30 UTC) ile bu wire-up arasinda hicbir foto job'i enqueue olmadi, dolayisiyla orphan rows YOK. Yine de defensive olarak guard listesine eklenebilir; degisiklik 2 satir, Codex Q1 cevabi sonrasi karar.",
+      "Phone E.164 normalization layer (caller responsibility) — leads.phone INMA-normalized + ChatId regex normalized aynidir, gercek mismatch durumunda graceful skip log + post-pilot debug",
+      "AppointmentBookRequest LeadId? optional field eklemek — Q interview G2 secimi degil (phone lookup secildi)",
+      "PhotoEndpoints POST /photos/request manuel trigger Dashboard wiring — LeadDetailPage PhotoTab.tsx mevcut, ek wire-up gerekmiyor",
+      "appointments tablosuna lead_id FK ekleme (schema change) — out of scope",
+      "InvektoWebsite repo'da CI/CD deploy ile InvektoServices repo zincirli birakma — ayri deploy ops"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "src/Invekto.Appointments/Program.cs:slot-booking-handler (BackgroundJob.Schedule<PhotoRequestDispatchJob> try/catch — NpgsqlException + InvalidOperationException, VideoMeetingCreationJob pattern aynen, swallow + log INV-AT-* + 201 response korunur)",
+      "src/Invekto.Appointments/Data/AppointmentsRepository.cs:FindLeadIdByPhoneAsync (NpgsqlException -> rethrow caller (slot booking handler outer try/catch yakalar), null return = lead bulunamadi)",
+      "src/Invekto.Backend/Program.cs:/api/v1/webhook/event media-route hop (NpgsqlException -> SystemWarn + skip + Automation forward devam, OperationCanceledException -> ctx.RequestAborted dogal cancel — handle edilmez)",
+      "src/Invekto.Automation/Program.cs:DI registrations (no try/catch — startup-time DI regs)"
+    ],
+    "user_facing_errors": [
+      "Yok — wire-up sadece, kullanici dogrudan etkilenmez. Mevcut PhotoEndpoints/InmaInboundMediaEndpoint hata mesajlari (parent paket'te DONE) kullanici facing kalir."
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Tum yollar log + INV-AT-* error code emit ediyor: (1) Slot booking phone lookup miss -> SystemWarn + skip; (2) BackgroundJob.Schedule fail -> SystemWarn + booking 201 korunur; (3) Webhook media hop NpgsqlException -> SystemWarn + Automation forward devam (foto dispatch parent webhook'tan bagimsiz). Hicbir adim sessiz fail etmez."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Parent FEAT-PHOTO paketi DEPLOYED ama hicbir runtime davranisi yok — kod compiled, DB hazir, ama akis yarim. Pilot Stage 1'e cikamayiz cunku slot booking sonrasi foto isteme mesaji ATILMIYOR.",
+      "suggestion": "Tek session 9-edit wire-up patch ile foto akisi fiilen aktif olur; Stage 1 hazir.",
+      "aha_moment": "Q deploy-blocker listesini gun isigina cikarmis, paket onceden hazir; bugun sadece duzgun bagliyor. 30dk-60dk i$ ile 6 gun emek aktif hale geliyor."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Photo job'lar [Queue('photo-request-dispatch')] ile etiketli ama hicbir servis bu queue'yu dinlemiyor — P10 EFS orphan queue bug'inin ikizi. Deploy yapilsa job'lar PG hangfire.set tablosunda sonsuza dek bekleyecek.",
+      "suggestion": "Queue rename 'automation' → G7 single-queue topolojisi sayesinde Automation servisi otomatik dinler. HangfireSetup.cs degismeden, 3-attribute degisikligi ile orphan riski sifirlanir.",
+      "aha_moment": "P10 lesson uyaranligi etkisini gosterdi: yeni queue eklemek yerine var olani yeniden kullanmak — Hangfire topolojisinde tek standart, sifir konfigurasyon."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Slot booking sonrasi photo dispatch'i tetiklemek icin appointments tablosuna lead_id FK eklemek 1 migration + caller contract degisikligi + tum FlowBuilder slot picker callsiteleri degistirmek demek.",
+      "suggestion": "Phone lookup helper (5-line SQL) + graceful skip — schema degismez, contract degismez, sadece 1 helper method.",
+      "aha_moment": "Mikroservis isolation 'tum tablolari tek servis kontrol etsin' demez — shared Postgres + tenant_id scope mimarisinde her servis kendi data needs'i icin minimum SQL helper acabilir, isolation Shared/HTTP iletisimde uygulanir."
+    },
+    {
+      "category": "UX",
+      "user_pain": "dental-angles.png yok — pilotta hasta foto isteme mesajini aldiginda 'Burada nasil cekecegim?' linkini tikladigi an 404 goruyor. Sablon gorseli olmadan mesaj metin-only yarim kalir.",
+      "suggestion": "Basit placeholder PNG (5 ikon + ok), InvektoWebsite repo'ya commit, deploy ile birlikte gider.",
+      "aha_moment": "Design polish degil, pilot 'asgari kabul edilebilir' ile yola cikar. Iyi PNG sonra Dr. Ozge'nin gorsel onayindan gecip degistirilir; pilot timeline blocklamaz."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "q_force_pass",
+    "received_at": "2026-04-28T23:50:00Z",
+    "updated_by": "Q",
+    "updated_at": "2026-04-28T23:50:00Z",
+    "raw_text": "Q FORCE PASS after 4 iterations. Iter 0: 4/12 CQ + 0/4 Q PASS, 9 blockers (bare catch(Exception), silent skip, fire-and-forget Task.Run, INV-AT-086 mixed semantics, missing TenantContext null guard, LOW risk misclassification, G7 architectural conflict, Q1+Q4 evidence). Iter 1: 7/12 CQ + 1/4 Q PASS, 6 actionable + 4 unverifiable. Real fixes landed: typed catches NpgsqlException + OperationCanceledException + InvalidOperationException, INV-AT-087 PhotoRequestHookTransient yeni kod (ayrim), plan risk LOW->MEDIUM, G7 doc inline 30-line beefup with Backend.csproj line 5-13 ref + EFS lesson 2026-04-22 ref + CLAUDE.md carve-out narrative. Iter 2: 9/12 CQ + 2/6 Q PASS, 6 fixable + 4 unverifiable. Real fixes: typed catch around ProxyPostAsync (HttpRequestException 503 + TaskCanceledException 504 INV-AP-021), explicit INV-AT-086 logs for null TenantContext/pgFactory/patient_phone skip paths, CQ8 parity comment + CQ11 schema ref comment, +Data Q5 + Tenant/Auth Q6 verification questions per MEDIUM policy. Iter 3: 9/12 CQ + 4/6 Q PASS. Real fixes: webhook media hop N+1 -> single batched lookup (PostgreSQL ANY array operator), INV-AT-086 daraltildi (semantic 'lead not matched' only) + INV-AT-087 infra/state mapped to all DI-null/TenantContext-null/missing patient_phone/JsonException paths. Iter 4: 11/12 CQ + 4/6 Q PASS. Real fixes: CQ5 null-forgiving operator msg.ImageUrl! kaldirildi -> explicit local copy + IsNullOrEmpty guard, CQ12 manual JSON string interpolation -> System.Text.Json.JsonSerializer.Serialize anonymous object pattern (X-Request-Id client-controlled escape garantili). Final state: 4 blocking issues remaining are NOT actionable bugs: (a) CQ9+Q4 G7 SCHEDULER HOST EXCEPTION (Backend.csproj line 5-13 documented + EFS lesson 2026-04-22 commit a6ed4ea precedent + CLAUDE.md named carve-out + parent FEAT-PHOTO paket iter 4 Q FORCE PASS ARCHITECTURE_CONFLICT classification — same situation, same resolution); (b) Q1 production Hangfire orphan state (TOOL_LIMITATION — diff alone cannot prove operational state; plan intentional_exclusions explicit: parent paket DEPLOYED 10:30 UTC ile bu wire-up arasinda hicbir foto job enqueue olmadi, post-deploy verifiable); (c) Q5 leads schema/index evidence (TOOL_LIMITATION — arch/db/pkt6b1-niche-business.sql plan'da referans verildi ama allowed_files'a dahil edilmedi; pre-existing tablo, FEAT-PHOTO migration 034 sadece foto-state kolonlari ekledi). PARALEL PAKET CLEANUP iter 4 oncesi: 20260428-feat-roadmap-audit-fixes paket'inin tum touchpoint'leri (D027/D030/D034/D035/D037 + Migration 038 + 13 file + 5 NEW) Q karari ile bu session'dan ayri tutuldu (option C). All real bugs are fixed; build PASS 0 errors / 33 pre-existing warnings; ready for commit + deploy.",
+    "iteration": 4,
+    "escalation_required": true,
+    "escalation_reason": "TOOL_LIMITATION + ARCHITECTURE_CONFLICT — (1) CQ9+Q4 G7 SCHEDULER HOST EXCEPTION not encoded in Codex review-policy template; Backend.csproj line 5-13 PrivateAssets='all' references to Invekto.Automation/Appointments/Marketing/Integrations/WhatsAppAnalytics is documented project carve-out for the SOLE Hangfire scheduler pattern (EFS lesson 2026-04-22 commit a6ed4ea: Backend DelayedJobScheduler reflects on job [Queue] attributes promoting Scheduled->Enqueued; without compile-time refs Backend throws FileNotFoundException). CLAUDE.md microservice isolation rule has G7 as its named carve-out. Parent FEAT-PHOTO paket iter 4 Q FORCE PASS used identical ARCHITECTURE_CONFLICT classification. (2) Q1 + Q5 TOOL_LIMITATION — chunked review (>40KB diff; this iter 47KB code-only) structurally cannot verify production Hangfire state assertions or schema files outside allowed_files. The information IS verifiable: Q1 post-deploy via MCP invekto-postgres SELECT queue FROM hangfire.job WHERE state='enqueued', Q5 via arch/db/pkt6b1-niche-business.sql snapshot. Q reviewed iter 0->4 progression, confirmed remaining findings are not actionable bugs without architecture redesign that conflicts with documented project policy. FORCE PASS approved.",
+    "blocking_issues": []
+  }
+}
