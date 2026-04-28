@@ -1,0 +1,114 @@
+[
+  {
+    "label": "M",
+    "top": 16,
+    "left": 7.5,
+    "width": 32,
+    "height": 32
+  },
+  {
+    "label": "Upgrade now",
+    "top": 12,
+    "left": 1309.125,
+    "width": 118.875,
+    "height": 28
+  },
+  {
+    "label": "Chats",
+    "top": 52,
+    "left": 271,
+    "width": 64.1875,
+    "height": 44
+  },
+  {
+    "label": "Calls",
+    "top": 52,
+    "left": 335.1875,
+    "width": 57.25,
+    "height": 44
+  },
+  {
+    "label": "🆕\nNew Lead",
+    "top": 60,
+    "left": 731.359375,
+    "width": 119.890625,
+    "height": 28
+  },
+  {
+    "label": "🆕\nNew Lead",
+    "top": 60,
+    "left": 731.359375,
+    "width": 119.890625,
+    "height": 28
+  },
+  {
+    "label": "Close",
+    "top": 60,
+    "left": 1276.421875,
+    "width": 115.578125,
+    "height": 28
+  },
+  {
+    "label": "Close",
+    "top": 60,
+    "left": 1276.421875,
+    "width": 83.578125,
+    "height": 28
+  },
+  {
+    "label": "Close",
+    "top": 60,
+    "left": 1276.421875,
+    "width": 83.578125,
+    "height": 28
+  },
+  {
+    "label": "Telegram",
+    "top": 745,
+    "left": 582,
+    "width": 118.265625,
+    "height": 32
+  },
+  {
+    "label": "Telegram",
+    "top": 745,
+    "left": 590,
+    "width": 102.265625,
+    "height": 32
+  },
+  {
+    "label": "AI Assist",
+    "top": 747,
+    "left": 1274.546875,
+    "width": 101.453125,
+    "height": 28
+  },
+  {
+    "label": "Summarize",
+    "top": 860,
+    "left": 1264.640625,
+    "width": 118.359375,
+    "height": 32
+  },
+  {
+    "label": "Bad",
+    "top": 751,
+    "left": -211,
+    "width": 69.53125,
+    "height": 32
+  },
+  {
+    "label": "Good",
+    "top": 751,
+    "left": -125.46875,
+    "width": 79.6875,
+    "height": 32
+  },
+  {
+    "label": "Close",
+    "top": 643,
+    "left": 1361.984375,
+    "width": 14.015625,
+    "height": 24
+  }
+]

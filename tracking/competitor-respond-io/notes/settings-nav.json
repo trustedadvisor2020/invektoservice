@@ -1,0 +1,98 @@
+[
+  {
+    "header": true,
+    "text": "🆕\nNew Lead",
+    "x": 89,
+    "y": 372
+  },
+  {
+    "header": true,
+    "text": "0\n0\n0",
+    "x": 89,
+    "y": 442
+  },
+  {
+    "header": true,
+    "text": "0",
+    "x": 89,
+    "y": 442
+  },
+  {
+    "header": true,
+    "text": "Personal settings",
+    "x": 61,
+    "y": 551
+  },
+  {
+    "header": true,
+    "text": "Open\n–",
+    "x": 101,
+    "y": 583
+  },
+  {
+    "header": true,
+    "text": "–",
+    "x": 145.8125,
+    "y": 583
+  },
+  {
+    "header": true,
+    "text": "Assigned\n–",
+    "x": 180.734375,
+    "y": 583
+  },
+  {
+    "header": true,
+    "text": "Channels",
+    "x": 61,
+    "y": 640
+  },
+  {
+    "header": true,
+    "text": "User settings",
+    "x": 61,
+    "y": 680
+  },
+  {
+    "header": true,
+    "text": "Billing & usage",
+    "x": 61,
+    "y": 719
+  },
+  {
+    "header": true,
+    "text": "Your current plan\nGrowth",
+    "x": 61,
+    "y": 750
+  },
+  {
+    "header": true,
+    "text": "Growth",
+    "x": 266.640625,
+    "y": 758
+  },
+  {
+    "href": "/space/408881/inbox",
+    "text": "View All Messages",
+    "x": 91,
+    "y": 1089
+  },
+  {
+    "header": true,
+    "text": "Conversations",
+    "x": 91,
+    "y": 1183
+  },
+  {
+    "header": true,
+    "text": "Opened",
+    "x": 91,
+    "y": 1239
+  },
+  {
+    "header": true,
+    "text": "Closed",
+    "x": 202.90625,
+    "y": 1239
+  }
+]

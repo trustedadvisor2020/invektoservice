@@ -1,0 +1,104 @@
+[
+  {
+    "href": "/space/408881/settings/general",
+    "text": "General info",
+    "x": 58,
+    "y": 136
+  },
+  {
+    "href": "/space/408881/settings/users",
+    "text": "User settings",
+    "x": 58,
+    "y": 210
+  },
+  {
+    "href": "/space/408881/settings/teams",
+    "text": "Team settings",
+    "x": 58,
+    "y": 244
+  },
+  {
+    "href": "/space/408881/settings/channels",
+    "text": "Channels",
+    "x": 58,
+    "y": 318
+  },
+  {
+    "href": "/space/408881/settings/integrations",
+    "text": "Integrations",
+    "x": 58,
+    "y": 352
+  },
+  {
+    "href": "/space/408881/settings/growth_widgets",
+    "text": "Growth widgets",
+    "x": 58,
+    "y": 386
+  },
+  {
+    "href": "/space/408881/settings/contact_fields",
+    "text": "Contact fields",
+    "x": 58,
+    "y": 460
+  },
+  {
+    "href": "/space/408881/settings/lifecycle",
+    "text": "Lifecycle",
+    "x": 58,
+    "y": 494
+  },
+  {
+    "href": "/space/408881/settings/closing_notes",
+    "text": "Closing notes",
+    "x": 58,
+    "y": 528
+  },
+  {
+    "href": "/space/408881/settings/snippets",
+    "text": "Snippets",
+    "x": 58,
+    "y": 562
+  },
+  {
+    "href": "/space/408881/settings/tags",
+    "text": "Tags",
+    "x": 58,
+    "y": 596
+  },
+  {
+    "href": "/space/408881/settings/ai-assist",
+    "text": "AI Assist",
+    "x": 58,
+    "y": 630
+  },
+  {
+    "href": "/space/408881/settings/ai-prompts",
+    "text": "AI Prompts",
+    "x": 58,
+    "y": 664
+  },
+  {
+    "href": "/space/408881/settings/calls",
+    "text": "Calls\nNew",
+    "x": 58,
+    "y": 698
+  },
+  {
+    "href": "/space/408881/settings/files",
+    "text": "Files",
+    "x": 58,
+    "y": 772
+  },
+  {
+    "href": "/space/408881/settings/data_import",
+    "text": "Contacts import",
+    "x": 58,
+    "y": 806
+  },
+  {
+    "href": "/space/408881/settings/data_export",
+    "text": "Data export",
+    "x": 58,
+    "y": 840
+  }
+]

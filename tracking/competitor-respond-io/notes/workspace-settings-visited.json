@@ -1,0 +1,138 @@
+[
+  {
+    "text": "General info",
+    "href": "/space/408881/settings/general",
+    "finalUrl": "https://app.respond.io/space/408881/settings/general",
+    "title": "",
+    "subTabs": [],
+    "mainHeaders": []
+  },
+  {
+    "text": "User settings",
+    "href": "/space/408881/settings/users",
+    "finalUrl": "https://app.respond.io/space/408881/settings/users",
+    "title": "",
+    "subTabs": [],
+    "mainHeaders": []
+  },
+  {
+    "text": "Team settings",
+    "href": "/space/408881/settings/teams",
+    "finalUrl": "https://app.respond.io/space/408881/settings/teams",
+    "title": "",
+    "subTabs": [],
+    "mainHeaders": []
+  },
+  {
+    "text": "Channels",
+    "href": "/space/408881/settings/channels",
+    "finalUrl": "https://app.respond.io/space/408881/settings/channels/connect/all",
+    "title": "",
+    "subTabs": [],
+    "mainHeaders": []
+  },
+  {
+    "text": "Integrations",
+    "href": "/space/408881/settings/integrations",
+    "finalUrl": "https://app.respond.io/space/408881/settings/integrations",
+    "title": "",
+    "subTabs": [],
+    "mainHeaders": []
+  },
+  {
+    "text": "Growth widgets",
+    "href": "/space/408881/settings/growth_widgets",
+    "finalUrl": "https://app.respond.io/space/408881/settings/growth_widgets",
+    "title": "",
+    "subTabs": [],
+    "mainHeaders": []
+  },
+  {
+    "text": "Contact fields",
+    "href": "/space/408881/settings/contact_fields",
+    "finalUrl": "https://app.respond.io/space/408881/settings/contact_fields",
+    "title": "",
+    "subTabs": [],
+    "mainHeaders": []
+  },
+  {
+    "text": "Lifecycle",
+    "href": "/space/408881/settings/lifecycle",
+    "finalUrl": "https://app.respond.io/space/408881/settings/lifecycle",
+    "title": "",
+    "subTabs": [],
+    "mainHeaders": []
+  },
+  {
+    "text": "Closing notes",
+    "href": "/space/408881/settings/closing_notes",
+    "finalUrl": "https://app.respond.io/space/408881/settings/closing_notes",
+    "title": "",
+    "subTabs": [],
+    "mainHeaders": []
+  },
+  {
+    "text": "Snippets",
+    "href": "/space/408881/settings/snippets",
+    "finalUrl": "https://app.respond.io/space/408881/settings/snippets",
+    "title": "",
+    "subTabs": [],
+    "mainHeaders": []
+  },
+  {
+    "text": "Tags",
+    "href": "/space/408881/settings/tags",
+    "finalUrl": "https://app.respond.io/space/408881/settings/tags",
+    "title": "",
+    "subTabs": [],
+    "mainHeaders": []
+  },
+  {
+    "text": "AI Assist",
+    "href": "/space/408881/settings/ai-assist",
+    "finalUrl": "https://app.respond.io/space/408881/settings/ai-assist",
+    "title": "",
+    "subTabs": [],
+    "mainHeaders": []
+  },
+  {
+    "text": "AI Prompts",
+    "href": "/space/408881/settings/ai-prompts",
+    "finalUrl": "https://app.respond.io/space/408881/settings/ai-prompts",
+    "title": "",
+    "subTabs": [],
+    "mainHeaders": []
+  },
+  {
+    "text": "Calls\nNew",
+    "href": "/space/408881/settings/calls",
+    "finalUrl": "https://app.respond.io/space/408881/settings/calls",
+    "title": "",
+    "subTabs": [],
+    "mainHeaders": []
+  },
+  {
+    "text": "Files",
+    "href": "/space/408881/settings/files",
+    "finalUrl": "https://app.respond.io/space/408881/settings/files",
+    "title": "",
+    "subTabs": [],
+    "mainHeaders": []
+  },
+  {
+    "text": "Contacts import",
+    "href": "/space/408881/settings/data_import",
+    "finalUrl": "https://app.respond.io/space/408881/settings/data_import",
+    "title": "",
+    "subTabs": [],
+    "mainHeaders": []
+  },
+  {
+    "text": "Data export",
+    "href": "/space/408881/settings/data_export",
+    "finalUrl": "https://app.respond.io/space/408881/settings/data_export",
+    "title": "",
+    "subTabs": [],
+    "mainHeaders": []
+  }
+]

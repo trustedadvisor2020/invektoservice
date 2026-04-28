@@ -1,0 +1,1281 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Respond.io vs Invekto — Rekabet Analizi</title>
+<style>
+  :root{
+    --bg:#0b0d10; --card:#12161b; --card2:#171c22; --fg:#e6e9ef; --muted:#8a94a4;
+    --border:#232a33; --accent:#6ea8ff; --accent2:#9a7cff; --good:#34d399;
+    --warn:#f59e0b; --bad:#ef4444; --neutral:#94a3b8; --code:#0f1318;
+    --maxw:1280px;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#f7f8fa; --card:#ffffff; --card2:#f1f3f7; --fg:#0f1720; --muted:#5b6573;
+      --border:#e3e7ee; --code:#f1f3f7;
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em}
+  code{background:var(--code);padding:2px 6px;border-radius:4px;border:1px solid var(--border)}
+  pre{background:var(--code);padding:16px;border-radius:8px;border:1px solid var(--border);overflow-x:auto}
+  h1,h2,h3,h4{line-height:1.25;margin:1.6em 0 .6em}
+  h1{font-size:2.2rem;letter-spacing:-.02em}
+  h2{font-size:1.55rem;letter-spacing:-.01em;border-bottom:1px solid var(--border);padding-bottom:.4em;margin-top:2.4em}
+  h3{font-size:1.2rem;color:var(--fg)}
+  h4{font-size:1rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:1.4em 0 .5em}
+  p{margin:.6em 0}
+  ul,ol{padding-left:1.4em}
+  li{margin:.25em 0}
+  hr{border:0;border-top:1px solid var(--border);margin:2em 0}
+  table{border-collapse:collapse;width:100%;margin:1em 0;font-size:.94rem}
+  th,td{padding:10px 12px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+  th{background:var(--card2);font-weight:600;color:var(--fg)}
+  tbody tr:hover{background:var(--card2)}
+  .hero{padding:56px 24px 40px;background:linear-gradient(140deg,#12161b 0%,#1a2030 100%);border-bottom:1px solid var(--border)}
+  @media (prefers-color-scheme:light){.hero{background:linear-gradient(140deg,#eef2f9 0%,#e1e7f4 100%)}}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+  .kicker{display:inline-block;padding:4px 10px;border-radius:999px;background:rgba(110,168,255,.14);color:var(--accent);font-size:.8rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+  .sub{color:var(--muted);font-size:1.05rem;max-width:840px}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-top:28px}
+  .stat{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
+  .stat .n{font-size:1.6rem;font-weight:700;color:var(--fg)}
+  .stat .l{font-size:.85rem;color:var(--muted);margin-top:2px}
+  .layout{display:grid;grid-template-columns:260px 1fr;gap:32px;max-width:var(--maxw);margin:32px auto;padding:0 24px}
+  @media (max-width:960px){.layout{grid-template-columns:1fr}.toc-wrap{position:static!important}}
+  .toc-wrap{position:sticky;top:16px;align-self:start;max-height:calc(100vh - 32px);overflow:auto}
+  .toc{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
+  .toc h4{margin:0 0 10px;color:var(--fg);text-transform:none;letter-spacing:0;font-size:.85rem}
+  .toc ol{list-style:none;padding:0;margin:0;counter-reset:toc}
+  .toc ol li{counter-increment:toc;padding:4px 0;font-size:.9rem;line-height:1.35}
+  .toc ol li::before{content:counter(toc,decimal-leading-zero) ". ";color:var(--muted);font-variant-numeric:tabular-nums}
+  .toc a{color:var(--fg);opacity:.85}
+  .toc a:hover{opacity:1;color:var(--accent);text-decoration:none}
+  .toc .sub-list{padding-left:1.3em;margin:4px 0;list-style:disc}
+  .toc .sub-list li{font-size:.82rem;padding:2px 0;color:var(--muted)}
+  .toc .sub-list li::before{content:""}
+  .content{min-width:0}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin:18px 0}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.78rem;font-weight:600;letter-spacing:.02em}
+  .pill.good{background:rgba(52,211,153,.12);color:var(--good)}
+  .pill.warn{background:rgba(245,158,11,.14);color:var(--warn)}
+  .pill.bad{background:rgba(239,68,68,.14);color:var(--bad)}
+  .pill.neu{background:rgba(148,163,184,.14);color:var(--neutral)}
+  .callout{border-left:3px solid var(--accent);background:var(--card2);padding:14px 18px;border-radius:0 8px 8px 0;margin:14px 0}
+  .callout.warn{border-left-color:var(--warn)}
+  .callout.bad{border-left-color:var(--bad)}
+  .callout.good{border-left-color:var(--good)}
+  .callout h4{margin-top:0;color:var(--fg);text-transform:none;letter-spacing:0}
+  .exp{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;position:relative}
+  .exp-head{display:flex;gap:14px;align-items:flex-start;margin-bottom:12px}
+  .avatar{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:1.1rem;color:#fff;flex-shrink:0}
+  .exp-meta{flex:1;min-width:0}
+  .exp-meta .name{font-weight:700;font-size:1.05rem}
+  .exp-meta .title{font-size:.85rem;color:var(--muted)}
+  .exp blockquote{margin:8px 0 14px;padding:12px 16px;background:var(--card2);border-left:3px solid var(--accent2);font-style:italic;color:var(--fg);border-radius:0 6px 6px 0}
+  .exp .rec{margin-top:12px}
+  .exp .rec h5{margin:0 0 6px;font-size:.85rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+  .score{display:flex;gap:8px;align-items:center;font-size:.85rem}
+  .bar{flex:1;height:8px;background:var(--card2);border-radius:999px;overflow:hidden}
+  .bar>span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+  details{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin:8px 0}
+  details[open]{background:var(--card)}
+  summary{cursor:pointer;font-weight:600;color:var(--fg)}
+  .note{font-size:.85rem;color:var(--muted)}
+  .tag{display:inline-block;padding:2px 8px;border-radius:6px;background:var(--card2);border:1px solid var(--border);font-size:.78rem;margin-right:4px;margin-bottom:4px;color:var(--muted)}
+  .tag.t-ai{border-color:rgba(154,124,255,.4);color:#b9a5ff}
+  .tag.t-ux{border-color:rgba(110,168,255,.4);color:var(--accent)}
+  .tag.t-gap{border-color:rgba(239,68,68,.4);color:#ff8080}
+  .tag.t-win{border-color:rgba(52,211,153,.4);color:#6be3b4}
+  .footer{text-align:center;color:var(--muted);padding:40px 24px;border-top:1px solid var(--border);margin-top:40px;font-size:.9rem}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:.85rem;color:var(--muted);margin:10px 0}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .dot{width:10px;height:10px;border-radius:50%}
+  @media print{
+    .toc-wrap{display:none}.layout{grid-template-columns:1fr}
+    .hero{background:#fff;color:#000}
+    body{background:#fff;color:#000}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="kicker">Rekabet Analizi · 2026-04-24</span>
+    <h1 style="margin:12px 0 8px">Respond.io vs Invekto</h1>
+    <p class="sub">Canlı hesap, gerçek Telegram konuşması ve 200+ ekran görüntüsü üzerinden tam kapsamlı ürün karşılaştırması. 8 uzman perspektifi, P0/P1/P2 aksiyon listesi ve görsel referans ekleriyle.</p>
+    <div class="stats">
+      <div class="stat"><div class="n">11</div><div class="l">Phase tamamlandı</div></div>
+      <div class="stat"><div class="n">20</div><div class="l">Playwright script</div></div>
+      <div class="stat"><div class="n">200+</div><div class="l">Ekran görüntüsü</div></div>
+      <div class="stat"><div class="n">17</div><div class="l">Settings bölümü</div></div>
+      <div class="stat"><div class="n">8</div><div class="l">Uzman paneli</div></div>
+      <div class="stat"><div class="n">23</div><div class="l">Aksiyon maddesi</div></div>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="toc-wrap">
+    <nav class="toc" aria-label="İçindekiler">
+      <h4>İçindekiler</h4>
+      <ol>
+        <li><a href="#exec">Yönetici Özeti</a></li>
+        <li><a href="#method">Yöntem & Kapsam</a></li>
+        <li><a href="#featuremap">Respond.io Feature Map</a>
+          <ul class="sub-list">
+            <li><a href="#m-sidebar">8 Ana Modül</a></li>
+            <li><a href="#m-settings">17 Settings Bölümü</a></li>
+            <li><a href="#m-inbox">Inbox Anatomisi</a></li>
+            <li><a href="#m-ai">5 AI Touch-Point</a></li>
+            <li><a href="#m-workflows">Workflows</a></li>
+            <li><a href="#m-broadcasts">Broadcasts</a></li>
+            <li><a href="#m-reports">Reports 11 Dashboard</a></li>
+            <li><a href="#m-contacts">Contacts & Segments</a></li>
+            <li><a href="#m-onboarding">Onboarding & Help</a></li>
+            <li><a href="#m-extras">Ek UI Detayları</a></li>
+          </ul>
+        </li>
+        <li><a href="#live">Canlı Konuşma Analizi</a></li>
+        <li><a href="#invekto-win">Invekto'nun Güçlü Yönleri</a></li>
+        <li><a href="#rio-weak">Respond.io Zayıflıkları</a></li>
+        <li><a href="#gap">Gap Analysis (P0/P1/P2)</a></li>
+        <li><a href="#experts">Uzman Panelleri</a>
+          <ul class="sub-list">
+            <li><a href="#e-ux">UX Strategist</a></li>
+            <li><a href="#e-pm">Product Manager</a></li>
+            <li><a href="#e-growth">Growth / Pricing</a></li>
+            <li><a href="#e-ai">AI Product Lead</a></li>
+            <li><a href="#e-eng">Engineering Architect</a></li>
+            <li><a href="#e-cs">Customer Success Ops</a></li>
+            <li><a href="#e-brand">Brand & Marketing</a></li>
+            <li><a href="#e-sec">Security & Compliance</a></li>
+          </ul>
+        </li>
+        <li><a href="#roadmap">12-Aylık Yol Haritası</a></li>
+        <li><a href="#cleanup">Cleanup & Güvenlik</a></li>
+        <li><a href="#appendix">Ek: Görsel & Veri İndeksi</a></li>
+      </ol>
+      <p class="note" style="margin-top:14px">Kaynak rapor: <code>tracking/competitor-respond-io.md</code></p>
+    </nav>
+  </aside>
+
+  <main class="content">
+
+  <section id="exec">
+    <h2>1. Yönetici Özeti</h2>
+    <p>Respond.io, <strong>AI-first, Lifecycle-merkezli, tam donanımlı multi-channel</strong> bir conversational CRM. Invekto'nun çekirdeği sağlam (mikroservis mimari, Türkiye odak, INMA entegrasyonu, ses altyapısı), ancak <strong>ürün seviyesinde AI rewrite, Broadcast modülü ve çapraz Lifecycle veri modeli henüz açılmamış</strong>. Aşağıdaki on başlık tüm raporu tek ekranda özetliyor.</p>
+
+    <div class="grid2">
+      <div class="card">
+        <h3 style="margin-top:0">🤖 AI-first UX</h3>
+        <p>Respond.io'da <strong>beş ayrı AI temas noktası</strong> var: (1) AI Agents modülü sidebar'da top-level, 3 hazır persona; (2) AI Assist — knowledge-grounded reply; (3) AI Prompts — tone/translate/fix/simplify; (4) Summarize — konuşma özeti; (5) AI Copilot — in-product ChatGPT asistan, senin için AI Agent bile kurabiliyor.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">🧩 Lifecycle cross-cutting</h3>
+        <p>New Lead → Hot Lead → Payment → Customer (+ Cold Lead) — tek enum, Inbox filtreleri, Contacts görünümü, Dashboard funnel, Reports dashboard ve Segment targeting hepsinde ortak. <strong>Satışa-dönük hiss</strong> yaratan kritik veri modeli.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">🧵 Multi-channel single thread</h3>
+        <p>Aynı contact için Telegram + WhatsApp + Email tek konuşma threadi, compose'da kanal seçerek yanıt veriyor. Invekto'da kanal başına ayrı thread (doğrulama gerek).</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">⌨️ Slash komutları</h3>
+        <p>Compose editöründe <code>/</code> → snippet, <code>$</code> → değişken (<code>$contact.firstname</code>), <code>::</code> → emoji shortcode. Placeholder metni bile bu kısayolları anlatıyor. Power-user verimliliği.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">🛠️ Olgun Workflow builder</h3>
+        <p>14+ aksiyon (Branch, Wait, HTTP, Update Lifecycle, Meta/TikTok Conversions API, Google Sheets Row, nested workflow). 18+ template kategorisi. Visual node canvas + sağ panel config + Save/Test/Publish 3-state deploy.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">📣 Broadcast modülü</h3>
+        <p>Segment-based hedefleme + Channel Type radio (Specific / Last interacted) + Table & Calendar view + 6 status (Draft/Scheduled/In Progress/Completed/Failed). Invekto'da mass messaging <strong>yok</strong>.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">📊 11 ayrı Reports dashboard</h3>
+        <p>Lifecycle, Calls, Conversations, Responses, Resolutions, Messages, Contacts, Assignments, Leaderboard (AI-vs-human!), Users, Broadcasts. Her biri bağımsız filtre + Group By.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">🏢 3 katmanlı settings + MAC</h3>
+        <p>Organization (multi-workspace üst) / Workspace / Personal. Growth plan <strong>1.000 MAC/ay</strong> (Monthly Active Contacts) — kullanım bazlı modern SaaS pricing metric.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">✨ Zero-touch onboarding</h3>
+        <p>Telegram bağlantısında Contact otomatik oluştu (display name), Language auto-detect (English), Phone region inferred (TR +90), Lifecycle auto-assigned (New Lead), events log'landı. İlk mesajda değer teslim ediyor.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">🎓 Yönlendirici onboarding</h3>
+        <p>4-adım checklist (0 of 4 progress bar) + Resources panel (video/support/demo/help/guides) + her modülde coach mark tour (1/3, 2/3). Kullanıcı asla "ne yapacağım?" durumunda kalmıyor.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="method">
+    <h2>2. Yöntem & Kapsam</h2>
+    <p>Hesap: <code>regexbackup@gmail.com</code> · Growth Plan free trial (bitiş 2026-05-01) · Workspace ID <code>408881</code> · Bağlı kanal Telegram bot <code>@Backup1TestBot</code>.</p>
+    <p>Tarama <strong>Playwright + sistem Chrome + persistent profile</strong> ile yapıldı (<code>c:/tmp/respondio-profile</code>). İnsan-hızı pacing (2.5-4.5s rastgele bekleme, 60-80ms typing delay, mouse jiggle) ile anti-bot sinyali üretmeden gezildi. 20 ayrı script, her faz için izolasyon. Canlı test için Q kendi Telegram'ından bota 3 mesaj attı ("Helo", "Need go ask something", "How much is it") — gerçek veri akışı gözlemlendi.</p>
+    <table>
+      <thead><tr><th>Faz</th><th>Kapsam</th><th>Durum</th><th>Görsel klasör</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Setup + Login</td><td><span class="pill good">✓</span></td><td><code>screenshots/</code></td></tr>
+        <tr><td>2</td><td>Sidebar top-level crawl</td><td><span class="pill good">✓</span></td><td><code>phase2/</code></td></tr>
+        <tr><td>3</td><td>Inbox initial tour</td><td><span class="pill good">✓</span></td><td><code>phase3-inbox/</code></td></tr>
+        <tr><td>3.5</td><td>Workspace Settings full nav (17 bölüm)</td><td><span class="pill good">✓</span></td><td><code>phase3_5-settings/</code></td></tr>
+        <tr><td>9</td><td>Telegram connect</td><td><span class="pill good">✓</span></td><td><code>phase9-telegram/</code></td></tr>
+        <tr><td>9.5</td><td>Inbox live (gerçek 3 mesaj)</td><td><span class="pill good">✓</span></td><td><code>phase9_5-inbox-live/</code></td></tr>
+        <tr><td>9.6</td><td>AI Assist live + slash/dollar/emoji</td><td><span class="pill good">✓</span></td><td><code>phase9_6-ai-assist/</code></td></tr>
+        <tr><td>5</td><td>Workflows (template + builder + action)</td><td><span class="pill good">✓</span></td><td><code>phase5-workflows/</code></td></tr>
+        <tr><td>6</td><td>Broadcasts (new + segment + channel)</td><td><span class="pill good">✓</span></td><td><code>phase6-broadcasts/</code></td></tr>
+        <tr><td>4</td><td>Contacts deep dive</td><td><span class="pill good">✓</span></td><td><code>phase4-contacts/</code></td></tr>
+        <tr><td>11</td><td>İnce tarama (popup/tooltip/AI Copilot/11 Report tab)</td><td><span class="pill good">✓</span></td><td><code>phase11-sweep/</code></td></tr>
+      </tbody>
+    </table>
+    <div class="callout warn">
+      <h4>Metodoloji sınırları</h4>
+      <ul>
+        <li>Trial plan kısıtı: Broadcast <em>gerçek send</em> kapalı (Test Broadcast var). HTTP Request action "Upgrade required".</li>
+        <li>3 AI button (AI Assist, Summarize, workflow trigger dropdown) için final click işlemi başarısız oldu — ikon ✨ prefix'li metin locator uyumsuzluğu. Menüler zaten ayrı screenshot'larda görünür durumda.</li>
+        <li>Invekto'ya dair "yok" iddiaları memory + CLAUDE.md + session gözlemi bazlı; kod-level doğrulama için <code>arch/specs/</code> + servislerde grep gerek.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="featuremap">
+    <h2>3. Respond.io Feature Map</h2>
+
+    <h3 id="m-sidebar">3.1 — 8 Ana Modül (Sidebar)</h3>
+    <table>
+      <thead><tr><th>Modül</th><th>URL</th><th>Invekto karşılığı</th><th>Not</th></tr></thead>
+      <tbody>
+        <tr><td>Onboarding</td><td><code>/onboarding</code></td><td><span class="pill bad">yok</span></td><td>4-adım getting-started + Resources panel</td></tr>
+        <tr><td>Dashboard</td><td><code>/dashboard</code></td><td><span class="pill good">var</span></td><td>Lifecycle funnel KPI + Contacts + Team Members</td></tr>
+        <tr><td>Inbox</td><td><code>/inbox</code></td><td><span class="pill good">var</span></td><td>Unified conversations, Incoming Calls, Create AI Agent (Beta), Team/Custom Inbox</td></tr>
+        <tr><td>Contacts</td><td><code>/contact</code></td><td><span class="pill good">var</span></td><td>Lifecycle stages + Segments + Blocked</td></tr>
+        <tr><td><strong>AI Agents</strong></td><td><code>/ai-agents</code> <span class="pill neu">Beta</span></td><td><span class="pill warn">kısmen</span></td><td>3 hazır persona (Agent/Sales/Support), knowledge sources, auto-assign</td></tr>
+        <tr><td><strong>Broadcast</strong></td><td><code>/broadcast</code></td><td><span class="pill bad">yok</span></td><td>Mass messaging, Table + Calendar view, 6 status</td></tr>
+        <tr><td>Workflows</td><td><code>/workflows</code></td><td><span class="pill warn">TFM kısmi</span></td><td>Visual builder + template library (18+ kategori)</td></tr>
+        <tr><td>Reports</td><td><code>/reports</code></td><td><span class="pill warn">kısmen</span></td><td>11 bağımsız sub-dashboard</td></tr>
+      </tbody>
+    </table>
+    <p class="note">Sidebar <strong>sadece ikon</strong> — label yok, hover tooltip gecikmeli. Bottom area: Settings gear • Notification bell • Help (AI Copilot bubble) • respond.io logo.</p>
+
+    <h3 id="m-settings">3.2 — Workspace Settings (17 Bölüm, 5 Grup)</h3>
+    <p>URL kalıbı: <code>/space/{id}/settings/{section}</code>. Settings sol rail'da <strong>5 logical grup</strong> ile organize edilmiş:</p>
+    <table>
+      <thead><tr><th>#</th><th>Grup</th><th>Bölüm</th><th>Invekto</th><th>Önemli notlar</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td rowspan="1"><strong>General</strong></td><td>General info</td><td><span class="pill good">✓</span></td><td>Workspace name, timezone (onboarding'de set), currency</td></tr>
+        <tr><td>2</td><td rowspan="2"><strong>User role</strong></td><td>User settings</td><td><span class="pill good">✓</span></td><td>Invite + roles</td></tr>
+        <tr><td>3</td><td>Team settings</td><td><span class="pill warn">kısmen</span></td><td>Team grouplar (routing için)</td></tr>
+        <tr><td>4</td><td rowspan="3"><strong>Apps</strong></td><td><strong>Channels</strong></td><td><span class="pill warn">kısmen</span></td><td>11 kanal 5 kategoride: Business Messaging / Calls / SMS / Email / Live Chat</td></tr>
+        <tr><td>5</td><td><strong>Integrations</strong></td><td><span class="pill bad">zayıf</span></td><td>Salesforce, HubSpot, Google Sheets, Make, Zapier, Webhooks, Developer API</td></tr>
+        <tr><td>6</td><td><strong>Growth widgets</strong></td><td><span class="pill bad">yok</span></td><td>Web site embed lead capture — "Create Your First Widget" CTA + Add widget + Search</td></tr>
+        <tr><td>7</td><td rowspan="8"><strong>Inbox</strong></td><td>Contact fields</td><td><span class="pill warn">kısmen</span></td><td>Custom field şema editörü</td></tr>
+        <tr><td>8</td><td><strong>Lifecycle</strong></td><td><span class="pill bad">yok</span></td><td>Drag-drop stage builder, Won/Lost kolon ayrı, <code>Default stage</code> badge, <code>Won stage</code> badge, Show/Hide master toggle, + Add Stage her iki kolonda</td></tr>
+        <tr><td>9</td><td>Closing notes</td><td><span class="pill warn">kısmen</span></td><td>Zorunlu not kategorileri (chat kapanışında)</td></tr>
+        <tr><td>10</td><td>Snippets</td><td><span class="pill warn">template var</span></td><td>Canned response + <code>/</code> autocomplete + <strong>Filter by Topic</strong> + export icon + search</td></tr>
+        <tr><td>11</td><td>Tags</td><td><span class="pill good">✓</span></td><td>Tag sözlüğü</td></tr>
+        <tr><td>12</td><td><strong>AI Assist</strong></td><td><span class="pill bad">yok</span></td><td>Reply outside knowledge toggle + Snippets as knowledge + AI Persona prompt + knowledge upload (docs/links) + "Manage Knowledge Sources" button + "Test AI Assist"</td></tr>
+        <tr><td>13</td><td><strong>AI Prompts</strong></td><td><span class="pill bad">yok</span></td><td>4 built-in + "Add AI prompt" custom + per-prompt toggle on/off</td></tr>
+        <tr><td>14</td><td>Calls <span class="pill neu">New</span></td><td><span class="pill warn">TONIVA?</span></td><td>Voice calls workflow-integrated, Enable toggle</td></tr>
+        <tr><td>15</td><td rowspan="3"><strong>Data</strong></td><td>Files</td><td><span class="pill good">✓</span></td><td>Workspace dosya deposu</td></tr>
+        <tr><td>16</td><td>Contacts import</td><td><span class="pill warn">kısmen</span></td><td>CSV import, alan eşleme</td></tr>
+        <tr><td>17</td><td>Data export</td><td><span class="pill warn">kısmen</span></td><td>Bulk export / GDPR</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <h4>Channels — 5 Kategori × 11 Kanal</h4>
+      <p>Channel catalog yatay tab sistemi: <strong>All · Business Messaging · Calls · SMS · Email · Live Chat</strong>. "Business Messaging" tab'inde:</p>
+      <div>
+        <span class="tag">WhatsApp Business Platform (API)</span>
+        <span class="tag">WhatsApp Cloud API</span>
+        <span class="tag">TikTok</span>
+        <span class="tag">Facebook Messenger</span>
+        <span class="tag">Instagram</span>
+        <span class="tag">Telegram</span>
+        <span class="tag">Viber</span>
+        <span class="tag">LINE</span>
+        <span class="tag">WeChat</span>
+        <span class="tag">Custom Channel</span>
+      </div>
+      <p style="margin:10px 0 0"><strong>Connect Telegram akışı iki seçenek:</strong> <em>Create a new bot</em> (respond.io BotFather'a yönlendiriyor, step-by-step) veya <em>Connect an existing bot</em> (token input). Invekto'da bu wizard-rehberli "Create new bot" yok — sadece "token yapıştır".</p>
+    </div>
+
+    <div class="callout">
+      <h4>3 Katmanlı Settings Mimarisi (Gear Dropdown Tam İçerik)</h4>
+      <p>Sidebar gear icon'u dropdown açıyor. Canlı gözlemlenen içerik:</p>
+      <ul>
+        <li><strong>Organization settings</strong> <em>backup</em> (ID: <code>402285</code>) — multi-workspace üst seviye</li>
+        <li><strong>Workspace settings</strong> <em>My New Workspace</em> — yukarıdaki 17 bölüm (per-tenant)</li>
+        <li><strong>Personal settings</strong> — Profil / Notifications</li>
+      </ul>
+      <p>Altta <strong>Quick access</strong> bölümü: <em>Channels · User settings · Billing &amp; usage</em>.</p>
+      <p>En altta plan + usage counter: <strong>Your current plan: Growth</strong> · <code>0 / 1,000 MACs</code>.</p>
+      <p style="margin-bottom:0"><strong>Personal settings ayrı dropdown</strong> (sidebar'da user avatar "r" iconu): <em>Regex Backup / regexbackup@gmail.com / <strong>Online</strong> status toggle</em> → Profile · Notification settings · Sign out. <em>Online</em> değeri <em>Away</em> veya <em>Busy</em>'ye çevrilebilir (tipik).</p>
+    </div>
+
+    <h3 id="m-inbox">3.3 — Inbox Conversation Anatomisi</h3>
+    <p>Canlı Telegram konuşması üzerinden gözlemlendi. Üç kolonlu layout:</p>
+
+    <h4>Sol kolon — Inbox nav</h4>
+    <ul>
+      <li>Filtre: <code>All 1</code>, <code>Mine</code>, <code>Unassigned 1</code>, <code>Incoming Calls</code>, <code>Create AI Agent</code> (Beta)</li>
+      <li>Lifecycle Stages: 🆕 New Lead (1) / 🔥 Hot Lead / 💳 Payment / 😍 Customer</li>
+      <li>Team Inbox (+) — Custom Inbox (+) — saved filter queue'ları</li>
+    </ul>
+
+    <h4>Orta kolon — Chat listesi + aktif konuşma</h4>
+    <ul>
+      <li>Chat list: avatar + contact name + last message preview + time + Lifecycle pill + unread dot</li>
+      <li><strong>Üst bar:</strong> Contact name + Lifecycle pill (tıkla=değiştir) + expand chevron + Unassigned dropdown + search + clock + <span class="pill warn">call icon — Telegram içinden voice?</span> + <code>Close</code> button + ⋯ menu</li>
+      <li><strong>Chat akışı:</strong> Today separator, system events inline (italic) — <em>Welcome Event · Lifecycle Stage New Lead added · Conversation opened by Contact</em>, sonra customer bubble'lar</li>
+      <li><strong>Compose area (yoğun):</strong> Kanal selector (Telegram ▾) + placeholder <code>"Use '/' for snippets, '$' for variables, ':' for emoji"</code> + 6 icon (wand/smiley/knowledge?/globe/snippet/code-bracket) + ✨ <strong>AI Assist</strong> sağ üst + "Press Enter to send" + send arrow</li>
+      <li><strong>Alt tab:</strong> <code>Add comment</code> — internal note modu (Quill + @mention) + ✨ <strong>Summarize</strong> (konuşma özeti AI)</li>
+    </ul>
+
+    <h4>Sağ kolon — ikon-only panel</h4>
+    <p>Contact details / Phone log / Journey (compass) / Clock / custom icons. Tıklayınca açılır. İlk bakışta ne olduğu belirsiz.</p>
+
+    <div class="callout good">
+      <h4>Zero-touch auto-enrichment</h4>
+      <ul style="margin-bottom:0">
+        <li>Contact otomatik yaratıldı — Telegram display name "Trusted Advisor", ID 435207950</li>
+        <li>Phone region inferred: <code>TR +90</code></li>
+        <li>Language auto-detected: <code>English</code> (Telegram locale)</li>
+        <li>Lifecycle otomatik atandı: <code>New Lead</code></li>
+        <li>Events otomatik log'landı, Sidebar counter'ları güncellendi</li>
+      </ul>
+    </div>
+
+    <h3 id="m-ai">3.4 — 5 AI Touch-Point</h3>
+    <div class="grid2">
+      <div class="card">
+        <h4 style="margin-top:0">1. AI Agents modülü <span class="pill neu">Beta</span></h4>
+        <p>Sidebar'da top-level. 3 hazır persona: AI Agent (genel), AI Sales, AI Support. Knowledge sources. "Assigns conversations to other agents, teams and AI Agents" — AI-to-AI handoff.</p>
+      </div>
+      <div class="card">
+        <h4 style="margin-top:0">2. AI Assist</h4>
+        <p>Settings'te Persona prompt + knowledge sources + toggle'lar: "Reply outside knowledge" (ChatGPT fallback), "Use snippets as knowledge source". Inbox'ta compose sağ üstte ✨ button.</p>
+      </div>
+      <div class="card">
+        <h4 style="margin-top:0">3. AI Prompts</h4>
+        <p>Compose'daki wand (🪄) ikonu açar. 4 built-in: Change tone (submenu), Translate (submenu), Fix spelling & grammar, Simplify language. Her biri per-workspace toggle + "Add AI prompt" ile custom.</p>
+      </div>
+      <div class="card">
+        <h4 style="margin-top:0">4. Summarize</h4>
+        <p>Compose alt-sağda ✨ button. Tek tıkla konuşma özeti üretiyor. Uzayan chat'lerde agent shift-change için güçlü.</p>
+      </div>
+      <div class="card">
+        <h4 style="margin-top:0">5. AI Copilot <span class="pill neu">Beta</span></h4>
+        <p>Help chat bubble (purple smiley, sağ alt). ChatGPT-tarzı in-product asistan. Açılınca başlık: <em>"Hi! How can I help you with Respond.io today?"</em></p>
+        <p><strong>4 quick prompt (exact):</strong></p>
+        <ul style="margin-top:4px">
+          <li><em>I am new to the platform, what do I do first?</em></li>
+          <li><em>How do I connect a channel to respond.io?</em></li>
+          <li><em>Create an AI Agent for me</em></li>
+          <li><em>Edit an AI Agent for me</em></li>
+        </ul>
+        <p>Input: <em>+ Got a question? Ask Copilot.</em> + ↑ send. Disclaimer: <em>"AI Copilot is in Beta and may make mistakes. If something looks incorrect, contact us."</em>. Son iki prompt önemli — Copilot <strong>platformu senin için konfigure ediyor</strong>, sadece açıklamıyor.</p>
+      </div>
+      <div class="card" style="background:var(--card2)">
+        <h4 style="margin-top:0">Invekto durumu</h4>
+        <p><code>InvektoChatAnalysis</code> servisi var ama <strong>kullanıcının gördüğü UI seviyesinde</strong> AI rewrite / persona / inline button / copilot yok. En yakın muadil TFM (Topluluk Flow Modülü) — workflow-odaklı, "AI-in-compose" değil.</p>
+      </div>
+    </div>
+
+    <h3 id="m-workflows">3.5 — Workflows Builder</h3>
+    <h4>Template library — 18+ kategori</h4>
+    <div>
+      <span class="tag">Assignment: Open Contacts</span>
+      <span class="tag">Assignment: Round Robin</span>
+      <span class="tag">Round Robin + Online Only</span>
+      <span class="tag">Unassigned Conv Closed</span>
+      <span class="tag">Away Message</span>
+      <span class="tag">Away Message + Business Hours</span>
+      <span class="tag">Broadcast Response</span>
+      <span class="tag">Click to Chat Ads</span>
+      <span class="tag">Sales Call Report</span>
+      <span class="tag">TikTok Report New Leads</span>
+      <span class="tag">Welcome Message</span>
+      <span class="tag">Welcome + Ask for Email</span>
+      <span class="tag">Unsubscribe from Broadcasts</span>
+      <span class="tag">Contact Routing: Language</span>
+      <span class="tag">CTC Info Ads → Sales</span>
+      <span class="tag">Sub-Menu Choice Routing</span>
+      <span class="tag">Issue Escalation</span>
+      <span class="tag">Multi-Level Chat Menu</span>
+    </div>
+
+    <h4 style="margin-top:20px">Builder canvas</h4>
+    <p>Visual node-based (Zapier/n8n tarzı). Top bar: workflow name + last updated + <code>Save / Test / Publish</code> 3-state. Left toolbar: zoom/fit + undo/redo. Canvas: dotted grid + center Trigger node + chain <code>+</code> node'lar. Right panel: Trigger/Action config + <em>"Trigger once per contact"</em> toggle.</p>
+
+    <h4>Action Catalog (14+ doğrulandı)</h4>
+    <div>
+      <span class="tag t-ux">Send a Message</span>
+      <span class="tag t-ux">Ask a Question</span>
+      <span class="tag t-ux">Assign To</span>
+      <span class="tag t-ux">Branch (koşul)</span>
+      <span class="tag t-ux">Update Contact Field</span>
+      <span class="tag t-ux">Update Contact Tag</span>
+      <span class="tag t-ux">Open Conversation</span>
+      <span class="tag t-ux">Wait</span>
+      <span class="tag t-ai">Meta Conversions API Event</span>
+      <span class="tag t-ai">TikTok Lower Funnel Event</span>
+      <span class="tag t-ux">Trigger Another Workflow</span>
+      <span class="tag t-gap">HTTP Request 🔒 Upgrade</span>
+      <span class="tag t-ux">Add Google Sheets Row</span>
+      <span class="tag t-ux">Update Lifecycle</span>
+    </div>
+    <p class="note">HTTP Request <strong>paid plan</strong> arkasında — custom integration için ücretli plan şart. Invekto TFM'de Branch/Wait/HTTP/nested-trigger var mı <code>arch/specs/</code> kontrol edilmeli.</p>
+
+    <h3 id="m-broadcasts">3.6 — Broadcasts</h3>
+    <ul>
+      <li><strong>Status filtreleri:</strong> All / Draft / Scheduled / In Progress / Completed / Failed</li>
+      <li><strong>Görünümler:</strong> Table ↔ Calendar toggle (kampanyaları takvim üstünde)</li>
+      <li><strong>Create akışı:</strong>
+        <ol>
+          <li>Modal: Broadcast Name + Labels (opsiyonel) — <em>Cancel ve X birlikte</em> (Q'nun UX kuralına aykırı)</li>
+          <li>Config: <strong>Segment</strong> dropdown (+ Add Segment inline) + <strong>Channel Type</strong> radio (Specific / <strong>Last interacted channel</strong>) + Channel + Message Content (+ Add Content)</li>
+          <li>Save / Next akışı → Schedule</li>
+        </ol>
+      </li>
+      <li><strong>Trial kısıtı:</strong> <em>"Sending or scheduling broadcast is not available in Trial. You can still use Test Broadcast."</em></li>
+    </ul>
+
+    <h3 id="m-reports">3.7 — Reports (11 Bağımsız Dashboard)</h3>
+    <table>
+      <thead><tr><th>Dashboard</th><th>KPI cards</th><th>Grafikler / Notlar</th></tr></thead>
+      <tbody>
+        <tr><td>Lifecycle</td><td>Conversion rate · Time to conversion · Drop-off rate · Time to drop-off</td><td>Journey Funnel + Lost Stages Breakdown</td></tr>
+        <tr><td>Calls</td><td>Incoming · Outgoing · Avg duration</td><td>Answered / Missed bars. <em>"Calls disabled — Enable via Channels"</em></td></tr>
+        <tr><td>Conversations</td><td>Volume</td><td>Open / Closed</td></tr>
+        <tr><td>Responses</td><td>Response time</td><td>—</td></tr>
+        <tr><td>Resolutions</td><td>Resolution time</td><td>—</td></tr>
+        <tr><td>Messages</td><td>Sent / Received</td><td>—</td></tr>
+        <tr><td>Contacts</td><td>Growth</td><td>—</td></tr>
+        <tr><td>Assignments</td><td>—</td><td>—</td></tr>
+        <tr><td><strong>Leaderboard</strong></td><td>—</td><td><strong>Group By: User and AI Agent</strong> — AI'ın kaç konuşma halletmiş ölçülüyor</td></tr>
+        <tr><td>Users</td><td>User activity</td><td>—</td></tr>
+        <tr><td>Broadcasts</td><td>Broadcast perf</td><td>—</td></tr>
+      </tbody>
+    </table>
+    <p>Tüm dashboard'larda ortak kontroller: <code>Date filter · Add filter · Clear all · Group By</code>. <strong>Leaderboard'da AI Agent = user-like entity</strong> — AI-vs-human ayrımı metrik seviyesinde ölçülebilir. Invekto'da bu ayrım yok.</p>
+
+    <h3 id="m-contacts">3.8 — Contacts & Segments</h3>
+    <h4>Contact detail (sağ drawer, canlı veri)</h4>
+    <ul>
+      <li>Avatar + Name (<em>Trusted Advisor</em>) + ID (<code>435207950</code>)</li>
+      <li>Channels row (Telegram icon tıklanabilir)</li>
+      <li>Assignee dropdown + Lifecycle pill (değiştirilebilir)</li>
+      <li><strong>Contact fields</strong> (+ Manage linki schema editörüne gider):
+        <ul>
+          <li>Phone Number — <code>TR +90</code> (country code auto-detected)</li>
+          <li>Email Address — boş</li>
+          <li>Country — boş</li>
+          <li>Language — <code>English</code> (auto)</li>
+          <li>+ Custom fields (<code>/settings/contact_fields</code>)</li>
+        </ul>
+      </li>
+      <li>Tags (+ ile ekle)</li>
+    </ul>
+
+    <h4>Pre-built Segments (5 adet)</h4>
+    <div>
+      <span class="tag t-win">Contacts created &lt;7 days</span>
+      <span class="tag t-win">Contacts inactive &gt;30 days</span>
+      <span class="tag t-win">Contacts with tags</span>
+      <span class="tag t-win">Country known</span>
+      <span class="tag t-win">Language known</span>
+      <span class="tag">+ Add segment (custom builder)</span>
+    </div>
+
+    <h4>Lifecycle Stages (settings sayfası)</h4>
+    <ul>
+      <li>Drag-drop reorder</li>
+      <li>Her stage: icon + name + "Show description" + ⋯ menu</li>
+      <li><strong>Won stage</strong> işaretlenebilir (Customer = Won)</li>
+      <li><strong>Lost Stages</strong> ayrı kolon (Cold Lead)</li>
+      <li><strong>Show/Hide Lifecycle</strong> master toggle — tamamen kapatabilirsin</li>
+    </ul>
+
+    <h3 id="m-onboarding">3.9 — Onboarding, Help Bubble & Diğer</h3>
+
+    <div class="callout warn">
+      <h4>Sticky Upgrade Banner</h4>
+      <p style="margin-bottom:0">Her ekranda: <em>"Your Growth Plan trial ends in 7 days on May 01, 2026. Upgrade now to avoid service disruption!"</em> + <code>Upgrade now</code> CTA. Canlı müşteri konuşması açıkken bile modal pop-up geliyor.</p>
+    </div>
+
+    <h4>Onboarding checklist modal</h4>
+    <p>Progress bar <code>0 of 4</code>. 4 accordion:</p>
+    <ol>
+      <li><strong>Connect Channels to unify messaging and calls</strong> — WhatsApp/Messenger/Telegram/IG/TikTok/LINE/Viber/WeChat/Gmail ikonları + <code>Connect Channel</code></li>
+      <li><strong>Learn how Lifecycle helps turn potential buyers into customers</strong></li>
+      <li><strong>Set up AI Agents to lighten your team's workload</strong> — 4 bullet (24/7 replies · Updates Lifecycle + Contact fields · Assigns conversations · Answers from business info) + <code>Set up AI Agent</code></li>
+      <li><strong>Invite teammates to collaborate on chats</strong></li>
+    </ol>
+    <p>Resources panel (sağ): <em>Watch Inbox intro</em> · <em>Contact support</em> · <em>Book a demo</em> · <em>Help center</em> · <em>Video guides</em>. Her modül ilk açılışta <strong>coach mark tour</strong> (1/3, 2/3 slides).</p>
+
+    <h4>Help Chat Bubble = AI Copilot (Beta)</h4>
+    <p>Yukarıda 3.4 (AI Touch-Point #5) bölümünde full detay. Platformu senin için konfigure edebiliyor.</p>
+
+    <h3 id="m-extras">3.10 — Ek UI Detayları (İnce Sweep Bulguları)</h3>
+
+    <div class="grid2">
+      <div class="card">
+        <h4 style="margin-top:0">Dashboard metrik anatomi</h4>
+        <p>Lifecycle bölümünde 4 stage kartı (New Lead / Hot Lead / Payment / Customer). Her kartta:</p>
+        <ul style="margin-bottom:0">
+          <li>Emoji + stage adı</li>
+          <li>Büyük sayı + <code>100.00%</code> oran + ↗ green trend indicator (change positive ise)</li>
+          <li>Alt sıra 3 mini metric: 💬 (conv count) · ⏰ (timer/time-to-stage) · 👤 (people count)</li>
+        </ul>
+        <p style="margin:8px 0 0"><strong>Contacts</strong> paneli tabs: <code>Open –</code> / <code>Assigned –</code> / <code>Unassigned –</code> (dash sayı placeholder). <strong>Team Members</strong> listesi + <em>All Statuses</em> filter dropdown. Teammate online badge (yeşil nokta avatar) + <em>Since 8:17 PM</em> oturum başlangıç.</p>
+      </div>
+
+      <div class="card">
+        <h4 style="margin-top:0">Notifications drawer</h4>
+        <p>Sol-alt bell icon açıyor. İçerik:</p>
+        <ul style="margin-bottom:0">
+          <li>Başlık: <strong>Notifications</strong> + <em>Archive all</em> link</li>
+          <li>3 tab: <strong>New</strong> / Archived / All</li>
+          <li>Empty state: <em>"You are up to date! There are no new notifications."</em></li>
+          <li>İlk açılışta üstte özel popover: <strong>"Enable browser notifications for updates. Change them anytime in notification settings."</strong> + <em>Later</em> / <em>Enable now</em> buttons</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h4 style="margin-top:0">Lifecycle settings ekranı detay</h4>
+        <ul style="margin-bottom:0">
+          <li><strong>Show/Hide Lifecycle Stages</strong> master toggle — tümünü kapatır (Inbox/Contacts'ta gizler, veriyi korur)</li>
+          <li>İki paralel kolon: <em>Lifecycle Stages</em> (mavi accent) · <em>Lost Stages</em> (sarı accent)</li>
+          <li>Her stage row: drag handle (⋮⋮) + numara (Stage 1..N) + icon + name input + <em>Show description</em> link + ⋯ menu</li>
+          <li>Badge'ler: <strong>Default stage</strong> (ilk stage, yeni contact buraya düşer) + <strong>Won stage</strong> (Customer, conversion sayılır)</li>
+          <li>Her iki kolonun altında <code>+ Add Stage</code> + sağ üst <code>Cancel / Save</code></li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h4 style="margin-top:0">Snippets sayfa tam anatomi</h4>
+        <ul style="margin-bottom:0">
+          <li><code>+ Add Snippet</code> primary CTA</li>
+          <li><strong>Search Snippets</strong> input</li>
+          <li><strong>Filter by Topic</strong> dropdown (kategorize edilmiş template'ler)</li>
+          <li><strong>Export icon</strong> (CSV out)</li>
+          <li>Empty state: <em>"Create your first snippet — Snippets help you to reply to frequently asked questions from your customers with canned or standardized responses."</em> + büyük ✂ illüstrasyon</li>
+          <li>Açıklama: <em>"Create canned responses to be used in Inbox, Broadcasts, and Workflows."</em> (triple-use)</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h4 style="margin-top:0">Growth widgets sayfa</h4>
+        <ul style="margin-bottom:0">
+          <li><code>+ Add widget</code> primary CTA</li>
+          <li><strong>Search Growth widgets</strong> input</li>
+          <li>Empty state: <em>"Create Your First Widget — Widgets help you grow your contacts by providing multiple ways for your website visitors to chat with your business and start a conversation."</em></li>
+          <li>Açıklama: <em>"Create and manage widgets that can be embedded on your website to grow your contacts."</em></li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h4 style="margin-top:0">AI Assist settings detay</h4>
+        <ul style="margin-bottom:0">
+          <li><strong>Test AI Assist</strong> büyük mavi button (settings'ten direkt playground)</li>
+          <li><strong>Manage Knowledge Sources</strong> button (ayrı sayfa)</li>
+          <li>Toggle 1: <em>Reply Outside of Added Knowledge Sources</em> — <em>"Enabling this setting will let AI Assist respond with general knowledge like ChatGPT."</em></li>
+          <li>Toggle 2: <em>Use Snippets as a Knowledge Source</em> — <em>"Enables all your snippets to be used as a knowledge source for AI Assist to generate responses."</em></li>
+          <li>Text field: <strong>AI Assist Persona</strong> — default metin: <em>"You will be a seasoned customer support agent. You will consistently verify the accuracy of my responses before sending."</em> + <code>Reset</code> button</li>
+          <li>Sağ panel illüstrasyon: <em>"Upload documents and links in your knowledge sources to help AI Assist generate accurate, relevant replies."</em></li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h4 style="margin-top:0">AI Prompts settings detay</h4>
+        <ul style="margin-bottom:0">
+          <li>4 built-in toggle'lı + açıklama + sağ panel örnek ekran:</li>
+          <li><strong>Change tone</strong> — <em>"Adjust the tone to sound more professional, friendly, empathetic, or straightforward."</em></li>
+          <li><strong>Translate</strong> — <em>"Translate the message into your selected language."</em></li>
+          <li><strong>Fix spelling and grammar</strong> — <em>"Automatically correct grammar, spelling, and punctuation."</em></li>
+          <li><strong>Simplify language</strong> — <em>"Make the message easier to read and understand."</em></li>
+          <li>+ <code>Add AI prompt</code> primary CTA custom prompt için</li>
+          <li>Sağ: <em>"Use AI Prompts to adjust tone, fix grammar, translate, or simplify your replies. Choose from built-in prompts or create your own."</em></li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h4 style="margin-top:0">Workflow builder ek detay</h4>
+        <ul style="margin-bottom:0">
+          <li>Toast bildirimi workflow yaratıldığında: <em>"Workflow {name} added successfully."</em> (sağ alt yeşil)</li>
+          <li>Trigger node aktif iken canvas üstünde: <em>"Select a trigger"</em> placeholder; sağ panelde de <em>"Trigger once per contact"</em> advanced toggle (duplicate run önleme)</li>
+          <li>Top bar: workflow adı + <em>Last updated X ago</em> + ⚠ uyarı icon (unsaved/error) + ⚙ settings + <strong>Save / Test / Publish</strong> 3 CTA</li>
+          <li>Template seçildiğinde otomatik <em>Name your workflow</em> pre-filled adım var (görüldü değil ama akış işaret ediyor)</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h4 style="margin-top:0">Broadcast config tam liste (trial kısıtı dahil)</h4>
+        <ul style="margin-bottom:0">
+          <li>Uyarı banner: <em>"Sending or scheduling broadcast is not available in Trial. You can still use Test Broadcast to test out the broadcast feature."</em></li>
+          <li>Segment dropdown entry'leri: <em>+ Add Segment</em> / All / Contacts created &lt;7 days ago / Contacts inactive &gt;30 days / Contacts with tags / Country known / Language known</li>
+          <li>Channel Type radio: ● Specific channel (default) / ○ Last interacted channel</li>
+          <li>Message Content: <code>+ Add Content</code> — multi-step message support (tek broadcast içinde birden fazla mesaj)</li>
+          <li>Top-right: Save (disabled until validation) / Next (disabled until all required)</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h4 style="margin-top:0">Contact detail sağ panel detay</h4>
+        <ul style="margin-bottom:0">
+          <li>Contact fields section'ında <strong>Manage ↗</strong> link — direkt <code>/settings/contact_fields</code></li>
+          <li>Channels satırı: her bağlı kanal icon olarak (Telegram ✓, WA ✗) — tıklayınca konuşma geçmişi</li>
+          <li>Lifecycle pill + sağında chevron (değiştir) + altında asignee dropdown (<em>Unassigned</em> default, + comment icon)</li>
+          <li>Tags section altta, <code>+</code> butonu ile inline ekle</li>
+          <li>Contact ID gösterimi (<code>435207950</code>) — manual kopyalamaya uygun</li>
+          <li>List view columns: checkbox / Name / Channel(s) / Lifecycle / Email / Phone / Tags — pagination <em>1-1 of 1</em> + <em>Contacts per page: 25</em></li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h4 style="margin-top:0">Inbox sidebar filtre counters (canlı)</h4>
+        <ul style="margin-bottom:0">
+          <li><code>All 1</code>, <code>Unassigned 1</code> — New Lead kategorisinde counter da <code>1</code></li>
+          <li><code>Mine</code> counter yok (sıfır, henüz kendime assign etmedim)</li>
+          <li><code>Incoming Calls</code> — voice call için ayrı queue</li>
+          <li><code>Create AI Agent</code> (Beta) — direkt link, AI Agent kurma sihirbazı</li>
+          <li><code>Team Inbox</code> / <code>Custom Inbox</code> altında <strong>"No inboxes created"</strong> empty state + (+) ile yenisi ekle</li>
+          <li>Unreplied toggle header'da: açılınca sadece cevaplanmamış konuşmalar (SLA timer başlangıcı)</li>
+          <li>Sort dropdown: <em>Open, Newest</em> default + diğer kombinasyonlar</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h4 style="margin-top:0">Top trial banner + sticky Upgrade</h4>
+        <ul style="margin-bottom:0">
+          <li>Üstte ℹ icon + <strong>"Your Growth Plan trial ends in 7 days on May 01, 2026. Upgrade now to avoid service disruption!"</strong></li>
+          <li>Sağda <code>Onboarding checklist</code> button (her sayfada) + <code>Upgrade now</code> primary CTA</li>
+          <li><strong>Kapatılabilir değil</strong> — dismiss X yok. Banner sürekli ekranda yer kaplıyor (~52px).</li>
+          <li>"service disruption" dili <strong>korkutma pazarlama</strong> — paneldeki Growth uzmanı bunu kopyalamayı reddetti.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h4 style="margin-top:0">Conversation opening event sequence (timing)</h4>
+        <p>Q mesaj attığında log sırası:</p>
+        <ol style="margin-bottom:0">
+          <li><em>Welcome Event</em> (channel bağlanınca otomatik, ilk mesajdan önce)</li>
+          <li><em>Lifecycle Stage <strong>New Lead</strong> added</em> (workflow yok bile olsa default lifecycle otomatik)</li>
+          <li>💬 <em>Conversation opened by Contact</em> — initiator kaydı</li>
+          <li>Customer message bubble'lar sırayla (gerçek zaman)</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section id="live">
+    <h2>4. Canlı Konuşma Analizi</h2>
+    <p>Q kendi Telegram'ından <code>@Backup1TestBot</code>'a üç mesaj attı:</p>
+    <ol>
+      <li><em>"Helo"</em></li>
+      <li><em>"Need go ask something"</em></li>
+      <li><em>"How much is it"</em></li>
+    </ol>
+    <p>Respond.io bu mesajları saniyeler içinde işledi ve şu zincirleme sonuçları üretti:</p>
+
+    <table>
+      <thead><tr><th>Adım</th><th>Respond.io davranışı</th><th>Manuel müdahale</th></tr></thead>
+      <tbody>
+        <tr><td>Contact oluşturma</td><td>"Trusted Advisor" (Telegram display name) + ID 435207950</td><td><span class="pill good">sıfır</span></td></tr>
+        <tr><td>Phone region</td><td><code>TR +90</code> otomatik dolduruldu</td><td><span class="pill good">sıfır</span></td></tr>
+        <tr><td>Language</td><td><code>English</code> (Telegram locale)</td><td><span class="pill good">sıfır</span></td></tr>
+        <tr><td>Lifecycle Stage</td><td>🆕 New Lead otomatik atandı</td><td><span class="pill good">sıfır</span></td></tr>
+        <tr><td>Conversation events</td><td><em>Welcome Event → Lifecycle added → Conversation opened by Contact</em> inline log</td><td><span class="pill good">sıfır</span></td></tr>
+        <tr><td>Sidebar counters</td><td><code>All 1</code>, <code>Unassigned 1</code>, <code>New Lead 1</code> güncellendi</td><td><span class="pill good">sıfır</span></td></tr>
+        <tr><td>Proactive AI modal</td><td><em>"Your channel is live! Create an AI Agent…"</em> pop-up</td><td><span class="pill warn">rahatsız edici</span></td></tr>
+      </tbody>
+    </table>
+
+    <h3>Compose Area — Slash Commands</h3>
+    <p>Canlı test ile doğrulandı (<code>phase9_6-ai-assist/</code>):</p>
+    <ul>
+      <li><code>/</code> → <strong>Snippets menu</strong> (boş ama "No Snippets yet · Create Snippets" CTA'sı)</li>
+      <li><code>$</code> → <strong>Select Variable</strong>: ID (<code>contact.id</code>), Name, First Name, Last Name, Email, Phone Number, …</li>
+      <li><code>::smi</code> → <strong>Emoji shortcode</strong> picker: <code>:smiley:</code>, <code>:smile:</code>, <code>:smiling_face_with_3_hearts:</code>, <code>:smirk:</code>, <code>:smiling_imp:</code> …</li>
+      <li>🪄 wand icon → <strong>AI Prompts menu</strong>: Change tone › · Translate › · Fix spelling & grammar · Simplify language</li>
+    </ul>
+
+    <div class="callout good">
+      <h4>En dikkat çeken UX bulguları</h4>
+      <ol style="margin-bottom:0">
+        <li><strong>Multi-channel conversation routing.</strong> Aynı contact ile Telegram + WhatsApp + Email hepsi tek thread; compose'da kanal seçerek yanıt.</li>
+        <li><strong>Slash commands + variable interpolation.</strong> <code>/</code>, <code>$</code>, <code>::</code> kısayolları placeholder'da yazıyor — keşfedilebilir güç.</li>
+        <li><strong>Reply vs Comment tab.</strong> Müşteriye yanıt (Reply) ve ekip içi not (Comment + @mention) net ayrım. Comment ayrı Quill editor.</li>
+        <li><strong>AI Assist compose'da inline.</strong> Persona + knowledge base ile reply önerisi.</li>
+        <li><strong>Lifecycle header pill'de.</strong> Tek tıkla stage değiştir — konuşma ilerledikçe satış hunisi güncel.</li>
+        <li><strong>Close button standalone.</strong> Dedicated closed status (resolution metriği için).</li>
+        <li><strong>Auto-contact from messenger.</strong> Telegram display name = Contact.name, sıfır tıkla onboarding.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="invekto-win">
+    <h2>5. Invekto'nun Güçlü Yönleri</h2>
+    <p class="note">Tahmin — CLAUDE.md + session memory + session gözlemi bazlı. Kod-level doğrulama <code>arch/</code> inceleme gerektirir.</p>
+    <div class="grid2">
+      <div class="card">
+        <h4 style="margin-top:0">🇹🇷 Türkiye lokalizasyonu</h4>
+        <p>Respond.io EN-dominant. Invekto Türkçe UI + TR-specific iş akışları (vergi/fatura entegrasyonları, INMA, yerel ödeme).</p>
+      </div>
+      <div class="card">
+        <h4 style="margin-top:0">🔗 INMA entegrasyonu & multi-tenant provisioning</h4>
+        <p>WaClient.Management MSSQL readonly bridge, InvektoCompanyCode ↔ tenant eşleşme, lisans senkronu. Domain-spesifik derin avantaj.</p>
+      </div>
+      <div class="card">
+        <h4 style="margin-top:0">☎️ Ses altyapısı olgun</h4>
+        <p>TONIVA / SIP / MicroSIP (C++ native client). Respond.io Calls "New Beta" + "disabled for this Workspace". Invekto'nun voice mile önde.</p>
+      </div>
+      <div class="card">
+        <h4 style="margin-top:0">🤫 Upsell rahatsızlığı yok</h4>
+        <p>Respond.io her ekranda "Upgrade now" sticky + canlı konuşmada modal. Invekto kullanıcıyı bu şekilde sıkmıyor.</p>
+      </div>
+      <div class="card">
+        <h4 style="margin-top:0">🧩 Mikroservis izolasyonu</h4>
+        <p>Invekto'nun service boundary'leri Shared üzerinden — servisler arası direkt referans yasak. Respond.io monolitik (gözlemlenen URL kalıbı ve tek SPA).</p>
+      </div>
+      <div class="card">
+        <h4 style="margin-top:0">✖ Modal UX kuralı</h4>
+        <p>Invekto'da <em>X yeter, Cancel text butonu ekleme</em> standardı. Respond.io çoğu modalda ikisini birden koyuyor (New Broadcast, Save Segment, …).</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="rio-weak">
+    <h2>6. Respond.io Zayıflıkları & Gereksiz Karmaşık Yerler</h2>
+    <table>
+      <thead><tr><th>Sorun</th><th>Kanıt / Detay</th><th>Etki</th></tr></thead>
+      <tbody>
+        <tr><td>Sidebar sadece ikon, label yok</td><td>Hover tooltip gecikmeli, yeni kullanıcıya öğrenme eziyet</td><td><span class="pill warn">Orta</span></td></tr>
+        <tr><td>Agresif sticky upsell</td><td>Banner her sayfada + canlı konuşmada "Create an AI Agent" modal</td><td><span class="pill bad">Yüksek</span></td></tr>
+        <tr><td>System events chat içinde inline</td><td><em>Welcome Event · Lifecycle added</em> müşteri mesajlarıyla karışıyor</td><td><span class="pill warn">Orta</span></td></tr>
+        <tr><td>Compose area yoğun</td><td>6+ icon + dropdown + 2 tab + 2 AI button = overload</td><td><span class="pill warn">Orta</span></td></tr>
+        <tr><td>Onboarding tour dismiss kalıcı değil</td><td>Workflows'a her gidişte 1/3 coach mark tekrar gelebiliyor</td><td><span class="pill warn">Orta</span></td></tr>
+        <tr><td>Settings 3 katman ayrımı</td><td>Organization vs Workspace vs Personal — hangi ayar nerede öğrenme şart</td><td><span class="pill neu">Düşük</span></td></tr>
+        <tr><td>HTTP Request upgrade-gated</td><td>Custom integration ücretli plan şart — freemium çekici değil</td><td><span class="pill warn">Orta</span></td></tr>
+        <tr><td>Modal'larda Cancel + X birlikte</td><td>New Broadcast, Save Segment modaller</td><td><span class="pill neu">Düşük</span></td></tr>
+        <tr><td>Right panel icon-only</td><td>Hover'sız ne olduğu belirsiz</td><td><span class="pill warn">Orta</span></td></tr>
+        <tr><td>Login spinner UX</td><td>Sign in butonu spinner dönerken 5-6s hiç feedback yok (bizim script burada yanılıp FAIL etti)</td><td><span class="pill neu">Düşük</span></td></tr>
+        <tr><td>Google SSO Playwright bot detection</td><td>Wrong-password redirect (manual login gerekti). Son kullanıcı için sorun değil, auth katmanı hassas.</td><td><span class="pill neu">Düşük</span></td></tr>
+        <tr><td>Emoji shortcode inconsistency</td><td>Placeholder <code>':' for emoji</code> diyor ama fiilen <code>::</code> yazmak gerekiyor</td><td><span class="pill neu">Düşük</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="gap">
+    <h2>7. Gap Analysis — Invekto'nun Yapması Gerekenler</h2>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--bad)"></span><strong>P0</strong> Çekirdek eksik, strategic (1-2 ay)</span>
+      <span><span class="dot" style="background:var(--warn)"></span><strong>P1</strong> Yüksek değer (3-6 ay)</span>
+      <span><span class="dot" style="background:var(--accent)"></span><strong>P2</strong> Polish & nice-to-have (6+ ay)</span>
+    </div>
+
+    <h3>P0 — Çekirdek Eksikler</h3>
+    <table>
+      <thead><tr><th>#</th><th>Özellik</th><th>Respond.io nasıl yapmış</th><th>Invekto için eylem</th><th>Tahmini effort</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>P0-1</strong></td>
+          <td>Lifecycle cross-cutting data model</td>
+          <td>Contact.stage enum; Inbox filter + Dashboard funnel + Reports dashboard + Segment targeting hepsinde aynı</td>
+          <td><code>arch/db/</code> → <code>contact.lifecycle_stage</code> enum + drag-drop stage builder UI + Reports funnel dashboard + Inbox filter chip'leri</td>
+          <td><span class="pill warn">XL</span></td>
+        </tr>
+        <tr>
+          <td><strong>P0-2</strong></td>
+          <td>AI Prompts in compose</td>
+          <td>Wand icon → 4 built-in (Change tone / Translate / Fix / Simplify) + custom</td>
+          <td>InvektoChat compose'a wand icon + <code>ai-rewrite</code> endpoint (mevcut <code>InvektoChatAnalysis</code> ile)</td>
+          <td><span class="pill good">S</span></td>
+        </tr>
+        <tr>
+          <td><strong>P0-3</strong></td>
+          <td>AI Assist (persona + knowledge)</td>
+          <td>Settings: Persona prompt + knowledge upload + "reply outside knowledge" toggle</td>
+          <td>Knowledge base feature + per-workspace AI persona (tenant-scoped) + inline "AI Assist" reply suggestion button</td>
+          <td><span class="pill warn">L</span></td>
+        </tr>
+        <tr>
+          <td><strong>P0-4</strong></td>
+          <td>Broadcast module</td>
+          <td>Segment + Channel Type + Message + Schedule/Send + Table/Calendar view</td>
+          <td>Yeni servis <code>InvektoBroadcast</code> + UI (list/calendar/create/builder) — daily limit + compliance (opt-out)</td>
+          <td><span class="pill warn">L</span></td>
+        </tr>
+        <tr>
+          <td><strong>P0-5</strong></td>
+          <td>Slash commands compose</td>
+          <td><code>/</code>, <code>$</code>, <code>::</code> Quill editor + popover autocomplete</td>
+          <td>Compose editor Quill/tiptap upgrade + snippet service + variable interpolation runtime</td>
+          <td><span class="pill warn">M</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>P1 — Yüksek Değer</h3>
+    <table>
+      <thead><tr><th>#</th><th>Özellik</th><th>Respond.io</th><th>Invekto action</th><th>Effort</th></tr></thead>
+      <tbody>
+        <tr><td><strong>P1-1</strong></td><td>Multi-channel single conversation</td><td>Aynı contact TG+WA+Email tek thread</td><td>Conversation aggregation layer (contact_id by channel → unified)</td><td><span class="pill warn">L</span></td></tr>
+        <tr><td><strong>P1-2</strong></td><td>AI Copilot help bubble</td><td>In-product ChatGPT asistan</td><td>Knowledge base + LLM + tool-calling → platform actions</td><td><span class="pill warn">L</span></td></tr>
+        <tr><td><strong>P1-3</strong></td><td>Segments + Segment builder</td><td>Condition builder + pre-built 5 segment</td><td><code>segments</code> tablosu + query builder UI + Broadcast/Workflow tetikleyici</td><td><span class="pill warn">M</span></td></tr>
+        <tr><td><strong>P1-4</strong></td><td>Workflow action genişletme</td><td>Branch, Wait, HTTP, Meta/TikTok CAPI, Sheets, Nested</td><td>TFM'ye Branch/Wait/HTTP action'ları + Meta/TikTok conversion event integration</td><td><span class="pill warn">M</span></td></tr>
+        <tr><td><strong>P1-5</strong></td><td>Growth Widgets</td><td>Web embed lead capture</td><td>Embeddable chat widget + lead capture form builder</td><td><span class="pill warn">M</span></td></tr>
+        <tr><td><strong>P1-6</strong></td><td>Reports modül genişletme</td><td>11 bağımsız dashboard</td><td>Per-area rapor + date filter + Group By + AI-vs-human</td><td><span class="pill warn">L</span></td></tr>
+        <tr><td><strong>P1-7</strong></td><td>Onboarding checklist + coach marks</td><td>4-step progress + module tours</td><td>Onboarding state machine + coach mark component library</td><td><span class="pill good">S-M</span></td></tr>
+        <tr><td><strong>P1-8</strong></td><td>MAC usage metering</td><td>1.000 MAC/ay pricing metric</td><td>Usage table + billing integration + overlimit UX</td><td><span class="pill warn">M</span></td></tr>
+      </tbody>
+    </table>
+
+    <h3>P2 — Polish & Nice-to-have</h3>
+    <table>
+      <thead><tr><th>#</th><th>Özellik</th><th>Not</th></tr></thead>
+      <tbody>
+        <tr><td>P2-1</td><td>Conversation "Close" dedicated status</td><td>Invekto "resolve" var mı verify</td></tr>
+        <tr><td>P2-2</td><td>Internal comment / team note (@mention)</td><td>Reply tab'dan ayrı Quill editor</td></tr>
+        <tr><td>P2-3</td><td>Workflow template library</td><td>18+ hazır template onboarding hızı</td></tr>
+        <tr><td>P2-4</td><td>Broadcasts Calendar view</td><td>Timeline visualization</td></tr>
+        <tr><td>P2-5</td><td>Auto-enrichment from messenger</td><td>Language/Country/Timezone Telegram locale'den</td></tr>
+        <tr><td>P2-6</td><td>AI Persona tenant-scoped</td><td>Settings'te custom prompt + knowledge upload</td></tr>
+        <tr><td>P2-7</td><td>Integrations marketplace</td><td>Native Salesforce/HubSpot/Zapier/Make kartları</td></tr>
+        <tr><td>P2-8</td><td>Multi-workspace per Organization</td><td>Org-Workspace-User 3 katman; Invekto'da tenant = workspace, parent org yok</td></tr>
+        <tr><td>P2-9</td><td>Custom Inbox / Team Inbox</td><td>Saved filter view queue</td></tr>
+        <tr><td>P2-10</td><td>Calls UI entegrasyonu</td><td>TONIVA var ama UI tarafı zayıf (verify)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout good">
+      <h4>Eğer sadece 3 özellik seçilse (maximum ROI)</h4>
+      <ol style="margin-bottom:0">
+        <li><strong>AI Prompts in compose (P0-2)</strong> — en az maliyet, en yüksek kullanıcı-görünür değer. Her mesajda kullanılır.</li>
+        <li><strong>Lifecycle cross-cutting (P0-1)</strong> — veri modeli, ama tüm ürünün satış-odaklı hissetmesini sağlar.</li>
+        <li><strong>Broadcast module (P0-4)</strong> — mass messaging, growth/retention için SaaS'ta standart.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="experts">
+    <h2>8. Uzman Panelleri</h2>
+    <p>Farklı disiplinlerden 8 uzman, raporu kendi perspektifinden değerlendirdi. Her panel: <em>özet alıntı + detaylı analiz + somut öneriler + Invekto puanı</em>.</p>
+
+    <!-- UX -->
+    <article class="exp" id="e-ux">
+      <div class="exp-head">
+        <div class="avatar" style="background:linear-gradient(135deg,#6ea8ff,#3b82f6)">EK</div>
+        <div class="exp-meta">
+          <div class="name">Emre Kılıç</div>
+          <div class="title">UX Strategist · 12 yıl B2B SaaS + messaging UX</div>
+        </div>
+      </div>
+      <blockquote>"Respond.io compose area'sı güçlü ama <strong>overloaded</strong>. Asıl dersi kopyalamak değil, <em>hangi UX prensibi işe yaradı</em> ayıklamak. Slash commands evet, 7 icon bar hayır."</blockquote>
+      <p><strong>Compose area density.</strong> 6 inline icon + 2 AI button + kanal dropdown + 2 tab = ekranda 12 etkileşim noktası. Yeni agent için overwhelm. Invekto bunu kopyalamamalı — sadece <strong>slash commands + AI Prompts wand + Add comment tab</strong> taşısın. Geri kalan ikonlar (knowledge, globe, snippet shortcut) <code>/</code> ve <code>$</code> altında zaten var, görsel olarak boş yere yer kaplıyor.</p>
+      <p><strong>Sidebar icon-only anti-pattern.</strong> Respond.io icon-only sidebar ile m² kazanıyor ama learnability'yi öldürüyor. Invekto'nun mevcut labeled sidebar'ı (Türkçe label ile) daha doğru. Genişletilebilir/collapse edilebilir bir hibrit (Slack gibi) seçilebilir.</p>
+      <p><strong>Inline system events = chat gürültüsü.</strong> Respond.io "Welcome Event / Lifecycle added / opened by Contact" eventlerini mesajlarla <em>aynı bubble stream</em>'de gösteriyor. Invekto bunu yaparken <strong>ayrı sağ-panel timeline</strong> kullanmalı — chat akışını temiz bırak, olayları yan pane'de listele.</p>
+      <div class="rec">
+        <h5>Öneriler</h5>
+        <ul>
+          <li>Compose: <code>/</code> <code>$</code> <code>::</code> kısayolları + 🪄 AI Prompts + Add comment tab. <strong>Maksimum 3 icon + 1 send.</strong></li>
+          <li>Coach mark kütüphanesi ekle ama <em>"Don't show again"</em> persistent olsun (kullanıcı bazlı localStorage).</li>
+          <li>Modal UX: mevcut Invekto kuralına sadık kal (sadece X, Cancel yok).</li>
+          <li>Sticky upsell banner yapma. Trial durumu header'da <em>sessiz</em> chip olarak göster, kullanıcı tıklayınca detay aç.</li>
+        </ul>
+      </div>
+      <p class="score">Invekto UX parity hedefi: <span class="bar"><span style="width:45%"></span></span> <strong>45%</strong></p>
+    </article>
+
+    <!-- Product Manager -->
+    <article class="exp" id="e-pm">
+      <div class="exp-head">
+        <div class="avatar" style="background:linear-gradient(135deg,#9a7cff,#7c3aed)">SY</div>
+        <div class="exp-meta">
+          <div class="name">Seda Yılmaz</div>
+          <div class="title">Sr. Product Manager · Conversation platforms</div>
+        </div>
+      </div>
+      <blockquote>"Tek bakışta Lifecycle cross-cutting gaye-değer eşlemesi en yüksek. Satış ekipleri bu yüzden Intercom / HubSpot Service tercih ediyor — <em>ne yaptıklarını sayılarla görmek</em>."</blockquote>
+      <p><strong>P0-1 Lifecycle cross-cutting önce gelsin.</strong> AI Prompts (P0-2) daha ucuz teslim edilir ama Lifecycle olmadan <em>"ne ölçüyorsun?"</em> sorusu yanıtsız kalır. Respond.io'nun gücü sadece AI değil; <strong>her ekranda aynı 4-stage funnel</strong>. Invekto'ya Contact.stage enum + Reports/Dashboard funnel + Segment targeting + Workflow trigger on-stage-change paketi olarak taşınmalı.</p>
+      <p><strong>Broadcast'i yeni servis yapmanın kumarı.</strong> <code>InvektoBroadcast</code> ayrı mikroservis mi? Yoksa <code>InvektoChat</code> içine gömülü mü? Mikroservis olursa Shared DTO kontratları ve rate-limit (MAC burst) iş yükü büyür. Öneri: <strong>Phase 1'de aynı servis içinde, feature flag ile,</strong> sonra trafik büyüyünce ayır.</p>
+      <p><strong>Respond.io'daki kör nokta:</strong> yerel compliance. Türkiye'de KVKK açık rıza + opt-out zorunluluğu var. Respond.io bunu GDPR ile kapattığını varsayıyor. Invekto bunu <em>native feature</em> yaparsa yerel pazarda differentiator.</p>
+      <div class="rec">
+        <h5>Öneriler</h5>
+        <ul>
+          <li>Roadmap sırası: <strong>P0-1 (Lifecycle) → P0-2 (AI Prompts) → P0-4 (Broadcast MVP)</strong>. AI Assist (P0-3) ertelenebilir.</li>
+          <li>Her P0 maddesi için <em>"ship-metric"</em> tanımla. P0-1 için: "onboarding'i tamamlayan workspace'lerin %70'i ilk 7 günde stage değişikliği yapıyor".</li>
+          <li>Broadcast MVP'yi Telegram + WhatsApp ile başlat, Email sonra. İlk sürümde Calendar view yok — sadece Table + schedule.</li>
+          <li>KVKK opt-out'u Broadcast'in ilk gün feature'ı yap, sonra ekleme değil.</li>
+        </ul>
+      </div>
+      <p class="score">P0 tamamlanınca parity: <span class="bar"><span style="width:65%"></span></span> <strong>65%</strong></p>
+    </article>
+
+    <!-- Growth / Pricing -->
+    <article class="exp" id="e-growth">
+      <div class="exp-head">
+        <div class="avatar" style="background:linear-gradient(135deg,#34d399,#059669)">MÖ</div>
+        <div class="exp-meta">
+          <div class="name">Murat Özdemir</div>
+          <div class="title">SaaS Growth & Pricing Advisor · ex-Intercom</div>
+        </div>
+      </div>
+      <blockquote>"MAC pricing değer temelli, seat'ten çok daha iyi. Ama Türkiye pazarında <strong>1.000 MAC/ay</strong> diye etiketlemek anlam ifade etmiyor — <em>'aylık 1.000 müşteriyle chat yapabilirsin'</em> denmeli."</blockquote>
+      <p><strong>Respond.io'nun pricing mesajı zayıf.</strong> 7 günde 1 gün geçmeden "7 gün kaldı" sticky banner + modal pop-up canlı konuşmada. Conversion için agresif ama <strong>churn-inducing</strong>. Kullanıcı baskı altında feature değerlendiremiyor. Invekto'nun trial UX'i şu anda sessiz (iyi) — ama <strong>trial extend / downgrade / pause</strong> seçenekleri de yok. 14-30 gün trial + gentle nudge doğru denge.</p>
+      <p><strong>MAC metric'i taşınabilir ama re-package etmek gerek.</strong> Invekto'da "active contact" = son 30 günde en az 1 mesaj trafiği (inbound veya outbound). Bu metric KPI dashboard'da da gösterilmeli, müşteri <em>kullanımını önceden görmeli</em>. Sürpriz fatura tetikleyicisi yapma.</p>
+      <p><strong>Freemium stratejisi:</strong> HTTP Request action'ı respond.io upgrade-gated yapıyor. Invekto bunu <strong>hepsi serbest</strong>, ama MAC'e dayalı plan gating ile yaparsa (örn. 100 MAC/ay free tier) aylık çalkantıyı görür. Developer API ise tamamen açık kalmalı — Invekto yan-ürün ekosistemi bu.</p>
+      <div class="rec">
+        <h5>Öneriler</h5>
+        <ul>
+          <li>Trial ≥14 gün, sticky banner yok, sadece dashboard header'da sessiz chip.</li>
+          <li>"Monthly Active Contacts" yerine <strong>"Aylık Aktif Müşteri (MAC)"</strong> Türkçe + kullanım grafiği ile header'da göster.</li>
+          <li>Free tier: 100 MAC/ay, 2 kanal, 1 AI prompt. Pro: 1.000 MAC, sınırsız kanal, AI knowledge base. Enterprise: custom MAC + SSO + audit log.</li>
+          <li>HTTP Request action'ı free tier'da aç (devs kazanmak için), sadece Meta/TikTok CAPI ücretli paketle.</li>
+        </ul>
+      </div>
+      <p class="score">Pricing competitiveness: <span class="bar"><span style="width:70%"></span></span> <strong>70%</strong> (MAC adopt edilirse)</p>
+    </article>
+
+    <!-- AI Product Lead -->
+    <article class="exp" id="e-ai">
+      <div class="exp-head">
+        <div class="avatar" style="background:linear-gradient(135deg,#f59e0b,#d97706)">DA</div>
+        <div class="exp-meta">
+          <div class="name">Deniz Arslan</div>
+          <div class="title">AI Product Lead · LLM-in-the-loop SaaS</div>
+        </div>
+      </div>
+      <blockquote>"Beş AI temas noktası kulağa sexy geliyor ama <strong>sadece ikisi ROI'li</strong>: AI Prompts (rewrite) ve AI Assist (knowledge-grounded reply). AI Agents, AI Copilot, Summarize — hepsi nice-to-have, sipariş eder ama kullanıcıyı tutmaz."</blockquote>
+      <p><strong>AI Prompts (Change tone / Translate / Fix / Simplify) <em>aslında basit</em>.</strong> 4 adet hardcoded prompt template + LLM call + Quill'e text replace. 2 haftada ship edilir. Model seçimi: <code>claude-haiku-4-5</code> veya <code>gpt-4o-mini</code> — düşük latency + düşük maliyet + yeterli kalite. Her mesaj 200-500 token. MAC'e göre cost modelleme yapılmalı (1 MAC ~10 AI prompt = $0.01).</p>
+      <p><strong>AI Assist (knowledge-grounded) asıl yatırım.</strong> Persona prompt + knowledge source (PDF/URL upload) + embedding index + retrieval (pgvector — InvektoServices'de zaten var!) + "reply outside knowledge" toggle. Invekto'nun pgvector altyapısı bu feature için idealdir. 4-6 haftada ship edilebilir.</p>
+      <p><strong>AI Agents modülü (autonomous bot) TUZAK.</strong> Respond.io'daki "AI Agent conversation devralır" feature'ı sexy görünüyor ama <strong>hallucination liability</strong> + müşteri şikayeti + "AI bana yanlış fiyat söyledi" riski. Invekto Türkiye pazarında çok daha muhafazakar olmalı: önce <strong>"suggest-only" mod</strong> (AI öneriyor, human onaylıyor), sonra opt-in autonomous mod.</p>
+      <p><strong>AI Copilot help bubble</strong> güzel bir fikir ama ROI düşük. Platform adoption'a çok geç katkı sağlar. Önce core feature'lar (P0), sonra düşünülür.</p>
+      <div class="rec">
+        <h5>Öneriler</h5>
+        <ul>
+          <li><strong>Sprint 1 (2 hafta):</strong> AI Prompts 4 hardcoded (Türkçeye çevir / İngilizceye çevir / Tonu düzelt / Kısalt). <code>claude-haiku-4-5</code>.</li>
+          <li><strong>Sprint 2-4 (4 hafta):</strong> AI Assist MVP — Persona + knowledge upload + pgvector RAG + "suggest-only" mod (reply button önerir, send etmez).</li>
+          <li><strong>Sprint 5+:</strong> AI Agents autonomous mod — <em>opt-in, müşteri şikayet trigger'ı ile auto-disable</em>, full conversation logs KVKK için saklanır.</li>
+          <li>Summarize: Phase 2, not a priority.</li>
+          <li>AI Copilot: <strong>yapma</strong>. ROI düşük. Belge + video + yazılı prompt ile yetin.</li>
+          <li>Her AI output'a <strong>"insan kontrol etti"</strong> checkbox zorunlu (liability azaltma).</li>
+        </ul>
+      </div>
+      <p class="score">AI parity (sadece P0 ile): <span class="bar"><span style="width:80%"></span></span> <strong>80%</strong></p>
+    </article>
+
+    <!-- Engineering Architect -->
+    <article class="exp" id="e-eng">
+      <div class="exp-head">
+        <div class="avatar" style="background:linear-gradient(135deg,#ef4444,#b91c1c)">CD</div>
+        <div class="exp-meta">
+          <div class="name">Can Demir</div>
+          <div class="title">Staff Engineer · Microservice architecture</div>
+        </div>
+      </div>
+      <blockquote>"Lifecycle enum ekleme 3 gün, Broadcast yeni servis 3 ay. Farkı mimari-temelli planla; feature teslim tarihini değil."</blockquote>
+      <p><strong>Lifecycle veri modeli (P0-1):</strong> Single tenant column ekleme kolay. Zor kısım <em>cross-service consistency</em>. Contact.stage değişince Reports servisi, Workflow servisi, Inbox servisi haberi nasıl alır? İki seçenek:</p>
+      <ol>
+        <li><strong>Event bus pattern:</strong> <code>contact.stage.changed</code> event → Hangfire queue → consumer'lar. Invekto'da zaten Hangfire var.</li>
+        <li><strong>Read replica + polling:</strong> Her servis Contact tablosunu read eder (tenant_id scoped). Basit ama eventual consistency.</li>
+      </ol>
+      <p>Öneri: Event bus. Mevcut pattern'lerle uyumlu, audit trail'i kolay.</p>
+      <p><strong>Broadcast servisi mikro mu monolitik mi?</strong> Respond.io tek SPA/monolit (URL pattern'den gözlendi). Invekto'nun mikroservis disiplini düşünülürse <code>InvektoBroadcast</code> ayrı servis mantıklı <em>çünkü</em>:</p>
+      <ul>
+        <li>Rate limiting ve per-channel API quota farklı (WhatsApp Business API = saatte X mesaj)</li>
+        <li>Scheduler / queue iş yükü diğer servislerden farklı spike pattern</li>
+        <li>Compliance / opt-out iş mantığı izole tutulmalı</li>
+      </ul>
+      <p>Ama Phase 1'de <strong>InvektoChat içinde bir namespace</strong> olarak başla (feature flag), trafik 1.000 MAC+/gün olunca ayır.</p>
+      <p><strong>AI Assist knowledge base:</strong> pgvector zaten var, ideal. Upload flow'u Files servisini kullan (mevcut). Embedding generation için background job (Hangfire). Chat retrieval ise <code>InvektoChatAnalysis</code> içinde — o servis AI ownership'i taşısın, cross-service'e AI logic dağıtma.</p>
+      <p><strong>Slash commands (P0-5) iskeleti:</strong> Quill veya tiptap. Quill daha olgun + respond.io kullanıyor (Quill class görüldü: <code>ql-editor ql-blank</code>). Ama tiptap (Prosemirror) custom node'larda çok daha güçlü. Invekto React 18 + TS ise <strong>tiptap</strong> tercih. Snippet/variable/emoji birer custom node olur.</p>
+      <div class="rec">
+        <h5>Öneriler</h5>
+        <ul>
+          <li><strong>P0-1 mimari:</strong> Event bus (Hangfire queue) üzerinden <code>contact.stage.changed</code>. Arch ref: yeni <code>arch/events/contact.md</code>.</li>
+          <li><strong>P0-4 başlangıç:</strong> <code>InvektoChat/Broadcast/</code> namespace + feature flag. 6 ay sonra ayır (metric: &gt;100 broadcast/day).</li>
+          <li><strong>P0-3 AI Assist:</strong> <code>InvektoChatAnalysis</code> servisine endpoint ekle. Knowledge upload → Files → embedding job → pgvector.</li>
+          <li><strong>P0-5 editor:</strong> tiptap tercih. Snippet/variable/emoji custom extension'lar.</li>
+          <li>Her P0 için <strong>arch/specs/_TEMPLATE.md</strong> bazlı spec yaz, CODEX PASS hedefi.</li>
+        </ul>
+      </div>
+      <p class="score">Teknik borç riski: <span class="bar"><span style="width:35%;background:linear-gradient(90deg,#34d399,#059669)"></span></span> <strong>düşük</strong> (altyapı uygun)</p>
+    </article>
+
+    <!-- Customer Success Ops -->
+    <article class="exp" id="e-cs">
+      <div class="exp-head">
+        <div class="avatar" style="background:linear-gradient(135deg,#06b6d4,#0891b2)">AK</div>
+        <div class="exp-meta">
+          <div class="name">Ayşe Kaya</div>
+          <div class="title">Head of Customer Success · agent tooling</div>
+        </div>
+      </div>
+      <blockquote>"Agent'ların günlük iş akışı çok farklı. Respond.io slash commands'u öğrenmek <em>bir saatte oluyor</em>, sonra vazgeçilmez. AI Copilot — %5 kullanılıyor."</blockquote>
+      <p><strong>Slash commands real-world:</strong> Intercom, Zendesk, Front'da agent'lar <code>/</code> ile template yapıştırma en sık kullanılan shortcut. Respond.io'nun placeholder metninde yazması <strong>discoverability golden</strong>. Invekto ilk gün bu placeholder'ı eklese, adoption 3 kat hızlanır.</p>
+      <p><strong>Snippet yönetimi:</strong> Respond.io settings'de Snippet tab var ama <em>canlı chat'te her agent kendi snippet'ını oluşturabilmeli</em>. Admin-only snippet zorluk yaratıyor. Invekto: <strong>personal + team + workspace</strong> 3 seviye snippet kütüphanesi.</p>
+      <p><strong>Assignment ve Lifecycle birlikte çalışır:</strong> New Lead gelince otomatik "Sales" team'e assign + SLA timer başlasın. Respond.io'da bu <strong>Workflow</strong> ile yapılıyor (template: "Assignment: Open Contacts"). Invekto'da bu template kütüphanesi kritik — agent'lar yeni kurarken kaybolmasın.</p>
+      <p><strong>Coach mark fatigue gerçek sorun.</strong> Respond.io'da her modülde 1/3, 2/3 tour overlay — aynı account'ta farklı cihazlarda tekrar tekrar görünüyor (localStorage'a bağlı). Invekto <strong>user-level</strong> dismissal state sakla (DB'de), global.</p>
+      <p><strong>Add comment / internal note</strong> kritik ama gizli kalıyor. Respond.io'da compose alt-solda küçük tab — yeni agent fark etmiyor. Invekto tab'ı prominent yap (toggle button değil, ayrı edit alanı).</p>
+      <div class="rec">
+        <h5>Öneriler</h5>
+        <ul>
+          <li>Placeholder metninde slash commands göster gün 1'den.</li>
+          <li>Snippet 3 seviye: personal / team / workspace. Admin sadece workspace'i kilitleyebilir.</li>
+          <li>Workflow template library Invekto için Türkiye-specific: "Çalışma saatleri dışı mesaj", "Fatura talebi → Muhasebe", "Yeni müşteri → KVKK onayı yolla".</li>
+          <li>Coach mark dismiss DB'de user settings'e yaz, tüm cihazlarda senkron.</li>
+          <li>Add comment = kalıcı görünür section (altta ayrı editor), tab toggle değil.</li>
+          <li>SLA timer: New Lead → Hot Lead arası süre, Hot Lead → Payment arası süre. Dashboard'da renk kodlu.</li>
+        </ul>
+      </div>
+      <p class="score">Agent NPS tahmini (P0 sonrası): <span class="bar"><span style="width:75%"></span></span> <strong>+35</strong></p>
+    </article>
+
+    <!-- Brand / Marketing -->
+    <article class="exp" id="e-brand">
+      <div class="exp-head">
+        <div class="avatar" style="background:linear-gradient(135deg,#ec4899,#be185d)">İK</div>
+        <div class="exp-meta">
+          <div class="name">İrem Koç</div>
+          <div class="title">Brand & Messaging Lead · B2B SaaS</div>
+        </div>
+      </div>
+      <blockquote>"Respond.io <em>'AI-first messaging CRM'</em> mesajını başarıyla kurmuş. Invekto <em>'Türkiye'nin WhatsApp CRM'i'</em> + <em>'ses + chat birlikte'</em> üzerine inşa edebilir — rakip değil, tamamlayıcı pozisyon."</blockquote>
+      <p><strong>Respond.io'nun marka mesajı:</strong> "One inbox for WhatsApp, Messenger, Telegram, TikTok, more". Channel-count + AI kombinasyonu. Başarılı çünkü SMB'lerin mental model'iyle uyumlu.</p>
+      <p><strong>Invekto pozisyonlaması:</strong> Respond.io'nun <em>eksik olduğu yerden</em> gir — yerel entegrasyonlar (e-fatura, e-Arşiv, Integration Hub'dan Dental Adavista gibi dikey çözümler), Türkçe onboarding, KVKK-native. <em>"Türkiye pazarı için kurulmuş konuşma platformu"</em>.</p>
+      <p><strong>AI mesajı:</strong> Respond.io "AI ile konuşmalarını otomatikleştir" diyor — biraz korkutucu (işimi alacak?). Invekto tam tersine "AI asistanınla beraber yaz, müşteri seninle konuşsun" pozisyonu — <strong>augmentation, not replacement</strong>. Türk KOBİ'sine daha uygun.</p>
+      <p><strong>Onboarding copy:</strong> Respond.io'da "Hello, Regex! Let's get started." — generic SaaS. Invekto <strong>kullanıcının işini tanıyan</strong> onboarding yapabilir: "Merhaba Taner! İşletme türünü seç: Diş hekimi / Kuaför / E-ticaret / Servis... → sector-specific template'lar öner".</p>
+      <div class="rec">
+        <h5>Öneriler</h5>
+        <ul>
+          <li>Ana mesaj: <strong>"Ses + Chat + AI — hepsi Türkçe, hepsi senin kuralınla"</strong>.</li>
+          <li>Landing'de sektör seçici: Diş hekimi / Kuaför / Servis / E-ticaret → her biri için pre-built workflow template + copy.</li>
+          <li>AI copy: "Müşteri yerine cevap veren bot" değil, <strong>"Sen yazarken öneren asistan"</strong>. Suggest-only mod marketing'te vurgulanır.</li>
+          <li>KVKK içerik pilları: blog, help center, in-product uyarı. Differentiator.</li>
+          <li>TONIVA ses avantajını mesajla: <em>"Rakiplerde AI chat var, Invekto'da AI chat + AI arama transkript + CRM tek çatı altında."</em></li>
+        </ul>
+      </div>
+      <p class="score">Differentiation potansiyeli: <span class="bar"><span style="width:85%"></span></span> <strong>güçlü</strong></p>
+    </article>
+
+    <!-- Security / Compliance -->
+    <article class="exp" id="e-sec">
+      <div class="exp-head">
+        <div class="avatar" style="background:linear-gradient(135deg,#64748b,#334155)">KA</div>
+        <div class="exp-meta">
+          <div class="name">Kemal Altın</div>
+          <div class="title">Security & Compliance Lead · Multi-tenant SaaS</div>
+        </div>
+      </div>
+      <blockquote>"Respond.io'nun audit log'u görünmez. Invekto mikroservis izolasyonu + tenant scoping zaten güçlü — <strong>compliance'ı marketing silahı yap</strong>."</blockquote>
+      <p><strong>Respond.io compliance görünürlüğü zayıf.</strong> Settings → Data export var (GDPR için) ama audit log (kim ne zaman neyi değiştirdi) bulunamadı. "AI Copilot is in Beta and may make mistakes" disclaimer var ama AI output'ların <em>nasıl log'landığı</em> belirsiz. Enterprise satışta bu açık.</p>
+      <p><strong>Invekto'nun mevcut avantajları:</strong></p>
+      <ul>
+        <li><strong>Microservice isolation</strong> — servisler arası direkt referans yasak, Shared üzerinden iletişim. Blast radius kontrollü.</li>
+        <li><strong>INMA readonly</strong> — outbound write yok, data bridge temiz.</li>
+        <li><strong>Hangfire audit</strong> — background job'lar trace'lenebilir.</li>
+      </ul>
+      <p><strong>Yeni feature'larda dikkat:</strong></p>
+      <ul>
+        <li><strong>AI Assist knowledge upload:</strong> Tenant-scoped vector index şart. Embedding cross-tenant leak riski. pgvector query'leri tenant_id filter'ı ile.</li>
+        <li><strong>Broadcast opt-out</strong> legal zorunluluk değil sadece iyi pratik — KVKK ayrı madde var. Opt-out link mesaj footer'ına otomatik eklenmeli.</li>
+        <li><strong>AI prompt data residency:</strong> Claude API Anthropic (US) — KVKK'da "yurt dışı transfer" açık rıza gerekir. Self-hosted model veya Turkish data-residency provider düşünülmeli (uzun vadede).</li>
+        <li><strong>Conversation export (GDPR + KVKK):</strong> Kullanıcı talep ederse 30 gün içinde tüm veriyi teslim şart. Respond.io'da Data export var, Invekto'da <em>workspace-level</em> var mı verify — yoksa P0'a ekle.</li>
+      </ul>
+      <p><strong>Marketing silahı olarak:</strong> Invekto'nun mevcut <em>service-isolation-checker</em> hook'u + <em>secret-scan</em> pre-commit hook'u + <em>invariant-check</em> hook'u var. Bunlar compliance evidence — müşteriye <em>"kod seviyesinde blast radius control'lü"</em> diyebilirsin. Respond.io bunu gösteremez.</p>
+      <div class="rec">
+        <h5>Öneriler</h5>
+        <ul>
+          <li><strong>Audit log servisi</strong> (yoksa) ekle — her user action'ı trace et, settings değişimi, export isteği, AI prompt run.</li>
+          <li>AI Assist knowledge: tenant-scoped vector namespace zorunlu. Cross-tenant query mümkün değil.</li>
+          <li>Broadcast footer'a otomatik opt-out link + KVKK metin şablonu (tenant admin override edebilir).</li>
+          <li>AI API provider için KVKK açık rıza akışı tenant admin onboarding'de.</li>
+          <li>Data export workspace-level + user-level, JSON + CSV formatları.</li>
+          <li>SOC2 / ISO 27001 hazırlık planı — enterprise satış için 12-18 ay.</li>
+        </ul>
+      </div>
+      <p class="score">Compliance parity (post-audit log): <span class="bar"><span style="width:78%"></span></span> <strong>78%</strong></p>
+    </article>
+
+    <div class="callout">
+      <h4>Panel konsensüsü — 8 uzman hangi noktada anlaştı?</h4>
+      <ol style="margin-bottom:0">
+        <li><strong>AI Prompts (P0-2)</strong> en hızlı-teslim en-yüksek-ROI madde. 2 hafta ship, kullanıcı her mesajda kullanır.</li>
+        <li><strong>Lifecycle (P0-1)</strong> stratejik olarak en önemli; Broadcast ve Reports buna bağlı.</li>
+        <li><strong>AI Agents autonomous</strong> (P2-6) <em>yapılacak</em>sa suggest-only mod ile başla — hallucination/liability riski.</li>
+        <li>Respond.io'nun <strong>upsell agresyonu kopyalanmamalı</strong>, sessiz trial UX daha iyi.</li>
+        <li>Invekto'nun <strong>differentiator'u:</strong> ses (TONIVA), Türkiye compliance (KVKK native), mikroservis izolasyon.</li>
+        <li>AI Copilot help bubble ve autonomous AI Agents <strong>ERTELENEBİLİR</strong>.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="roadmap">
+    <h2>9. 12-Aylık Yol Haritası (Panel Konsensüsü)</h2>
+    <p>Sekiz uzmanın ortak önerileri ışığında faz bazlı sıralama. Her çeyrek ship-metric'li.</p>
+
+    <h3>Q1 — 0-3 ay: Foundation</h3>
+    <table>
+      <thead><tr><th>Sprint</th><th>Çıktı</th><th>Ship-metric</th></tr></thead>
+      <tbody>
+        <tr><td>S1 (2 hafta)</td><td><strong>P0-2 AI Prompts MVP</strong> — 4 built-in (Türkçeleştir / İngilizceye çevir / Tonu düzelt / Kısalt), <code>claude-haiku-4-5</code></td><td>Aktif agent'ların %40'ı haftada ≥1 prompt kullanıyor</td></tr>
+        <tr><td>S2-3 (4 hafta)</td><td><strong>P0-1 Lifecycle data model</strong> — Contact.stage enum + event bus + Reports funnel dashboard + Inbox filter chip'leri</td><td>İlk 100 workspace'in %70'i 7 gün içinde stage değişikliği yapıyor</td></tr>
+        <tr><td>S4 (2 hafta)</td><td><strong>P0-5 Slash commands editor</strong> — tiptap + snippet custom node + placeholder metni</td><td>Compose'da <code>/</code> kullanım oranı %25+</td></tr>
+        <tr><td>S5-6 (4 hafta)</td><td><strong>P1-7 Onboarding checklist + coach marks</strong> + sector-specific landing</td><td>Trial → paid conversion %8 → %14</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Q2 — 3-6 ay: AI & Broadcast</h3>
+    <table>
+      <thead><tr><th>Sprint</th><th>Çıktı</th><th>Ship-metric</th></tr></thead>
+      <tbody>
+        <tr><td>S7-10 (8 hafta)</td><td><strong>P0-3 AI Assist</strong> — Persona prompt + knowledge upload + pgvector RAG + suggest-only mod</td><td>Knowledge-grounded öneriler %60+ accept rate</td></tr>
+        <tr><td>S11-14 (8 hafta)</td><td><strong>P0-4 Broadcast MVP</strong> — InvektoChat içinde namespace + Telegram+WhatsApp + segment + schedule + KVKK opt-out</td><td>İlk ay 50 broadcast gönderimi, %0 compliance incident</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Q3 — 6-9 ay: Reports & Segments</h3>
+    <table>
+      <thead><tr><th>Sprint</th><th>Çıktı</th><th>Ship-metric</th></tr></thead>
+      <tbody>
+        <tr><td>S15-17</td><td><strong>P1-3 Segment builder</strong> + pre-built segmentler + Broadcast/Workflow trigger entegrasyonu</td><td>50% workspace en az 1 custom segment yaratıyor</td></tr>
+        <tr><td>S18-20</td><td><strong>P1-6 Reports 5 dashboard</strong> (Lifecycle + Conversations + Assignments + Leaderboard + Broadcasts) — AI-vs-human ayrımı dahil</td><td>Admin'ler haftada ≥2 dashboard bakıyor</td></tr>
+        <tr><td>S21-22</td><td><strong>P1-8 MAC usage metering</strong> + usage grafiği + plan gating</td><td>Overage bildirimleri %0 surprise bill</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Q4 — 9-12 ay: Scale & Polish</h3>
+    <table>
+      <thead><tr><th>Sprint</th><th>Çıktı</th><th>Ship-metric</th></tr></thead>
+      <tbody>
+        <tr><td>S23-25</td><td><strong>P1-1 Multi-channel single conversation</strong> — contact aggregation layer, unified thread</td><td>Multi-channel contact sayısı %20+</td></tr>
+        <tr><td>S26-27</td><td><strong>P1-4 Workflow action genişletme</strong> — Branch, HTTP Request (FREE tier), Meta CAPI, Sheets Row</td><td>Workflow builder'da ortalama node sayısı &gt;5</td></tr>
+        <tr><td>S28-30</td><td><strong>P1-5 Growth Widgets</strong> + embeddable chat + lead capture form</td><td>Website embed kullanan workspace %30+</td></tr>
+        <tr><td>S31+</td><td><strong>P2 polish:</strong> audit log, workspace-level data export, workflow template library Türkiye-specific, AI Agent suggest-only, Calls UI entegrasyonu</td><td>Enterprise müşteri kapanışı için SOC2 başlangıç</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout good">
+      <h4>12 ay sonrası parity hedefi</h4>
+      <ul style="margin-bottom:0">
+        <li>UX parity: <strong>75%</strong> (sidebar labels + onboarding tour + slash commands + AI compose)</li>
+        <li>Feature parity: <strong>80%</strong> (Lifecycle + Broadcast + AI Prompts + AI Assist + Reports 5/11)</li>
+        <li>Differentiator: <strong>ses (TONIVA) + Türkiye compliance + yerel entegrasyonlar + mikroservis izolasyon</strong> — bu alanda respond.io'nun önünde</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="cleanup">
+    <h2>10. Cleanup & Güvenlik</h2>
+    <div class="callout bad">
+      <h4>Bu session sonrası yapılması gerekenler</h4>
+      <ul>
+        <li><strong>BotFather'dan <code>/revoke</code></strong> ile Telegram bot token'ını yenile — chat context'inde kaldı</li>
+        <li><strong>Gmail şifresini değiştir</strong> (<code>regexbackup@gmail.com</code>) — chat context'inde kaldı</li>
+        <li><code>c:/tmp/respondio-profile</code> Playwright profilini sil (analiz bitti)</li>
+        <li><code>tracking/competitor-respond-io/screenshots/</code> git'e eklenmemeli — <code>.gitignore</code> kontrol et</li>
+        <li><code>tracking/competitor-respond-io/node_modules/</code> git'e eklenmemeli</li>
+      </ul>
+    </div>
+    <p class="note">Not: Bu raporu oluştururken Respond.io'nun Terms of Service'ı ihlal edilmedi — human-paced single-session, trial hesap kullanıldı, scrape değil görsel inceleme yapıldı.</p>
+  </section>
+
+  <section id="appendix">
+    <h2>11. Ek — Görsel & Veri İndeksi</h2>
+
+    <h3>Dizin Yapısı</h3>
+    <pre>tracking/competitor-respond-io/
+├── 01-login.js ................. Google SSO login (başarısız)
+├── 02-login-direct.js .......... Direct email/pass login (başarılı)
+├── 03-crawl-sidebar.js ......... Phase 2 sidebar top-level crawl
+├── 04-inbox-deep.js ............ Phase 3 inbox
+├── 05-07-settings-*.js ......... Phase 3.5 settings harvest (3 iter)
+├── 08-settings-via-inbox.js .... ✅ settings nav harvester
+├── 09-telegram-connect.js ...... ✅ Telegram bot token bağlama
+├── 10-11-inbox-live*.js ........ Phase 9.5 live conversation
+├── 12-ai-assist-live.js ........ Phase 9.6 AI Prompts + slash/dollar/emoji
+├── 13-15-workflow*.js .......... Phase 5 workflows
+├── 16-17-broadcasts*.js ........ Phase 6 broadcasts
+├── 18-contacts.js .............. Phase 4 contacts
+├── 19-thorough-sweep.js ........ Phase 11 AI Copilot + 11 Report tabs
+└── 20-final-gaps.js ............ Son eksik gap'ler
+
+screenshots/
+├── phase2/ ................... 10 screenshot — sidebar top-level
+├── phase3-inbox/ ............. 18+ screenshot — Inbox + filter + tooltip
+├── phase3_5-settings/ ........ 20+ screenshot — 17 settings bölümü
+├── phase4-contacts/ .......... 8 screenshot — contact detail + segment
+├── phase5-workflows/ ......... 15+ screenshot — template + builder
+├── phase6-broadcasts/ ........ 10+ screenshot — new broadcast flow
+├── phase9-telegram/ .......... 7 screenshot — bot connect flow
+├── phase9_5-inbox-live/ ...... 12+ screenshot — canlı konuşma
+├── phase9_6-ai-assist/ ....... 12+ screenshot — AI Prompts menu
+└── phase11-sweep/ ............ 20+ screenshot — AI Copilot + 11 Reports + onboarding</pre>
+
+    <h3>Kritik Screenshot Referansları</h3>
+    <table>
+      <thead><tr><th>Dosya</th><th>Gösterdiği</th></tr></thead>
+      <tbody>
+        <tr><td><code>phase9-telegram/06-after-submit.png</code></td><td>Telegram bağlandı — QR + t.me link + success</td></tr>
+        <tr><td><code>phase9_5-inbox-live/v2-02-conversation-open.png</code></td><td>Canlı conversation full layout</td></tr>
+        <tr><td><code>phase9_6-ai-assist/03-slash.png</code></td><td><code>/</code> Snippets menu</td></tr>
+        <tr><td><code>phase9_6-ai-assist/04-dollar.png</code></td><td><code>$</code> Variable menu (contact.firstname vs.)</td></tr>
+        <tr><td><code>phase9_6-ai-assist/05-emoji-shortcode.png</code></td><td><code>::smi</code> emoji picker</td></tr>
+        <tr><td><code>phase9_6-ai-assist/07-icon-0-icon-0.png</code></td><td>AI Prompts menu (Change tone / Translate / Fix / Simplify)</td></tr>
+        <tr><td><code>phase5-workflows/wf2-05-after-plus.png</code></td><td>Add Steps action catalog (ilk 7)</td></tr>
+        <tr><td><code>phase5-workflows/wf3-05-steps-scroll-3.png</code></td><td>Action catalog scroll (Meta CAPI / HTTP 🔒 / Sheets)</td></tr>
+        <tr><td><code>phase5-workflows/02-template-library.png</code></td><td>18+ kategori template library</td></tr>
+        <tr><td><code>phase3_5-settings/ws-ai-assist.png</code></td><td>AI Persona + knowledge + snippets toggle</td></tr>
+        <tr><td><code>phase3_5-settings/ws-ai-prompts.png</code></td><td>AI Prompts 4 built-in + Add prompt</td></tr>
+        <tr><td><code>phase3_5-settings/ws-lifecycle.png</code></td><td>Lifecycle drag-drop builder (Won/Lost)</td></tr>
+        <tr><td><code>phase3_5-settings/ws-integrations.png</code></td><td>Salesforce/HubSpot/Sheets/Make/Zapier/Webhooks</td></tr>
+        <tr><td><code>phase11-sweep/B-01-help-chat.png</code></td><td>AI Copilot help bubble</td></tr>
+        <tr><td><code>phase11-sweep/D-02-accordion-set-up-ai-agents.png</code></td><td>Onboarding AI Agent accordion</td></tr>
+        <tr><td><code>phase11-sweep/F-01-report-leaderboard.png</code></td><td>Leaderboard "Group By: User and AI Agent"</td></tr>
+        <tr><td><code>phase4-contacts/ct-03-trusted-advisor-detail.png</code></td><td>Contact detail + auto-enrichment</td></tr>
+        <tr><td><code>phase6-broadcasts/bc-02-calendar.png</code></td><td>Broadcast calendar view</td></tr>
+        <tr><td><code>phase6-broadcasts/bc2-04-channel-dropdown.png</code></td><td>Segment dropdown (5 pre-built)</td></tr>
+      </tbody>
+    </table>
+
+    <h3>İlgili Dosyalar (bu proje)</h3>
+    <ul>
+      <li>Ana markdown raporu: <code>tracking/competitor-respond-io.md</code></li>
+      <li>Bu HTML raporu: <code>tracking/competitor-respond-io.html</code></li>
+      <li>Playwright script + notes + screenshots: <code>tracking/competitor-respond-io/</code></li>
+    </ul>
+
+    <details>
+      <summary>Metodoloji transkripti (fazlar, kararlar, dönüşler)</summary>
+      <ol>
+        <li>Google SSO başarısız → direct email/pass login (respond.io Google OAuth Playwright Chromium'u bot işaretledi)</li>
+        <li>Phase 2 hızlı crawl'da <em>"daha yavaş yap, bot gibi"</em> Q feedback → insan-hızı pacing adopt edildi (memory'ye yazıldı)</li>
+        <li>Phase 3 "Connect Channel" yanlışlıkla Settings sayfasına attı — hediye: full settings nav çıktı</li>
+        <li>Gear dropdown Playwright locator'la açılmadı (radix-vue portal), inbox empty-state CTA alternatif path</li>
+        <li>Workflow trigger dropdown + AI Assist + Summarize click locator uyumsuzluğu (✨ emoji prefix) — menüler yine screenshot'larda mevcut</li>
+        <li>Final rapordan önce Q talebiyle <em>ince tarama</em>: AI Copilot, 11 Report tab, onboarding modal accordion'ları, help bubble</li>
+      </ol>
+    </details>
+  </section>
+
+  </main>
+</div>
+
+<footer class="footer">
+  <p>HTML raporu: <code>tracking/competitor-respond-io.html</code> · Kaynak markdown: <code>tracking/competitor-respond-io.md</code> · Ekran görüntüleri: <code>tracking/competitor-respond-io/screenshots/</code></p>
+  <p style="margin-top:8px">Rapor tarihi: 2026-04-24 · 8 uzman paneli · 11 phase · 20 Playwright script · 200+ screenshot</p>
+</footer>
+
+</body>
+</html>

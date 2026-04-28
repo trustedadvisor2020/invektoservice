@@ -1,0 +1,1667 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dent Adavista Canlıya Alma — Yapılacaklar Listesi</title>
+<style>
+  :root{
+    --bg:#0b0d10; --card:#12161b; --card2:#171c22; --fg:#e6e9ef; --muted:#8a94a4;
+    --border:#232a33; --accent:#6ea8ff; --accent2:#9a7cff; --good:#34d399;
+    --warn:#f59e0b; --bad:#ef4444; --neutral:#94a3b8; --info:#60a5fa; --code:#0f1318;
+    --maxw:1280px;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#f7f8fa; --card:#ffffff; --card2:#f1f3f7; --fg:#0f1720; --muted:#5b6573;
+      --border:#e3e7ee; --code:#f1f3f7;
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font:18px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em}
+  code{background:var(--code);padding:2px 6px;border-radius:4px;border:1px solid var(--border)}
+  pre{background:var(--code);padding:16px;border-radius:8px;border:1px solid var(--border);overflow-x:auto}
+  h1,h2,h3,h4{line-height:1.25;margin:1.6em 0 .6em}
+  h1{font-size:2.4rem;letter-spacing:-.02em}
+  h2{font-size:1.7rem;letter-spacing:-.01em;border-bottom:1px solid var(--border);padding-bottom:.4em;margin-top:2.4em}
+  h3{font-size:1.3rem;color:var(--fg)}
+  h4{font-size:1.05rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:1.4em 0 .5em}
+  p{margin:.6em 0}
+  ul,ol{padding-left:1.4em}
+  li{margin:.25em 0}
+  hr{border:0;border-top:1px solid var(--border);margin:2em 0}
+  table{border-collapse:collapse;width:100%;margin:1em 0;font-size:.98rem}
+  th,td{padding:10px 12px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+  th{background:var(--card2);font-weight:600;color:var(--fg)}
+  tbody tr:hover{background:var(--card2)}
+  .hero{padding:56px 24px 40px;background:linear-gradient(140deg,#12161b 0%,#1a2030 100%);border-bottom:1px solid var(--border)}
+  @media (prefers-color-scheme:light){.hero{background:linear-gradient(140deg,#eef2f9 0%,#e1e7f4 100%)}}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+  .kicker{display:inline-block;padding:4px 10px;border-radius:999px;background:rgba(110,168,255,.14);color:var(--accent);font-size:.8rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+  .sub{color:var(--muted);font-size:1.05rem;max-width:840px}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-top:28px}
+  .stat{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
+  .stat .n{font-size:1.6rem;font-weight:700;color:var(--fg)}
+  .stat .l{font-size:.85rem;color:var(--muted);margin-top:2px}
+  .layout{display:grid;grid-template-columns:260px 1fr;gap:32px;max-width:var(--maxw);margin:32px auto;padding:0 24px}
+  @media (max-width:960px){.layout{grid-template-columns:1fr}.toc-wrap{position:static!important}}
+  .toc-wrap{position:sticky;top:16px;align-self:start;max-height:calc(100vh - 32px);overflow:auto}
+  .toc{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
+  .toc h4{margin:0 0 10px;color:var(--fg);text-transform:none;letter-spacing:0;font-size:.85rem}
+  .toc ol{list-style:none;padding:0;margin:0;counter-reset:toc}
+  .toc ol li{counter-increment:toc;padding:4px 0;font-size:.9rem;line-height:1.35}
+  .toc ol li::before{content:counter(toc,decimal-leading-zero) ". ";color:var(--muted);font-variant-numeric:tabular-nums}
+  .toc a{color:var(--fg);opacity:.85}
+  .toc a:hover{opacity:1;color:var(--accent);text-decoration:none}
+  .toc .sub-list{padding-left:1.3em;margin:4px 0;list-style:disc}
+  .toc .sub-list li{font-size:.82rem;padding:2px 0;color:var(--muted)}
+  .toc .sub-list li::before{content:""}
+  .content{min-width:0}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin:18px 0}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+  .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.78rem;font-weight:600;letter-spacing:.02em;white-space:nowrap}
+  .pill.good{background:rgba(52,211,153,.12);color:var(--good)}
+  .pill.warn{background:rgba(245,158,11,.14);color:var(--warn)}
+  .pill.bad{background:rgba(239,68,68,.14);color:var(--bad)}
+  .pill.neu{background:rgba(148,163,184,.14);color:var(--neutral)}
+  .pill.info{background:rgba(96,165,250,.14);color:var(--info)}
+  .pill.hold{background:rgba(154,124,255,.14);color:var(--accent2)}
+  .callout{border-left:3px solid var(--accent);background:var(--card2);padding:14px 18px;border-radius:0 8px 8px 0;margin:14px 0}
+  .callout.warn{border-left-color:var(--warn)}
+  .callout.bad{border-left-color:var(--bad)}
+  .callout.good{border-left-color:var(--good)}
+  .callout h4{margin-top:0;color:var(--fg);text-transform:none;letter-spacing:0}
+  details{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin:8px 0}
+  details[open]{background:var(--card)}
+  summary{cursor:pointer;font-weight:600;color:var(--fg)}
+  .note{font-size:.85rem;color:var(--muted)}
+  .tag{display:inline-block;padding:2px 8px;border-radius:6px;background:var(--card2);border:1px solid var(--border);font-size:.78rem;margin-right:4px;margin-bottom:4px;color:var(--muted)}
+  .footer{text-align:center;color:var(--muted);padding:40px 24px;border-top:1px solid var(--border);margin-top:40px;font-size:.9rem}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:.85rem;color:var(--muted);margin:10px 0}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .task-table td:first-child{width:64px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .task-table td:nth-child(3){width:140px;white-space:nowrap}
+  .task-table td:nth-child(4){width:110px;color:var(--muted);font-size:.85rem;white-space:nowrap}
+  .ref{font-size:.82rem;color:var(--muted);margin-top:6px}
+  .kbd{display:inline-block;padding:1px 6px;border-radius:4px;border:1px solid var(--border);background:var(--card2);font-family:ui-monospace,monospace;font-size:.82em}
+  .timeline{display:flex;flex-direction:column;gap:12px;margin:16px 0}
+  .tl-item{display:grid;grid-template-columns:120px 1fr;gap:16px;padding:12px 0;border-bottom:1px solid var(--border)}
+  .tl-item:last-child{border-bottom:0}
+  .tl-day{font-weight:700;color:var(--accent)}
+  .tl-body{color:var(--fg)}
+  /* Senaryo / Akış görsel (toplanti aktarımı) */
+  .flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:0;margin:18px 0;padding:0;list-style:none}
+  .flow-step{flex:1 1 160px;min-width:160px;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:6px}
+  .flow-step .ico{font-size:1.6rem;line-height:1}
+  .flow-step .ttl{font-weight:600;color:var(--fg);font-size:.95rem}
+  .flow-step .desc{font-size:.84rem;color:var(--muted);line-height:1.5}
+  .flow-arrow{display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:700;padding:0 4px;font-size:1.4rem;flex:0 0 auto}
+  @media (max-width:720px){.flow{flex-direction:column}.flow-arrow{transform:rotate(90deg);padding:6px 0}}
+  .scenario{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin:24px 0}
+  .scenario-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .scenario-num{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:var(--accent);color:#0b1020;font-weight:700;font-size:1rem;flex-shrink:0}
+  .scenario-title{font-size:1.15rem;font-weight:600;margin:0;color:var(--fg)}
+  .scenario-tag{font-size:.78rem;color:var(--muted);background:var(--card2);padding:3px 8px;border-radius:6px;border:1px solid var(--border)}
+  .scenario-body{margin-top:14px}
+  .who-says{display:flex;flex-direction:column;gap:10px;margin:14px 0}
+  .bubble{padding:10px 14px;border-radius:14px;max-width:85%;line-height:1.5;font-size:.95rem}
+  .bubble.user{background:rgba(96,165,250,.14);border:1px solid rgba(96,165,250,.3);align-self:flex-start;border-bottom-left-radius:4px}
+  .bubble.bot{background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.3);align-self:flex-end;border-bottom-right-radius:4px}
+  .bubble .who{display:block;font-size:.72rem;color:var(--muted);margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+  .save-status{font-size:.82rem;color:var(--muted)}
+  .q-list{list-style:none;padding:0;margin:8px 0;counter-reset:qcnt}
+  .q-list li{counter-increment:qcnt;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 14px 12px 50px;margin:8px 0;position:relative;line-height:1.55}
+  .q-list li::before{content:"S" counter(qcnt);position:absolute;left:12px;top:12px;width:28px;height:28px;border-radius:50%;background:var(--accent);color:#0b1020;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:.78rem}
+  .q-list li b{color:var(--fg)}
+  .q-list .why{display:block;color:var(--muted);font-size:.85rem;margin-top:4px}
+  @media print{
+    .toc-wrap{display:none}.layout{grid-template-columns:1fr}
+    .hero{background:#fff;color:#000}
+    body{background:#fff;color:#000}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="kicker">Dent Adavista Pilot · 2026-04-24</span>
+    <h1 style="margin:12px 0 8px">Dent Adavista Canlıya Alma — Yapılacaklar Listesi</h1>
+    <p class="sub">Tenant <code>18173130</code> için Stage 1 (soft launch) → Stage 2 (limited beta) → Stage 3 (full traffic) + B-C2 post-pilot overhaul tam konsolide checklist. Tüm adımlar durum rozeti + tarih ile izleniyor. Kaynak: <code>pilot-stage1-prep.md</code> + <code>pilot-checklist.md</code> + <code>pilot-golive.md</code> + <code>tracking/pilot-launch-roadmap.md</code>.</p>
+    <div class="stats">
+      <div class="stat"><div class="n">15 / 15</div><div class="l">Pilot-critical paket DONE</div></div>
+      <div class="stat"><div class="n">3</div><div class="l">Aşama (Stage 1/2/3)</div></div>
+      <div class="stat"><div class="n">B-META</div><div class="l">Meta webhook DEPLOYED 2026-04-24 22:30</div></div>
+      <div class="stat"><div class="n">5 × 6</div><div class="l">Stage 1 smoke test matrisi</div></div>
+      <div class="stat"><div class="n">30 gün</div><div class="l">Success metrics penceresi</div></div>
+      <div class="stat"><div class="n">48h</div><div class="l">HSM template onay kritik yolu</div></div>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="toc-wrap">
+    <nav class="toc" aria-label="İçindekiler">
+      <h4>İçindekiler</h4>
+      <ol>
+        <li><a href="#exec">Yönetici Özeti</a></li>
+        <li><a href="#legend">Durum Rozeti Rehberi</a></li>
+        <li><a href="#done">Zaten Tamamlanan (Invekto Kod Tarafı)</a></li>
+        <li><a href="#stage1">Stage 1 — Soft Launch (2 gün)</a>
+          <ul class="sub-list">
+            <li><a href="#s1-b">B. Meta Business Manager</a></li>
+            <li><a href="#s1-c">C. Zoho CRM Blueprint</a></li>
+            <li><a href="#s1-d">D. WABA & INMA Allowlist</a></li>
+            <li><a href="#s1-e">E. Dashboard Config (7 sayfa)</a></li>
+            <li><a href="#s1-f1">F.1 Gün 1 — Happy Path Smoke</a></li>
+            <li><a href="#s1-f2">F.2 Gün 2 — Edge Case + Monitoring</a></li>
+            <li><a href="#s1-f3">F.3 Go/No-Go Kriterleri</a></li>
+          </ul>
+        </li>
+        <li><a href="#stage2">Stage 2 — Limited Beta (3 gün)</a></li>
+        <li><a href="#stage3">Stage 3 — Full Traffic</a></li>
+        <li><a href="#b-c2">B-C2 — Welcome Templates Overhaul</a></li>
+        <li><a href="#b0">B0 — Google Meet Real OAuth</a></li>
+        <li><a href="#monitoring">Monitoring & Alerting</a></li>
+        <li><a href="#training">Müşteri Eğitimi</a></li>
+        <li><a href="#metrics">Success Metrics (30 gün)</a></li>
+        <li><a href="#risks">Riskler</a></li>
+        <li><a href="#timeline">Timeline (Gün 0 → 30+)</a></li>
+        <li><a href="#quirks">Contract Quirks (pre-smoke gate)</a></li>
+        <li><a href="#customer-input">Müşteri Input Bekleyen</a></li>
+        <li><a href="#ui-gaps">UI Boşluk Envanteri (Post-Pilot Backlog)</a></li>
+        <li><a href="#ui-full-audit">Kapsamlı UI Audit (Tenant + SuperAdmin, 56 madde)</a></li>
+        <li><a href="#feat-clinic-metadata">FEAT-CLINIC-METADATA — Multi-Tenant Hardcoded Cleanup</a></li>
+        <li><a href="#meeting-questions">Toplantı Soru Kataloğu (27 soru)</a></li>
+        <li><a href="#decisions">Karar Tablosu (K1-K10)</a></li>
+        <li><a href="#customer-faq">Müşteri SSS — Hazırlıklı Cevaplar</a></li>
+        <li><a href="#lead-stages">Lead Aşamaları — 8 Durum</a></li>
+        <li><a href="#scope-gaps">Kapsam Boşlukları Detay (#5-#9 + 3 Kritik Soru)</a></li>
+        <li><a href="#scenarios">6 Senaryo — Sistem Davranış Referansı</a></li>
+      </ol>
+      <p class="note" style="margin-top:14px">Tarih: 2026-04-28 · §19-24 toplantı dokümanından konsolide edildi (dent-toplanti.html arşivlendi).</p>
+    </nav>
+  </aside>
+
+  <main class="content">
+
+  <section id="exec">
+    <h2>1. Yönetici Özeti</h2>
+    <p>Invekto kod tarafı <strong>15/15 pilot-critical paket DONE+DEPLOYED+SMOKED</strong>. Son teslim B-META Meta Leadgen Webhook Native Entegrasyon — <code>2026-04-24 22:30 UTC</code> commit <code>9763012</code>. AC1 prod smoke 4/4 PASS (GET handshake + POST bozuk 401 INV-META-001 + POST valid HMAC 200 + GET wrong-token 403 INV-META-002). Kalan iş <strong>müşteri tarafı dış bağımlılıklar + Invekto ops Dashboard config + Stage 1 smoke</strong>.</p>
+
+    <div class="grid2">
+      <div class="card">
+        <h3 style="margin-top:0">🟢 Zaten Hazır (Invekto)</h3>
+        <ul>
+          <li>B-META endpoint + Dashboard <code>/settings/meta-leadgen</code> DEPLOYED</li>
+          <li>Migration 033 prod, 5/5 postcondition INV-SEED-018..020 PASS</li>
+          <li>Paket A plan_tier upgrade → kurumsal (Appointments flag açık)</li>
+          <li>Paket B doctors tablo + Dent seed, Paket C1 36 FAQ embedding</li>
+          <li>FEAT-EFS + FEAT-MCC + FEAT-TFM + FEAT-VCP Mock, FEAT-WTP, FEAT-DMP</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">🔴 Bekleyen (Kritik Yol)</h3>
+        <ul>
+          <li>Müşteri Meta App + Lead Form + <strong>HSM welcome template</strong> onayı (24-48h)</li>
+          <li>Müşteri Zoho Blueprint 7 transition + scope authorize</li>
+          <li>Müşteri WABA phone_number_id + display name</li>
+          <li>Invekto ops INMA allowlist + Dashboard 7-sayfa config</li>
+          <li>Stage 1 smoke — 5 numara × 6 senaryo</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">🟣 Post-Pilot Backlog</h3>
+        <ul>
+          <li><strong>B-C2:</strong> 12 welcome + 36 FAQ persona-rich overhaul + rotation aktivasyon</li>
+          <li><strong>B0:</strong> Google Meet real OAuth (Q Workspace client provision)</li>
+          <li><strong>B4:</strong> lessons-learned.md archive (422 entry > 50 eşik)</li>
+          <li>Stage 3 full trafiğe açıldıktan sonra</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">⚠️ Tek Gerçek Blocker</h3>
+        <p><strong>HSM template onayı 24-48h.</strong> Meta Business Manager'da <code>dent_welcome_roadshow_v1</code> submit edilmezse pilot Stage 1 başlayamaz. Gün 0'da submit zorunlu.</p>
+        <p>Zoho Blueprint yayınlanmadan <code>welcome_sent</code> dispatch <code>INV-INT-121</code> log'a düşer — test başlanamaz.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="legend">
+    <h2>2. Durum Rozeti Rehberi</h2>
+    <p>Her maddenin sağında şu etiketlerden biri yer alır. Güncelleme bu tek dosya üzerinden yapılır.</p>
+    <div class="legend">
+      <span><span class="pill good">DONE</span> tamamlandı + tarih</span>
+      <span><span class="pill warn">IN_PROGRESS</span> üzerinde çalışılıyor</span>
+      <span><span class="pill bad">BLOCKED</span> dış bağımlılık / beklemede</span>
+      <span><span class="pill neu">TODO</span> henüz başlanmadı</span>
+      <span><span class="pill hold">HOLD</span> sonraki stage'de aktive</span>
+      <span><span class="pill info">INFO</span> not / referans</span>
+    </div>
+    <p class="note">Tarih formatı: <code>YYYY-MM-DD HH:MM UTC</code>. DONE etiketi dışındaki tarihler tahminî başlangıç/bitiş değildir — bu dosyaya gerçekleşme tarihini yaz.</p>
+  </section>
+
+  <section id="done">
+    <h2>3. Zaten Tamamlanan — Invekto Kod Tarafı</h2>
+    <p>Bu bölüm referans amaçlı: canlıya alma için yeni kod işi yok, aşağıdaki paketler prod'da çalışır durumda.</p>
+    <table class="task-table">
+      <thead><tr><th>#</th><th>Paket</th><th>Durum</th><th>Tarih</th></tr></thead>
+      <tbody>
+        <tr><td>3.1</td><td>B-META Meta Leadgen Webhook Native Entegrasyon (endpoint + Dashboard + migration 033 + ZohoLifecycleDispatcher welcome_sent hook) — commit <code>9763012</code>, Codex 4-chunk merged PASS, AC1 smoke 4/4</td><td><span class="pill good">DONE</span></td><td>2026-04-24 22:30 UTC</td></tr>
+        <tr><td>3.2</td><td>Paket A Dent plan_tier upgrade <code>baslangic → kurumsal</code> (Appointments feature flag aç)</td><td><span class="pill good">DONE</span></td><td>2026-04-24 11:25 UTC</td></tr>
+        <tr><td>3.3</td><td>Paket B B-VCP-DOCTORS doctors tablosu bootstrap + 1 Dent doctor seed + 4 slot backfill — Migration 031</td><td><span class="pill good">DONE</span></td><td>2026-04-24 12:20 UTC</td></tr>
+        <tr><td>3.4</td><td>Paket C1 Dent FAQ Surface Content Bind (36 faqs INSERT + flow welcome node DocX content + 36 embedding NOT NULL + S4 smoke 9/9) — Migration 032</td><td><span class="pill good">DONE</span></td><td>2026-04-24 18:00 UTC</td></tr>
+        <tr><td>3.5</td><td>P10 FEAT-EFS Hangfire marketing-followup queue fix (orphan queue + PrivateAssets="all" Marketing ref)</td><td><span class="pill good">DONE</span></td><td>2026-04-22 12:26 UTC</td></tr>
+        <tr><td>3.6</td><td>P11 Post-P9 FlowBuilder wiring (42 row seed: 4 slot + 1 flow + 36 faq_entries + 1 landing_settings + INV-SEED-001..008)</td><td><span class="pill good">DONE</span></td><td>2026-04-22 17:30 UTC</td></tr>
+        <tr><td>3.7</td><td>P5 FEAT-EFS Drip Sequence (3-stage + A/B + test_mode + 5 validation caps + Dashboard editor)</td><td><span class="pill good">DONE</span></td><td>2026-04-22 07:50 UTC</td></tr>
+        <tr><td>3.8</td><td>P6 FEAT-MCC Multi-City Campaign (JSONB config + GIN index + window guard INV-BE-118..121 + Dashboard editor)</td><td><span class="pill good">DONE</span></td><td>2026-04-22 12:49 UTC</td></tr>
+        <tr><td>3.9</td><td>P3 FEAT-TFM-UI + P4 FEAT-TFM-FLOW (10-slot editor + PlaceholderPicker tfmAware)</td><td><span class="pill good">DONE</span></td><td>2026-04-22 12:12-12:37 UTC</td></tr>
+        <tr><td>3.10</td><td>P1 FEAT-DMP Cache Poison Fix (7/7 test + 401 gate)</td><td><span class="pill good">DONE</span></td><td>2026-04-21 13:04 UTC</td></tr>
+      </tbody>
+    </table>
+    <p class="ref">Detay ve commit hash'leri: <code>tracking/pilot-launch-roadmap.md</code> Master Queue + Backlog.</p>
+  </section>
+
+  <section id="stage1">
+    <h2>4. Stage 1 — Soft Launch (2 gün)</h2>
+    <p>Sadece müşterinin test numarası kabul; gerçek lead reddedilir. 1 numara × 6 senaryo. Invekto ops + müşteri paralel çalışır.</p>
+
+    <h3 id="s1-b">4.1 B. Müşteri Meta Business Manager Hazırlığı</h3>
+    <p class="note">İlk kez yapılıyorsa ~2 saat, tecrübeliyse 30dk. HSM template 48h onay bekler → Gün 0'da submit edilmesi zorunlu.</p>
+    <table class="task-table">
+      <thead><tr><th>#</th><th>Adım</th><th>Durum</th><th>Tarih</th></tr></thead>
+      <tbody>
+        <tr><td>B.1</td><td>Meta App oluştur — <a href="https://developers.facebook.com/apps/">developers.facebook.com/apps</a> → [Create App] → Business type → <code>Dent Adavista Invekto Bridge</code></td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>B.2</td><td>Settings → Basic: <code>App ID</code> + <code>App Secret</code> not al. Platform=Website <code>https://app.invekto.com</code>. App Domains=<code>invekto.com</code>. Privacy + Terms URL doldur.</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>B.3</td><td>Webhooks → [Add Subscription] → Object=Page → Callback URL=<code>https://app.invekto.com/api/inbound/meta/leadgen/18173130</code> → Verify Token Invekto Dashboard rotate değeri → Subscription field=<code>leadgen</code></td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>B.4</td><td>Page Access Token (long-lived) — Graph API Explorer → permissions: <code>pages_show_list, pages_read_engagement, leads_retrieval, pages_manage_metadata</code> → token debug → exchange long-lived.</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>B.5</td><td>Page ID — Dent Adavista Facebook Page → About → Page ID sayısı.</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>B.6</td><td>Lead Form oluştur — Business Suite → Instant Forms → Create Form. Name: <code>Roadshow Ireland 2026 Signup</code>. Questions: Full Name / Phone (required) / Email (required) / City (Dublin/Cork/Both) / Previous treatment abroad (yes/no). Privacy URL + Thank you screen. [Publish] + Question ID'leri not al.</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>B.7</td><td>Invekto Dashboard → [Settings] → [Meta Leadgen] → [Keşfet: Form Fields] → form seç → mapping doğrula: FULL_NAME→name, PHONE→phone, EMAIL→email, custom_q_city→custom_1, custom_q_prev→custom_2 → [Kaydet].</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>B.8</td><td><strong>HSM Welcome Template submit — EN KRİTİK 24-48h</strong>. WhatsApp Manager → Message Templates → Create. Category=<code>Utility</code>, Language=English (US), Name=<code>dent_welcome_roadshow_v1</code>. Body: Güneş + Dr. Özge + Dublin/Cork roadshow metni. Footer: <code>Reply STOP to opt out</code>. Buttons: Quick Reply "Dublin" + "Cork". Sample {{1}}="Sarah". [Submit].</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+      </tbody>
+    </table>
+    <div class="callout bad">
+      <h4>Kritik yol — B.8 HSM onayı</h4>
+      <p>Pilot başlangıç tarihi bu onaya bağlı. Meta ortalama 24h içinde cevap veriyor ama 48h sarkabilir. Gün 0'da submit edilmezse Stage 1 ertelenir.</p>
+      <p>FAQ template'leri pilot için zorunlu DEĞİL — ai_faq node semantic search 24h window içinde free-form cevap veriyor (Paket C1 embeddings hazır, S4 smoke 9/9 PASS).</p>
+    </div>
+
+    <h3 id="s1-c">4.2 C. Müşteri Zoho CRM Blueprint Hazırlığı</h3>
+    <p class="note">Müşteri Zoho Admin ile ~45dk. Screenshare ile Invekto ops ortak yapabilir.</p>
+    <div class="callout warn">
+      <h4 style="margin-top:0">Aşama listesi sahibi: INMA — Zoho transition'ları INMA'ya hizalanır</h4>
+      <p>Aşağıdaki C.2 state listesi ve C.3 7 transition <strong>INMA tarafında tanımlanan aşama listesinin Zoho'ya yansıtılması</strong>. Pilot başlangıcı için pratik yol: INMA ekibiyle aşama isim/sıra hizalanır → bu liste Zoho Blueprint'e birebir kopyalanır → ileride INMA'da değişiklik olursa Zoho otomatik senkron için ayrı paket (UP1 Embedded Sync) açılır. Pilot süresince <strong>aşama listesi dondurulur</strong>; isim değişikliği post-pilot.</p>
+    </div>
+    <table class="task-table">
+      <thead><tr><th>#</th><th>Adım</th><th>Durum</th><th>Tarih</th></tr></thead>
+      <tbody>
+        <tr><td>C.1</td><td>Zoho CRM → Setup → Automation → Blueprint → Create → Module=Leads, Field=Lead Status, Name=<code>Dent Roadshow Pipeline</code>.</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>C.2</td><td>State list: New → Contacted → Engaged → Qualified → Offer Sent → Deposit Paid → Won (+ Lost branch).</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>C.3</td><td>7 transition ekle (isimleri serbest ama Invekto event eşleşmesi): <code>1. Mesaj Atıldı</code> (welcome_sent), <code>Konuşma Başladı</code> (engaged), <code>Nitelikli Aday</code> (qualified), <code>Teklif Gönderildi</code> (offer_sent), <code>Kapora Alındı</code> (deposit_paid), <code>Tedavi Tamamlandı</code> (closed_won), <code>İptal</code> (closed_lost).</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>C.4</td><td>[Save & Publish] → Status=<code>Active</code>.</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>C.5</td><td>Zoho API Console → Self Client → Client ID + Secret al. Scopes: <code>ZohoCRM.modules.Leads.ALL</code>, <code>ZohoCRM.settings.ALL</code>, <code>ZohoCRM.users.READ</code>. Redirect: <code>https://app.invekto.com/api/integrations/zoho/oauth/callback</code>.</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>C.6</td><td>Invekto Dashboard → [Settings] → [Entegrasyonlar] → [Zoho CRM] → [Bağlan] → OAuth popup onay → [Bağlantıyı Test Et] = 200 OK + org info.</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>C.7</td><td>Invekto Dashboard → [Settings] → [Zoho Stage Mapping] → [Discover Transitions] → 7 satır dropdown eşleştir → [Kaydet] → [Dry Run Test] PASS (Zoho'da gerçek kayıt oluşmaz).</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="s1-d">4.3 D. Müşteri WhatsApp Business & INMA Allowlist</h3>
+    <table class="task-table">
+      <thead><tr><th>#</th><th>Adım</th><th>Durum</th><th>Tarih</th></tr></thead>
+      <tbody>
+        <tr><td>D.1</td><td>Müşteri sağlar: WABA ID + Phone Number ID (Meta Business Manager → WhatsApp Manager → Phone Numbers) + Display Name + profile picture + description.</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>D.2</td><td>(Müşterinin WABA numarası yoksa) Meta Business Manager → WhatsApp Accounts → Add → Cloud API direct → phone verify SMS/voice → display name onay ~24h.</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>D.3</td><td>Invekto ops: INMA Admin panel → Dent Adavista firma kaydı oluştur → <code>InvektoCompanyCode=18173130</code> eşleme.</td><td><span class="pill neu">TODO</span></td><td>—</td></tr>
+        <tr><td>D.4</td><td>Invekto ops: INMA → WABA phone_number_id gir → <code>X-CIB-SecretKey</code> oluştur → Invekto <code>tenant_settings.inma_secret_key</code> kolonuna yaz.</td><td><span class="pill neu">TODO</span></td><td>—</td></tr>
+        <tr><td>D.5</td><td>Invekto ops: Outbound test template → INMA → WA → müşteri test numarasına ulaşma doğrulaması (non-smoke, sadece bridge check).</td><td><span class="pill neu">TODO</span></td><td>—</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="s1-e">4.4 E. Invekto Dashboard Konfigürasyon (7 Sayfa)</h3>
+    <p class="note">Müşteri Meta/Zoho/WABA config hazır olduktan sonra. Sırayla tik atılır, her sayfa ~2-5dk.</p>
+    <table class="task-table">
+      <thead><tr><th>#</th><th>Sayfa + İş</th><th>Durum</th><th>Tarih</th></tr></thead>
+      <tbody>
+        <tr><td>E.1</td><td><strong>Tenant:</strong> Display Name / Locale default=en-US + fallback=tr-TR / Timezone primary=Europe/Dublin + clinic=Europe/Istanbul / Feature flags: ai_agent + flow_builder + multi_city + followup + <code>appointments=ON</code> (plan tier kurumsal) / Branding logo + renkler / Agent Display Name=<code>Gunes</code> / Signature=<code>Gunes - Dent Adavista Dental Clinic - Kusadasi</code>.</td><td><span class="pill neu">TODO</span></td><td>—</td></tr>
+        <tr><td>E.2</td><td><strong>Lead Intake (LIW):</strong> Source slug=<code>meta-leadgen</code> + legacy <code>roadshow-landing</code>. API Key rotate. Field Map: name/phone/email/custom_1=city_preference/custom_2=country_code/consent_marketing. Phone country hint=<code>IE</code>. Consent required=ON.</td><td><span class="pill neu">TODO</span></td><td>—</td></tr>
+        <tr><td>E.3</td><td><strong>Meta Leadgen (YENİ, B-META):</strong> App Secret + Page Access Token (long-lived) + Page ID gir. [Rotate] verify token → müşteriye kopyala (B.3 için). [Keşfet: Form Fields] → form seç → mapping otomatik dolsun. [Kaydet] + [Test Webhook] son 5 event history.</td><td><span class="pill neu">TODO</span></td><td>—</td></tr>
+        <tr><td>E.4</td><td><strong>Field Mapping (TFM):</strong> 5 aktif slot: <code>roadshow_city→cf1 (text)</code>, <code>appointment_slot→cf2 (date)</code>, <code>offer_status→cf3 (enum)</code>, <code>deposit_status→cf4 (enum)</code>, <code>flight_booked→cf5 (bool)</code>. cf6-cf10 reserve.</td><td><span class="pill neu">TODO</span></td><td>—</td></tr>
+        <tr><td>E.5</td><td><strong>Campaigns (MCC):</strong> <code>roadshow_ireland_2026</code> seed zaten yüklü (Paket 11). Active window tarihleri güncel Stage 1 için doğrula (gerekirse bugünden sonraya çek).</td><td><span class="pill neu">TODO</span></td><td>—</td></tr>
+        <tr><td>E.6</td><td><strong>Followup Sequence (EFS):</strong> Test Mode=ON (delay_days dk'ya döner), Enabled=ON, Threshold=3 days no reply. 3 stage: Day 3 → <code>post_event_day3_en</code>, Day 7 → <code>post_event_day7_en</code>, Day 14 → <code>post_event_day14_en</code>. Triggers (4): welcome_chain_no_reply / offer_declined / offer_timeout / offer_on_hold_7d. A/B=50%. Dashboard TEST MODE banner görünmeli.</td><td><span class="pill neu">TODO</span></td><td>—</td></tr>
+        <tr><td>E.7</td><td><strong>Flow Builder:</strong> <code>dent_welcome_roadshow</code> (flow_id=29) → [Edit] → welcome node data.group_tag=<code>welcome_with_date</code> + message_text_welcome_1 Paket C1 DocX content doğrula. ai_faq nodes 12 intent verify. [Validate Flow] = 0 error → [Kaydet].</td><td><span class="pill neu">TODO</span></td><td>—</td></tr>
+        <tr><td>E.8</td><td><strong>Zoho Stage Mapping:</strong> C.7 ile yapıldıysa burada sadece doğrulama tiki. [Dry Run All] = 7 transition test PASS.</td><td><span class="pill neu">TODO</span></td><td>—</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="s1-f1">4.5 F.1 Gün 1 — End-to-End Happy Path Smoke</h3>
+    <p>1 test numarası (müşteri tarafından sağlanır). 6 senaryo aynı numara üzerinde çalıştırılır.</p>
+    <div class="grid2">
+      <div class="card">
+        <h4 style="color:var(--fg)">Test numarası</h4>
+        <ul>
+          <li><code>+XX XXX XXX XX XX</code> — Dent ops (müşteri sağlar)</li>
+        </ul>
+        <p class="note">Gerçek numara <code>pilot-stage1-prep.md §F.1</code>'de doldurulacak. Tek numara üzerinde S1→S6 sıralı koşuyor; arada state reset SQL ile yapılır.</p>
+      </div>
+      <div class="card">
+        <h4 style="color:var(--fg)">Log evidence pattern (unified trace)</h4>
+        <ul>
+          <li><code>[INV-META-000]</code> leadgen received</li>
+          <li><code>[INV-AT-069]</code> welcome flow triggered</li>
+          <li><code>[FEAT-WTP]</code> + <code>[FEAT-DMP]</code> + <code>[TFM resolver]</code></li>
+          <li><code>zoho_sync_log</code> yeni row status=success</li>
+          <li><code>event_followup_runs</code> stage rows scheduled</li>
+        </ul>
+      </div>
+    </div>
+    <table class="task-table">
+      <thead><tr><th>Senaryo</th><th>Ne yapılır + Beklenen</th><th>Durum</th><th>Tarih</th></tr></thead>
+      <tbody>
+        <tr><td>S1</td><td><strong>Meta form intake:</strong> Form doldur + submit → Invekto webhook 200 OK + Backend log + [Leads] yeni satır + WhatsApp welcome HSM delivered + Zoho Leads yeni kayıt status=Contacted + [Zoho Sync Log] welcome_sent success.</td><td><span class="pill hold">HOLD</span></td><td>Stage 1 Gün 1</td></tr>
+        <tr><td>S2</td><td><strong>Reply "Dublin":</strong> FlowEngineV2 city detection → rotation_group city=dublin → slot list interactive message + custom_1=dublin DB güncellendi + pipeline_status=contacted → Zoho engaged success.</td><td><span class="pill hold">HOLD</span></td><td>Stage 1 Gün 1</td></tr>
+        <tr><td>S3</td><td><strong>FAQ sor:</strong> "Is it really free?" → ai_faq semantic search top hit score &gt;0.6 (is_it_free intent) → variant A/B/C biri (C1 pool) + chat_sessions yeni row.</td><td><span class="pill hold">HOLD</span></td><td>Stage 1 Gün 1</td></tr>
+        <tr><td>S4</td><td><strong>Appointment booking:</strong> Slot list'ten seç → appointments INSERT + VideoMeetingCreationJob Succeeded ~500ms + meeting_link non-null (mock) + reminder 24h+1h scheduled + pipeline_status=consultation → Zoho offer_sent success.</td><td><span class="pill hold">HOLD</span></td><td>Stage 1 Gün 1</td></tr>
+        <tr><td>S5</td><td><strong>Followup sequence (test_mode=ON):</strong> Welcome'a REPLY gönderme → 3dk bekle → FollowupStageJob queue=marketing-followup pickup + stage[0] Succeeded ~16s + Day 3 template gönderildi + event_followup_runs success row.</td><td><span class="pill hold">HOLD</span></td><td>Stage 1 Gün 1</td></tr>
+        <tr><td>S6</td><td><strong>Opt-out:</strong> "STOP" yaz → inma_optout_outbox event_type=optout_stop + outbound_messages status=blocked + Dashboard [Leads] satırında opt-out icon.</td><td><span class="pill hold">HOLD</span></td><td>Stage 1 Gün 1</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="s1-f2">4.6 F.2 Gün 2 — Edge Case + Monitoring</h3>
+    <table class="task-table">
+      <thead><tr><th>#</th><th>Test</th><th>Durum</th><th>Tarih</th></tr></thead>
+      <tbody>
+        <tr><td>F.2.1</td><td>Geçersiz telefon formatı ("abc") → Meta form submit → <code>INV-BE-105</code> reject verify.</td><td><span class="pill hold">HOLD</span></td><td>Stage 1 Gün 2</td></tr>
+        <tr><td>F.2.2</td><td>Consent=false → LIW reject verify.</td><td><span class="pill hold">HOLD</span></td><td>Stage 1 Gün 2</td></tr>
+        <tr><td>F.2.3</td><td>Aynı telefon 2 kez submit → dup merge (tek lead, 2 audit log entry).</td><td><span class="pill hold">HOLD</span></td><td>Stage 1 Gün 2</td></tr>
+        <tr><td>F.2.4</td><td>Zoho token expire simulate → Invekto retry worker verify + <code>sync_log</code> failed/retry pattern.</td><td><span class="pill hold">HOLD</span></td><td>Stage 1 Gün 2</td></tr>
+        <tr><td>F.2.5</td><td>INMA bridge 500 simulate → outbound retry worker verify.</td><td><span class="pill hold">HOLD</span></td><td>Stage 1 Gün 2</td></tr>
+        <tr><td>F.2.6</td><td>Monitoring dashboard: WAA webhook error count=0 + flow stuck lead=0 + LLM cost &lt;$5/gün + intent confidence avg &gt;0.7.</td><td><span class="pill hold">HOLD</span></td><td>Stage 1 Gün 2</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="s1-f3">4.7 F.3 Go/No-Go Kriterleri (Stage 1 → Stage 2)</h3>
+    <div class="callout good">
+      <h4>PASS kriterleri (hepsi ✓ olmalı)</h4>
+      <ul>
+        <li>1/1 test numarası için 6/6 senaryo PASS</li>
+        <li>0 blocker bug</li>
+        <li>Zoho sync log success rate ≥ %95</li>
+        <li>Müşteri sign-off email (ekran görüntüsü + onay)</li>
+      </ul>
+    </div>
+    <div class="callout bad">
+      <h4>FAIL durumunda</h4>
+      <ul>
+        <li>Her failure için <code>INV-xxx</code> error code + root cause kayıt</li>
+        <li>Müşteri mutabık + fix paketi açılır (/auto workflow)</li>
+        <li>Fix sonrası Stage 1 smoke tam döngü tekrar</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="stage2">
+    <h2>5. Stage 2 — Limited Beta (3 gün)</h2>
+    <p>İlk 20 gerçek lead kabul. Her biri Invekto ops tarafından manuel inceleme. Landing page + reklam trafiği SINIRLI.</p>
+    <table class="task-table">
+      <thead><tr><th>#</th><th>Adım</th><th>Durum</th><th>Tarih</th></tr></thead>
+      <tbody>
+        <tr><td>5.1</td><td>Stage 1 sign-off alındıktan sonra Invekto Dashboard → [Lead Intake] → source_slug=<code>meta-leadgen</code> rate limit gerçek trafik açık, landing URL müşteriye devir.</td><td><span class="pill hold">HOLD</span></td><td>Stage 1 PASS sonrası</td></tr>
+        <tr><td>5.2</td><td>Müşteri Meta Ads Manager → Lead Form'a bağlı reklam kampanyası <strong>sınırlı bütçe</strong> ile aç (günlük &lt;20 lead hedefleyecek tavan).</td><td><span class="pill hold">HOLD</span></td><td>Stage 2 Gün 1</td></tr>
+        <tr><td>5.3</td><td>İlk 20 lead geldikçe Invekto ops (coordinator dashboard) <strong>her lead'i manuel inceleme</strong>: welcome delivered tick / reply rate / slot booking flow / Zoho sync log success.</td><td><span class="pill hold">HOLD</span></td><td>Stage 2 Gün 1-3</td></tr>
+        <tr><td>5.4</td><td>Ops ekibi <strong>her saat review</strong> — monitoring dashboard kontrolü + anomali ops-hot-channel'a bildirim.</td><td><span class="pill hold">HOLD</span></td><td>Stage 2 Gün 1-3</td></tr>
+        <tr><td>5.5</td><td>EFS test_mode=OFF flip → delay_days gerçek gün değerlerine dön (Day 3 / 7 / 14).</td><td><span class="pill hold">HOLD</span></td><td>Stage 2 Gün 2</td></tr>
+        <tr><td>5.6</td><td>Her lead için intent log + confidence + handoff trigger analizi. Intent confidence &lt;0.5 olan mesajlar manuel kategorize.</td><td><span class="pill hold">HOLD</span></td><td>Stage 2 Gün 1-3</td></tr>
+        <tr><td>5.7</td><td>UAT senaryoları S4 (X-ray upload orta akışta) + S5 (FAQ mid-flow) + S6 (welcome no reply → warm_pool) + S7 ("Not available today" → tomorrow reminder) + S8 (offer 24h no response → follow_up) verify.</td><td><span class="pill hold">HOLD</span></td><td>Stage 2</td></tr>
+        <tr><td>5.8</td><td>UAT S9 (offer decline with reason → warm_pool) + S10 (duplicate lead 30g window) + S11 (STOP keyword) + S12 (Turkish inbound → TR fallback/translation) + S13 (FAQ price_quote 3 kez → fiyat listesi + call-back) + S14 (FAQ safety_concern → social proof inject) + S15 (slot concurrent booking race).</td><td><span class="pill hold">HOLD</span></td><td>Stage 2</td></tr>
+        <tr><td>5.9</td><td>UAT S16-20 FAQ accuracy: 12 intent × 2 paraphrase → doğru cevap + rotation çalışıyor.</td><td><span class="pill hold">HOLD</span></td><td>Stage 2</td></tr>
+        <tr><td>5.10</td><td><strong>Go/No-Go Stage 3:</strong> reply rate &gt;40% + slot booking &gt;50% + sync log success &gt;95% + 0 data leak + müşteri sign-off.</td><td><span class="pill hold">HOLD</span></td><td>Stage 2 sonu</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="stage3">
+    <h2>6. Stage 3 — Full Traffic</h2>
+    <p>Landing page + reklam trafiği tam açık. Müşteri bütçesini optimize eder. Invekto ops günlük review + retrospective.</p>
+    <table class="task-table">
+      <thead><tr><th>#</th><th>Adım</th><th>Durum</th><th>Tarih</th></tr></thead>
+      <tbody>
+        <tr><td>6.1</td><td>Müşteri Meta Ads Manager → bütçe cap kaldır + retargeting audiences aktive.</td><td><span class="pill hold">HOLD</span></td><td>Stage 3 Gün 1</td></tr>
+        <tr><td>6.2</td><td>Invekto Dashboard → [Lead Intake] rate limit tenant tier'ına göre açık (<code>kurumsal</code>).</td><td><span class="pill hold">HOLD</span></td><td>Stage 3 Gün 1</td></tr>
+        <tr><td>6.3</td><td><strong>B-C2 paketi paralel aktive</strong> — welcome rotation aktif (aşağıdaki 7. bölüm).</td><td><span class="pill hold">HOLD</span></td><td>Stage 3 Hafta 1</td></tr>
+        <tr><td>6.4</td><td><strong>B0 paketi paralel aktive</strong> — Google Meet real OAuth (aşağıdaki 8. bölüm).</td><td><span class="pill hold">HOLD</span></td><td>Stage 3 Hafta 1-2</td></tr>
+        <tr><td>6.5</td><td>Ops: günlük metrik review (reply rate + slot booking + offer accept + meet attended). Anomaly: intent confidence trend, LLM cost trend, WAA webhook error count.</td><td><span class="pill hold">HOLD</span></td><td>Stage 3 günlük</td></tr>
+        <tr><td>6.6</td><td>Meta rate limit izleme — ani trafik spike'ında Meta'ya tier upgrade talebi önceden gönder.</td><td><span class="pill hold">HOLD</span></td><td>Stage 3 sürekli</td></tr>
+        <tr><td>6.7</td><td>Dr. Özge bandwidth — günlük Meet kapasite slot availability ayarı (ops coordinator yönetir).</td><td><span class="pill hold">HOLD</span></td><td>Stage 3 sürekli</td></tr>
+        <tr><td>6.8</td><td>Post-launch retrospective Gün +14: metrik vs hedef karşılaştırma + <code>arch/lessons-learned.md</code> +lesson entry + evolve candidate pattern tespiti + V2 backlog (IG + Telegram kanal aktivasyon, yeni campaign slug).</td><td><span class="pill hold">HOLD</span></td><td>Stage 3 Gün +14</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="b-c2">
+    <h2>7. B-C2 — Welcome Templates Overhaul (Post-Pilot)</h2>
+    <p class="note">Q G13 'iki ayrı paket' kararı 2026-04-24 17:00 UTC. C1 scope FAQ surface ile sınırlandı. C2 pilot Stage 3 confirmed sonrası açılır. Risk MEDIUM — scope creep koruması.</p>
+    <table class="task-table">
+      <thead><tr><th>#</th><th>İş</th><th>Durum</th><th>Tarih</th></tr></thead>
+      <tbody>
+        <tr><td>7.1</td><td><code>template_catalog welcome_*</code> 12 row content overwrite (DocX 10 with-date + 5 no-date persona-rich: Güneş + Dr. Özge + Dublin/Cork tarihleri) — prod generic metin yerine.</td><td><span class="pill hold">HOLD</span></td><td>Post-pilot</td></tr>
+        <tr><td>7.2</td><td>(Opsiyonel) 3 ekstra <code>welcome-wdate-8/9/10</code> INSERT (12 → 15 variant alignment).</td><td><span class="pill hold">HOLD</span></td><td>Post-pilot</td></tr>
+        <tr><td>7.3</td><td><code>chatbot_flows</code> flow_id=29 message_text_welcome_1 node <code>data.rotation_group_tag='welcome_with_date'</code> attach → FEAT-WTP rotation aktif (şu an tek varyant).</td><td><span class="pill hold">HOLD</span></td><td>Post-pilot</td></tr>
+        <tr><td>7.4</td><td><code>template_catalog faq_*</code> 36 row content DocX A/B/C ile align (rotation pool source-of-truth tek hâle).</td><td><span class="pill hold">HOLD</span></td><td>Post-pilot</td></tr>
+        <tr><td>7.5</td><td><code>dent_paket_c1_archive_20260424</code> table DROP (post-pilot ops cleanup, C1 rollback kanıtı artık gereksiz).</td><td><span class="pill hold">HOLD</span></td><td>Post-pilot</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="b0">
+    <h2>8. B0 — Google Meet Real OAuth (Post-Pilot)</h2>
+    <p class="note">Stage 1-2'de mock provider (meeting_link fake URL ama flow ve reminder job'lar gerçek). Stage 3 öncesi real OAuth gerekli.</p>
+    <table class="task-table">
+      <thead><tr><th>#</th><th>İş</th><th>Durum</th><th>Tarih</th></tr></thead>
+      <tbody>
+        <tr><td>8.1</td><td><strong>Q provision:</strong> Google Workspace Console → OAuth Client oluştur → Client ID + Secret + Authorized Redirect URI (<code>https://app.invekto.com/api/integrations/googlemeet/oauth/callback</code>).</td><td><span class="pill bad">BLOCKED</span></td><td>— (Q provision)</td></tr>
+        <tr><td>8.2</td><td>Müşteri Workspace hesabı al (<code>ops@dentadavista.com</code> tahmini) → OAuth consent flow → refresh token.</td><td><span class="pill hold">HOLD</span></td><td>Stage 3 öncesi</td></tr>
+        <tr><td>8.3</td><td>Invekto Dashboard → [Settings] → [Video Consultation] → <code>video_provider = googlemeet</code> flip (mock'tan real'e).</td><td><span class="pill hold">HOLD</span></td><td>Stage 3 öncesi</td></tr>
+        <tr><td>8.4</td><td>Dentist Dr. Özge attendee email + coordinator attendee email doldur.</td><td><span class="pill hold">HOLD</span></td><td>Stage 3 öncesi</td></tr>
+        <tr><td>8.5</td><td>Smoke: test appointment → real Google Meet link generate + ICS invite → attendees'e email → meeting sonrası post-meet stage transition.</td><td><span class="pill hold">HOLD</span></td><td>Stage 3 öncesi</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="monitoring">
+    <h2>9. Monitoring & Alerting</h2>
+    <table class="task-table">
+      <thead><tr><th>#</th><th>Alert</th><th>Durum</th><th>Tarih</th></tr></thead>
+      <tbody>
+        <tr><td>9.1</td><td>WAA webhook error alert (Slack/email) — rolling 5dk window &gt;%1 fail rate.</td><td><span class="pill neu">TODO</span></td><td>—</td></tr>
+        <tr><td>9.2</td><td>Flow stuck lead alert — 7 gün boyunca aynı flow node'da kalmış lead.</td><td><span class="pill neu">TODO</span></td><td>—</td></tr>
+        <tr><td>9.3</td><td>LLM cost günlük limit — tenant başı eşik + threshold &gt;%80 warning + %100 hard stop.</td><td><span class="pill neu">TODO</span></td><td>—</td></tr>
+        <tr><td>9.4</td><td>Intent confidence anomaly — rolling 24h baseline &gt;3σ düşüş.</td><td><span class="pill neu">TODO</span></td><td>—</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="training">
+    <h2>10. Müşteri Eğitimi Deliverables</h2>
+    <table class="task-table">
+      <thead><tr><th>#</th><th>Deliverable</th><th>Durum</th><th>Tarih</th></tr></thead>
+      <tbody>
+        <tr><td>10.1</td><td>15 dk screencast: coordinator dashboard (teklif hazırlama + offer send + manual override).</td><td><span class="pill neu">TODO</span></td><td>—</td></tr>
+        <tr><td>10.2</td><td>10 dk screencast: AI agent supervise (handoff + intent log).</td><td><span class="pill neu">TODO</span></td><td>—</td></tr>
+        <tr><td>10.3</td><td>FAQ cheatsheet: Güneş anlayamadığında ne yapacak (escalation kartı).</td><td><span class="pill neu">TODO</span></td><td>—</td></tr>
+        <tr><td>10.4</td><td>30 dk kickoff call Q&amp;A.</td><td><span class="pill neu">TODO</span></td><td>—</td></tr>
+      </tbody>
+    </table>
+
+    <h3>10.5 Pilot Süresince Destek Seviyesi</h3>
+    <ul>
+      <li><b>Yumuşak açılış (2 gün):</b> Bizim ekip aynı odadaymış gibi anlık takipte. Telefon / WhatsApp her zaman açık.</li>
+      <li><b>Sınırlı test (3 gün):</b> Bizim ekipten biri her saat sisteme bakıyor. Sapma olursa 15 dakika içinde müşteriye bildirim.</li>
+      <li><b>Tam açılış sonrası:</b> Günlük otomatik özet e-postası + haftalık 30 dk gözden geçirme toplantısı (isteğe bağlı).</li>
+    </ul>
+  </section>
+
+  <section id="metrics">
+    <h2>11. Success Metrics (İlk 30 Gün)</h2>
+    <table>
+      <thead><tr><th>Metrik</th><th>Hedef</th><th>Ölçüm Noktası</th></tr></thead>
+      <tbody>
+        <tr><td>Welcome → reply rate</td><td>&gt;40%</td><td>leads.first_reply_at vs welcome_sent_at</td></tr>
+        <tr><td>Reply → slot booked</td><td>&gt;50%</td><td>appointments INSERT vs leads.first_reply_at</td></tr>
+        <tr><td>Slot → offer accept</td><td>&gt;60%</td><td>offer_status=accepted vs offer_sent</td></tr>
+        <tr><td>Offer → Meet attended</td><td>&gt;80%</td><td>post_meet_stage transition success</td></tr>
+        <tr><td>Warm pool → recovery (day 3/7/14)</td><td>&gt;10%</td><td>followup stage run status=success + re-engagement</td></tr>
+        <tr><td>Agent auto-resolve (no handoff)</td><td>&gt;75%</td><td>1 - (handoff events / total conversations)</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="risks">
+    <h2>12. Riskler</h2>
+    <div class="grid2">
+      <div class="card">
+        <h3 style="margin-top:0;color:var(--bad)">Beklenmeyen müşteri mesajı</h3>
+        <p>AI anlayamayacağı soru alırsa coordinator'a hızlı handoff kritik. Mitigation: intent confidence threshold + 2 retry sonrası human handoff + coordinator dashboard badge.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;color:var(--bad)">Meta rate limit</h3>
+        <p>Stage 3 ani trafik → tier upgrade talebi Meta'ya önceden. Mitigation: Stage 2 sonunda günlük trafik projeksiyonu + Meta support ticket hazır.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;color:var(--bad)">Dentist bandwidth</h3>
+        <p>Dr. Özge günlük Meet kapasitesi sınırlı. Mitigation: slot availability ayarı dinamik + coordinator görünür kalan kapasite badge.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;color:var(--bad)">INMA uptime</h3>
+        <p>SLA bilinmiyor. Mitigation: monitoring + retry kuyruğu (outbound retry worker + P10 Hangfire marketing-followup queue fix DONE).</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;color:var(--bad)">HSM template reject</h3>
+        <p>Meta template onayı reddedilirse pilot ertelenir. Mitigation: Utility category seç (marketing'den hızlı onay) + body'de CTA doğal dilde, template policy uyumlu + sample value ver.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;color:var(--bad)">Zoho token expire</h3>
+        <p>Refresh token 30 gün dönüyor olmazsa sync kesilir. Mitigation: Invekto retry worker + sync_log failed alert + token health check.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;color:var(--bad)">Mesai dışı yığılma</h3>
+        <p>Sistem 7/24 cevaplıyor; koordinatör müdahalesi gereken konular mesai başında sıraya giriyor. Mitigation: mesai dışı geç cevap vereceğimiz konularda hastaya net "yarın 09:00'da geri döneceğiz" mesajı; K6 kararı (mesai dışı politika) belirler.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="timeline">
+    <h2>13. Timeline (Gün 0 → 30+)</h2>
+    <div class="timeline">
+      <div class="tl-item"><div class="tl-day">Gün 0<br><span class="note">2026-04-24</span></div><div class="tl-body"><strong>DONE:</strong> Invekto B-META kod paketi deploy + AC1 smoke 4/4. <strong>Müşteri tetikler:</strong> Meta App (B.1-B.7) + <strong>HSM template submit (B.8 KRİTİK 48h)</strong> + Zoho Blueprint (C.1-C.5).</div></div>
+      <div class="tl-item"><div class="tl-day">Gün 1<br><span class="note">~2026-04-25</span></div><div class="tl-body">Invekto ops: Dashboard config 7 sayfa (E.1-E.8) + INMA allowlist (D.3-D.5). Müşteri: Zoho Invekto OAuth bağla (C.6-C.7). HSM onay bekleniyor.</div></div>
+      <div class="tl-item"><div class="tl-day">Gün 2<br><span class="note">~2026-04-26</span></div><div class="tl-body">HSM template approved (umut). Stage 1 Gün 1 F.1 smoke başlar: 5 numara × 6 senaryo happy path.</div></div>
+      <div class="tl-item"><div class="tl-day">Gün 3<br><span class="note">~2026-04-27</span></div><div class="tl-body">Stage 1 Gün 2 F.2 edge case + monitoring + Go/No-Go kriter F.3. Sign-off alınırsa Stage 2 başlar.</div></div>
+      <div class="tl-item"><div class="tl-day">Gün 4-6<br><span class="note">~2026-04-28 → 04-30</span></div><div class="tl-body">Stage 2 limited beta: ilk 20 gerçek lead manuel inceleme + ops her saat review + EFS test_mode OFF + UAT S4-S20.</div></div>
+      <div class="tl-item"><div class="tl-day">Gün 7+<br><span class="note">~2026-05-01</span></div><div class="tl-body">Stage 3 full trafik. Paralel: B-C2 welcome overhaul + B0 Google Meet real OAuth paketleri.</div></div>
+      <div class="tl-item"><div class="tl-day">Gün +14<br><span class="note">~2026-05-14</span></div><div class="tl-body">Post-launch retrospective: metrik vs hedef + lessons-learned + V2 backlog (IG + Telegram kanal, yeni campaign slug).</div></div>
+      <div class="tl-item"><div class="tl-day">Gün +30<br><span class="note">~2026-05-31</span></div><div class="tl-body">Success metrics 30-gün pencere kapanışı: reply rate / slot booking / offer accept / meet attended / warm pool recovery / auto-resolve.</div></div>
+    </div>
+  </section>
+
+  <section id="quirks">
+    <h2>14. Contract Quirks — Pre-Smoke Verify Gate</h2>
+    <p>Smoke/debug curl hazırlarken bu 5 maddeyi <strong>önce</strong> tik et. Her biri gerçek bir drift cycle'ın kaynağı (lessons 2026-04-22 P9 wiring).</p>
+    <table>
+      <thead><tr><th>#</th><th>Kural</th><th>Hata kodu</th><th>Ref</th></tr></thead>
+      <tbody>
+        <tr><td>Q.1</td><td><strong>Header adı:</strong> <code>X-Invekto-Api-Key</code> (NOT <code>X-Api-Key</code>). Missing/bozuk key → 401.</td><td><code>INV-BE-100</code></td><td><code>Program.cs:5097</code></td></tr>
+        <tr><td>Q.2</td><td><strong>Body wrapper:</strong> Payload <code>{ "fields": { ... } }</code> içinde olmak zorunda (flat <code>{ "name": "..." }</code> 400 ile reddedilir). UTM + referer + submitted_at ayrı top-level.</td><td><code>INV-BE-109</code></td><td><code>LeadIntakeRequest.cs:15</code></td></tr>
+        <tr><td>Q.3</td><td><strong>Consent tipi:</strong> <code>consent_marketing</code> boolean <code>true</code>/<code>false</code> (JSON bool veya string <code>"true"</code>/<code>"false"</code>). String <code>"yes"</code>, <code>"1"</code>, <code>"on"</code> REDDEDİLİR.</td><td><code>INV-BE-105</code></td><td><code>FieldMapResolver.cs:128-144</code></td></tr>
+        <tr><td>Q.4</td><td><strong>Slug regex:</strong> <code>{source_slug}</code> path parametresi <code>^[a-z0-9][a-z0-9-]{0,49}$</code> — küçük harf + digit + <strong>sadece tire</strong>. Underscore REDDEDILIR. <code>roadshow_landing</code> ❌ <code>roadshow-landing</code> ✅.</td><td><code>INV-BE-101</code></td><td><code>LeadIntakeService.cs:21</code></td></tr>
+        <tr><td>Q.5</td><td><strong>Smoke/debug URL:</strong> Prod sunucuda MCP <code>invekto-ops server-exec</code> içinden Backend'e direkt <code>http://localhost:5000/...</code> kullan. <code>https://app.invekto.com</code> INMA legacy login IIS surface'i (Backend reverse proxy DEĞİL) — external URL ile test 404/kimlik kontrolüne takılır.</td><td>—</td><td>Lessons 2026-04-22</td></tr>
+      </tbody>
+    </table>
+    <div class="callout">
+      <h4>Meta webhook HMAC smoke (B-META session lesson 2026-04-24)</h4>
+      <p>PowerShell'de webhook HMAC smoke test için <code>curl.exe --data-binary "@file"</code> kullanılmalı (<code>--data</code> değil). <code>--data</code> body-modification bug raw payload byte-exact bozuyor, HMAC signature mismatch üretiyor.</p>
+    </div>
+  </section>
+
+  <section id="customer-input">
+    <h2>15. Müşteri Input Bekleyen (Kritik Yol)</h2>
+    <table class="task-table">
+      <thead><tr><th>#</th><th>Input</th><th>Durum</th><th>Tarih</th></tr></thead>
+      <tbody>
+        <tr><td>15.1</td><td>WhatsApp Business numarası / Meta Business Manager access (WABA ID + Phone Number ID + Display Name).</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>15.2</td><td>Meta App App Secret + Page Access Token (long-lived) + Page ID.</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>15.3</td><td>Lead Form URL + Question ID listesi.</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>15.4</td><td>Logo + kurumsal renkler (primary/secondary).</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>15.5</td><td>Güneş kişi mi, ortak klinik numarası mı (persona decision).</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>15.6</td><td>Google Workspace hesabı (Meet) — <code>ops@dentadavista.com</code> tahmini, onay bekliyor.</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>15.7</td><td>Fiyat listesi (PDF veya link) — FAQ price_quote intent için.</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>15.8</td><td>Instagram / Facebook URL'leri (sosyal proof FAQ inject için).</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>15.9</td><td>Zoho Admin erişim + Blueprint yayınlama onayı + API Client ID/Secret + scope authorize.</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>15.10</td><td>1 test numarası (Stage 1 smoke için).</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="ui-gaps">
+    <h2>16. UI Boşluk Envanteri (Post-Pilot Backlog)</h2>
+    <p>Mevcut Dashboard 70+ sayfa içeriyor; aşağıdaki ekranlar Dent pilotu için tespit edildi ama henüz yok. Toplam ~25-30 iş günü, üç öncelik sınıfında (2026-04-28 toplantı tespiti).</p>
+
+    <div class="grid2" style="margin-bottom:18px">
+      <div class="card">
+        <h3 style="margin-top:0;color:var(--bad)">🔴 Kritik (Pilotta lazım)</h3>
+        <p>Eklenmezse koordinatör operasyonu dağılır, hata kaçar.</p>
+        <ul>
+          <li><strong>#10 Koordinatör Devir Kuyruğu</strong> — robot anlamayınca devredilen hastaların aksiyon ekranı (~3 gün)</li>
+          <li><strong>#11 Bildirim Merkezi</strong> — eskalasyon/hata/kapasite tek panel (~3 gün)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;color:var(--warn)">🟡 Stage 2-3 yetiştirilebilir</h3>
+        <p>Pilot başlar, paralel inşa edilir.</p>
+        <ul>
+          <li><strong>#12 Dr. Özge Pre-Görüşme Brifing</strong> — 1 saat öncesi tek-bakış (~2 gün)</li>
+          <li><strong>#13 Teklif Hazırlama UI</strong> — Flowchart Hazırlanıyor→Hazırlandı→Verildi (~4 gün)</li>
+          <li><strong>#14 Operasyon Komuta Anasayfa</strong> — günlük rakam tek bakışta (~3 gün)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;color:var(--neutral)">⚪ Post-Pilot (manuel/SQL ile yürür)</h3>
+        <p>Pilotta gerekmiyor, sonra eklenir.</p>
+        <ul>
+          <li><strong>#15 GDPR Verimi Sil Akışı UI</strong> (~2 gün)</li>
+          <li><strong>#16 Audit Log / Lead Timeline</strong> — Boşluk #9 bağımlısı (~3 gün)</li>
+          <li><strong>#17 Toplu Mesaj / Bulk Send UI</strong> (~4 gün)</li>
+          <li><strong>#18 Şikayet / Problem Yönetimi UI</strong> (~3 gün)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;color:var(--good)">✅ Mevcut, Dent için doğrulanmalı</h3>
+        <ul>
+          <li><code>MessagesPage.tsx</code> + INMA chat (manuel outbound)</li>
+          <li><code>AppointmentsPage.tsx</code> (randevu yönetimi)</li>
+          <li><code>zoho/ZohoSyncLogPage.tsx</code> (sync log)</li>
+          <li><code>RescueDashboardPage.tsx</code> (PKT-12 yorum kurtarma)</li>
+          <li><code>TemplateLibraryPage.tsx</code> + <code>TemplateCreatePage.tsx</code></li>
+          <li><code>FlowMonitorPage.tsx</code> (FM-1b canlı izleme)</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>16.1 Öncelik Tablosu</h3>
+    <table class="task-table">
+      <thead><tr><th>#</th><th>UI Ekranı</th><th>Süre</th><th>Durum</th><th>Tarih</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>16.1</td>
+          <td><b>Koordinatör Devir Kuyruğu (Handoff Queue)</b> — inbox + cevap input + öncelik sıralaması + claim/release. Mevcut FlowMonitor "handed_off" filtresi izleme amaçlı, aksiyon yok.</td>
+          <td>~3 gün</td>
+          <td><span class="pill bad">CRITICAL</span></td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>16.2</td>
+          <td><b>Bildirim Merkezi (Notification Hub)</b> — eskalasyon (foto/uçak gecikti), anomali (LLM cost spike, intent confidence drop), kapasite (slot doldu) tek panelde. Okundu/aksiyon işareti.</td>
+          <td>~3 gün</td>
+          <td><span class="pill bad">CRITICAL</span></td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>16.3</td>
+          <td><b>Dr. Özge Pre-Görüşme Brifing</b> — form bilgileri + sohbet özeti + foto thumbnail + önceki notlar tek-bakış. <code>LeadDetailPage</code>'in odaklanmış kısaltılmış sürümü.</td>
+          <td>~2 gün</td>
+          <td><span class="pill warn">STAGE_2_3</span></td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>16.4</td>
+          <td><b>Teklif Hazırlama / Düzenleme UI</b> — Flowchart "Teklif Hazırlanıyor → Hazırlandı → Verildi" manuel akışı. Fiyat kalemleri + paket notu + gönder. Boşluk #6 ile bağlı.</td>
+          <td>~4 gün</td>
+          <td><span class="pill warn">STAGE_2_3</span></td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>16.5</td>
+          <td><b>Operasyon Komuta Anasayfası (Daily Ops Dashboard)</b> — bugün kaç hasta / kaç randevu / kaç eskalasyon / kaç görüşme tek bakış. Boşluk #8 (KPI rapor) ile bağlı, günlük versiyonu.</td>
+          <td>~3 gün</td>
+          <td><span class="pill warn">STAGE_2_3</span></td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>16.6</td>
+          <td><b>GDPR "Verimi Sil" Akışı UI</b> — koordinatör tek tıkla tetikler, SQL gerekmez. Pilot 30 günde devreye girmeyebilir ama yasal sorumluluk.</td>
+          <td>~2 gün</td>
+          <td><span class="pill neu">POST_PILOT</span></td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>16.7</td>
+          <td><b>Audit Log / Aktivite Geçmişi UI</b> — kim ne zaman ne değiştirdi. Boşluk #9 (çift yönlü pipeline status) için kritik bağımlılık. Mevcut <code>LogsPage</code> teknik log, lead-bazlı timeline yok.</td>
+          <td>~3 gün</td>
+          <td><span class="pill neu">POST_PILOT</span></td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>16.8</td>
+          <td><b>Toplu Mesaj / Kampanya Gönderim UI</b> — Stage 3 roadshow tarihi yaklaşırken 100 lead'e tek seferde hatırlatma. <code>CampaignsPage</code> MCC config; bulk send farklı.</td>
+          <td>~4 gün</td>
+          <td><span class="pill neu">POST_PILOT</span></td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>16.9</td>
+          <td><b>Şikayet / Problem Yönetimi UI</b> — olumsuz mesaj tagging + escalation flow. <code>AiSentimentNode</code> sentiment analiz var, dedicated complaint tracker yok.</td>
+          <td>~3 gün</td>
+          <td><span class="pill neu">POST_PILOT</span></td>
+          <td>—</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout warn">
+      <h4>Pilot kapsamına alma kararları (toplantı çıktısı)</h4>
+      <ul>
+        <li>16.1-16.2 (CRITICAL): Pilotta yetiştirilsin mi, yoksa geçici çözüm (e-posta + WhatsApp koordinatör bildirimi) mi? — Toplantıda karar.</li>
+        <li>16.3-16.5 (STAGE_2_3): Üçü de yetişebilir mi? Önerilen sıra: <strong>16.5 (Operasyon Anasayfa)</strong> → 16.3 (Dr. Özge Brifing) → 16.4 (Teklif Hazırlama).</li>
+        <li>16.6-16.9 (POST_PILOT): Pilot süresince manuel/SQL ile çözülür, tam açılış sonrası backlog'a alınır.</li>
+      </ul>
+    </div>
+
+    <p class="ref">Detay analizi ve toplantı kararları: <code>dent-toplanti.html §14.7</code> (UI Boşluk Envanteri #10-#18). Bağlı boşluklar: <code>§14.3 #6</code> (Teklif), <code>§14.3 #8</code> (Rapor/KPI), <code>§14.3 #9</code> (INMA Pipeline Dropdown — Audit Log 16.7 bağımlılığı).</p>
+  </section>
+
+  <section id="ui-full-audit">
+    <h2>17. Kapsamlı UI Audit — Tenant + SuperAdmin (56 madde)</h2>
+    <p>2026-04-28 sistematik kodbazı taraması (Dashboard sayfaları + Backend endpoint'leri + DB tabloları, paralel 2 Explore subagent). Bulgular üç kategoride: <strong>Yönetim</strong> (edit/CRUD eksikleri) / <strong>Rapor</strong> (agregat görünüm eksikleri) / <strong>Görünürlük</strong> (veri var, ekran yok).</p>
+
+    <div class="callout bad">
+      <h4>Kritik bulgular (kod doğrulamalı)</h4>
+      <ul>
+        <li><b>AppointmentsPage = 10 satır stub</b> ("Yakın zamanda" placeholder) — pilot için kritik bir sayfa boş.</li>
+        <li><b>MarketingPage = 10 satır stub</b> — aynı durum.</li>
+        <li><b>LeadDetailPage = 79 satır</b> minimum — sadece foto sekmesi (yeni eklenen) zenginlik içeriyor.</li>
+        <li><b>Lead listesi sayfası YOK</b> — <code>GET /api/v1/leads</code> endpoint var, UI eksik.</li>
+        <li><b>10+ orphan API endpoint</b> — backend'de hazır, UI'da kullanılmıyor.</li>
+      </ul>
+    </div>
+
+    <h3>17.1 Tenant Tarafı (Müşteri Koordinatörü) — 31 madde</h3>
+
+    <h4 style="color:var(--bad)">Yönetim eksikleri (T-Y, 9 madde)</h4>
+    <table class="task-table">
+      <thead><tr><th>#</th><th>Alan</th><th>Backend</th><th>UI</th><th>Öncelik</th><th>Tarih</th></tr></thead>
+      <tbody>
+        <tr><td>T-Y1</td><td><strong>Lead listesi sayfası</strong></td><td>✅ <code>GET /api/v1/leads</code> (Program.cs:2258)</td><td>❌ Sayfa yok</td><td><span class="pill bad">P0</span></td><td>—</td></tr>
+        <tr><td>T-Y2</td><td><strong>Lead pipeline durum güncelleme</strong></td><td>✅ <code>PUT /api/v1/leads/{id}/status</code></td><td>❌ Edit UI yok</td><td><span class="pill bad">P0</span></td><td>—</td></tr>
+        <tr><td>T-Y3</td><td>Lead skor güncelleme</td><td>✅ <code>PUT /api/v1/leads/{id}/score</code></td><td>❌</td><td><span class="pill warn">P1</span></td><td>—</td></tr>
+        <tr><td>T-Y4</td><td><strong>Lead aktivite/not timeline</strong></td><td>✅ <code>GET /api/v1/leads/{id}/activities</code></td><td>❌ Timeline yok</td><td><span class="pill bad">P0</span></td><td>—</td></tr>
+        <tr><td>T-Y5</td><td>Manuel takip planlama</td><td>✅ <code>POST /api/v1/leads/{id}/followup</code></td><td>❌</td><td><span class="pill warn">P1</span></td><td>—</td></tr>
+        <tr><td>T-Y6</td><td><strong>Randevu/Slot yönetimi (AppointmentsPage)</strong></td><td>✅ Endpoints var</td><td>❌ <strong>10 satır stub</strong></td><td><span class="pill bad">P0</span></td><td>—</td></tr>
+        <tr><td>T-Y7</td><td><strong>Doktor yönetimi</strong></td><td>✅ Migration 031 doctors tablosu</td><td>❌ Sayfa yok</td><td><span class="pill bad">P0</span></td><td>—</td></tr>
+        <tr><td>T-Y8</td><td>Toplu mesaj (Broadcast)</td><td>✅ <code>outbound_broadcasts</code> tablosu</td><td>❌ Editor yok</td><td><span class="pill warn">P1</span></td><td>—</td></tr>
+        <tr><td>T-Y9</td><td>Bildirim/Alert eşik ayarları</td><td>⚠️ Hardcoded</td><td>❌</td><td><span class="pill warn">P1</span></td><td>—</td></tr>
+      </tbody>
+    </table>
+
+    <h4 style="color:var(--bad)">Rapor eksikleri (T-R, 11 madde)</h4>
+    <table class="task-table">
+      <thead><tr><th>#</th><th>Konu</th><th>DB veri</th><th>UI durumu</th><th>Öncelik</th></tr></thead>
+      <tbody>
+        <tr><td>T-R1</td><td><strong>Dönüşüm hunisi</strong></td><td>leads + lead_activities</td><td>✅ API var (<code>/api/v1/leads/funnel</code>) ❌ Chart yok</td><td><span class="pill bad">P0</span></td></tr>
+        <tr><td>T-R2</td><td>Akış performans raporu (süre/başarı/hata)</td><td>flow_executions + node_trace</td><td>✅ Detay var ❌ Agregat yok</td><td><span class="pill warn">P1</span></td></tr>
+        <tr><td>T-R3</td><td>Akış-içi düğüm dropoff hunisi</td><td>node_trace</td><td>❌</td><td><span class="pill warn">P1</span></td></tr>
+        <tr><td>T-R4</td><td>FAQ varyant performans matrisi (12×3)</td><td>auto_reply_log.faq_variant_index</td><td>✅ Niyet seviyesi var ❌ Varyant yok</td><td><span class="pill warn">P1</span></td></tr>
+        <tr><td>T-R5</td><td>Randevu istatistikleri (no-show, lead time)</td><td>appointments</td><td>❌ (sayfa zaten boş)</td><td><span class="pill warn">P1</span></td></tr>
+        <tr><td>T-R6</td><td>Hatırlatma performansı (Day 3/7/14)</td><td>event_followup_runs</td><td>❌</td><td><span class="pill warn">P1</span></td></tr>
+        <tr><td>T-R7</td><td>Welcome A/B varyant kıyaslaması</td><td>chat_sessions</td><td>❌</td><td><span class="pill neu">P2</span></td></tr>
+        <tr><td>T-R8</td><td>Lead aşaması geçiş süreleri</td><td>lead_activities</td><td>❌</td><td><span class="pill neu">P2</span></td></tr>
+        <tr><td>T-R9</td><td>Zoho sync sağlık özeti kart</td><td>zoho_sync_log</td><td>✅ Raw log var ❌ Kart yok</td><td><span class="pill warn">P1</span></td></tr>
+        <tr><td>T-R10</td><td>TFM custom field doluluk oranı</td><td>leads.custom_1..10</td><td>❌</td><td><span class="pill neu">P2</span></td></tr>
+        <tr><td>T-R11</td><td>Attribution drill-down + cost per lead</td><td>leads.utm_*</td><td>⚠️ AttributionPanel zayıf</td><td><span class="pill neu">P2</span></td></tr>
+      </tbody>
+    </table>
+
+    <h4 style="color:var(--bad)">Görünürlük eksikleri (T-G, 11 madde)</h4>
+    <table class="task-table">
+      <thead><tr><th>#</th><th>DB tablo</th><th>Veri ne</th><th>Olması gereken UI</th></tr></thead>
+      <tbody>
+        <tr><td>T-G1</td><td>leads (assigned_to, next_followup_at)</td><td>Atama + takip günü</td><td>Lead listesinde Kanban/Board view</td></tr>
+        <tr><td>T-G2</td><td>lead_activities</td><td>Etkileşim geçmişi</td><td>Lead Detay → Aktivite Timeline sekmesi</td></tr>
+        <tr><td>T-G3</td><td>leads.custom_1..10 (TFM)</td><td>Tenant özel alanlar</td><td>Lead detay'da map'lenmiş alanlar</td></tr>
+        <tr><td>T-G4</td><td>doctors</td><td>Doktor kayıtları (Migration 031)</td><td>AppointmentsPage doctor selector</td></tr>
+        <tr><td>T-G5</td><td>outbound_broadcasts</td><td>Toplu mesaj job durumları</td><td>Dashboard kartı: Bekleyen/Gönderilen/Hatalı</td></tr>
+        <tr><td>T-G6</td><td>flow_executions (error)</td><td>Akış hatası kök neden</td><td>FlowMonitor → root cause ağacı</td></tr>
+        <tr><td>T-G7</td><td>liw_audit_log</td><td>Lead Intake config değişiklikleri</td><td>LeadIntakeSettings → audit timeline</td></tr>
+        <tr><td>T-G8</td><td>tenant_campaign_config (MCC)</td><td>Aktif kampanyalar</td><td>Dashboard kampanya kartı</td></tr>
+        <tr><td>T-G9</td><td>meta_leadgen_events</td><td>Form gönderim geçmişi</td><td>MetaLeadgenSettings → form preview</td></tr>
+        <tr><td>T-G10</td><td>appointments.meeting_link</td><td>Görüşme bağlantıları</td><td>AppointmentsPage link kopyalama UI</td></tr>
+        <tr><td>T-G11</td><td>appointments.reminder_*_sent</td><td>Hatırlatma gönderildi mi</td><td>Reminder log + manuel resend</td></tr>
+      </tbody>
+    </table>
+
+    <h3>17.2 SuperAdmin Tarafı (Invekto Platform Operatörü) — 25 madde</h3>
+
+    <h4 style="color:var(--bad)">Yönetim eksikleri (S-Y, 7 madde)</h4>
+    <table class="task-table">
+      <thead><tr><th>#</th><th>Alan</th><th>Mevcut</th><th>Eksik</th><th>Öncelik</th></tr></thead>
+      <tbody>
+        <tr><td>S-Y1</td><td>Yeni tenant <em>(düzeltildi)</em></td><td>✅ Lazy provisioning aktif (<code>tenant_registry.inma_code</code> + <code>ResolveOrCreateByInmaCodeAsync</code>)</td><td>⚠️ Default seed eksik (flow + template + feature flag hydration)</td><td><span class="pill warn">P1</span></td></tr>
+        <tr><td>S-Y2</td><td><strong>Tenant suspend butonu</strong></td><td>"Devre Dışı" badge görünür</td><td>Aksiyon butonu yok</td><td><span class="pill bad">P0</span></td></tr>
+        <tr><td>S-Y3</td><td>Plan tier UX iyileştirme</td><td>LicensesPage tier selector + JSON</td><td>Validation + feedback zayıf</td><td><span class="pill warn">P1</span></td></tr>
+        <tr><td>S-Y4</td><td>Feature flag (UP0.6) yönetimi</td><td>Backend hardcoded</td><td>Toggle UI yok</td><td><span class="pill warn">P1</span></td></tr>
+        <tr><td>S-Y5</td><td>Tenant impersonation (debug)</td><td>—</td><td>Yok</td><td><span class="pill warn">P1</span></td></tr>
+        <tr><td>S-Y6</td><td>Plan/Quota CRUD</td><td>FAZ1-2 quota enforce</td><td>Plan tanımı edit UI</td><td><span class="pill neu">P2</span></td></tr>
+        <tr><td>S-Y7</td><td>Mesaj log CSV/Excel export</td><td>Endpoint var</td><td>Export UI</td><td><span class="pill neu">P2</span></td></tr>
+      </tbody>
+    </table>
+
+    <h4 style="color:var(--bad)">Rapor eksikleri (S-R, 9 madde)</h4>
+    <table class="task-table">
+      <thead><tr><th>#</th><th>Konu</th><th>Eksik</th><th>Öncelik</th></tr></thead>
+      <tbody>
+        <tr><td>S-R1</td><td><strong>Tüm tenant toplam mesaj (günlük/aylık)</strong></td><td>Cross-tenant aggregation yok</td><td><span class="pill warn">P1</span></td></tr>
+        <tr><td>S-R2</td><td>Plan tier dağılımı</td><td>Breakdown card</td><td><span class="pill warn">P1</span></td></tr>
+        <tr><td>S-R3</td><td>Aktif/Pasif tenant sayım</td><td>Snapshot kart</td><td><span class="pill warn">P1</span></td></tr>
+        <tr><td>S-R4</td><td>Top 10 tenant (mesaj hacmi)</td><td>Power user tespiti yok</td><td><span class="pill neu">P2</span></td></tr>
+        <tr><td>S-R5</td><td>Top tenant (LLM cost)</td><td>Cross-tenant sıralama yok</td><td><span class="pill neu">P2</span></td></tr>
+        <tr><td>S-R6</td><td>Hangfire job fail oranı (cross-tenant)</td><td>Top failing job ranking</td><td><span class="pill neu">P2</span></td></tr>
+        <tr><td>S-R7</td><td>Onboarding queue</td><td>Tüm tenant'larda hangi adımda?</td><td><span class="pill neu">P2</span></td></tr>
+        <tr><td>S-R8</td><td>Quota approaching warning</td><td>"%85 doldu" alert paneli</td><td><span class="pill neu">P2</span></td></tr>
+        <tr><td>S-R9</td><td>Churn risk skoru</td><td>Engagement trend metric</td><td><span class="pill neu">P2</span></td></tr>
+      </tbody>
+    </table>
+
+    <h4 style="color:var(--bad)">Görünürlük eksikleri (S-G, 9 madde)</h4>
+    <table class="task-table">
+      <thead><tr><th>#</th><th>Konu</th><th>Mevcut</th><th>Eksik</th><th>Öncelik</th></tr></thead>
+      <tbody>
+        <tr><td>S-G1</td><td><strong>Hangfire dashboard linki</strong></td><td><code>/ops/hangfire-login</code> token var</td><td>TenantsPage'de buton yok</td><td><span class="pill warn">P1</span></td></tr>
+        <tr><td>S-G2</td><td><strong>DB migration durumu</strong></td><td>—</td><td>"Son uygulanan: 034 — 2026-04-28" yok</td><td><span class="pill warn">P1</span></td></tr>
+        <tr><td>S-G3</td><td>Servis sağlığı + latency heatmap</td><td><code>/api/ops/health</code></td><td>Heatmap yok</td><td><span class="pill warn">P1</span></td></tr>
+        <tr><td>S-G4</td><td>API latency P50/P95/P99 grafik</td><td>Slow request tracking</td><td>Grafik yok</td><td><span class="pill neu">P2</span></td></tr>
+        <tr><td>S-G5</td><td>Cache hit oranı (translation)</td><td><code>/api/ops/stats/translations</code></td><td>Görselleştirme yok</td><td><span class="pill neu">P2</span></td></tr>
+        <tr><td>S-G6</td><td>Error breakdown (service/code)</td><td><code>/api/ops/stats/errors</code></td><td>Gruplama UI yok</td><td><span class="pill neu">P2</span></td></tr>
+        <tr><td>S-G7</td><td><strong>Audit log (SuperAdmin actions)</strong></td><td>—</td><td>Kim ne değiştirdi log'u yok</td><td><span class="pill warn">P1</span></td></tr>
+        <tr><td>S-G8</td><td>Plan adoption matrix</td><td>plan_definitions + tenant_plans</td><td>Heatmap yok</td><td><span class="pill neu">P2</span></td></tr>
+        <tr><td>S-G9</td><td>DB connection pool durumu</td><td>—</td><td>PG pool size, MSSQL test</td><td><span class="pill neu">P2</span></td></tr>
+      </tbody>
+    </table>
+
+    <h3>17.3 Pilot Önceliği — Toplam Tablo</h3>
+    <table>
+      <thead><tr><th>Kategori</th><th>Madde sayısı</th><th>Tahmini süre</th><th>Pilot etkisi</th></tr></thead>
+      <tbody>
+        <tr><td><strong>P0 — Pilotu BLOCK eden</strong></td><td>8</td><td>~15-20 iş günü</td><td>Olmadan operasyon manuel SQL'le</td></tr>
+        <tr><td><strong>P1 — Stage 2-3 yetiştirilebilir</strong></td><td>12</td><td>~20-25 iş günü</td><td>Pilot başlar, paralel inşa</td></tr>
+        <tr><td><strong>P2 — Post-pilot backlog</strong></td><td>36</td><td>~30-40 iş günü</td><td>Manuel/SQL ile yürür</td></tr>
+        <tr><td><strong>TOPLAM</strong></td><td><strong>56 madde</strong></td><td><strong>~65-85 iş günü</strong></td><td>—</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout good">
+      <h4>17.4 Toplantı Kararları (28 Nisan) + Pilot Kapsamına Eklenenler</h4>
+      <table class="task-table">
+        <thead><tr><th>#</th><th>İş</th><th>Süre</th><th>Durum</th><th>Tarih</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>17.4.1</td>
+            <td><strong>Lead listesi sayfası + durum güncelleme UI</strong> (T-Y1 + T-Y2). <code>GET /api/v1/leads</code> + <code>PUT .../status</code> endpoint'leri zaten hazır; tablo + filtre + sıralama + Lead detay açılışı.</td>
+            <td>~3 gün</td>
+            <td><span class="pill bad">P0</span></td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td>17.4.2</td>
+            <td>Lead Detay → Aktivite timeline sekmesi (T-Y4). <code>GET /api/v1/leads/{id}/activities</code> + add note UI.</td>
+            <td>~2 gün</td>
+            <td><span class="pill bad">P0</span></td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td>17.4.3</td>
+            <td><strong>AppointmentsPage UI + Zoho takvim senkronu</strong> (T-Y6 + T-G4 + T-G10/G11). Slot tanımlama + takvim view + meeting link kopyalama. Çift yönlü Zoho takvim bağı: Zoho'dan oluşan görüşme Invekto'ya yansır, tersi de.</td>
+            <td>~6 gün (UI 4 + Zoho 2)</td>
+            <td><span class="pill bad">P0</span></td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td>17.4.4</td>
+            <td><strong>Doktor yönetimi sayfası</strong> (T-Y7). Doktor ekle/düzenle + müsaitlik haftalık takvim grid + slot generation. doctors tablosu Migration 031'de hazır.</td>
+            <td>~3 gün</td>
+            <td><span class="pill bad">P0</span></td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td>17.4.5</td>
+            <td>Dönüşüm hunisi chart (temel) — T-R1. <code>/api/v1/leads/funnel</code> endpoint'i var, görsel yok.</td>
+            <td>~2 gün</td>
+            <td><span class="pill bad">P0</span></td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td>17.4.6</td>
+            <td>Yeni tenant default seed scripti (S-Y1 düzeltilmiş scope). <strong>SuperAdmin form gerekmiyor</strong> — INMA'da firma açılır, kullanıcı login olur, lazy provisioning otomatik tenant yaratır. <strong>Eksik olan:</strong> yeni tenant açılışında default flow + template pack + feature flag hydration scripti.</td>
+            <td>~2 gün</td>
+            <td><span class="pill warn">P1</span></td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td>17.4.7</td>
+            <td>Tenant suspend butonu (S-Y2). TenantsPage'e action; "Devre Dışı" badge zaten var, action eksik.</td>
+            <td>~1 gün</td>
+            <td><span class="pill warn">P1</span></td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td>17.4.8</td>
+            <td>Foto akışı paketi (FEAT-PHOTO, plan hazır: <code>arch/plans/20260427-feat-photo-request-flow.json</code>).</td>
+            <td>~3 gün</td>
+            <td><span class="pill warn">P1</span></td>
+            <td>Stage 2'ye yetiştir</td>
+          </tr>
+          <tr>
+            <td><strong>TOPLAM</strong></td>
+            <td><strong>Pilot kapsamına ek iş yükü</strong></td>
+            <td><strong>~22 gün</strong></td>
+            <td>—</td>
+            <td>—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <h4 style="margin-top:0">INMA-INSE Tenant Lifecycle — Mevcut Mimari (Doğrulandı)</h4>
+      <p>Toplantı kararı (4. madde) kod incelemesiyle doğrulandı: <strong>tenant lifecycle zaten lazy provisioning üzerinden çalışıyor</strong>.</p>
+      <ul>
+        <li><b>INMA tarafı</b> — firma INMA'da açılır (manuel veya INMA admin paneli). Bu Invekto'nun işi değil.</li>
+        <li><b>İlk login</b> — kullanıcı login olur, <code>InmaTokenIntrospector</code> welcome çağrısıyla token decode'ı yapılır (5 dk cache).</li>
+        <li><b>Otomatik tenant resolve/create</b> — <code>TenantRegistryRepository.ResolveOrCreateByInmaCodeAsync()</code>: token'daki <code>CompanyCode</code> ile <code>tenant_registry.inma_code</code> kontrolü; yoksa <code>nextval('tenant_registry_auto_id_seq')</code> ile yeni <code>tenant_id</code> + <code>ON CONFLICT DO NOTHING</code> race-safe.</li>
+        <li><b>İptal edilen yollar</b> — <code>tenant.created</code> webhook + bulk SQL backfill 2026-04-17'de iptal edildi (lazy provision yeterli olduğu için).</li>
+        <li><b>PENDING (UP1):</b> default flow seed + template pack hydration + <code>tenant.updated/deactivated</code> event handler.</li>
+      </ul>
+      <p style="margin-bottom:0"><strong>Sonuç:</strong> S-Y1 "yeni tenant oluşturma SuperAdmin form" maddesi gereksiz. Eksik olan tek şey default seed scripti (17.4.6). Bu da pilot blocker değil — Dent zaten manuel seed'le hazırlandı.</p>
+    </div>
+
+    <div class="callout warn">
+      <h4 style="margin-top:0">Takvim Etkisi</h4>
+      <p>Pilot başlangıcı 28-29 Nisan'dı. P0 işler (~12-18 gün) eklenirse Stage 1 başlangıcı <strong>~3 hafta kayar</strong> (paralel ekip kapasitesi varsayımıyla 2 hafta). Alternatif: pilot mevcut planla başlasın, P0 işler Stage 2'ye yetiştirilsin (manuel SQL/Zoho ile geçici çözüm). Pilot tarihi yeniden netleştirilmeli.</p>
+    </div>
+
+    <p class="ref">Detaylı analiz ve toplantı kararları: <code>dent-toplanti.html §15</code> (Kapsamlı UI Envanteri + 15.4 Kararlar). Önceki kısa envanter: <code>§16</code> (UI #10-#18). Foto paketi: <code>arch/plans/20260427-feat-photo-request-flow.json</code>.</p>
+  </section>
+
+  <section id="feat-clinic-metadata">
+    <h2>18. FEAT-CLINIC-METADATA — Multi-Tenant Hardcoded Cleanup</h2>
+    <p>2026-04-28 sistematik kod taraması (Explore subagent): C# runtime kodunda hardcoded yok ✅, ama FAQ metinleri + flow welcome text içinde 3 kritik Dent-specific hardcoded tespit edildi. 2. müşteri (başka klinik) gelirken sıfır SQL kopyalama olmadan, sadece Dashboard üzerinden config ile çalışır olması için bu paket gerekli.</p>
+
+    <div class="callout good">
+      <h4 style="margin-top:0">İyi haber: Mimari %95 multi-tenant uyumlu</h4>
+      <p>Tüm tenant_id parametre üzerinden geçiyor, plan tier feature flag generic, Migration 033 tenant başına JSONB config, welcome variant rotation DB-driven. <strong>Sadece içerik (FAQ + welcome text) Dent'e özel</strong>.</p>
+    </div>
+
+    <h3>18.1 Tespit Edilen 3 Hardcoded</h3>
+    <table class="task-table">
+      <thead><tr><th>#</th><th>Hardcoded</th><th>Nerede</th><th>Risk</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>18.1.1</td>
+          <td><strong>Klinik İletişim Bilgileri</strong> — <code>dentadavista.com</code>, Instagram/Facebook URL'leri, <code>+90 545 343 09 09</code></td>
+          <td>Migration 032:140-142 (FAQ <code>safety_concern</code> variant C) + <code>dent-roadshow-content.json</code>:174,187</td>
+          <td><span class="pill bad">P0 (multi-tenant blocker)</span></td>
+        </tr>
+        <tr>
+          <td>18.1.2</td>
+          <td><strong>Persona İsimleri</strong> — "Dr. Özge Yılmazoğlu", "Güneş from Dent Adavista"</td>
+          <td>Migration 032:172-173 (flow welcome) + FAQ variant A (satır 116) + roadshow content seed</td>
+          <td><span class="pill bad">P0 (multi-tenant blocker)</span></td>
+        </tr>
+        <tr>
+          <td>18.1.3</td>
+          <td><strong>Roadshow Tarihleri + Şehirler</strong> — "Dublin (14 March) and Cork (15 March)"</td>
+          <td>FAQ A/B variants + welcome text</td>
+          <td><span class="pill bad">P0 (multi-tenant blocker)</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>18.2 Çözüm — FEAT-CLINIC-METADATA Paketi</h3>
+    <p>Altyapı zaten hazır (FEAT-DMP DONE 2026-04-20). Yapılması gereken: 2 yeni placeholder namespace + hardcoded değerleri placeholder'a çevirme.</p>
+
+    <table class="task-table">
+      <thead><tr><th>#</th><th>İş</th><th>Detay</th><th>Süre</th><th>Durum</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>18.2.1</td>
+          <td><strong>Migration 035</strong></td>
+          <td><code>tenant_settings</code> tablosuna iki yeni JSONB sütun:<br>
+            <code>clinic_contact JSONB DEFAULT '{}'</code> (phone, website, instagram, facebook, address, email)<br>
+            <code>team_members JSONB DEFAULT '[]'</code> (array of {role, name, pronouns, language})<br>
+            Postcondition INV-SEED-024..026 fail-loud guard
+          </td>
+          <td>~0.5 gün</td>
+          <td><span class="pill neu">PENDING</span></td>
+        </tr>
+        <tr>
+          <td>18.2.2</td>
+          <td>Dent seed (Migration 035 sonu)</td>
+          <td>Mevcut hardcoded değerlerle Dent için iki alanı doldur:<br>
+            <code>clinic_contact</code>: dentadavista.com + sosyal medya + +90 545 343 09 09<br>
+            <code>team_members</code>: Dr. Özge (dentist, en) + Güneş (receptionist, en)
+          </td>
+          <td>~0.5 gün</td>
+          <td><span class="pill neu">PENDING</span></td>
+        </tr>
+        <tr>
+          <td>18.2.3</td>
+          <td><strong>Template refactor (SQL UPDATE)</strong></td>
+          <td>FAQ + welcome metinleri içindeki hardcoded string'leri placeholder'a dönüştür:<br>
+            <code>"Dr. Özge Yılmazoğlu"</code> → <code>{{team.dentist.name}}</code><br>
+            <code>"+90 545 343 09 09"</code> → <code>{{clinic.phone}}</code><br>
+            <code>"https://dentadavista.com"</code> → <code>{{clinic.website}}</code><br>
+            <code>"Dublin (14 March)"</code> → <code>{{campaign.cities[0].name}} ({{campaign.dates[0] | format "d MMMM"}})</code><br>
+            Mevcut FEAT-MCC ve FEAT-DMP placeholder altyapısı kullanılır.
+          </td>
+          <td>~1 gün</td>
+          <td><span class="pill neu">PENDING</span></td>
+        </tr>
+        <tr>
+          <td>18.2.4</td>
+          <td><strong>DMP resolver namespace genişletme</strong></td>
+          <td><code>DynamicMessageResolver</code>'da iki yeni namespace:<br>
+            <code>clinic.*</code> → <code>tenant_settings.clinic_contact</code> JSONB lookup<br>
+            <code>team.{role}.*</code> → <code>tenant_settings.team_members</code> JSONB array, role match
+          </td>
+          <td>~1 gün</td>
+          <td><span class="pill neu">PENDING</span></td>
+        </tr>
+        <tr>
+          <td>18.2.5</td>
+          <td>Dashboard UI</td>
+          <td><code>/settings/clinic-metadata</code> sayfası: iletişim formu + team members CRUD (ekle/düzenle/sil/sırala/dil seç).</td>
+          <td>~2 gün</td>
+          <td><span class="pill neu">PENDING</span></td>
+        </tr>
+        <tr>
+          <td>18.2.6</td>
+          <td>Smoke + dokümantasyon</td>
+          <td>Her placeholder render testi + DMP unit test + <code>arch/features/clinic-metadata.md</code> spec.</td>
+          <td>~1 gün</td>
+          <td><span class="pill neu">PENDING</span></td>
+        </tr>
+        <tr>
+          <td><b>TOPLAM</b></td>
+          <td>—</td>
+          <td>—</td>
+          <td><b>~6 iş günü</b></td>
+          <td>—</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>18.3 Avantajları</h3>
+    <ul>
+      <li><b>2. müşteri 1 günde aktif</b> — INMA'da firma açılır → Invekto lazy provision otomatik tenant yaratır → Dashboard'da clinic_contact + team_members + campaign config doldurulur → mevcut FAQ/welcome şablonları otomatik o klinik için render olur. SQL kopyalama YOK.</li>
+      <li><b>Çok dilli destek hazır</b> — team_members.language alanı sayesinde hastanın diline göre doğru personayı gösterir (TR hastasına Türkçe konuşan resepsiyonist).</li>
+      <li><b>Roadshow değişiminde tek tıkla</b> — Dent'in Eylül roadshow'u için sadece campaign config güncellenir; tüm FAQ metinleri otomatik yeni şehir/tarihlerle render olur.</li>
+      <li><b>Tedavi sektörü genişletme</b> — estetik klinikler, kardioloji, plastik cerrahi vb. aynı altyapı üzerinden çalışır; sektör-spesifik FAQ intent listeleri tenant-scoped DB'de tutulur.</li>
+    </ul>
+
+    <h3>18.4 Multi-Tenant Generic Pattern Doğrulaması</h3>
+    <p>Pilot için inşa edilen aşağıdaki özellikler tüm sağlık/sağlık-turizmi klinikleri için ortak — sadece <em>içerik</em> tenant-scoped (mimari değil):</p>
+    <table>
+      <thead><tr><th>Özellik</th><th>Generic mi?</th><th>Klinik tipi</th></tr></thead>
+      <tbody>
+        <tr><td>Lead intake (form → karşılama)</td><td>✅</td><td>Tüm klinikler</td></tr>
+        <tr><td>FAQ semantic search + A/B/C rotation</td><td>✅</td><td>Tüm klinikler — intent listesi sektör-spesifik (DB tenant-scoped)</td></tr>
+        <tr><td>Multi-city event campaign (roadshow)</td><td>✅</td><td>Sağlık turizmi</td></tr>
+        <tr><td>Online görüşme + meeting link + reminders</td><td>✅</td><td>Tüm klinikler</td></tr>
+        <tr><td>Foto isteme akışı (X-ray / ağız / lezyon)</td><td>✅</td><td>Diş + dermatoloji + plastik cerrahi (placeholder ile)</td></tr>
+        <tr><td>Pipeline status + Zoho sync</td><td>✅</td><td>Tüm klinikler</td></tr>
+        <tr><td>Hatırlatma akışı (3-stage drip)</td><td>✅</td><td>Tüm klinikler — Day süreleri config</td></tr>
+        <tr><td>Çok dilli welcome rotation (locale-aware)</td><td>✅</td><td>Sağlık turizmi (kritik)</td></tr>
+        <tr><td>Doctor + slot management</td><td>✅</td><td>Tüm klinikler</td></tr>
+        <tr><td>Deposit / payment milestone tracking</td><td>✅</td><td>Sağlık turizmi</td></tr>
+      </tbody>
+    </table>
+
+    <h3>18.5 Pilot ile İlişki</h3>
+    <div class="callout warn">
+      <p>Bu paket <strong>pilot blocker DEĞİL</strong> — Dent zaten hardcoded değerlerle çalışır, hata vermez. Ancak <strong>2. müşteri öncesi MUTLAKA tamamlanmalı</strong>. Önerilen yerleşim:</p>
+      <ul>
+        <li><b>Stage 1 (yumuşak açılış):</b> Dahil değil — pilot mevcut hardcoded ile başlar.</li>
+        <li><b>Stage 2 (sınırlı test):</b> Paralel inşa — Dent operasyonu etkilenmez, ama paket Stage 3 öncesi DONE olur.</li>
+        <li><b>Stage 3 (tam açılış):</b> DONE durumda olmalı — bu noktadan sonra 2. müşteri sırada.</li>
+      </ul>
+    </div>
+
+    <p class="ref">Tracking dosyası: <code>tracking/feat-clinic-metadata.md</code> (paket detayı + AC + smoke senaryoları). İlgili paketler: FEAT-DMP (DONE 2026-04-20) · FEAT-MCC (DONE 2026-04-22) · FEAT-TFM (DONE 2026-04-21).</p>
+  </section>
+
+  <section id="meeting-questions">
+    <h2>19. Toplantı Soru Kataloğu (27 soru — 6 grup)</h2>
+    <p>28 Nisan toplantısında müşteriden cevap aranan tam soru listesi. Yanıtlanmış olanlar §15 Müşteri Input Bekleyen ve §20 Karar Tablosu'na taşınır; yanıtlanmayanlar pilot başlamadan kapatılmalı.</p>
+
+    <h3 id="mq-scope">19.1 Hedef ve Kapsam</h3>
+    <ol class="q-list">
+      <li><b>Pilotun başarı kriteri sizin için ne?</b> "X tane randevu" mu, "Y tane gerçek tedavi" mi, "soru cevabı işliyor olsun yeter" mi?
+        <span class="why">Bizim kafamızdaki rakamlar (cevap oranı %40, randevu oranı %50…) sizin beklentinize göre güncellenmeli.</span></li>
+      <li><b>Pilot ne kadar sürsün?</b> Önerimiz 2 gün yumuşak açılış + 3 gün sınırlı test + sonra tam açılış.</li>
+      <li><b>İlk hangi şehirleri açalım?</b> Dublin + Cork mu yeterli, başka şehir eklenecek mi?</li>
+      <li><b>Roadshow tarihleri kesinleşti mi?</b> Karşılama mesajında ve form içinde bu tarihler geçecek.</li>
+    </ol>
+
+    <h3 id="mq-comm">19.2 İletişim ve Dil</h3>
+    <ol class="q-list">
+      <li><b>Hangi dillerde başlıyoruz?</b> Sitenizdeki 9 dilden hangisi pilot içinde olsun?</li>
+      <li><b>"Güneş" kim?</b> Klinikte gerçek bir karşılama görevlisi mi, sembolik bir isim mi? "Yüz yüze görüşmek istiyorum" diyene ne cevap verelim?</li>
+      <li><b>Hasta klinik telefonunu ister mi?</b> "Sizi arayabilir miyim?" derse, mevcut klinik numarasını mı verelim, koordinatöre mi yönlendirelim?</li>
+      <li><b>Mesaj tonunuz?</b> Resmi mi, sıcak/samimi mi, hafif esprili mi? Karşılama metni buna göre.</li>
+    </ol>
+
+    <h3 id="mq-clinic">19.3 Klinik Tarafı</h3>
+    <ol class="q-list">
+      <li><b>Dr. Özge günde kaç online görüşme yapabilir?</b> Saat aralıkları nedir? (Sistem buna göre slot açacak.)</li>
+      <li><b>Görüşme süresi?</b> 15 dk mı, 30 dk mı? (Slot uzunluğu için.)</li>
+      <li><b>Görüşmeye Dr. Özge dışında kim katılır?</b> Çevirmen, koordinatör?</li>
+      <li><b>Hastalar görüşmeden önce röntgen/fotoğraf yüklesin mi?</b> Yüklediyse nereye düşsün?</li>
+    </ol>
+
+    <h3 id="mq-money">19.4 Süreç ve Para</h3>
+    <ol class="q-list">
+      <li><b>Fiyat sorusuna ne cevap?</b> Üç seçenek: (a) sabit aralık ver, (b) "kişiye özel, görüşmede konuşalım", (c) PDF fiyat listesi paylaş.</li>
+      <li><b>Kapora alıyor musunuz?</b> Görüşme sonrası mı, randevudan önce mi?</li>
+      <li><b>Uçuş / otel / transfer dahil mi?</b> Cevap "evet" ise paket içerikleri net olmalı.</li>
+      <li><b>İptal / iade politikası ne?</b> "Param geri gelir mi?" sorusu kesin gelir.</li>
+    </ol>
+
+    <h3 id="mq-ops">19.5 Operasyon ve Sorumluluk</h3>
+    <ol class="q-list">
+      <li><b>Kim koordinatör olacak?</b> Sistem anlamadığında, hasta sinirlendiğinde, özel durum geldiğinde sizin tarafınızdan kim devreye giriyor?</li>
+      <li><b>Çalışma saatleri dışında ne yapılsın?</b> Mesai dışı gelen mesajlara "yarın 09:00'da döneceğiz" mi diyelim, anında robot mu cevaplasın?</li>
+      <li><b>Şikayet ya da olumsuz yorum gelirse?</b> "Önceki kliniğin yaptığı çok kötüydü" tarzı bir mesaj geldiğinde ne yol izleyelim?</li>
+      <li><b>Reklam yönetimi sizde mi, bizde mi?</b> Meta Ads kampanyalarını kim açıyor, bütçeyi kim kontrol ediyor?</li>
+      <li><b>Aylık raporlama beklentiniz?</b> Hangi rakamları, ne sıklıkta görmek istiyorsunuz?</li>
+    </ol>
+
+    <h3 id="mq-legal">19.6 Veri ve Yasal</h3>
+    <ol class="q-list">
+      <li><b>GDPR sorumlusu kim?</b> İrlanda hastası verisi üzerinde resmi sorumluluk hangi tarafta?</li>
+      <li><b>Veri saklama süresi?</b> 30 gün, 6 ay, 1 yıl?</li>
+      <li><b>Hasta "verimi sil" derse?</b> Süreç ve süre.</li>
+      <li><b>Reklam onayı / pazarlama izni</b> formda nasıl yer alsın?</li>
+    </ol>
+  </section>
+
+  <section id="decisions">
+    <h2>20. Karar Tablosu (K1-K10)</h2>
+    <p>Toplantıda "evet/hayır/şu rakam" cevabı gereken kararlar. Boş kalan kalemler kurulumu durdurur.</p>
+    <table>
+      <thead><tr><th>#</th><th>Konu</th><th>Seçenekler</th><th>Karar (28 Nisan)</th></tr></thead>
+      <tbody>
+        <tr><td>K1</td><td>Pilot başlama tarihi</td><td>(a) 28 Nisan / (b) 29 Nisan / (c) HSM onayına göre kayar</td><td><span class="pill warn">Beklemede</span></td></tr>
+        <tr><td>K2</td><td>"Güneş" kim?</td><td>(a) gerçek bir kişi / (b) takım ismi / (c) sembol</td><td><span class="pill warn">Beklemede</span></td></tr>
+        <tr><td>K3</td><td>Açılış dilleri</td><td>(a) sadece İngilizce / (b) İngilizce + Türkçe / (c) +1 Almanca</td><td><span class="pill warn">Beklemede</span></td></tr>
+        <tr><td>K4</td><td>Fiyat sorusuna cevap</td><td>(a) sabit aralık / (b) "görüşmede" / (c) PDF link</td><td><span class="pill warn">Beklemede</span></td></tr>
+        <tr><td>K5</td><td>Reklam yönetimi</td><td>(a) sizde / (b) bizde / (c) ortak</td><td><span class="pill warn">Beklemede</span></td></tr>
+        <tr><td>K6</td><td>Mesai dışı politika</td><td>(a) robot tam cevap / (b) "yarın döneceğiz" / (c) acil için telefon ver</td><td><span class="pill warn">Beklemede</span></td></tr>
+        <tr><td>K7</td><td>Koordinatör kim?</td><td>İsim + WhatsApp + e-posta</td><td><span class="pill warn">Beklemede</span></td></tr>
+        <tr><td>K8</td><td>Dr. Özge görüşme kapasitesi</td><td>Günlük X görüşme, hangi saat aralığı</td><td><span class="pill warn">Beklemede</span></td></tr>
+        <tr><td>K9</td><td>İlk şehirler</td><td>Dublin / Cork / +diğer</td><td><span class="pill warn">Beklemede</span></td></tr>
+        <tr><td>K10</td><td>Veri saklama süresi</td><td>30 gün / 6 ay / 1 yıl</td><td><span class="pill warn">Beklemede</span></td></tr>
+      </tbody>
+    </table>
+    <p class="note">Toplantı sonrası "Beklemede" → "Karar: X" formatında güncellenir.</p>
+  </section>
+
+  <section id="customer-faq">
+    <h2>21. Müşteri SSS — Hazırlıklı Cevaplar</h2>
+    <p>Müşteri tarafından gelmesi muhtemel 7 soru ve hazır cevap özetleri. Sales + ops boyunca kalıcı referans.</p>
+
+    <h3>"Hasta yanlış cevap alırsa ne olur?"</h3>
+    <p>Sistem sadece tanımlı 12 başlığa cevap veriyor; bu başlıklara siz de katkı verdiniz. Tanımsız bir konu geldiğinde robot tahmin etmiyor, doğrudan koordinatöre devrediyor. Yanlış bilgi riski sıfıra yakın çünkü cevaplar serbest yazıyla değil, sizin onayladığınız metinlerden seçiliyor.</p>
+
+    <h3>"Müşteri robotla konuştuğunu anlar mı?"</h3>
+    <p>Anlaması büyük ihtimal. Ama "Güneş" karakteri samimi ve yardımcı tonda; anlık cevap veriyor olmasını avantaj olarak konumluyoruz. İsterseniz açıkça "Ben Dent Adavista'nın dijital asistanıyım" diyen bir cümle de ekleriz — şeffaflık.</p>
+
+    <h3>"Verilerimizi nereye yazıyorsunuz?"</h3>
+    <p>Hasta verileri AB içindeki sunucularımızda + Zoho CRM'inizde tutulur. WhatsApp mesajlaşma akışı (gelen + giden) <strong>INMA</strong> altyapımız üzerinden geçer; WABA numaranız INMA'ya tanımlandığı için tek hat ve tek log noktası vardır. GDPR uyumlu. Hasta "verimi sil" derse 30 gün içinde her üç sistemden (bizim DB + Zoho + INMA) silinir.</p>
+
+    <h3>"Pilot başarısız olursa ne olacak?"</h3>
+    <p>Sistem kapatılır, fatura çıkmaz. Toplanan veriler size devrediliyor (hastalarınızla iletişime geçmiş olduğunuz için sizin müşteriniz). Reklam ve WABA hesabınız zaten sizde, kalıyor.</p>
+
+    <h3>"Aynı sistemi başka kliniklere de satıyor musunuz? Rekabet sorunu olur mu?"</h3>
+    <p>Sistem altyapı; sizin akışlarınız, mesajlarınız, hastalarınız tamamen size özel. Başka bir kliniğin verileriyle karışmıyor. Aynı şehirde başka bir diş kliniğine açıklama yapmadan devreye almıyoruz (sektörel etik).</p>
+
+    <h3>"Maliyeti nasıl?"</h3>
+    <p>Pilotun maliyet detayı toplantı dışı bir konu. Toplantı sonunda fiyatlandırma seçeneklerini ayrı bir e-posta ile gönderiyoruz; pilot sonu rakamına göre kalıcı plan seçilebilir.</p>
+
+    <h3>"Reklam yönetimini siz mi yaparsınız?"</h3>
+    <p>İsteğe bağlı. Bizim ekip kampanya açıp izleyebilir, ya da sadece sistemi sağlayıp reklam kısmını size bırakabiliriz. K5 kararıyla bağlı.</p>
+  </section>
+
+  <section id="lead-stages">
+    <h2>22. Lead Aşamaları — 8 Durum Haritası</h2>
+    <p>Müşteri her hasta için 8 durumu görmek istiyor. Aşağıda sistemdeki karşılıkları ve durum işareti.</p>
+
+    <div class="callout">
+      <h4 style="margin-top:0">Aşamaların sahibi: INMA</h4>
+      <p style="margin-bottom:0">8 durumun isimleri, sırası ve geçiş kuralları <strong>INMA tarafında tanımlanır</strong>. Yönetim paneli ve Zoho CRM bu listeyi INMA'dan çekip kullanır. Yeni aşama eklemek / silmek / yeniden adlandırmak istendiğinde sadece INMA tarafında değişir; biz ve Zoho otomatik senkron olur.</p>
+    </div>
+
+    <table>
+      <thead><tr><th>#</th><th>Müşterinin beklediği durum</th><th>Bizdeki karşılığı</th><th>Durum</th><th>Otomatik mi?</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td><b>Cevap Verdi mi</b></td><td>"Konuşma Başladı" (Zoho)</td><td><span class="pill good">Hazır</span></td><td>✅ Otomatik — hasta WhatsApp'ta cevap verince anında geçer</td></tr>
+        <tr><td>2</td><td><b>İlgili mi</b></td><td>"Nitelikli Aday" (Zoho)</td><td><span class="pill warn">Yarı hazır</span></td><td>⚠️ Karar bekliyor — sistem mi otomatik tespit etsin (cevap içeriği + niyet), yoksa koordinatör elle mi işaretlesin?</td></tr>
+        <tr><td>3</td><td><b>Fotoğraf geldi mi</b></td><td>YOK</td><td><span class="pill bad">Eksik</span></td><td>❌ Boşluk #4 ile bağlı — foto akışı pilotta yok. Manuel: koordinatör resim aldığında işaretler. Otomatik: yeni alan + akış (~2 gün)</td></tr>
+        <tr><td>4</td><td><b>Fiyat teklifi</b></td><td>"Teklif Gönderildi" (Zoho)</td><td><span class="pill good">Hazır</span></td><td>✅ Yarı otomatik — koordinatör paneli üzerinden teklif gönderildiğinde geçer</td></tr>
+        <tr><td>5</td><td><b>Teklif Kabul</b></td><td>"Kapora Alındı" (Zoho)</td><td><span class="pill warn">Karar gerekli</span></td><td>⚠️ "Kabul" = "Kapora alındı" mı, yoksa "sözlü kabul" ayrı bir ara durum mu?</td></tr>
+        <tr><td>6</td><td><b>Teklif Red</b></td><td>"İptal" (Zoho closed_lost)</td><td><span class="pill warn">Yarı hazır</span></td><td>⚠️ Tek "iptal" var; "red sebebi" ayrı bir alan olarak Yönetim Paneli'nde tutulabilir (cf3 boşta). Karar: red sebepleri standart liste mi, serbest mi?</td></tr>
+        <tr><td>7</td><td><b>Uçak bileti</b></td><td>cf5: <code>flight_booked</code> (Field Mapping)</td><td><span class="pill warn">Alan var, akış yok</span></td><td>⚠️ Manuel — koordinatör hastadan haber alınca işareti açar. Otomatik tespit ("biletim hazır" yakalama) yapılabilir, pilotta yok</td></tr>
+        <tr><td>8</td><td><b>Tedavi oldu</b></td><td>"Tedavi Tamamlandı" (Zoho closed_won)</td><td><span class="pill good">Hazır</span></td><td>✅ Manuel — koordinatör panelinden işaretlenir</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout warn">
+      <h4 style="margin-top:0">Özet: 8 durumun 3'ü tam hazır, 4'ü karar bekliyor, 1'i eksik</h4>
+      <ul>
+        <li>🟢 <b>Hazır (3):</b> Cevap Verdi, Fiyat Teklifi, Tedavi Oldu</li>
+        <li>🟡 <b>Karar / Mapping bekliyor (4):</b> İlgili Mi, Teklif Kabul, Teklif Red, Uçak Bileti</li>
+        <li>🔴 <b>Eksik (1):</b> Fotoğraf Geldi Mi (Boşluk #4 ile bağlı, foto akışı kararına göre çözülür)</li>
+      </ul>
+    </div>
+
+    <h4>Toplantıda netleşmesi gereken alt sorular</h4>
+    <ol class="q-list">
+      <li><b>"İlgili mi" durumu nasıl belirleniyor?</b>
+        <span class="why">(a) Hasta randevu adımına geçince otomatik. (b) Sistem cevabın tonunu okuyup karar versin. (c) Koordinatör elle. Önerimiz (a) — açık ve sapmasız.</span></li>
+      <li><b>"Teklif Kabul" = "Kapora Alındı" mı, yoksa ara durum mu?</b>
+        <span class="why">Sözlü kabul ile parasal kapora arasındaki süre birkaç gün olabiliyor. İki ayrı durum mu?</span></li>
+      <li><b>"Teklif Red" sebepleri standart liste mi, serbest yazı mı?</b>
+        <span class="why">"Pahalı / Tarih uymadı / Karar verdi başka klinik / Vazgeçti" gibi bir liste raporlamayı kolaylaştırır.</span></li>
+      <li><b>"Uçak bileti" durumunu kim güncelleyecek?</b>
+        <span class="why">Koordinatör mü elle, yoksa hastaya "biletini aldın mı?" sorusu 7 gün önce mi gönderelim?</span></li>
+      <li><b>"Fotoğraf geldi mi" durumu pilot kapsamında mı?</b>
+        <span class="why">Boşluk #4 alt parçası. Manuel mi, otomatik mi?</span></li>
+    </ol>
+
+    <div class="callout good">
+      <h4 style="margin-top:0">Pratik öneri — pilot için en güvenli yol</h4>
+      <p>Pilotun ilk haftasında 8 durumun <strong>hepsi koordinatör panelinden tek bakışta görülecek</strong>. 3'ü otomatik dolarken 5'i koordinatörün elle güncellemesi yetiyor. İlk 20 gerçek hastadan sonra hangi durumların manuel kalmasının yorucu olduğunu görüp otomasyon kararını orada veriyoruz.</p>
+    </div>
+  </section>
+
+  <section id="scope-gaps">
+    <h2>23. Müşteri DocX Eşleştirme + Kapsam Boşlukları</h2>
+    <p>Müşterinin gönderdiği iki dosya — <code>Flowchart.pdf</code> (sürecin görsel haritası) + <code>ROADSHOW Aİ AGENT KARŞILAMA MESAJI.docx</code> (15 karşılama metni + 12 SSS × 3 varyant + 24/48 saat hatırlatma metinleri + foto isteme akışları) — sistemimizdeki karşılığı.</p>
+
+    <div class="callout good">
+      <h4 style="margin-top:0">Genel sonuç: %85 hazır, %10 mapping/config (1-2 saat), %5 gerçek geliştirme</h4>
+      <p style="margin-bottom:0">🟢 Tamamen hazır · 🟡 Kısmi (mapping/config gerekiyor, kod yok) · 🔴 Kod/akış eksik</p>
+    </div>
+
+    <h3 id="ready-7">23.1 Tamamen Hazır (Müşteri Talebi ↔ Bizdeki Karşılığı)</h3>
+    <table>
+      <thead><tr><th>Müşteri talebi</th><th>Durum</th><th>Bizdeki karşılığı</th></tr></thead>
+      <tbody>
+        <tr><td>Form intake (Meta reklam → form → kayıt → WhatsApp karşılama)</td><td><span class="pill good">🟢</span></td><td>B-META paketi prod'da (DEPLOYED 2026-04-24)</td></tr>
+        <tr><td>12 SSS × 3 cevap varyantı, anlam aramayla doğru başlık seçimi</td><td><span class="pill good">🟢</span></td><td>Paket C1: 36 cevap, anlam vektörleri yüklü, test 9/9 geçti</td></tr>
+        <tr><td>Cevap vermeyen hastaya hatırlatma akışı (otomatik)</td><td><span class="pill good">🟢</span></td><td>Hatırlatma motoru hazır; A/B testi açık</td></tr>
+        <tr><td>Şehir bazlı saat listesi (Dublin / Cork)</td><td><span class="pill good">🟢</span></td><td>Multi-City Campaign (FEAT-MCC) tamamlandı</td></tr>
+        <tr><td>Zoho CRM'e otomatik aşama geçişi (7 transition)</td><td><span class="pill good">🟢</span></td><td>Pipeline kurulu, eşleştirme bekliyor (§4.2-C)</td></tr>
+        <tr><td>Randevu + Görüşme bağlantısı</td><td><span class="pill good">🟢</span></td><td>Pilotta sahte link, tam açılışta gerçek (B0)</td></tr>
+        <tr><td>STOP / iptal akışı</td><td><span class="pill good">🟢</span></td><td>Yasal akış hazır (Senaryo 6, §24)</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="mapping-3">23.2 Kısmi — Mapping / Config Gerekli (Kod Yok)</h3>
+    <p>Pilot başlamadan 1-2 saatlik ayar işi. Müşteri onayı yeterli, geliştirme gerekmiyor.</p>
+
+    <div class="card">
+      <h4 style="margin-top:0;color:var(--warn)">🟡 Boşluk #1 — Hatırlatma Zamanlaması: 24h+48h vs 3/7/14 gün</h4>
+      <p><b>Durum:</b> Müşterinin DocX'i "24 saat sonra 2. mesaj, 48 saat sonra 3. mesaj" diyor. Bizim sistem varsayılan olarak 3. gün / 7. gün / 14. gün'de gönderiyor.</p>
+      <p><b>Bizim için sorun mu?</b> Hayır — bu süre ayardan değişebiliyor. Yönetim panelinde 3'ü "1 gün" yapıp 7'yi "2 gün" yapmamız yeterli.</p>
+      <p><b>Aksiyon:</b> Pilot başlamadan önce 5 dakikalık ayarlama. Müşteriye sorulacak: "24h+48h olarak mı kalsın, yoksa 48h+5 gün gibi daha rahat bir aralık mı?"</p>
+    </div>
+
+    <div class="card">
+      <h4 style="margin-top:0;color:var(--warn)">🟡 Boşluk #2 — Karşılama Mesajı: DocX'te 15 Varyant, Sistemde Tek Metin</h4>
+      <p><b>Durum:</b> Şu an pilotta tek ve genel bir karşılama metni var. Müşterinin yazdığı 15 persona'lı varyant ("Hi {{Name}} 😊 I'm Güneş from Dent Adavista...") sisteme yüklendi ama akışta rotasyon henüz aktif değil.</p>
+      <p><b>Sebep:</b> Plan kararı — pilotun ilk 2 gününü tek varyantla başlatmak hata yakalamayı kolaylaştırır. Rotasyon Stage 3'te devreye giriyor.</p>
+      <p><b>Aksiyon:</b><br>
+      (a) Pilot başında tek ama persona'lı varyantı açalım (Güneş + Dr. Özge + Dublin / Cork tarihli versiyon)<br>
+      (b) Tüm 15 varyant rotasyonunu Stage 1'den itibaren — risk: bir varyantta hata olursa hangi varyant olduğunu bulmak zorlaşır.<br>
+      Önerimiz (a). Karar §23.5 C ile bağlı (3 Kritik Soru).</p>
+    </div>
+
+    <div class="card">
+      <h4 style="margin-top:0;color:var(--warn)">🟡 Boşluk #3 — DocX'teki Hatırlatma Metinleri (24h+48h × 5 Varyant) Sisteme Yüklü Değil</h4>
+      <p><b>Durum:</b> DocX'te 24 saat hatırlatma için 5, 48 saat hatırlatma için 5 ayrı metin var. Bizim sistemde generic hatırlatma metinleri yüklü.</p>
+      <p><b>Aksiyon:</b> ~30 dakikalık veritabanı güncellemesi. Pilot başlamadan yetişiyor. Müşteri onayı yeterli, başka karar gerekmiyor.</p>
+    </div>
+
+    <h3 id="real-gaps">23.3 Kod / Akış Eksik (Gerçek Boşluklar)</h3>
+    <p>Aşağıdaki boşluklar pilot kapsamı netleştirme gerektiren stratejik kararlar.</p>
+
+    <div class="card">
+      <h4 style="margin-top:0;color:var(--bad)">🔴 Boşluk #4 — Foto İsteme Akışı (X-ray / Ağız)</h4>
+      <p><b>Durum:</b> Paket FEAT-PHOTO-REQUEST implementasyonu tamamlanıyor — migration 034 + <code>PhotoRequestService</code> + <code>InmaInboundMediaEndpoint</code> + dashboard <code>PhotoTab</code>. Tracking: <code>tracking/20260427-feat-photo-request-flow.md</code>.</p>
+      <p><b>4 alt akış (DocX'ten):</b> (1) Foto şablon görseli gönder, (2) Açıları yazıyla anlat, (3) Klinik WhatsApp numarasına yönlendir, (4) Hastanın WhatsApp numarasını iste.</p>
+      <p><b>Pilot kararı:</b> §23.5 B (3 Kritik Soru) — manuel mi, yarı otomatik mi, pilota dahil değil mi? Bizim implementasyon hazır olduğu için "yarı otomatik" mümkün; karar K-zincire bağlı.</p>
+    </div>
+
+    <div class="card">
+      <h4 style="margin-top:0;color:var(--bad)">🔴 Boşluk #5 — Çok Kanallı Giriş (Instagram DM / Messenger / Twitter / TikTok / YouTube)</h4>
+      <p><b>Müşteri istiyor:</b> Flowchart'ta hasta 7 farklı kanaldan gelebiliyor: Meta reklam formu, web sitesi formu, Instagram DM, Facebook Messenger, Twitter, TikTok, YouTube.</p>
+      <p><b>Bizde durum:</b> Pilotta yalnız <strong>2 kanal aktif</strong>: Meta reklam formu + web sitesi formu. Diğer 5 kanal için altyapı (INMA) hazır ama akış paketi yapılmadı.</p>
+      <p><b>Sebep:</b> Hata yüzeyi büyük; pilotta önce tek kanal stabil olduktan sonra ekleniyor. Stage 3 sonrası V2 paketinde Instagram DM + Telegram öne çıkıyor.</p>
+      <p><b>Müşteriye verilecek net cümle:</b> "Pilotta tek kanaldan başlıyoruz, başarı doğrulandıktan sonra Instagram, Facebook ve diğerleri sırayla ekleniyor — her biri 1-2 hafta sürer."</p>
+    </div>
+
+    <div class="card">
+      <h4 style="margin-top:0;color:var(--bad)">🔴 Boşluk #6 — Teklif Süreci 3 Ara Durumlu (Hazırlanıyor / Hazırlandı / Verildi)</h4>
+      <p><b>Müşteri istiyor:</b> Flowchart'ta teklif aşaması ayrıntılı: Online Görüşme → Bilgi Girildi → <b>Teklif Hazırlanıyor</b> → <b>Teklif Hazırlandı</b> → <b>Teklif Verildi</b> → Kabul / İptal / Karar Vermedi.</p>
+      <p><b>Bizde durum:</b> Zoho aşamaları: "Teklif Gönderildi" → "Kapora Alındı" → "Tedavi Tamamlandı / İptal". Yani <strong>"hazırlanıyor / hazırlandı"</strong> ara durumu otomatik geçiş olarak yok; manuel takip edilebilir.</p>
+      <p><b>Aksiyon:</b><br>
+      (a) Manuel takip: Koordinatör panelinden "Teklif hazırlanıyor" notu düşer, hazırlanınca "verildi" yapar. Pilot için yeterli.<br>
+      (b) Otomatik geçiş: Zoho aşaması ekleyip Invekto'da yeni alan açmamız gerekir. ~1 gün geliştirme.<br>
+      Önerimiz (a).</p>
+    </div>
+
+    <div class="card">
+      <h4 style="margin-top:0;color:var(--bad)">🔴 Boşluk #7 — 24 Saat Teklif Süre Sınırı (Otomatik İptal)</h4>
+      <p><b>Müşteri istiyor:</b> Flowchart'ta açıkça "24 SAAT SÜRE SINIRI KOY" yazıyor. Teklif gönderildikten 24 saat sonra hasta cevap vermediyse otomatik aksiyon.</p>
+      <p><b>Bizde durum:</b> "Teklif gönderildikten 24 saat sonra hatırlatma mesajı" hazır. Ancak <strong>"otomatik iptal et"</strong> kısmı yok — mesaj atılır ama lead'in durumu otomatik değişmez.</p>
+      <p><b>Toplantıda netleşmeli:</b><br>
+      (a) 24 saat dolunca yumuşak hatırlatma (var ✓)<br>
+      (b) 48 saat dolunca "soğumuş" işaretle (var ✓)<br>
+      (c) "Teklif otomatik iptal" gerçekten gerekli mi? Yoksa koordinatör elle mi kapatsın?<br>
+      Tıbbi sektörde otomatik iptal hassas — genelde manuel önerilir.</p>
+    </div>
+
+    <div class="card">
+      <h4 style="margin-top:0;color:var(--bad)">🔴 Boşluk #8 — Rapor / KPI Ekranı Yok (sayaçlar, dönüşüm hunisi, A/B performansı)</h4>
+      <p><b>Müşteri istiyor:</b> "Bu hafta kaç hasta geldi? Yüzde kaçı cevapladı? Yüzde kaçı randevu aldı? Hangi karşılama mesajı daha iyi çalıştı? Dr. Özge görüşmelerinin ne kadarı tedaviye dönüştü?" — tek bakışta.</p>
+      <p><b>Mevcut:</b></p>
+      <ul>
+        <li>✅ <b>Akış Takibi sayfası</b> (Flow Monitor): canlı 5sn yenilenir, durum filtreleri + adım-bazlı iz.</li>
+        <li>✅ <b>Lead listesi</b> + Zoho aşaması + son temas tarihi.</li>
+        <li>✅ <b>INMA sohbet ekranı</b> tam döküm.</li>
+        <li>✅ <b>Akış izleri DB'de</b>: <code>flow_executions</code> + <code>node_trace</code>. <em>Veri var, agregat ekran yok.</em></li>
+      </ul>
+      <p><b>Eksik:</b></p>
+      <ul>
+        <li>❌ Dönüşüm hunisi (form → karşılama → cevap → randevu → görüşme → tedavi)</li>
+        <li>❌ Akış bazlı KPI (gönderim sayısı, yanıt %, ortalama yanıt süresi)</li>
+        <li>❌ <b>Akış performans raporu</b> — ortalama tamamlanma, başarı/hata/devir, en yavaş düğüm, en çok hata veren düğüm.</li>
+        <li>❌ <b>Düğüm-bazlı dropoff hunisi</b> — örn. "ai_faq'ta takılma %12, slot_picker'a %50, slot seçen %32".</li>
+        <li>❌ <b>Haftalık karşılaştırma</b> — Welcome akışı bu hafta vs geçen hafta.</li>
+        <li>❌ SSS başlık dağılımı (12 başlıktan hangisi kaç kez)</li>
+        <li>❌ <b>FAQ varyant performans matrisi (12 × 3)</b> — gönderim, engagement %, devir oranı, güven skoru. Veri <code>auto_reply_log.faq_variant_index</code> + <code>chat_sessions</code>'da, agregat ekran eksik.</li>
+        <li>❌ Hatırlatma performansı (24h / 48h kaç hasta geri döndü)</li>
+        <li>❌ Welcome A/B varyant kıyaslaması</li>
+        <li>❌ Lead aşaması geçiş süreleri</li>
+        <li>❌ Haftalık otomatik e-posta raporu</li>
+      </ul>
+      <p><b>Pilot için pratik karşılığı:</b> İlk 30 gün metriklerini SQL sorgularıyla elden çıkartacağız. Müşteri günde / haftada bir tablo halinde alır.</p>
+      <p><b>Tahmini süre:</b> Temel rapor (huni + 6 metrik kart + haftalık trend) ~5 iş günü. Detaylı (A/B + intent + lead geçiş süreleri) ~10 iş günü.</p>
+      <p><b>Karar:</b><br>
+      (a) Rapor pilotta gerekli değil — haftalık SQL çıktısı, post-pilot rapor ekranı (önerilen)<br>
+      (b) Stage 3'e yetiştir — temel huni + 6 metrik<br>
+      (c) Pilot başında lazım — Stage 1 başlangıcı 5 gün kayar</p>
+    </div>
+
+    <div class="card">
+      <h4 style="margin-top:0;color:var(--bad)">🔴 Boşluk #9 — INMA'da Pipeline Status Alanı + Agent Dropdown (Çift Yönlü)</h4>
+
+      <p><b>İhtiyaç:</b> INMA sohbet panelinde her hasta için "Şu anki aşama" alanı görünsün. Agent (koordinatör) bu alandaki dropdown'dan elle aşama değiştirebilsin (örn. "Konuşma Başladı" → "Nitelikli Aday"). Değişiklik bizim sisteme geri akarak Zoho'ya yansısın.</p>
+
+      <p><b>Toplantı kararları (Q onayı, 28 Nisan):</b></p>
+      <table>
+        <thead><tr><th>Konu</th><th>Karar</th><th>Anlamı</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Alanın yeri</td>
+            <td><b>Yol A — INMA'nın kod tabanına native alan</b></td>
+            <td>INMA ekibi: yeni "pipeline_status" kolonu + dropdown UI bileşeni + API endpoint. INMA roadmap'inde planlanmalı.</td>
+          </tr>
+          <tr>
+            <td>Senkron yönü</td>
+            <td><b>Çift yönlü (bidirectional)</b></td>
+            <td>Invekto → INMA push (mevcut tek yön) + INMA → Invekto webhook (yeni). Agent INMA'dan değiştirince Invekto leads.pipeline_status güncellenir, sonra Zoho'ya push.</td>
+          </tr>
+          <tr>
+            <td>Aşama listesinin sahibi</td>
+            <td><b>INMA — sistem genelinde tek doğru kaynak</b></td>
+            <td>Aşama isimleri, sırası ve geçiş kuralları <strong>tüm sistemde</strong> INMA tarafında. Invekto yönetim paneli, koordinatör ekranı, Zoho CRM Blueprint — hepsi INMA'dan çekip kullanır. Bu §22'deki 8 durumu, §15-C Zoho 7 transition'ı, koordinatör panelindeki dropdown'ı ve INMA agent dropdown'ını <strong>tek listeden besler</strong>.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p><b>İş yükü:</b></p>
+      <ul>
+        <li><b>INMA ekibi (5-10 gün):</b> Yeni kolon + dropdown UI + API endpoint + INMA → Invekto webhook + status enum yönetim ekranı.</li>
+        <li><b>Bizim ekip (3-5 gün):</b> INMA webhook handler + reverse sync (INMA → Invekto leads.pipeline_status update) + status enum mapping (INMA enum → mevcut LeadStatusEventMap → Zoho gunes_event) + idempotency (sonsuz döngü koruması) + audit trail.</li>
+        <li><b>Toplam paralel süre:</b> En az 2 hafta — eş zamanlı çalışırsa.</li>
+      </ul>
+
+      <p><b>Çözülmesi gereken alt sorular:</b></p>
+      <ol class="q-list">
+        <li><b>Çakışma kuralı:</b> Aynı dakikada koordinatör Dashboard'dan ve agent INMA'dan farklı aşamalara çekerse hangisi kazanır?
+          <span class="why">Önerimiz: "son yazan kazanır" (last-write-wins) + audit log her iki kaydı da tutar.</span></li>
+        <li><b>Audit trail:</b> Hangi kayıtta tutulacak? Invekto'da mı, INMA'da mı, ikisinde de mi?
+          <span class="why">Önerimiz: değişikliği yapan taraf kendi tarafında tutar; rapor için Invekto'ya çekilir.</span></li>
+        <li><b>Sonsuz döngü riski:</b> INMA değişti → Invekto güncellendi → Invekto INMA'ya push (zaten orada olan değer). Idempotency anahtarı (lead_id + status + timestamp) ile aynı değer ikinci kez gönderilince INMA reject etmeli.</li>
+        <li><b>Yetki:</b> Agent INMA'da hangi aşamalara izinli? Tüm aşamalara mı, "tedavi tamamlandı" gibi bazıları kilitli mi?
+          <span class="why">Önerimiz: pilot süresince hepsi açık + audit log; gerekirse sonra kilit.</span></li>
+        <li><b>Retroaktif lead'ler:</b> Mevcut hastaların aşamaları INMA'ya nasıl yansıyacak — toplu backfill mi, sadece yeni gelenler mi?
+          <span class="why">Önerimiz: tek seferlik backfill scripti tüm aktif lead'leri INMA'ya push eder; sonrası canlı sync.</span></li>
+      </ol>
+
+      <div class="callout warn">
+        <h4 style="margin-top:0">Pilot kapsamı dışında — Stage 3 sonrası</h4>
+        <p>Bu özellik <strong>pilot başlamadan yetiştirilemez</strong>. Pilot süresince koordinatör Invekto Dashboard'dan aşama değişikliği yapar; INMA ekranında salt-okunur etiket olarak gösterilir (cf6'ya tek yön push). Native alan + dropdown + bidirectional sync entegrasyonu Stage 3 sonrası ayrı paket.</p>
+      </div>
+
+      <p><b>Toplantıda netleşmesi gereken son madde:</b> INMA ekibinden bu işin <strong>roadmap planlamasını</strong> almak — ne zaman geliştirilebileceğini öğrenmek. Bizim taraf onların başlangıç tarihi belli olunca paralel devreye girer.</p>
+    </div>
+
+    <h3 id="critical-3">23.4 Toplantıda Cevaplanması Gereken 3 Kritik Soru</h3>
+    <table>
+      <thead><tr><th>#</th><th>Soru</th><th>Neden kritik</th></tr></thead>
+      <tbody>
+        <tr><td>A</td><td><b>Pilot Stage 1-2'de yalnız WhatsApp + form yeterli mi?</b> (Instagram DM, Messenger, Twitter, TikTok, YouTube — pilotta yok, sırayla)</td><td>Müşteri Flowchart'ta 7 kanal görüyor; "hepsi pilotta var" beklentisinde olabilir. Açıkça hizalanmalı.</td></tr>
+        <tr><td>B</td><td><b>Foto isteme akışı pilot kapsamında mı?</b> (Manuel / yarı otomatik / pilota dahil değil)</td><td>"Dahil et" cevabı pilot tarihini 3-4 gün öteler. "Manuel olsun" cevabı pilot planını korur. (Not: FEAT-PHOTO-REQUEST paketinde implementasyonu yapıldı — kullanım kararı.)</td></tr>
+        <tr><td>C</td><td><b>15 karşılama varyantı pilot başında mı, sonrasında mı?</b> (Tek persona Stage 1, rotasyon Stage 3 — önerimiz)</td><td>Hata izlemenin kolaylığı için Stage 1 tek varyantla daha güvenli.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <h4 style="margin-top:0">Sonuç</h4>
+      <p>Müşterinin gönderdiği akışların <strong>%85'i hazır</strong>. Geri kalan %15:</p>
+      <ul>
+        <li>%10'u <strong>config / mapping</strong> — pilot başlamadan 1-2 saatte tamamlanır.</li>
+        <li>%5'i <strong>gerçek geliştirme</strong> — multi-platform — pilot sonrası, müşteri kararıyla.</li>
+      </ul>
+      <p>Pilotun başlamasının önünde teknik bir engel yok. Yalnızca yukarıdaki 3 soruya net cevap alınması gerekiyor.</p>
+    </div>
+  </section>
+
+  <section id="scenarios">
+    <h2>24. 6 Senaryo — Sistem Davranış Referansı</h2>
+    <p>Pilotta gerçek bir hastanın yaşayacağı yolun her adımı. Her senaryo: görsel akış + örnek diyalog + arka plan açıklaması. Pilot ekibi + müşteri eğitimi referansı.</p>
+
+    <div class="scenario">
+      <div class="scenario-head">
+        <span class="scenario-num">1</span>
+        <h3 class="scenario-title">Hasta Formu Doldurdu — Karşılama Mesajı Gidiyor</h3>
+        <span class="scenario-tag">Tetikleyici: Meta reklamına tıklandı, form gönderildi</span>
+      </div>
+      <div class="scenario-body">
+        <ul class="flow">
+          <li class="flow-step"><div class="ico">📱</div><div class="ttl">Hasta</div><div class="desc">Instagram'da reklam görür, formu açar, doldurup gönderir.</div></li>
+          <li class="flow-arrow">→</li>
+          <li class="flow-step"><div class="ico">📝</div><div class="ttl">Form</div><div class="desc">İsim, telefon, e-posta, şehir tercihi (Dublin/Cork), önceki tedavi.</div></li>
+          <li class="flow-arrow">→</li>
+          <li class="flow-step"><div class="ico">⚙️</div><div class="ttl">Sistem</div><div class="desc">Bilgileri yakalar, kayıt açar, Zoho'ya da yazar.</div></li>
+          <li class="flow-arrow">→</li>
+          <li class="flow-step"><div class="ico">💬</div><div class="ttl">WhatsApp</div><div class="desc">Karşılama mesajı saniyeler içinde hastanın WhatsApp'ına düşer.</div></li>
+        </ul>
+        <h4>Örnek mesaj (hastaya giden)</h4>
+        <div class="who-says">
+          <div class="bubble bot"><span class="who">Güneş — Dent Adavista</span>Merhaba Sarah! Roadshow başvurun için teşekkürler. Ben Güneş — Dent Adavista'dan. Dr. Özge ile ücretsiz online görüşme ayarlayabilirim. Hangi şehirdesin: <b>Dublin</b> mi <b>Cork</b> mu?</div>
+        </div>
+        <h4>Arka planda olanlar</h4>
+        <ul>
+          <li>Hasta bilgileri Invekto sistemine kayıt edildi.</li>
+          <li>Aynı bilgi Zoho CRM'inize <b>"Yeni Aday"</b> olarak yazıldı.</li>
+          <li>Karşılama mesajı kayıt altında, gönderim onay bilgisi var.</li>
+          <li>Eğer hasta cevap vermezse 3 gün sonra hatırlatma akışı devreye girecek (Senaryo 5).</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="scenario">
+      <div class="scenario-head">
+        <span class="scenario-num">2</span>
+        <h3 class="scenario-title">"Dublin" Yazdı — Randevu Saatleri Listeleniyor</h3>
+        <span class="scenario-tag">Tetikleyici: Hasta şehir adıyla cevap verdi</span>
+      </div>
+      <div class="scenario-body">
+        <ul class="flow">
+          <li class="flow-step"><div class="ico">💬</div><div class="ttl">Hasta cevabı</div><div class="desc">"Dublin" diye yazar (veya butona basar).</div></li>
+          <li class="flow-arrow">→</li>
+          <li class="flow-step"><div class="ico">🤖</div><div class="ttl">Sistem</div><div class="desc">Şehri anlar, hastanın CRM kaydını günceller, uygun saatleri çeker.</div></li>
+          <li class="flow-arrow">→</li>
+          <li class="flow-step"><div class="ico">📅</div><div class="ttl">Liste gönderilir</div><div class="desc">Dr. Özge'nin müsait olduğu 4 farklı saat butonlu liste halinde gelir.</div></li>
+        </ul>
+        <h4>Örnek diyalog</h4>
+        <div class="who-says">
+          <div class="bubble user"><span class="who">Hasta</span>Dublin</div>
+          <div class="bubble bot"><span class="who">Güneş</span>Harika! Dr. Özge ile ücretsiz Zoom görüşmesi için müsait saatler:<br>📅 Çar 30 Nisan 14:00<br>📅 Per 1 Mayıs 10:00<br>📅 Per 1 Mayıs 16:00<br>📅 Cum 2 Mayıs 11:00<br>Hangisi sana uygun?</div>
+        </div>
+        <h4>Arka planda olanlar</h4>
+        <ul>
+          <li>Hastanın "şehir tercihi" kaydı <code>Dublin</code> olarak güncellendi.</li>
+          <li>Zoho'da aşama "İletişim Kuruldu" → "Konuşma Başladı" olarak ilerletildi.</li>
+          <li>Saatler Dr. Özge'nin takvim ayarına göre canlı çekiliyor (geçmiş ve dolu olanlar listeye girmez).</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="scenario">
+      <div class="scenario-head">
+        <span class="scenario-num">3</span>
+        <h3 class="scenario-title">"Bedava mı Gerçekten?" — Yapay Zekâ Cevabı</h3>
+        <span class="scenario-tag">Tetikleyici: Hasta bilgi sorusu sordu</span>
+      </div>
+      <div class="scenario-body">
+        <ul class="flow">
+          <li class="flow-step"><div class="ico">❓</div><div class="ttl">Soru</div><div class="desc">Hasta serbest cümleyle bir şey sorar.</div></li>
+          <li class="flow-arrow">→</li>
+          <li class="flow-step"><div class="ico">🧠</div><div class="ttl">Anlama</div><div class="desc">Sistem 12 başlıktan hangisine en yakın olduğunu hesaplar.</div></li>
+          <li class="flow-arrow">→</li>
+          <li class="flow-step"><div class="ico">🎯</div><div class="ttl">Cevap seçer</div><div class="desc">O başlığa ait 3 cevaptan birini sırayla kullanır (varyant rotasyonu).</div></li>
+          <li class="flow-arrow">→</li>
+          <li class="flow-step"><div class="ico">💬</div><div class="ttl">Yanıt</div><div class="desc">Hastaya doğal bir cevap gider, ardından akışa geri döner.</div></li>
+        </ul>
+        <h4>Örnek diyalog</h4>
+        <div class="who-says">
+          <div class="bubble user"><span class="who">Hasta</span>Bu görüşme gerçekten ücretsiz mi?</div>
+          <div class="bubble bot"><span class="who">Güneş</span>Evet, tamamen ücretsiz 🙂 Dr. Özge ile yapacağın online ön görüşmede genel durumun değerlendirilir, sorularını sorabilirsin. Hiçbir taahhüt yok. Dublin / Cork tarihlerinden uygun saati seçmen yeterli.</div>
+        </div>
+        <h4>Sistemde tanımlı 12 başlık</h4>
+        <ol>
+          <li>Bedava mı? (is_it_free)</li>
+          <li>Fiyat ne kadar? (price_quote)</li>
+          <li>Süreç nasıl ilerliyor?</li>
+          <li>Uçuş ve otel dahil mi?</li>
+          <li>Vize gerekiyor mu?</li>
+          <li>Güvenli mi, klinik onaylı mı?</li>
+          <li>Tedavi ne kadar sürer?</li>
+          <li>Hangi tedaviler var?</li>
+          <li>Garanti var mı?</li>
+          <li>Önceki hastaların yorumları?</li>
+          <li>Roadshow nedir, nerede?</li>
+          <li>Klinik nerede, nasıl gelinir?</li>
+        </ol>
+        <p class="save-status">Sistemin anlayamadığı sorular koordinatöre düşüyor.</p>
+      </div>
+    </div>
+
+    <div class="scenario">
+      <div class="scenario-head">
+        <span class="scenario-num">4</span>
+        <h3 class="scenario-title">Saat Seçildi — Google Meet Bağlantısı Geldi</h3>
+        <span class="scenario-tag">Tetikleyici: Hasta önerilen saatlerden birini seçti</span>
+      </div>
+      <div class="scenario-body">
+        <ul class="flow">
+          <li class="flow-step"><div class="ico">🖱️</div><div class="ttl">Seçim</div><div class="desc">Hasta saatlerden birine tıklar.</div></li>
+          <li class="flow-arrow">→</li>
+          <li class="flow-step"><div class="ico">📌</div><div class="ttl">Randevu</div><div class="desc">Sistem o saati bloklar, randevu kaydı açar.</div></li>
+          <li class="flow-arrow">→</li>
+          <li class="flow-step"><div class="ico">🔗</div><div class="ttl">Meet linki</div><div class="desc">Google Meet bağlantısı oluşturulur (pilotta sahte, açılışta gerçek — B0).</div></li>
+          <li class="flow-arrow">→</li>
+          <li class="flow-step"><div class="ico">⏰</div><div class="ttl">Hatırlatmalar</div><div class="desc">24 saat öncesinden ve 1 saat öncesinden iki hatırlatma planlanır.</div></li>
+        </ul>
+        <h4>Örnek diyalog</h4>
+        <div class="who-says">
+          <div class="bubble user"><span class="who">Hasta</span>Per 1 Mayıs 10:00</div>
+          <div class="bubble bot"><span class="who">Güneş</span>Harika! Görüşmen onaylandı 🎉<br>📅 1 Mayıs Perşembe, 10:00 (Dublin saati)<br>👨‍⚕️ Dr. Özge<br>🔗 Görüşme linki: meet.google.com/abc-defg-hij<br><br>1 saat önce ve 24 saat önce hatırlatma mesajı göndereceğim. Görüşmeye 5 dk önce hazır ol, kulaklık önerilir.</div>
+        </div>
+        <h4>Arka planda olanlar</h4>
+        <ul>
+          <li>Zoho CRM'de aşama "Teklif Aşaması" olarak güncellendi.</li>
+          <li>Aynı saat başka biri tarafından alınamayacak şekilde kilitlendi.</li>
+          <li>Pilot süresince Meet bağlantısı sahte (link dolu görünür ama gerçek odaya bağlamaz). Tam açılışta gerçek bağlantı (B0 Google Workspace OAuth).</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="scenario">
+      <div class="scenario-head">
+        <span class="scenario-num">5</span>
+        <h3 class="scenario-title">Cevap Vermedi — Hatırlatma Akışı Devreye Giriyor</h3>
+        <span class="scenario-tag">Tetikleyici: 3 gün boyunca hastadan ses çıkmadı</span>
+      </div>
+      <div class="scenario-body">
+        <ul class="flow">
+          <li class="flow-step"><div class="ico">🤐</div><div class="ttl">Sessizlik</div><div class="desc">Karşılama gönderildi ama hasta hiçbir mesaj atmadı.</div></li>
+          <li class="flow-arrow">→</li>
+          <li class="flow-step"><div class="ico">📨</div><div class="ttl">3. gün</div><div class="desc">İlk yumuşak hatırlatma: "Hâlâ ilgilenir misin?"</div></li>
+          <li class="flow-arrow">→</li>
+          <li class="flow-step"><div class="ico">📨</div><div class="ttl">7. gün</div><div class="desc">İkinci hatırlatma: yorum/sosyal kanıt vurgusu.</div></li>
+          <li class="flow-arrow">→</li>
+          <li class="flow-step"><div class="ico">📨</div><div class="ttl">14. gün</div><div class="desc">Son hatırlatma: roadshow tarih yaklaşıyor uyarısı.</div></li>
+        </ul>
+        <h4>Örnek hatırlatma mesajı (3. gün)</h4>
+        <div class="who-says">
+          <div class="bubble bot"><span class="who">Güneş — 3 gün sonra</span>Sarah selam 👋 Geçen hafta roadshow için başvurmuştun. Hâlâ ilgilenir misin? Dr. Özge ile 15 dakikalık sohbet, taahhüt yok. İstersen sana 2 yeni saat önereyim.</div>
+        </div>
+        <h4>Arka planda olanlar</h4>
+        <ul>
+          <li>Sistem "cevap yok" durumunu sürekli izliyor.</li>
+          <li>Pilotun ilk gününde "test modu" açık → günler dakikaya dönüştürülüyor (3 gün = 3 dakika), saatler içinde test edilebiliyor.</li>
+          <li>Sınırlı test aşamasında "test modu" kapatılıyor, gerçek 3/7/14 gün periyoduna geçiliyor.</li>
+          <li>Hasta arada bir yanıt verirse hatırlatma akışı otomatik durur.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="scenario">
+      <div class="scenario-head">
+        <span class="scenario-num">6</span>
+        <h3 class="scenario-title">"STOP" Yazdı — İletişim Kesilir</h3>
+        <span class="scenario-tag">Tetikleyici: Hasta listeden çıkmak istiyor (yasal zorunluluk)</span>
+      </div>
+      <div class="scenario-body">
+        <ul class="flow">
+          <li class="flow-step"><div class="ico">✋</div><div class="ttl">"STOP"</div><div class="desc">Hasta "STOP", "İPTAL", "UNSUBSCRIBE" gibi bir kelime yazar.</div></li>
+          <li class="flow-arrow">→</li>
+          <li class="flow-step"><div class="ico">🚫</div><div class="ttl">Kayıt</div><div class="desc">Sistem "iletişim kapalı" işareti koyar.</div></li>
+          <li class="flow-arrow">→</li>
+          <li class="flow-step"><div class="ico">📋</div><div class="ttl">CRM</div><div class="desc">Zoho'da bu kişiye bir daha kampanya mesajı gitmez.</div></li>
+          <li class="flow-arrow">→</li>
+          <li class="flow-step"><div class="ico">✅</div><div class="ttl">Onay</div><div class="desc">Hastaya kısa bir teyit mesajı: "Kaydın silindi, bir daha mesaj gelmeyecek."</div></li>
+        </ul>
+        <h4>Örnek diyalog</h4>
+        <div class="who-says">
+          <div class="bubble user"><span class="who">Hasta</span>STOP</div>
+          <div class="bubble bot"><span class="who">Güneş</span>Anlaşıldı 🙏 Listeden çıkarıldın, bundan sonra mesaj almayacaksın. Fikrin değişirse dentadavista.com üzerinden bize her zaman ulaşabilirsin. İyi günler!</div>
+        </div>
+        <h4>Neden önemli?</h4>
+        <ul>
+          <li>WhatsApp ve GDPR yasal kuralı: kullanıcı çıkmak istediğinde hemen çıkarılmalı.</li>
+          <li>Bu kural ihlal edilirse Meta numara askıya alabilir.</li>
+          <li>Sistem bu mesajları otomatik tanıyor, koordinatör müdahalesine gerek yok.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 style="margin-top:40px">Bonus: Beklenmeyen Mesaj Geldiğinde</h3>
+    <div class="card">
+      <p>Sistem hastanın yazdığını anlayamazsa (12 başlığa girmiyor, akışta yeri yok) <strong>iki kez denedikten sonra koordinatöre devreder</strong>. Koordinatör panelinde kırmızı bildirim çıkar, ilk açan müdahale eder.</p>
+      <ul>
+        <li>Örnek: "Eşim şeker hastası, ona da bakar mısınız?" → Sistem "tedavi türü" başlığını ararken yetersiz kalırsa devreder.</li>
+        <li>Örnek: "Param yok ama tedavi olmak istiyorum" → Bu duygusal mesaj, robot yorumu yapmıyor, doğrudan koordinatör.</li>
+        <li>Koordinatör cevapladıktan sonra sistem yine devralabilir veya konuşma manuel modda devam eder.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <p>Kaynak dokümanlar: <code>pilot-stage1-prep.md</code> (567 satır, Stage 1 tıkla-tıkla akış) · <code>pilot-checklist.md</code> (215 satır, canonical kurulum) · <code>pilot-golive.md</code> (72 satır, UAT 20 senaryo) · <code>tracking/pilot-launch-roadmap.md</code> (Master Queue + Backlog).</p>
+    <p>§19-24 kaynağı: <code>dent-toplanti.html</code> (28 Nisan toplantı dokümanı, 2026-04-28 itibariyle bu dosyaya konsolide edildi).</p>
+    <p>Bu dosya tek dosyalık dashboard — güncelleme doğrudan burada yapılır (status pill + tarih alanı).</p>
+  </footer>
+
+  </main>
+</div>
+
+</body>
+</html>

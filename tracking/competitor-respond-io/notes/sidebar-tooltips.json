@@ -1,0 +1,42 @@
+[
+  {
+    "idx": 0,
+    "href": "/space/408881/onboarding",
+    "tooltip": "Onboarding checklist"
+  },
+  {
+    "idx": 1,
+    "href": "/space/408881/dashboard",
+    "tooltip": "Onboarding checklist"
+  },
+  {
+    "idx": 2,
+    "href": "/space/408881/inbox",
+    "tooltip": "Onboarding checklist"
+  },
+  {
+    "idx": 3,
+    "href": "/space/408881/contact",
+    "tooltip": "Onboarding checklist"
+  },
+  {
+    "idx": 4,
+    "href": "/space/408881/ai-agents",
+    "tooltip": "Onboarding checklist"
+  },
+  {
+    "idx": 5,
+    "href": "/space/408881/broadcast",
+    "tooltip": "Onboarding checklist"
+  },
+  {
+    "idx": 6,
+    "href": "/space/408881/workflows",
+    "tooltip": "Onboarding checklist"
+  },
+  {
+    "idx": 7,
+    "href": "/space/408881/reports",
+    "tooltip": "Onboarding checklist"
+  }
+]

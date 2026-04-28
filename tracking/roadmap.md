@@ -972,6 +972,7 @@ Toplam (kümülatif):             ARPU 2-3x artış potansiyeli   Phase 4 sonund
 | — | Domain Split (super vs crm) | EVALUATED | super.invekto.com (ops) vs crm.invekto.com (tenant) — IIS ARR + React routing. Kaynak: [arch/docs/lansman/02-LANSMAN-ROADMAP.md](../arch/docs/lansman/02-LANSMAN-ROADMAP.md) |
 | — | Pricing Page + Sign-up Form | EVALUATED | invekto.com gerçek plan fiyatları + demo/kayıt formu. Kaynak: [arch/docs/lansman/02-LANSMAN-ROADMAP.md](../arch/docs/lansman/02-LANSMAN-ROADMAP.md) |
 | — | Invekto.Scheduler ayrı mikroservis | IDEA | G7 follow-up. Backend'ten scheduler rolünü çıkar, ayrı queue-only servis. Backend'teki 4 compile-only ProjectReference kaldırılır. Kaynak: [arch/specs/g7-hangfire-migration.md](../arch/specs/g7-hangfire-migration.md) §12 |
+| — | Contact Lifecycle Stage | IDEA | [contact-lifecycle-stage.md](ideas/contact-lifecycle-stage.md) — Sohbet bazlı tag'in üstüne otomatik ilerleyen tek-değerli lifecycle (new → contacted → engaged → opportunity → customer + dormant/lost). Event-driven, stage_history audit. 5 açık soru Q kararı bekliyor (scope, dormant eşiği, new stage, intent eşleşmesi, backfill). |
 
 **Arşivlenen fikirler:** `tracking/ideas/archive/` — PKT'ye atanmış ve tracking dosyasına aktarılmış eski fikir dosyaları.
 
