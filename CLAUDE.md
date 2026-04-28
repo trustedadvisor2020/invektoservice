@@ -5,6 +5,15 @@
 
 Multi-tenant SaaS mikro servis platformu. .NET 8, PostgreSQL, React 18.
 
+## Session Launcher (worktree-per-session)
+
+Q `claude` yerine `invs` kullanır → her session izole worktree'de (komut adı `inv` Python invoke ile çakıştığı için `invs`):
+- Wrapper: `%USERPROFILE%\bin\invs.cmd` → `~/.claude/scripts/cc-worktree.ps1` (RepoRoot=`c:\CRMs\InvektoServices`)
+- Yeni worktree: `c:\CRMs\InvektoServices-session-{ISO-timestamp}\`
+- Branch: `session/{ISO-timestamp}` (master'dan)
+- `/wrap` post-merge worktree+branch otomatik temizler. Boş worktree exit'te wrapper temizler.
+- Stale tarama: `pwsh -File ~/.claude/scripts/cleanup-stale-worktrees.ps1` (dry-run), `-Apply` ile sil.
+
 ## SESSION INIT
 
 Her session basladiginda otomatik:
