@@ -2,7 +2,7 @@
 
 **Slug:** `20260428-feat-pilot-kanban-superadmin`
 **Risk:** MEDIUM
-**Status:** REVIEW (iteration 1 — tenant_id filter fix + ON CONFLICT idempotency + INV codes)
+**Status:** DONE+DEPLOYED (commit edc02f9, prod canli; AC sync 2026-04-29 audit handoff Batch A — Paket 5 of 5)
 **Owner:** Claude + Q
 **Started:** 2026-04-28
 **Plan:** [`arch/plans/20260428-feat-pilot-kanban-superadmin.json`](../arch/plans/20260428-feat-pilot-kanban-superadmin.json)
@@ -27,12 +27,12 @@ Q'nun "tüm gidişat" izleme isteği için SuperAdmin Dashboard'a Pilot Kanban s
 
 | ID | Kriter | Status |
 |----|--------|--------|
-| AC1 | Migration 035 idempotent + ~48 kart seed | PENDING |
-| AC2 | GET `/api/ops/kanban/{board_key}` 200 | PENDING |
-| AC3 | PATCH `/api/ops/kanban/{board_key}/cards/{slug}` 200 | PENDING |
-| AC4 | Dashboard nav'da "Pilot Kanban" (opsOnly) | PENDING |
-| AC5 | PilotKanbanPage 5 kolon + drawer | PENDING |
-| AC6 | /wrap Step 3.5 hibrit kanban sync | PENDING |
+| AC1 | Migration 035 idempotent + ~48 kart seed | ✅ Prod (kanban_cards 64 dent-pilot kart) |
+| AC2 | GET `/api/ops/kanban/{board_key}` 200 | ✅ Endpoint canli |
+| AC3 | PATCH `/api/ops/kanban/{board_key}/cards/{slug}` 200 | ✅ Endpoint canli (slug match + Migration 036 sonrasi ref_code disjoint regex) |
+| AC4 | Dashboard nav'da "Pilot Kanban" (opsOnly) | ✅ V2 sonrasi "Yol Haritasi" rebrand (commit fc499ea) |
+| AC5 | PilotKanbanPage 5 kolon + drawer | ✅ Light/minimal redesign + drawer (commits fc499ea + 80f2c25) |
+| AC6 | /wrap Step 3.5 hibrit kanban sync | ✅ wrap.md Step 3.5 hibrit (Q onayi sonrasi PATCH) |
 
 ## Mimari
 

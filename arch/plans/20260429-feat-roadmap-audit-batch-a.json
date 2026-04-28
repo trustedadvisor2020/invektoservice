@@ -1,0 +1,184 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260429-feat-roadmap-audit-batch-a",
+  "risk": "LOW",
+  "status": "PLANNING",
+  "created_at": "2026-04-29T00:30:00Z",
+  "updated_at": "2026-04-29T00:30:00Z",
+  "status_log": [
+    {
+      "status": "PLANNING",
+      "at": "2026-04-29T00:30:00Z",
+      "note": "Audit handoff Batch A = Paket 1 (kanban data fix Migration 038) + Paket 5 (plan/tracking sync v1+v2+v3) tek commit. Q karari 2026-04-29 00:25 UTC: 5 audit paketini batching ile yur (4 commit total). Onceki audit-fixes paketi (single HIGH risk paket) FEAT-PHOTO commit ile cakistigi icin reverted (handoff bilgisi); bu sefer LOW risk dogru sirayla ayri commit'lerde."
+    }
+  ],
+  "plan": {
+    "summary": "Yol Haritasi audit (c:/tmp/tmp-superadmin-roadmap-audit-20260428.md, Codex+Claude v2) raporundan cikan veri + dokuman tutarsizligi bulgularinin Batch A grubunu uygular. (Paket 1) Migration 038 kanban_cards veri fix: D005-D009 IN_PROGRESS->TODO downgrade (frontend %0-10 sahte sinyal duzeltme), D006/D009 summary reality match (endpoint hazir, sadece UI eksik), O001 title sayim fix (7->8 ayar yuzeyi + 5/8 implement detayi), D020 roll-up clarification (D021-D026 toplami). (Paket 5) v1 plan AC verified=true (6 AC prod'da DONE+DEPLOYED ama plan stale), v1 tracking AC PENDING->✅, v2 plan status PLANNING->DONE + files_changed populated + build PASS + AC verified=true, v3 retroaktif plan+tracking yarat (Migration 037 depends_on paketi icin missing). Toplam: 1 yeni migration + canonical mirror update + 1 yeni INV code (INV-SEED-028) + v1/v2 plan AC sync + v3 retroaktif plan/tracking + v1 tracking AC sync.",
+    "q_intent": "Audit handoff'taki 14 bulgu = 5 paket. Tek session'da devam edelim. Batching: 4 commit (Recommended) — LOW risk grupla, HIGH risk ayri.",
+    "interview_notes": "Q kararlari (2026-04-29 00:25 UTC): (G1) Ops auth (Paket 3 onkosulu) = inse internal JWT (TenantId int claim) — Q kendi credentials ile login; planlanan fix dogrudan calisir (Role==admin && TenantId==0); inma JWT fallback REJECTED + comment dokumante. (G2) Migration retroaktif edit policy = OK, 036/037 dogrudan edit (Codex CQ8 regression ele alir); mevcut prod schema dokunulmaz, sadece re-run/DR davranisi duzelir. (G3) Batching = 4 commit (LOW risk grupla, HIGH risk ayri). Batch A (bu plan) = Paket 1 + Paket 5 tek commit; Batch B = Paket 2 ayri; Batch C = Paket 4 ayri; Batch D = Paket 3 (ops auth HIGH risk) ayri + Codex full review.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Migration 038 idempotent prod-ready: D005-D009 status='IN_PROGRESS' rows UPDATE -> 'TODO' (5 row), D006 summary 'Endpoint hazir (Program.cs:5712, 5750); LeadDetailPage Timeline tab eksik.', D009 summary 'Endpoint hazir (Program.cs:5771); frontend chart komponenti eksik.', O001 title 'E.1-E.8 Dashboard Konfigurasyon (8 ayar yuzeyi)' + summary 5/8 implement reality match, D020 (pilot-15-packets) summary '15 paket roll-up (D021-D026 alt-paket toplami...)' clarification. Tum UPDATE statement WHERE clause guard ile idempotent.",
+        "verified": false,
+        "verification_note": ""
+      },
+      {
+        "id": "AC2",
+        "criterion": "Migration 038 postcondition DO $verify$ block 3 assertion (INV-SEED-028 fail-loud): (a) inprogress_count = 0 D005-D009 icin, (b) O001 title LIKE '%8 ayar yuzeyi%', (c) D006 summary LIKE '%Endpoint hazir%'. Hatada RAISE EXCEPTION + actionable INV mesaj. Postcondition basarili durumda RAISE NOTICE info log.",
+        "verified": false,
+        "verification_note": ""
+      },
+      {
+        "id": "AC3",
+        "criterion": "v1 plan (arch/plans/20260428-feat-pilot-kanban-superadmin.json) AC1-AC6 tum verified=true + verification_note bilgisi (her AC icin: 'Prod'da DONE+DEPLOYED 2026-04-28 14:00 UTC commit edc02f9; Migration 035 + Backend KanbanRepository/Endpoints + Dashboard PilotKanbanPage canli'). Plan status zaten DONE; sadece AC verified flag'leri sync edilir.",
+        "verified": false,
+        "verification_note": ""
+      },
+      {
+        "id": "AC4",
+        "criterion": "v1 tracking (tracking/20260428-feat-pilot-kanban-superadmin.md) AC tablosu PENDING -> ✅ guncellemesi (6 satir AC1-AC6) + 'Status: REVIEW' -> 'Status: DONE+DEPLOYED'.",
+        "verified": false,
+        "verification_note": ""
+      },
+      {
+        "id": "AC5",
+        "criterion": "v2 plan (arch/plans/20260428-feat-roadmap-v2-refcode.json) status PLANNING -> DONE + AC verified=true + files_changed populate (Migration 036 + canonical mirror + KanbanDrawer source-link prod fallback + nav 'Pilot Kanban'->'Yol Haritasi' + URL multi-board /:boardKey?) + build PASS + verdict source 'q_force_pass' VEYA 'codex' (kontrol et — commit log'tan).",
+        "verified": false,
+        "verification_note": ""
+      },
+      {
+        "id": "AC6",
+        "criterion": "v3 retroaktif plan/tracking yarat: arch/plans/20260428-feat-roadmap-v3-depends.json + tracking/20260428-feat-roadmap-v3-depends.md. Migration 037 paketi (commit 2cc6d90 prod'da DEPLOYED) icin retroaktif schema 5.1 plan: 4 AC (depends_on TEXT regex CHECK + 13 kart bagimlilik mapping + drawer Bagimliliklar bolumu + INV-SEED-027 postcondition) + verdict status DONE source 'codex' (commit history confirm).",
+        "verified": false,
+        "verification_note": ""
+      }
+    ]
+  },
+  "gr_list": [],
+  "allowed_files": [
+    "arch/db/migrations/038-roadmap-audit-data-fix.sql",
+    "arch/db/kanban-board.sql",
+    "arch/errors.md",
+    "arch/plans/20260428-feat-pilot-kanban-superadmin.json",
+    "arch/plans/20260428-feat-roadmap-v2-refcode.json",
+    "arch/plans/20260428-feat-roadmap-v3-depends.json",
+    "arch/plans/20260429-feat-roadmap-audit-batch-a.json",
+    "tracking/20260428-feat-pilot-kanban-superadmin.md",
+    "tracking/20260428-feat-roadmap-v3-depends.md",
+    "tracking/20260429-feat-roadmap-audit-batch-a.md",
+    "tracking/README.md"
+  ],
+  "files_changed": [],
+  "git_diff": {
+    "patch_truncated": false,
+    "sha256": "",
+    "full_path": "arch/plans/diffs/20260429-feat-roadmap-audit-batch-a.diff",
+    "stats": {
+      "insertions": 0,
+      "deletions": 0,
+      "files_count": 0
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-04-29T00:30:00Z",
+    "duration_ms": 0,
+    "output_tail": "Build PASS already verified (FEAT-PHOTO commit 50f8681 in same session); this batch contains only SQL + JSON + MD changes, no .cs/.tsx code modifications, build N/A.",
+    "error_summary": null,
+    "services": []
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Migration 038 idempotent re-run senaryosu: D005-D009 zaten TODO durumdaysa (paralel paket onceden migrate etmis VEYA Codex iter sirasinda manuel UPDATE), §1 UPDATE matched 0 rows + postcondition §6 (a) inprogress_count = 0 PASS olur. Bu davranis dogru mu? Idempotent MIGRATION standart pattern (031/033/034 precedent) bu pakette de korunuyor mu?",
+      "category": "Process/Policy",
+      "codex_answer": "",
+      "codex_result": "PENDING"
+    },
+    {
+      "id": "Q2",
+      "question": "v1 plan AC verified=true sync: Plan status zaten DONE (verdict source codex commit edc02f9 sonrasi). AC verified=false stale flag'leri prod gerceklik ile uyumsuz. Bu sync sadece flag flip + verification_note ekleme; plan icerigi degismiyor. Codex iter 1 review'inde 'plan files modified after verdict' uyari'sina yol acabilir mi (CQ3 scope creep)?",
+      "category": "Process/Policy",
+      "codex_answer": "",
+      "codex_result": "PENDING"
+    },
+    {
+      "id": "Q3",
+      "question": "v3 retroaktif plan: Migration 037 (commit 2cc6d90) prod'da DEPLOYED ama plan/tracking artefakt YOK. Q'nun /wrap workflow Step 3 'plan JSON status update' o sirada yapilmamis (commit history'de sadece 'feat(roadmap): kart bagimliliklari (depends_on)' commit). v3 retroaktif plan: status DONE + verdict source 'codex' (PASS without iteration count) + 4 AC verified=true + files_changed actual prod commit content. Retroactive doc-only, build N/A. Pattern Codex tarafindan kabul edilebilir mi?",
+      "category": "Process/Policy",
+      "codex_answer": "",
+      "codex_result": "PENDING"
+    },
+    {
+      "id": "Q4",
+      "question": "Migration 038 prod'a deploy edilmeden once Q karari: bu data-fix migration sadece 'Yol Haritasi' UI'da gorulen kart icerigini etkiler — backend kod/davranis degisiklik YOK. Service restart gerekmiyor. Migration execution stand-alone (mcp__invekto-postgres__execute) yeter. Codex review batch A icin prod execute timing'i (commit + sonra mi yoksa /rev sonrasi mi)?",
+      "category": "Process/Policy",
+      "codex_answer": "",
+      "codex_result": "PENDING"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Backend (Paket 4 UI hijyen ayri batch) — bu pakette kod degisikligi YOK",
+      "Migration 036/037 retroaktif edit (Paket 2 ayri batch)",
+      "Program.cs ValidateOpsAuth (Paket 3 ayri batch HIGH risk)",
+      "kanban_cards INSERT yeni kart (handoff Paket 1 sadece status/summary/title UPDATE; yeni kart D027-D037 onerilen audit-fixes paketinde reverted, BU paket scope disinda)"
+    ],
+    "non_goals": [
+      "Migration 035 retroaktif edit (K prefix docstring fix) — handoff #11 secenek olarak verilmis ama 035 prod'da deployed, retroaktif comment edit zaten audit-fixes onerilen kapsamdaydi reverted; Q kararina gore Batch A scope LOW kalmasi icin docstring fix Paket 4 ya da skip edilir",
+      "Yeni audit-tracking kartlari (D027-D037 INSERT) — onceki audit-fixes paketinin onemli boyutu; bu Batch A scope disinda, ileride ihtiyac olursa Q ayri paket onerir"
+    ],
+    "intentional_exclusions": [
+      "Migration 038 prod execute timing — Q kararina gore commit + Codex /rev PASS sonrasi MCP postgres execute (ayri ops adim, plan kapsami disinda)",
+      "Plan v3 retroaktif source: commit 2cc6d90 message + git diff'ten verdict 'codex' PASS dogrulandi, iteration count 0 (commit message single-iter PASS)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "arch/db/migrations/038-roadmap-audit-data-fix.sql:DO $verify$ block (RAISE EXCEPTION ile fail-loud INV-SEED-028 + actionable mesaj; idempotent re-run safe — UPDATE WHERE clause guard'lari)",
+      "Plan JSON / tracking md edit'leri (no try/catch — SQL/doc only, build N/A)"
+    ],
+    "user_facing_errors": [
+      "INV-SEED-028 user_message arch/errors.md: 'Yol Haritasi audit veri fix migration doğrulaması başarısız — D005-D009 status, O001 title veya D006 summary güncellenmedi.'"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Migration 038 §6 verify block 3 assertion ile fail-loud (status downgrade + title fix + summary fix). Idempotent re-run UPDATE matched 0 rows scenario sessiz degil — postcondition zaten dogru durumu kontrol eder, hata kosulu sadece datalar duzgun degilse cikar. Plan/tracking sync doc-only; build N/A; runtime davranis degisikligi YOK."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Onceki audit-fixes paketi 14 bulguyu tek HIGH risk pakete sıkıştırdi -> FEAT-PHOTO eş zamanlı commit ile working tree çakıştı, 5 yeni dosya + 14 modifikasyon kayboldu. Sebep: tek paket = tek atomic operation; iki session paralel staged farkli dosyalar = master sıfırlandı.",
+      "suggestion": "5 paket = 4 commit (LOW risk grupla, HIGH risk ayri). Her batch kendi staged dosyalari + Codex review + commit. Paralel session'lar disjoint file set'lerinde calisir.",
+      "aha_moment": "Bir paketin reverted olmasi, paket disiplinin ihlal edildigi anlardan biri. Audit handoff dosyasinda 'tek paketle sıkıştırma yanlış karar' acikca yazili — bu Batch A onlerinde bunu uyguluyor."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Audit raporunda D006 'lead-detail-timeline' kart description 'endpoint eksik' diyordu ama Program.cs:5712, 5750'de hazir. Koordinator board'a baktiginda 'haftalardir D006 IN_PROGRESS, neden bitirilemiyor?' diye soruyor. Reality mismatch demoralize ediyor.",
+      "suggestion": "Migration 038 §2 D006 summary 'Endpoint hazir; LeadDetailPage Timeline tab eksik.' — koordinator artik tam scope'u biliyor: backend tarafi tamam, sadece UI 1 sayfa eksik (~2 is gunu).",
+      "aha_moment": "Veri tutarsizligi koordinator psikolojisini bozuyor; reality-match summary o kart'i 'devasa is' algisindan 'yarim gun is' algisina cevirir. Pilot launch motivasyonunu korur."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Plan/tracking dokumanlari prod'da DONE+DEPLOYED ama AC verified=false stale; '/wrap' workflow zaman zaman doc-sync yapmiyor (commit c8d150b sadece kismi yapti).",
+      "suggestion": "Paket 5 sync: v1 AC verified=true (6 AC) + v2 status DONE + v3 retroaktif yarat. Plan JSON'lar gerceklikle uyumlu hale gelir.",
+      "aha_moment": "Yenisene Q kontrol ettiginde 'plan'dan reality'ye divergent' gormezse her audit'i yeniden yapmak zorunda kalmaz. Plan/tracking 'truth ledger' isleyisi pekisir."
+    }
+  ],
+  "verdict": {
+    "status": "PENDING",
+    "source": null,
+    "received_at": null,
+    "updated_by": null,
+    "updated_at": null,
+    "raw_text": "",
+    "iteration": 0,
+    "escalation_required": false,
+    "escalation_reason": null,
+    "blocking_issues": []
+  }
+}

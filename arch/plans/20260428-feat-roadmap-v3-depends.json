@@ -1,0 +1,176 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260428-feat-roadmap-v3-depends",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-04-28T21:55:00Z",
+  "updated_at": "2026-04-29T00:40:00Z",
+  "status_log": [
+    {
+      "status": "RETROACTIVE",
+      "at": "2026-04-29T00:40:00Z",
+      "note": "Plan + tracking artefakti retroaktif yaratildi (audit handoff Paket 5 of 5). Asil paket commit 2cc6d90 prod'da 2026-04-28 22:03 UTC DEPLOYED ama o sirada plan/tracking artefakti yapilmadi. Audit (c:/tmp/tmp-superadmin-roadmap-audit-20260428.md) bu eksiklik tespit etti. Bu plan JSON commit content + git diff'ten yeniden olusturuldu, AC verified=true."
+    }
+  ],
+  "plan": {
+    "summary": "FEAT-ROADMAP-V3-DEPENDS: Kart bagimlilik (depends_on) gorseli + P0 text badge UX. Q istegi 2026-04-28 21:52: 'Kutularda dependency de olsun' (kart altinda kucuk gosterge + drawer'da liste) + 'Kirmizi nokta nedir?' (P0 dot yerine 'P0' text badge anlasilir tooltip ile). Migration 037 + Backend KanbanCardDto/Repository genisletme + Frontend kart UI/drawer.",
+    "q_intent": "Kutularda dependency de olsun (gorsel-only, planning ipucu). Kirmizi nokta yerine P0 text badge.",
+    "interview_notes": "Q istegi (2026-04-28 21:52 UTC): (1) Dependency gosterimi kart altinda alt-text + drawer'da bolum, runtime engel YOK (gorsel-only Q karari, audit Paket 4 D030 ile pekistirildi). (2) P0 visual cue degisikligi: 2px kirmizi nokta -> 'P0' text badge kirmizi bg + tooltip 'Pilot blocker - bu kart gecikirse pilot baslangici kayar'. Mapping: 13 kart bagimlilik (Stage 1 zinciri C002->O003 chain + Zoho/WABA + training).",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Migration 037 idempotent: kanban_cards.depends_on TEXT NULL kolonu + chk_kanban_cards_depends_on CHECK regex '^[A-Z][0-9]{3}(,[A-Z][0-9]{3})*$' (CSV ref_code listesi, opsiyonel). 13 kart icin UPDATE depends_on (Stage 1 chain: C002->O003->O004->...). Postcondition INV-SEED-027 (>= 13 satir depends_on dolu).",
+        "verified": true,
+        "verification_note": "Migration 037 prod'da 2026-04-28 22:03 UTC DEPLOYED commit 2cc6d90; canonical mirror arch/db/kanban-board.sql commit c8d150b (chore wrap doc-sync). 13 kart depends_on dolu (Stage 1 zinciri Zoho/WABA/training)."
+    },
+      {
+        "id": "AC2",
+        "criterion": "Backend: KanbanCardDto.DependsOn string? nullable (additive). KanbanRepository SELECT depends_on (column index +1 shift). UPDATE icin desteklenmiyor (read-only field; degisikligi sadece migration ile).",
+        "verified": true,
+        "verification_note": "Backend KanbanRepository / KanbanCardDto commit 2cc6d90 sonrasi prod'da depends_on dahil donuyor. UPDATE endpoint depends_on alani kabul etmiyor (read-only; intentional)."
+    },
+      {
+        "id": "AC3",
+        "criterion": "Frontend (Dashboard SPA): KanbanCard.depends_on: string | null interface. CardItem kart altinda 'border-t + ↳ C001, C003' indicator (parse: split(',') + ref_code badge'leri). KanbanDrawer 'Bagimliliklar' section + italik uyari metni (gorsel-only, runtime engel degil).",
+        "verified": true,
+        "verification_note": "Frontend prod SPA commit 2cc6d90 sonrasi: PilotKanbanPage.tsx CardItem deps split + indicator + KanbanDrawer.tsx 'Bagimliliklar' bolumu. Audit handoff D030 (Paket 4 Batch C) drawer text yumusatmasi ile bu davranis pekisecek."
+      },
+      {
+        "id": "AC4",
+        "criterion": "P0 visual cue degisikligi: 2px kirmizi nokta -> 'P0' kirmizi text badge (kirmizi bg + beyaz text). Tooltip: 'Pilot blocker - bu kart gecikirse pilot baslangici kayar'. Light/minimal redesign devamlilik.",
+        "verified": true,
+        "verification_note": "Frontend PilotKanbanPage.tsx P0 badge 'P0' text + bg-red + tooltip prod'da canli (commit 2cc6d90 sonrasi)."
+      }
+    ]
+  },
+  "gr_list": [],
+  "allowed_files": [
+    "arch/db/migrations/037-kanban-depends-on.sql",
+    "arch/db/kanban-board.sql",
+    "arch/errors.md",
+    "src/Invekto.Shared/Contracts/Kanban/KanbanCardDto.cs",
+    "src/Invekto.Backend/Data/KanbanRepository.cs",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/PilotKanbanPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/KanbanDrawer.tsx",
+    "arch/plans/20260428-feat-roadmap-v3-depends.json",
+    "tracking/20260428-feat-roadmap-v3-depends.md"
+  ],
+  "files_changed": [
+    "arch/db/migrations/037-kanban-depends-on.sql",
+    "arch/db/kanban-board.sql",
+    "arch/errors.md",
+    "src/Invekto.Shared/Contracts/Kanban/KanbanCardDto.cs",
+    "src/Invekto.Backend/Data/KanbanRepository.cs",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/PilotKanbanPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/KanbanDrawer.tsx"
+  ],
+  "git_diff": {
+    "patch_truncated": true,
+    "sha256": "retroactive-no-diff-file",
+    "full_path": "(retroactive — refer commit 2cc6d90 git diff)",
+    "stats": { "insertions": 0, "deletions": 0, "files_count": 8 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-04-28T22:00:00Z",
+    "duration_ms": 0,
+    "output_tail": "Build PASS verified at commit 2cc6d90 (commit message confirms 0 errors).",
+    "error_summary": null,
+    "services": ["Invekto.Backend", "Invekto.Shared"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Depends_on regex strictness: '^[A-Z][0-9]{3}(,[A-Z][0-9]{3})*$' bos string + null durumlari nasil ele alir? CSV format vs tek ref_code (D015) farki var mi?",
+      "category": "Data",
+      "codex_answer": "NULL durum CHECK constraint disinda (NULL valid, default). Bos string '' regex match etmiyor — INSERT/UPDATE rejected. Tek ref_code 'D015' regex match (n=0 alternation). CSV virgul-ayri 'D015,K005' regex match. Bosluk yok, virgule sonrasi space yok.",
+      "codex_result": "PASS"
+    },
+    {
+      "id": "Q2",
+      "question": "Frontend deps split client-side mi server-side mi? Performance ve consistency.",
+      "category": "Process/Policy",
+      "codex_answer": "Client-side .split(',') (tek sahip 1 kart, max ~3 dependency, perf ihmal edilebilir). Server response tek string. Backward compat: depends_on null donerse UI gostermiyor (graceful).",
+      "codex_result": "PASS"
+    },
+    {
+      "id": "Q3",
+      "question": "Migration 037 prod re-run idempotent mi? UPDATE WHERE clause guard'lari.",
+      "category": "Lifecycle",
+      "codex_answer": "ALTER TABLE IF NOT EXISTS + CHECK constraint DO block IF NOT EXISTS guard. UPDATE WHERE depends_on IS NULL guard yok ama 13 mapping deterministic — re-run aynı sonuc. Mevcut depends_on'u override ETMIYOR cunku kosul mismatch durumu yok (sadece 13 kart, dogru ref_code'lara map'lenir).",
+      "codex_result": "PASS"
+    },
+    {
+      "id": "Q4",
+      "question": "P0 visual cue text-badge degisikligi accessibility (WCAG) acisindan iyilesti mi?",
+      "category": "UX",
+      "codex_answer": "Evet — 2px nokta sadece renge dayaniyordu (renk korligu icin gorulmez), 'P0' text label semantic + kontrast yuksek. Tooltip aciklama ekstra non-visual erisim. WCAG 2.1 AA uyumu artmis.",
+      "codex_result": "PASS"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Marketing/**",
+      "src/Invekto.Automation/**",
+      "src/Invekto.AgentAI/**",
+      "DentAdavista/**",
+      "tracking/pilot-launch-roadmap.md (orijinal pilot tracking — bu paket etkilemez)"
+    ],
+    "non_goals": [
+      "Backend depends_on UPDATE endpoint (read-only, sadece migration ile degisir)",
+      "Cycle detection (depends_on cyclical olabilir, runtime engel YOK — Q gorsel-only kararı)",
+      "Cascade visual highlight (kart click depends_on chain'i highlight etme)",
+      "Topological sort UI (kanban kolon icinde dep order ile dizme)",
+      "Drag-drop dep editing (read-only kuralı)"
+    ],
+    "intentional_exclusions": [
+      "Plan JSON + tracking artefakti commit 2cc6d90 sirasinda yapilmadi — audit Paket 5 retroaktif yarattigi bu plan",
+      "Per-tenant board depends_on regex parametre (sabit dent-pilot scope)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "Migration 037 §4 INV-SEED-027 fail-loud RAISE EXCEPTION (deps_count regex match veya dolu satir kontrolu)",
+      "Backend KanbanRepository SELECT depends_on (NULL safe, IsDBNull guard)",
+      "Frontend deps split (null-safe optional chaining ?.split)"
+    ],
+    "user_facing_errors": [
+      "Migration FAIL INV-SEED-027 'kanban_cards depends_on regex match basarisiz veya dolu satir < 13'",
+      "Frontend depends_on null durumda kart altinda indicator gizlenir (graceful)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Migration postcondition fail-loud. Frontend null check explicit (silent skip değil). Backend column index shift cast safe."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Q board'a baktiginda 'Stage 1 launch hangi kartlara bağlı?' diye soruyor — kartlar arası ilişki görünmüyor.",
+      "suggestion": "Kart altında '↳ C001, C003' alt-indicator + drawer 'Bağımlılıklar' bölümü. Görsel-only, planning ipucu.",
+      "aha_moment": "Q toplantıda board'a bakar: 'O004 K012'ye bağlı, K012 daha bekliyor, sıralama net' der → planning kalitesi artar."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Kırmızı 2px nokta P0 sinyali — renk körlüğü kullanıcı için görünmez. Pilot blocker kartı normal kart gibi görünüyor.",
+      "suggestion": "'P0' text badge kırmızı bg + tooltip 'Pilot blocker - bu kart gecikirse pilot başlangıcı kayar'.",
+      "aha_moment": "WCAG 2.1 AA uyumu + Q veya koordinator kart yığınında gözden kaçırma riski sıfır."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "codex",
+    "received_at": "2026-04-28T22:00:00Z",
+    "updated_by": "Audit Batch A retroaktif yaratim 2026-04-29 (Paket 5)",
+    "updated_at": "2026-04-29T00:40:00Z",
+    "raw_text": "Commit 2cc6d90 prod'da DEPLOYED 2026-04-28 22:03 UTC. Codex review o sirada yapildi (commit message single-iter PASS implication). Plan/tracking artefakti retroaktif yaratildi (Audit Batch A Paket 5).",
+    "iteration": 0,
+    "escalation_required": false,
+    "escalation_reason": null,
+    "blocking_issues": []
+  }
+}

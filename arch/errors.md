@@ -1533,6 +1533,9 @@ errors:
   - code: INV-SEED-027
     description: Migration 037 depends_on postcondition failure — kanban_cards.depends_on kolonu eklendi ama satirlardan biri regex '^[A-Z][0-9]{3}(,[A-Z][0-9]{3})*$' formatina uymuyor. CSV ref_code listesi bozuk (yanlis prefix, fazla bosluk, sayi formati). UI ↳ deps gosterge ve drawer Bagimliliklar bolumu render hata verir; /wrap dependency-aware status update yanlis kart match yapabilir.
     user_message: Yol Haritasi migration doğrulaması başarısız — kart bağımlılık (depends_on) regex formatı bozuk.
+  - code: INV-SEED-028
+    description: Migration 038 roadmap-audit-data-fix postcondition failure (Paket 1 of 5 — handoff c:/tmp/tmp-roadmap-audit-next-session-handoff.md). Uc katmanli kontrol: (a) D005-D009 IN_PROGRESS row sayisi >0 (status downgrade UPDATE matched 0 rows VEYA WHERE clause bozuk); (b) O001 (dashboard-config-7-pages) title hala "(7 sayfa)" — sayim fix UPDATE matched 0 rows; (c) D006 (lead-detail-timeline) summary "Endpoint hazir" string'ini icermiyor — reality-match UPDATE matched 0 rows. Boyle durumda kanban board'da audit'ten cikan veri tutarsizligi devam eder; fix-forward icin yeniden migration calistir veya UPDATE WHERE clause incele.
+    user_message: Yol Haritasi audit veri fix migration doğrulaması başarısız — D005-D009 status, O001 title veya D006 summary güncellenmedi.
 
   # FEAT-PILOT-KANBAN runtime (KanbanEndpoints + Repository — 2026-04-28)
   - code: INV-KB-001

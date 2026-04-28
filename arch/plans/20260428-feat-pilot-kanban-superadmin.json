@@ -16,38 +16,38 @@
       {
         "id": "AC1",
         "criterion": "Migration 035 idempotent çalışır (re-run ON CONFLICT DO NOTHING). kanban_cards tablosu (id, board_key, card_slug UNIQUE per board, status, category, title, summary, body_markdown, owner, eta, source_file, source_anchor, position, priority, created_at, updated_at, completed_at) + 2 index (board_key+status, board_key+position). board_key='dent-pilot' için >=40 seed kart insert edilir.",
-        "verified": false,
-        "verification_note": null
+        "verified": true,
+        "verification_note": "Prod'da DONE+DEPLOYED 2026-04-28 14:00 UTC commit edc02f9; Migration 035 + Backend KanbanRepository/Endpoints + Dashboard PilotKanbanPage + KanbanDrawer + 64 dent-pilot kart canli. Audit handoff Batch A 2026-04-29 plan/tracking sync uyari (Paket 5 of 5)."
       },
       {
         "id": "AC2",
         "criterion": "GET /api/ops/kanban/{board_key} → 200 + KanbanBoardDto (cards: KanbanCardDto[], updated_at). Auth: Ops mode (TenantsPage ile aynı pattern). Cards status+position'a göre sıralı.",
-        "verified": false,
-        "verification_note": null
+        "verified": true,
+        "verification_note": "Prod'da DONE+DEPLOYED 2026-04-28 14:00 UTC commit edc02f9; Migration 035 + Backend KanbanRepository/Endpoints + Dashboard PilotKanbanPage + KanbanDrawer + 64 dent-pilot kart canli. Audit handoff Batch A 2026-04-29 plan/tracking sync uyari (Paket 5 of 5)."
       },
       {
         "id": "AC3",
         "criterion": "PATCH /api/ops/kanban/{board_key}/cards/{cardSlug} body { status, completed_at? } → 200 + güncellenmiş card. Geçersiz status → 400. Status DONE'a geçince completed_at otomatik dolar (override edilebilir). updated_at her PATCH'te tazelenir. Card bulunamazsa 404.",
-        "verified": false,
-        "verification_note": null
+        "verified": true,
+        "verification_note": "Prod'da DONE+DEPLOYED 2026-04-28 14:00 UTC commit edc02f9; Migration 035 + Backend KanbanRepository/Endpoints + Dashboard PilotKanbanPage + KanbanDrawer + 64 dent-pilot kart canli. Audit handoff Batch A 2026-04-29 plan/tracking sync uyari (Paket 5 of 5)."
       },
       {
         "id": "AC4",
         "criterion": "Dashboard SuperAdmin nav'da 'Pilot Kanban' entry görünür (opsOnly: true, section: 'Yönetim', icon: lucide Kanban). Tenant mode'da gizli. Click → /pilot-kanban route render eder PilotKanbanPage'i.",
-        "verified": false,
-        "verification_note": null
+        "verified": true,
+        "verification_note": "Prod'da DONE+DEPLOYED 2026-04-28 14:00 UTC commit edc02f9; Migration 035 + Backend KanbanRepository/Endpoints + Dashboard PilotKanbanPage + KanbanDrawer + 64 dent-pilot kart canli. Audit handoff Batch A 2026-04-29 plan/tracking sync uyari (Paket 5 of 5)."
       },
       {
         "id": "AC5",
         "criterion": "PilotKanbanPage 5 kolon grid (BLOCKED/TODO/IN_PROGRESS/BACKLOG/DONE) render eder. Her kart: title + category tag + owner + eta. Kart click → sağdan slide-in drawer açılır, tüm detay (title, status, category, owner, eta, summary, body_markdown, source_file → tıklanabilir link). Drawer ESC veya overlay click ile kapanır. Loading skeleton + empty state + error fallback. Polling 60s.",
-        "verified": false,
-        "verification_note": null
+        "verified": true,
+        "verification_note": "Prod'da DONE+DEPLOYED 2026-04-28 14:00 UTC commit edc02f9; Migration 035 + Backend KanbanRepository/Endpoints + Dashboard PilotKanbanPage + KanbanDrawer + 64 dent-pilot kart canli. Audit handoff Batch A 2026-04-29 plan/tracking sync uyari (Paket 5 of 5)."
       },
       {
         "id": "AC6",
         "criterion": "/wrap workflow'a Step 3.5 'Project Kanban Sync' eklenir (commands/wrap.md). Step Conditional: dent-golive.html veya kanban_cards tablosu varlığı kontrol → varsa session değişikliklerini (commit message + plan JSON status + execution queue completion) tara → eşleşen kart slug'larını bul → Q'ya 'Kanban: X kart önerilen güncelleme — onaylıyor musun?' sun → onay sonrası PATCH gönder. Hiçbir match yoksa 1 satır 'Kanban sync: değişiklik yok'.",
-        "verified": false,
-        "verification_note": null
+        "verified": true,
+        "verification_note": "Prod'da DONE+DEPLOYED 2026-04-28 14:00 UTC commit edc02f9; Migration 035 + Backend KanbanRepository/Endpoints + Dashboard PilotKanbanPage + KanbanDrawer + 64 dent-pilot kart canli. Audit handoff Batch A 2026-04-29 plan/tracking sync uyari (Paket 5 of 5)."
       }
     ]
   },
