@@ -425,6 +425,208 @@ public sealed class LeadIntakeService
         });
     }
 
+    /// <summary>
+    /// FEAT-META-FULL-INTAKE: in-process intake for Meta Leadgen process-lead handler.
+    /// Superset of <see cref="IntakeWaDirectAsync"/>: same idempotent ensure +
+    /// dup-window + welcome-flow enqueue plumbing, but additionally persists
+    /// canonical email + custom_1..5 + consent through intake_metadata snapshot
+    /// (custom kolonlari leads tablosuna yazilmaz — FEAT-TFM-SYNC scope). Consent
+    /// is hard-gated true (Meta form privacy checkbox is intentional UX): any
+    /// other value/null short-circuits with 400 INV-BE-105 BEFORE phone parse +
+    /// any DB write, so reject-path leaves no row + no audit-write side effects
+    /// upstream caller already wrote the meta_leadgen_events audit row pre-call.
+    /// </summary>
+    public async Task<MetaLeadgenOutcome> IntakeMetaLeadgenAsync(
+        MetaLeadgenIntakeRequest? request,
+        string requestId,
+        CancellationToken ct = default)
+    {
+        // 1. Payload presence + tenant id sanity. Caller is in-process Backend
+        //    handler; defend-in-depth still applies (a refactor could introduce
+        //    a buggy null-init payload before noticing).
+        if (request == null || request.TenantId <= 0)
+            return MetaLeadgenOutcome.Fail(400, ErrorCodes.LeadIntakePayloadEmpty,
+                "Istek govdesi bos veya eksik; tenant_id zorunlu.");
+
+        if (string.IsNullOrWhiteSpace(request.Phone))
+            return MetaLeadgenOutcome.Fail(400, ErrorCodes.LeadIntakeWaDirectPhoneInvalid,
+                "Telefon numarasi eksik veya gecersiz.");
+
+        // 2. Consent gate (LIW INV-BE-105 reuse). Hard reject before phone parse
+        //    so audit logs surface the missing-consent state cheaply. Both
+        //    consent=false (operator opted out at form) and consent=null (canonical
+        //    not mapped in field_id_map) reject — Meta form privacy URL +
+        //    checkbox makes consent=true the only well-formed state.
+        if (request.Consent != true)
+            return MetaLeadgenOutcome.Fail(400, ErrorCodes.LeadIntakeConsentNotTrue,
+                "Onay degeri true olmali.");
+
+        // 3. Phone normalize. Country hint absent on the meta-leadgen path —
+        //    Meta forms are international; PhoneE164Normalizer's IE/TR defaults
+        //    cover the pilot scope, broader hints are a per-tenant config decision
+        //    (post-pilot backlog if needed).
+        var phoneE164 = _phoneNorm.Normalize(request.Phone, countryHint: null);
+        if (phoneE164 == null)
+            return MetaLeadgenOutcome.Fail(400, ErrorCodes.LeadIntakeWaDirectPhoneInvalid,
+                "Telefon numarasi eksik veya gecersiz.");
+
+        // 4. Tenant existence guard (mirrors wa-direct defense-in-depth — caller
+        //    is trusted by signature-validated Meta webhook, but a routing bug
+        //    could land an orphan row under a non-existent tenant_id).
+        bool tenantExists;
+        try
+        {
+            tenantExists = await _tenantRegistry.TenantExistsAsync(request.TenantId, ct);
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemWarn($"[{ErrorCodes.DatabaseConnectionFailed}] LeadIntake.MetaLeadgen: tenant existence check DB error tenant={request.TenantId}: {ex.Message}");
+            return MetaLeadgenOutcome.Fail(503, ErrorCodes.DatabaseConnectionFailed,
+                "Veritabani baglantisi kurulamadi.");
+        }
+        if (!tenantExists)
+        {
+            _logger.SystemWarn(
+                $"[{ErrorCodes.LeadIntakeWaDirectUnknownTenant}] LeadIntake.MetaLeadgen: " +
+                $"unknown tenant_id={request.TenantId} (caller bug; rejecting before write)");
+            return MetaLeadgenOutcome.Fail(400, ErrorCodes.LeadIntakeWaDirectUnknownTenant,
+                "Tanimsiz tenant; kayit reddedildi.");
+        }
+
+        // 5. Resolve tenant landing settings (welcome slug + dup window — same
+        //    optional-fallback posture as wa-direct so a fresh tenant can take
+        //    Meta leads before fully configuring a landing page).
+        TenantLandingSettings? tls;
+        try
+        {
+            tls = await _tlsRepo.FindByTenantIdAsync(request.TenantId, ct);
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemWarn($"[{ErrorCodes.DatabaseConnectionFailed}] LeadIntake.MetaLeadgen: TLS lookup DB error tenant={request.TenantId}: {ex.Message}");
+            return MetaLeadgenOutcome.Fail(503, ErrorCodes.DatabaseConnectionFailed,
+                "Veritabani baglantisi kurulamadi.");
+        }
+
+        var configuredSlug = tls?.WelcomeFlowSlug;
+        var welcomeSlug = string.IsNullOrWhiteSpace(configuredSlug)
+            ? "welcome_default"
+            : configuredSlug;
+        var dupWindowDays = tls?.DupWindowDays ?? 30;
+
+        // 6. Build intake_metadata snapshot. resolved.* mirrors landing-intake
+        //    canonical keys so downstream consumers (Lead detail panel,
+        //    FEAT-TFM-SYNC semantic projection) see one schema. resolved.consent
+        //    is always true here because step 2 already gated on Consent==true.
+        var now = DateTime.UtcNow;
+        var submissionKey = $"submission_{now:yyyyMMddTHHmmssfffZ}";
+        var resolved = new Dictionary<string, object?>
+        {
+            [LeadIntakeCanonical.Name]    = request.Name,
+            [LeadIntakeCanonical.Phone]   = phoneE164,
+            [LeadIntakeCanonical.Email]   = request.Email,
+            [LeadIntakeCanonical.Consent] = true,
+            [LeadIntakeCanonical.Custom1] = request.Custom1,
+            [LeadIntakeCanonical.Custom2] = request.Custom2,
+            [LeadIntakeCanonical.Custom3] = request.Custom3,
+            [LeadIntakeCanonical.Custom4] = request.Custom4,
+            [LeadIntakeCanonical.Custom5] = request.Custom5
+        };
+
+        var submission = new Dictionary<string, object?>
+        {
+            ["source_slug"]  = "meta-leadgen",
+            ["channel"]      = "facebook",
+            ["submitted_at"] = (request.ReceivedAt ?? now).ToString("O"),
+            ["resolved"]     = resolved
+        };
+        if (!string.IsNullOrWhiteSpace(request.Referer))
+            submission["referer"] = request.Referer;
+
+        var snapshot = new Dictionary<string, object?>
+        {
+            ["last_submission_at"] = now.ToString("O"),
+            ["last_source_slug"]   = "meta-leadgen",
+            [submissionKey]        = submission
+        };
+        var intakeMetaJson = JsonSerializer.Serialize(snapshot);
+
+        // 7. Idempotent UPSERT via dedicated EnsureLeadForMetaLeadgenAsync
+        //    (WaDirect superset that additionally writes leads.email).
+        LeadRepository.WaDirectEnsureResult ensure;
+        try
+        {
+            ensure = await _leadRepo.EnsureLeadForMetaLeadgenAsync(
+                request.TenantId, phoneE164, request.Name, request.Email,
+                dupWindowDays, intakeMetaJson, ct);
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemWarn($"[{ErrorCodes.DatabaseConnectionFailed}] LeadIntake.MetaLeadgen: EnsureLead DB error tenant={request.TenantId} phone={phoneE164}: {ex.Message}");
+            return MetaLeadgenOutcome.Fail(503, ErrorCodes.DatabaseConnectionFailed,
+                "Veritabani baglantisi kurulamadi.");
+        }
+
+        // 8. Welcome-flow enqueue (fail-soft mirrors wa-direct: lead is committed,
+        //    Hangfire infra hiccups should not 5xx the caller).
+        var welcomeEnqueued = false;
+        List<string>? warnings = null;
+        if (ensure.IsNew)
+        {
+            try
+            {
+                _jobs.Enqueue<Invekto.Automation.Services.Jobs.TriggerWelcomeFlowJob>(
+                    job => job.ExecuteAsync(request.TenantId, welcomeSlug, ensure.LeadId, CancellationToken.None));
+                welcomeEnqueued = true;
+            }
+            catch (BackgroundJobClientException ex)
+            {
+                _logger.SystemWarn(
+                    $"[{ErrorCodes.JobStorageConnectionFailed}] LeadIntake.MetaLeadgen: Hangfire enqueue rejected " +
+                    $"(tenant={request.TenantId}, lead={ensure.LeadId}, slug={welcomeSlug}): {ex.Message}");
+                warnings = new List<string> { ErrorCodes.JobStorageConnectionFailed };
+            }
+            catch (NpgsqlException ex)
+            {
+                _logger.SystemWarn(
+                    $"[{ErrorCodes.JobStorageConnectionFailed}] LeadIntake.MetaLeadgen: Hangfire storage DB error " +
+                    $"(tenant={request.TenantId}, lead={ensure.LeadId}, slug={welcomeSlug}): {ex.Message}");
+                warnings = new List<string> { ErrorCodes.JobStorageConnectionFailed };
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.SystemWarn(
+                    $"[{ErrorCodes.JobHandlerUnresolved}] LeadIntake.MetaLeadgen: Hangfire enqueue misconfigured " +
+                    $"(tenant={request.TenantId}, lead={ensure.LeadId}, slug={welcomeSlug}): {ex.Message}");
+                warnings = new List<string> { ErrorCodes.JobHandlerUnresolved };
+            }
+        }
+
+        _logger.StepInfo(
+            $"LeadIntake.MetaLeadgen: tenant={request.TenantId} lead={ensure.LeadId} " +
+            $"isNew={ensure.IsNew} email_set={!string.IsNullOrWhiteSpace(request.Email)} " +
+            $"customs_set={CountNonEmpty(request.Custom1, request.Custom2, request.Custom3, request.Custom4, request.Custom5)} " +
+            $"enqueued={welcomeEnqueued} warnings={(warnings?.Count ?? 0)}",
+            requestId);
+
+        return MetaLeadgenOutcome.Created(new MetaLeadgenIntakeResponse
+        {
+            LeadId = ensure.LeadId,
+            IsNew = ensure.IsNew,
+            WelcomeFlowEnqueued = welcomeEnqueued,
+            Warnings = warnings
+        });
+    }
+
+    /// <summary>Diagnostic helper for the meta-leadgen log line — no behaviour impact.</summary>
+    private static int CountNonEmpty(params string?[] values)
+    {
+        var n = 0;
+        foreach (var v in values)
+            if (!string.IsNullOrWhiteSpace(v)) n++;
+        return n;
+    }
+
     private static Dictionary<string, object?> BuildResolvedFields(
         LandingFieldMap map,
         IReadOnlyDictionary<string, object?> fields,
@@ -512,6 +714,30 @@ public sealed class WaDirectOutcome
         new() { StatusCode = 201, Success = body };
 
     public static WaDirectOutcome Fail(int status, string code, string message) => new()
+    {
+        StatusCode = status,
+        Error = ErrorResponse.Create(code, message, "-")
+    };
+}
+
+/// <summary>
+/// FEAT-META-FULL-INTAKE: transport between <see cref="LeadIntakeService.IntakeMetaLeadgenAsync"/>
+/// and the in-process MetaLeadgenEndpoints process-lead handler. Mirrors the
+/// <see cref="WaDirectOutcome"/> shape (StatusCode + Success/Error union) so the
+/// caller maps to <c>Results.Json(...)</c> identically. Distinct type per LIW
+/// pattern — keeps each canonical entry path's response contract independently
+/// evolvable.
+/// </summary>
+public sealed class MetaLeadgenOutcome
+{
+    public int StatusCode { get; init; }
+    public MetaLeadgenIntakeResponse? Success { get; init; }
+    public ErrorResponse? Error { get; init; }
+
+    public static MetaLeadgenOutcome Created(MetaLeadgenIntakeResponse body) =>
+        new() { StatusCode = 201, Success = body };
+
+    public static MetaLeadgenOutcome Fail(int status, string code, string message) => new()
     {
         StatusCode = status,
         Error = ErrorResponse.Create(code, message, "-")

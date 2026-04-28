@@ -17,10 +17,15 @@ namespace Invekto.Shared.Contracts.MetaLeadgen;
 ///
 /// FieldIdMap shape:
 ///   key   = Meta question_id (stable per Lead Form; surfaced via /discover-forms)
-///   value = canonical field name from the Invekto set:
-///           { "name", "phone", "email", "custom_1".."custom_5", "consent_marketing" }
+///   value = canonical field name from the Invekto set (LIW <see cref="LeadIntakeCanonical"/>
+///           aligned — FEAT-META-FULL-INTAKE 2026-04-29 hizalama):
+///           { "name", "phone", "email", "custom_1".."custom_5", "consent" }
 ///   Operators edit this map in the Dashboard editor; MetaGraphApiClient.DiscoverFormsAsync
 ///   populates the left-column key picker so tenants don't need to copy IDs by hand.
+///   Note: the legacy "consent_marketing" label was dropped 2026-04-29 in favour of LIW's
+///   "consent" canonical; field_id_map JSONB is free-form so existing tenant rows are not
+///   migrated — operators re-map at next config save and process-lead's strict bool gate
+///   (INV-BE-105) catches any pre-migration drift.
 /// </summary>
 public sealed class MetaLeadgenConfigDto
 {

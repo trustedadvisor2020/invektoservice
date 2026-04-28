@@ -487,19 +487,39 @@ public static class MetaLeadgenEndpoints
                     statusCode: 422);
             }
 
-            // 4. Intake hop via existing LIW WaDirect path (reuses phone normalize +
-            //    dup-window + welcome-flow enqueue). Meta's created_time stamps
-            //    ReceivedAt so downstream analytics see the actual Meta form submission.
+            // 4. Intake hop via in-process LeadIntakeService.IntakeMetaLeadgenAsync —
+            //    full canonical persist (email + custom_1..5 + consent gate).
+            //    Meta form privacy/consent checkbox is an intentional UX surface so
+            //    consent must resolve to literal "true"; null/missing/false reject
+            //    with 400 INV-BE-105 inside the service. Strict bool parse mirrors
+            //    LIW Q.3 contract quirk (boolean-only; "yes"/"1"/"on" rejected).
+            //    custom_1..5 ride along in intake_metadata.resolved.* (FEAT-TFM-SYNC
+            //    forward-compat — leads.custom_N columns stay NULL pre-sync).
             canonical.TryGetValue("name", out var leadName);
-            var waReq = new WaDirectIntakeRequest
+            canonical.TryGetValue("email", out var leadEmail);
+            canonical.TryGetValue("custom_1", out var custom1);
+            canonical.TryGetValue("custom_2", out var custom2);
+            canonical.TryGetValue("custom_3", out var custom3);
+            canonical.TryGetValue("custom_4", out var custom4);
+            canonical.TryGetValue("custom_5", out var custom5);
+            canonical.TryGetValue("consent", out var consentRaw);
+
+            var metaReq = new MetaLeadgenIntakeRequest
             {
-                TenantId    = tc.TenantId,
-                Phone       = phone,
-                ProfileName = string.IsNullOrWhiteSpace(leadName) ? null : leadName,
-                Referer     = $"meta-leadgen:{fetch.FormId ?? "unknown"}",
-                ReceivedAt  = fetch.CreatedTime ?? DateTime.UtcNow
+                TenantId   = tc.TenantId,
+                Phone      = phone,
+                Name       = string.IsNullOrWhiteSpace(leadName)  ? null : leadName,
+                Email      = string.IsNullOrWhiteSpace(leadEmail) ? null : leadEmail,
+                Consent    = ParseConsentBool(consentRaw),
+                Custom1    = string.IsNullOrWhiteSpace(custom1)   ? null : custom1,
+                Custom2    = string.IsNullOrWhiteSpace(custom2)   ? null : custom2,
+                Custom3    = string.IsNullOrWhiteSpace(custom3)   ? null : custom3,
+                Custom4    = string.IsNullOrWhiteSpace(custom4)   ? null : custom4,
+                Custom5    = string.IsNullOrWhiteSpace(custom5)   ? null : custom5,
+                Referer    = $"meta-leadgen:{fetch.FormId ?? "unknown"}",
+                ReceivedAt = fetch.CreatedTime ?? DateTime.UtcNow
             };
-            var intake = await leadIntake.IntakeWaDirectAsync(waReq, rid, ctx.RequestAborted);
+            var intake = await leadIntake.IntakeMetaLeadgenAsync(metaReq, rid, ctx.RequestAborted);
             if (intake.Success is null)
             {
                 var failEc = intake.Error?.ErrorCode ?? ErrorCodes.GeneralUnknown;
@@ -514,7 +534,7 @@ public static class MetaLeadgenEndpoints
                 errorCode: null, ctx.RequestAborted);
 
             jsonLog.StepInfo(
-                $"MetaLeadgen process-lead: tenant={tc.TenantId} leadgen={request.LeadgenId} eventId={request.EventId} leadId={intake.Success.LeadId} isNew={intake.Success.IsNew}",
+                $"MetaLeadgen process-lead: tenant={tc.TenantId} leadgen={request.LeadgenId} eventId={request.EventId} leadId={intake.Success.LeadId} isNew={intake.Success.IsNew} email_set={!string.IsNullOrWhiteSpace(leadEmail)}",
                 rid);
             return Results.Json(new
             {
@@ -594,6 +614,20 @@ public static class MetaLeadgenEndpoints
     /// small fallback map so new tenants can accept submissions even before
     /// they map anything manually. Tenant-mapped entries win over fallback.
     /// </summary>
+    /// <summary>
+    /// FEAT-META-FULL-INTAKE: strict bool parser for the canonical "consent" value
+    /// produced by <see cref="CanonicalMap"/>. Returns null when raw is empty,
+    /// whitespace, or not a CLR-recognized "true"/"false" literal — matching LIW
+    /// Q.3 contract quirk (boolean-only; "yes"/"1"/"on"/"checked" are rejected so
+    /// operator form-design stays explicit). null/false both downgrade to a 400
+    /// INV-BE-105 inside <see cref="LeadIntakeService.IntakeMetaLeadgenAsync"/>.
+    /// </summary>
+    private static bool? ParseConsentBool(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        return bool.TryParse(raw.Trim(), out var b) ? b : (bool?)null;
+    }
+
     private static Dictionary<string, string> CanonicalMap(
         IReadOnlyDictionary<string, string> fieldData,
         IReadOnlyDictionary<string, string>? fieldIdMap)

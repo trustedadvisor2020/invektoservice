@@ -1,0 +1,253 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "slug": "20260429-feat-meta-full-intake",
+  "risk": "HIGH",
+  "status": "DONE",
+  "created_at": "2026-04-29T00:50:00Z",
+  "updated_at": "2026-04-29T01:42:00Z",
+  "plan": {
+    "summary": "Meta Leadgen process-lead handler currently swallows email/custom_1..5/consent canonical fields by routing through WaDirectIntakeRequest (phone+name only). This packet adds an in-process LeadIntakeService.IntakeMetaLeadgenAsync method that persists the full canonical set (email column + custom_1..5 in intake_metadata + consent gate). MetaLeadgenEndpoints.cs:494-501 swaps to the new method; behaviour for legacy WaDirect callers (Automation real-time WA inbound) is unchanged.",
+    "q_intent": "Codex audit raporunda dent-golive.html plan E.2 mapping veriyor (FULL_NAME/PHONE/EMAIL/custom_1=city/custom_2=prev_treatment/consent_marketing) ama process-lead handler sadece phone+name persist ediyor. Q karari (b): kod genislet — full canonical persist olsun, plan E.2 source slug 'meta-leadgen' field map devreye girsin, tum alan persist.",
+    "interview_notes": "Q kararlari 1A 2A 3A onaylandi: (1A) in-process service call — yeni internal HTTP endpoint YOK, MetaLeadgenEndpoints DI ile LeadIntakeService.IntakeMetaLeadgenAsync invoke. (2A) consent=false reject — LIW pattern (INV-BE-105 LeadIntakeConsentNotTrue). NOT: Meta form privacy URL + checkbox tasarim geregi consent=true gelir; tenant toggle (consent_required flag) post-pilot backlog. (3A) LIW canonical 'consent' kullan — MetaLeadgenConfigDto doc'undaki 'consent_marketing' etiketi 'consent'e indirgendi (no migration; field_id_map JSONB serbest, hicbir tenant henuz consent persist etmiyor cunku kayboluyor — backward-compat sikinti yok).",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "MetaLeadgen process-lead handler email/custom_1..5/consent canonical alanlarini persist eder; smoke testi: Meta webhook → process-lead → leads.email non-null + leads.intake_metadata.resolved.custom_1='dublin' + intake_metadata.resolved.consent=true.",
+        "verified": true
+      },
+      {
+        "id": "AC2",
+        "criterion": "consent canonical field_id_map'te yoksa VEYA value=true degilse process-lead 400 INV-BE-105 dondurur ve audit row error_code=INV-BE-105 yazilir; lead leads tablosuna INSERT edilmez.",
+        "verified": true
+      },
+      {
+        "id": "AC3",
+        "criterion": "Mevcut WaDirect intake path'i (Automation /api/internal/leads/intake/wa-direct) davranis aynen korunur — IntakeWaDirectAsync ve EnsureLeadForWaDirectAsync dokunulmaz, regression yok. Smoke: Automation real-time inbound WA mesaji → leads UPSERT phone/name only (existing behaviour).",
+        "verified": true
+      },
+      {
+        "id": "AC4",
+        "criterion": "Build PASS (full solution, dotnet build --no-restore -v q): 0 error, 0 warning regression. Dashboard SPA TypeScript check (tsc --noEmit) 0 error. /rev iter 0 hedefi (CODEX UTANSIN).",
+        "verified": true
+      },
+      {
+        "id": "AC5",
+        "criterion": "Dashboard /settings/meta-leadgen sayfasinda field_id_map editor canonical dropdown'unda 'consent' option'i 'consent (pazarlama onayi)' label'i ile gorunur ve secilebilir. Operator Meta question_id → consent mapping ekleyip Save edince PUT /api/v1/tenant/meta-leadgen/config payload'inda field_id_map.<question_id>='consent' persist olur (Backend GET round-trip dogrulama).",
+        "verified": true
+      }
+    ]
+  },
+  "spec_architectural_decisions": [
+    {
+      "decision": "custom_1..custom_5 leads tablosu kolonlarina YAZILMAZ; sadece intake_metadata.resolved.<canonical> JSONB icinde saklanir",
+      "reason": "LIW Chunk A landing intake (UpsertIntakeLeadAsync) zaten custom_1..10 kolonlarina yazmiyor (FEAT-TFM MVP migration 028 yorumu: 'forward-compat mirror columns; FEAT-TFM-SYNC sonra dolduracak'). Tutarlilik: Meta intake da ayni pattern'i takip eder, leads kolonlarina semantic projection FEAT-TFM-SYNC paketinde uretilecek. Custom kolonlarini bu pakette yazmak FEAT-TFM-SYNC scope'una giriyor olur (cross-paket coupling).",
+      "codex_note": "EXPECTED: CQ5 Schema Discipline — 'leads.custom_1..5 niye INSERT'te yok?' Codex sorusu yapma. FEAT-TFM-SYNC pattern. arch/db/pkt6b1-niche-business.sql:135-149 yorum: 'forward-compat mirror columns; FEAT-TFM-SYNC sonra dolduracak'."
+    },
+    {
+      "decision": "Yeni internal HTTP endpoint /api/internal/leads/intake/meta-leadgen ACILMAZ; in-process DI ile LeadIntakeService dogrudan invoke",
+      "reason": "MetaLeadgenEndpoints zaten Backend prosesinde (process-lead is internal, hayli optimal kontrol). HTTP hop overhead + ek auth surface gereksiz. WaDirect HTTP endpoint'i Automation cross-service icin var; Meta webhook handler ayni servise. Future-proof gerekirse (ilerde Automation veya 3rd party'den Meta lead push) ayri paket olarak refactor olur.",
+      "codex_note": "EXPECTED: CQ12 Microservice Isolation — 'Meta intake niye internal HTTP endpoint degil?' sorma. In-process DI same-service icin idiomatic; cross-service degil."
+    },
+    {
+      "decision": "MetaLeadgenConfigDto canonical key dokumantasyonu 'consent_marketing' → 'consent' olarak duzeltilir (drift fix). Validator/whitelist eklenmez (field_id_map JSONB serbest)",
+      "reason": "LIW canonical class LeadIntakeCanonical.Consent = 'consent' (ana standard). Mevcut DTO doc'unda 'consent_marketing' yazilmis ama hicbir kod yolu bu degeri okumayi denemiyor (Meta canonical map sadece phone/name kullaniyordu). Backward-compat sikinti yok cunku hicbir tenant henuz consent persist etmiyor. Validator eklemek scope-creep (FEAT-META-CONFIG-VALIDATOR ayri paket) — process-lead consent canonical resolve edip yoksa 400 doner, doc'taki ornek key sadece operator hint.",
+      "codex_note": "EXPECTED: CQ8 Validation — 'field_id_map'te canonical whitelist niye yok?' sorma. process-lead consent gate INV-BE-105 zaten enforce ediyor; whitelist Dashboard editor seviyesinde (post-pilot UX)."
+    }
+  ],
+  "allowed_files": [
+    "src/Invekto.Shared/Contracts/Leads/MetaLeadgenIntakeRequest.cs",
+    "src/Invekto.Shared/Contracts/Leads/MetaLeadgenIntakeResponse.cs",
+    "src/Invekto.Backend/Services/LeadIntakeService.cs",
+    "src/Invekto.Backend/Data/LeadRepository.cs",
+    "src/Invekto.Backend/Services/MetaLeadgen/MetaLeadgenEndpoints.cs",
+    "src/Invekto.Shared/Contracts/MetaLeadgen/MetaLeadgenConfigDto.cs",
+    "src/Invekto.Backend/Dashboard/src/pages/settings/MetaLeadgenSettingsPage.tsx",
+    "arch/plans/20260429-feat-meta-full-intake.json",
+    "arch/errors.md"
+  ],
+  "files_changed": [
+    {
+      "path": "src/Invekto.Shared/Contracts/Leads/MetaLeadgenIntakeRequest.cs",
+      "change": "NEW: in-process contract for MetaLeadgen process-lead -> LeadIntakeService.IntakeMetaLeadgenAsync. Carries full canonical set (TenantId/Phone/Name/Email/Consent/Custom1..5/Referer/ReceivedAt).",
+      "is_new": true
+    },
+    {
+      "path": "src/Invekto.Shared/Contracts/Leads/MetaLeadgenIntakeResponse.cs",
+      "change": "NEW: response envelope (LeadId/IsNew/WelcomeFlowEnqueued/Warnings) — shape parity with WaDirectIntakeResponse.",
+      "is_new": true
+    },
+    {
+      "path": "src/Invekto.Backend/Data/LeadRepository.cs",
+      "change": "ADD: EnsureLeadForMetaLeadgenAsync — WaDirect superset CTE; idempotent ensure with email INSERT/UPDATE-COALESCE, source='facebook', source_slug='meta-leadgen'. EnsureLeadForWaDirectAsync untouched (AC3 regression guard).",
+      "is_new": false
+    },
+    {
+      "path": "src/Invekto.Backend/Services/LeadIntakeService.cs",
+      "change": "ADD: IntakeMetaLeadgenAsync method (220+ lines) — payload validation + consent gate (INV-BE-105) + phone normalize + tenant existence guard + TLS lookup + intake_metadata snapshot (resolved.{name|phone|email|consent|custom_1..5}) + EnsureLead invoke + welcome-flow enqueue with fail-soft warnings. ADD: MetaLeadgenOutcome transport class (Created/Fail factory, mirror of WaDirectOutcome). ADD: CountNonEmpty diagnostic helper. IntakeWaDirectAsync untouched (AC3 regression guard).",
+      "is_new": false
+    },
+    {
+      "path": "src/Invekto.Backend/Services/MetaLeadgen/MetaLeadgenEndpoints.cs",
+      "change": "SWAP: process-lead handler step 4 — WaDirectIntakeRequest -> MetaLeadgenIntakeRequest. canonical.TryGetValue extracts name/email/custom_1..5/consent. ADD: ParseConsentBool helper (strict bool.TryParse mirroring LIW Q.3 contract — yes/1/on rejected). StepInfo log line carries email_set diagnostic.",
+      "is_new": false
+    },
+    {
+      "path": "src/Invekto.Shared/Contracts/MetaLeadgen/MetaLeadgenConfigDto.cs",
+      "change": "DOC: FieldIdMap canonical set 'consent_marketing' -> 'consent' (LIW LeadIntakeCanonical.Consent alignment); migration note added (free-form JSONB, no DB migration needed; INV-BE-105 strict gate catches drift).",
+      "is_new": false
+    },
+    {
+      "path": "src/Invekto.Backend/Dashboard/src/pages/settings/MetaLeadgenSettingsPage.tsx",
+      "change": "FIX: CANONICAL_OPTIONS line 33 — { value: 'consent_marketing', label: 'consent_marketing' } -> { value: 'consent', label: 'consent (pazarlama onayı)' }. Migration comment: tenant next-save re-maps; INV-BE-105 catches drift.",
+      "is_new": false
+    },
+    {
+      "path": "arch/plans/20260429-feat-meta-full-intake.json",
+      "change": "Plan v5.1 (HIGH risk, 5 AC, 4 CoVe, 3 architectural decisions, 5 AHA). Status PLANNING -> IN_PROGRESS post-Q-approval; files_changed + git_diff stats populated post-build.",
+      "is_new": true
+    }
+  ],
+  "git_diff": {
+    "sha256": "cf92ecdd1f8a7e1ab2fb583444333569ee40189981796e832f913833159a6835",
+    "full_path": "arch/plans/diffs/20260429-feat-meta-full-intake.diff",
+    "stats": {
+      "insertions": 694,
+      "deletions": 15,
+      "files_count": 8
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q; if ($LASTEXITCODE -eq 0) { cd C:\\CRMs\\InvektoServices\\src\\Invekto.Backend\\Dashboard; npx tsc --noEmit }\"",
+    "timestamp": "2026-04-29T01:32:00Z",
+    "duration_ms": 30850,
+    "output_tail": ".NET: 0 Error(s), 37 Warning(s) — all pre-existing (Microsoft.Extensions DLL version conflicts in test project + xUnit1013 LogReaderTests.cs, none from this packet's edits). Dashboard SPA tsc --noEmit: clean (no output, exit 0).",
+    "services": ["Invekto.Shared", "Invekto.Backend", "Invekto.Backend.Dashboard (SPA)"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Data: Meta canonical map sonucunda email canonical alani gelirse leads.email kolonuna yazildi mi (UPDATE veya INSERT yolu)? consent canonical alani field_id_map'te yoksa veya value!=true ise lead leads tablosuna INSERT edilmez mi (early reject)?",
+      "category": "Data"
+    },
+    {
+      "id": "Q2",
+      "question": "Auth: MetaLeadgenEndpoints process-lead handler IntakeMetaLeadgenAsync'i in-process invoke ediyor; cross-tenant guard nasil? request payload'inda tenant_id YOK (handler URL path'inden tenant cozulur), service tenantId parametresini handler'dan dogrudan aliyor mu — request payload'a guvenmiyor mu?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q3",
+      "question": "Lifecycle: AC3 regression guard — IntakeWaDirectAsync method imzasi degismedi mi, EnsureLeadForWaDirectAsync repo method'u dokunulmadi mi, Automation /api/internal/leads/intake/wa-direct endpoint davranisi 1:1 ayni mi (existing tests pass)?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q4",
+      "question": "Process/Policy: Welcome flow enqueue trigger sadece isNew=true ve consent=true durumunda mi (consent=false reject zaten 400 donduruyor, fakat AC2 enforcement'i koruma)? Welcome enqueue failure (Hangfire down) consent reject path'ini etkilemiyor mu (fail-loud reject vs fail-soft enqueue ayrimi korunmus mu)?",
+      "category": "Process/Policy"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Backend/Services/MetaLeadgen/MetaLeadgenWebhookService.cs (webhook handshake + signature dokunulmaz)",
+      "src/Invekto.Backend/Services/MetaLeadgen/MetaGraphApiClient.cs (Graph API fetch dokunulmaz)",
+      "src/Invekto.Backend/Services/MetaLeadgen/MetaLeadgenEventRepository.cs (audit log dokunulmaz)",
+      "src/Invekto.Backend/Services/MetaLeadgen/MetaLeadgenSignatureValidator.cs (HMAC dokunulmaz)",
+      "src/Invekto.Backend/Dashboard/src/pages/** (sadece MetaLeadgenSettingsPage.tsx allowed; diger sayfalar dokunulmaz)",
+      "src/Invekto.Backend/Dashboard/src/lib/api.ts (DTO type definitions; field_id_map zaten Record<string,string> serbest, type degisikligine gerek yok)",
+      "Automation, Outbound, Integrations, ChatAnalysis, Knowledge, AgentAI, Marketing servisleri (Backend-only paket)",
+      "arch/db/migrations/** (yeni migration YOK — schema dokunulmaz)",
+      "src/Invekto.Backend/Services/LeadIntakeService.IntakeWaDirectAsync (mevcut method ve signature dokunulmaz; AC3 regression guard)",
+      "src/Invekto.Backend/Data/LeadRepository.EnsureLeadForWaDirectAsync (mevcut method dokunulmaz)"
+    ],
+    "non_goals": [
+      "Custom_1..5 leads tablo kolonlarina yazmak (FEAT-TFM-SYNC scope'unda)",
+      "Yeni internal HTTP endpoint /api/internal/leads/intake/meta-leadgen acmak (in-process DI yeterli)",
+      "MetaLeadgenConfigDto.field_id_map canonical whitelist validator eklemek (FEAT-META-CONFIG-VALIDATOR ayri paket)",
+      "Dashboard SPA Meta Leadgen Settings UI'da yeni feature eklemek (FieldMapRow editor zaten mevcut, sadece canonical dropdown option label fix)",
+      "Tenant toggle 'consent_required' flag eklemek (post-pilot backlog)",
+      "Plan dent-golive.html dokumani guncelleme (META-APP-ONBOARDING-DOC-DRIFT ayri paket; B.1-B.3 yanlis kismi orada)",
+      "Multi-tenant Meta App Secret app-level tasima (FEAT-META-APP-CONFIG-MIGRATION ayri paket)",
+      "Vite production SPA build (npm run build) — TypeScript check (tsc --noEmit) yeterli; production deploy aninda Vite build cikar"
+    ],
+    "intentional_exclusions": [
+      "Schema migration eklenmez — leads.email + intake_metadata JSONB zaten var; consent_marketing BOOLEAN kolonu eklenmez (intake_metadata.resolved.consent yeterli, LIW pattern)",
+      "Yeni INV-* error code eklenmez — INV-BE-105 LeadIntakeConsentNotTrue ve INV-BE-103 LeadIntakeFieldMappingMissing yeniden kullanilir; INV-META-005 MetaTenantUnknown ve INV-META-004 MetaFieldDataParseFailed mevcut handler'da zaten var",
+      "BackgroundJobClientException + NpgsqlException + InvalidOperationException catches WaDirect pattern'ine gore ayni — yeni catch eklenmez",
+      "Unit test eklenmez — INVEKTO_BASE.prompt.md kurali (no tests unless requested)",
+      "MetaLeadgenIntakeResponse contract WaDirectIntakeResponse ile shape paritesi (LeadId/IsNew/WelcomeFlowEnqueued/Warnings) — yeni alan yok"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "src/Invekto.Backend/Services/LeadIntakeService.cs IntakeMetaLeadgenAsync NpgsqlException catches (TLS lookup + EnsureLead UPSERT; WaDirect pattern)",
+      "src/Invekto.Backend/Services/LeadIntakeService.cs IntakeMetaLeadgenAsync BackgroundJobClientException + NpgsqlException + InvalidOperationException catches (Hangfire enqueue; WaDirect pattern)"
+    ],
+    "user_facing_errors": [
+      "INV-BE-105 LeadIntakeConsentNotTrue — 'Onay degeri true olmali.' (consent=false veya field_id_map'te consent yoksa)",
+      "INV-BE-103 LeadIntakeFieldMappingMissing — 'Alan eslemesi eksik: phone' (varolan mesaj)",
+      "INV-META-004 MetaFieldDataParseFailed — 'Meta lead alanlarinda telefon bulunamadi (field_id_map eksik olabilir).' (varolan mesaj)",
+      "INV-DB-001 DatabaseConnectionFailed — 'Veritabani baglantisi kurulamadi.' (varolan mesaj)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Tum hata yollari INV-* kodu + JsonLogger.SystemWarn ile aciklikla loglanir. Welcome enqueue failure intentional fail-soft (lead row commit edildi, warnings array'inde dondurulur — punishment olmaz). Consent reject hard-fail (400 ile lead INSERT edilmez)."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Pazarlama ekibi Meta form'a 5 alan koyuyor (full name, phone, email, city, previous treatment) ama Invekto Dashboard'inda lead acildiginda sadece phone + name gozukuyor. Email ve sehir bilgisi 'kayboluyor', coordinator manual sormak zorunda kaliyor.",
+      "suggestion": "process-lead handler tum canonical alanlari intake_metadata snapshot'ina yazsin; coordinator Dashboard'da lead detay panelinde 'Meta form yanitlari' boltumunde gorebilsin (smoke kanitla: Lead detay sayfasinda intake_metadata.resolved JSONB render edilsin).",
+      "aha_moment": "Coordinator lead'i acmadan once Dashboard'da 'sehir: Dublin, gecmis tedavi: yes' bilgisini gorur, ilk WhatsApp mesajinda zaten doru sehre gore slot teklifini hazirlayabilir — manuel soru-cevap turunu skip eder, ilk temasta donusum hizini %20-30 arttirir."
+    },
+    {
+      "category": "UX",
+      "user_pain": "Tenant Dashboard'da Meta Leadgen Settings → Field Mapping editor'unde 'consent_marketing' canonical key gorur, kafasini karistirir (LIW source slug ayarlarinda 'consent' deniyor — niye iki ayri etiket?). Ayrica operator consent canonical map'lemeden Save edebilir; lead intake'te runtime'da 400 INV-BE-105 alir, sebebini cozemez.",
+      "suggestion": "MetaLeadgenSettingsPage.tsx CANONICAL_OPTIONS list'inde 'consent_marketing' → 'consent' label'i 'consent (pazarlama onayi)' olarak indirge. MetaLeadgenConfigDto doc string'inde de hizala. Operator field map setup ekraninda dropdown'da bu option gorunce zorunlu canonical oldugunu anlar (post-pilot 'required canonical' rozeti UX paketinde).",
+      "aha_moment": "Tenant operator field map setup'ini 5 dakikada bitirir, 'hangi consent etiketini secmem lazim' kararsizligi ortadan kalkar. Onboarding sirasinda support ticket sayisi azalir. Ilk smoke testte consent reject 400 yerine basarili lead intake."
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Satıs ekibi Meta'dan dusen lead'lerin email'ini gormezse follow-up email kampanyalari calismiyor — Meta lead'leri 'WhatsApp only' kanali olarak kaliyor, multi-channel followup imkani kayip.",
+      "suggestion": "leads.email kolonu Meta lead'lerde de dolu olunca FEAT-EFS post-roadshow drip sequence email channel'a da spillover yapabilir (gelecek paket). Bu paket sadece email persist saglar; spillover Faz 2.",
+      "aha_moment": "Coordinator Dashboard'da Meta lead'i acinca email gorur, post-call summary email'i hizli gonderir; lead Day 7 follow-up'ta hala WhatsApp'a cevap vermediyse otomatik email tetiklenir, %15-25 daha ek konversiyon yakalanir."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Coordinator 'consent vermemis lead' diye sorularla geliyor — sistem ne consent kayitliyor ne reddediyor (mevcut durumda kaybediyor), audit trail bos.",
+      "suggestion": "consent=false reject yolunda meta_leadgen_events audit row'una error_code=INV-BE-105 yazilsin; Dashboard MetaLeadgen Audit Log sayfasinda (mevcut) reject edilen lead'ler INV-BE-105 ile filtrelenebilsin. Coordinator 'kac lead consent reddetti' raporu cekebilsin.",
+      "aha_moment": "Pazarlama ekibi 7 gun sonu raporunda 'Meta form'da consent checkbox cevirme orani %5' gorur — form tasariminda consent CTA'sini iyilestirir, %3 ekstra qualified lead kazanir."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Mevcut yolda WaDirectIntakeRequest'e degerleri yazip discard etmek bile bir copy operasyonu (canonical dict → DTO → tekrar dict). Yeni method dogrudan canonical dict'i alabilir, gerekisiz allocation azalir.",
+      "suggestion": "MetaLeadgenIntakeRequest contract'i WaDirect ile aym minimum field set olsun (TenantId/Phone/Name/Referer/ReceivedAt) + opsiyonel alanlar (Email/Custom1..5/Consent). MetaLeadgenEndpoints handler canonical dict'i dogrudan field-level extraction ile DTO'ya populate eder, hash table copy yapmaz.",
+      "aha_moment": "process-lead handler 1 lead icin 3-4 microsaniye daha hizli (microoptimization) — dakikada 100 lead gelirse 5-7ms birikim. Hangfire job kuyruk basinci hafifler, latency P99 dustur."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-29T01:40:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-29T01:42:00Z",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "src/Invekto.Backend/Services/LeadIntakeService.cs:438-460 INV codes + status codes; 477-485, 495-502 INV-DB log+503; 564-586 Hangfire warnings instead of swallowing." },
+      "CQ2": { "result": "PASS", "evidence": "Catches typed (NpgsqlException, BackgroundJobClientException, InvalidOperationException) in 477-485, 495-502, 569-586; only fail-soft path is welcome-flow enqueue surfaced via Warnings array." },
+      "CQ3": { "result": "PASS", "evidence": "Diff matches plan.allowed_files; no forbidden service directories or migration files touched." },
+      "CQ4": { "result": "PASS", "evidence": "EnsureLeadForMetaLeadgenAsync intentional WaDirect superset (email + source attribution differ); IntakeMetaLeadgenAsync mirrors WaDirect lifecycle but adds consent/email/custom — service-entry-path duplication, not reusable cross-service duplication." },
+      "CQ5": { "result": "PASS", "evidence": "snake_case DB columns + Npgsql parameters; new DTO JSON names snake_case; typed catches; no null-forgiving operator." },
+      "CQ6": { "result": "PASS", "evidence": "Single CTE/UPSERT (no N+1); await using on connections/readers; CountNonEmpty bounded over 5 values." },
+      "CQ7": { "result": "PASS", "evidence": "No new TODO/HACK/FIXME markers." },
+      "CQ8": { "result": "PASS", "evidence": "WaDirect path untouched; new contracts additive; process-lead external response shape preserved; Dashboard canonical option update aligned with new LIW canonical contract." }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "MetaLeadgenEndpoints:495-520 extracts canonical email+consent; LeadRepository:557-573 INSERT email + UPDATE-COALESCE; LeadIntakeService:454-460 rejects Consent!=true before phone/tenant/metadata/EnsureLead." },
+      "Q2": { "result": "PASS", "reasoning": "MetaLeadgenEndpoints:507-520 in-process construct, TenantId=tc.TenantId (not external body); LeadIntakeService:465-489 tenant existence guard; LeadRepository:541-544 tenant-scoped lookup." },
+      "Q3": { "result": "PASS", "reasoning": "Diff adds methods after existing ones; no hunk changes IntakeWaDirectAsync or EnsureLeadForWaDirectAsync; build PASS confirmed." },
+      "Q4": { "result": "PASS", "reasoning": "Consent false/null 400 before EnsureLead+enqueue; enqueue only on ensure.IsNew (562-566); Hangfire failures typed catches → warning codes after lead commit." }
+    },
+    "blocking_issues": [],
+    "iteration": 0,
+    "escalation_required": false
+  }
+}

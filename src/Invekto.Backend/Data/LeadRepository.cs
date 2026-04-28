@@ -517,6 +517,83 @@ public class LeadRepository
         return new WaDirectEnsureResult(reader.GetInt32(0), reader.GetBoolean(1));
     }
 
+    /// <summary>
+    /// FEAT-META-FULL-INTAKE: idempotent lead ensure for the meta-leadgen entry path.
+    /// Superset of <see cref="EnsureLeadForWaDirectAsync"/>: same dup-window CTE +
+    /// is_new derivation, but additionally writes <c>email</c> on insert (COALESCE
+    /// preserve on conflict so re-engagements within tenant-rotated emails do not
+    /// blank a previously stored value). Channel attribution: source='facebook',
+    /// source_slug='meta-leadgen'. custom_1..custom_5 NOT written to leads columns
+    /// — they ride along in <c>intake_metadata.resolved.custom_N</c> per FEAT-TFM-SYNC
+    /// forward-compat (arch/db/pkt6b1-niche-business.sql:135-149).
+    /// </summary>
+    public virtual async Task<WaDirectEnsureResult> EnsureLeadForMetaLeadgenAsync(
+        int tenantId,
+        string phoneE164,
+        string? name,
+        string? email,
+        int dupWindowDays,
+        string intakeMetadataSnapshotJson,
+        CancellationToken ct = default)
+    {
+        const string sql = @"
+            WITH prior AS (
+                SELECT id, created_at
+                FROM leads
+                WHERE tenant_id = @tid AND phone = @phone
+            ),
+            decision AS (
+                SELECT
+                    CASE
+                        WHEN prior.id IS NOT NULL
+                         AND (NOW() - prior.created_at) <= make_interval(days => @dupDays)
+                        THEN 'noop' ELSE 'upsert'
+                    END AS action,
+                    prior.id AS prior_id
+                FROM (SELECT 1) _ LEFT JOIN prior ON TRUE
+            ),
+            upserted AS (
+                INSERT INTO leads
+                    (tenant_id, phone, name, email,
+                     source, source_slug,
+                     intake_metadata)
+                SELECT
+                    @tid, @phone, @name, @email,
+                    'facebook', 'meta-leadgen',
+                    @intakeMeta::jsonb
+                FROM decision
+                WHERE decision.action = 'upsert'
+                ON CONFLICT (tenant_id, phone) DO UPDATE SET
+                    name            = COALESCE(EXCLUDED.name, leads.name),
+                    email           = COALESCE(EXCLUDED.email, leads.email),
+                    source          = EXCLUDED.source,
+                    source_slug     = EXCLUDED.source_slug,
+                    intake_metadata = leads.intake_metadata || EXCLUDED.intake_metadata,
+                    updated_at      = NOW()
+                RETURNING id
+            )
+            SELECT
+                COALESCE(upserted.id, decision.prior_id) AS lead_id,
+                (decision.action = 'upsert')             AS is_new
+            FROM decision
+            LEFT JOIN upserted ON TRUE";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("phone", phoneE164);
+        cmd.Parameters.AddWithValue("name", (object?)name ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("email", (object?)email ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("dupDays", Math.Max(1, dupWindowDays));
+        cmd.Parameters.AddWithValue("intakeMeta", intakeMetadataSnapshotJson);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        if (!await reader.ReadAsync(ct))
+            throw new InvalidOperationException("EnsureLeadForMetaLeadgen returned no rows");
+
+        return new WaDirectEnsureResult(reader.GetInt32(0), reader.GetBoolean(1));
+    }
+
     // ================================================================
     // Intake result records
     // ================================================================

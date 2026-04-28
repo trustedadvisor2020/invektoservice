@@ -30,7 +30,11 @@ const CANONICAL_OPTIONS: { value: string; label: string }[] = [
   { value: 'custom_3', label: 'custom_3' },
   { value: 'custom_4', label: 'custom_4' },
   { value: 'custom_5', label: 'custom_5' },
-  { value: 'consent_marketing', label: 'consent_marketing' },
+  // FEAT-META-FULL-INTAKE 2026-04-29: LIW canonical 'consent' ile hizalandı.
+  // Eski 'consent_marketing' eski tenant kayıtlarında kalmış olabilir
+  // (field_id_map JSONB free-form) — operator next-save'de kanonik'i 'consent'
+  // olarak yeniden seçene kadar process-lead strict bool gate (INV-BE-105) reddeder.
+  { value: 'consent', label: 'consent (pazarlama onayı)' },
 ];
 
 interface FieldMapRow {
