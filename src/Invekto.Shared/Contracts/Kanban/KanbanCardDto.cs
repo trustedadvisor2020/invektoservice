@@ -31,6 +31,15 @@ public sealed class KanbanCardDto
     public string RefCode { get; init; } = "----";
 
     /// <summary>
+    /// Bagimlilik referans kodu listesi (CSV format, ornek "C001,C003"). Migration 037
+    /// CHECK constraint regex `^[A-Z][0-9]{3}(,[A-Z][0-9]{3})*$` enforce. NULL = bagimsiz
+    /// kart (paralel calisilabilir). UI kart altinda kucuk indicator + drawer'da
+    /// tiklanabilir liste olarak render edilir.
+    /// </summary>
+    [JsonPropertyName("depends_on")]
+    public string? DependsOn { get; init; }
+
+    /// <summary>
     /// Platform-level board (board_key='dent-pilot') icin null. Gelecek tenant-scoped
     /// board'lar icin tenant_id dolu olur, repository runtime tarafinda WHERE clause
     /// ile scope'lanir.

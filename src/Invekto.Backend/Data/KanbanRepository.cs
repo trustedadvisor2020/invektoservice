@@ -39,7 +39,7 @@ public class KanbanRepository
         string boardKey, CancellationToken ct = default, long? tenantId = null)
     {
         const string sql = @"
-            SELECT id, board_key, card_slug, ref_code, tenant_id,
+            SELECT id, board_key, card_slug, ref_code, depends_on, tenant_id,
                    status, category, priority, position,
                    title, summary, body_markdown, owner, eta,
                    source_file, source_anchor,
@@ -115,7 +115,7 @@ public class KanbanRepository
              WHERE board_key = @board
                AND (card_slug = @slug OR ref_code = @slug)
                AND tenant_id IS NOT DISTINCT FROM @tenant
-            RETURNING id, board_key, card_slug, ref_code, tenant_id,
+            RETURNING id, board_key, card_slug, ref_code, depends_on, tenant_id,
                       status, category, priority, position,
                       title, summary, body_markdown, owner, eta,
                       source_file, source_anchor,
@@ -164,20 +164,21 @@ public class KanbanRepository
         BoardKey      = r.GetString(1),
         CardSlug      = r.GetString(2),
         RefCode       = r.GetString(3),
-        TenantId      = r.IsDBNull(4)  ? null : r.GetInt64(4),
-        Status        = r.GetString(5),
-        Category      = r.GetString(6),
-        Priority      = r.GetString(7),
-        Position      = r.GetInt32(8),
-        Title         = r.GetString(9),
-        Summary       = r.IsDBNull(10) ? null : r.GetString(10),
-        BodyMarkdown  = r.IsDBNull(11) ? null : r.GetString(11),
-        Owner         = r.IsDBNull(12) ? null : r.GetString(12),
-        Eta           = r.IsDBNull(13) ? null : r.GetString(13),
-        SourceFile    = r.IsDBNull(14) ? null : r.GetString(14),
-        SourceAnchor  = r.IsDBNull(15) ? null : r.GetString(15),
-        CreatedAt     = r.GetDateTime(16),
-        UpdatedAt     = r.GetDateTime(17),
-        CompletedAt   = r.IsDBNull(18) ? null : r.GetDateTime(18)
+        DependsOn     = r.IsDBNull(4)  ? null : r.GetString(4),
+        TenantId      = r.IsDBNull(5)  ? null : r.GetInt64(5),
+        Status        = r.GetString(6),
+        Category      = r.GetString(7),
+        Priority      = r.GetString(8),
+        Position      = r.GetInt32(9),
+        Title         = r.GetString(10),
+        Summary       = r.IsDBNull(11) ? null : r.GetString(11),
+        BodyMarkdown  = r.IsDBNull(12) ? null : r.GetString(12),
+        Owner         = r.IsDBNull(13) ? null : r.GetString(13),
+        Eta           = r.IsDBNull(14) ? null : r.GetString(14),
+        SourceFile    = r.IsDBNull(15) ? null : r.GetString(15),
+        SourceAnchor  = r.IsDBNull(16) ? null : r.GetString(16),
+        CreatedAt     = r.GetDateTime(17),
+        UpdatedAt     = r.GetDateTime(18),
+        CompletedAt   = r.IsDBNull(19) ? null : r.GetDateTime(19)
     };
 }

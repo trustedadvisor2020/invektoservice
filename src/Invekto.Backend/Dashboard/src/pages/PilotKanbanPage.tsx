@@ -221,6 +221,7 @@ export function PilotKanbanPage() {
 function CardItem({ card, onClick }: { card: KanbanCard; onClick: () => void }) {
   const isP0 = card.priority === 'P0';
   const hasRefCode = card.ref_code && card.ref_code !== '----';
+  const deps = card.depends_on?.split(',').map(s => s.trim()).filter(Boolean) ?? [];
   return (
     <button
       type="button"
@@ -243,11 +244,26 @@ function CardItem({ card, onClick }: { card: KanbanCard; onClick: () => void }) 
         </h4>
         {isP0 && (
           <span
-            className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0 mt-1.5"
-            title="Pilot blocker (P0)"
-          />
+            className="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-red-500 text-white flex-shrink-0 tracking-wide"
+            title="P0 — Pilot blocker (bu kart gecikirse pilot başlangıcı kayar)"
+          >
+            P0
+          </span>
         )}
       </div>
+      {deps.length > 0 && (
+        <div
+          className="mt-2 pt-2 border-t border-slate-100 flex items-center gap-1 text-[10px] text-slate-500 font-mono"
+          title="Bu kart şu kart(lar) tamamlanmadan ilerleyemez"
+        >
+          <span className="text-slate-400">↳</span>
+          {deps.map((d, i) => (
+            <span key={d} className="tabular-nums">
+              {d}{i < deps.length - 1 && <span className="text-slate-300">,</span>}
+            </span>
+          ))}
+        </div>
+      )}
     </button>
   );
 }

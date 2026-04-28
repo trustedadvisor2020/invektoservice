@@ -180,6 +180,29 @@ export function KanbanDrawer({ card, onClose }: KanbanDrawerProps) {
             </div>
           )}
 
+          {/* Bağımlılıklar — bu kartın ilerlemesi için gereken diğer ref_code'lar */}
+          {card.depends_on && (
+            <div>
+              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                Bağımlılıklar
+              </h3>
+              <div className="flex flex-wrap items-center gap-1.5 text-sm">
+                <span className="text-slate-400 mr-0.5">↳</span>
+                {card.depends_on.split(',').map(s => s.trim()).filter(Boolean).map(dep => (
+                  <code
+                    key={dep}
+                    className="font-mono text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 tabular-nums"
+                  >
+                    {dep}
+                  </code>
+                ))}
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1.5 italic">
+                Bu kart yukarıdaki kart(lar) tamamlanmadan ilerleyemez.
+              </p>
+            </div>
+          )}
+
           {/* Source link — DentAdavista/* prod'da deploy edilmiyor, graceful fallback */}
           {card.source_file && (
             <div className="pt-2 border-t border-slate-100">
