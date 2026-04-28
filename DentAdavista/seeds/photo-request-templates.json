@@ -1,0 +1,70 @@
+[
+  {
+    "_comment": "FEAT-PHOTO Dent Adavista pilot seed — 4 template (request_a + request_b + reminder_24h + escalation). Yukleme oncesi BU ILK ENTRY'i sil. Dashboard /templates/new -> Topluca JSON tab -> paste -> Topluca Yukle.",
+    "_source": "DentAdavista/plan/dent-toplanti.html (Q approved 2026-04-27) + Flowchart.pdf foto isteme alt akisi A+B + DocX 5 varyant (24h reminder + 48h escalation). Pilotta tek varyant secildi; A/B/C rotation post-pilot template_catalog rotation paketinde.",
+    "_note": "tenant_id=18173130 (DentAdavista). scope=tenant. lang=en. content_json.text = pilot baseline. PhotoRequestService inline mirror kullanir (template_catalog DB lookup post-pilot).",
+    "template_type": "message",
+    "scope": "tenant",
+    "tenant_id": 18173130,
+    "slug": "_pilot-seed-metadata",
+    "name": "[METADATA — DELETE BEFORE UPLOAD]",
+    "description": "Seed dosyasi metadata entry; Topluca Yukle oncesi bu ilk entry'yi sil.",
+    "lang": "en",
+    "tags": ["metadata"],
+    "group_tag": null,
+    "content_json": { "text": "METADATA — DELETE THIS ENTRY BEFORE UPLOAD" },
+    "created_by": "manual"
+  },
+
+  {
+    "template_type": "message", "scope": "tenant", "tenant_id": 18173130, "lang": "en",
+    "slug": "photo_request_a",
+    "name": "Photo Request — A varyant (sablon URL)",
+    "description": "Slot booking onaylandiktan ~30sn sonra gonderilen ilk foto isteme mesaji. Sablon image (5 ikon: on/sag/sol/ust/alt + ok) public URL referansi. Bridge media attachment expansion sonrasi gercek WhatsApp image attach destegi gelecek.",
+    "tags": ["photo", "request", "pilot"],
+    "group_tag": "photo_request",
+    "content_json": {
+      "text": "Merhaba! Dr. Ozge sizin icin ozel bir tedavi plani hazirlasin diye 5 fotoya ihtiyacimiz var. Asagidaki kilavuza gore 5 acidan (on, sag, sol, ust, alt) cekebilir misiniz? Tek seferlik ve kisisel olarak inceleyecegiz: https://invekto.com/static/dental-angles.png Sorun yasarsaniz buradan yazin, yardimci olalim."
+    },
+    "created_by": "manual"
+  },
+
+  {
+    "template_type": "message", "scope": "tenant", "tenant_id": 18173130, "lang": "en",
+    "slug": "photo_request_b",
+    "name": "Photo Request — B varyant (yazili 5 aci)",
+    "description": "Sablon yok varyant. DocX 'Mesaj 2 / Sablon Yok' tonu. Numaralandirilmis liste seklinde 5 aci tarif edilir; telefonun on kamerasi yeterli notu eklendi.",
+    "tags": ["photo", "request", "pilot"],
+    "group_tag": "photo_request",
+    "content_json": {
+      "text": "Merhaba! Gorusmemiz icin 5 fotoya ihtiyacimiz var. Sirasiyla:\n1) On disler (gulumseyerek, agziniz hafif acik)\n2) Sag yan dis profili\n3) Sol yan dis profili\n4) Alttan ust dis kemeri (basinizi geriye yatirip)\n5) Ustten alt dis kemeri (cenenizi gogsunuze yaklastirip)\nTelefonunuzun on kamerasi yeterli — net olsun yeter. Tesekkurler!"
+    },
+    "created_by": "manual"
+  },
+
+  {
+    "template_type": "message", "scope": "tenant", "tenant_id": 18173130, "lang": "en",
+    "slug": "photo_reminder_24h",
+    "name": "Photo Reminder — 24 saat",
+    "description": "PhotoRequestReminderJob 24 saat sonra cagirir. Nazik ton + 1 dakikalik is vurgusu + cikis kapisi (sorun varsa baska turlu cozum). DocX 24h hatirlatma 5 varyantindan secilen 1 (post-pilot rotation).",
+    "tags": ["photo", "reminder", "pilot"],
+    "group_tag": "photo_reminder",
+    "content_json": {
+      "text": "Selam! Dunku istegimizi unutmus olabilirsiniz — Dr. Ozge size en uygun planu hazirlamak icin 5 fotoyu bekliyor. 1 dakikalik bir is :) Sorun varsa yazin, baska turlu de cozum bulalim."
+    },
+    "created_by": "manual"
+  },
+
+  {
+    "template_type": "message", "scope": "tenant", "tenant_id": 18173130, "lang": "en",
+    "slug": "photo_escalation",
+    "name": "Photo Escalation — 48 saat / koordinator devri",
+    "description": "PhotoEscalationJob 48 saat sonrasi cagirir. Koordinator devri tonu — 'birlikte halledelim' kapanisi. DocX 48h-3rd-msg 5 varyantindan secilen 1.",
+    "tags": ["photo", "escalation", "pilot"],
+    "group_tag": "photo_escalation",
+    "content_json": {
+      "text": "Merhaba! Sizin icin koordinatorumuz devreye giriyor; ekipten biri kisa bir telefon konusmasi icin sizinle iletisime gececek. Foto cekmekte zorlandiysaniz hic problem degil, birlikte halledelim."
+    },
+    "created_by": "manual"
+  }
+]

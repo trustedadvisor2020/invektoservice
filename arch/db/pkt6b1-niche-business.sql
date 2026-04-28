@@ -147,6 +147,17 @@ CREATE TABLE IF NOT EXISTS leads (
     custom_8        TEXT,
     custom_9        TEXT,
     custom_10       TEXT,
+    -- FEAT-PHOTO (migration 034-photo-request-flow.sql): foto isteme akisi durumu.
+    -- photo_status: 'none' (varsayilan, foto istenmedi) | 'requested' (PhotoRequestDispatchJob
+    -- gonderdi) | 'received' (ilk inbound resim mesaji geldi) | 'escalated' (48h sessizlik,
+    -- koordinator devri) | 'rejected' (post-pilot opt-out icin reserve). photo_received_at:
+    -- ilk inbound resim mesajinin handler-side now() degeri. photo_count: PhotoInboundHandler
+    -- her dedup-PASS event icin atomic +1; INMA at-least-once redelivery photo_inbound_
+    -- idempotency UNIQUE(lead_id, media_url_hash) ile reddedilir (count yaniltici sayim
+    -- riski yok).
+    photo_status      VARCHAR(20)  NOT NULL DEFAULT 'none',
+    photo_received_at TIMESTAMPTZ  NULL,
+    photo_count       INTEGER      NOT NULL DEFAULT 0,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT fk_leads_tenant
@@ -154,7 +165,10 @@ CREATE TABLE IF NOT EXISTS leads (
     CONSTRAINT chk_leads_score
         CHECK (score BETWEEN 0 AND 100),
     CONSTRAINT chk_leads_preferred_locale
-        CHECK (preferred_locale IS NULL OR preferred_locale ~ '^[a-z]{2}(-[A-Z]{2})?$')
+        CHECK (preferred_locale IS NULL OR preferred_locale ~ '^[a-z]{2}(-[A-Z]{2})?$'),
+    -- FEAT-PHOTO: photo_status enum guard. Mirrors migration 034 ADD CONSTRAINT.
+    CONSTRAINT chk_leads_photo_status
+        CHECK (photo_status IN ('none','requested','received','escalated','rejected'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_leads_tenant
@@ -178,6 +192,29 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_leads_tenant_phone
 
 GRANT ALL ON leads TO invekto_app;
 GRANT USAGE, SELECT ON SEQUENCE leads_id_seq TO invekto_app;
+
+-- ============================================================
+-- FEAT-PHOTO (migration 034-photo-request-flow.sql): photo inbound idempotency.
+-- PhotoInboundHandler her INMA inbound media event icin (lead_id,
+-- sha256(media_url)) UNIQUE INSERT ON CONFLICT DO NOTHING; UNIQUE violation =
+-- duplicate redelivery, handler tarafinda swallow + INV-AT-073 log + atomic
+-- UPDATE'in WHERE photo_status<>'received' guard'i ile photo_count yaniltici
+-- inflation'a karsi korur. Cascade ON DELETE leads = GDPR right-to-erasure
+-- audit row temizliginde drift onler. Canonical mirror migration 034 §2.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS photo_inbound_idempotency (
+    id              BIGSERIAL    PRIMARY KEY,
+    lead_id         INTEGER      NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+    media_url_hash  CHAR(64)     NOT NULL,
+    received_at     TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_photo_inbound_idempotency UNIQUE (lead_id, media_url_hash)
+);
+
+CREATE INDEX IF NOT EXISTS idx_photo_inbound_idempotency_recent
+    ON photo_inbound_idempotency(lead_id, received_at DESC);
+
+GRANT ALL ON photo_inbound_idempotency TO invekto;
+GRANT USAGE, SELECT ON SEQUENCE photo_inbound_idempotency_id_seq TO invekto;
 
 CREATE TABLE IF NOT EXISTS lead_activities (
     id              SERIAL PRIMARY KEY,

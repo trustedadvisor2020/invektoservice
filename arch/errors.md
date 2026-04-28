@@ -1443,6 +1443,51 @@ errors:
     description: Dent paket C1 archive snapshot postcondition failure (expected >=37 rows in dent_paket_c1_archive_20260424 = 36 faq_entries + 1 chatbot_flows; rollback evidence insufficient before COMMIT)
     user_message: Paket C1 archive snapshot doğrulaması başarısız — pre-state snapshot eksik, rollback evidence yetersiz, COMMIT öncesi durum güvenli değil.
 
+  # FEAT-PHOTO Foto Isteme Akisi (Dent Adavista pilot, migration 034 — 2026-04-27)
+  # PhotoInboundHandler (Backend) + PhotoRequestDispatchJob / ReminderJob /
+  # EscalationJob (Automation) + PhotoEndpoints (Backend SPA proxy) ekseni.
+  # Welcome / followup / photo akislari Dashboard ops panelinde tek bakista
+  # ayrilabilsin diye dedicated INV-AT-073..080 kod araligi.
+  - code: INV-AT-073
+    description: PhotoInboundHandler INMA at-least-once redelivery — ayni (lead_id, sha256(media_url)) tuple'i icin INSERT ON CONFLICT DO NOTHING UNIQUE violation. Handler swallow + log + photo_count UPDATE skip; bu mesaj healthy informational signal'dir (audit trail amacli; retry/escalation YOK). Idempotency anchor migration 034 §2 photo_inbound_idempotency UNIQUE (lead_id, media_url_hash).
+    user_message: Foto inbound webhook'u zaten islenmis (duplicate redelivery), tekrar islenmedi.
+  - code: INV-AT-074
+    description: PhotoRequestReminderJob 24 saat gecikmeli execute() pre-check race condition — leads.photo_status terminal state'lerden birinde ('received', 'escalated', 'rejected'); job execute time'da DB lookup'i bu durumlarda re-check sonucu degisikligi yakaliyor (hasta tam bu sirada foto gonderdi VEYA koordinator manuel escalate/reject yaptik). Job terminal mark + early-return; double-send guard. FollowupStageJob terminal-skip pattern (line 35-62) precedent.
+    user_message: Foto hatirlatma istegi gonderilmedi — durum bu arada degisti (foto geldi, eskalasyon basladi veya kayit kapatildi).
+  - code: INV-AT-075
+    description: PhotoRequestDispatchJob INMA chatoperation /api/v1/callback/wapcrm bridge call non-2xx / timeout / HttpRequestException. Hangfire AutomaticRetry=2 ile 30/120s backoff; terminal fail INV-AT-077 ile distinguish edilir (transient vs. exhausted-retry farki). Bridge limitation: pilot text-only payload kullanir (messageType=1), media attachment bridge expansion gerektiriyor — variant A icin sablon image public URL referansi pattern'i kullanilir.
+    user_message: Foto isteme mesaji gonderilemedi (gecici WhatsApp bridge hatasi); birkac dakika icinde tekrar denenecek.
+  - code: INV-AT-076
+    description: PhotoEscalationJob 48 saat gecikmeli execute() pre-check — leads.photo_status zaten terminal ('received', 'escalated', 'rejected'). Foto geldi (escalation gereksiz) VEYA koordinator manuel olarak halletti. Early-return + log; idempotent re-run safe; double-mark guard.
+    user_message: Eskalasyon islemi atlandi — foto durumu zaten guncel (gelmis, eskaledilmis veya kapatilmis).
+  - code: INV-AT-077
+    description: PhotoRequestDispatchJob max retry tukendi (INV-AT-075 retry'lari hep fail) — Hangfire 'failed' state'e moved. Operator inspect + manuel re-trigger gerekli; Reminder job zincir baglanmaz (Dispatch BackgroundJob.Schedule chain'i bu noktada kopar). Foto akisi tetiklenmedi, manuel akma 'Tekrar Iste' dashboard butonu mevcut.
+    user_message: Foto isteme mesaji uc denemeye ragmen gonderilemedi; lutfen koordinator uzerinden manuel deneme yapin.
+  - code: INV-AT-078
+    description: PhotoInboundHandler atomic UPDATE / idempotency INSERT NpgsqlException — DB transport / connection / disk full. INMA webhook layer 503 doner; INMA at-least-once redelivery sonraki window'da yeniden gonderir. Non-terminal: photo_status state-machine ileride duzelir (sonraki inbound media event handler'a tekrar girer, idempotency anchor sayesinde count yaniltici sayim olmaz).
+    user_message: Foto islenirken veritabani hatasi olustu; INMA tekrar deneyecek.
+  - code: INV-AT-079
+    description: PhotoEndpoints GET /api/v1/leads/{id}/photos INMA /api/chats/getimage proxy call 5xx / timeout. INMA tarafinda gecici dalgalanma; ekran "foto goruntulenemiyor" mesaji gosterir. Koordinator birkac dakika sonra refresh dener; persistent storage YOK, INMA URL'i otorite.
+    user_message: Foto suanda goruntulenemiyor; birkac dakika sonra tekrar deneyin.
+  - code: INV-AT-080
+    description: PhotoEndpoints lead_id PK lookup ile resolve edilen leads.tenant_id JWT TenantContext.TenantId ile mismatch. 403 + INV-AUTH-010 (cross-tenant write defense ortak ile) emit; fail-closed. Audit trail: koordinator yanlislikla baska tenant lead'ine bakmaya calismasi vs. saldirgan probe ayrim Backend log review konusu.
+    user_message: Bu kayda erisim izniniz yok.
+  - code: INV-AT-081
+    description: InmaInboundMediaEndpoint POST body validation fail — tenant_id veya lead_id eksik/<=0 ya da image_url empty/whitespace, ya da JSON parse hatasi. 400 doner; INMA caller payload shape uyumsuzlugu.
+    user_message: Foto webhook payload eksik veya hatali.
+  - code: INV-AT-082
+    description: InmaInboundMediaEndpoint istek client-side cancel oldu (HTTP 499). Idempotency anchor henuz yazilmadigi icin INMA at-least-once redelivery temiz bir denemeyle tekrar girer.
+    user_message: Foto webhook isteme iptal edildi.
+  - code: INV-AT-083
+    description: PhotoInboundHandler lead_id PK lookup ile resolve edilen leads.tenant_id != caller tenant_id. Cross-tenant pollution attempt veya caller resolve bug; 422 + audit log; idempotency INSERT YAPILMAZ (kirletme guard).
+    user_message: Foto webhook tenant uyusmuyor.
+  - code: INV-AT-084
+    description: PhotoInboundHandler atomic UPDATE leads matched 0 rows — lead silinmis VEYA photo_status='rejected' VEYA WHERE clause filter elendi. Idempotency anchor yazildi ama leads state degismedi; 422 doner, koordinator panel incident audit konusu.
+    user_message: Foto kaydedildi ama lead durumu guncel degil — koordinator inceleyecek.
+  - code: INV-AT-085
+    description: PhotoEndpoints POST /api/v1/leads/{id}/photos/request — lead photo_status='rejected' lock'unda. 'Tekrar Iste' butonu opt-out override yapamaz; 409 doner, koordinator manuel takdir.
+    user_message: Bu lead reddedilmis durumda; tekrar istek gonderilemez.
+
   # Paket B-META (migration 033 — 2026-04-25)
   - code: INV-SEED-018
     description: meta_leadgen_events table / UNIQUE constraint / recent-events index postcondition failure (CREATE TABLE skipped; or table exists but UNIQUE (tenant_id, leadgen_id) dedup anchor missing => at-least-once dedup broken; or idx_meta_leadgen_events_tenant_recent absent => Dashboard [Test Events] panel hot path degrades). Index is a full B-tree on (tenant_id, received_at DESC); a partial predicate using now() was rejected per PostgreSQL 40.7 Immutability of Index Functions, retention deferred to a scheduled DELETE job (post-pilot packet).
@@ -1453,6 +1498,17 @@ errors:
   - code: INV-SEED-020
     description: GRANT ALL invekto privilege postcondition failure on meta_leadgen_events. Runtime INSERT/UPDATE from Backend / Automation will fail with permission denied at ingest time.
     user_message: Meta Leadgen migration doğrulaması başarısız — invekto role'a GRANT ALL uygulanmamış.
+
+  # FEAT-PHOTO (migration 034 — 2026-04-27)
+  - code: INV-SEED-021
+    description: leads photo_* columns / CHECK constraint postcondition failure (photo_status / photo_received_at / photo_count column missing OR chk_leads_photo_status CHECK constraint absent). ALTER TABLE skipped silently (column type clash, role lacks ALTER privilege) OR DO block did not run ADD CONSTRAINT. Foto akisi runtime'da tetiklenince UPDATE leads SET photo_status=... CHECK violation veya unknown column error patlar.
+    user_message: Foto migration doğrulaması başarısız — leads tablosunda photo_status, photo_received_at, photo_count kolonları veya CHECK constraint eksik.
+  - code: INV-SEED-022
+    description: photo_inbound_idempotency table / UNIQUE constraint / recent-events index postcondition failure. CREATE TABLE skipped OR uq_photo_inbound_idempotency UNIQUE(lead_id, media_url_hash) absent (at-least-once dedup broken — duplicate INMA inbound webhooks photo_count'u inflate eder) OR idx_photo_inbound_idempotency_recent eksik (post-pilot timeline panel hot path degrades).
+    user_message: Foto migration doğrulaması başarısız — photo_inbound_idempotency tablosu, UNIQUE constraint veya recent-events index oluşmadı.
+  - code: INV-SEED-023
+    description: GRANT ALL invekto privilege postcondition failure on photo_inbound_idempotency. PhotoInboundHandler runtime INSERT permission denied — INMA webhook 503 doner, at-least-once redelivery sonraki window'da yeniden gonderir ama dedup anchor calismadigi icin photo_count guvensiz.
+    user_message: Foto migration doğrulaması başarısız — invekto role'a photo_inbound_idempotency üzerinde GRANT ALL uygulanmamış.
 
 ```
 
