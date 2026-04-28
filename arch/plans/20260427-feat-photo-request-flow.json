@@ -24,6 +24,12 @@
       "at": "2026-04-28T03:25:00Z",
       "commit_sha": "1da0da67474228ecee26414e5e40406aa0f3e33f",
       "note": "Q FORCE PASS iter 4 (4 of 8 chunks full CQ PASS; Plan chunk full Q PASS). Commit pushed origin/master. /wrap closure: session-memory + lessons-learned (2 row append) + tracking + README updated."
+    },
+    {
+      "status": "DEPLOYED",
+      "at": "2026-04-28T10:30:00Z",
+      "deploy_duration_minutes": 7,
+      "note": "Production deploy COMPLETE. Migration 034 mcp__invekto-postgres__execute atomic BEGIN/COMMIT — DO $verify$ PASS, 5/5 schema invariant verified (photo_columns=3, idem_table=true, check_constraint=true, unique_constraint=true, recent_index=true, grant_ok=true). Dashboard SPA build (tsc + vite) ✓ 6.05s → wwwroot/app/ assets rotated. Backend server-deploy (180 file/12MB zip) → InvektoBackend HEALTHY 10:28:21Z. Automation server-deploy (65 file/2.9MB zip) → InvektoAutomation HEALTHY 10:29:14Z. Final smoke 10/10 service HEALTHY (Backend 5000 + ChatAnalysis 7101 + Appointments 7102 + Knowledge 7104 + AgentAI 7105 + Integrations 7106 + Outbound 7107 + Automation 7108 + WhatsAppAnalytics 7109 + Marketing 7112). Runtime code-staged: Program.cs wire-up + slot booking trigger + Dashboard router = post-pilot scope-correction patch (7 deploy blocker)."
     }
   ],
   "plan": {

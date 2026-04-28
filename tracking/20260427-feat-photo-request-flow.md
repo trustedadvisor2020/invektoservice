@@ -5,7 +5,7 @@
 **Plan:** [arch/plans/20260427-feat-photo-request-flow.json](../arch/plans/20260427-feat-photo-request-flow.json)
 **Migration:** [arch/db/migrations/034-photo-request-flow.sql](../arch/db/migrations/034-photo-request-flow.sql)
 **Risk:** MEDIUM
-**Status:** DRAFT (code in place, deploy + smoke pending)
+**Status:** DONE+DEPLOYED+VERIFIED (2026-04-28 10:30 UTC) — commit `1da0da6` master, Migration 034 prod execute + 5/5 schema invariant + Backend HEALTHY 10:28:21Z + Automation HEALTHY 10:29:14Z + 10/10 service HEALTHY post-deploy. Runtime code-staged (Program.cs wire-up + slot booking trigger + Dashboard router = post-pilot scope-correction patch).
 
 ---
 
