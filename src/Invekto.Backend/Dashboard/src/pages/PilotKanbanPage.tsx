@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import type { KanbanBoard, KanbanCard, KanbanStatusValue } from '../lib/api';
 import { usePolling } from '../hooks/usePolling';
@@ -7,15 +8,16 @@ import { RefreshCw, AlertCircle, Kanban } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 /**
- * FEAT-PILOT-KANBAN — SuperAdmin Pilot Kanban Page.
+ * FEAT-ROADMAP-V2 — SuperAdmin Yol Haritası Page (eski FEAT-PILOT-KANBAN).
  *
- * Q (Taner) "tum gidisat" izleme aracı. board_key='dent-pilot' kart`larini
- * 5 kolonda (BLOCKED/TODO/IN_PROGRESS/BACKLOG/DONE) gosterir. Read-only:
- * Q manuel kart edit yapmaz; mutation tek path /wrap workflow Step 3.5.
+ * Q (Taner) "tum gidisat" izleme aracı. URL param :boardKey ile multi-board
+ * destegi (fallback 'dent-pilot'). 5 kolon (BLOCKED/TODO/IN_PROGRESS/BACKLOG/DONE).
+ * Read-only — mutation tek path /wrap workflow Step 3.5.
  *
  * Polling 60s, kart click -> KanbanDrawer (sagdan slide-in) ile tum detay.
+ * Her kart 4-karakter ref_code (C001/K005/D021) prominent gosterir.
  */
-const BOARD_KEY = 'dent-pilot';
+const DEFAULT_BOARD_KEY = 'dent-pilot';
 
 const COLUMNS: { id: KanbanStatusValue; label: string; icon: string; cls: string }[] = [
   { id: 'BLOCKED',     label: 'Blocked',     icon: '🔴', cls: 'border-red-200 bg-red-50/50' },
@@ -44,11 +46,13 @@ const CATEGORY_LABEL: Record<string, string> = {
 };
 
 export function PilotKanbanPage() {
+  const { boardKey: urlBoardKey } = useParams<{ boardKey?: string }>();
+  const boardKey = urlBoardKey || DEFAULT_BOARD_KEY;
   const [selectedCard, setSelectedCard] = useState<KanbanCard | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
   const { data: board, isLoading, error, refresh } = usePolling<KanbanBoard>({
-    fetcher: () => api.getKanbanBoard(BOARD_KEY),
+    fetcher: () => api.getKanbanBoard(boardKey),
     interval: 60000,
   });
 
@@ -103,10 +107,11 @@ export function PilotKanbanPage() {
           <div>
             <h1 className="text-2xl font-semibold text-slate-900 flex items-center gap-2">
               <Kanban className="w-6 h-6 text-slate-600" />
-              Pilot Kanban
+              Yol Haritası
+              <code className="text-xs text-slate-500 font-mono bg-slate-100 px-2 py-0.5 rounded ml-2">{boardKey}</code>
             </h1>
             <p className="text-sm text-slate-500 mt-0.5">
-              Dent Adavista pilot gidişatı. Read-only — güncellemeler <code className="text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded text-[0.85em] font-mono">/wrap</code> workflow Step 3.5 üzerinden.
+              Multi-board pilot/proje izleme. Read-only — güncellemeler <code className="text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded text-[0.85em] font-mono">/wrap</code> workflow Step 3.5 üzerinden.
             </p>
           </div>
           <button
@@ -242,6 +247,7 @@ export function PilotKanbanPage() {
 
 function CardItem({ card, onClick }: { card: KanbanCard; onClick: () => void }) {
   const isP0 = card.priority === 'P0';
+  const hasRefCode = card.ref_code && card.ref_code !== '----';
   return (
     <button
       type="button"
@@ -254,9 +260,16 @@ function CardItem({ card, onClick }: { card: KanbanCard; onClick: () => void }) 
       )}
       title={card.summary ?? card.title}
     >
-      <h4 className="text-sm font-medium text-slate-900 leading-snug line-clamp-2 mb-1.5">
-        {card.title}
-      </h4>
+      <div className="flex items-start gap-2 mb-1.5">
+        {hasRefCode && (
+          <code className="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-slate-900 text-white tracking-wide flex-shrink-0">
+            {card.ref_code}
+          </code>
+        )}
+        <h4 className="text-sm font-medium text-slate-900 leading-snug line-clamp-2 flex-1">
+          {card.title}
+        </h4>
+      </div>
       <div className="flex items-center gap-1.5 flex-wrap">
         <span className={cn(
           'text-[10px] px-1.5 py-0.5 rounded font-medium',

@@ -72,7 +72,14 @@ CREATE TABLE IF NOT EXISTS kanban_cards (
     -- Lifecycle timestamps.
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),    -- /wrap PATCH her zaman tazeler
-    completed_at    TIMESTAMPTZ                              -- DONE'a geçince NOW() otomatik (re-open NULL'a çekilir)
+    completed_at    TIMESTAMPTZ,                             -- DONE'a geçince NOW() otomatik (re-open NULL'a çekilir)
+
+    -- Reference code (Migration 036) — kart kimligi 4-karakter mnemonic
+    -- (kategori prefix + 3 rakam, ornek C001 / K005 / D021 / U009 / X003).
+    -- '----' placeholder = henuz atanmamis (yeni eklenen kart). UNIQUE (board_key,
+    -- ref_code) WHERE ref_code <> '----' partial index ile atanmislar UNIQUE.
+    -- /wrap workflow Step 3.5 commit message'da slug VEYA ref_code match destekler.
+    ref_code        VARCHAR(4)   NOT NULL DEFAULT '----'
 );
 
 -- =============================================================
@@ -98,6 +105,11 @@ ALTER TABLE kanban_cards
     ADD CONSTRAINT chk_kanban_cards_priority
     CHECK (priority IN ('P0','P1','P2','P3'));
 
+-- Ref code format (Migration 036): '----' placeholder VEYA '^[A-Z][0-9]{3}$'.
+ALTER TABLE kanban_cards
+    ADD CONSTRAINT chk_kanban_cards_ref_code
+    CHECK (ref_code = '----' OR ref_code ~ '^[A-Z][0-9]{3}$');
+
 -- =============================================================
 -- Indexes
 -- =============================================================
@@ -115,6 +127,13 @@ CREATE INDEX idx_kanban_cards_board_updated
 CREATE INDEX idx_kanban_cards_tenant
     ON kanban_cards(tenant_id, board_key)
     WHERE tenant_id IS NOT NULL;
+
+-- Ref code partial UNIQUE (Migration 036): atanmis ref_code'lar per-board UNIQUE.
+-- Birden fazla kart '----' placeholder olabilir (yeni eklenen, atanmamis); regex
+-- match olanlar (CXXX/KXXX/DXXX/UXXX/XXXX) board_key icinde UNIQUE.
+CREATE UNIQUE INDEX uq_kanban_cards_board_ref
+    ON kanban_cards(board_key, ref_code)
+    WHERE ref_code <> '----';
 
 -- =============================================================
 -- Permissions

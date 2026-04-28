@@ -72,7 +72,11 @@ public static class KanbanEndpoints
             }
         });
 
-        // PATCH /api/ops/kanban/{board_key}/cards/{card_slug}
+        // PATCH /api/ops/kanban/{board_key}/cards/{slugOrRef}
+        // slugOrRef = card_slug (lowercase kebab) VEYA ref_code (^[A-Z][0-9]{3}$, ornek K005).
+        // Repository WHERE clause '(card_slug = @slug OR ref_code = @slug)' ile ikisini de match'ler.
+        // /wrap workflow Step 3.5 commit message'da kart referansi 4-karakter mnemonic
+        // (Q karari 2026-04-28 FEAT-ROADMAP-V2-REFCODE) veya tam slug ile yapilabilir.
         app.MapPatch("/api/ops/kanban/{boardKey}/cards/{cardSlug}", async (
             string boardKey,
             string cardSlug,
@@ -120,8 +124,8 @@ public static class KanbanEndpoints
                 {
                     return Results.Json(
                         new { error = ErrorCodes.KanbanCardNotFound,
-                              message = $"Kart bulunamadı: board='{boardKey}', slug='{cardSlug}'. " +
-                                        "GET /api/ops/kanban/{board_key} ile mevcut kart slug listesini doğrulayın." },
+                              message = $"Kart bulunamadı: board='{boardKey}', slug/ref='{cardSlug}'. " +
+                                        "GET /api/ops/kanban/{board_key} ile mevcut kart slug ve ref_code listesini doğrulayın." },
                         statusCode: 404);
                 }
 

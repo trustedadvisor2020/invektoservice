@@ -1518,6 +1518,9 @@ errors:
   - code: INV-SEED-025
     description: kanban_cards constraint postcondition failure — uq_kanban_cards_board_slug UNIQUE / chk_kanban_cards_status, _category, _priority CHECK constraint'lerinden biri eksik. ALTER TABLE DO blocklarindan biri silently no-op olmus (constraint zaten farkli isimle var, role privilege yetersiz). Re-run idempotency icin uq_kanban_cards_board_slug zorunlu; eksikse ON CONFLICT DO NOTHING calismaz.
     user_message: Kanban migration doğrulaması başarısız — kanban_cards UNIQUE veya CHECK constraint oluşmadı.
+  - code: INV-SEED-026
+    description: Migration 036 ref_code seed postcondition failure — kanban_cards.ref_code kolonu eklendi ama 64 UPDATE'lerden bazilari hedef satiri bulamadi (card_slug eksik VEYA kategori-prefix mapping bozuk). Beklenen >= 60 dent-pilot kart icin ref_code regex '^[A-Z][0-9]{3}$' atanmis olmali. Yetersizse /wrap workflow Step 3.5 ref_code matching calismaz, kart-kimligi mnemonic kullanim disinda kalir.
+    user_message: Yol Haritasi migration doğrulaması başarısız — kart referans kodları (ref_code) yeterli sayıda atanamadı.
 
   # FEAT-PILOT-KANBAN runtime (KanbanEndpoints + Repository — 2026-04-28)
   - code: INV-KB-001

@@ -141,6 +141,9 @@ export default function App() {
         <Route path="/messages" element={<MessagesPage />} />
         <Route path="/webchat" element={<WebChatPage />} />
         <Route path="/tenants" element={<TenantsPage />} />
+        {/* FEAT-ROADMAP-V2: yeni URL /yol-haritasi/:boardKey? + backward-compat /pilot-kanban */}
+        <Route path="/yol-haritasi" element={<Suspense><PilotKanbanPage /></Suspense>} />
+        <Route path="/yol-haritasi/:boardKey" element={<Suspense><PilotKanbanPage /></Suspense>} />
         <Route path="/pilot-kanban" element={<Suspense><PilotKanbanPage /></Suspense>} />
         <Route path="/ops/zoho" element={<OpsZohoPage />} />
         <Route path="/licenses" element={<LicensesPage />} />

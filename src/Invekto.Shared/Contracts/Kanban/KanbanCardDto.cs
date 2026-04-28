@@ -21,6 +21,16 @@ public sealed class KanbanCardDto
     public string CardSlug { get; init; } = string.Empty;
 
     /// <summary>
+    /// Reference code (Migration 036) — kart kimligi 4-karakter mnemonic
+    /// (kategori prefix + 3 rakam, ornek "C001", "K005", "D021"). '----'
+    /// placeholder = henuz atanmamis. /wrap workflow Step 3.5 commit message'da
+    /// slug VEYA ref_code match destekli; ref_code regex '^[A-Z][0-9]{3}$'.
+    /// Per-board UNIQUE (atanmislar partial index ile).
+    /// </summary>
+    [JsonPropertyName("ref_code")]
+    public string RefCode { get; init; } = "----";
+
+    /// <summary>
     /// Platform-level board (board_key='dent-pilot') icin null. Gelecek tenant-scoped
     /// board'lar icin tenant_id dolu olur, repository runtime tarafinda WHERE clause
     /// ile scope'lanir.

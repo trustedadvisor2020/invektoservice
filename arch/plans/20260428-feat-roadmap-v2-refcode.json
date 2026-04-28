@@ -1,0 +1,182 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260428-feat-roadmap-v2-refcode",
+  "risk": "MEDIUM",
+  "status": "PLANNING",
+  "created_at": "2026-04-28T12:52:37Z",
+  "updated_at": "2026-04-28T12:52:37Z",
+  "plan": {
+    "summary": "FEAT-ROADMAP-V2-REFCODE: Pilot Kanban → Yol Haritası rename + multi-board URL param + her kart için kategori-prefix ref_code (C001-C005 Müşteri, K001-K012 Karar, O001-O009 Ops, D001-D026 Dev, U001-U009 UI, X001-X003 Doc, toplam 64 dent-pilot kart). Audit bulguları paralel fix: drawer source_file 404 (DentAdavista wwwroot'ta yok) → graceful fallback; nav label rename; multi-board için frontend BOARD_KEY hardcoded yerine URL param; /wrap workflow Step 3.5 ref_code matching desteği.",
+    "q_intent": "menu adı pilot kanban değil. yol haritası. birtek pilot için yapmıyoruz. her bir işe referans numarası ekle. bir harf 3 rakam. G638 gibi... Karar: (a) kategori prefix.",
+    "interview_notes": "Q kategori prefix seçti (a). C/K/O/D/U/X harfleri sabit kategoriye göre, kart kategori değişimi nadir (migration seed). Multi-board: URL param /yol-haritasi/:boardKey?, fallback dent-pilot. Audit'ten gelen: drawer source link 404 fix (DentAdavista wwwroot deploy edilmiyor — graceful fallback gri text); SuperAdmin auth zaten mevcut (testte 401 OK = endpoint çalışıyor). Backward compat: /pilot-kanban URL → /yol-haritasi/dent-pilot redirect; KanbanCard interface tenant_id mevcut.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Migration 036 idempotent: kanban_cards.ref_code VARCHAR(4) NOT NULL DEFAULT '----' kolonu + chk_kanban_cards_ref_code CHECK (ref_code ~ '^[A-Z][0-9]{3}$' OR ref_code = '----') + uq_kanban_cards_board_ref UNIQUE (board_key, ref_code). 64 mevcut dent-pilot kart için kategori-bazli UPDATE: C001-C005 + K001-K012 + O001-O009 + D001-D026 + U001-U009 + X001-X003. Postcondition INV-SEED-026 (>= 60 dent-pilot kart ref_code dolu).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC2",
+        "criterion": "Backend: KanbanCardDto + KanbanRepository SELECT/UPDATE/RETURNING ref_code dahil; KanbanEndpoints PATCH /api/ops/kanban/{board_key}/cards/{slugOrRef} parametre slug VEYA ref_code (regex match) ile kart bulur. arch/db/kanban-board.sql canonical mirror update.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC3",
+        "criterion": "Frontend: BOARD_KEY hardcoded constant kaldirildi → useParams<{boardKey?: string}>() + fallback 'dent-pilot'. Route /pilot-kanban + /yol-haritasi/:boardKey? (ikisi destekli; /pilot-kanban backward compat). Nav label 'Pilot Kanban' → 'Yol Haritasi'. Page title aynı. KanbanCard interface ref_code: string field eklendi.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC4",
+        "criterion": "PilotKanbanPage card UI: ref_code sol üst köşede prominent monospace badge (C001 / K005 gibi). Kategori filter butonları + ref_code badge harmonized colors. KanbanDrawer header: ref_code büyük göster (kart slug yanında). Drawer source_file path: DentAdavista/* dosyası prod'da yoksa link disabled + 'kaynak prod'da erişilemez' yazısı (graceful fallback).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC5",
+        "criterion": "/wrap workflow Step 3.5: kart match heuristic ref_code'a göre genişledi (commit message 'K005=DONE, D015=IN_PROGRESS' formatı destekli). Slug + ref_code ikisi de match anahtar. False positive Q onayı ile süzülür.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC6",
+        "criterion": "Tracking güncellemeleri: arch/session-memory.md Recently Completed'a FEAT-PILOT-KANBAN + FEAT-ROADMAP-V2-REFCODE entry; tracking/README.md master tabloya satir; arch/errors.md INV-SEED-026 yeni postcondition kodu kayitli.",
+        "verified": false,
+        "verification_note": null
+      }
+    ]
+  },
+  "allowed_files": [
+    "arch/db/migrations/036-kanban-ref-code.sql",
+    "arch/db/kanban-board.sql",
+    "arch/errors.md",
+    "arch/plans/20260428-feat-roadmap-v2-refcode.json",
+    "tracking/20260428-feat-roadmap-v2-refcode.md",
+    "tracking/README.md",
+    "arch/session-memory.md",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Shared/Contracts/Kanban/KanbanCardDto.cs",
+    "src/Invekto.Backend/Data/KanbanRepository.cs",
+    "src/Invekto.Backend/Endpoints/KanbanEndpoints.cs",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/PilotKanbanPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/KanbanDrawer.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/Layout.tsx",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "C:/Users/taner/.claude/commands/wrap.md"
+  ],
+  "files_changed": [],
+  "git_diff": {
+    "stats": { "insertions": 0, "deletions": 0, "files_count": 0 }
+  },
+  "build": { "status": null },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Migration 036 idempotent mi? ALTER TABLE ADD COLUMN IF NOT EXISTS + DO blocks IF NOT EXISTS guard (CHECK + UNIQUE constraints). 64 UPDATE statement WHERE board_key='dent-pilot' AND card_slug='X' SET ref_code='Y' — re-run mevcut ref_code'u override etmez (CHECK constraint zaten dolu satırlar etkilenmez). Postcondition INV-SEED-026 RAISE EXCEPTION fail-loud.",
+      "category": "Data"
+    },
+    {
+      "id": "Q2",
+      "question": "PATCH /api/ops/kanban/{board_key}/cards/{slugOrRef}: slugOrRef regex '^[A-Z][0-9]{3}$' match ise ref_code lookup, değilse card_slug lookup. ValidateOpsAuth Func parametreli pattern korundu. Cross-tenant guard tenant_id IS NOT DISTINCT FROM @tenant kalıyor. Slug + ref_code naming çakışması imkansız (ref_code regex'i slug regex'inin disjoint subset'i — slug lowercase, ref_code uppercase letter).",
+      "category": "Auth"
+    },
+    {
+      "id": "Q3",
+      "question": "Migration UPDATE statement order: 64 ayrı UPDATE WHERE card_slug='X' SET ref_code='Y' — kategori bazli (C001-C005 müşteri, K001-K012 karar, O001-O009 ops, D001-D026 dev, U001-U009 UI, X001-X003 doc). Slug-to-ref mapping deterministic + dokumantli. Re-run idempotent: WHERE ref_code = '----' check ile mevcut atanmış ref_code override edilmez.",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q4",
+      "question": "Frontend backward compat: /pilot-kanban route hala destekli (lazy redirect veya Route alias). KanbanCard interface ref_code: string field added (additive, mevcut consumer etkilenmez). Multi-board URL param: /yol-haritasi/:boardKey? — boardKey yoksa fallback 'dent-pilot'. Nav label rename UI text only (component adı PilotKanbanPage component aynı, file rename yok — internal stable).",
+      "category": "Process/Policy"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Marketing/**",
+      "src/Invekto.Automation/**",
+      "src/Invekto.AgentAI/**",
+      "src/Invekto.ChatAnalysis/**",
+      "src/Invekto.Appointments/**",
+      "src/Invekto.Backend/Endpoints/**.cs (KanbanEndpoints.cs HARİÇ)",
+      "src/Invekto.Backend/Data/**.cs (KanbanRepository.cs HARİÇ)",
+      "DentAdavista/**",
+      "tracking/pilot-launch-roadmap.md (orijinal pilot tracking — bu paket etkilemez)",
+      "arch/db/migrations/0*.sql (önceki migration'lar)"
+    ],
+    "non_goals": [
+      "Component dosya adı rename (PilotKanbanPage.tsx → RoadmapPage.tsx) — internal stable, çok dosya etki",
+      "Route /pilot-kanban URL silme — backward compat için her ikisi destekli",
+      "Multi-board için board picker dropdown UI (ileri faz, şu an URL param yeterli)",
+      "Drag-drop UI (Q hala HAYIR diyor)",
+      "Manuel kart edit Dashboard'dan (read-only kuralı)",
+      "Ref_code kategori değişiminde otomatik update (kategori sabit, ref_code immutable)",
+      "Yeni board Dashboard'dan oluşturma UI (migration veya admin tool)",
+      "DentAdavista wwwroot'a kopyalama (graceful fallback yeterli)",
+      "Kart tarihçesi (history) tablo (Q hala HAYIR diyor)",
+      "Real-time WebSocket push (60s polling devam)"
+    ],
+    "intentional_exclusions": [
+      "Component file rename — sadece UI label + route eklendi, dosya adı stable",
+      "DentAdavista deploy — drawer fallback message yeterli (link disabled)",
+      "Per-tenant board picker — URL param manuel navigation yeterli ilk fazda",
+      "Ref_code regenerate API — manuel migration veya admin tool gelecek",
+      "Kategori-bazlı ref_code prefix counter (per category C001..) yerine global tek seq — kategori prefix sabit insanlar için mnemonic, sayma re-assign maliyeti yok"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "KanbanEndpoints.cs PATCH: regex match invalid → 400 INV-KB-003 (mevcut path); slugOrRef bulunamaz → 404 INV-KB-004",
+      "KanbanRepository UpdateCardStatusAsync: ref_code parametre cast (long→string) gerekmez (string-keyed)",
+      "Frontend KanbanDrawer source_file fallback: file path '/DentAdavista/' starts with → API HEAD check yerine direct disabled link + tooltip",
+      "Migration 036 postcondition INV-SEED-026: ref_code dolu (~='----') 60+ kart bekleniyor"
+    ],
+    "user_facing_errors": [
+      "Frontend: ref_code yoksa kart üst etiketi gizlenir (graceful)",
+      "Drawer source_file boşsa veya 'DentAdavista/' başlıyor + prod yoksa: 'Kaynak dokumanı prod'da bulunamadı' gri text",
+      "API 404 INV-KB-004 'Kart bulunamadı: board=X, slug/ref=Y'",
+      "Migration FAIL INV-SEED-026 'kanban_cards ref_code seed eksik: % kart, en az 60 bekleniyordu'"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Tüm error path'lerde explicit kod (404, 400, 503) veya UI fallback (graceful disabled link). Migration postcondition fail-loud RAISE EXCEPTION. Frontend ref_code null/undefined durumunda render gizlenir (silent skip değil — log warn opsiyonel)."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Q kanban kartlarına bakarken slug uzun ('decision-photo-flow-pilot-usage') iletişimde kart referansı güç — '17.4.1', 'B.8' gibi kısaltmalar dağınık.",
+      "suggestion": "Her karta C001/K005/D015 gibi 4 karakterlik ref_code → tweet-like brevity. Q + müşteri iletişiminde 'K005 onaylıyor musun?' kısalığı.",
+      "aha_moment": "Q toplantıda 'K005 yarın halledilir' der → koordinator hemen K005 = 'Karar 5: Reklam yönetimi' diye anlar. Slug yerine ref_code = mnemonic kabul kodu."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "/wrap workflow Step 3.5 commit message slug match — 'feat(b-meta-webhook):' tüm slug'ı yazmak gerek. Q hızlı yazmak ister.",
+      "suggestion": "Ref_code matching: 'feat(D021): ...' → b-meta-webhook kart auto-match. Daha kısa, typo-safe. Slug VEYA ref_code lookup destekli.",
+      "aha_moment": "Q '/wrap K005=DONE' yazar → 4 karakter, kart bulundu. 'feat(decision-k5-ad-management): ...' yazma derdine ger değil."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Multi-board geleceği bilinmiyor — şimdi dent-pilot için yapıldı, başka board (örn invekto-platform-roadmap, tenant-X-onboarding) eklenince refactor gerekir.",
+      "suggestion": "URL param /yol-haritasi/:boardKey? → manuel navigation desteği başından. Migration board_key zaten parametrize. Yeni board eklemek migration INSERT'le bitecek (dashboard restart gerek değil).",
+      "aha_moment": "İleride 'tenant-acme-onboarding' board ihtiyacı çıkar → 1 saatlik migration SQL + nav linki yeter. Refactor yok."
+    },
+    {
+      "category": "UX",
+      "user_pain": "Drawer source_file link tıklanır, prod'da DentAdavista/ yok → 404 hata sayfası kullanıcı şaşırır.",
+      "suggestion": "Source path '/DentAdavista/' starts with detect → link disabled gri + 'Kaynak prod'da arşivlenmemiş' tooltip. Hata vermek yerine bilgilendir.",
+      "aha_moment": "Q kart drawer'da kaynak dokumanına bakmak ister → 'arşivlenmemiş' uyarısı görür → repo path'i bilir, IDE'de açar. 404 spinner yerine bilgilendirici fallback."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Q yeni kart eklemek istediğinde ref_code manuel atamak zor — hangi kategoride hangi sıra?",
+      "suggestion": "Migration 036 sonra reusable helper (helper SQL function: next_ref_code(board, category) → next available CXXX/KXXX/...). Yeni board için aynı şema.",
+      "aha_moment": "Q 'yeni karar kartı eklemek istiyorum' → SELECT next_ref_code('dent-pilot', 'DECISION') → K013 → INSERT. Manuel sayma yok."
+    }
+  ],
+  "verdict": { "status": null, "iteration": 0 }
+}

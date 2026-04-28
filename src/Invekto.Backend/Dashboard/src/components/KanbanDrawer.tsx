@@ -88,7 +88,12 @@ export function KanbanDrawer({ card, onClose }: KanbanDrawerProps) {
         {/* Header */}
         <div className="flex items-start justify-between px-6 py-4 border-b border-slate-100">
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap gap-1.5 mb-2">
+            <div className="flex flex-wrap gap-1.5 mb-2 items-center">
+              {card.ref_code && card.ref_code !== '----' && (
+                <code className="text-sm font-bold font-mono px-2 py-0.5 rounded bg-slate-900 text-white tracking-wider">
+                  {card.ref_code}
+                </code>
+              )}
               <span className={cn('text-xs px-2 py-0.5 rounded border font-semibold', status.cls)}>
                 {status.label}
               </span>
@@ -175,21 +180,30 @@ export function KanbanDrawer({ card, onClose }: KanbanDrawerProps) {
             </div>
           )}
 
-          {/* Source link */}
+          {/* Source link — DentAdavista/* prod'da deploy edilmiyor, graceful fallback */}
           {card.source_file && (
             <div className="pt-2 border-t border-slate-100">
               <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
                 Kaynak
               </h3>
-              <a
-                href={buildSourceHref(card.source_file, card.source_anchor)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 hover:underline font-mono break-all"
-              >
-                <ExternalLink className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>{card.source_file}{card.source_anchor ? card.source_anchor : ''}</span>
-              </a>
+              {isSourceAccessibleInProd(card.source_file) ? (
+                <a
+                  href={buildSourceHref(card.source_file, card.source_anchor)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 hover:underline font-mono break-all"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>{card.source_file}{card.source_anchor ? card.source_anchor : ''}</span>
+                </a>
+              ) : (
+                <div className="text-sm text-slate-500 font-mono break-all">
+                  <span className="block text-slate-700">{card.source_file}{card.source_anchor ? card.source_anchor : ''}</span>
+                  <span className="block text-[11px] text-slate-400 italic mt-1">
+                    Bu kaynak prod ortamında arşivlenmemiş. Repo path — IDE'de açın.
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -228,11 +242,21 @@ function formatDate(iso: string): string {
 
 function buildSourceHref(file: string, anchor: string | null): string {
   // source_file dent-pilot board icin "DentAdavista/plan/dent-golive.html" gibi
-  // repo-relative path. Dashboard prod ortaminda bu dosya deploy edilmiyorsa
-  // kullanici GitHub uzerinden de okuyabilir; pilot icin local file:// veya
-  // VS Code workspace path acilir. Anchor varsa eklenir.
+  // repo-relative path. Prod-deploy edilen path'ler icin Backend wwwroot serve eder.
+  // Anchor varsa eklenir.
   const safeAnchor = anchor && anchor.startsWith('#') ? anchor : (anchor ? `#${anchor}` : '');
   return `/${file}${safeAnchor}`;
+}
+
+/**
+ * Prod ortaminda hangi source_file path'leri erisilebilir? Backend wwwroot
+ * sadece SPA assets serve ediyor; DentAdavista/, arch/, tracking/ gibi repo
+ * yollari deploy edilmiyor → bunlari graceful fallback (gri text + IDE
+ * yonergesi) ile goster, link verme (404 onler).
+ */
+function isSourceAccessibleInProd(file: string): boolean {
+  const blocked = ['DentAdavista/', 'arch/', 'tracking/', 'src/'];
+  return !blocked.some(prefix => file.startsWith(prefix));
 }
 
 /**

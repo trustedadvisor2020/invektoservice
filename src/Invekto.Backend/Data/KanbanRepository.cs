@@ -39,7 +39,7 @@ public class KanbanRepository
         string boardKey, CancellationToken ct = default, long? tenantId = null)
     {
         const string sql = @"
-            SELECT id, board_key, card_slug, tenant_id,
+            SELECT id, board_key, card_slug, ref_code, tenant_id,
                    status, category, priority, position,
                    title, summary, body_markdown, owner, eta,
                    source_file, source_anchor,
@@ -102,15 +102,20 @@ public class KanbanRepository
         // null-safe equality. Caller tenant context'i WHERE clause'a yansir,
         // cross-tenant kart UPDATE imkansiz (composite board_key + card_slug
         // + tenant_id mismatch -> 0 row matched -> endpoint 404).
+        // /wrap workflow Step 3.5 commit message'da slug VEYA ref_code match
+        // destekler (Q karari 2026-04-28 FEAT-ROADMAP-V2-REFCODE). Regex '^[A-Z][0-9]{3}$'
+        // ref_code; her sey lowercase slug. WHERE clause ikisini de check eder
+        // (card_slug = @slug OR ref_code = @slug) — caller param "slugOrRef"
+        // semantik tek alanla iletilir.
         const string sql = @"
             UPDATE kanban_cards
                SET status       = @status,
                    updated_at   = @now,
                    completed_at = @completed
              WHERE board_key = @board
-               AND card_slug = @slug
+               AND (card_slug = @slug OR ref_code = @slug)
                AND tenant_id IS NOT DISTINCT FROM @tenant
-            RETURNING id, board_key, card_slug, tenant_id,
+            RETURNING id, board_key, card_slug, ref_code, tenant_id,
                       status, category, priority, position,
                       title, summary, body_markdown, owner, eta,
                       source_file, source_anchor,
@@ -158,20 +163,21 @@ public class KanbanRepository
         Id            = r.GetInt64(0),
         BoardKey      = r.GetString(1),
         CardSlug      = r.GetString(2),
-        TenantId      = r.IsDBNull(3)  ? null : r.GetInt64(3),
-        Status        = r.GetString(4),
-        Category      = r.GetString(5),
-        Priority      = r.GetString(6),
-        Position      = r.GetInt32(7),
-        Title         = r.GetString(8),
-        Summary       = r.IsDBNull(9)  ? null : r.GetString(9),
-        BodyMarkdown  = r.IsDBNull(10) ? null : r.GetString(10),
-        Owner         = r.IsDBNull(11) ? null : r.GetString(11),
-        Eta           = r.IsDBNull(12) ? null : r.GetString(12),
-        SourceFile    = r.IsDBNull(13) ? null : r.GetString(13),
-        SourceAnchor  = r.IsDBNull(14) ? null : r.GetString(14),
-        CreatedAt     = r.GetDateTime(15),
-        UpdatedAt     = r.GetDateTime(16),
-        CompletedAt   = r.IsDBNull(17) ? null : r.GetDateTime(17)
+        RefCode       = r.GetString(3),
+        TenantId      = r.IsDBNull(4)  ? null : r.GetInt64(4),
+        Status        = r.GetString(5),
+        Category      = r.GetString(6),
+        Priority      = r.GetString(7),
+        Position      = r.GetInt32(8),
+        Title         = r.GetString(9),
+        Summary       = r.IsDBNull(10) ? null : r.GetString(10),
+        BodyMarkdown  = r.IsDBNull(11) ? null : r.GetString(11),
+        Owner         = r.IsDBNull(12) ? null : r.GetString(12),
+        Eta           = r.IsDBNull(13) ? null : r.GetString(13),
+        SourceFile    = r.IsDBNull(14) ? null : r.GetString(14),
+        SourceAnchor  = r.IsDBNull(15) ? null : r.GetString(15),
+        CreatedAt     = r.GetDateTime(16),
+        UpdatedAt     = r.GetDateTime(17),
+        CompletedAt   = r.IsDBNull(18) ? null : r.GetDateTime(18)
     };
 }

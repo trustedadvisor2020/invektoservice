@@ -230,6 +230,7 @@ export interface KanbanCard {
   id: number;
   board_key: string;
   card_slug: string;
+  ref_code: string;               // 4-karakter mnemonic (C001/K005/D021) veya '----' placeholder
   tenant_id: number | null;       // null = platform-level board (e.g. 'dent-pilot' SuperAdmin only)
   status: KanbanStatusValue;
   category: KanbanCategoryValue;
