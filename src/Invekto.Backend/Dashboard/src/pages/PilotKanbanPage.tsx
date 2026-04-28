@@ -181,23 +181,23 @@ export function PilotKanbanPage() {
 
         {/* Board — light, sade kolonlar */}
         {board && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2.5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3.5">
             {COLUMNS.map(col => {
               const cards = grouped[col.id] ?? [];
               return (
                 <div key={col.id} className="flex flex-col min-h-[200px]">
-                  <div className="flex items-center gap-2 mb-2 px-1">
-                    <span className={cn('w-1.5 h-1.5 rounded-full', col.dot)} />
-                    <h3 className="text-[11px] text-slate-500 lowercase tracking-wide flex-1">
+                  <div className="flex items-center gap-2 mb-3 px-1">
+                    <span className={cn('w-2 h-2 rounded-full', col.dot)} />
+                    <h3 className="text-xs text-slate-600 lowercase tracking-wide flex-1 font-medium">
                       {col.label.toLowerCase()}
                     </h3>
-                    <span className="text-[10px] text-slate-400 tabular-nums">
+                    <span className="text-xs text-slate-500 tabular-nums">
                       {cards.length}
                     </span>
                   </div>
-                  <div className="space-y-1.5 flex-1">
+                  <div className="space-y-2.5 flex-1">
                     {cards.length === 0 ? (
-                      <div className="text-[11px] text-slate-300 px-1 py-2">—</div>
+                      <div className="text-xs text-slate-300 px-1 py-3">—</div>
                     ) : (
                       cards.map(card => (
                         <CardItem key={card.id} card={card} onClick={() => handleCardClick(card)} />
@@ -226,24 +226,24 @@ function CardItem({ card, onClick }: { card: KanbanCard; onClick: () => void }) 
       type="button"
       onClick={onClick}
       className={cn(
-        'w-full text-left bg-white border border-slate-200/70 rounded px-2.5 py-2 transition-colors',
-        'hover:border-slate-300 hover:bg-slate-50/50',
-        'focus:outline-none focus:ring-1 focus:ring-slate-300',
+        'w-full text-left bg-white border border-slate-300 rounded-md px-3.5 py-3 transition-colors',
+        'hover:border-slate-400 hover:bg-slate-50',
+        'focus:outline-none focus:ring-1 focus:ring-slate-400',
       )}
       title={card.summary ?? card.title}
     >
-      <div className="flex items-start gap-2">
+      <div className="flex items-start gap-2.5">
         {hasRefCode && (
-          <code className="text-[10px] font-mono text-slate-400 mt-0.5 flex-shrink-0 tabular-nums">
+          <code className="text-[11px] font-mono text-slate-500 mt-0.5 flex-shrink-0 tabular-nums font-medium">
             {card.ref_code}
           </code>
         )}
-        <h4 className="text-[13px] font-normal text-slate-700 leading-snug line-clamp-2 flex-1">
+        <h4 className="text-sm font-normal text-slate-800 leading-snug line-clamp-2 flex-1">
           {card.title}
         </h4>
         {isP0 && (
           <span
-            className="w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0 mt-1.5"
+            className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0 mt-1.5"
             title="Pilot blocker (P0)"
           />
         )}
