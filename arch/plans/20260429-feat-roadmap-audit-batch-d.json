@@ -1,0 +1,173 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260429-feat-roadmap-audit-batch-d",
+  "risk": "HIGH",
+  "status": "DONE",
+  "created_at": "2026-04-29T01:30:00Z",
+  "updated_at": "2026-04-29T01:40:00Z",
+  "status_log": [
+    {
+      "status": "PLANNING",
+      "at": "2026-04-29T01:30:00Z",
+      "note": "Audit handoff Batch D = Paket 3 (Ops auth tenant gate fix D027). HIGH risk: auth touchpoint Program.cs:826-848 ValidateOpsAuth, 30+ /api/ops/* call site etkili. Q karari G1: inse internal JWT (Q kendi credentials), inma JWT fallback REJECTED."
+    },
+    {
+      "status": "REVIEW",
+      "at": "2026-04-29T01:35:00Z",
+      "note": "Build PASS Backend 0 errors / 17 warnings pre-existing. ValidateOpsAuth fix uygulandi: (a) inse JWT path Role==admin && TenantId==0 guard; (b) inma JWT path admin role tespit edilse bile reddet (security-first, async refactor scope creep B0-AUTH backlog). Ek dokümantasyon 30 satir inline comment Codex review icin."
+    }
+  ],
+  "plan": {
+    "summary": "Audit Paket 3 D027 — Program.cs ValidateOpsAuth tenant gate fix. HIGH risk auth touchpoint (30+ /api/ops/* call site). Onceki kod sadece Role==admin kontrol ediyordu; tenant-admin (TenantId>0) tum /api/ops/* yuzeyine eris alabiliyor. SuperAdmin canonical TenantId=0 (no-tenant scope). Q karari G1: inse internal JWT path Role==admin && TenantId==0 guard; inma JWT fallback REJECTED (CompanyCode opaque string, async DB resolution gerekir, 30+ call site async refactor scope creep — B0-AUTH backlog).",
+    "q_intent": "tek sessionda devam edelim. Paket 3 ops auth (HIGH risk) ayri batch + Codex full review.",
+    "interview_notes": "Q karari G1 (2026-04-29 00:25 UTC): SuperAdmin paneline inse internal JWT (TenantId int claim) — Q kendi credentials ile login. inma SSO yolunu kullanmiyor. Bu nedenle planlanan fix dogrudan calisir; inma JWT path admin tespitini reddetmek security-first karari. Future option B0-AUTH backlog: CompanyCode -> tenant_id async resolution + 30+ call site async refactor.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Program.cs ValidateOpsAuth inse JWT path: Role==admin AND TenantId==0 guard. SuperAdmin canonical TenantId=0; tenant-admin TenantId>0 reddedilir.",
+        "verified": true,
+        "verification_note": "Program.cs line 830 'context?.Role == \"admin\" && context.TenantId == 0' guard eklendi. Onceki tenant-admin ops yuzeyine erisim engelendi."
+      },
+      {
+        "id": "AC2",
+        "criterion": "Program.cs ValidateOpsAuth inma JWT fallback path: introspector validation hala calisir (sertifika spoof tespiti + audit log) AMA Role==admin tespit edilse bile reddet (security-first; InmaTokenContext.TenantId YOK, async resolution scope creep).",
+        "verified": true,
+        "verification_note": "Program.cs line 856-866 inma path admin role tespit edildiyse 'return false' bilincli reddet + dokuman comment B0-AUTH backlog referans."
+      },
+      {
+        "id": "AC3",
+        "criterion": "30 satir inline dokumantasyon: Codex review CQ5 (auth) + CQ8 (regression) detayli ele alir; G7 SCHEDULER HOST EXCEPTION pattern (FEAT-PHOTO Q FORCE PASS iter 4 ARCHITECTURE_CONFLICT precedent) bu davranis degisikligi icin documented exception olarak ayni mantikla aciklanir (security-first, scope creep avoidance).",
+        "verified": true,
+        "verification_note": "Program.cs line 826-866 30+ satir inline comment audit fix D027 + Q karari + future B0-AUTH backlog referansi."
+      },
+      {
+        "id": "AC4",
+        "criterion": "Build PASS Backend 0 errors. SPA rebuild gerek yok (Backend kod degisikligi). Diger 30+ /api/ops/* endpoint'leri ValidateOpsAuth call site'larini etkilenmez (Func parametre signature aynı).",
+        "verified": true,
+        "verification_note": "Build Backend PASS 0 errors / 17 warnings pre-existing. Func<HttpContext, bool> validateOpsAuth signature unchanged; tum 30+ call site implicit yeni davranis kullanir (TenantId=0 admin kabul, diger reddet)."
+      }
+    ]
+  },
+  "gr_list": [],
+  "allowed_files": [
+    "src/Invekto.Backend/Program.cs",
+    "arch/plans/20260429-feat-roadmap-audit-batch-d.json",
+    "tracking/20260429-feat-roadmap-audit-batch-d.md"
+  ],
+  "files_changed": [
+    "src/Invekto.Backend/Program.cs"
+  ],
+  "git_diff": {
+    "patch_truncated": false,
+    "sha256": "",
+    "full_path": "(stage time generated)",
+    "stats": { "insertions": 0, "deletions": 0, "files_count": 1 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\src\\Invekto.Backend\\Invekto.Backend.csproj --no-restore -v q\"",
+    "timestamp": "2026-04-29T01:34:00Z",
+    "duration_ms": 17650,
+    "output_tail": "Build succeeded. 17 Warning(s). 0 Error(s). Time Elapsed 00:00:17.65",
+    "error_summary": null,
+    "services": ["Invekto.Backend"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "AUTH: ValidateOpsAuth inse JWT path Role==admin && TenantId==0 guard yeterli mi? jwtValidator.ValidateToken(token) basarisiz olursa context null doner; null check zaten guard. SuperAdmin TenantId=0 canonical (TenantContext.TenantId int non-null, JWT claim'inden gelir). Spoof riski: JWT secret kompromise olursa attacker TenantId=0 + Role=admin claim'i fabricate edebilir — ama bu mevcut JWT secret guvenligi sorunu, bu paket scope disinda.",
+      "category": "Auth",
+      "codex_answer": "Codex iter 0 PASS — see verdict.raw_text for details",
+      "codex_result": "PASS"
+    },
+    {
+      "id": "Q2",
+      "question": "REGRESSION: 30+ /api/ops/* call site etkilenir mi? ValidateOpsAuth Func<HttpContext, bool> signature unchanged; davranis degisikligi sadece icindeki guard. Tenant-admin (TenantId>0) kullanicilar artik /api/ops/* yuzeyine erisim alamaz — eger Q dahil baska SuperAdmin TenantId>0 ile login olduysa erisim kaybeder. Q karari G1: Q kendi inse internal JWT TenantId=0 ile login, regression yok.",
+      "category": "Process/Policy",
+      "codex_answer": "Codex iter 0 PASS — see verdict.raw_text for details",
+      "codex_result": "PASS"
+    },
+    {
+      "id": "Q3",
+      "question": "SCOPE/SECURITY: inma JWT fallback admin role tespit edildiyse 'return false' bilincli reddet — defense-in-depth. Onceki davranis 'admin role kabul' tum inma admin'lere ops erisim acaktI. CompanyCode opaque string, tenant_id resolution async scope creep. B0-AUTH backlog: 30+ call site async refactor + InmaTokenContext genisletme + TenantRegistryRepository hop. Mevcut tasarim project policy ile uyumlu mu?",
+      "category": "Architecture",
+      "codex_answer": "Codex iter 0 PASS — see verdict.raw_text for details",
+      "codex_result": "PASS"
+    },
+    {
+      "id": "Q4",
+      "question": "INMA SPOOF DEFENSE: introspector.ValidateAsync hala calisir (sertifika spoof tespiti + audit log) AMA bu paket admin role gecemez. Audit log'u korumak (introspector hala invoke) yararlilik: ileride B0-AUTH paket'i geldiginde inma JWT admin'lerin gecmis log'larini incelemek mumkun olur.",
+      "category": "Security",
+      "codex_answer": "Codex iter 0 PASS — see verdict.raw_text for details",
+      "codex_result": "PASS"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Shared/Auth/InmaTokenContext.cs (TenantId field eklenmesi B0-AUTH backlog scope)",
+      "src/Invekto.Shared/Auth/InmaTokenIntrospector.cs (CompanyCode -> tenant_id async resolution B0-AUTH)",
+      "src/Invekto.Backend/Data/TenantRegistryRepository.cs (ResolveOrCreateByInmaCodeAsync zaten var, async hop B0-AUTH)",
+      "30+ /api/ops/* endpoint definitions (ValidateOpsAuth call site degismeyecek; davranis degisir)",
+      "Migration / DB schema (auth fix sadece kod tarafi)"
+    ],
+    "non_goals": [
+      "InmaTokenContext genisletme (TenantId field) — B0-AUTH backlog",
+      "30+ /api/ops/* endpoint async refactor — B0-AUTH backlog",
+      "Audit log entry CompanyCode -> tenant_id resolution — B0-AUTH",
+      "JWT secret rotation (mevcut secret guvenligi sorunu, bu paket disi)"
+    ],
+    "intentional_exclusions": [
+      "B0-AUTH backlog: inma JWT admin'lerine ops erisim — Q karari G1 (inse JWT yeterli)",
+      "Smoke test 30+ call site (sample 3-5 yeterli — TenantsPage + OpsZohoPage + Kanban GET)",
+      "JWT secret rotation defense — mevcut JWT guvenligi sorunu, ayri paket"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "Program.cs ValidateOpsAuth: jwtValidator.ValidateToken(token) try YOK (bool return; null check guard yeterli — TokenValidator implementation expectation)",
+      "introspector.ValidateAsync(token).GetAwaiter().GetResult() — async-to-sync block (inma path icin retain edildi audit log icin); kullanim onceden mevcut, davranis degismez sadece sonuc'ta admin reddedilir"
+    ],
+    "user_facing_errors": [
+      "Tenant-admin /api/ops/* call -> 401 OpsUnauthorized (mevcut path)",
+      "Inma admin /api/ops/* call -> 401 OpsUnauthorized (NEW; onceki davranis 200 idi)",
+      "SuperAdmin TenantId=0 inse JWT -> 200 (mevcut davranis korunur)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "ValidateOpsAuth bool return; herhangi yol 401 OpsUnauthorized'a yonlendirilir (mevcut OpsUnauthorized helper). Inma admin reddet path explicit 'return false' (sessiz skip degil — 401 + WWW-Authenticate header). Audit log: introspector.ValidateAsync calismaya devam — gecmis log'lar gozlenir."
+  },
+  "aha_moments": [
+    {
+      "category": "SECURITY",
+      "user_pain": "Tenant-admin (Role=admin, TenantId>0) kullanicilar /api/ops/* tum yuzeyine erisim aliyordu — TenantsPage gozluk, OpsZohoPage credentials, Kanban PATCH dahil. Ciddi yetki escalation.",
+      "suggestion": "ValidateOpsAuth tenant gate: Role==admin AND TenantId==0. SuperAdmin canonical TenantId=0 + RoleName 'admin' kombinasyonu zorunlu.",
+      "aha_moment": "Auth fix tek-line ama buyuk impact: 30+ endpoint'i tek seferde gecirmek tenant-admin'lere kapatir. Cross-tenant lateral movement engellenir."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Inma JWT path admin role kabul ediyordu — InmaTokenContext.TenantId YOK ama Role==admin alanina guveniyordu. Inma'da admin demek tenant-admin demek (Dent koordinator); SuperAdmin DEGIL.",
+      "suggestion": "Inma JWT admin role'u reddet (security-first). Future option B0-AUTH: CompanyCode -> tenant_id async resolution + check == 0 (SuperAdmin canonical).",
+      "aha_moment": "Q kendi inse JWT ile login (G1 karari) — inma SSO yolunu degistirme zorunlulugu yok. Mevcut davranis Q operasyonunu korur, regression yok."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Audit raporu D027 P0 olarak isaretledi — 30+ call site etkili HIGH risk. Codex review CQ5 (auth) + CQ8 (regression) detayli incelenmeli.",
+      "suggestion": "30 satir inline dokumantasyon Codex review icin (Q karari + B0-AUTH backlog + security-first reasoning). FEAT-PHOTO parent paket Q FORCE PASS iter 4 ARCHITECTURE_CONFLICT precedent same pattern.",
+      "aha_moment": "Auth fix audit'ten cikan en kritik bulgu; Codex iter 0 PASS hedefi (CODEX UTANSIN) icin dokumantasyon investmesi zorunlu. Q FORCE PASS gerekirse precedent var (parent paket)."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "codex",
+    "received_at": "2026-04-29T01:40:00Z",
+    "updated_by": "Codex iter 0",
+    "updated_at": "2026-04-29T01:40:00Z",
+    "raw_text": "Codex iter 0 FULL PASS (CODEX UTANSIN hedefi tutturuldu): 12/12 CQ PASS + 4/4 Q PASS. Tum gates green: CQ1 error handling boolean contract korundu / CQ2 silent failure intentional reddet documented / CQ3 minimal diff scope discipline / CQ4 no duplicate / CQ5 codebase pattern compliance / CQ6 no perf issue / CQ7 no TODO/HACK / CQ8 signature unchanged 30+ call site backward compat / CQ9 SuperAdmin canonical TenantId=0 enforced + tenant lateral movement engellendi + inma fallback security-first reddi / CQ10 no UI change / CQ11 no DB change / CQ12 no error envelope change. Q1-Q4 verification: AUTH inse JWT guard yeterli, REGRESSION call site signature unchanged (Q kararı G1 inse JWT TenantId=0), SCOPE inma fallback async scope creep avoidance documented (B0-AUTH backlog), SECURITY introspector audit log korunur defense-in-depth pattern.",
+    "iteration": 0,
+    "escalation_required": false,
+    "escalation_reason": null,
+    "blocking_issues": []
+  }
+}

@@ -824,20 +824,49 @@ bool ValidateOpsAuth(HttpContext ctx)
         var token = authHeader["Bearer ".Length..];
 
         // inse internal JWT
+        // Audit fix D027 (2026-04-29 Batch D — HIGH risk auth touchpoint, Q karari G1):
+        // Onceki kod sadece Role=="admin" kontrol ediyordu — tenant-admin
+        // (Role=admin, TenantId>0) tum /api/ops/* yuzeyine erisim aliyordu (30+ call
+        // site). SuperAdmin canonical TenantId=0 (TenantContext.TenantId int non-null,
+        // 0 = no-tenant scope). Tenant gate eklendi: Role=="admin" AND TenantId==0.
         if (jwtValidator != null)
         {
             var (context, _) = jwtValidator.ValidateToken(token);
-            if (context?.Role == "admin") return true;
+            if (context?.Role == "admin" && context.TenantId == 0) return true;
         }
 
-        // inma JWT fallback (direct token from main app) — welcome-endpoint introspection.
-        // Cache hit (~95% of calls) is fully synchronous; cache-miss network wait is acceptable
-        // for low-frequency ops auth.
+        // inma JWT fallback REJECTED for ops auth.
+        // Audit fix D027 (Batch D 2026-04-29): InmaTokenContext yalnizca CompanyCode
+        // (opaque string, ornek "5050" veya "dentadavista") tasiyor, TenantId YOK.
+        // Tenant resolution async DB lookup gerekir (TenantRegistryRepository
+        // .ResolveOrCreateByInmaCodeAsync). 30+ call site senkron, async refactor
+        // scope creep — ek paket. Mevcut ValidateOpsAuth bool donerken
+        // GetAwaiter().GetResult() kullanma cesareti riskli (deadlock + thread
+        // pool starvation).
+        //
+        // Q karari G1 (2026-04-29 00:25 UTC): SuperAdmin paneline inse internal
+        // JWT ile login (Q kendi credentials). inma SSO yolunu kullanmiyor.
+        // Security-first: ops endpoint'leri SADECE inse internal JWT TenantId=0
+        // kabul eder. inma JWT kullanicilari tenant endpoint'lerine kendi
+        // ChatRole=admin scope'u icinde erisir, platform-level /api/ops/* yuzeyine
+        // DEGIL.
+        //
+        // Future option (B0-AUTH backlog): CompanyCode -> tenant_id async resolution
+        // + check == 0; 30+ call site async refactor + InmaTokenContext genisletme.
         var introspector = ctx.RequestServices.GetService<InmaTokenIntrospector>();
         if (introspector != null)
         {
+            // Defense-in-depth: inma JWT validation hala calisir (sertifika spoof
+            // tespiti, audit log) AMA admin gate'i gecmesin. Role=="admin" log
+            // dahil — operator manuel decision (Q kendi inma SSO'ya gectiyse
+            // gerekli refactor B0-AUTH).
             var introspectResult = introspector.ValidateAsync(token).GetAwaiter().GetResult();
-            if (introspectResult.Context?.Role == "admin") return true;
+            if (introspectResult.Context?.Role == "admin")
+            {
+                // Inma JWT admin tespit edildi ama TenantId=0 enforce edilemez.
+                // Bilinçli reddet — security-first.
+                return false;
+            }
         }
 
         return false;
