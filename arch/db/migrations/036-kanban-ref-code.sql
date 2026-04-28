@@ -43,9 +43,16 @@ END$check_ref$;
 -- §3. UNIQUE (board_key, ref_code) — placeholder '----' multi-row icin partial.
 -- Birden fazla kart '----' olabilir (yeni eklenen, henuz atanmamis); ref_code
 -- atanan kart'lar (regex match) per-board UNIQUE.
+--
+-- Audit fix D028 (2026-04-29 Batch B retroaktif edit, Q karari G2):
+-- Onceki kod `pg_constraint WHERE conname = ...` lookup yapiyordu — partial UNIQUE
+-- INDEX (WHERE clause'lu) Postgres'te CONSTRAINT degil, sadece INDEX'tir;
+-- pg_constraint NEVER HAS this entry -> IF NOT EXISTS HER ZAMAN TRUE -> CREATE
+-- UNIQUE INDEX patlatir 'relation already exists' (re-run/DR durumu).
+-- Dogru lookup: pg_class WHERE relname AND relkind='i'.
 DO $unique_ref$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_kanban_cards_board_ref') THEN
+    IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'uq_kanban_cards_board_ref' AND relkind = 'i') THEN
         -- Partial UNIQUE: yalnizca atanan ref_code'lar UNIQUE; '----' placeholder'lar excluded.
         CREATE UNIQUE INDEX uq_kanban_cards_board_ref
             ON kanban_cards (board_key, ref_code)

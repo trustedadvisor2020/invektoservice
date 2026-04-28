@@ -8,7 +8,9 @@
 --   depends_on TEXT NULL — null (bagimsiz) VEYA "C001" VEYA "C001,C003" (CSV)
 --   Regex: '^([A-Z][0-9]{3})(,[A-Z][0-9]{3})*$'
 --
--- Bagimlilik scope (en kritik 22 kart, kalan 42 kart bagimsiz NULL):
+-- Bagimlilik scope (13 kart UPDATE, kalan 51 kart bagimsiz NULL — audit fix D029
+-- 2026-04-29 Batch B retroaktif: onceki docstring '22 kart' yanlis sayim,
+-- §3'teki UPDATE'ler 7+3+2+1=13 ediyor):
 --   Stage 1 zinciri:    O001 deps C002,C003,C005 / O003 deps C001,O001,O002 / O004 deps O003 / O005 deps O004
 --   Zoho/WABA zinciri:  C004 deps C003 / C005 deps C002 / O002 deps C005
 --   Training zinciri:   O006-O008 deps O005 / O008 deps O006,O007,X001
@@ -56,6 +58,10 @@ UPDATE kanban_cards SET depends_on = 'C003,C004'             WHERE board_key = '
 UPDATE kanban_cards SET depends_on = 'O005'                  WHERE board_key = 'dent-pilot' AND ref_code = 'D010' AND depends_on IS NULL; -- b-c2-welcome-overhaul → Stage 1 PASS
 
 -- §4. Postcondition (INV-SEED-027).
+-- Audit fix D029 (2026-04-29 Batch B retroaktif edit, Q karari G2):
+-- Onceki postcondition sadece 'invalid_count > 0' kontrol ediyordu — sessiz
+-- basarisizlik durumu (UPDATE'ler matched 0 row, deps_count=0 olsa bile PASS).
+-- Yeni: deps_count < 13 RAISE EXCEPTION (yetersiz baglilik atandi guard).
 DO $verify_deps$
 DECLARE
     deps_count integer;
@@ -76,5 +82,10 @@ BEGIN
         RAISE EXCEPTION '[INV-SEED-027] kanban_cards depends_on regex bozuk: % satir gecersiz format.', invalid_count;
     END IF;
 
-    RAISE NOTICE 'Migration 037 OK: % dent-pilot kart depends_on dolu (regex valid).', deps_count;
+    -- Audit fix D029: sessiz basarisizlik guard. 13 UPDATE statement bekleniyor.
+    IF deps_count < 13 THEN
+        RAISE EXCEPTION '[INV-SEED-027] kanban_cards depends_on yetersiz: % satir dolu, en az 13 bekleniyordu (UPDATE WHERE clause matched 0 row VEYA migration partial run).', deps_count;
+    END IF;
+
+    RAISE NOTICE 'Migration 037 OK: % dent-pilot kart depends_on dolu (regex valid + count >= 13).', deps_count;
 END$verify_deps$;

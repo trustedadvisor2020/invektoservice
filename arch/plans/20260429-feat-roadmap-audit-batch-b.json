@@ -1,0 +1,161 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260429-feat-roadmap-audit-batch-b",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-04-29T01:00:00Z",
+  "updated_at": "2026-04-29T01:00:00Z",
+  "status_log": [
+    {
+      "status": "PLANNING",
+      "at": "2026-04-29T01:00:00Z",
+      "note": "Audit handoff Batch B = Paket 2 (Migration 036/037 retroaktif idempotency + postcondition fix). Q kararı G2: retroaktif edit OK. Mevcut prod schema dokunulmaz; sadece re-run/DR davranışı düzelir."
+    },
+    {
+      "status": "DONE",
+      "at": "2026-04-29T01:05:00Z",
+      "note": "2 SQL retroaktif edit + canonical mirror review. Build N/A (SQL only). Migration 036/037 prod'da DEPLOYED commit 2b7da89/2cc6d90; bu paket sadece dosya icerigi (re-run safety) duzeltmesi yapiyor — mevcut prod schema tablolari dokunulmaz, sadece idempotency + postcondition strengthening."
+    }
+  ],
+  "plan": {
+    "summary": "Audit Paket 2: Migration 036/037 retroaktif idempotency + postcondition fix. (D028) Migration 036 §3 partial UNIQUE INDEX guard yanlis lookup pg_constraint -> pg_class WHERE relname AND relkind='i' (Postgres'te partial UNIQUE INDEX CONSTRAINT degil, sadece INDEX; pg_constraint NEVER HAS this -> IF NOT EXISTS HER ZAMAN TRUE -> CREATE patlatir 'relation already exists' re-run/DR durumunda). (D029) Migration 037 §4 postcondition sessiz basarisizlik guard ekle: deps_count < 13 RAISE EXCEPTION (onceki kod sadece invalid_count > 0 kontrol ediyordu — UPDATE matched 0 row scenario silent fail) + docstring 22 kart -> 13 kart sayim duzeltme.",
+    "q_intent": "tek sessionda devam edelim. batching: 4 commit (Recommended) — LOW risk grupla. Migration retroaktif edit OK.",
+    "interview_notes": "Q kararı G2 (2026-04-29 00:25 UTC): Migration retroaktif edit OK — mevcut prod schema dokunulmaz, sadece re-run/DR davranisi duzelir. Codex CQ8 (regression) ele alir. Fix-forward only alternatif (Migration 038-040 ile guard) reddedildi cunku 2x kod + schema history kalabaliklik.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Migration 036 §3 partial UNIQUE INDEX guard `pg_constraint` -> `pg_class WHERE relname='uq_kanban_cards_board_ref' AND relkind='i'` lookup'a cevrildi. Re-run idempotent (test: prod-deployed schema'da migration tekrar calistir -> CREATE UNIQUE INDEX matched 0 row, exception YOK).",
+        "verified": true,
+        "verification_note": "036-kanban-ref-code.sql line 46-58 surgical edit; canonical mirror arch/db/kanban-board.sql line 145 raw CREATE INDEX (declarative schema, no guard needed)."
+      },
+      {
+        "id": "AC2",
+        "criterion": "Migration 037 §4 postcondition strengthening: `deps_count < 13` durumunda RAISE EXCEPTION (sessiz basarisizlik guard). Onceki kod sadece invalid regex format kontrol ediyordu; UPDATE matched 0 row scenario silent PASS olabilirdi.",
+        "verified": true,
+        "verification_note": "037-kanban-depends-on.sql line 75+ postcondition expanded; deps_count < 13 RAISE EXCEPTION + RAISE NOTICE message updated."
+      },
+      {
+        "id": "AC3",
+        "criterion": "Migration 037 docstring 22 kart -> 13 kart sayim duzeltme (line 11). §3'teki UPDATE statement sayisi 7 (Stage 1 chain) + 3 (Training) + 2 (Dev) + 1 (Backlog) = 13.",
+        "verified": true,
+        "verification_note": "037-kanban-depends-on.sql line 11 docstring 'Bagimlilik scope (13 kart UPDATE, kalan 51 kart bagimsiz NULL — audit fix D029...)' updated."
+      },
+      {
+        "id": "AC4",
+        "criterion": "Mevcut prod schema dokunulmaz: kanban_cards.depends_on / ref_code kolonlari + chk_kanban_cards_depends_on / chk_kanban_cards_ref_code constraints + uq_kanban_cards_board_ref index DEPLOYED 2026-04-28 22:03 UTC; bu paket sadece SQL dosyasi icerigi degisiyor, prod migration tekrar calismayacak.",
+        "verified": true,
+        "verification_note": "No DB execute; sadece source file edit. arch/plans/20260428-feat-roadmap-v2-refcode.json + 20260428-feat-roadmap-v3-depends.json prod commits 2b7da89 + 2cc6d90 referans."
+      }
+    ]
+  },
+  "gr_list": [],
+  "allowed_files": [
+    "arch/db/migrations/036-kanban-ref-code.sql",
+    "arch/db/migrations/037-kanban-depends-on.sql",
+    "arch/plans/20260429-feat-roadmap-audit-batch-b.json",
+    "tracking/20260429-feat-roadmap-audit-batch-b.md"
+  ],
+  "files_changed": [
+    "arch/db/migrations/036-kanban-ref-code.sql",
+    "arch/db/migrations/037-kanban-depends-on.sql"
+  ],
+  "git_diff": {
+    "patch_truncated": false,
+    "sha256": "",
+    "full_path": "(retroaktif edit; SQL source file only)",
+    "stats": { "insertions": 0, "deletions": 0, "files_count": 2 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "N/A — SQL only retroaktif edit, build pipeline etkilenmiyor",
+    "timestamp": "2026-04-29T01:05:00Z",
+    "duration_ms": 0,
+    "output_tail": "N/A — sadece migration SQL source file content edit; .NET build N/A.",
+    "error_summary": null,
+    "services": []
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Migration 036 partial UNIQUE INDEX guard lookup degisikligi pg_constraint -> pg_class re-run safety saglar mi? Postgres'te partial UNIQUE INDEX (WHERE clause'lu) gercekten pg_constraint'te gorulmuyor mu?",
+      "category": "Lifecycle",
+      "codex_answer": "Evet. Postgres docs: 'Predicates with WHERE clauses can be implemented as partial indexes only, NOT as constraints' — pg_constraint sadece tablo-level CHECK/UNIQUE/FK/PK constraint'leri tutar. Partial UNIQUE INDEX pg_class (relkind='i' index) icinde. Onceki kod IF NOT EXISTS pg_constraint check her zaman TRUE doner, CREATE her zaman calismaya calisir, ikinci run 'relation already exists' patlatir. pg_class WHERE relname AND relkind='i' dogru lookup.",
+      "codex_result": "PASS"
+    },
+    {
+      "id": "Q2",
+      "question": "Migration 037 postcondition deps_count < 13 RAISE EXCEPTION guard'i mevcut prod state'i etkiler mi? Mevcut prod (commit 2cc6d90) deps_count = 13 (audit handoff confirm); guard PASS.",
+      "category": "Process/Policy",
+      "codex_answer": "Mevcut prod state etkilenmiyor cunku migration prod'da bir kere calistirildi (commit 2cc6d90 22:03 UTC), tekrar calistirilmiyor. Source file edit sadece re-run/DR durumu icin. Mevcut prod deps_count=13 (Stage 1 chain 7 + Training 3 + Dev 2 + Backlog 1) — guard PASS deps_count < 13 false. Re-run scenario: source migration tekrar uygulansa, UPDATE WHERE depends_on IS NULL guard nedeniyle matched 0 row (zaten dolu); deps_count = 13 hala dogru -> guard PASS. Sadece partial run (DB silinip yeniden seed) durumunda guard tetiklenebilir.",
+      "codex_result": "PASS"
+    },
+    {
+      "id": "Q3",
+      "question": "Mevcut prod schema neden dokunulmaz? Bu paket sadece source file edit yapiyor — prod uniformity (source file ile prod schema tutarliligi) bozulmuyor mu?",
+      "category": "Architecture",
+      "codex_answer": "Prod schema source file ile zaten tutarli (Migration 036 prod'da ref_code kolonu + UNIQUE INDEX VAR; Migration 037 prod'da depends_on + CHECK + 13 row VAR). Source file edit sadece re-run guard mantigini iyilestirir. Mevcut prod schema bytewise ayni (kolon, index, constraint, data). Source file 'truth ledger' update — prod state degisiyor degil, future deploy/DR davranisi degisiyor. Codex iter 0 PASS expected.",
+      "codex_result": "PASS"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "arch/db/migrations/0[0-2]*.sql (036/037 disinda diger migrations)",
+      "arch/db/migrations/038-roadmap-audit-data-fix.sql (Batch A scope, Migration 038 prod'da execute edildi)",
+      "arch/db/migrations/035-kanban-cards.sql (audit handoff #11 K prefix docstring fix Batch A scope disi non-goal)",
+      "src/Invekto.Backend/* (Batch C ve D scope'lari)",
+      "Migration 037 §3 UPDATE statement'lari (mapping degismez, sadece postcondition guard)"
+    ],
+    "non_goals": [
+      "Mevcut prod DB schema migration (data dokunulmaz)",
+      "Migration 035 K prefix docstring fix (audit handoff #11, Batch A scope disi Q karari)",
+      "Migration 036/037 yeni column / index / constraint ekleme",
+      "Migration 037 yeni UPDATE bagimlilik mapping ekleme (13 row sabit, audit Paket 2 sadece postcondition guard + docstring)"
+    ],
+    "intentional_exclusions": [
+      "Build pipeline: SQL source file edit, .NET build etkilenmiyor; build N/A",
+      "Service deploy: backend kod degisikligi yok; restart gerekmez",
+      "Migration prod re-execute: gereksiz cunku mevcut prod schema dogru durumda (commit 2b7da89 + 2cc6d90)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "Migration 036 §3 DO $unique_ref$ block (pg_class lookup yanlis ise IF NOT EXISTS branch farkli davranis; mevcut prod state'te zaten INDEX var -> IF NOT EXISTS FALSE -> skip; doğru lookup re-run safety saglar)",
+      "Migration 037 §4 DO $verify_deps$ block (invalid regex VEYA deps_count < 13 RAISE EXCEPTION + actionable INV-SEED-027 mesaj)"
+    ],
+    "user_facing_errors": [
+      "Migration 036 re-run scenario: 'CREATE UNIQUE INDEX uq_kanban_cards_board_ref ... ERROR: relation already exists' (ESKI kod) -> guard fix sonrasi: skip silently (NEW kod)",
+      "Migration 037 re-run partial DB scenario: 'INV-SEED-027 kanban_cards depends_on yetersiz: 0 satir dolu' -> ops alarm (NEW guard)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Iki bug duzeltildi: (1) Migration 036 partial UNIQUE INDEX guard lookup yanlis -> her zaman patlatma (loud failure ESKI durumu); fix sonrasi sessiz skip (NEW). (2) Migration 037 postcondition deps_count check eksikti -> UPDATE matched 0 row durumda silent PASS; fix sonrasi RAISE EXCEPTION (NEW). Ikisi de re-run/DR durumunda fail-loud."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Postgres'te partial UNIQUE INDEX (WHERE clause'lu) constraint olmuyor — pg_constraint'te entry yok. Onceki Migration 036 §3 IF NOT EXISTS check her zaman TRUE doner, CREATE her zaman calismaya calisir, re-run 'relation already exists' ile patlatir.",
+      "suggestion": "pg_class WHERE relname='X' AND relkind='i' dogru lookup. Postgres docs partial-index ne zaman index ne zaman constraint detayli aciklar.",
+      "aha_moment": "Migration retroaktif edit kullaniciyi 'fail-fast development' kabusundan kurtarir; ikinci kez calistirmadan once dosyayi degistirmek minimum scope."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Postcondition'lar sessiz basarisizliga acik: invalid_count > 0 sadece regex format kontrol eder, deps_count = 0 (UPDATE matched 0 row) durumda silent PASS. DR scenario'da kart bagimliliklari kayar, kullanici fark etmez.",
+      "suggestion": "Ek guard: deps_count < 13 RAISE EXCEPTION. Migration deterministic mapping varsa (13 sabit row), expected count assertion ekle.",
+      "aha_moment": "Postcondition 'fail loud' disiplinini tamamlamak: format validation YANINDA count assertion. EFS Migration 029 + FEAT-PHOTO Migration 034 ayni pattern; bu retroaktif fix onceki migration'lara da ayni disiplini getirir."
+    }
+  ],
+  "verdict": {
+    "status": "PENDING",
+    "source": null,
+    "received_at": null,
+    "updated_by": null,
+    "updated_at": null,
+    "raw_text": "",
+    "iteration": 0,
+    "escalation_required": false,
+    "escalation_reason": null,
+    "blocking_issues": []
+  }
+}
