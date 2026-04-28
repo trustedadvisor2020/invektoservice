@@ -1521,6 +1521,9 @@ errors:
   - code: INV-SEED-026
     description: Migration 036 ref_code seed postcondition failure — kanban_cards.ref_code kolonu eklendi ama 64 UPDATE'lerden bazilari hedef satiri bulamadi (card_slug eksik VEYA kategori-prefix mapping bozuk). Beklenen >= 60 dent-pilot kart icin ref_code regex '^[A-Z][0-9]{3}$' atanmis olmali. Yetersizse /wrap workflow Step 3.5 ref_code matching calismaz, kart-kimligi mnemonic kullanim disinda kalir.
     user_message: Yol Haritasi migration doğrulaması başarısız — kart referans kodları (ref_code) yeterli sayıda atanamadı.
+  - code: INV-SEED-027
+    description: Migration 037 depends_on postcondition failure — kanban_cards.depends_on kolonu eklendi ama satirlardan biri regex '^[A-Z][0-9]{3}(,[A-Z][0-9]{3})*$' formatina uymuyor. CSV ref_code listesi bozuk (yanlis prefix, fazla bosluk, sayi formati). UI ↳ deps gosterge ve drawer Bagimliliklar bolumu render hata verir; /wrap dependency-aware status update yanlis kart match yapabilir.
+    user_message: Yol Haritasi migration doğrulaması başarısız — kart bağımlılık (depends_on) regex formatı bozuk.
 
   # FEAT-PILOT-KANBAN runtime (KanbanEndpoints + Repository — 2026-04-28)
   - code: INV-KB-001

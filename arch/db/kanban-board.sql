@@ -79,7 +79,13 @@ CREATE TABLE IF NOT EXISTS kanban_cards (
     -- '----' placeholder = henuz atanmamis (yeni eklenen kart). UNIQUE (board_key,
     -- ref_code) WHERE ref_code <> '----' partial index ile atanmislar UNIQUE.
     -- /wrap workflow Step 3.5 commit message'da slug VEYA ref_code match destekler.
-    ref_code        VARCHAR(4)   NOT NULL DEFAULT '----'
+    ref_code        VARCHAR(4)   NOT NULL DEFAULT '----',
+
+    -- Bagimlilik (Migration 037) — CSV ref_code listesi, ornek "C001,C003".
+    -- NULL = bagimsiz (paralel calisilabilir). UI kart altinda "↳ deps" indicator
+    -- + drawer'da Bagimliliklar bolumu olarak gosterilir. Regex CHECK constraint
+    -- format enforce eder (^[A-Z][0-9]{3}(,[A-Z][0-9]{3})*$).
+    depends_on      TEXT         NULL
 );
 
 -- =============================================================
@@ -109,6 +115,11 @@ ALTER TABLE kanban_cards
 ALTER TABLE kanban_cards
     ADD CONSTRAINT chk_kanban_cards_ref_code
     CHECK (ref_code = '----' OR ref_code ~ '^[A-Z][0-9]{3}$');
+
+-- Depends_on format (Migration 037): NULL VEYA CSV ref_code listesi.
+ALTER TABLE kanban_cards
+    ADD CONSTRAINT chk_kanban_cards_depends_on
+    CHECK (depends_on IS NULL OR depends_on ~ '^[A-Z][0-9]{3}(,[A-Z][0-9]{3})*$');
 
 -- =============================================================
 -- Indexes
