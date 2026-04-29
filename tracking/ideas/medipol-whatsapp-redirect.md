@@ -1,5 +1,9 @@
-<!-- Status: IDEA | 2026-04-25 -->
+<!-- Status: PROMOTED → tracking/feat-medipol-wa.md (2026-04-29) -->
 # Medipol — Doktor Detay WhatsApp Yönlendirme + KVKK + Slot Görüntüleme
+
+> **⚠️ TAŞINDI:** Bu fikir 2026-04-29'da [tracking/feat-medipol-wa.md](../feat-medipol-wa.md)'ye promote edildi. Aktif geliştirme oraya taşındı (Faz 1 IN_PROGRESS, assumption-driven). Bu dosya audit/historical referans için korunuyor.
+
+---
 
 > **Tarih:** 2026-04-25
 > **Müşteri:** Medipol Sağlık Grubu
