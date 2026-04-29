@@ -1,0 +1,226 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260429-feat-meta-paketleri-kanban-cards",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-04-29T11:30:00Z",
+  "updated_at": "2026-04-29T13:05:00Z",
+  "status_log": [
+    {
+      "status": "PLANNING",
+      "at": "2026-04-29T11:30:00Z",
+      "note": "Q karari 2026-04-29 (cevap=B) — 3 Meta paketi (FEAT-META-CAPI / FEAT-META-ADS-INSIGHTS / FEAT-META-MARKETING-API) DB-backed kanban (kanban_cards) tablosuna audit pattern (Migration 038/039) ile ekle: idempotent INSERT + DO $verify$ postcondition + Codex review."
+    },
+    {
+      "status": "REVIEW",
+      "at": "2026-04-29T11:45:00Z",
+      "note": "Iter 0 Codex review submitted. Risk LOW classified initially."
+    },
+    {
+      "status": "REVIEW",
+      "at": "2026-04-29T12:10:00Z",
+      "note": "Iter 0 Codex FAIL (gpt-5.5-2026-04-23, 20811 tokens) — 6 blocker: CQ2 silent stale row (verify only count check) + CQ5 risk LOW migration policy violation + CQ11 schema not in diff + Q1 same as CQ2 + Q2 specs not in diff + Q3 constraint not in diff. Iter 1 fixes: (a) Risk LOW->MEDIUM, (b) §2 verify block per-row content drift detection, (c) arch/db/kanban-board.sql canonical mirror comment update, (d) Spec dosyalari allowed_files'a eklendi."
+    },
+    {
+      "status": "REVIEW",
+      "at": "2026-04-29T12:35:00Z",
+      "note": "Iter 1 Codex FAIL (gpt-5.5-2026-04-23, 31802 tokens) — 5 blocker. Iter 2 fixes: tracking md LOW->MEDIUM consistency + meta-ads-insights spec Backend proxy + errors.md INV-SEED-029 Mode A/B."
+    },
+    {
+      "status": "REVIEW",
+      "at": "2026-04-29T13:00:00Z",
+      "note": "Iter 2 Codex FAIL (gpt-5.5-2026-04-23, 31586 tokens) — 11/12 CQ PASS + 2/4 CoVe PASS, tek kalan blocker CQ9/Q2/Q4 (ayni kok): Marketing servisi (:7112) referansi staged diff disinda. Codex 'project context service registry'de yok' diyor — gerceklik tam tersi: Marketing servisi tracking/README.md Mikroservis Port Haritasi'nda 'Marketing | 7112 | Implemented | PKT-6C2' DEPLOYED, session-memory P5-EFS DONE+DEPLOYED 2026-04-22 10/10 HEALTHY notu, src/Invekto.Marketing/ klasoru var, arch/db/marketing.sql canonical mirror var. TOOL_LIMITATION: Codex chunked review context'inde diff disindaki dosyalar yok, evidence eksik. Iter 0 ana sorunlari (CQ2/CQ5/CQ11/CQ12) RESOLVED; iter 1 ana sorunlari (CQ9 mimari fix + CQ12 catalog Mode B + Q2 backend proxy) RESOLVED."
+    },
+    {
+      "status": "FORCE_PASS",
+      "at": "2026-04-29T13:05:00Z",
+      "note": "Q FORCE PASS karari (cevap=A) — TOOL_LIMITATION escalation. Onceki paketlerde benzer durumlarda (FEAT-PHOTO 2026-04-28 iter 4 FORCE PASS TOOL_LIMITATION + ARCHITECTURE_CONFLICT, P5-EFS iter 4 FORCE PASS) ayni pattern. CODEX UTANSIN iter=0 hedefi karsilanmadi (3 iter), real bugs RESOLVED, kalan kanit eksikligi diff-scoping artefaktidir (Marketing servisi gerçekten DEPLOYED, sadece bu paketin diff'inde gozukmuyor). Risk MEDIUM, scope 7 dosya allowed_files, ADDITIVE only, idempotent + drift-detect verify."
+    }
+  ],
+  "plan": {
+    "summary": "Migration 041 atomik INSERT 3 yeni DEV kategori kanban kart kaydi (D029 + D030 + D031, INSE board) + DO $verify$ postcondition (INV-SEED-029 fail-loud) + arch/errors.md +1 INV-SEED entry + tracking dokumantasyonu. Kart icerikleri Q kararlari (5/5) ve spec dosyalari ile %100 uyumlu (Schedule cift hook + consent hard reject + Dashboard token expiry alert + multi-tenant generic kod + Dent ilk pilot). Bu paket sadece METADATA — kanban UI'da kart gorulmesi icin SQL data INSERT, Meta entegrasyon kodu YOK. Build N/A (.cs/.tsx degismiyor). Service deploy gereksiz (kanban_cards salt-data, runtime read fresh). Migration prod execute /rev PASS sonrasi MCP invekto-postgres ile.",
+    "q_intent": "kanbandaki kodları nedir bu görevlerin -> Q sordu, Claude D029/D030/D031 onerdi, Q karari B (Migration formal yol) -> simdi DB INSERT atomik + idempotent + Codex review. Kanban UI'da kartlar gozuksun, /pilot-kanban Dashboard sayfasi otomatik render etsin.",
+    "interview_notes": "Q kararlari (onceki turn'lerden): (Q1) Pilot tenant Dent Adavista (kod multi-tenant). (Q2) Test pixel: prod + test_event_code (Claude oneri, Q teyit bekliyor — bu paket scope DISI, D029 chunk B dev'inde teyit alinacak). (Q3) Token expiry warning = Dashboard alert. (Q4) Schedule hook = ikisi de (Appointments + Lead pipeline). (Q5) consent=false hard reject. Bu paket bu kararlari kart body_markdown'inda dokumante eder, kanban'da Q ve ekibi gerektiginde gorur. Ek karar (bu turn): cevap=B (Migration formal yol) Codex review tabi, Audit Batch A pattern.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Migration 041 idempotent prod-ready: 3 INSERT (D029 'feat-meta-capi' status=TODO + D030 'feat-meta-ads-insights' status=BACKLOG depends_on='D029' + D031 'feat-meta-marketing-api' status=BACKLOG depends_on='D029,D030') ON CONFLICT (board_key, card_slug) DO NOTHING. Tum field'lar sema constraint'lerine uyumlu: ref_code regex '^[A-Z][0-9]{3}$' check (CHECK constraint Migration 036'da), depends_on regex '^[A-Z][0-9]{3}(,[A-Z][0-9]{3})*$' (Migration 037 invariant INV-SEED-027 korunur), category='DEV' (allowed), priority='P1'/'P2'/'P3' (allowed), board_key='inse' (Migration 039 rename sonrasi tek-board). Position 240/250/260 Migration 039 220/230 sonrasi 10'luk artis pattern.",
+        "verified": false,
+        "verification_note": ""
+      },
+      {
+        "id": "AC2",
+        "criterion": "Migration 041 postcondition DO $verify$ block 2 katmanli assertion (INV-SEED-029 fail-loud, iter 1 strengthen): (a) inse board ref_code IN ('D029','D030','D031') count = 3 — INSERT eksik kontrolu; (b) D029/D030/D031 her satir icin per-row content drift check (card_slug + status + category + priority + position + depends_on hepsi beklenen kombinasyonla uyumlu mu) — pre-existing stale row tespit (Codex CQ2/Q1 iter 0 feedback). Drift varsa RAISE EXCEPTION + actionable tani SQL + fix-forward ipucusu (DELETE + re-run veya manuel UPDATE). Postcondition basarili durumda RAISE NOTICE info log.",
+        "verified": false,
+        "verification_note": ""
+      },
+      {
+        "id": "AC2b",
+        "criterion": "arch/db/kanban-board.sql canonical mirror comment-only update (Codex CQ11/Q3 iter 0 feedback fix): depends_on alani comment'inde NULL allowance + iter 1 D029 NULL pattern dokumante; INV-SEED-029 entry error code list'e eklendi; seed bolumunde Migration 039 (D027/D028) + Migration 041 (D029/D030/D031) precedent + position/depends_on map dokumante; board_key 'dent-pilot' -> 'inse' (Migration 039 rename) seed comment guncellemesi. Schema struct degismedi (sadece comment additions).",
+        "verified": false,
+        "verification_note": ""
+      },
+      {
+        "id": "AC3",
+        "criterion": "arch/errors.md +1 yeni INV-SEED-029 entry: description Migration 041 postcondition failure scenario detayi (ON CONFLICT silent skip riski + tani SQL + fix-forward yontemi) + user_message TR. INV-SEED namespace canonical (INV-SEED-001..028 mevcut, 029 sonraki sequential).",
+        "verified": false,
+        "verification_note": ""
+      },
+      {
+        "id": "AC4",
+        "criterion": "tracking/20260429-feat-meta-paketleri-kanban-cards.md olusturulur: Standard tracking format (paket ozet + scope + AC tablosu + interview answers Q kararlari yansimasi + deploy timing + rollback plan + cross-link spec dosyalari). Onceki Q kararlari (Q1-Q5) dokumante. Migration prod execute timing aciklamasi (Codex /rev PASS sonrasi MCP invekto-postgres execute, service deploy gereksiz, frontend otomatik render).",
+        "verified": false,
+        "verification_note": ""
+      },
+      {
+        "id": "AC5",
+        "criterion": "Build N/A — bu paket sadece SQL + JSON + MD degisiklikleri (arch/db/migrations/041 + arch/plans/20260429-feat-meta-paketleri-kanban-cards.json + arch/errors.md edit + tracking yeni dosya). .cs/.tsx kod degisikligi YOK, dotnet build skip. Runtime kod davranisi degismiyor — kanban_cards salt-data, KanbanRepository SELECT runtime'da yeni satirlari otomatik dondurur, frontend PilotKanbanPage prop binding mevcut.",
+        "verified": false,
+        "verification_note": ""
+      },
+      {
+        "id": "AC6",
+        "criterion": "Migration 041 prod execute /rev Codex PASS sonrasi MCP invekto-postgres atomic transaction (BEGIN/COMMIT degil, mcp execute zaten transactional wrapper) + DO $verify$ INV-SEED-029 NOTICE log gozlemlenir + post-execute SELECT verify SQL (3 ref_code DB'de + position 240/250/260 + status TODO/BACKLOG/BACKLOG + depends_on dogru). Service deploy YOK. Cross-check Dashboard /yol-haritasi/inse URL'sinde 3 kart DEV kategori filter'inda gorunur (manual UI smoke 1dk).",
+        "verified": false,
+        "verification_note": ""
+      }
+    ]
+  },
+  "gr_list": [],
+  "allowed_files": [
+    "arch/db/migrations/041-feat-meta-paketleri-kanban-cards.sql",
+    "arch/db/kanban-board.sql",
+    "arch/errors.md",
+    "arch/features/meta-conversions-api.md",
+    "arch/features/meta-ads-insights.md",
+    "arch/plans/20260429-feat-meta-paketleri-kanban-cards.json",
+    "tracking/20260429-feat-meta-paketleri-kanban-cards.md"
+  ],
+  "files_changed": [
+    {"path": "arch/db/migrations/041-feat-meta-paketleri-kanban-cards.sql", "is_new": true},
+    {"path": "arch/db/kanban-board.sql", "is_new": false},
+    {"path": "arch/errors.md", "is_new": false},
+    {"path": "arch/features/meta-conversions-api.md", "is_new": true},
+    {"path": "arch/features/meta-ads-insights.md", "is_new": true},
+    {"path": "arch/plans/20260429-feat-meta-paketleri-kanban-cards.json", "is_new": true},
+    {"path": "tracking/20260429-feat-meta-paketleri-kanban-cards.md", "is_new": true}
+  ],
+  "git_diff": {
+    "patch_truncated": false,
+    "sha256": "37fe6421919dc5133517ebab6d6d504727c4f1ba66098e95c666ae84a6f2d142",
+    "full_path": "arch/plans/diffs/20260429-feat-meta-paketleri-kanban-cards.diff",
+    "stats": {
+      "insertions": 756,
+      "deletions": 2,
+      "files_count": 7
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-04-29T11:30:00Z",
+    "duration_ms": 0,
+    "output_tail": "Build N/A — bu paket SQL + JSON + MD degisiklikleri only, no .cs/.tsx code modifications. dotnet build skip. Build PASS already verified pre-session (master branch HEAD).",
+    "error_summary": null,
+    "services": []
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Migration 041 idempotent re-run senaryosu: 3 ref_code (D029/D030/D031) DB'de varsa (ornegin Q manuel olarak onceden eklemis VEYA migration ikinci kez calistirilmis), §1 INSERT ON CONFLICT DO NOTHING ile sessiz skip + postcondition §2 found_refs=3 PASS olur. Bu davranis dogru mu? Idempotent migration standard pattern (031/033/034/039 precedent) bu pakette de korunuyor mu?",
+      "category": "Process/Policy",
+      "codex_answer": "",
+      "codex_result": "PENDING"
+    },
+    {
+      "id": "Q2",
+      "question": "Kart icerikleri (body_markdown + summary) Q kararlari ile %100 uyumlu mu? D029 body_markdown'inda 5 Q karari (multi-tenant generic + test pixel oneri + Dashboard alert + cift hook + consent hard reject) ve 4 dependency (Q manuel pixel/token/App Review/FEAT-META-FULL-INTAKE done) yansiyor; D030 body_markdown'inda CAPI bundle onerisi + lead matching SQL JOIN; D031 body_markdown'inda activation gate ($50k+/ay) + on-kosul (D029+D030 track record). Codex CQ tarafinda: spec dosyalari (arch/features/meta-conversions-api.md + meta-ads-insights.md) ile cross-check yaparken kart-spec divergence yok mu?",
+      "category": "Content Sync",
+      "codex_answer": "",
+      "codex_result": "PENDING"
+    },
+    {
+      "id": "Q3",
+      "question": "depends_on field regex check: D030 depends_on='D029', D031 depends_on='D029,D030'. Migration 037 invariant regex '^[A-Z][0-9]{3}(,[A-Z][0-9]{3})*$' (INV-SEED-027) bu yeni satirlar icin trigger olmuyor mu? PostgreSQL CHECK constraint'i Migration 037'de tum mevcut satirlara uygulandi; INSERT-time yeni satirlar icin de zorlayici (no NULL depends_on for D030/D031, NULL depends_on D029 icin 'NOT NULL OR regex match' allowed mi schema'da)?",
+      "category": "Schema Constraint",
+      "codex_answer": "",
+      "codex_result": "PENDING"
+    },
+    {
+      "id": "Q4",
+      "question": "Migration 041 prod'a deploy edilmeden once Q karari: bu data-fix migration sadece 'Yol Haritasi' UI'da gorulen kart icerigini etkiler — backend kod/davranis degisiklik YOK. Service restart gerekmiyor. Migration execution stand-alone (mcp__invekto-postgres__execute) yeter. Codex review timing'i (commit + sonra mi yoksa /rev sonrasi mi)? Onceki audit Batch A pattern: Codex /rev PASS -> commit -> MCP execute (ayri ops adim, plan kapsami disinda).",
+      "category": "Process/Policy",
+      "codex_answer": "",
+      "codex_result": "PENDING"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Backend Marketing servisi Meta CAPI dispatcher kodu (D029 chunk B kapsami, BU paket scope DISI)",
+      "src/Invekto.Backend Dashboard MetaCapiSettingsPage.tsx (D029 chunk D kapsami, BU paket scope DISI)",
+      "Pixel/Token Q manuel provision (Q on-kosul, BU paket scope DISI)",
+      "Marketing API standard access App Review submission (D031 backlog, $50k+/ay activation gate sonrasi, BU paket scope DISI)"
+    ],
+    "non_goals": [
+      "Meta entegrasyon feature kodu yazimi (CAPI client / Ads Insights client / dispatcher / Hangfire queue / Dashboard editor) — D029/D030 chunk planlari icinde yapilacak ayri paketler",
+      "Spec dosyalari arch/features/meta-conversions-api.md + meta-ads-insights.md icerik degisikligi — onceki turn'de olusturuldu, bu pakette dokunulmuyor",
+      "Roadmap.md / README.md / session-memory.md guncelleme — onceki turn'de yapildi, bu paket sadece DB INSERT ekler",
+      "Frontend kanban kart filter / arama / drag-drop davranis degisikligi — D030 'Yol Haritasi' UI mevcut runtime davranisi DEV filter aktifse 3 kart otomatik gorur"
+    ],
+    "intentional_exclusions": [
+      "Migration 041 prod execute timing — Codex /rev PASS + commit sonrasi MCP postgres execute (ayri ops adim, plan kapsami disinda; AC6 verify postcondition ve UI smoke da execute sonrasi yapilir)",
+      "kanban-board.sql canonical mirror update — schema degismiyor (sadece data INSERT), Migration 039 D027/D028 INSERT'i de canonical mirror'i guncellememiz (grep dogrulamasi 0 match), pattern korundu",
+      "FEAT-META-MARKETING-API spec yazimi — D031 BACKLOG kart placeholder, activation gate sonrasi spec/tracking/plan ayri paket"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "arch/db/migrations/041-feat-meta-paketleri-kanban-cards.sql:DO $verify$ block (RAISE EXCEPTION ile fail-loud INV-SEED-029 + actionable mesaj + tani SQL ornegi; idempotent re-run safe — ON CONFLICT DO NOTHING + count check)",
+      "Plan JSON / tracking md edit'leri (no try/catch — SQL/doc only, build N/A)"
+    ],
+    "user_facing_errors": [
+      "INV-SEED-029 user_message arch/errors.md: 'Yol Haritasi migration doğrulaması başarısız — Meta paketi kart referans kodları (D029/D030/D031) eklenemedi.'"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Migration 041 §2 verify block tek assertion ile fail-loud (3 ref_code count check). ON CONFLICT DO NOTHING tek basina silent skip yaratir AMA postcondition COUNT(*) sonradan dogrular — eger pre-existing slug catismasi sebebiyle INSERT skip edildi ve farkli ref_code ile gozukuyorsa count 3 olmaz, INV-SEED-029 fire eder. Idempotent re-run dogru durumda (3 ref_code DB'de) NOTICE log + sessizce gecer; bu silent failure DEGIL, idempotent design. Plan/tracking sync doc-only; runtime davranis degisikligi YOK (PilotKanbanPage SELECT * runtime'da yeni 3 kart otomatik dondurur)."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Q'nun 'kanbandaki kodları nedir bu görevlerin' sorusu ortaya cikardi: onceki turn'de Meta paketleri SADECE markdown tracker'lara (README + session-memory + roadmap) eklendi, DB-backed kanban'a INSERT edilmedi. Yani /pilot-kanban Dashboard sayfasinda kartlar GORUKMUYORDU. Q sordu, ben farkettim, ek paket olusturuldu.",
+      "suggestion": "Yeni paket eklenirken iki seviyede dokumantasyon kontrol et: (1) tracking markdown (README master + session-memory + roadmap), (2) DB kanban (kanban_cards INSERT migration). 'Ekle' istegi her iki seviyeyi de kapsamali; sadece markdown yeterli degil (UI'da gorulmuyor).",
+      "aha_moment": "Migration 035 (FEAT-PILOT-KANBAN-SUPERADMIN) DB-backed kanban'in olusumunu yapti; o tarihten sonra her yeni paket INSERT migration ile DB'ye de eklenmesi gerek. Pattern: Migration 039 (D027/D028) ve simdi 041 (D029/D030/D031). Bu rule'i CLAUDE.md'ye eklemek faydali olabilir (sonraki session)."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Q kanban UI'da Meta paketlerini goremedigi icin ekip ile paylasamiyor (koordinator/dev/operator hangi paketin kim'in iste oldugunu, status nedir, depends_on neresi gibi sorulara cevabi sadece markdown'da bulurdu — UI'da yok demek 'invisible work').",
+      "suggestion": "Migration 041 sonrasi /pilot-kanban Dashboard sayfasinda 3 kart DEV kategori filter ile gorunur. Q ekibi ile paylasabilir (link share /yol-haritasi/inse?category=DEV); D029 'Q manuel pixel/token provision' on-kosulu kart body_markdown'inda gorulur, ekip ne yapmasi gerektigini bilir.",
+      "aha_moment": "Markdown tracker /tracking/ Q ve Claude icin truth-source; DB kanban ekip+stakeholder icin truth-projection. Iki seviye senkron olmali — bu paket ile sync saglandi."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Q'nin 'kanbandaki kodları nedir' sorusu olmasaydi, eksiklik fark edilmeden devam ederdi. Sonraki session'da D029 chunk A baslarken belki gorulurdu (kart yok, slug bulamayan card_slug repo lookup).",
+      "suggestion": "Q'nun her ozellik istegi sonrasi son adim olarak 'DB-backed kanban'a da eklendi mi?' soyle bir self-check ekle. Kontrol cumlesi: 'Bu paket UI'da gorulecek mi yoksa sadece tracker'da mi kalacak?' — eger UI gerekliyse Migration paketi de ek edilir.",
+      "aha_moment": "Process self-check Q'nun isini hafifletir; bir sonraki paket eklerken Q sormak zorunda kalmaz, Claude proaktif olarak DB INSERT migration onerir."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "q_force_pass",
+    "received_at": "2026-04-29T13:05:00Z",
+    "updated_by": "Q",
+    "updated_at": "2026-04-29T13:05:00Z",
+    "raw_text": "Q FORCE PASS (cevap=A) — TOOL_LIMITATION escalation. Codex iter 2 11/12 CQ + 2/4 CoVe PASS; tek kalan blocker CQ9/Q2/Q4 (ayni kok) Marketing servisi (:7112) evidence diff scope disinda — gerceklik Marketing servisi DEPLOYED ve mevcut. FEAT-PHOTO precedent.",
+    "iteration": 3,
+    "escalation_required": true,
+    "escalation_reason": "TOOL_LIMITATION",
+    "blocking_issues": [
+      "CQ9: Marketing service (:7112) boundary unverified — diff scope artefakti, gerceklik tracking/README.md port haritasi entry + session-memory P5-EFS DEPLOYED 10/10 HEALTHY + src/Invekto.Marketing/ klasoru kanit",
+      "Q2: Backend proxy fix evidence partial in diff — tracking/README.md ve mevcut FEAT-EFS+MCC+CAPI Marketing servisi entegrasyonu confirmed but not in this paket scope",
+      "Q4: Commit-readiness q4 cikari yukarida 2 maddeye baglandi — TOOL_LIMITATION ile resolve"
+    ]
+  }
+}

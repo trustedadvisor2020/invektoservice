@@ -84,8 +84,10 @@ CREATE TABLE IF NOT EXISTS kanban_cards (
     -- Bagimlilik (Migration 037) — CSV ref_code listesi, ornek "C001,C003".
     -- NULL = bagimsiz (paralel calisilabilir). UI kart altinda "↳ deps" indicator
     -- + drawer'da Bagimliliklar bolumu olarak gosterilir. Regex CHECK constraint
-    -- format enforce eder (^[A-Z][0-9]{3}(,[A-Z][0-9]{3})*$).
+    -- format enforce eder: '^[A-Z][0-9]{3}(,[A-Z][0-9]{3})*$' (NULL allowed).
     depends_on      TEXT         NULL
+    -- Yeni kart INSERT'lerinde D029 NULL (zincir basi), D030 'D029', D031 'D029,D030'
+    -- pattern Migration 041 (FEAT-META paketleri) precedent.
 );
 
 -- =============================================================
@@ -167,6 +169,10 @@ GRANT USAGE, SELECT ON SEQUENCE kanban_cards_id_seq TO invekto;
 -- Error codes (arch/errors.md):
 --   INV-SEED-024  : seed postcondition failure (kart sayisi < 40)
 --   INV-SEED-025  : constraint postcondition failure (UNIQUE/CHECK eksik)
+--   INV-SEED-026  : Migration 036 ref_code postcondition failure
+--   INV-SEED-027  : Migration 037 depends_on regex postcondition failure
+--   INV-SEED-028  : Migration 038 audit data fix postcondition failure
+--   INV-SEED-029  : Migration 041 feat-meta-paketleri postcondition failure (D029/D030/D031 INSERT eksik veya stale content)
 --   INV-KB-001    : KanbanStatus enum out-of-range (defensive guard)
 --   INV-KB-002    : KanbanCategory enum out-of-range (defensive guard)
 --   INV-KB-003    : PATCH body status invalid (400)
@@ -174,9 +180,16 @@ GRANT USAGE, SELECT ON SEQUENCE kanban_cards_id_seq TO invekto;
 --   INV-KB-005    : DB connection / query failure (503)
 
 -- =============================================================
--- Seed (board_key='dent-pilot')
+-- Seed (board_key='inse', Migration 039 rename sonrasi)
 -- =============================================================
 -- Migration 035 ~50 kart insert eder (BLOCKED/TODO/IN_PROGRESS/BACKLOG/DONE).
 -- ON CONFLICT (board_key, card_slug) DO NOTHING → idempotent re-run safe.
 -- Mevcut row'larin status/title kirilmaz; sadece yeni slug'lar insert edilir.
 -- Detay: arch/db/migrations/035-kanban-cards.sql §6.1-§6.5.
+--
+-- Subsequent feature additions:
+--   Migration 039: D027 (FEAT-OBI bulk external) + D028 (FEAT-MEDIPOL-WA) + board rename
+--   Migration 041: D029 (FEAT-META-CAPI) + D030 (FEAT-META-ADS-INSIGHTS) + D031 (FEAT-META-MARKETING-API)
+--                  Position 240/250/260; depends_on: D029 NULL, D030='D029', D031='D029,D030'.
+--                  DO $verify$ block per-row content check (status + position + depends_on)
+--                  + count check (3 ref_code) → INV-SEED-029 fail-loud on stale state drift.
