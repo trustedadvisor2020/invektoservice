@@ -1,11 +1,13 @@
 # FEAT-CLINIC-METADATA — Multi-Tenant Hardcoded Cleanup
 
-> **Status:** DONE+CODEX_PASS (2026-04-29 16:25 UTC) — deploy bekliyor
+> **Status:** DONE+CODEX_PASS+DEPLOYED (2026-04-29 17:25 UTC)
 > **Created:** 2026-04-28
-> **Risk:** MEDIUM (Codex iter 0 CQ3 fix — schema migration + Shared abstraction + endpoint + Automation pipeline scope MEDIUM tam karşılıyor)
+> **Risk:** MEDIUM
 > **Slug:** `20260428-feat-clinic-metadata`
-> **Plan:** [`arch/plans/20260428-feat-clinic-metadata.json`](../arch/plans/20260428-feat-clinic-metadata.json) (schema 5.1, 6 AC, 5 verification questions, 7 architectural decisions)
+> **Plan:** [`arch/plans/20260428-feat-clinic-metadata.json`](../arch/plans/20260428-feat-clinic-metadata.json) (schema 5.1, 6 AC verified=true, 5 verification questions, 7 architectural decisions)
 > **Codex:** iter 0 FAIL (3 blocker doc-only) → iter 1 PASS 12/12 CQ + 5/5 CoVe + 0 blocker (gpt-5.5, 70489 token)
+> **Commit:** `39b041c` master + `43334c3` parallel-tracking
+> **Deploy:** Migration 040 prod 17:18 UTC + Backend 17:22:13Z + Automation 17:22:35Z + 10/10 HEALTHY + Smoke S1 NoAuth 401 PASS. Q manuel: Dashboard `/settings/clinic-metadata` UI form smoke (S5/S6) + chat send_message DMP render verification.
 > **Migration:** 040 (Q kararı 2026-04-28 23:50 + 2026-04-29 14:55 — 039 zaten dolu = FEAT-OBI-MEDIPOL-KANBAN-CARDS, 040 next-free)
 > **INV-SEED:** 032..034 (Q kararı 2026-04-29 14:55 — 029..031 buffer slot rezerv)
 > **Paralel paket notu:** `20260428-feat-roadmap-audit-fixes` (Migration 038 DONE) bu session'dan ayrı tamamlandı.
