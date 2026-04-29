@@ -38,6 +38,7 @@ public sealed class AutomationOrchestrator
     private readonly TenantSettingsRepository _tenantSettings;
     private readonly DynamicMessageValidator _dynamicValidator;
     private readonly CampaignTemplateApplier _campaignApplier;
+    private readonly ClinicTemplateApplier _clinicApplier;
     private readonly JsonLinesLogger _logger;
 
     // GR-2.6: KVKK health tenant cache (tenant_id -> isHealthTenant)
@@ -65,6 +66,7 @@ public sealed class AutomationOrchestrator
         TenantSettingsRepository tenantSettings,
         DynamicMessageValidator dynamicValidator,
         CampaignTemplateApplier campaignApplier,
+        ClinicTemplateApplier clinicApplier,
         JsonLinesLogger logger)
     {
         _repo = repo;
@@ -83,6 +85,7 @@ public sealed class AutomationOrchestrator
         _tenantSettings = tenantSettings;
         _dynamicValidator = dynamicValidator;
         _campaignApplier = campaignApplier;
+        _clinicApplier = clinicApplier;
         _logger = logger;
     }
 
@@ -1487,6 +1490,18 @@ public sealed class AutomationOrchestrator
                 return false;
             }
             finalMessageText = campaignResult.RenderedText;
+        }
+
+        // FEAT-CLINIC-METADATA: substitute {{clinic.X}} + {{team.role.field}} placeholders.
+        // Runs AFTER campaign substitution (so {{campaign.cities_human}} render is complete
+        // before clinic/team tokens are evaluated) and BEFORE DMP validation (so the validator
+        // sees already-rendered text, not unresolved clinic tokens that aren't INMA reserved keys).
+        // Clinic-agnostic outbound (no {{clinic.X}} or {{team.*}} in text) bypasses this entirely
+        // (early-exit when both regexes find zero matches). Resolver fail = empty metadata =
+        // graceful empty-string fill, never throws or blocks dispatch.
+        if (action == CallbackActions.SendMessage && !string.IsNullOrEmpty(finalMessageText))
+        {
+            finalMessageText = await _clinicApplier.ApplyAsync(tenantId, finalMessageText, ct);
         }
 
         // FEAT-DMP: resolve INMA DynamicMessage placeholders for SendMessage.

@@ -113,6 +113,13 @@ public static class ErrorCodes
     public const string CampaignSlugReserved = "INV-BE-120";           // Slug uses a reserved token ('primary'/'system'/'default'/'all').
     public const string CampaignConfigDbUnavailable = "INV-BE-121";    // tenant_settings.campaign_config DB read/write transient (Npgsql). Distinct from generic INV-BE-001 so dashboards isolate campaign-config storage outages.
 
+    // FEAT-CLINIC-METADATA: clinic_contact + team_members JSONB (INV-BE-122..125)
+    // Allocated AFTER INV-BE-121 (FEAT-MCC). Backend ClinicMetadataEndpoints + DbTenantClinicMetadataResolver consumers.
+    public const string ClinicMetadataInvalidJson      = "INV-BE-122"; // PUT body malformed JSON shape OR DB JSONB malformed (resolver JsonException — graceful empty fallback). Distinct from generic INV-BE-001 to surface clinic-config-only parse failures in dashboards.
+    public const string ClinicMetadataPhoneInvalid     = "INV-BE-123"; // PUT body clinic_contact.phone fails E.164 regex ^\+[0-9 ]{8,20}$. User-facing 400.
+    public const string ClinicMetadataUrlInvalid       = "INV-BE-124"; // PUT body clinic_contact.website/instagram/facebook fails ^https?:// regex OR non-HTTPS in production-style mode. User-facing 400.
+    public const string ClinicMetadataDbUnavailable    = "INV-BE-125"; // tenant_settings.clinic_contact / team_members DB read/write transient (Npgsql). Distinct from INV-BE-001 + INV-BE-121 so dashboards isolate clinic-metadata storage outages.
+
     // ChatAnalysis errors (INV-CA-xxx)
     public const string ChatAnalysisInvalidPayload = "INV-CA-001";
     public const string ChatAnalysisProcessingFailed = "INV-CA-002";

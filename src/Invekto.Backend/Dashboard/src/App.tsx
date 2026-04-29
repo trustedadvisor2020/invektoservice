@@ -60,6 +60,9 @@ const CampaignConfigSettingsPage = lazy(() => import('./pages/settings/CampaignC
 // Paket B-META: Meta Leadgen webhook settings (lazy).
 const MetaLeadgenSettingsPage = lazy(() => import('./pages/settings/MetaLeadgenSettingsPage').then(m => ({ default: m.MetaLeadgenSettingsPage })));
 
+// FEAT-CLINIC-METADATA: clinic_contact + team_members editor (lazy).
+const ClinicMetadataSettingsPage = lazy(() => import('./pages/settings/ClinicMetadataSettingsPage').then(m => ({ default: m.ClinicMetadataSettingsPage })));
+
 // FEAT-PILOT-KANBAN: SuperAdmin pilot tracking board (lazy, opsOnly).
 const PilotKanbanPage = lazy(() => import('./pages/PilotKanbanPage').then(m => ({ default: m.PilotKanbanPage })));
 
@@ -188,6 +191,7 @@ export default function App() {
         <Route path="/settings/campaigns" element={<Suspense><CampaignConfigSettingsPage /></Suspense>} />
         {/* Paket B-META: Meta Leadgen webhook settings (entered via SettingsPage). */}
         <Route path="/settings/meta-leadgen" element={<Suspense><MetaLeadgenSettingsPage /></Suspense>} />
+        <Route path="/settings/clinic-metadata" element={<Suspense><ClinicMetadataSettingsPage /></Suspense>} />
         {/* FEAT-PHOTO wire-up patch (2026-04-28): Lead detay sayfasi (PhotoTab tuketicisi). */}
         <Route path="/leads/:id" element={<Suspense><LeadDetailRoute /></Suspense>} />
       </Route>

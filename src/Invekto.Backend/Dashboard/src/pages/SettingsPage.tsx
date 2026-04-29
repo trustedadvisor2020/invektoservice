@@ -521,6 +521,24 @@ function GeneralTab({ session, sector, sectorLoading, sectorSaving, sectorError,
             </Link>
           </CardContent>
         </Card>
+
+        {/* FEAT-CLINIC-METADATA: entry card to standalone /settings/clinic-metadata page. */}
+        <Card>
+          <CardContent className="py-5">
+            <Link
+              to="/settings/clinic-metadata"
+              className="flex items-center justify-between gap-3 p-2 -m-2 rounded-lg hover:bg-navy-50 transition-colors"
+            >
+              <div>
+                <div className="text-sm font-medium text-navy-900">Klinik Bilgileri</div>
+                <div className="text-xs text-navy-400 mt-0.5">
+                  Klinik iletisim + ekip uyeleri. {'{{clinic.name}}'} {'{{clinic.phone}}'} {'{{team.dentist.name}}'} substitution. Multi-tenant icin hardcoded yerine.
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-navy-400 flex-shrink-0" />
+            </Link>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

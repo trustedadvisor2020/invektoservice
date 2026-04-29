@@ -25,6 +25,11 @@ import type {
   CampaignConfigPutRequest,
   CampaignConfigPutResponse,
 } from '../types/campaignConfig';
+import type {
+  ClinicMetadataGetResponse,
+  ClinicMetadataPutRequest,
+  ClinicMetadataPutResponse,
+} from '../types/clinicMetadata';
 
 // API types
 export interface ServiceHealth {
@@ -2224,6 +2229,26 @@ class OpsApiClient {
     });
   }
 
+  // ---- FEAT-CLINIC-METADATA: clinic_contact + team_members editor ----
+  // Envelope shape (matching FEAT-MCC pattern):
+  //   GET -> { data: { tenant_id, clinic_contact: {...}, team_members: [...], updated_at } }
+  //   PUT -> same shape; backend upserts both JSONB columns atomically.
+  // Validation errors surface via ApiClientError:
+  //   400 INV-BE-122 invalid JSON | INV-BE-123 phone format | INV-BE-124 URL format
+  //   403 INV-AUTH-010 cross-tenant
+  //   503 INV-BE-125 DB transient
+  async getClinicMetadata(): Promise<ClinicMetadataGetResponse> {
+    return this.request<ClinicMetadataGetResponse>('/api/v1/tenant-settings/clinic-metadata');
+  }
+
+  async putClinicMetadata(req: ClinicMetadataPutRequest): Promise<ClinicMetadataPutResponse> {
+    return this.request<ClinicMetadataPutResponse>('/api/v1/tenant-settings/clinic-metadata', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req),
+    });
+  }
+
   // ---- Paket B-META: Meta Leadgen webhook settings ----
   // Envelope shape:
   //   GET  -> { data: { tenant_id, webhook_url, config: { ...last4 secrets, field_id_map }, updated_at } }
@@ -2294,6 +2319,16 @@ export type {
   CampaignEntryDraft,
   CampaignConfigDraft,
 } from '../types/campaignConfig';
+
+// FEAT-CLINIC-METADATA type re-exports.
+export type {
+  ClinicContactDto,
+  TeamMemberDto,
+  ClinicMetadataGetResponse,
+  ClinicMetadataPutRequest,
+  ClinicMetadataPutResponse,
+  TeamMemberDraft,
+} from '../types/clinicMetadata';
 
 // Paket B-META: Meta Leadgen webhook DTOs. Inline (no separate types file)
 // because the full surface is 6 interfaces — tightly scoped to one SPA page

@@ -1,0 +1,38 @@
+{
+  "_meta": {
+    "feature": "FEAT-CLINIC-METADATA",
+    "migration": "040-clinic-metadata.sql",
+    "tenant_id": 18173130,
+    "tenant_name": "dentadavista",
+    "purpose": "Source-of-truth seed for tenant_settings.clinic_contact + team_members. Migration 040 §3 hard-codes the same values as a UPDATE WHERE tenant_id=18173130 statement; this JSON is the operator-readable mirror for ops drift detection and re-run sanity checks.",
+    "version": "1.0",
+    "last_updated": "2026-04-29"
+  },
+
+  "clinic_contact": {
+    "name":      "Dent Adavista Dental Clinic",
+    "phone":     "+90 545 343 09 09",
+    "website":   "https://dentadavista.com",
+    "instagram": "https://www.instagram.com/dentadavistaclinic",
+    "facebook":  "https://www.facebook.com/profile.php?id=61554804412823",
+    "address":   "Kuşadası, Aydın, Türkiye",
+    "city":      "Kuşadası"
+  },
+
+  "team_members": [
+    {
+      "role":     "dentist",
+      "name":     "Dr. Özge Yılmazoğlu",
+      "title":    "Founder Dentist",
+      "language": "en",
+      "pronouns": "she/her"
+    },
+    {
+      "role":     "receptionist",
+      "name":     "Güneş",
+      "title":    "Patient Coordinator",
+      "language": "en",
+      "pronouns": "she/her"
+    }
+  ]
+}

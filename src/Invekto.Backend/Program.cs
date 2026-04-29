@@ -483,6 +483,13 @@ builder.Services.AddSingleton<Invekto.Shared.Contracts.Campaigns.DbTenantCampaig
 builder.Services.AddSingleton<Invekto.Shared.Contracts.Campaigns.ITenantCampaignResolver>(sp =>
     sp.GetRequiredService<Invekto.Shared.Contracts.Campaigns.DbTenantCampaignResolver>());
 
+// FEAT-CLINIC-METADATA: clinic_contact + team_members resolver registration. Backend
+// hosts the GET/PUT endpoints, calls Invalidate() on PUT for local cache freshness.
+// Same Shared resolver wired in Automation (eventual consistency 5dk TTL).
+builder.Services.AddSingleton<Invekto.Shared.Contracts.ClinicMetadata.DbTenantClinicMetadataResolver>();
+builder.Services.AddSingleton<Invekto.Shared.Contracts.ClinicMetadata.ITenantClinicMetadataResolver>(sp =>
+    sp.GetRequiredService<Invekto.Shared.Contracts.ClinicMetadata.DbTenantClinicMetadataResolver>());
+
 // Paket B-META: Meta Leadgen webhook native integration
 // Config + event repositories share the same PostgresConnectionFactory pattern as
 // TenantSettingsRepository above. MetaGraphApiClient uses IHttpClientFactory +
@@ -8292,6 +8299,12 @@ app.MapTenantFollowupSequenceEndpoints();
 // CRUD. JWT covered by the existing /api/v1/tenant-settings/ prefix in
 // jwtRequiredPrefixes; handler-side TenantContext guard inside the endpoint.
 app.MapTenantCampaignConfigEndpoints();
+
+// FEAT-CLINIC-METADATA: tenant-scoped /api/v1/tenant-settings/clinic-metadata
+// CRUD (clinic_contact + team_members JSONB pair). JWT covered by the existing
+// /api/v1/tenant-settings/ prefix; handler-side TenantContext + 3-layer
+// cross-tenant guard in Endpoints/ClinicMetadataEndpoints.cs.
+app.MapClinicMetadataEndpoints();
 
 // Paket B-META: Meta Leadgen webhook native integration — public inbound handshake +
 // signed POST (under /api/inbound/meta/leadgen/, NOT JWT-covered), admin settings CRUD

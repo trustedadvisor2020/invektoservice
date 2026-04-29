@@ -575,6 +575,20 @@ errors:
     description: tenant_settings.campaign_config DB read/write transient failure (Npgsql exception during GET/PUT or resolver fetch). Distinct from generic INV-BE-001 so ops dashboards can isolate campaign-config storage outages from broader Backend microservice unavailability. Resolver fall-through behaviour on read failure is to return an empty campaigns list (window guard becomes no-op, substitution renders empty string), preserving outbound flow continuity at the cost of stale config until the DB recovers.
     user_message: Kampanya ayarları geçici olarak okunamıyor/kaydedilemiyor; birkaç saniye sonra tekrar deneyin.
 
+  # FEAT-CLINIC-METADATA: clinic_contact + team_members JSONB editor + ClinicTemplateApplier (INV-BE-122..125, 2026-04-29)
+  - code: INV-BE-122
+    description: PUT /api/v1/tenant-settings/clinic-metadata body parse failure (JsonException) OR DB JSONB stored payload malformed (resolver JsonException with graceful empty-fallback). Distinct from INV-BE-001 + INV-BE-118/121 so dashboards isolate clinic-metadata-only parse failures. Endpoint returns 400 with hint to send Content-Type application/json + valid JSON; resolver path returns ClinicMetadata.Empty so {{clinic.X}} + {{team.role.field}} substitution renders empty string (graceful no-op, never crashes outbound dispatch).
+    user_message: Klinik bilgileri istek gövdesi geçersiz JSON; gönderim formatını kontrol edip tekrar deneyin.
+  - code: INV-BE-123
+    description: PUT /api/v1/tenant-settings/clinic-metadata body clinic_contact.phone fails E.164 regex (^\+[0-9 ]{8,20}$). Endpoint returns 400 with field='phone'. User must enter a + prefix followed by 8-20 digits/spaces (e.g. "+90 545 343 09 09"). Empty/null is accepted (graceful — phone optional).
+    user_message: Telefon numarası E.164 formatında olmalı (örn. +90 545 123 4567). Sadece + ile başlayan, rakam ve boşluk içeren format kabul edilir.
+  - code: INV-BE-124
+    description: PUT /api/v1/tenant-settings/clinic-metadata body clinic_contact.website / instagram / facebook fails URL regex (^https?://[^\s]+$). Endpoint returns 400 with field=offending key. User must enter a https:// (or http://) URL. Empty/null is accepted (graceful — URLs optional).
+    user_message: URL alanları (web sitesi, Instagram, Facebook) https:// veya http:// ile başlamalı.
+  - code: INV-BE-125
+    description: tenant_settings.clinic_contact / team_members DB read/write transient failure (Npgsql exception during GET/PUT or DbTenantClinicMetadataResolver fetch). Distinct from INV-BE-001 + INV-BE-110 (TFM) + INV-BE-121 (MCC) so dashboards isolate clinic-metadata storage outages. Resolver fall-through on read failure: ClinicMetadata.Empty, substitution renders empty strings — outbound flow continues for clinic-agnostic messages. Endpoint GET/PUT both surface 503 to operator.
+    user_message: Klinik bilgileri geçici olarak okunamıyor/kaydedilemiyor; birkaç saniye sonra tekrar deneyin.
+
   # ── AA — AgentAI ──
   - code: INV-AA-001
     description: Invalid request payload
@@ -1539,6 +1553,17 @@ errors:
   - code: INV-SEED-029
     description: Migration 041 feat-meta-paketleri-kanban-cards postcondition failure — D029 (FEAT-META-CAPI) + D030 (FEAT-META-ADS-INSIGHTS) + D031 (FEAT-META-MARKETING-API) icin inse board kanban_cards INSERT atomik blocku iki seviyede dogrulanir, herhangi biri RAISE EXCEPTION fire eder. **Mode A (missing/count fail, §2.1):** ON CONFLICT (board_key, card_slug) DO NOTHING ile mevcut bir kart slug'i catisiyor (feat-meta-capi/feat-meta-ads-insights/feat-meta-marketing-api card_slug onceden var) ve INSERT skip oldu, ref_code IN ('D029','D030','D031') count <> 3. Tani: SELECT ref_code, card_slug FROM kanban_cards WHERE ref_code IN ('D029','D030','D031') OR card_slug LIKE 'feat-meta-%'. Fix-forward: catisan kayit silinir veya migration'da UPDATE branchu eklenir, ardindan re-run. **Mode B (content drift, §2.2):** D029/D030/D031 ref_code'lar DB'de mevcut ama satirlardan biri beklenen card_slug + status (TODO/BACKLOG/BACKLOG) + category=DEV + priority (P1/P2/P3) + position (240/250/260) + depends_on (NULL/'D029'/'D029,D030') kombinasyonuyla uyumsuz — pre-existing stale row var (ON CONFLICT DO NOTHING update yapmadi, manuel/onceki migration ile farkli content). Tani: SELECT ref_code, card_slug, status, category, priority, position, depends_on FROM kanban_cards WHERE board_key='inse' AND ref_code IN ('D029','D030','D031'). Fix-forward: stale row DELETE + migration re-run, ya da manuel UPDATE ile alignment sagla.
     user_message: Yol Haritasi migration doğrulaması başarısız — Meta paketi kart referans kodları (D029/D030/D031) eklenemedi veya mevcut kart içerikleri beklenenle uyuşmuyor.
+
+  # FEAT-CLINIC-METADATA (migration 040 — 2026-04-29). 030..031 buffer slots reserved (Q karari).
+  - code: INV-SEED-032
+    description: Migration 040 §6 column verification FAIL — tenant_settings.clinic_contact veya team_members JSONB sutunlari eksik VEYA wrong data_type. ALTER TABLE IF NOT EXISTS skipped (role privilege, type clash) yahut sutun externally drop edildi. ClinicMetadataEndpoints + DbTenantClinicMetadataResolver bu sutunlar olmadan calisamaz. Tani: SELECT column_name, data_type, is_nullable, column_default FROM information_schema.columns WHERE table_name='tenant_settings' AND column_name IN ('clinic_contact','team_members'). Fix-forward: ALTER TABLE komutunu ayri calistir + Migration 040 re-run.
+    user_message: Klinik bilgileri migration doğrulaması başarısız — tenant_settings.clinic_contact veya team_members sütunu eklenmedi.
+  - code: INV-SEED-033
+    description: Migration 040 §6 Dent seed verification FAIL — tenant_id=18173130 icin clinic_contact 7 anahtar (name/phone/website/instagram/facebook/address/city) doldurulmadi VEYA team_members 2 entry yerine farkli sayida (rol bazli: 1 dentist + 1 receptionist beklenir). §3 UPDATE WHERE clause matched 0 rows (Dent tenant_id mismatch) yahut JSONB partial assignment. Tani: SELECT clinic_contact, jsonb_array_length(team_members), (SELECT COUNT(*) FROM jsonb_array_elements(team_members) m WHERE m->>'role'='dentist') FROM tenant_settings WHERE tenant_id=18173130. Fix-forward: §3 UPDATE block manuel calistir.
+    user_message: Klinik bilgileri migration doğrulaması başarısız — Dent klinik seed verisi eksik veya rol dağılımı yanlış.
+  - code: INV-SEED-034
+    description: Migration 040 §6 hardcoded literal cleanup verification FAIL — faqs tablosu Dent (tenant_id=18173130) icin hardcoded 6 literal (Dr. Özge Yılmazoğlu, +90 545 343 09 09, https://dentadavista.com/, Instagram URL, Facebook URL, Dent Adavista Dental Clinic) hala mevcut (post-state count 0 olmali) VEYA chatbot_flows flow_id=29 nodes[1].data.text 3 placeholder ({{team.receptionist.name}}, {{clinic.name}}, {{team.dentist.name}}) icermiyor. §4 REPLACE statement'lari partial uygulandi (UTF-8 normalization mismatch, embedded variant) yahut §5 jsonb_set silent no-op. Tani: SELECT id, intent_slug, answer FROM faqs WHERE tenant_id=18173130 AND answer LIKE ANY (ARRAY['%Dr. Özge%', '%+90 545%', '%dentadavista.com%', '%dentadavistaclinic%', '%Dent Adavista Dental%']); + SELECT flow_config->'nodes'->1->'data'->>'text' FROM chatbot_flows WHERE flow_id=29. Fix-forward: §4-§5 manuel re-run.
+    user_message: Klinik bilgileri migration doğrulaması başarısız — FAQ veya welcome metinlerinde hardcoded değerler temizlenemedi.
 
   # FEAT-PILOT-KANBAN runtime (KanbanEndpoints + Repository — 2026-04-28)
   - code: INV-KB-001

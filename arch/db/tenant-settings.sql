@@ -57,6 +57,30 @@ CREATE TABLE tenant_settings (
     -- access-controlled (GRANT ALL invekto only). Application layer guards against
     -- jsonl logging (MetaLeadgenConfigDto never serialized verbatim to System* logs).
     meta_leadgen_config       JSONB       NOT NULL DEFAULT '{}'::jsonb,
+    -- FEAT-CLINIC-METADATA (migration 040): per-tenant klinik iletisim bilgileri JSONB. Shape:
+    --   { "name":      "...",                  -- klinik adi (e.g. "Dent Adavista Dental Clinic")
+    --     "phone":     "+CC nnn nnn nn nn",    -- E.164 (validation INV-BE-123)
+    --     "website":   "https://...",          -- HTTPS URL (validation INV-BE-124)
+    --     "instagram": "https://...",          -- IG profile URL (optional)
+    --     "facebook":  "https://...",          -- FB profile URL (optional)
+    --     "address":   "...",                  -- full address line (e.g. "Kuşadası, Aydın, Türkiye")
+    --     "city":      "..." }                 -- short city for inline mention (e.g. "Kuşadası")
+    -- Empty default ({}) = klinik bilgisi yok; ClinicTemplateApplier {{clinic.X}} render bos string
+    -- (graceful no-op). 5dk MemoryCache TTL (DbTenantClinicMetadataResolver) — Backend PUT
+    -- cache.Invalidate, peer Automation/Marketing eventual consistency 5dk (FEAT-MCC pattern).
+    -- App-side validation: phone E.164 (INV-BE-123), URL https?:// (INV-BE-124), JSON shape (INV-BE-122).
+    clinic_contact            JSONB       NOT NULL DEFAULT '{}'::jsonb,
+    -- FEAT-CLINIC-METADATA (migration 040): per-tenant ekip uyeleri JSONB array. Shape:
+    --   [{ "role":     "dentist|receptionist|coordinator|...",
+    --      "name":     "...",
+    --      "title":    "...",
+    --      "language": "en|tr|ar|de|fr|...",
+    --      "pronouns": "she/her|he/him|they/them" }]
+    -- Empty default ([]) = ekip yok; ClinicTemplateApplier {{team.role.field}} render bos string.
+    -- Multi-role klinikler icin first-match rule (LINQ FirstOrDefault on role match — array order
+    -- preserved). Index syntax {{team.dentist[0].name}} post-pilot Phase 2 backlog.
+    -- Dashboard /settings/clinic-metadata CRUD ile yonetilir.
+    team_members              JSONB       NOT NULL DEFAULT '[]'::jsonb,
     created_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at                TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

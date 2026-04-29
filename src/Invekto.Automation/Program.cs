@@ -107,6 +107,14 @@ builder.Services.AddSingleton<Invekto.Shared.Contracts.Campaigns.ITenantCampaign
     Invekto.Shared.Contracts.Campaigns.DbTenantCampaignResolver>();
 builder.Services.AddSingleton<CampaignTemplateApplier>();
 
+// FEAT-CLINIC-METADATA: clinic_contact + team_members resolver + applier
+// ({{clinic.X}} + {{team.role.field}} substitution after campaign substitution).
+// Same shared resolver type as Backend; Automation carries its own 5dk MemoryCache
+// (eventual consistency vs Backend invalidate — FEAT-MCC pattern).
+builder.Services.AddSingleton<Invekto.Shared.Contracts.ClinicMetadata.ITenantClinicMetadataResolver,
+    Invekto.Shared.Contracts.ClinicMetadata.DbTenantClinicMetadataResolver>();
+builder.Services.AddSingleton<ClinicTemplateApplier>();
+
 // Register callback client
 var callbackSettings = builder.Configuration.GetSection("Integration:Callback").Get<CallbackSettings>() ?? new CallbackSettings();
 builder.Services.AddSingleton(callbackSettings);
