@@ -1,14 +1,14 @@
 # SPEC: Meta Conversions API (CAPI) — Server-Side Event Tracking
 
 > **Spec ID:** FEAT-META-CAPI | **Paket:** TBD | **Risk:** MEDIUM (PII handling + per-tenant token)
-> **Yazar:** Q + Claude planlama 2026-04-29 | **Son Guncelleme:** 2026-04-29 (Q kararlari alindi) | **Durum:** DRAFT (chunk A baslangic icin Q teyit + Pixel/Token provision bekliyor)
+> **Yazar:** Q + Claude planlama 2026-04-29 | **Son Guncelleme:** 2026-04-29 14:30 UTC (Q kararlari TUM 5/5 final + Pixel/Token provision DONE) | **Durum:** DRAFT (chunk A interview gate icin hazir)
 
-## 0. Q Kararlari (2026-04-29)
+## 0. Q Kararlari (2026-04-29 — 5/5 final)
 
 | # | Karar | Detay |
 |---|-------|-------|
 | Q1 | **Multi-tenant generic kod, Dent ilk pilot** | Tum sistem icin `tenant_settings.meta_capi_config` per-tenant; Chunk E pilot smoke Dent Adavista ile, sonraki tenant'lar tier-gated rollout |
-| Q2 | **(Claude oneri, Q "bilmiyorum" → teyit bekliyor)** Prod pixel + `test_event_code` | Tek BM/Pixel maintenance; Meta Test Events paneli zaten bu use-case icin; real ad delivery etkilenmez |
+| Q2 | **Prod pixel + `test_event_code`** (Q karari 2026-04-29 14:30 UTC kabul) | Tek BM/Pixel maintenance; Meta Test Events paneli zaten bu use-case icin; test asamasinda dispatch'lerde `test_event_code` header eklenir, Meta Test Events panelinde gozulur, prod metrics etkilenmez. Final karar. |
 | Q3 | **Token expiry warning kanali = Dashboard alert** | Hangfire daily check job → expiry < 7 gun ise tenant Dashboard banner; mevcut `tenant_alerts`/`notifications` altyapisi audit gerek (bulunmazsa minimal table eklenecek) |
 | Q4 | **Schedule hook = ikisi de (cift kanal)** | (a) Appointments service icinden direkt randevu olusumunda; (b) Lead pipeline'da `appointment_booked` state'ine gecince. event_id deterministic SHA256(tenant+lead+appointment_id) → Meta 7-gun dedup penceresi her iki yolu da emer |
 | Q5 | **consent=false → hard reject** | Marketing dispatcher'da gate: `consent_marketing != true` → CAPI dispatch ATLA + audit log "skipped_consent" + Dashboard counter. KVKK/GDPR uyum guvencesi. FEAT-META-FULL-INTAKE consent_marketing field'i otoritedir. |

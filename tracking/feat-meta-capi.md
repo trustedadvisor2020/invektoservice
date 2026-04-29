@@ -2,14 +2,14 @@
 
 > **Slug:** `20260429-feat-meta-capi` (planlanan) | **Risk:** MEDIUM (PII + per-tenant token)
 > **Spec:** [arch/features/meta-conversions-api.md](../arch/features/meta-conversions-api.md)
-> **Status:** **DRAFT** — Q kararlari alindi 2026-04-29, chunk A baslangic icin Pixel/Token provision (Q manuel adim) + soru 2 teyit bekliyor
+> **Status:** **DRAFT** — Q kararlari TUM 5/5 onaylandi 2026-04-29, BM Pixel/Token provision Q tarafindan tamamlandi, chunk A interview gate icin hazir
 
-## Q Kararlari (2026-04-29)
+## Q Kararlari (2026-04-29 — 5/5 final)
 
 | # | Soru | Q Cevabi | Etki |
 |---|------|----------|------|
 | 1 | Pilot tenant | **Dent Adavista** ilk rollout | Chunk E pilot smoke Dent ile. **NOT:** Kod tum sistem icin generic (multi-tenant `tenant_settings.meta_capi_config`); Dent sadece ilk aktif tenant. |
-| 2 | Test pixel ayri mi, prod+test_event_code mi? | **(Q "bilmiyorum" — Claude oneri)** Prod pixel + `test_event_code` | Tek BM/Pixel maintenance, Meta'nin Test Events paneli zaten bu use-case icin var, real ad delivery etkilenmez. Q teyit ederse final. |
+| 2 | Test pixel ayri mi, prod+test_event_code mi? | **Prod pixel + `test_event_code`** (Q karari 2026-04-29 14:30 UTC kabul) | Tek BM/Pixel maintenance, Meta'nin Test Events paneli zaten bu use-case icin var, real ad delivery etkilenmez. Test asamasinda dispatch'lerde test_event_code header eklenir, Meta Test Events panelinde gozulur, prod metrics etkilenmez. Final karar. |
 | 3 | Token expiry warning kanali | **Dashboard alert** | Hangfire daily check job → expiry < 7 gun ise tenant Dashboard'inda banner; `notifications` table veya `tenant_alerts` mekanizmasi (mevcut altyapi audit gerek) |
 | 4 | Schedule event hook noktasi | **Ikisi de** — Appointments service hook **+** Lead status `appointment_booked` hook | Cift kanal: (a) Appointments service icinden direkt (gercek randevu), (b) Lead pipeline'da `appointment_booked` state'e gecince (CRM-level scheduling). Race-safe: `event_id` her iki yolda da deterministic SHA256(tenant+lead+appointment_id) → dedup window 7 gun |
 | 5 | consent=false → CAPI gonderim | **Hard reject** | Marketing dispatcher'da gate: `consent_marketing != true` → CAPI dispatch ATLA + audit log "skipped_consent" + Dashboard'da counter (KVKK/GDPR uyumu). FEAT-META-FULL-INTAKE'in `consent_marketing` field'i otoritedir. |
@@ -34,10 +34,11 @@ Meta Conversions API (CAPI) server-side event tracking. Invekto'da olusan donusu
 
 | # | Bagimlilik | Status |
 |---|-----------|--------|
-| 1 | Q Pixel/Dataset provision (Business Manager → Events Manager) | PENDING — Q manuel adim |
-| 2 | System User Token uretimi (`ads_management` + `business_management`) | PENDING — Q BM'den uretir |
-| 3 | App Review (`ads_management_standard_access` HAFIF; CAPI use-case net) | PENDING — Pixel verify yeterli + light review |
+| 1 | Q Pixel/Dataset provision (Business Manager → Events Manager) | **DONE 2026-04-29 — Q manuel halletti** |
+| 2 | System User Token uretimi (`ads_management` + `business_management`) | **DONE 2026-04-29 — Q manuel halletti** |
+| 3 | App Review (`ads_management_standard_access` HAFIF; CAPI use-case net) | PENDING — Pixel verify yeterli + light review (chunk D/E sonrasi) |
 | 4 | FEAT-META-FULL-INTAKE (consent_marketing capture) | DONE 2026-04-29 — gate Marketing dispatcher'da consent=true |
+| 5 | Test pixel decision (Q kararı: prod + test_event_code) | DONE 2026-04-29 14:30 UTC |
 
 ## Chunk Breakdown
 
