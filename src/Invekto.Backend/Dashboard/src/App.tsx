@@ -160,10 +160,12 @@ export default function App() {
         {/* FEAT-ROADMAP-V2: yeni URL /yol-haritasi/:boardKey? + backward-compat /pilot-kanban.
             Audit fix D035 (2026-04-29 Batch C): /pilot-kanban alias-render yerine
             canonical URL'e redirect — eski bookmark/link calismaya devam ama URL bar
-            /yol-haritasi/dent-pilot olarak guncellenir (consistency + analytics). */}
+            /yol-haritasi/inse olarak guncellenir (consistency + analytics).
+            Migration 039 (2026-04-29): board_key 'dent-pilot' -> 'inse' rename
+            (Q karari: tek INSE platform genel board, icinde pilot kart'lari da). */}
         <Route path="/yol-haritasi" element={<Suspense><PilotKanbanPage /></Suspense>} />
         <Route path="/yol-haritasi/:boardKey" element={<Suspense><PilotKanbanPage /></Suspense>} />
-        <Route path="/pilot-kanban" element={<Navigate to="/yol-haritasi/dent-pilot" replace />} />
+        <Route path="/pilot-kanban" element={<Navigate to="/yol-haritasi/inse" replace />} />
         <Route path="/ops/zoho" element={<OpsZohoPage />} />
         <Route path="/licenses" element={<LicensesPage />} />
         <Route path="/payment" element={<PaymentPage />} />

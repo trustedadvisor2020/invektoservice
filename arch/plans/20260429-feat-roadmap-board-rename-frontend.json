@@ -1,0 +1,195 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260429-feat-roadmap-board-rename-frontend",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-04-29T13:30:00Z",
+  "updated_at": "2026-04-29T13:42:00Z",
+  "status_log": [
+    {
+      "status": "PLANNING",
+      "at": "2026-04-29T13:30:00Z",
+      "note": "Q karari (yol 2) — Migration 039 frontend kismi izole commit + SPA build + deploy. Risk LOW classified initially."
+    },
+    {
+      "status": "REVIEW",
+      "at": "2026-04-29T13:35:00Z",
+      "note": "Iter 0 Codex review submitted (LOW risk)."
+    },
+    {
+      "status": "REVIEW",
+      "at": "2026-04-29T13:38:00Z",
+      "note": "Iter 0 Codex FAIL (gpt-5.5-2026-04-23, 17278 tokens) — 11/12 CQ + 3/4 CoVe PASS, tek blocker CQ5/Q4 risk classification: 'LOW risk limited to comments/text/CSS/layout-only changes; this diff changes runtime frontend behavior (DEFAULT_BOARD_KEY) and client routing (Navigate redirect target).' Iter 1 fix: Risk LOW -> MEDIUM (plan JSON line 7 + tracking line 3). Migration 041 CQ5 migration LOW violation precedent ile birebir pattern. Diger CQ1-12 + Q1-3 hepsi PASS."
+    }
+  ],
+  "plan": {
+    "summary": "Migration 039 frontend tamamlama: PilotKanbanPage.tsx DEFAULT_BOARD_KEY 'dent-pilot' -> 'inse' + App.tsx /pilot-kanban redirect target 'dent-pilot' -> 'inse' + 2 comment update. Dashboard SPA rebuild (vite tsc + build, 7.10s) yeni asset hash'leri (PilotKanbanPage-qWgtl3HU.js + index-B-oMET1V.js + 36 chunk rename) + index.html + index-Cm_shVTa.css. Backend deploy (publish+server-deploy zip+upload+extract). Sonuc: /yol-haritasi default route 'inse' board 69 kart gosterir (D029/D030/D031 dahil). /pilot-kanban legacy URL otomatik /yol-haritasi/inse'a redirect (eski bookmark calismaya devam). Q manuel cozum (URL'i /yol-haritasi/inse) gereksiz olur, default davranis dogrur.",
+    "q_intent": "Q ekrani '0 toplam, 0 blocked, 0 todo, 0 done' gosterdi (Yol Haritasi dent-pilot title). 3 yol sundum: (1) URL manuel /yol-haritasi/inse, (2) Mini frontend fix paketi (~10dk), (3) Migration 039 tam paket (~30dk). Q yol 2 secti: izole frontend deploy.",
+    "interview_notes": "Migration 039 (FEAT-OBI/FEAT-MEDIPOL kanban + board rename) iki parcali paket: SQL execute edilmis (DB rename) ama frontend kod commit/deploy edilmemis. Working tree'de hem benim board_key fix'im hem clinic metadata edits karisik (App.tsx mixed). Hunk isolation: backup full state -> reset HEAD -> re-apply mine only -> SPA build clean source -> stage SPA assets -> restore working tree full state -> commit. Pattern Migration 041 INV-SEED-029 wrap dance ile birebir.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "src/Invekto.Backend/Dashboard/src/pages/PilotKanbanPage.tsx DEFAULT_BOARD_KEY constant 'dent-pilot' -> 'inse' degisikligi + comment update Migration 039 referansi (line 14-15 etrafinda) + line 22 const update.",
+        "verified": false,
+        "verification_note": ""
+      },
+      {
+        "id": "AC2",
+        "criterion": "src/Invekto.Backend/Dashboard/src/App.tsx /pilot-kanban redirect target 'dent-pilot' -> 'inse' degisikligi (line 166) + comment update Migration 039 + 'Q karari: tek INSE platform genel board' aciklamasi (line 160-165 etrafinda).",
+        "verified": false,
+        "verification_note": ""
+      },
+      {
+        "id": "AC3",
+        "criterion": "Dashboard SPA build PASS (npm run build = tsc + vite build) — 7.10s, 0 hata, yeni asset hash'leri uretildi: PilotKanbanPage-qWgtl3HU.js (15.31 kB) + index-B-oMET1V.js (939.50 kB) + 36 chunk rename + index.html guncellendi (script ref index-B-oMET1V.js + css ref index-Cm_shVTa.css).",
+        "verified": false,
+        "verification_note": ""
+      },
+      {
+        "id": "AC4",
+        "criterion": "PilotKanbanPage-qWgtl3HU.js icinde grep '\"inse\"' MATCH eder; '\"dent-pilot\"' artik bulunmaz (eski PilotKanbanPage-DOP3TgG8.js disk'ten silindi).",
+        "verified": false,
+        "verification_note": ""
+      },
+      {
+        "id": "AC5",
+        "criterion": "Build N/A — bu paket .NET kod degisikligi yok (sadece TSX + SPA assets). dotnet build skip edilir. Commit-time build proof: vite build output 'built in 7.10s' + emit chunk count + index.html ref dogru.",
+        "verified": false,
+        "verification_note": ""
+      },
+      {
+        "id": "AC6",
+        "criterion": "Backend prod deploy /server-deploy SPA assets uploaded + Backend NSSM restart + /health HEALTHY + UI smoke (~1dk): /yol-haritasi default acilis 'inse' board 69 kart gosterir + /pilot-kanban legacy URL /yol-haritasi/inse'a redirect olur + D029/D030/D031 yeni kartlar DEV kategori filter'i altinda goruluyor.",
+        "verified": false,
+        "verification_note": ""
+      }
+    ]
+  },
+  "gr_list": [],
+  "allowed_files": [
+    "arch/plans/20260429-feat-roadmap-board-rename-frontend.json",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/PilotKanbanPage.tsx",
+    "src/Invekto.Backend/wwwroot/app/assets/**",
+    "src/Invekto.Backend/wwwroot/app/index.html",
+    "tracking/20260429-feat-roadmap-board-rename-frontend.md"
+  ],
+  "files_changed": [
+    {"path": "arch/plans/20260429-feat-roadmap-board-rename-frontend.json", "is_new": true},
+    {"path": "src/Invekto.Backend/Dashboard/src/App.tsx", "is_new": false},
+    {"path": "src/Invekto.Backend/Dashboard/src/pages/PilotKanbanPage.tsx", "is_new": false},
+    {"path": "tracking/20260429-feat-roadmap-board-rename-frontend.md", "is_new": true}
+  ],
+  "git_diff": {
+    "patch_truncated": false,
+    "sha256": "fb898ffb92ff25241dd38fee0437a734cd72739a0289144a9540b8285762d03e",
+    "full_path": "arch/plans/diffs/20260429-feat-roadmap-board-rename-frontend.diff",
+    "stats": {
+      "insertions": 277,
+      "deletions": 4,
+      "files_count": 4
+    },
+    "note": "SPA build artifacts (40 file, ~1MB) Codex review scope DISI — vite deterministic output, source TSX review yeterli. Commit-time tum 40 dosya stage edilir (plan allowed_files wwwroot/app/** ile).",
+    "review_scope_excluded": [
+      "src/Invekto.Backend/wwwroot/app/assets/** (40 file, ~1MB vite build output, deterministic)",
+      "src/Invekto.Backend/wwwroot/app/index.html (script+css ref new hash auto-generated)"
+    ]
+  },
+  "build": {
+    "status": "PASS",
+    "command": "cd src/Invekto.Backend/Dashboard && npm run build",
+    "timestamp": "2026-04-29T13:32:00Z",
+    "duration_ms": 7100,
+    "output_tail": "vite build PASS in 7.10s. PilotKanbanPage-qWgtl3HU.js 15.31 kB, index-B-oMET1V.js 939.50 kB, 36+ chunk rename, index.html updated. Chunk size warning >500kB normal (vite varsayilan, mevcut paket scope disinda). dotnet build SKIP (.cs kod degismiyor — TSX + asset only).",
+    "error_summary": null,
+    "services": []
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Migration 039 frontend kismi izole commit pattern: backend SQL halihazirda prod'da execute (D027/D028/D029/D030/D031 inse board'da kanban_cards tablosunda DOGRULANDI Migration 041 testinde), frontend kod working tree'de mevcut ama Q'nun mixed clinic metadata edits ile karisik App.tsx'te. Hunk isolation (backup + reset + re-apply mine + build + restore) ile sadece board_key rename hunks'i staged'de, clinic metadata edits unstaged kaldi. Bu pattern Migration 041 INV-SEED-029 wrap dance ile birebir uyumlu. Sema microservice isolation kuralina aykiri yan etki yok mu?",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q2",
+      "question": "SPA build vite chunk hash'leri 36+ rename: tsc + vite build deterministik calistirildi (npm run build), source state mine-only iken alindi. Yeni asset hash'leri prod'a deploy olunca eski hash'ler 404 olabilir mi (browser cache + service worker)? Mevcut Backend deploy pattern (FEAT-PHOTO 2026-04-28 + FEAT-MCC 2026-04-22) zip-extract NSSM restart + index.html new hash ref ile cache busting saglar; bu paket de ayni pattern.",
+      "category": "Asset Caching"
+    },
+    {
+      "id": "Q3",
+      "question": "Build N/A justification: bu paket sadece TSX + SPA asset (no .cs). Vite build artifact'leri staged'de (40 file 50 ins / 46 del rename) — gecerli build evidence. dotnet build skip mi yoksa nominal full sln build calistirilmali mi (Migration 041 wrap pattern: build N/A SQL+JSON+MD only)? Bu paket TSX + SPA + plan/tracking; .cs degismiyor.",
+      "category": "Build Discipline"
+    },
+    {
+      "id": "Q4",
+      "question": "AC6 prod UI smoke deploy sonrasi yapilacak (intentional_exclusions): MCP invekto-ops server-deploy + /health HEALTHY + Q manuel /yol-haritasi acilis verify. Smoke FAIL ederse rollback plan: git revert HEAD + Backend redeploy ile eski PilotKanbanPage chunk geri gelir, Q URL workaround /yol-haritasi/inse hala calisir. Risk MEDIUM (iter 1 escalation per CQ5).",
+      "category": "Process/Policy"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Backend/Dashboard/src/lib/api.ts (clinic metadata, BU paket scope DISI — working tree restored, unstaged)",
+      "src/Invekto.Backend/Dashboard/src/pages/SettingsPage.tsx (clinic metadata, BU paket scope DISI)",
+      "src/Invekto.Backend/Dashboard/src/pages/settings/ClinicMetadataSettingsPage.tsx (clinic metadata, untracked)",
+      "src/Invekto.Backend/Dashboard/src/types/clinicMetadata.ts (clinic metadata, untracked)",
+      "Migration 039 SQL file commit (FEAT-OBI/MEDIPOL paketi scope, ayri commit gerek)",
+      "Migration 040 clinic metadata commit (FEAT-CLINIC-METADATA paketi scope)"
+    ],
+    "non_goals": [
+      "FEAT-OBI/MEDIPOL Migration 039 SQL commit + Backend kod degisiklikleri — clinic metadata + Migration 040 + ClinicTemplateApplier.cs vb. ayri paketler",
+      "Backend prod deploy (zip+upload+NSSM restart) — Codex /rev PASS sonrasi ayri ops adim",
+      "UI smoke (manuel Q ~1dk) — deploy sonrasi"
+    ],
+    "intentional_exclusions": [
+      "Backend NSSM restart timing — Codex /rev PASS + commit + push sonrasi MCP invekto-ops server-deploy ile zip + upload + extract + restart (intentional_exclusions, plan kapsami disinda)",
+      "Eski PilotKanbanPage-DOP3TgG8.js chunk Q'nun onceki build artifact'i — vite emptyOutDir ile disk'ten silindi (working tree D), Q'nun build'i baska clinic-build artifact'leri ile karisikti, su an temiz mine-only build var",
+      "Diger paketler' uncommitted changes (clinic metadata Backend.cs/ClinicTemplateApplier.cs/TenantSettingsRepository.cs vb.) — working tree'de unstaged, bu paket scope DISI, Q'nun sonraki commit'inde gelir"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "App.tsx + PilotKanbanPage.tsx: no try/catch eklenmedi, mevcut React error boundary yapisi intact",
+      "Vite build: tsc + rollup error reporting otomatik fail-loud"
+    ],
+    "user_facing_errors": [
+      "Yok — kullanici-gorulen davranis: /yol-haritasi default 'inse' board 69 kart, /pilot-kanban /yol-haritasi/inse'a redirect (silent UX, no error state)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Source-level board_key default rename — runtime davranis sayilabilir tek bir UX kontrol noktasi (default board secimi). Eger DEFAULT_BOARD_KEY 'inse' ile DB'de 'inse' board_key'li 0 kart varsa default kanban bos gorunur. Migration 041 prod execute sonrasi kanban_cards tablosunda board_key='inse' icin 69 kart MEVCUT (verify edildi MCP postgres SELECT). Frontend default rename + DB rename uyumlu, kullanici default acilista 69 kart gorur (D029/D030/D031 dahil). Eski /pilot-kanban legacy bookmarks /yol-haritasi/inse'a redirect (silent migration UX)."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Q ekrani 'Yol Haritasi dent-pilot' title + '0 toplam' gosterdi — Migration 041 Codex review + Q FORCE PASS + execute sonrasi normalde D029/D030/D031 yeni kartlar gozulmeliydi. Sebep keşfi: Migration 039 SQL execute olmus ama frontend deploy edilmemis (DEFAULT_BOARD_KEY hala 'dent-pilot'). Iki parcali paket asymmetri (SQL deploy != frontend deploy) dikkat edilmedikce kanban gorunmez kalir.",
+      "suggestion": "Migration paketlerinde 'frontend etkisi var mi?' check pattern. Eger SQL board_key/category/status enum gibi UI render kararini etkileyen field rename'i yapiyorsa, ayni paket icinde frontend default constant + URL redirect target'leri da update edilmeli. Migration 039'da bu eksik kalmis.",
+      "aha_moment": "DB rename ile frontend default rename ayni paket icinde olmali. Aksi halde 'sessizce bos board' UX bug'i olusur. CLAUDE.md / shared-lessons.md'ye eklenmeye deger pattern."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Q'nun '/yol-haritasi/inse' URL workaround yaparak 69 kart goruyor olmasi gerekiyordu, ama bu Q icin friction. Default URL acilisinda otomatik dogru board'a yonlendirme bekleniyor.",
+      "suggestion": "Bu fix sonrasi /yol-haritasi default 'inse' board acar (DEFAULT_BOARD_KEY rename) + /pilot-kanban legacy URL otomatik /yol-haritasi/inse'a redirect (App.tsx route fix). Q + ekibi default URL'lerle calisabilir, manuel URL hack gereksiz.",
+      "aha_moment": "URL workaround = product UX bug isareti. Hizli geçici cozum bilinmesi gerek ama asil fix kalibinin bir sonraki commit'le gelmesi disiplin gerektiriyor (procrastinate edilmemeli)."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Mixed working tree (mine + clinic metadata) build/commit'i hatayli yapilabilirdi. Hunk isolation pattern Migration 041 wrap dance ile aynisini bu paket icin tekrar uyguladim — 4 dosya backup + reset + re-apply + build + stage + restore.",
+      "suggestion": "Bu paket Migration 041 wrap pattern'inin frontend versiyonu. Source code level icin: backup + checkout HEAD + re-apply mine + build + stage + restore. Pattern reusable, gelecekteki mixed-source paketlerde kullanilabilir (lessons-learned'a eklenebilir).",
+      "aha_moment": "Hunk isolation pattern artik 2x test edildi (Migration 041 errors.md + bu paket Dashboard SPA). 3.kez gorunce shared-lessons.md'ye eklemeye deger 'multi-paket session disiplini' kalibinin parcasi."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "codex",
+    "received_at": "2026-04-29T13:42:00Z",
+    "updated_by": "Codex",
+    "updated_at": "2026-04-29T13:42:00Z",
+    "raw_text": "Iter 2 OVERALL_VERDICT: PASS — 12/12 CQ + 2/2 CoVe + 0 blocking. CODEX UTANSIN iter=0 karsilanmadi (2 iter risk reclass + stale doc update), real bug yok, policy compliance.",
+    "iteration": 2,
+    "escalation_required": false,
+    "escalation_reason": null,
+    "blocking_issues": []
+  }
+}

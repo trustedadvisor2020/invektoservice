@@ -11,13 +11,15 @@ import { cn } from '../lib/utils';
  * FEAT-ROADMAP-V2 — SuperAdmin Yol Haritası Page (eski FEAT-PILOT-KANBAN).
  *
  * Q (Taner) "tum gidisat" izleme aracı. URL param :boardKey ile multi-board
- * destegi (fallback 'dent-pilot'). 5 kolon (BLOCKED/TODO/IN_PROGRESS/BACKLOG/DONE).
+ * destegi (fallback 'inse' — INSE platform genel roadmap). Migration 039
+ * (2026-04-29) ile board_key 'dent-pilot' -> 'inse' rename. Tek board, icinde
+ * pilot kart'lari da var. 5 kolon (BLOCKED/TODO/IN_PROGRESS/BACKLOG/DONE).
  * Read-only — mutation tek path /wrap workflow Step 3.5.
  *
  * Polling 60s, kart click -> KanbanDrawer (sagdan slide-in) ile tum detay.
  * Her kart 4-karakter ref_code (C001/K005/D021) prominent gosterir.
  */
-const DEFAULT_BOARD_KEY = 'dent-pilot';
+const DEFAULT_BOARD_KEY = 'inse';
 
 // Audit fix D036 (2026-04-29 Batch C): cls field dead code temizlik. Light/minimal
 // redesign sonrası rendering hardcoded bg-slate-50 / min-h-[200px] kullaniyor;
