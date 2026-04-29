@@ -52,7 +52,7 @@ INSERT INTO kanban_cards (
     'FEAT-META-CAPI Conversions API (server-side)',
     'Reklam veren musteriler ($10k/ay spend) icin server-side donusum bildirimi. Lead/Schedule/Purchase/CompleteRegistration eventleri Marketing servisi (:7112) Hangfire `meta-capi-dispatch` queue ile Meta''ya. EMQ icin hashed PII + FBC/FBP cookie + IP/UA. Browser Pixel ile event_id deduplication. INMA bypass.',
     E'**ROI:** $10k/ay reklam spend uzerinde %10-15 efficiency = $1-1.5k/ay tasarruf.\n\n**5 chunk (~4-6 session):**\n- A: Shared DTO + IMetaCapiClient + MockClient\n- B: ProdClient + Hangfire queue + dead-letter + retry\n- C: Migration + Backend tenant-settings + 3 hook (Lead/Schedule/Purchase) + audit table\n- D: Dashboard `/settings/meta-capi` editor + test event button + Pixel event_id emit util\n- E: Pilot smoke (Dent Adavista) + production rollout\n\n**Q kararlari (2026-04-29):**\n- Multi-tenant generic kod, **Dent ilk pilot** (Chunk E)\n- Test pixel: prod + `test_event_code` (Q teyit bekliyor, Claude oneri)\n- Token expiry warning kanali = **Dashboard alert** (Hangfire daily check)\n- Schedule hook = **ikisi de** (Appointments + Lead pipeline `appointment_booked`, deterministic event_id ile dedup)\n- consent=false -> **hard reject** (Marketing dispatcher gate, KVKK/GDPR)\n\n**Bagimliliklar (ON-KOSUL):**\n1. Q manuel: BM Pixel/Dataset olustur (Events Manager)\n2. Q manuel: System User Token gen (`ads_management`+`business_management`+`ads_read` cift permission, D030 ile bundle)\n3. App Review submission (Pixel verify hafif yol)\n4. FEAT-META-FULL-INTAKE consent_marketing capture ✅ DONE 2026-04-29\n\n**Spec:** arch/features/meta-conversions-api.md\n**Tracking:** tracking/feat-meta-capi.md\n**Plan:** TBD (chunk A baslayinca)',
-    'Dev', '~4-6 session (chunk A start = Q provision sonrasi)',
+    'Dev', '4-6 session post-provision',
     'tracking/feat-meta-capi.md', NULL,
     'D029', NULL
 ),
@@ -61,7 +61,7 @@ INSERT INTO kanban_cards (
     'FEAT-META-ADS-INSIGHTS Reporting Widget (read-only)',
     'Marketing API `ads_read` permission ile reklam performans Dashboard widget (spend/impressions/clicks/CTR/CPM/CPC + lead matching). Async report API + 1 saat cache + Hangfire daily refresh. Dashboard `/reports/ads-insights` widget + date picker + campaign breakdown.',
     E'**Bundle onerisi:** D029 FEAT-META-CAPI ile **tek App Review submission** (`ads_management`+`ads_read` cift permission, tek video, hizli onay). Ayni BM/Pixel/Token kullanir.\n\n**5 chunk (~3-4 session):**\n- A: Shared DTO + IMetaAdsInsightsClient + MockClient\n- B: ProdClient (async report run_id+poll) + Hangfire daily refresh\n- C: Migration + Backend tenant-settings + reports proxy + lead matching SQL JOIN\n- D: Dashboard `/reports/ads-insights` page + widget + date picker\n- E: App Review submission + smoke + first tenant rollout\n\n**Lead matching:** FEAT-META-FULL-INTAKE `intake_metadata.campaign_id` ile JOIN -> "23 leads from FB Ads, 5 converted, $342 spend".\n\n**Status BACKLOG sebebi:** D029 chunk E pilot smoke sonrasi BACKLOG -> TODO flip; bundle integrity (ayni token surface) icin sequential ship.\n\n**Spec:** arch/features/meta-ads-insights.md\n**Tracking:** tracking/feat-meta-ads-insights.md',
-    'Dev', '~3-4 session (D029 sonrasi)',
+    'Dev', '3-4 session (D029 sonrasi)',
     'tracking/feat-meta-ads-insights.md', NULL,
     'D030', 'D029'
 ),
@@ -70,7 +70,7 @@ INSERT INTO kanban_cards (
     'FEAT-META-MARKETING-API Campaign Create/Manage',
     'Reklam kampanya olusturma/butce yonetimi/raporlama Invekto Dashboard icinden. **GATE:** `ads_management_standard_access` Meta App Review barı $10k/ay toplam spend ile gecmez (anlamli volume + tutarli use-case ister).',
     E'**Activation gate:** Spend tabani $50k+/ay veya tier-degistirici musteri talebi.\n\n**On-kosul:** D029 + D030 production track record gosterilebilir hale gelmeli (Meta App Review submission''da history evidence).\n\n**Spec yazimi:** Backlog. Activation gate triggered olunca:\n- arch/features/meta-marketing-api.md spec yaz\n- tracking/feat-meta-marketing-api.md tracking ac\n- Chunk breakdown (campaign create + ad set + creative + insights write + lifecycle)\n- App Review video + use-case dokumantasyon hazirlik\n\n**Su andaki konum:** roadmap.md Backlog Idea (IDEA status), README.md master tablosu BACKLOG, kanban''da bu kart placeholder.',
-    'Dev', 'Aktive sonrasi 8-12 session (uzak)',
+    'Dev', 'Aktive sonrasi 8-12 session',
     NULL, NULL,
     'D031', 'D029,D030'
 )
