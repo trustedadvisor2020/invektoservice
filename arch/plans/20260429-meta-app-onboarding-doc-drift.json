@@ -1,0 +1,198 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "slug": "20260429-meta-app-onboarding-doc-drift",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-04-29T13:58:00Z",
+  "updated_at": "2026-04-29T14:18:00Z",
+  "plan": {
+    "summary": "Pilot dokümanları (dent-golive.html + pilot-stage1-prep.md) Meta Business Manager B-section'ında 'Müşteri Meta App oluşturur / App Secret not alır / Webhook Subscription yapar' (B.1-B.3) yanlış yönlendirme yapıyor. Gerçek mimari: tek 'Invekto' Meta App (App ID 1141500866374561) Invekto admin tarafından tek-sefer kurulu, tüm tenant'lar paylaşır; B.1-B.3 müşteri yerine Invekto ops kapsamına aittir. Yeni tenant onboard ederken müşteri yalnızca B.4-B.6 (Page Access Token + Page ID + Lead Form, üçü Invekto ops'a iletilir) + B.8 (HSM template, müşteri WABA hesabıyla onaylanır) yapar; B.7 Dashboard Meta Leadgen config Invekto ops yapar (App Secret app-level değer + müşteri verisini birleştirir). Bu paket doc-only — kod/Dashboard SPA dokunulmaz.",
+    "q_intent": "Codex audit raporu sonrası Q screenshot'ı (Meta Apps panel: tek 'Invekto' app, App ID 1141500866374561, App Mode: Live, Business type) gerçek mimariyi gösterdi. Pilot belgesinin B.1-B.3 müşteriden Invekto admin'e taşınması gerek (Invekto admin tek-sefer kurmuş; yeni tenant onboard'unda tekrar yapmaz).",
+    "interview_notes": "Q karari (A): tek info-only callout (B.1-B.3 satırları silinir, yerine tek paragraflık 'Invekto admin tek-sefer kurulumu' callout'u konur). Eski adımları 'audit-trail' notuyla bırakma (B) seçeneği reddedildi (kalabalık + müşteri belgesi temiz olsun). Dashboard SPA App Secret field'ı (MetaLeadgenSettingsPage.tsx CANONICAL_OPTIONS) DOKUNULMAZ — operator (Invekto ops) yetkili kullanıcı olduğundan field görünür kalır + null-means-keep secrets discipline çalışır; doc'ta 'Invekto ops doldurur, müşteri görmez bile' notu yeterli. App Secret per-tenant schema drift (gerçek app-level) FEAT-META-APP-CONFIG-MIGRATION ayrı paket olarak işaretli (post-pilot backlog).",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "dent-golive.html §4.1 B tablosu: B.1, B.2, B.3 satırları silinir; yerine tablonun üstünde tek info-only callout (`<div class=\"callout\">`) konur — App ID `1141500866374561` referansı + 'Invekto admin tek-sefer kurulumu' notu + müşterinin sadece B.4-B.6 + B.8 yapacağı netleşir. B.4-B.6 + B.8 satırları mevcut metnen korunur (sadece numaralandırma B.1-B.4 olarak yenilenmesin — orijinal B.4-B.6 + B.8 ID'leri korunur ki başka belgelerden ref bozulmasın).",
+        "verified": true
+      },
+      {
+        "id": "AC2",
+        "criterion": "dent-golive.html §4.1 başlığı + üst açıklaması revize: 'Müşteri Meta Business Manager Hazırlığı' → 'Meta Onboarding — Invekto admin (tek sefer, kurulu) + Müşteri (per-tenant ~30dk)'. Üst paragraftaki '~2 saat' süre tahmini müşteri-side ~30dk olarak güncellenir; HSM template B.8 KRİTİK 24-48h notu intact kalır.",
+        "verified": true
+      },
+      {
+        "id": "AC3",
+        "criterion": "pilot-stage1-prep.md aynı pattern revize: §B.1-B.3 (line ~95-138) silinir/condense edilir, yerine tek info callout + App ID referansı; B.4-B.6 + B.8 mevcut intact + müşteri-aksiyonu netleşir. line 47 (app_secret 'Müşteri yazar' iması) ve line 75-77 (Dashboard form alanları sırası) doc-string güncel; line 508 + 540 checklist 'Müşteri: B.1-B.7' → 'Müşteri: B.4-B.6 + Invekto ops: B.7 Dashboard config' olarak ayrılır.",
+        "verified": true
+      },
+      {
+        "id": "AC4",
+        "criterion": "B.7 satırı + pilot-stage1-prep.md karşılığında 'App Secret kutusu Invekto ops tarafından doldurulur' notu eklenir. Müşteri belgesi App Secret değerini görmez/almaz/girmez (gizliliğin korunması). Drift mention: App Secret per-tenant schema (`tenant_settings.meta_leadgen_config.app_secret`) FEAT-META-APP-CONFIG-MIGRATION post-pilot paket referansı plan dokümanında işaretli.",
+        "verified": true
+      },
+      {
+        "id": "AC5",
+        "criterion": "Codex /rev verdict PASS (LOW dahil tüm risk seviyeleri review zorunlu — review-policy.md). Build N/A (doc-only, .NET ve Dashboard SPA dokunulmadı). 2 file diff (dent-golive.html + pilot-stage1-prep.md), insertion ~70-90 / deletion ~50-70 expected.",
+        "verified": true
+      }
+    ]
+  },
+  "spec_architectural_decisions": [
+    {
+      "decision": "Dashboard SPA MetaLeadgenSettingsPage.tsx DOKUNULMAZ — App Secret field görünür kalır, sadece doc'ta 'Invekto ops doldurur' notu eklenir",
+      "reason": "Dashboard yetkili kullanıcı (operator) Invekto ops; müşteri bu sayfayı zaten görmez (tenant-scoped JWT + role gate). UI'da App Secret field'ı kaldırmak null-means-keep secrets discipline'ı bozar (FEAT-LIW Chunk C precedent). App Secret per-tenant schema drift gerçekte app-level — bu drift FEAT-META-APP-CONFIG-MIGRATION post-pilot paket scope'u. Bu paket sadece müşteri belgesi netleştirme.",
+      "codex_note": "EXPECTED: CQ3 minimal-diff — 'Dashboard niye dokunulmaz, App Secret field UI'dan kaldırılmamalı mı?' sorma. Operator gözünde field görünür + müşteri sayfayı görmüyor + per-tenant→app-level refactor ayrı paket scope'u."
+    },
+    {
+      "decision": "B.1-B.3 numaraları silindikten sonra B.4-B.6 + B.8 numaraları KORUNUR (re-numbering yapılmaz)",
+      "reason": "pilot-stage1-prep.md + dent-golive.html'de cross-reference linkleri var (örn. checklist line 540 'B.1-B.7'); diğer iç belgelerdeki adım referansları (lessons-learned, tracking notes) bozulmasın. Boşalan B.1-B.3 numaraları bilerek atlanır — okuyucu için 'silinmiş adımlar Invekto admin tarafında' sinyali verir.",
+      "codex_note": "EXPECTED: CQ5 codebase-pattern — 'tablo numaralandırması niye contiguous değil?' sorma. Cross-ref breakage prevention intentional."
+    }
+  ],
+  "allowed_files": [
+    "DentAdavista/plan/dent-golive.html",
+    "DentAdavista/plan/pilot-stage1-prep.md",
+    "arch/plans/20260429-meta-app-onboarding-doc-drift.json"
+  ],
+  "files_changed": [
+    {
+      "path": "DentAdavista/plan/dent-golive.html",
+      "change": "§4.1 B.1-B.3 satırları silindi → tek info-only callout (App ID 1141500866374561 + Invekto admin tek-sefer kurulumu kapsamı + müşteri B.4-B.6 + B.8 yapacağı netleşiyor). §4.1 başlığı + üst açıklaması revize ('Müşteri Hazırlığı' → 'Invekto admin (tek sefer kuruldu) + Müşteri (per-tenant ~30dk)'; süre tahmini ~2 saat → ~30dk). B.4/B.5/B.6 satırlarına 'Müşteri Invekto ops'a iletir' notu eklendi. B.7 satırı Invekto ops yapar olarak revize + App Secret app-level not + drift mention (FEAT-META-APP-CONFIG-MIGRATION post-pilot). B.8 müşteri-WABA notu.",
+      "is_new": false
+    },
+    {
+      "path": "DentAdavista/plan/pilot-stage1-prep.md",
+      "change": "§A.2 line 47 app_secret tanımı: 'Müşteri yazar' iması düzeltildi → 'app-level, Invekto ops doldurur' + drift not. §A.4 mockup line 75-79 (Webhook URL/Verify/App Secret/Page Access Token/Page ID): her field için 'Invekto ops doldurur' veya 'müşteri B.4/B.5'te alıp ops'a iletir' atomic not. §B başlığı + üst açıklaması revize. §B.1-B.3 satırları (Meta App oluştur + App ayarları + Leadgen webhook ekle) silindi → tek info-only callout (App ID 1141500866374561 + 3 madde Invekto admin scope). B.4/B.5/B.6 başlıklarına '(müşteri yapar)' eki + 'Invekto ops'a ilet' notu. B.7 başlığı '(Invekto ops yapar)' + tüm adım listesi revize (App Secret ops doldurur + müşteri verisi yapıştırılır + form mapping consent canonical eklendi). B.8 başlığı '(müşteri yapar — WABA hesabıyla onaylanır, app-level değil)'. Timeline §G.0 'Bölüm B.1-B.7' → 'Bölüm B.4-B.6 müşteri + Invekto ops B.7'. KONTROL LİSTESİ Müşteri yapacaklar bloğu: 'Meta App oluştur' + 'Leadgen webhook subscribe' kaldırıldı; ekle 'Page Access Token + Page ID + Lead Form Question ID listesi Invekto ops'a iletilir'. Strikethrough 'müşteri scope dışı (Invekto admin tek-sefer kuruldu)' notu. Biz Invekto bloğu: 'Dashboard Meta Leadgen config (B.7)' satırı eklendi.",
+      "is_new": false
+    },
+    {
+      "path": "arch/plans/20260429-meta-app-onboarding-doc-drift.json",
+      "change": "Plan v5.1 (LOW risk, 5 AC, 3 CoVe Process/Data/Lifecycle, 5 AHA, 2 architectural decision: Dashboard SPA dokunulmaz + B.4-B.6 + B.8 numaraları korunur). Status PLANNING → IN_PROGRESS → REVIEW; files_changed + git_diff stats + sha256 populated post-edit.",
+      "is_new": true
+    }
+  ],
+  "git_diff": {
+    "sha256": "b4060306199a2aab0a658a0bd88eac9fb1df8f020d06fba5c527ee47fff8683f",
+    "full_path": "arch/plans/diffs/20260429-meta-app-onboarding-doc-drift.diff",
+    "stats": {
+      "insertions": 213,
+      "deletions": 57,
+      "files_count": 3
+    }
+  },
+  "build": {
+    "status": "N/A",
+    "command": null,
+    "services": []
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Process/Policy: Yeni Dent Adavista pilot operator (Invekto ops) bu doc'u ilk kez okuyup yeni tenant onboard etse, hangi adımları KENDİ yapacağını ve hangilerini MÜŞTERİDEN bekleyeceğini net biliyor mu? B.7 (Invekto Dashboard config) Invekto ops tarafında, B.4-B.6 (Page Access Token + Page ID + Lead Form) müşteri tarafında ayrımı belgeden açıkça okunuyor mu (callout + tablo + checklist üçü tutarlı mı)?",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q2",
+      "question": "Data: App Secret field doc'ta 'Invekto ops doldurur, müşteri girmez' diyor; gerçek implementation mevcut MetaLeadgenSettingsPage.tsx + MetaLeadgenConfigDto + MetaLeadgenConfigRepository PUT akışı bu doc'la uyumlu mu (operator field'ı doldurabilir + müşteri sayfayı görmez ROLE gate ile)? Drift mention (app_secret per-tenant schema = gerçekte app-level) plan dokümanında işaretli mi?",
+      "category": "Data"
+    },
+    {
+      "id": "Q3",
+      "question": "Lifecycle: B.1-B.3 numaraları silindikten sonra B.4-B.6 + B.8 numaraları korundu mu (re-numbering YOK)? Cross-reference link bozulmadı mı (pilot-stage1-prep.md checklist line 540 + lessons-learned/tracking iç linkleri)? Boşalan numaralar 'silinmiş = Invekto admin scope' sinyali olarak okunabilir mi?",
+      "category": "Lifecycle"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Backend/Dashboard/src/pages/settings/MetaLeadgenSettingsPage.tsx (Dashboard SPA dokunulmaz — App Secret UI field görünür kalır)",
+      "src/Invekto.Shared/Contracts/MetaLeadgen/MetaLeadgenConfigDto.cs (DTO schema dokunulmaz — App Secret per-tenant alanı korunur, FEAT-META-APP-CONFIG-MIGRATION ayrı paket)",
+      "src/Invekto.Backend/Services/MetaLeadgen/** (Backend MetaLeadgen path dokunulmaz — kod değişikliği YOK)",
+      "arch/db/migrations/** (yeni migration YOK — schema değişikliği YOK)",
+      "arch/contracts/** (contract YOK — doc-only)",
+      "tracking/** (paket tracking dosyası YOK — wrap aşamasında session-memory güncellenir)",
+      "arch/lessons-learned.md (yeni lesson eklenmez bu paket'te — wrap aşamasında genel session lesson'ı varsa eklenir)"
+    ],
+    "non_goals": [
+      "App Secret field Dashboard UI'dan kaldırma (operator yetkili kullanıcı, müşteri görmez)",
+      "App Secret per-tenant→app-level schema migration (FEAT-META-APP-CONFIG-MIGRATION post-pilot paket)",
+      "Dashboard role-gate ekleme (mevcut tenant-scoped JWT + role pattern yeterli)",
+      "MetaLeadgenSettingsPage.tsx field validation eklemek (operator flow, scope dışı)",
+      "Yeni tenant onboarding wizard / setup helper geliştirme (post-pilot UX paket)",
+      "Pilot Stage 2/3 doc revize (Stage 1 only scope)",
+      "Diğer Meta App pattern doc'larda (CLAUDE.md, arch/docs/*) sürüş aramak (scope-creep, ayrı doc audit paketi)"
+    ],
+    "intentional_exclusions": [
+      "Re-numbering (B.4-B.6 + B.8 yenilenmez) — cross-reference breakage prevention",
+      "Original B.1-B.3 metni archive YOK — Q karari (A) info-only callout, audit-trail (B) reddedildi",
+      "Süre tahmini ('~2 saat' → '~30dk') sadece §4.1 üst açıklaması — diğer süre referansları (Stage 1 Gün 1-2 timeline) intact",
+      "B.8 HSM template KRİTİK 24-48h notu intact — pilot launch blocker'ı, müşteri tarafında zaten yapılması gerekli (HSM müşterinin WhatsApp Business hesabıyla onaylanır, Invekto admin tarafında değil)",
+      "Build N/A — doc-only paket .NET solution + Dashboard tsc dokunulmadı"
+    ]
+  },
+  "error_handling": {
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Doc-only paket — runtime hata yolu YOK. Müşteri belgesi okuma süreci insan-loop, hata 'doc okunmamış' veya 'yanlış yorumlanmış' senaryosunda Q + Invekto ops tarafından yakalanır. Pilot Stage 1 smoke kanıt zinciri (B.4-B.6 + B.8 tamamlama → ilk Meta lead intake → audit log) implicit verification."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Müşteri operator (Dent Adavista admin) pilot dokümanını okuyor, B.1-B.3'te 'Meta App oluştur + App Secret not al + Webhook Subscription' diyor → kendisi developers.facebook.com'a gidiyor, ikinci bir 'Dent Adavista Invekto Bridge' app oluşturuyor → Invekto'nun kendi 'Invekto' app'iyle çakışma riski + müşteri kaybediyor saatler.",
+      "suggestion": "B.1-B.3 sil + tek info-only callout 'Invekto admin tek-sefer kurulumu, App ID 1141500866374561 paylaşılan, müşteri için aksiyon yok, sadece B.4-B.6 + B.8 yap'. Müşteri belgesini 60% küçült (anlatım yükü azalır), kafa karışıklığı sıfır.",
+      "aha_moment": "Müşteri operator belgeyi açıyor → 'aa B.1-B.3 silinmiş, demek Invekto'nun zaten yaptığı bir şey, ben sadece kendi page'imi bağlayacağım' → 30dk içinde B.4-B.6 + B.8 tamamlıyor + Invekto ops'a Page Access Token + Page ID + Form ID veriyor → ilk Meta lead intake testine geçiyor."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Pilot kickoff call'da müşteri 'App Secret nedir + nereden alıyorum + niye Invekto bana sormuyor App Secret değerini' diye 15dk sorularla açılış toplantısını oyalıyor; Q + Invekto ops her tenant onboard'unda aynı sorularla karşılaşıyor.",
+      "suggestion": "B.7 (Invekto Dashboard config) satırına ek not: 'App Secret kutusu Invekto ops tarafından doldurulur — müşteri görmez/girmez (Invekto admin'in tek 'Invekto' app'inin app-level secret'i, tüm tenant'lar paylaşır)'. Pilot kickoff sorularının 1/3'ü baştan yanıtlanmış olur.",
+      "aha_moment": "Kickoff call'da Invekto ops 'B.7'de App Secret kutusunu boş bırak, biz doldururuz' diye okuyor → müşteri 'tamam, ben sadece Page Access Token + Page ID veriyorum' diyor → toplantı 15dk daha hızlı bitiyor + kafa berraklığı."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Müşteri kendi başına yeni Meta App oluşturursa (B.1-B.3 yanlış yönlendirme) → ikinci app'in Webhook subscription'ı Invekto'nun callback URL'ine değil müşterinin tahmini bir endpoint'ine gidiyor → leadgen webhook hiç tetiklenmiyor + Invekto webhook log'larında 0 event → debug 2-3 saat → 'sen yanlış app oluşturmuşsun' tespiti.",
+      "suggestion": "Doc'ta App ID 1141500866374561 verbatim referansı + Invekto admin tek-sefer kurulumu callout'u → müşteri B.1-B.3'ü atlar, ikinci app riski elimine. Pilot launch'ta debug zinciri 2-3 saat tasarruf.",
+      "aha_moment": "Pilot Gün 1 F.1 smoke testi: müşteri Page'i bağlıyor + ilk lead form submission yapıyor → Invekto webhook log'unda anında event görünüyor → 'çalışıyor, doğru app'e bağlanmış' verify → debug yok, smoke ilk denemede PASS."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Pilot onboarding süresi 2 saat öngörülmüş (eski doc) — gerçekte müşteri B.1-B.3'ü atlasa bile metni okuyup 'bunlar da mı bana, yoksa size mi?' diye soruyla 30dk daha gecikiyor.",
+      "suggestion": "§4.1 başlığı + üst açıklaması revize: 'Meta Onboarding — Invekto admin (tek sefer, kurulu) + Müşteri (per-tenant ~30dk)'. Süre tahmini 2 saatten 30dk'ya iner; müşteri belgenin başlangıcında 'sadece B.4-B.6 + B.8 yapacağım' bilgisini alır.",
+      "aha_moment": "Müşteri kickoff toplantısında 'tamam yarım saatte hallederim' diyor + gerçekten yarım saatte halloluyor → pilot Gün 1 timeline'ı hedefte kalıyor + HSM template submit (B.8 KRİTİK 24-48h) zaten paralel başlıyor."
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Sales kickoff sırasında 'Invekto sizin için Meta App + Webhook + App Secret kuruyor zaten, sadece kendi sayfanızı bağlayacaksınız' söylenmiş → ama müşteri belgesinde B.1-B.3 'müşteri yapar' diyor → müşteri 'sales bana yalan mı söyledi yoksa belge mi yanlış' diye güvensizlik → satış sonrası implementation aşamasında müşteri tedirgin.",
+      "suggestion": "Belge tek-doğru-kaynak (B.1-B.3 silinerek) sales mesajıyla hizalanır. Müşteri 'sales bana doğru söylemiş, Invekto Meta entegrasyonunu kuruyor, ben sadece kendi page'imi bağlıyorum' netliğiyle implementation'a giriyor.",
+      "aha_moment": "Müşteri 'Invekto'nun scope'u net + kendi yapacağım iş kalın çizgiyle ayrı + bedavaya 1.5 saat tasarruf' algısıyla pilot başlıyor → sales-implementation güveni artıyor → upsell konuşmaları post-pilot daha rahat."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-29T14:16:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-29T14:18:00Z",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "Doc-only; customer/operator guidance net (callout + table + checklist üçü tutarlı)." },
+      "CQ2": { "result": "PASS", "evidence": "Runtime control-flow değişmedi; doc + plan artifact only." },
+      "CQ3": { "result": "PASS", "evidence": "3 dosya allowed_files içinde; forbidden Dashboard SPA + DTO + Backend dokunulmadı." },
+      "CQ4": { "result": "PASS", "evidence": "HTML+MD aralık documentation sync; reusable code duplication YOK." },
+      "CQ5": { "result": "PASS", "evidence": "Doc structure + non-contiguous B.4-B.6/B.8 numbering pre-declared decision." },
+      "CQ6": { "result": "PASS", "evidence": "Performance impact YOK." },
+      "CQ7": { "result": "PASS", "evidence": "TODO/HACK/FIXME marker eklenmedi." },
+      "CQ8": { "result": "PASS", "evidence": "Cross-reference breakage prevention (B.4-B.6/B.8 numara koruma)." },
+      "CQ9": { "result": "PASS", "evidence": "Responsibility split tutarlı: müşteri B.4-B.6 + B.8 / Invekto ops B.7 (dent-golive callout/table + pilot-prep section/checklist + plan summary/AC hepsi aligned)." },
+      "CQ10": { "result": "PASS", "evidence": "Customer-facing UX müşteri-Meta-App-oluşturur talimatından arındı; ops vs müşteri rolleri net." },
+      "CQ11": { "result": "PASS", "evidence": "Schema/SQL/migration dokunulmadı; app_secret drift post-pilot scope FEAT-META-APP-CONFIG-MIGRATION." },
+      "CQ12": { "result": "PASS", "evidence": "Error envelope/INV code yolu değişmedi." }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "dent-golive callout 273-284 + table 287-292 + pilot-prep 98+113-160+529-532 + plan 9+14-35 hepsi aligned." },
+      "Q2": { "result": "PASS", "reasoning": "Plan JSON tum 'B.4-B.7' stale refs temizlendi (replace_all 8 yer); customer/ops scope ayrım her metin alanında consistent." },
+      "Q3": { "result": "PASS", "reasoning": "Iter 2 scope-creep yok; sadece plan JSON metin hizalaması; customer-facing docs iter 1'de temizlenmişti, regression yok." }
+    },
+    "blocking_issues": [],
+    "iteration": 2,
+    "escalation_required": false
+  }
+}

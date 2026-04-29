@@ -44,9 +44,9 @@ Error codes (yeni):
 
 Kolonlar (tenant_settings.meta_leadgen_config JSONB):
 - verify_token (string, random 32-char — tenant rotate eder)
-- app_secret (string, Meta App → Settings → Basic → App Secret)
-- page_access_token (string, Meta Graph API Explorer'dan veya long-lived token)
-- page_id (string, Dent Adavista Facebook Page ID)
+- app_secret (string, Meta App "Invekto" → Settings → Basic → App Secret — **app-level değer**, tüm tenant'lar aynısını yazar; Invekto ops doldurur, müşteri görmez. Schema per-tenant ama gerçekte app-level — FEAT-META-APP-CONFIG-MIGRATION ayrı paket post-pilot refactor edecek)
+- page_access_token (string, Meta Graph API Explorer'dan veya long-lived token — **per-tenant**, müşteri kendi page'inden alır)
+- page_id (string, Dent Adavista Facebook Page ID — **per-tenant**)
 - field_id_map (object, Meta form question_id → canonical field adı). Örn:
   ```
   {
@@ -73,10 +73,10 @@ Scope:
 
 İçerik:
 1. Webhook URL kutusu (salt-okunur): `https://app.invekto.com/api/inbound/meta/leadgen/dent-adavista`
-2. Verify Token kutusu + [Rotate] butonu (random 32-char uret)
-3. App Secret kutusu (password field)
-4. Page Access Token kutusu (password field, long-lived preferred)
-5. Page ID kutusu
+2. Verify Token kutusu + [Rotate] butonu (random 32-char uret) — **Invekto ops doldurur** (müşteri görmez/girmez)
+3. App Secret kutusu (password field) — **Invekto ops doldurur** (app-level "Invekto" Meta App secret'i, tüm tenant'lar aynı değer; müşteri görmez)
+4. Page Access Token kutusu (password field, long-lived preferred) — **müşteri B.4'te alıp Invekto ops'a iletir**, ops yapıştırır
+5. Page ID kutusu — **müşteri B.5'te bulup Invekto ops'a iletir**, ops yapıştırır
 6. Field ID Mapping tablosu (Meta form question_id ↔ canonical):
    - [+ Yeni Satır] butonu
    - Satır başı: question_id (metin) + canonical (dropdown: name, phone, email, custom_1..5, consent_marketing)
@@ -95,41 +95,24 @@ Scope:
 Plan JSON: arch/plans/20260425-feat-meta-leadgen-webhook.json (hazırlanacak)
 
 
-## BÖLÜM B — Müşteri Meta Business Manager Hazırlığı
+## BÖLÜM B — Meta Onboarding (Invekto admin tek-sefer kuruldu + Müşteri per-tenant)
 
-Müşteri (Dent Adavista ops) aşağıdaki adımları kendi Meta Business Manager hesabında yapacak. İlk kez yapıyorlarsa ~2 saat, tecrübeliyse 30dk.
+Müşteri-side iş ~30dk: B.4 Page Access Token + B.5 Page ID + B.6 Lead Form (her üçü Invekto ops'a iletilir) + B.8 HSM template submit (24-48h onay). B.7 Invekto Dashboard config'i Invekto ops yapar.
 
-### B.1 — Meta App oluştur
+### ✓ Invekto admin tek-sefer kurulumu (zaten tamamlanmış — müşteri için aksiyon yok)
 
-1. https://developers.facebook.com/apps/ → [Create App]
-2. App Type: `Business`
-3. App Name: `Dent Adavista Invekto Bridge`
-4. Business Manager seç: `Dent Adavista Dental Clinic`
-5. Create
+Meta Business App `Invekto` (App ID `1141500866374561`, App Mode: Live, Business type) Invekto admin tarafında kurulu ve **tüm tenant'lar tarafından paylaşılıyor**. Kapsam:
 
-### B.2 — App ayarları
+- **App Secret**: app-level — Invekto ops tarafında saklı, B.7 Dashboard config form'unu ops dolduruyor (müşteri görmez/girmez).
+- **Webhook subscription**: Object=`Page`, field=`leadgen`, callback URL `https://app.invekto.com/api/inbound/meta/leadgen/{tenantId}` — tenant_id path'te multiplex; her tenant kendi page'ini bağlayınca otomatik dinleniyor.
+- **App Domains + Privacy + Terms URL**: `invekto.com` app-level set; per-tenant override yok.
 
-1. Sol menü: [Settings] → [Basic]
-2. Not al: `App ID` + `App Secret` (App Secret'ı Invekto'ya vereceğiz)
-3. [Add Platform] → Website → URL: `https://app.invekto.com`
-4. App Domains: `invekto.com`
-5. Privacy Policy URL, Terms URL doldur
-6. Kaydet
+> **Not:** Eski "B.1 Meta App oluştur / B.2 App Secret not al / B.3 Leadgen webhook ekle" adımları **kaldırıldı** (numaralar bilerek atlandı; siliklik = "Invekto admin scope" sinyali). Müşteri sadece B.4-B.6 + B.8 yapar.
 
-### B.3 — Leadgen webhook ekle
-
-1. Sol menü: [Add Products] → "Webhooks" → Set Up
-2. [Add Subscription] → Object: `Page`
-3. Callback URL: `https://app.invekto.com/api/inbound/meta/leadgen/dent-adavista`
-4. Verify Token: Invekto Dashboard'dan [Rotate] ile aldıkları 32-char token (Bölüm A.4 adım 2)
-5. [Verify and Save] tıkla — Invekto 200 + challenge return ile doğrular
-6. Subscription fields: sadece `leadgen` tikle
-7. [Subscribe] tıkla
-
-### B.4 — Page access token al
+### B.4 — Page access token al (müşteri yapar)
 
 1. https://developers.facebook.com/tools/explorer/
-2. App Dropdown → `Dent Adavista Invekto Bridge` seç
+2. App Dropdown → `Invekto` seç (App ID `1141500866374561` — paylaşımlı app, müşteri kendi app'ini oluşturmaz)
 3. User Token → [Get User Access Token]
 4. Permissions: `pages_show_list`, `pages_read_engagement`, `leads_retrieval`, `pages_manage_metadata`
 5. [Generate Access Token] → Facebook login + onay
@@ -137,15 +120,15 @@ Müşteri (Dent Adavista ops) aşağıdaki adımları kendi Meta Business Manage
 7. Bu token kısa ömürlü — long-lived token'a çevir:
    - https://developers.facebook.com/tools/debug/accesstoken/ → tokenı yapıştır → [Debug]
    - Expiration: "Never" görünürse zaten long-lived. Değilse:
-   - Graph API Explorer → `GET /oauth/access_token?grant_type=fb_exchange_token&client_id={APP_ID}&client_secret={APP_SECRET}&fb_exchange_token={short_token}` → long-lived token
-8. Long-lived token'ı Invekto Dashboard [Page Access Token] kutusuna yapıştır (Bölüm A.4 adım 4)
+   - Long-lived exchange Invekto ops tarafında yapılır (ops "Invekto" app secret'ine sahip; müşteri görmez/girmez). Müşteri short-lived token'ı ops'a iletir, ops `GET /oauth/access_token?grant_type=fb_exchange_token&client_id=1141500866374561&client_secret={APP_SECRET}&fb_exchange_token={short_token}` ile long-lived'e çevirir.
+8. Token'ı (long-lived veya short-lived — ops uzatır) **Invekto ops'a ilet** (Slack/email/secure channel). Ops B.7 sırasında Dashboard'a yapıştırır. Müşteri Dashboard'a girmez.
 
-### B.5 — Page ID'yi bul
+### B.5 — Page ID'yi bul (müşteri yapar)
 
 1. Dent Adavista Facebook sayfası → [About] → altta "Page ID" görünür (sayı)
-2. Bu sayıyı Invekto Dashboard [Page ID] kutusuna yapıştır (Bölüm A.4 adım 5)
+2. Bu sayıyı Invekto ops'a ilet (Slack/email) — ops B.7 sırasında Dashboard'a yapıştırır.
 
-### B.6 — Lead Form oluştur (veya var olanı bağla)
+### B.6 — Lead Form oluştur (müşteri yapar — veya var olanı bağla)
 
 1. Facebook Business Suite → [All Tools] → [Instant Forms] → [Create Form]
 2. Form adı: `Roadshow Ireland 2026 Signup`
@@ -159,21 +142,29 @@ Müşteri (Dent Adavista ops) aşağıdaki adımları kendi Meta Business Manage
 5. Privacy Policy URL: Dent Adavista'nın privacy policy sayfası
 6. Thank you screen: "Thanks! Our team will message you on WhatsApp shortly."
 7. [Publish]
-8. Form yayınlandıktan sonra "Form Settings" → Question ID'leri not al (Invekto field mapping için gerekli)
+8. Form yayınlandıktan sonra "Form Settings" → Question ID'leri not al ve Invekto ops'a ilet (B.7 mapping için gerekli — ops form'u tenant_settings.meta_leadgen_config.field_id_map'a yazar)
 
-### B.7 — Invekto field mapping gir
+### B.7 — Invekto Dashboard Meta Leadgen config (**Invekto ops yapar**)
+
+> Müşteri için aksiyon: B.4 Page Access Token + B.5 Page ID + B.6 Question ID listesi Invekto ops'a iletilmeli. Aşağıdaki adımlar Invekto ops Dashboard'da yapar.
 
 1. Invekto Dashboard → [Settings] → [Meta Leadgen]
-2. [Keşfet: Form Fields] tıkla → Roadshow Ireland 2026 Signup formunu seç
-3. Otomatik dolan mapping tablosunda her satırı doğrula:
+2. App Secret kutusu: Invekto ops "Invekto" Meta App'in app-level secret'ini yapıştırır (müşteri görmez/girmez)
+3. Page Access Token kutusu: müşteriden gelen B.4 long-lived token'ı yapıştırılır
+4. Page ID kutusu: müşteriden gelen B.5 değer yapıştırılır
+5. [Keşfet: Form Fields] tıkla → Roadshow Ireland 2026 Signup formunu seç
+6. Otomatik dolan mapping tablosunda her satırı doğrula:
    - FULL_NAME → name
    - PHONE → phone
    - EMAIL → email
    - custom_q_<id> (city) → custom_1 (city_preference)
    - custom_q_<id> (previous) → custom_2
-4. [Kaydet]
+   - consent_q_<id> → consent
+7. [Kaydet]
 
-### B.8 — HSM Welcome Template submit (En Kritik, 24-48h onay bekler)
+> **Drift not (post-pilot):** App Secret schema'sı (`tenant_settings.meta_leadgen_config.app_secret`) per-tenant ama gerçekte app-level — tüm tenant'lar aynı değeri yazıyor. FEAT-META-APP-CONFIG-MIGRATION ayrı paket olarak schema refactor edecek (config app-level config tablosuna taşınır).
+
+### B.8 — HSM Welcome Template submit (**müşteri yapar** — WABA hesabıyla onaylanır, app-level değil. En Kritik, 24-48h onay bekler)
 
 1. Meta Business Manager → [WhatsApp Manager] → [Message Templates] → [Create Template]
 2. Category: `Utility` (MARKETING değil — Utility approval daha hızlı + daha ucuz)
@@ -505,9 +496,10 @@ Başarısızsa:
 
 Gün 0 (bugün 2026-04-24):
 - Biz: Bölüm A kod micro-paketi /auto başlat (Meta Leadgen endpoint + welcome_sent hook)
-- Müşteri: Bölüm B.1-B.7 Meta App + Lead Form kurulum başlasın
+- Müşteri: Bölüm B.4-B.6 (Page Access Token + Page ID + Lead Form) — Invekto ops'a ilet (Invekto admin tek-sefer Meta App kurulumu zaten yapıldı, eski B.1-B.3 kaldırıldı)
 - Müşteri: Bölüm B.8 HSM template v1 submit (24-48h onay bekler)
 - Müşteri: Bölüm C.1-C.5 Zoho Blueprint setup
+- Invekto ops: Bölüm B.7 Dashboard Meta Leadgen config (müşteri B.4-B.6 verisini iletince)
 
 Gün 1 (2026-04-25):
 - Biz: Bölüm A deploy + Codex PASS
@@ -537,19 +529,21 @@ Gün 7+ (2026-05-01):
 ## KONTROL LİSTESİ (müşteriye gönderilebilir özet)
 
 Müşteri yapacaklar:
-- [ ] Meta App oluştur + App Secret kopyala (Bölüm B.1-B.2)
-- [ ] Leadgen webhook subscribe (Bölüm B.3)
-- [ ] Page Access Token + Page ID al (Bölüm B.4-B.5)
-- [ ] Lead Form yayınla (Bölüm B.6)
+- [ ] Page Access Token al — long-lived, Invekto ops'a ilet (Bölüm B.4)
+- [ ] Page ID bul — Invekto ops'a ilet (Bölüm B.5)
+- [ ] Lead Form yayınla + Question ID listesi Invekto ops'a ilet (Bölüm B.6)
 - [ ] HSM welcome template v1 submit (Bölüm B.8) — KRİTİK, 48h onay
 - [ ] Zoho Blueprint oluştur + 7 transition (Bölüm C.1-C.3)
 - [ ] Zoho API Client ID + Secret + scope (Bölüm C.4)
 - [ ] WABA phone_number_id + display name (Bölüm D.1)
 - [ ] 5 test numarası Invekto'ya ver (Bölüm F.1)
 
+> **Müşteri scope dışı (Invekto admin tek-sefer kuruldu):** ~~Meta App oluştur~~ ~~App Secret kopyala~~ ~~Leadgen webhook subscribe~~ — App ID `1141500866374561` "Invekto" app paylaşımlı, callback URL tenant_id path multiplex.
+
 Biz (Invekto) yapacaklar:
 - [ ] Meta Leadgen endpoint kod paketi (Bölüm A.1-A.4, ~5h)
 - [ ] welcome_sent Zoho dispatch hook (Bölüm A.3)
+- [ ] Dashboard Meta Leadgen config (Bölüm B.7) — müşteriden gelen B.4-B.6 verisini App Secret + mapping ile birleştir
 - [ ] INMA allowlist Dent WABA (Bölüm D.2)
 - [ ] Dashboard 7 config sayfası tik (Bölüm E.1-E.8)
 - [ ] Stage 1 smoke 5 numara × 6 senaryo (Bölüm F.1)

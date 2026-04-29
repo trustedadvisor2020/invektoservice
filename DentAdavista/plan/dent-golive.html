@@ -270,19 +270,26 @@
     <h2>4. Stage 1 — Soft Launch (2 gün)</h2>
     <p>Sadece müşterinin test numarası kabul; gerçek lead reddedilir. 1 numara × 6 senaryo. Invekto ops + müşteri paralel çalışır.</p>
 
-    <h3 id="s1-b">4.1 B. Müşteri Meta Business Manager Hazırlığı</h3>
-    <p class="note">İlk kez yapılıyorsa ~2 saat, tecrübeliyse 30dk. HSM template 48h onay bekler → Gün 0'da submit edilmesi zorunlu.</p>
+    <h3 id="s1-b">4.1 B. Meta Onboarding — Invekto admin (tek sefer kuruldu) + Müşteri (per-tenant ~30dk)</h3>
+    <p class="note">Müşteri-side iş ~30dk (Page Access Token + Page ID + Lead Form + B.7 verisini Invekto ops'a iletme). HSM template (B.8) 24-48h onay bekler → Gün 0'da submit edilmesi zorunlu.</p>
+    <div class="callout">
+      <h4>✓ Invekto admin tek-sefer kurulumu (zaten tamamlanmış — müşteri için aksiyon yok)</h4>
+      <p>Meta Business App <code>Invekto</code> (App ID <code>1141500866374561</code>, App Mode: Live, Business type) Invekto admin tarafında kurulu ve <strong>tüm tenant'lar tarafından paylaşılıyor</strong>. Kapsam:</p>
+      <ul>
+        <li><strong>App Secret:</strong> app-level — Invekto ops tarafında saklı, B.7 Dashboard config form'unu ops dolduruyor (müşteri görmez/girmez).</li>
+        <li><strong>Webhook subscription:</strong> Object=<code>Page</code>, field=<code>leadgen</code>, callback URL <code>https://app.invekto.com/api/inbound/meta/leadgen/{tenantId}</code> — tenant_id path'te multiplex, her tenant kendi page'ini bağlayınca otomatik dinleniyor.</li>
+        <li><strong>Privacy + Terms URL + App Domain:</strong> <code>invekto.com</code> app-level set; per-tenant override yok.</li>
+      </ul>
+      <p>Müşteri-tarafı eski "B.1 Meta App oluştur / B.2 App Secret not al / B.3 Webhook Subscription" adımları <strong>kaldırıldı</strong> (numaralar bilerek atlandı; siliklik = "Invekto admin scope" sinyali). <strong>Sorumluluk dağılımı:</strong> Müşteri B.4 + B.5 + B.6 yapar (Page Access Token + Page ID + Lead Form, üçü Invekto ops'a iletilir) ve B.8 yapar (HSM template — WABA hesabıyla onaylanır, app-level değil); Invekto ops B.7 yapar (Dashboard Meta Leadgen config — App Secret app-level değer + müşteri verisini birleştirir).</p>
+    </div>
     <table class="task-table">
       <thead><tr><th>#</th><th>Adım</th><th>Durum</th><th>Tarih</th></tr></thead>
       <tbody>
-        <tr><td>B.1</td><td>Meta App oluştur — <a href="https://developers.facebook.com/apps/">developers.facebook.com/apps</a> → [Create App] → Business type → <code>Dent Adavista Invekto Bridge</code></td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
-        <tr><td>B.2</td><td>Settings → Basic: <code>App ID</code> + <code>App Secret</code> not al. Platform=Website <code>https://app.invekto.com</code>. App Domains=<code>invekto.com</code>. Privacy + Terms URL doldur.</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
-        <tr><td>B.3</td><td>Webhooks → [Add Subscription] → Object=Page → Callback URL=<code>https://app.invekto.com/api/inbound/meta/leadgen/18173130</code> → Verify Token Invekto Dashboard rotate değeri → Subscription field=<code>leadgen</code></td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
-        <tr><td>B.4</td><td>Page Access Token (long-lived) — Graph API Explorer → permissions: <code>pages_show_list, pages_read_engagement, leads_retrieval, pages_manage_metadata</code> → token debug → exchange long-lived.</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
-        <tr><td>B.5</td><td>Page ID — Dent Adavista Facebook Page → About → Page ID sayısı.</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
-        <tr><td>B.6</td><td>Lead Form oluştur — Business Suite → Instant Forms → Create Form. Name: <code>Roadshow Ireland 2026 Signup</code>. Questions: Full Name / Phone (required) / Email (required) / City (Dublin/Cork/Both) / Previous treatment abroad (yes/no). Privacy URL + Thank you screen. [Publish] + Question ID'leri not al.</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
-        <tr><td>B.7</td><td>Invekto Dashboard → [Settings] → [Meta Leadgen] → [Keşfet: Form Fields] → form seç → mapping doğrula: FULL_NAME→name, PHONE→phone, EMAIL→email, custom_q_city→custom_1, custom_q_prev→custom_2 → [Kaydet].</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
-        <tr><td>B.8</td><td><strong>HSM Welcome Template submit — EN KRİTİK 24-48h</strong>. WhatsApp Manager → Message Templates → Create. Category=<code>Utility</code>, Language=English (US), Name=<code>dent_welcome_roadshow_v1</code>. Body: Güneş + Dr. Özge + Dublin/Cork roadshow metni. Footer: <code>Reply STOP to opt out</code>. Buttons: Quick Reply "Dublin" + "Cork". Sample {{1}}="Sarah". [Submit].</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>B.4</td><td>Page Access Token (long-lived) — Graph API Explorer → permissions: <code>pages_show_list, pages_read_engagement, leads_retrieval, pages_manage_metadata</code> → token debug → exchange long-lived. <em>Müşteri token'ı Invekto ops'a iletir.</em></td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>B.5</td><td>Page ID — Dent Adavista Facebook Page → About → Page ID sayısı. <em>Müşteri Page ID'yi Invekto ops'a iletir.</em></td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>B.6</td><td>Lead Form oluştur — Business Suite → Instant Forms → Create Form. Name: <code>Roadshow Ireland 2026 Signup</code>. Questions: Full Name / Phone (required) / Email (required) / City (Dublin/Cork/Both) / Previous treatment abroad (yes/no). Privacy URL + Thank you screen. [Publish] + Question ID'leri not al. <em>Müşteri Question ID listesini Invekto ops'a iletir.</em></td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>B.7</td><td><strong>Invekto ops yapar</strong> — Invekto Dashboard → [Settings] → [Meta Leadgen]: B.4 Page Access Token + B.5 Page ID girilir, App Secret kutusu Invekto ops tarafından app-level değerle doldurulur (müşteri görmez/girmez), [Keşfet: Form Fields] → B.6 form seçilir → mapping: FULL_NAME→name, PHONE→phone, EMAIL→email, custom_q_city→custom_1, custom_q_prev→custom_2, consent_q→consent → [Kaydet]. <em>Drift not (post-pilot): App Secret schema'sı (`tenant_settings.meta_leadgen_config.app_secret`) per-tenant ama gerçekte app-level — FEAT-META-APP-CONFIG-MIGRATION ayrı paket olarak schema refactor edecek.</em></td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>B.8</td><td><strong>HSM Welcome Template submit — EN KRİTİK 24-48h</strong>. <em>Müşteri yapar</em> (WABA hesabıyla onaylanır, app-level değil). WhatsApp Manager → Message Templates → Create. Category=<code>Utility</code>, Language=English (US), Name=<code>dent_welcome_roadshow_v1</code>. Body: Güneş + Dr. Özge + Dublin/Cork roadshow metni. Footer: <code>Reply STOP to opt out</code>. Buttons: Quick Reply "Dublin" + "Cork". Sample {{1}}="Sarah". [Submit].</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
       </tbody>
     </table>
     <div class="callout bad">
