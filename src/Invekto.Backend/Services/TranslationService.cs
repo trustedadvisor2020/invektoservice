@@ -10,8 +10,9 @@ using Npgsql;
 namespace Invekto.Backend.Services;
 
 /// <summary>
-/// Gemma 4 (Google AI Studio) translation service with Haiku fallback + DB cache.
+/// Gemma 3 (Google AI Studio) translation service with Haiku fallback + DB cache.
 /// Handles single + batch translate, language detection.
+/// Note: Gemma does not support `system_instruction` field — prompt is inlined into `contents`.
 /// </summary>
 public sealed class TranslationService
 {
@@ -71,7 +72,7 @@ public sealed class TranslationService
 
         // Google AI Studio (primary)
         _googleApiKey = config["Google:AiStudioApiKey"] ?? "";
-        _googleModel = config["Google:TranslationModel"] ?? "gemma-4-27b-it";
+        _googleModel = config["Google:TranslationModel"] ?? "gemma-3-27b-it";
         _googleTimeoutSeconds = int.TryParse(config["Google:TranslationTimeoutSeconds"], out var gts) ? gts : 30;
 
         // Claude Haiku (fallback)
@@ -281,7 +282,7 @@ public sealed class TranslationService
     }
 
     /// <summary>
-    /// AI-powered language detection: Gemma 4 primary, Claude Haiku fallback, heuristic last resort.
+    /// AI-powered language detection: Gemma 3 primary, Claude Haiku fallback, heuristic last resort.
     /// Returns ISO 639-1 code.
     /// </summary>
     private async Task<string> DetectLanguageCodeAsync(string text, CancellationToken ct)
@@ -326,7 +327,7 @@ public sealed class TranslationService
         $"For Turkish: place 'lütfen' at the beginning, keep subject-object-verb order, avoid inverted sentences.";
 
     /// <summary>
-    /// Translate text: Gemma 4 primary, Claude Haiku fallback.
+    /// Translate text: Gemma 3 primary, Claude Haiku fallback.
     /// </summary>
     private async Task<string> CallClaudeTranslateAsync(string text, string sourceLang, string targetLang, CancellationToken ct)
     {
@@ -351,25 +352,22 @@ public sealed class TranslationService
     }
 
     /// <summary>
-    /// Google AI Studio (Gemma) API call.
+    /// Google AI Studio (Gemma) API call. Gemma does not support `system_instruction`,
+    /// so the system prompt is inlined into the user message.
     /// </summary>
     private async Task<string> CallGemmaRawAsync(string? systemPrompt, string userMessage, int maxTokens, CancellationToken ct)
     {
         var url = $"{GoogleAiStudioUrl}/{_googleModel}:generateContent?key={_googleApiKey}";
 
-        object requestBody = systemPrompt != null
-            ? new
-            {
-                system_instruction = new { parts = new[] { new { text = systemPrompt } } },
-                contents = new[] { new { parts = new[] { new { text = userMessage } } } },
-                generationConfig = new { maxOutputTokens = maxTokens }
-            }
-            : new
-            {
-                system_instruction = (object?)null,
-                contents = new[] { new { parts = new[] { new { text = userMessage } } } },
-                generationConfig = new { maxOutputTokens = maxTokens }
-            };
+        var combinedText = string.IsNullOrEmpty(systemPrompt)
+            ? userMessage
+            : $"{systemPrompt}\n\n{userMessage}";
+
+        var requestBody = new
+        {
+            contents = new[] { new { parts = new[] { new { text = combinedText } } } },
+            generationConfig = new { maxOutputTokens = maxTokens }
+        };
 
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, url);
         httpRequest.Content = new StringContent(
