@@ -25,14 +25,15 @@ Her session basladiginda otomatik:
    - `tracking/README.md` (paket durumu)
    - `arch/lessons-learned.md` (son 100 satir)
    - `.claude/agents/INVEKTO_BASE.prompt.md` (global rules)
-3. **PILOT MODE DAVRANIS (2026-04-21 itibariyla):**
+3. **Domain glossary:** `CONTEXT.md` — terminoloji belirsizse buraya bak (mikroservis/Solution Finder/embedding/Pilot Mode terimleri + workflow vocabulary). Her session zorunlu okuma DEGIL, lookup-on-demand. Yeni terim eklenince /wrap guncellesin.
+4. **PILOT MODE DAVRANIS (2026-04-21 itibariyla):**
    - `tracking/pilot-launch-roadmap.md` Master Queue'da ilk `PENDING` paketi bul
    - Q'ya "Siradaki: P{N} {slug} — baslayalim mi?" sor
    - Onay → `/auto` workflow (interview → plan → dev → build → /rev → commit)
    - Paket DONE → roadmap Status=DONE + session-memory Recently Completed + `/clear` oner
    - **Atlamak yasak** — sira roadmap'tedir. Q override icin `SKIP P{N}` / `PAUSE` / `REORDER` komutlari kullanir.
-4. **Interview ile basla:** AskUserQuestion ile gri noktalari coz (roadmap paketine ozel sorular)
-5. **Token disiplini:** Buyuk dosyalarda (>10k token / >500 satir) once **Grep** ile hedefli arama, sonra gerekirse offset/limit ile sinirli **Read**. Tam dosya Read yalnizca <10k token dosyalar icin. **Archive dosyalarini ASLA tam Read etme** (`arch/lessons-learned-archive.md`, `arch/session-memory-archive.md`, `arch/platform/**/archive/*.md`) — Grep ile tara.
+5. **Interview ile basla:** AskUserQuestion ile gri noktalari coz (roadmap paketine ozel sorular)
+6. **Token disiplini:** Buyuk dosyalarda (>10k token / >500 satir) once **Grep** ile hedefli arama, sonra gerekirse offset/limit ile sinirli **Read**. Tam dosya Read yalnizca <10k token dosyalar icin. **Archive dosyalarini ASLA tam Read etme** (`arch/lessons-learned-archive.md`, `arch/session-memory-archive.md`, `arch/platform/**/archive/*.md`) — Grep ile tara.
 
 > **active-work.md KULLANILMIYOR** (shared v6.1, 2026-03-04). Execution queue session-memory.md icinde.
 > **Pilot Mode:** Tum tracking + queue otoritesi `tracking/pilot-launch-roadmap.md`'dedir. Session-memory son durum detayi.
