@@ -1,5 +1,5 @@
 // Adim 3 Paket 3-B2: Zoho baglanti sayfasi (status + Bagla/Kes).
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link2, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { useZohoStore } from '../../stores/zoho-store';
 import { api } from '../../lib/api';
@@ -23,17 +23,86 @@ export function ZohoConnectionPage() {
   const [connectBusy, setConnectBusy] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ kind: 'ok' | 'warn' | 'err'; text: string } | null>(null);
 
+  // Popup OAuth listener/interval'i unmount'ta kapatmak icin tutulan cleanup.
+  // mountedRef ise async resolve'lardan sonra setState'i unmount'tan korur.
+  const mountedRef = useRef(true);
+  const popupCleanupRef = useRef<(() => void) | null>(null);
+
   useEffect(() => {
     void loadConnection();
   }, [loadConnection]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      popupCleanupRef.current?.();
+      popupCleanupRef.current = null;
+    };
+  }, []);
 
   const handleConnect = async () => {
     setStatusMessage(null);
     setConnectBusy(true);
     try {
       const res = await api.createZohoConnectUrl();
-      window.location.href = res.authorizeUrl;
+      if (!mountedRef.current) return;
+
+      // WapCRM Invekto'yu iframe ile gomdugu icin window.location.href = authorizeUrl
+      // iframe-ici navigasyon yapar; Zoho X-Frame-Options: SAMEORIGIN ile bunu reddeder.
+      // Cozum: OAuth'u popup'ta ac. Callback success page postMessage atip popup'i kapatir.
+      const popup = window.open(
+        res.authorizeUrl,
+        'invekto_zoho_oauth',
+        'width=600,height=720,menubar=no,toolbar=no,location=yes',
+      );
+
+      if (!popup || popup.closed) {
+        // Popup blocker — iframe'i kirip top-level redirect ile devam et.
+        try {
+          (window.top ?? window).location.href = res.authorizeUrl;
+        } catch {
+          if (!mountedRef.current) return;
+          setConnectBusy(false);
+          setStatusMessage({
+            kind: 'err',
+            text: '[INV-INT-FE-004] Zoho baglantisi acilamadi. Tarayicinizdaki popup engelleyiciyi kapatin veya yeni sekmede acin.',
+          });
+        }
+        return;
+      }
+
+      let resolved = false;
+      let pollId: number = 0;
+      const onMessage = (ev: MessageEvent) => {
+        if (ev.origin !== window.location.origin) return;
+        const data = ev.data as { type?: string } | null;
+        if (data && data.type === 'invekto:zoho:connected') finish(true);
+      };
+      const cleanup = () => {
+        window.removeEventListener('message', onMessage);
+        window.clearInterval(pollId);
+        popupCleanupRef.current = null;
+      };
+      const finish = (ok: boolean) => {
+        if (resolved) return;
+        resolved = true;
+        cleanup();
+        if (!mountedRef.current) return;
+        setConnectBusy(false);
+        if (ok) {
+          setStatusMessage({ kind: 'ok', text: 'Zoho baglantisi kuruldu.' });
+        }
+        void loadConnection();
+      };
+
+      window.addEventListener('message', onMessage);
+      pollId = window.setInterval(() => {
+        if (popup.closed) finish(false);
+      }, 1000);
+      popupCleanupRef.current = cleanup;
     } catch (err) {
+      if (!mountedRef.current) return;
       setConnectBusy(false);
       setStatusMessage({
         kind: 'err',

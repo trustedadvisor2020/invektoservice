@@ -119,7 +119,25 @@ p{{margin:6px 0;color:#475569;font-size:14px;line-height:1.5}}
 a.btn{{display:inline-block;margin-top:18px;padding:10px 20px;background:#134AA7;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:500}}
 a.btn:hover{{background:#0f3d8a}}
 .t{{color:#64748b;font-size:12px;margin-top:18px}}
-</style></head>
+</style>
+<script>
+(function() {{
+  // Popup mode: parent panel'e durum bildir ve pencereyi kapat.
+  // Direkt sekme/top-level redirect mode'unda window.opener yoktur; sayfa goruntude kalir.
+  // catch'lerde console.warn — DevTools'tan support/debug icin observable.
+  try {{
+    if (window.opener && !window.opener.closed) {{
+      window.opener.postMessage({{ type: 'invekto:zoho:connected' }}, window.location.origin);
+      setTimeout(function() {{
+        try {{ window.close(); }}
+        catch (e) {{ console.warn('Zoho callback: window.close failed (popup auto-close)', e); }}
+      }}, 600);
+    }}
+  }} catch (e) {{
+    console.warn('Zoho callback: postMessage to opener failed (cross-origin or closed)', e);
+  }}
+}})();
+</script></head>
 <body><div class=""box"">
 <h1>✅ Zoho bağlantısı kuruldu</h1>
 <p>Hesabınız başarıyla bağlandı.</p>

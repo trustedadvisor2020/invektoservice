@@ -1,0 +1,190 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "slug": "20260505-zoho-iframe-popup-fix",
+  "risk": "MEDIUM",
+  "status": "REVIEW",
+  "created_at": "2026-05-05T13:50:00Z",
+  "updated_at": "2026-05-05T14:10:00Z",
+  "plan": {
+    "summary": "Zoho OAuth flow'u iframe-icinde acmaktan kurtar; WapCRM Invekto'yu iframe ile gomdugunde accounts.zoho.eu X-Frame-Options ile reddediyordu. Connect butonu artik popup acar; callback success page postMessage ile parent'a bildirir ve popup'i kapatir. Popup blocker durumunda window.top.location.href fallback'i.",
+    "q_intent": "WapCRM iframe icinden Zoho baglanti butonuna basildiginda 'accounts.zoho.eu refused to connect' hatasi geliyor — duzelt.",
+    "interview_notes": "Q'ya hata kaynagi soruldu: (a) Invekto Dashboard direkt mi (b) WapCRM iframe icinden mi (c) baska — Q (b) dedi. 2 fix yolu sunuldu: A=top-level redirect, B=popup+postMessage. Q B'yi sectigi icin popup yolu uygulandi (UX iyi, Q WapCRM panel'inde kaliyor). Popup blocker fallback olarak top-level redirect tutuldu.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Iframe icindeki kullanici 'Zoho'ya Baglan' tikladiginda accounts.zoho.eu yeni bir popup pencerede acilir, X-Frame-Options engellemesi olmadan login akisi tamamlanabilir.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC2",
+        "criterion": "OAuth callback success page popup icinde calistiginda window.opener.postMessage ile parent iframe'e 'invekto:zoho:connected' mesaji yollar; parent Connection state'ini yenileyip 'Bagli' badge'i gosterir; popup ~600ms sonra kendini kapatir.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC3",
+        "criterion": "Popup blocker popup'i engellerse window.top.location.href ile top-level navigation fallback devreye girer; tarayici tum top navigation'i da engellerse Q'ya '[INV-INT-FE-004] popup engelleyici' hata mesaji gosterilir.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC4",
+        "criterion": "Direkt browser navigasyonu (popup degil, ornegin yeni sekme) kullanildiginda success HTML'in inline script'i window.opener=null oldugundan postMessage atlatilir, mevcut 'Zoho Entegrasyon Sayfasina Don' butonu ile kullanici manuel donebilir; backward-compatible.",
+        "verified": false,
+        "verification_note": null
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Dashboard/src/pages/zoho/ZohoConnectionPage.tsx",
+    "src/Invekto.Integrations/Services/Zoho/ZohoConnectEndpoints.cs"
+  ],
+  "files_changed": [
+    {
+      "path": "src/Invekto.Backend/Dashboard/src/pages/zoho/ZohoConnectionPage.tsx",
+      "change": "handleConnect: window.location.href yerine window.open() popup; useRef tabanli mountedRef + popupCleanupRef ile React unmount lifecycle yonetimi (listener+interval kapatilir, async resolve sonrasi setState unmount'a karsi guard'lanir); message event listener (origin check); popup-closed polling; popup blocker fallback (window.top.location.href + try/catch).",
+      "is_new": false
+    },
+    {
+      "path": "src/Invekto.Integrations/Services/Zoho/ZohoConnectEndpoints.cs",
+      "change": "BuildSuccessHtml: <script> blogu eklendi — window.opener varsa postMessage('invekto:zoho:connected') + 600ms sonra window.close(). Opener yoksa (direkt navigation) sayfa goruntude kalir, mevcut 'geri don' butonu calisir. catch'lerde console.warn (DevTools'tan support icin observable).",
+      "is_new": false
+    }
+  ],
+  "git_diff": {
+    "sha256": "71836CF01F8C8C285FBB469E725BD1646811C6A06E7641E757D5F99DBB4E3F64",
+    "full_path": "arch/plans/diffs/20260505-zoho-iframe-popup-fix.diff",
+    "stats": {
+      "insertions": 90,
+      "deletions": 3,
+      "files_count": 2
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-05-05T13:52:00Z",
+    "duration_ms": null,
+    "output_tail": "Build succeeded. 0 Error(s)",
+    "error_summary": null,
+    "services": ["Invekto.Backend", "Invekto.Integrations"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "ZohoConnectionPage.tsx unmount edildiginde popup OAuth listener'i (window.addEventListener('message')) ve setInterval polling'i temizleniyor mu? Ayrica async api.createZohoConnectUrl() resolve oldugunda component unmount edilmisse setState atlatilarak React 'state update on unmounted component' uyarisi onleniyor mu?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Frontend hata mesajlarinda kullanilan INV-INT-FE-004 kodu YENI bir kod mudur, yoksa zoho-store.ts ve mevcut ZohoConnectionPage.tsx icinde halihazirda kullanilan kodun reuse'u mudur? Yeni kod uretilmis mi (PROJECT_CONFIG agent_must_ask: 'New error code creation') yoksa scope-disciplined reuse mi?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "ZohoConnectEndpoints.cs BuildSuccessHtml inline script'inde popup mode disinda (window.opener=null, direkt navigation) kullanici icin success page goruntude kalmaya devam ediyor mu, 'Zoho Entegrasyon Sayfasina Don' butonu hala calisiyor mu? Backward compatibility bozuldu mu?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "ZohoConnectionService (token/state logic — sadece HTML render degisti)",
+      "ZohoRegionResolver (region mapping aynen kalir)",
+      "OAuth scope/permissions (API Console tarafi degil)",
+      "Diger integration sayfalari (Sadece Zoho)"
+    ],
+    "non_goals": [
+      "INMA/PBX hatalari (NotAllowedError, microphone permission) — WapCRM tarafi, kapsam disi",
+      "aiservice 504 Gateway Timeout — ayri endpoint sorunu, ayri inceleme",
+      "Firebase Notification permission — WapCRM tarafi",
+      "Multi-DC API Console ayarlari — zaten dogru, hatanin sebebi degil"
+    ],
+    "intentional_exclusions": [
+      "WapCRM iframe sandbox attribute'una mudahale — Q WapCRM'in degil",
+      "OAuth state/CSRF mekanizmasi degisiklikleri — mevcut state imzasi (ZohoOAuthStateService) bozulmadi",
+      "Yeni error code uretmedik. INV-INT-FE-004 kodu MEVCUTTUR: zoho-store.ts'te FE-001..003, ZohoConnectionPage.tsx pre-existing satir 88'de FE-004, FE-005..008 yine ayni dosyada. PROJECT_CONFIG.intent.decision_boundaries.agent_must_ask: 'New error code creation' kuralina uymak icin scope-disciplined reuse yapildi. (Not: arch/errors.md tablosunda INV-INT-FE-001..009 listelenmemis — bu pre-existing bir codebase boslugu, bu paketin scope'u disinda. Kod tabaninda fiilen 9 farkli mesajla kullanilan FE serisi mevcuttur.)",
+      "Inline callback script icin yeni error code uretilmedi — sayfa zaten kullaniciya success/return UX'i veriyor; catch'lerde console.warn ile DevTools observability eklendi (operasyonel debug icin yeterli)."
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "ZohoConnectionPage.tsx:handleConnect outer try/catch (api hatasi)",
+      "ZohoConnectionPage.tsx popup blocker fallback iclerinde try/catch (cross-origin top.location yazma SecurityError)",
+      "ZohoConnectEndpoints.cs BuildSuccessHtml inline script try/catch (opener cross-origin / closed) — catch'lerde console.warn ile DevTools'a yazar"
+    ],
+    "user_facing_errors": [
+      "[INV-INT-FE-004] Zoho baglanti URL alinamadi. Birkac saniye sonra tekrar deneyin.",
+      "[INV-INT-FE-004] Zoho baglantisi acilamadi. Tarayicinizdaki popup engelleyiciyi kapatin veya yeni sekmede acin.",
+      "Zoho baglantisi kuruldu. (success status message, postMessage tetikledi)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Tum hata yollari kullaniciya gosterilir veya DevTools'a loglanir: (1) api.createZohoConnectUrl reddi -> err.message veya generic INV-INT-FE-004. (2) popup blocker -> top-level redirect dener; o da cross-origin engellerse kullaniciya popup engelleyici uyarisi gosterir. (3) Popup acildi ama kullanici OAuth tamamlamadan kapatti -> setInterval popup.closed yakalar, finish(false) busy state'i temizler ve loadConnection ile gercek baglanti durumunu yansitir. (4) postMessage origin mismatch -> ev.origin === window.location.origin guard sessizce ignore eder (security); popup polling fallback'i state'i yine de senkronize eder. (5) Component unmount middi-flight: mountedRef guard setState'i atlatir, popupCleanupRef listener+interval'i temizler — leak yok, React warning yok. (6) Inline callback script catch'leri console.warn ile DevTools observable; kullanici success message + Geri Don butonu ile manuel ilerleyebilir."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Iframe icinde Zoho login acilamiyor; kullanici sebep anlamadan 'baglanti reddedildi' hatasiyla karsilasiyor.",
+      "suggestion": "Popup ile OAuth flow'u parent context'in disinda acilir; kullanici OAuth bitince WapCRM panel'a otomatik geri doner.",
+      "aha_moment": "Kullanici tikla -> popup acilir -> Zoho login -> popup kapanir -> panel kendisi 'Bagli' badge'i ile guncellenir; manuel sayfa yenileme gerekmez."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Popup blocker'i acik kullanicilar OAuth flow'unu hic baslatamiyor.",
+      "suggestion": "Popup acilamazsa window.top.location.href ile iframe'i kirip top-level redirect ile devam et; her iki ortamda da OAuth tamamlanir.",
+      "aha_moment": "Popup blocker acik olsa bile kullanici 'Baglan' tikladiginda akis baslar; gostericisi kullaniciya hangi tarayici izninin gerekli oldugunu soyler."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Popup'i tamamlamadan kapatan kullanici, frontend 'baglanmaya calisiyor' state'inde takiliyor.",
+      "suggestion": "setInterval ile popup.closed kontrol et; popup kapanir kapanmaz busy state'i temizle, loadConnection ile gercek baglanti durumunu yansit.",
+      "aha_moment": "Kullanici popup'i X ile kapatsa bile panel hizla 'Henuz bagli degil' state'ine geri doner; donmuş ekran yok."
+    },
+    {
+      "category": "UX",
+      "user_pain": "Popup tamamlandiginda kullanici manuel olarak panel'i yenilemek zorunda kaliyor.",
+      "suggestion": "Success page postMessage ile parent'a bildirir; parent Connection store'u refresh edip 'Bagli' badge'ini hemen gosterir.",
+      "aha_moment": "Zoho 'consent ver' butonuna tikladiktan saniyeler sonra Invekto panelinde 'Aktif' badge'i belirir — geçişin sürtünmesi sıfır."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Iframe-X-Frame-Options hatasi browser konsolunda anlamsiz; destek ekibi 'connection refused' raporlarini debug edemez.",
+      "suggestion": "Frontend status mesajlari INV-INT-FE-004 prefix'i ile loglanir; popup blocker durumu acik mesajla ayri tutulur.",
+      "aha_moment": "Kullanici screenshot atip 'INV-INT-FE-004' yazdiginda destek hangi yola dustugunu (URL alma hatasi mi, popup blocker mi) tek bakista anlar."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-05-05T14:15:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-05-05T14:15:00Z",
+    "raw_text": "Iter 2 PASS — CQ1-12 all PASS, CoVe Q1-Q3 all PASS, no blocking issues. Model: gpt-5.5-2026-04-23. Tokens: 20957.",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "Popup-blocker fallback + console.warn observability." },
+      "CQ2": { "result": "PASS", "evidence": "console.warn in callback script catches; mountedRef guards are not silent failures." },
+      "CQ3": { "result": "PASS", "evidence": "Diff limited to 2 declared files." },
+      "CQ4": { "result": "PASS", "evidence": "No duplicated logic." },
+      "CQ5": { "result": "PASS", "evidence": "useRef/useEffect cleanup follows React idioms." },
+      "CQ6": { "result": "PASS", "evidence": "Listener+interval cleanup on unmount via popupCleanupRef." },
+      "CQ7": { "result": "PASS", "evidence": "No new TODO/HACK/FIXME." },
+      "CQ8": { "result": "PASS", "evidence": "No exported API/contract removed or changed." }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "mountedRef + popupCleanupRef invoked on unmount; async setState gated." },
+      "Q2": { "result": "PASS", "reasoning": "INV-INT-FE-004 reused (zoho-store + ZohoConnectionPage), no new code created." },
+      "Q3": { "result": "PASS", "reasoning": "window.opener null branch skipped; success page + return button intact." }
+    },
+    "blocking_issues": [],
+    "iteration": 2,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}
