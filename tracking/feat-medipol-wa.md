@@ -1,12 +1,44 @@
-<!-- Status: IN_PROGRESS (Faz 1 başlıyor) | 2026-04-29 -->
+<!-- Status: CANCELLED | 2026-05-06 -->
 # FEAT-MEDIPOL-WA — Doktor Detay WhatsApp Yönlendirme + KVKK + Slot
 
-> **Tarih:** 2026-04-29 (promoted from `tracking/ideas/medipol-whatsapp-redirect.md`)
+> **Tarih:** 2026-04-29 → **CANCELLED 2026-05-06**
 > **Müşteri:** Medipol Sağlık Grubu
-> **Durum:** Faz 1 — IN_PROGRESS (assumption-driven start)
-> **Kategori:** DEV
-> **Kanban:** D028 — "Yol Haritası" board (board_key='inse'), TODO kolonu. Tek INSE platform genel board (Migration 039 ile board_key 'dent-pilot' → 'inse' rename). Pilot dışı paralel müşteri işi.
-> **Öncelik:** P1 (paralel müşteri işi, pilot dışı)
+> **Durum:** ❌ CANCELLED — Müşteri konfirmasyonu (mail 2026-05-06): site Drupal'de, Medipol yönetiyor. Form doğrudan INMA'ya gidiyor, agent dispatch INMA'da. Doktor verisi gerekmiyor (Medipol kendi yapıyor). Ortak 1 numara. **Invekto kod tarafında yapılacak iş yok.**
+> **Kategori:** DEV → CANCELLED
+> **Kanban:** D028 — "Yol Haritası" board (board_key='inse'), TODO kolonu (kart kapatılacak)
+> **Öncelik:** — (paket iptal)
+
+---
+
+## ❌ CANCEL Gerekçesi (2026-05-06)
+
+Müşteri mail cevabı:
+1. Site Drupal'de, sitedeki tüm ayarları Medipol yapacak
+2. Doktor verisine ihtiyaç yok — formları ve diğer tüm bilgileri Medipol kendi yapıyor
+3. Ortak 1 numara olacak
+4. Form dolduran hastanın bilgileri INMA'ya gelecek, oradan ilgili agent'a düşecek
+
+Yeni akış: `Drupal site → form → INMA → agent dispatch → WhatsApp 1 numara`. Invekto kod tarafı (KVKK middleware, doctor seed, branch tablosu, demo HTML, MedipolEndpoints, slot booking Faz 2-3) tamamen gereksiz.
+
+Q netleştirmesi: INMA ve INSE ayrı müşteri ürünleri değil — ikisi de Invekto uygulaması. Bu vaka Drupal-INMA-only entegrasyon olduğu için Invekto backend mikroservislerine (INSE) hiçbir hop yok.
+
+### İptal kapsamı
+- ❌ Migration 043 (zaten başka pakete tahsis edildi: `043-feat-pilot-flags-vcp-phase2-kanban`)
+- ❌ Backend MedipolEndpoints (4 endpoint)
+- ❌ Demo HTML page
+- ❌ KVKK consent log + version (INMA veya Drupal tarafında)
+- ❌ Faz 2-3 slot görüntüleme/booking (Q: "o da iptal")
+
+### Korunan
+- `tracking/ideas/medipol-whatsapp-redirect.md` — historical/audit referans (CANCELLED tag eklendi)
+- Bu dosya — CANCELLED rationale audit trail
+- Lessons +1 entry: "Drupal-managed site + INMA agent dispatch yeterli olduğunda Invekto kod yer almaz" pattern
+
+---
+
+## Tarihsel İçerik (referans, paket başlatılırken yazılmıştı)
+
+> Aşağıdaki bölümler iptal öncesi assumption-driven planlama için yazılmıştı. Müşteri yanıtı sonrası geçersiz.
 
 ---
 

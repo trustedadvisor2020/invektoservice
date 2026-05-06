@@ -1,6 +1,8 @@
-<!-- Status: PROMOTED → tracking/feat-medipol-wa.md (2026-04-29) -->
+<!-- Status: CANCELLED via tracking/feat-medipol-wa.md (2026-05-06) -->
 # Medipol — Doktor Detay WhatsApp Yönlendirme + KVKK + Slot Görüntüleme
 
+> **❌ CANCELLED 2026-05-06:** Müşteri konfirmasyonu — site Drupal'de, form doğrudan INMA'ya gidiyor, agent dispatch INMA'da, ortak 1 numara, doktor verisi gerekmiyor. Invekto kod yok. Faz 2-3 (slot) de iptal. Detay: [tracking/feat-medipol-wa.md](../feat-medipol-wa.md). Bu dosya audit/historical referans için korunuyor.
+>
 > **⚠️ TAŞINDI:** Bu fikir 2026-04-29'da [tracking/feat-medipol-wa.md](../feat-medipol-wa.md)'ye promote edildi. Aktif geliştirme oraya taşındı (Faz 1 IN_PROGRESS, assumption-driven). Bu dosya audit/historical referans için korunuyor.
 
 ---
