@@ -69,8 +69,41 @@
       "type": "string",
       "format": "date-time",
       "description": "When InvektoServis generated this callback (ISO 8601)"
+    },
+    "channel": {
+      "type": "string",
+      "enum": ["WABA", "IG", "WEBCHAT"],
+      "description": "OPTIONAL — added 2026-05-10 for SPEC-WC-INMA. Backward-compatible: existing WABA/IG callbacks may omit this field (router falls back to inferred behavior). When channel='WEBCHAT', the WebChat-specific fields (visitor_key, sender_type) MUST be present per arch/contracts/webchat-inma-channel.json OutboundCallbackPayload schema. Bridge router uses this field to dispatch to the correct outbound handler (legacy WABA/IG path vs. SignalR group push for WEBCHAT)."
+    },
+    "visitor_key": {
+      "type": "string",
+      "pattern": "^wc-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "minLength": 76,
+      "maxLength": 76,
+      "description": "OPTIONAL — required when channel='WEBCHAT'. Format: wc-{widget_uuid}-{visitor_uuid} (full UUIDs). Bridge uses this to find SignalR group conv_{visitor_key}. Pattern matches arch/contracts/webchat-inma-channel.json InboundVisitorMessage.visitor_key."
+    },
+    "sender_type": {
+      "type": "string",
+      "enum": ["operator", "ai"],
+      "description": "OPTIONAL — required when channel='WEBCHAT'. Identifies the sender role for browser bubble rendering."
+    },
+    "sender_name": {
+      "type": "string",
+      "description": "OPTIONAL — used when channel='WEBCHAT' to display operator name in browser bubble."
     }
   },
+
+  "allOf": [
+    {
+      "if": {
+        "properties": { "channel": { "const": "WEBCHAT" } },
+        "required": ["channel"]
+      },
+      "then": {
+        "required": ["channel", "visitor_key", "sender_type"]
+      }
+    }
+  ],
 
   "examples": {
     "send_message_auto_reply": {

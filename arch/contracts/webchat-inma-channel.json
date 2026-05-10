@@ -1,0 +1,368 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "webchat-inma-channel-v1.json",
+  "title": "WebChat as INMA Channel Contract",
+  "description": "SPEC-WC-INMA: Browser-INMA bridge contract. Invekto.WebChat.Gateway forwards visitor messages to INMA via inbound endpoint. INMA forwards operator/AI replies via existing /api/v1/callback/wapcrm bridge with channel='WEBCHAT'. Returning visitors fetch history from INMA. Widget metadata explicit-sync from Invekto to INMA.\n\nNAMING CONVENTION: snake_case for all field names — aligned with arch/contracts/integration-callback.json (existing Invekto-INMA contract convention).",
+  "version": "1.0",
+  "status": "DRAFT",
+
+  "endpoints": {
+    "inbound_visitor_message": {
+      "method": "POST",
+      "path": "/api/v1/inbound/webchat",
+      "owner": "INMA",
+      "auth": "Existing Invekto-INMA service auth (JWT or shared secret — open question 2)",
+      "description": "Visitor browser → Invekto.WebChat.Gateway → INMA. Forwards visitor message for operator dispatch.",
+      "idempotency": "X-Idempotency-Key header MUST be message_id. Dedupe window: 24 hours.",
+      "rate_limit": "Per tenant_id+widget_id: 60 req/min. Per visitor_key: 30 req/min."
+    },
+    "outbound_operator_message": {
+      "method": "POST",
+      "path": "/api/v1/callback/wapcrm",
+      "owner": "Invekto (existing endpoint)",
+      "auth": "Existing callback bridge auth",
+      "description": "INMA → Invekto.WebChat.Gateway. Existing callback bridge extended with channel='WEBCHAT' field. Gateway routes via SignalR group conv_{visitor_key}.",
+      "extension": "Add 'channel' field (string enum: WABA|IG|WEBCHAT) to arch/contracts/integration-callback.json. Backward-compatible — missing channel defaults to existing inferred behavior.",
+      "prerequisite": "PKT-BRIDGE-906-907-FIX MUST be completed before WEBCHAT routing relies on this bridge."
+    },
+    "history_fetch": {
+      "method": "GET",
+      "path": "/api/v1/tenants/{tenant_id}/contacts/{visitor_key}/messages",
+      "owner": "INMA",
+      "auth": "Existing Invekto-INMA service auth (tenant-scoped JWT MUST contain tenant_id claim)",
+      "description": "Returning visitor session resume. Fetches last N messages for cookie-identified visitor. Tenant-scoped path prevents cross-tenant lookups.",
+      "query_params": {
+        "limit": "integer, max 100, default 50",
+        "before": "string (message_id) — pagination cursor"
+      },
+      "tenant_isolation": "INMA MUST verify tenant_id in path matches JWT claim. Mismatch → 403 INV-WC-014."
+    },
+    "widget_sync": {
+      "method": "POST",
+      "path": "/api/v1/sync/webchat-widget",
+      "owner": "INMA",
+      "auth": "Existing Invekto-INMA service auth",
+      "description": "Invekto Dashboard → INMA. Explicit widget metadata sync on create/update/deactivate. Lazy-create rejected (Q decision) — widget MUST be known to INMA before first message.",
+      "trigger": "On widget CRUD operation in Invekto Dashboard"
+    }
+  },
+
+  "schemas": {
+    "InboundVisitorMessage": {
+      "type": "object",
+      "required": ["tenant_id", "widget_id", "visitor_key", "message_id", "text", "timestamp"],
+      "properties": {
+        "tenant_id": {
+          "type": "string",
+          "description": "Invekto tenant identifier (matches INMA InvektoCompanyCode)"
+        },
+        "widget_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Widget UUID (full, 36 char). Widget MUST be pre-synced via widget_sync endpoint."
+        },
+        "visitor_key": {
+          "type": "string",
+          "pattern": "^wc-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "minLength": 76,
+          "maxLength": 76,
+          "description": "Format: wc-{widget_uuid}-{visitor_uuid}. Full UUIDs (no truncation) to prevent collision."
+        },
+        "display_name": {
+          "type": ["string", "null"],
+          "maxLength": 100,
+          "description": "Optional. Visitor self-provided name."
+        },
+        "email": {
+          "type": ["string", "null"],
+          "format": "email",
+          "description": "Optional enrichment field. Stored on INMA contact. NOT used for cookie-clear recovery (Q decision: no recovery)."
+        },
+        "message_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Idempotency key. Replay within 24h returns deduplicated:true with no side effect."
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "Message body. UTF-8."
+        },
+        "attachments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["image", "file"] },
+              "url": { "type": "string", "format": "uri" },
+              "mime": { "type": "string" }
+            }
+          },
+          "description": "Phase 2 — Phase 1 always empty array."
+        },
+        "locale": {
+          "type": "string",
+          "pattern": "^[a-z]{2}-[A-Z]{2}$",
+          "description": "BCP 47. Falls back to widget primary_locale if visitor browser locale not set."
+        },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "page_url": { "type": "string", "format": "uri" },
+            "user_agent": { "type": "string" },
+            "referrer": { "type": "string" }
+          }
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601. Visitor browser local time at send."
+        }
+      }
+    },
+
+    "InboundResponseSuccess": {
+      "type": "object",
+      "required": ["ok", "conversation_id", "deduplicated", "timestamp"],
+      "properties": {
+        "ok": { "const": true },
+        "conversation_id": { "type": "string" },
+        "deduplicated": {
+          "type": "boolean",
+          "description": "true if message_id was seen within 24h window. No side effect occurred."
+        },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+
+    "StandardErrorEnvelope": {
+      "type": "object",
+      "required": ["ok", "error"],
+      "properties": {
+        "ok": { "const": false },
+        "error": {
+          "type": "object",
+          "required": ["code", "message"],
+          "properties": {
+            "code": {
+              "type": "string",
+              "pattern": "^INV-[A-Z]{2,3}-[0-9]{3}$",
+              "description": "INV-XX-NNN format per arch/errors.md"
+            },
+            "message": {
+              "type": "string",
+              "description": "User-facing message (Turkish)"
+            },
+            "details": {
+              "type": "string",
+              "description": "Technical detail for logging/debugging (English, optional)"
+            },
+            "request_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Correlation ID for log lookup"
+            }
+          }
+        }
+      }
+    },
+
+    "OutboundCallbackPayload": {
+      "type": "object",
+      "required": ["channel", "tenant_id", "visitor_key", "message_id", "text", "sender_type", "timestamp"],
+      "description": "WEBCHAT-specific extension of /api/v1/callback/wapcrm. THIS SCHEMA REPRESENTS WEBCHAT CALLBACKS ONLY — channel is REQUIRED and MUST be 'WEBCHAT' (const), visitor_key and sender_type are also REQUIRED. The bridge-level integration-callback.json keeps channel as OPTIONAL for WABA/IG backward compatibility (where channel field is absent). All field names use snake_case to match arch/contracts/integration-callback.json convention. Bridge router uses channel='WEBCHAT' check to dispatch to SignalR group conv_{visitor_key}.",
+      "properties": {
+        "channel": {
+          "type": "string",
+          "const": "WEBCHAT",
+          "description": "REQUIRED for WebChat callbacks. Bridge router checks this value to dispatch to SignalR group."
+        },
+        "tenant_id": { "type": "string" },
+        "visitor_key": {
+          "type": "string",
+          "pattern": "^wc-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "minLength": 76,
+          "maxLength": 76,
+          "description": "Same regex as inbound visitor_key. Bridge router uses this to find SignalR group conv_{visitor_key}."
+        },
+        "message_id": { "type": "string", "format": "uuid" },
+        "text": { "type": "string", "maxLength": 4000 },
+        "sender_type": {
+          "type": "string",
+          "enum": ["operator", "ai"]
+        },
+        "sender_name": {
+          "type": "string",
+          "description": "Display name shown in browser bubble"
+        },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+
+    "HistoryFetchResponse": {
+      "type": "object",
+      "required": ["ok", "messages", "has_more"],
+      "properties": {
+        "ok": { "const": true },
+        "messages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["message_id", "text", "sender_type", "timestamp"],
+            "properties": {
+              "message_id": { "type": "string", "format": "uuid" },
+              "text": { "type": "string" },
+              "sender_type": { "type": "string", "enum": ["visitor", "operator", "ai"] },
+              "timestamp": { "type": "string", "format": "date-time" }
+            }
+          }
+        },
+        "has_more": { "type": "boolean" }
+      }
+    },
+
+    "WidgetSyncRequest": {
+      "type": "object",
+      "required": ["tenant_id", "widget_id", "display_name", "primary_locale", "allowed_origins", "is_active", "operation"],
+      "properties": {
+        "tenant_id": { "type": "string" },
+        "widget_id": { "type": "string", "format": "uuid" },
+        "display_name": { "type": "string", "maxLength": 100 },
+        "primary_locale": { "type": "string", "pattern": "^[a-z]{2}-[A-Z]{2}$" },
+        "allowed_origins": {
+          "type": "array",
+          "items": { "type": "string", "format": "uri" },
+          "description": "Whitelist of domains where widget can be embedded. Server-side validated on inbound."
+        },
+        "is_active": { "type": "boolean" },
+        "operation": {
+          "type": "string",
+          "enum": ["create", "update", "deactivate"]
+        }
+      }
+    }
+  },
+
+  "error_codes": {
+    "INV-WC-006": "Invalid payload (PRE-EXISTING in arch/errors.md:637 — used at /api/v1/inbound/webchat 400 responses, not added in this diff)",
+    "INV-WC-013": "INMA inbound forwarding failed (server-to-server, 500)",
+    "INV-WC-014": "Tenant mismatch — widget tenant_id does not match request (403)",
+    "INV-WC-015": "Widget not found or not synced to INMA (404)",
+    "INV-WC-016": "INMA internal error (5xx response wrapped by gateway)",
+    "INV-WC-017": "INMA unreachable (network/timeout, 502)",
+    "INV-WC-018": "Origin not allowed — widget allowed_origins violation (403)",
+    "INV-WC-019": "Rate limit exceeded (429)",
+    "INV-WC-020": "Outbound callback parse failure (channel field invalid)",
+    "INV-WC-021": "Cookie session invalid (visitor_key format mismatch)",
+    "INV-WC-022": "Widget sync to INMA failed (queued, Hangfire retry hourly)",
+    "INV-WC-023": "Auth failure on INMA inbound forwarding (401)",
+    "INV-WC-024": "Bridge fix prerequisite not verified — webchat cutover blocked (503)",
+    "INV-WC-025": "Dual-write reconciliation detected divergence (outbox unsent > threshold)"
+  },
+
+  "operational_sizing": {
+    "assumptions": "11 production tenants. Estimated avg 50 visitor messages/day/tenant = 550 messages/day total. Peak (e.g. campaign): 5x = 2750 messages/day.",
+    "webchat_inma_idempotency": {
+      "steady_state_rows": "~550 (peak ~2750) — 24h window TTL",
+      "hourly_cleanup_deletes": "~23 (peak ~115)",
+      "table_size_estimate": "<1 MB steady state",
+      "index_size": "<500 KB"
+    },
+    "webchat_outbox": {
+      "steady_state_rows": "<100 (most messages reconcile within 5min)",
+      "peak_pending": "<500 during INMA outage (Sentry alert at 100)",
+      "table_size_estimate": "<5 MB during 7-day dual-write window",
+      "archive_after_24h_both_sent": "Hangfire WebChatOutboxArchiveJob daily"
+    },
+    "scaling_headroom": "Designed for 100 tenants × 1000 messages/day = 100k/day. Postgres single-node sufficient. No partitioning needed for Phase 1."
+  },
+
+  "examples": {
+    "inbound_success": {
+      "request": {
+        "tenant_id": "5",
+        "widget_id": "550e8400-e29b-41d4-a716-446655440100",
+        "visitor_key": "wc-550e8400-e29b-41d4-a716-446655440100-660e8400-e29b-41d4-a716-446655440200",
+        "display_name": null,
+        "email": null,
+        "message_id": "550e8400-e29b-41d4-a716-446655440000",
+        "text": "Merhaba, fiyat bilgisi alabilir miyim?",
+        "attachments": [],
+        "locale": "tr-TR",
+        "metadata": {
+          "page_url": "https://acme.com/pricing",
+          "user_agent": "Mozilla/5.0 ...",
+          "referrer": "https://google.com"
+        },
+        "timestamp": "2026-05-10T17:30:00Z"
+      },
+      "response": {
+        "ok": true,
+        "conversation_id": "conv_12345",
+        "deduplicated": false,
+        "timestamp": "2026-05-10T17:30:00.123Z"
+      }
+    },
+    "inbound_deduplicated": {
+      "response": {
+        "ok": true,
+        "conversation_id": "conv_12345",
+        "deduplicated": true,
+        "timestamp": "2026-05-10T17:30:01.456Z"
+      }
+    },
+    "inbound_failure_origin_blocked": {
+      "response_status": 403,
+      "response": {
+        "ok": false,
+        "error": {
+          "code": "INV-WC-018",
+          "message": "Bu domain icin webchat etkin degil.",
+          "details": "Origin 'https://attacker.com' not in allowed_origins for widget 550e8400-e29b-41d4-a716-446655440100",
+          "request_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+        }
+      }
+    },
+    "outbound_callback": {
+      "request": {
+        "channel": "WEBCHAT",
+        "tenant_id": "5",
+        "visitor_key": "wc-550e8400-e29b-41d4-a716-446655440100-660e8400-e29b-41d4-a716-446655440200",
+        "message_id": "660e8400-e29b-41d4-a716-446655440001",
+        "text": "Merhaba, size nasil yardimci olabilirim?",
+        "sender_type": "operator",
+        "sender_name": "Ayse",
+        "timestamp": "2026-05-10T17:30:15Z"
+      }
+    }
+  },
+
+  "compatibility": {
+    "phase_1": "Widget CRUD UI in Invekto Dashboard. APIs designed as public contract.",
+    "phase_2": "INMA UI calls same APIs. Invekto Dashboard widget page removed. NO breaking change to API contract — version stays v1.",
+    "naming_convention": "snake_case for all field names — matches arch/contracts/integration-callback.json existing convention. WEBCHAT outbound callback fields (visitor_key, sender_type, sender_name) use the SAME snake_case format in BOTH arch/contracts/integration-callback.json AND this contract's OutboundCallbackPayload schema."
+  },
+
+  "prerequisites": [
+    "PKT-BRIDGE-906-907-FIX: callback bridge 906/907 parse bug must be fixed before WEBCHAT relies on /api/v1/callback/wapcrm",
+    "INMA enum WEBCHAT addition + endpoint implementation (3 endpoints: inbound, history, widget_sync) + callback bridge channel field handling"
+  ],
+
+  "deprecations": {
+    "tables": [
+      "webchat_messages — read-only after T+7, drop at T+90",
+      "webchat_conversations — read-only after T+7, drop at T+90",
+      "webchat_visitors — read-only after T+7, drop at T+90",
+      "webchat_push_tokens — drop at T+0 (push handled by INMA)"
+    ],
+    "endpoints": [
+      "Backend /api/ops/webchat/* — drop at T+8",
+      "WebChat /api/v1/auth/login (operator login) — drop at T+0",
+      "WebChat /api/v1/operator/conversations — drop at T+0"
+    ],
+    "ui": [
+      "Dashboard WebChatPage.tsx — drop at T+8 (entire route)"
+    ]
+  }
+}

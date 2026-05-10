@@ -656,6 +656,47 @@ errors:
     description: Automation webhook call timed out
     user_message: Webhook bildirimi zaman aşımına uğradı.
 
+  # WebChat as INMA Channel (SPEC-WC-INMA, 2026-05-10) — Phase 1
+  - code: INV-WC-013
+    description: INMA inbound forwarding failed (server-to-server)
+    user_message: Mesajınız iletilemedi, lütfen tekrar deneyin.
+  - code: INV-WC-014
+    description: Tenant mismatch — widget tenant_id does not match request
+    user_message: Geçersiz widget yapılandırması.
+  - code: INV-WC-015
+    description: Widget not found or not synced to INMA
+    user_message: Widget tanımlı değil veya henüz hazır değil.
+  - code: INV-WC-016
+    description: INMA internal error (5xx response)
+    user_message: Servis geçici olarak ulaşılamıyor, lütfen tekrar deneyin.
+  - code: INV-WC-017
+    description: INMA unreachable (network/timeout)
+    user_message: Bağlantı kurulamadı, lütfen tekrar deneyin.
+  - code: INV-WC-018
+    description: Origin not allowed — widget allowed_origins violation
+    user_message: Bu domain için webchat etkin değil.
+  - code: INV-WC-019
+    description: Rate limit exceeded
+    user_message: Çok hızlı mesaj gönderiyorsunuz, lütfen birkaç saniye bekleyin.
+  - code: INV-WC-020
+    description: Outbound callback parse failure (channel field invalid)
+    user_message: Yanıt işlenemedi, operatöre bildirildi.
+  - code: INV-WC-021
+    description: Cookie session invalid (visitor_key format mismatch)
+    user_message: Oturum geçersiz, sayfayı yenileyin.
+  - code: INV-WC-022
+    description: Widget sync to INMA failed (queued in outbox, Hangfire retry hourly)
+    user_message: Widget yapılandırması beklemede.
+  - code: INV-WC-023
+    description: Auth failure on INMA inbound forwarding (401)
+    user_message: Yetkilendirme hatası, sayfayı yenileyin.
+  - code: INV-WC-024
+    description: Bridge fix prerequisite not verified — webchat cutover blocked
+    user_message: Servis henüz hazır değil, lütfen daha sonra tekrar deneyin.
+  - code: INV-WC-025
+    description: Dual-write reconciliation detected divergence (outbox unsent > threshold)
+    user_message: Mesaj senkronizasyonu kontrol ediliyor.
+
   # ── VA — VoiceAI (PKT-11) ──
   - code: INV-VA-001
     description: No audio file in request
