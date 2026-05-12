@@ -74,7 +74,12 @@ Q 2026-05-12 demo sonrası: "bu hafta servisleri çalışır hale getirelim". Pi
 
 **Tamamlanma kriteri:** Q'nun A5 demo'sunda tüm akış (lead intake → flow trigger → outbound → INMA → status) hatasız.
 
-**Faz B (Faz A sonrası):** `FEAT-INMA-PIPELINE-V2` 5 chunk (bkz. tracking/README.md). INMA contract gelene kadar C1 (Zoho-out) bağımsız ilerleyebilir, C2-C4 BLOCKED.
+**Faz B (Faz A sonrası):** `FEAT-INMA-PIPELINE-V2` 5 chunk (bkz. tracking/README.md).
+- **C1 Zoho-out DONE+DEPLOYED+SMOKED 2026-05-12 17:50 UTC** (commit `0c0733b`) — Migration 048 + 11 tenant data preservation + 41 dosya delete + 7 servis cleanup; Q FORCE PASS (Codex MCP infra issue, A3+A4a Faz A precedent); 10/10 health.
+- **C2 INSE inbound endpoint** BLOCKED — INMA contract bekliyor (`POST /api/v1/inbound/inma/customer-status-change` HMAC + idempotency + opaque TEXT store).
+- **C3 Flow Builder customer_status_changed trigger** BLOCKED.
+- **C4 Flow Builder Set Customer Status action node** BLOCKED.
+- **C5 dashboard cleanup + DentAdavista/plan refresh** PENDING (C1 sonrası bağımsız ilerleyebilir).
 
 ---
 

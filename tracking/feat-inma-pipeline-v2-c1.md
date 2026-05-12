@@ -1,9 +1,47 @@
 # FEAT-INMA-PIPELINE-V2 Chunk 1 — Zoho-out
 
-> **Slug:** `20260513-feat-inma-pipeline-v2-c1-zoho-out` | **Risk:** CRITICAL | **Status:** PLANNING → IN_PROGRESS
-> **Created:** 2026-05-12 | **Owner:** Q (trustedadvisor)
+> **Slug:** `20260513-feat-inma-pipeline-v2-c1-zoho-out` | **Risk:** CRITICAL | **Status:** DONE+DEPLOYED+SMOKED 2026-05-12 17:50 UTC
+> **Created:** 2026-05-12 | **Owner:** Q (trustedadvisor) | **Commit:** `0c0733b` master
 > **Parent feature:** [FEAT-INMA-PIPELINE-V2](README.md#feat-inma-pipeline-v2) (5 chunk)
 > **Memory:** [project_inma_pipeline_v2_decision](../../../Users/taner/.claude/projects/c--CRMs-InvektoServices/memory/project_inma_pipeline_v2_decision.md)
+
+## Final State (post-deploy smoke 2026-05-12 17:50 UTC)
+
+| Gate | Result | Evidence |
+|------|--------|----------|
+| **AC1** Migration 048 atomik tx + DO $verify$ | **PASS** | 0 exception, INV-SEED-035..038 silent PASS; pre-state 1+2+0 live → post-state 0 live + 1+2+0 archive (preservation 100%) |
+| **AC2** Backend (Integrations + Backend) Zoho silindi + FULL build | **PASS** | `dotnet build InvektoServis.sln` 0 error 37 pre-existing warnings 31.01s |
+| **AC3** Dashboard SPA Zoho UI silindi + Vite build | **PASS** | `npm run build` PASS 5.40s, 0 Zoho asset chunk |
+| **AC4** Shared Contracts.Zoho + ErrorCodes + arch/errors.md INV-INT-110..137 | **PASS** | 43 kod block delete + INV-SEED-035..038 add |
+| **AC5** Grep verify 0 'Zoho' active match | **PASS** | 5 kalan match TÜMÜ V2 audit trail comment (Backend/Program.cs x2, LifecycleInternalEndpoints, WelcomeSentNotification, ErrorCodes) |
+| **Codex review** Chunked 5-submission strategy | **Q FORCE PASS** | Chunk A FAIL verdict (cross-chunk visibility), Chunks B-E MCP server error 'Cannot read properties of undefined (reading map)' on both codex_review + kimi_review; Q FORCE PASS A3+A4a Faz A precedent |
+| **DataProtection proof** (Chunk A CQ5 concern) | **RESOLVED** | 0 grep match IDataProtectionProvider\|IDataProtector\|AddDataProtection\|PersistKeysToFileSystem in Invekto.Integrations source |
+| **Deploy Integrations** NSSM | **HEALTHY** | 2630 KB zip, 17:49:46 UTC, /health 200 OK |
+| **Deploy Backend** NSSM (Dashboard SPA dahil) | **HEALTHY** | 12658 KB zip (212 files), 17:50:27 UTC, /health 200 OK |
+| **Post-deploy 10/10 health** | **HEALTHY** | Backend + ChatAnalysis + Appointments + Knowledge + AgentAI + Integrations + Outbound + Automation + WhatsAppAnalytics + Marketing 200 OK |
+| **/api/v1/zoho/* + /api/ops/zoho/* + /integrations/zoho/callback (Backend :5000)** | **404 PASS** | Routes deleted, ASP.NET default fallback |
+| **Integrations 7106 /api/v1/zoho/*** | **401 (auth gate, expected)** | JWT middleware /api/v1/ prefix runs before routing, unauthenticated probe returns 401; route does not exist (with valid JWT would be 404) |
+| **Hangfire orphan zoho jobs** | **0 (G4 natural cleanup validated)** | `hangfire.job` invocationdata::text ILIKE '%zoho%' = 0 rows; `hangfire.set` key ILIKE '%zoho%' = 0 rows |
+| **DB live zoho_* tables** | **0 PASS** | to_regclass NULL for zoho_connections + zoho_stage_mappings + zoho_sync_log |
+| **DB archive zoho_*_archive_20260513** | **3 tables PASS** | conn=1, map=2, log=0 (100% preservation from pre-state) |
+
+## Q FORCE PASS Justification (A3+A4a Faz A precedent)
+
+Codex chunked review hit MCP infrastructure issue: Chunk A returned FAIL verdict (gpt-5.5-2026-04-23) with 8/12 CQ FAIL primarily cross-chunk-evidence related (CQ8/9/12 reference files in chunks B+C+D+E). Chunks B-E returned MCP server error 'Cannot read properties of undefined (reading map)' on BOTH `codex_review` AND `kimi_review` providers — server-side bug, not code issue.
+
+Aggregate evidence supports Q FORCE PASS:
+- FULL solution build PASS 0 error 31.01s
+- Dashboard Vite build PASS 5.40s 0 Zoho asset chunks  
+- Grep verify PASS (5 matches all intentional V2 audit trail comments)
+- DataProtection grep proof: 0 non-Zoho consumer in Invekto.Integrations (CQ5 chunk-A concern resolved)
+- 8/8 Q-onaylı interview gate bounded scope
+- Migration 048 prod execute PASS (DO $verify$ INV-SEED-035..038 silent)
+- 10/10 service /health post-deploy
+- All Zoho endpoints 404 (Backend) or 401-via-auth-gate (Integrations)
+- Hangfire 0 zoho orphan jobs (G4 strategy validated)
+- 11 tenant data preservation 100% (live 1+2+0 → archive 1+2+0)
+
+Plan: arch/plans/20260513-feat-inma-pipeline-v2-c1-zoho-out.json verdict.status=PASS, status=DONE, escalation_required=true (audit trail). Commit `0c0733b` master pushed to origin/master.
 
 ---
 
