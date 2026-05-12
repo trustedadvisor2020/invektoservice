@@ -882,6 +882,32 @@ bool ValidateOpsAuth(HttpContext ctx)
     return false;
 }
 
+// A6 (Faz A, 2026-05-12): Tenant-scoped fallback for Ops Knowledge endpoints.
+// Knowledge proxy endpoints under /api/ops/knowledge/{tenantId}/* were originally
+// Ops-admin-only (SuperAdmin TenantId=0 via inse JWT, or Basic auth). A normal
+// tenant user opening "Bilgi Bankasi" in Dashboard hit 401 because their INMA-exchanged
+// inse JWT carries TenantId>0 — security-first by D027, but UX-blocking because
+// no parallel /api/v1/knowledge set exists. Rather than fan out 9 new endpoint
+// mappings (route duplication), the existing Ops gate falls through to a JWT
+// tenant-bound check: the Bearer-token TenantContext.TenantId must equal the
+// path tenantId. This preserves cross-tenant Ops auth (untouched true branch)
+// while letting tenants manage their OWN Knowledge.
+//
+// Returns false when no JWT, malformed JWT, or tenant mismatch. The token parse
+// mirrors JwtAuthMiddleware (BOM strip + trim) so the same A3 hardening applies.
+// Templates endpoints (tenantId=0) remain Ops-only de-facto because no normal
+// user JWT has TenantId=0.
+bool ValidateJwtTenantAuth(HttpContext ctx, int tenantId)
+{
+    if (jwtValidator == null) return false;
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+    if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        return false;
+    var token = authHeader["Bearer ".Length..].Trim().TrimStart('﻿').Trim();
+    var (tc, _) = jwtValidator.ValidateToken(token);
+    return tc != null && tc.TenantId == tenantId;
+}
+
 // Ops 401 response: only trigger browser Basic popup for direct navigation (not SPA fetch)
 IResult OpsUnauthorized(HttpContext ctx)
 {
@@ -4004,7 +4030,8 @@ app.MapPost("/api/v1/flow-builder/auth/login", async (HttpContext ctx, JsonLines
 // Knowledge proxy helpers (Basic Auth -> JWT bridge)
 async Task<IResult> KnProxyGet(HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId, string targetPath)
 {
-    if (!ValidateOpsAuth(ctx))
+    // A6 dual-auth: Ops admin OR normal tenant user managing their own knowledge.
+    if (!ValidateOpsAuth(ctx) && !ValidateJwtTenantAuth(ctx, tenantId))
     {
         return OpsUnauthorized(ctx);
     }
@@ -4025,7 +4052,8 @@ async Task<IResult> KnProxyGet(HttpContext ctx, KnowledgeClient knClient, JsonLi
 
 async Task<IResult> KnProxyPost(HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId, string targetPath)
 {
-    if (!ValidateOpsAuth(ctx))
+    // A6 dual-auth: Ops admin OR normal tenant user managing their own knowledge.
+    if (!ValidateOpsAuth(ctx) && !ValidateJwtTenantAuth(ctx, tenantId))
     {
         return OpsUnauthorized(ctx);
     }
@@ -4048,7 +4076,8 @@ async Task<IResult> KnProxyPost(HttpContext ctx, KnowledgeClient knClient, JsonL
 
 async Task<IResult> KnProxyPut(HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId, string targetPath)
 {
-    if (!ValidateOpsAuth(ctx))
+    // A6 dual-auth: Ops admin OR normal tenant user managing their own knowledge.
+    if (!ValidateOpsAuth(ctx) && !ValidateJwtTenantAuth(ctx, tenantId))
     {
         return OpsUnauthorized(ctx);
     }
@@ -4071,7 +4100,8 @@ async Task<IResult> KnProxyPut(HttpContext ctx, KnowledgeClient knClient, JsonLi
 
 async Task<IResult> KnProxyDelete(HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId, string targetPath)
 {
-    if (!ValidateOpsAuth(ctx))
+    // A6 dual-auth: Ops admin OR normal tenant user managing their own knowledge.
+    if (!ValidateOpsAuth(ctx) && !ValidateJwtTenantAuth(ctx, tenantId))
     {
         return OpsUnauthorized(ctx);
     }
@@ -4093,7 +4123,8 @@ async Task<IResult> KnProxyDelete(HttpContext ctx, KnowledgeClient knClient, Jso
 app.MapPost("/api/ops/knowledge/{tenantId:int}/documents/upload", async (
     HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId) =>
 {
-    if (!ValidateOpsAuth(ctx))
+    // A6 dual-auth: Ops admin OR normal tenant user uploading to their own knowledge.
+    if (!ValidateOpsAuth(ctx) && !ValidateJwtTenantAuth(ctx, tenantId))
     {
         return OpsUnauthorized(ctx);
     }
