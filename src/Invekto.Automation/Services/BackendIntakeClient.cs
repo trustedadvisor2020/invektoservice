@@ -12,8 +12,8 @@ namespace Invekto.Automation.Services;
 /// FEAT-LIW Chunk B: thin typed-HttpClient wrapper Automation uses to register
 /// a wa-direct lead with Backend before chat-flow execution. The endpoint
 /// (<c>POST /api/internal/leads/intake/wa-direct</c>) is service-to-service:
-/// auth is the shared <c>X-Internal-Service-Token</c> header (mirrors Zoho
-/// pattern), not a tenant JWT. Failures are non-fatal — see
+/// auth is the shared <c>X-Internal-Service-Token</c> header (canonical
+/// peer-service pattern), not a tenant JWT. Failures are non-fatal — see
 /// <see cref="IntakeAsync"/>'s contract: a null return tells the orchestrator
 /// to log <c>INV-AT-070</c> and proceed with leadId=null. One inline retry
 /// (500 ms) covers transient hiccups (TCP reset, brief Backend restart) without

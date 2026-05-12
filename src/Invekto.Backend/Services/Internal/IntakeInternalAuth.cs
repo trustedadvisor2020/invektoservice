@@ -2,8 +2,8 @@ namespace Invekto.Backend.Services.Internal;
 
 /// <summary>
 /// FEAT-LIW Chunk B: peer-service identity gate for the wa-direct internal
-/// endpoint (<c>POST /api/internal/leads/intake/wa-direct</c>). Mirrors the
-/// Zoho internal auth pattern (<c>X-Internal-Service-Token</c> header +
+/// endpoint (<c>POST /api/internal/leads/intake/wa-direct</c>). Uses the
+/// canonical peer-service auth pattern (<c>X-Internal-Service-Token</c> header +
 /// constant-time compare against <c>InternalServices:SharedSecret</c>) so
 /// service-to-service calls share one rotation story.
 /// Iter 2 reinforcement: <c>/api/internal/</c> is REQUIRED by
@@ -47,7 +47,7 @@ public static class IntakeInternalAuth
     /// Length-leaking-but-content-blind comparison. Both sides are operator-set
     /// strings of identical length once a tenant has been onboarded; an attacker
     /// observing length information learns nothing they couldn't observe by
-    /// reading the deployment manifest. Pattern matches <c>ZohoSyncEndpoints.SlowEquals</c>.
+    /// reading the deployment manifest.
     /// </summary>
     private static bool SlowEquals(string? a, string b)
     {

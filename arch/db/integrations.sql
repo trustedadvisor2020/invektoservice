@@ -86,68 +86,16 @@ CREATE INDEX idx_products_cache_tenant ON products_cache(tenant_id, provider);
 CREATE INDEX idx_products_cache_name ON products_cache(tenant_id, product_name)
     WHERE product_name IS NOT NULL;
 
--- Zoho OAuth connections (Adim 2 Paket A - migration 012)
-CREATE TABLE IF NOT EXISTS zoho_connections (
-    id                   BIGSERIAL PRIMARY KEY,
-    tenant_id            INTEGER NOT NULL REFERENCES tenant_registry(tenant_id),
-    region               VARCHAR(8) NOT NULL
-        CHECK (region IN ('eu','com','in','com.au','jp','uk','ca','sa')),  -- defense-in-depth: service-level whitelist + DB CHECK
-    api_domain           VARCHAR(128) NOT NULL,         -- www.zohoapis.eu
-    accounts_domain      VARCHAR(128) NOT NULL,         -- accounts.zoho.eu
-    refresh_token_enc    TEXT NOT NULL,                 -- DataProtection wrapped (Invekto.Integrations.Zoho.RefreshToken)
-    granted_scopes       TEXT NOT NULL,
-    zoho_user_email      VARCHAR(256),
-    connected_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    last_refreshed_at    TIMESTAMPTZ,
-    disconnected_at      TIMESTAMPTZ,
-    CONSTRAINT uq_zoho_connections_tenant UNIQUE (tenant_id)
-);
-CREATE INDEX IF NOT EXISTS idx_zoho_connections_tenant ON zoho_connections(tenant_id);
-
--- Zoho stage mappings (Adim 3 Paket 1 - migration 013, renamed in 015) — lifecycle event -> Zoho Blueprint transition
-CREATE TABLE IF NOT EXISTS zoho_stage_mappings (
-    id                    BIGSERIAL PRIMARY KEY,
-    tenant_id             INTEGER NOT NULL REFERENCES tenant_registry(tenant_id),
-    zoho_event            VARCHAR(64) NOT NULL
-        CHECK (zoho_event IN ('welcome_sent','engaged','qualified','offer_sent','closed_won','deposit_paid','closed_lost')),
-    zoho_transition_id    VARCHAR(64) NOT NULL,
-    zoho_transition_name  VARCHAR(256),
-    created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT uq_zoho_stage_mappings_tenant_event UNIQUE (tenant_id, zoho_event)
-);
-CREATE INDEX IF NOT EXISTS idx_zoho_stage_mappings_tenant ON zoho_stage_mappings(tenant_id);
-
--- Zoho sync attempt log (Adim 3 Paket 1 - migration 014, renamed in 015) — retry source of truth
-CREATE TABLE IF NOT EXISTS zoho_sync_log (
-    id                    BIGSERIAL PRIMARY KEY,
-    tenant_id             INTEGER NOT NULL REFERENCES tenant_registry(tenant_id),
-    zoho_event            VARCHAR(64) NOT NULL,
-    source_lead_id        VARCHAR(128) NOT NULL,
-    zoho_lead_id          VARCHAR(64),
-    zoho_transition_id    VARCHAR(64),
-    status                VARCHAR(16) NOT NULL CHECK (status IN ('pending','success','failed')),
-    attempt_count         INTEGER NOT NULL DEFAULT 0,
-    last_error_code       VARCHAR(32),
-    last_error_message    TEXT,
-    created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    completed_at          TIMESTAMPTZ
-);
-CREATE INDEX IF NOT EXISTS idx_zoho_sync_log_tenant_status ON zoho_sync_log(tenant_id, status);
-CREATE INDEX IF NOT EXISTS idx_zoho_sync_log_retry ON zoho_sync_log(status, attempt_count) WHERE status = 'failed';
-CREATE INDEX IF NOT EXISTS idx_zoho_sync_log_source_lead ON zoho_sync_log(tenant_id, source_lead_id);
-CREATE UNIQUE INDEX IF NOT EXISTS ux_zoho_sync_log_open_attempt
-    ON zoho_sync_log(tenant_id, zoho_event, source_lead_id)
-    WHERE status IN ('pending','failed');
+-- FEAT-INMA-PIPELINE-V2 C1 (migration 048, 2026-05-13): Zoho integration removed.
+-- Live zoho_connections / zoho_stage_mappings / zoho_sync_log tables were dropped
+-- + 11 tenant snapshot archived to zoho_*_archive_20260513 (audit/recovery only,
+-- no consumer code). Historical DDL retained in migrations 012/013/014/015 for
+-- audit trail; canonical mirror no longer reflects them (INMA otorite, V2 C2-C4
+-- inbound endpoint + flow trigger + flow action BLOCKED pending INMA contract).
 
 -- Grants
 GRANT ALL ON integration_accounts TO invekto;
 GRANT ALL ON orders_cache TO invekto;
 GRANT ALL ON cargo_tracking_events TO invekto;
 GRANT ALL ON products_cache TO invekto;
-GRANT ALL ON zoho_connections TO invekto;
-GRANT ALL ON zoho_stage_mappings TO invekto;
-GRANT ALL ON zoho_sync_log TO invekto;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO invekto;

@@ -96,7 +96,7 @@ public static class ErrorCodes
 
     // Paket B-META: Meta Leadgen Webhook Native (INV-META-001..006, migration 033)
     // Dedicated namespace (not INV-INT / INV-IG) so Meta webhook failures are
-    // dashboard-separable from Zoho / e-commerce integrations. Surfaced in the
+    // dashboard-separable from generic e-commerce integration errors. Surfaced in the
     // meta_leadgen_events audit trail + Dashboard /settings/meta-leadgen [Test Events].
     public const string MetaSignatureInvalid           = "INV-META-001"; // X-Hub-Signature-256 HMAC-SHA256 mismatch (endpoint rejects with 401)
     public const string MetaVerifyTokenMismatch        = "INV-META-002"; // GET handshake hub.verify_token != config.verify_token (endpoint rejects with 403)
@@ -268,7 +268,7 @@ public static class ErrorCodes
     public const string AutomationWelcomeFlowDispatchFailed = "INV-AT-071";    // TriggerWelcomeFlowJob execution-time infra failure (DB error during lookup, parse/build error on flow_config, cancellation, InvalidOperationException during ExecuteAsync). Distinct from -069 (which is strictly "row not found").
 
     // Paket B-META: Lifecycle welcome-sent hop (Automation → Backend fire-and-forget)
-    public const string AutomationLifecycleHopFailed = "INV-AT-072";           // TriggerWelcomeFlowJob post-execute lifecycle hop to Backend /api/internal/lifecycle/welcome-sent failed (HttpRequestException / OperationCanceledException / non-2xx). Welcome WA message already delivered; Zoho "1. Mesaj Atildi" transition dispatch missed, next inbound engagement re-fires lifecycle events. Best-effort, no retry.
+    public const string AutomationLifecycleHopFailed = "INV-AT-072";           // TriggerWelcomeFlowJob post-execute lifecycle hop to Backend /api/internal/lifecycle/welcome-sent failed (HttpRequestException / OperationCanceledException / non-2xx). Welcome WA message already delivered; downstream notification missed (FEAT-INMA-PIPELINE-V2 C1 2026-05-13: Zoho dispatch removed; handler now log-only pending C3 INMA-otorite customer_status trigger). Next inbound engagement re-fires lifecycle events. Best-effort, no retry.
 
     // FEAT-PHOTO: Foto isteme akisi (migration 034, Dent Adavista pilot) — INV-AT-073..080
     // PhotoInboundHandler + PhotoRequest{Dispatch,Reminder,Escalation}Job + PhotoEndpoints

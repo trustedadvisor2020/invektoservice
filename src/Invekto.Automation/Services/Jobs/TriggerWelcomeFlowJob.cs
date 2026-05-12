@@ -265,7 +265,7 @@ public sealed class TriggerWelcomeFlowJob
     /// so the decision stays in one place.
     ///
     /// Null-safe: a null result (caller bug / serialization gap) returns false
-    /// rather than throwing — fire-and-forget Zoho dispatch must never crash
+    /// rather than throwing — fire-and-forget lifecycle hop must never crash
     /// the welcome job's cleanup path.
     /// </summary>
     public static bool ShouldDispatchWelcomeSent(EngineStepResult? result)

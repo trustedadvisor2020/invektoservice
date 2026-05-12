@@ -11,7 +11,6 @@ using Invekto.Backend.Data;
 using Invekto.Backend.Endpoints;
 using Invekto.Backend.Services;
 using Invekto.Backend.Services.Jobs;
-using Invekto.Backend.Services.Zoho;
 using Invekto.Shared.Auth;
 using Invekto.Shared.Hosting;
 using Invekto.Shared.Constants;
@@ -188,47 +187,10 @@ builder.Services.AddHttpClient<IntegrationsClient>(client =>
     client.Timeout = TimeSpan.FromMilliseconds(integrationsTimeoutMs);
 });
 
-// Adim 3 Paket 2: Zoho sync client (Backend -> Integrations /api/internal/zoho/sync).
-// Shared secret binding happens at wrapper registration time so ZohoSyncClient ctor stays DI-simple.
-var zohoSharedSecret = builder.Configuration["InternalServices:SharedSecret"] ?? string.Empty;
-builder.Services.AddHttpClient<Invekto.Backend.Services.Zoho.ZohoSyncClient>(client =>
-{
-    client.BaseAddress = new Uri(integrationsUrl);
-    client.Timeout = TimeSpan.FromMilliseconds(integrationsTimeoutMs);
-});
-builder.Services.AddSingleton<Invekto.Backend.Services.Zoho.IZohoSyncClient>(sp =>
-{
-    var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
-    var http = httpFactory.CreateClient(nameof(Invekto.Backend.Services.Zoho.ZohoSyncClient));
-    http.BaseAddress = new Uri(integrationsUrl);
-    http.Timeout = TimeSpan.FromMilliseconds(integrationsTimeoutMs);
-    return new Invekto.Backend.Services.Zoho.ZohoSyncClient(
-        http,
-        zohoSharedSecret,
-        sp.GetRequiredService<JsonLinesLogger>());
-});
-builder.Services.AddSingleton<Invekto.Backend.Services.Zoho.ZohoLifecycleDispatcher>();
-
-// Adim 3 Paket 3-B1: Zoho proxy client (Dashboard UI -> Backend -> Integrations tenant-JWT passthrough).
-// Different from ZohoSyncClient (P2, shared-secret internal) — this forwards end-user JWT verbatim.
-// Typed-client pattern: AddHttpClient<TClient> binds configured HttpClient to ZohoProxyClient ctor.
-builder.Services.AddHttpClient<Invekto.Backend.Services.Zoho.ZohoProxyClient>(client =>
-{
-    client.BaseAddress = new Uri(integrationsUrl);
-    client.Timeout = TimeSpan.FromMilliseconds(integrationsTimeoutMs);
-});
-builder.Services.AddTransient<Invekto.Backend.Services.Zoho.IZohoProxyClient>(sp =>
-    sp.GetRequiredService<Invekto.Backend.Services.Zoho.ZohoProxyClient>());
-
-// Adim 3 Paket 3-C: Zoho ops proxy client (super-admin -> Integrations, shared-secret NOT JWT forward).
-// Typed-client pattern mirrors ZohoProxyClient (P3-B1); ZohoOpsProxyClient ctor reads SharedSecret from IConfiguration.
-builder.Services.AddHttpClient<Invekto.Backend.Services.Zoho.ZohoOpsProxyClient>(client =>
-{
-    client.BaseAddress = new Uri(integrationsUrl);
-    client.Timeout = TimeSpan.FromMilliseconds(integrationsTimeoutMs);
-});
-builder.Services.AddTransient<Invekto.Backend.Services.Zoho.IZohoOpsProxyClient>(sp =>
-    sp.GetRequiredService<Invekto.Backend.Services.Zoho.ZohoOpsProxyClient>());
+// FEAT-J2 + peer-service internal endpoints share a single secret rotation story.
+// Used by manual opt-out (/api/v1/optout) and SuperAdmin outbox retry-skipped proxy
+// (/api/ops/outbox/retry-skipped) for X-Internal-Service-Token header binding.
+var internalSharedSecret = builder.Configuration["InternalServices:SharedSecret"] ?? string.Empty;
 
 // Configure Marketing HTTP client (GR-3.21/3.22)
 builder.Services.AddHttpClient<MarketingClient>(client =>
@@ -645,7 +607,6 @@ if (jwtValidator != null)
         "/api/v1/attribution/",
         "/api/v1/leads",
         "/api/v1/onboarding/",
-        "/api/v1/zoho/",
         // FEAT-LIW Chunk C: tenant Dashboard LIW settings endpoints — tenant-scoped JWT
         // required; tenant_id is extracted exclusively from the JWT claim (never from
         // request body/query) to prevent IDOR across tenants.
@@ -2449,11 +2410,6 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
             new() { Method = "GET", Path = "/api/ops/postman", Description = "Postman collection download", Auth = "Basic", Category = "Ops" },
             new() { Method = "POST", Path = "/api/ops/services/{name}/restart", Description = "Restart Windows Service", Auth = "Basic", Category = "Ops" },
             new() { Method = "GET", Path = "/api/ops/test/{service}/{path}", Description = "Test proxy for microservices", Auth = "Basic", Category = "Ops" },
-            // Adim 3 Paket 3-C: Super-admin cross-tenant Zoho ops
-            new() { Method = "GET", Path = "/api/ops/zoho/connections", Description = "Super-admin: all tenants Zoho connection list", Auth = "Basic", Category = "Ops" },
-            new() { Method = "GET", Path = "/api/ops/zoho/sync-log", Description = "Super-admin: cross-tenant Zoho sync log (filter+paginate)", Auth = "Basic", Category = "Ops" },
-            new() { Method = "DELETE", Path = "/api/ops/zoho/connections/{tenantId}", Description = "Super-admin: force-disconnect tenant Zoho", Auth = "Basic", Category = "Ops" },
-            new() { Method = "POST", Path = "/api/ops/zoho/sync-log/retry", Description = "Super-admin: batch retry failed Zoho sync rows (max 50)", Auth = "Basic", Category = "Ops" },
 
             // Lead Management (PKT-6B1: GR-3.13)
             new() { Method = "POST", Path = "/api/v1/leads", Description = "Create/upsert lead", Auth = "Bearer JWT", Category = "Leads" },
@@ -5877,7 +5833,6 @@ app.MapGet("/api/v1/leads/{id:int}", async (HttpContext ctx, LeadRepository lead
 
 app.MapPut("/api/v1/leads/{id:int}/status", async (
     HttpContext ctx, LeadRepository leadRepo, JsonLinesLogger jsonLog,
-    Invekto.Backend.Services.Zoho.ZohoLifecycleDispatcher zohoDispatcher,
     int id, LeadPipelineUpdateRequest? request) =>
 {
     var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
@@ -5902,9 +5857,10 @@ app.MapPut("/api/v1/leads/{id:int}/status", async (
 
         jsonLog.StepInfo($"Lead status updated: id={id}, status={request.PipelineStatus}", rid);
 
-        // Adim 3 Paket 2: fire-and-forget Zoho sync. Unknown pipeline_status -> no-op; transport
-        // failures logged as INV-INT-127 inside dispatcher; never throws back to this handler.
-        zohoDispatcher.DispatchLeadStatusChange(tenantContext.TenantId, id, request.PipelineStatus);
+        // FEAT-INMA-PIPELINE-V2 C1 (2026-05-13): Zoho sync dispatch removed. customer_status
+        // authority moves to INMA agent UI; INSE-side status updates emitted via flow action
+        // node (C4 BLOCKED pending INMA contract). Lead pipeline_status remains the local
+        // sales-funnel tracker but no longer triggers cross-system sync.
 
         return Results.Ok(new { id, pipeline_status = request.PipelineStatus });
     }
@@ -8344,9 +8300,11 @@ app.MapClinicMetadataEndpoints();
 // (JWT + IntakeInternalAuth shared-secret dual auth).
 Invekto.Backend.Services.MetaLeadgen.MetaLeadgenEndpoints.MapMetaLeadgenEndpoints(app);
 
-// Paket B-META: Automation → Backend lifecycle notifications receiver
-// (/api/internal/lifecycle/welcome-sent). Forwards to ZohoLifecycleDispatcher
-// .DispatchEvent for the "welcome_sent" Zoho Blueprint transition.
+// Automation → Backend lifecycle notifications receiver
+// (/api/internal/lifecycle/welcome-sent). FEAT-INMA-PIPELINE-V2 C1 (2026-05-13):
+// Zoho Blueprint dispatch removed; handler now accepts + logs the welcome-sent
+// notification without downstream sync side effects. INMA-authoritative customer_status
+// flow (V2 C2-C4) will replace this hop when INMA contract ships.
 Invekto.Backend.Services.Lifecycle.LifecycleInternalEndpoints.MapLifecycleInternalEndpoints(app);
 
 // ============================================
@@ -8409,7 +8367,7 @@ app.MapPost("/api/v1/optout", async (HttpContext ctx, JsonLinesLogger jsonLog, I
 
     var client = httpClientFactory.CreateClient();
     client.BaseAddress = new Uri(outboundUrl);
-    client.DefaultRequestHeaders.Add("X-Internal-Service-Token", zohoSharedSecret);
+    client.DefaultRequestHeaders.Add("X-Internal-Service-Token", internalSharedSecret);
     var upstream = await client.PostAsJsonAsync("/api/v1/internal/optout", payload, ctx.RequestAborted);
     var upstreamBody = await upstream.Content.ReadAsStringAsync(ctx.RequestAborted);
 
@@ -8436,7 +8394,7 @@ app.MapPost("/api/ops/outbox/retry-skipped", async (HttpContext ctx, JsonLinesLo
 
     var client = httpClientFactory.CreateClient();
     client.BaseAddress = new Uri(outboundUrl);
-    client.DefaultRequestHeaders.Add("X-Internal-Service-Token", zohoSharedSecret);
+    client.DefaultRequestHeaders.Add("X-Internal-Service-Token", internalSharedSecret);
     var content = new StringContent(string.IsNullOrWhiteSpace(body) ? "{}" : body, Encoding.UTF8, "application/json");
     var upstream = await client.PostAsync("/api/v1/internal/outbox/retry-skipped", content, ctx.RequestAborted);
     var upstreamBody = await upstream.Content.ReadAsStringAsync(ctx.RequestAborted);
@@ -8969,11 +8927,9 @@ app.MapPost("/ops/translation/warmup", async (HttpContext ctx, TranslationServic
     });
 });
 
-// Adim 3 Paket 3-B1: Zoho Dashboard proxy endpoints (UI -> Backend -> Integrations).
-app.MapZohoProxyEndpoints();
-
-// Adim 3 Paket 3-C: Super-admin cross-tenant Zoho ops endpoints.
-// ValidateOpsAuth + JsonLinesLogger SystemInfo audit; proxy to Integrations /api/internal/ops/zoho/*.
+// SuperAdmin cross-tenant ops identity resolver — used by FEAT-J2 retry-skipped
+// audit log + future cross-tenant ops endpoints. Returns "basic:{user}" /
+// "jwt:user={id},role={r}" / "inma-jwt:user={id},role={r}" / "unknown".
 string ResolveOpsIdentity(HttpContext ctx)
 {
     var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
@@ -9018,99 +8974,6 @@ string ResolveOpsIdentity(HttpContext ctx)
     }
     return "unknown";
 }
-
-app.MapGet("/api/ops/zoho/connections", async (HttpContext ctx, Invekto.Backend.Services.Zoho.IZohoOpsProxyClient proxy) =>
-{
-    if (!ValidateOpsAuth(ctx)) return OpsUnauthorized(ctx);
-    var upstream = await proxy.ForwardAsync(HttpMethod.Get, "/api/internal/ops/zoho/connections", null, ctx.RequestAborted).ConfigureAwait(false);
-    return Results.Content(upstream.Body, upstream.ContentType, statusCode: upstream.StatusCode);
-});
-
-app.MapGet("/api/ops/zoho/sync-log", async (HttpContext ctx, Invekto.Backend.Services.Zoho.IZohoOpsProxyClient proxy) =>
-{
-    if (!ValidateOpsAuth(ctx)) return OpsUnauthorized(ctx);
-    var qs = ctx.Request.QueryString.HasValue ? ctx.Request.QueryString.Value : string.Empty;
-    var upstream = await proxy.ForwardAsync(HttpMethod.Get, "/api/internal/ops/zoho/sync-log" + qs, null, ctx.RequestAborted).ConfigureAwait(false);
-    return Results.Content(upstream.Body, upstream.ContentType, statusCode: upstream.StatusCode);
-});
-
-app.MapDelete("/api/ops/zoho/connections/{tenantId:int}", async (int tenantId, HttpContext ctx, Invekto.Backend.Services.Zoho.IZohoOpsProxyClient proxy, JsonLinesLogger jsonLog) =>
-{
-    if (!ValidateOpsAuth(ctx)) return OpsUnauthorized(ctx);
-    var identity = ResolveOpsIdentity(ctx);
-    var upstream = await proxy.ForwardAsync(HttpMethod.Delete, $"/api/internal/ops/zoho/connections/{tenantId}", null, ctx.RequestAborted).ConfigureAwait(false);
-    jsonLog.SystemInfo($"[OPS-ZOHO] action=force-disconnect super_admin={identity} target_tenant={tenantId} upstream_status={upstream.StatusCode}");
-    return Results.Content(upstream.Body, upstream.ContentType, statusCode: upstream.StatusCode);
-});
-
-app.MapPost("/api/ops/zoho/sync-log/retry", async (HttpContext ctx, Invekto.Backend.Services.Zoho.IZohoOpsProxyClient proxy, JsonLinesLogger jsonLog) =>
-{
-    if (!ValidateOpsAuth(ctx)) return OpsUnauthorized(ctx);
-    var identity = ResolveOpsIdentity(ctx);
-
-    string body;
-    using (var reader = new StreamReader(ctx.Request.Body, Encoding.UTF8))
-        body = await reader.ReadToEndAsync(ctx.RequestAborted).ConfigureAwait(false);
-
-    // Extract ids from the body for audit trail (best-effort parse; malformed bodies still proxied for upstream to 400).
-    // Batch retry spans rows across tenants: tenant_id is resolved per-row server-side. We log target row ids to identify
-    // the exact rows touched — tenant_id mapping lives in zoho_sync_log and can be reconstructed from these ids.
-    string auditIds = "(unparsed)";
-    try
-    {
-        using var doc = System.Text.Json.JsonDocument.Parse(string.IsNullOrEmpty(body) ? "{}" : body);
-        if (doc.RootElement.TryGetProperty("ids", out var idsEl) && idsEl.ValueKind == System.Text.Json.JsonValueKind.Array)
-        {
-            var parts = new List<string>();
-            foreach (var el in idsEl.EnumerateArray())
-                if (el.ValueKind == System.Text.Json.JsonValueKind.Number) parts.Add(el.GetRawText());
-            auditIds = parts.Count == 0 ? "[]" : ("[" + string.Join(",", parts) + "]");
-        }
-    }
-    catch (System.Text.Json.JsonException)
-    {
-        auditIds = "(invalid-json)";
-    }
-
-    var upstream = await proxy.ForwardAsync(HttpMethod.Post, "/api/internal/ops/zoho/sync-log/retry", body, ctx.RequestAborted).ConfigureAwait(false);
-    jsonLog.SystemInfo($"[OPS-ZOHO] action=batch-retry super_admin={identity} target_row_ids={auditIds} upstream_status={upstream.StatusCode}");
-    return Results.Content(upstream.Body, upstream.ContentType, statusCode: upstream.StatusCode);
-});
-
-// Adim 3 P3-C deploy follow-up: Public passthrough for Zoho OAuth callback.
-// Backend listens on :443 and Zoho redirect URI is https://ai.invekto.com/integrations/zoho/callback;
-// the actual handler lives in Invekto.Integrations (port 7106). This passthrough forwards the GET
-// (query string verbatim) and returns the upstream content (HTML success page or JSON error envelope).
-// Public by design (OAuth RFC 6749 §3.1.2 — browser redirect cannot carry JWT).
-app.MapGet("/integrations/zoho/callback", async (HttpContext ctx, IHttpClientFactory httpFactory) =>
-{
-    var qs = ctx.Request.QueryString.HasValue ? ctx.Request.QueryString.Value : string.Empty;
-    var upstreamUrl = integrationsUrl.TrimEnd('/') + "/integrations/zoho/callback" + qs;
-    var client = httpFactory.CreateClient();
-    client.Timeout = TimeSpan.FromSeconds(30);
-
-    try
-    {
-        using var resp = await client.GetAsync(upstreamUrl, ctx.RequestAborted).ConfigureAwait(false);
-        var body = await resp.Content.ReadAsStringAsync(ctx.RequestAborted).ConfigureAwait(false);
-        var contentType = resp.Content.Headers.ContentType?.ToString() ?? "text/html; charset=utf-8";
-        return Results.Content(body, contentType, statusCode: (int)resp.StatusCode);
-    }
-    catch (HttpRequestException ex)
-    {
-        logger.SystemWarn($"[OPS-ZOHO] zoho callback transport failure: {ex.Message}");
-        return Results.Content(
-            "<html><body><h2>Zoho callback servisine ulaşılamadı</h2><p>Lütfen birkaç saniye sonra tekrar deneyin.</p></body></html>",
-            "text/html; charset=utf-8", statusCode: 502);
-    }
-    catch (TaskCanceledException ex)
-    {
-        logger.SystemWarn($"[OPS-ZOHO] zoho callback timeout: {ex.Message}");
-        return Results.Content(
-            "<html><body><h2>Zoho callback zaman aşımına uğradı</h2></body></html>",
-            "text/html; charset=utf-8", statusCode: 504);
-    }
-});
 
 // ============================================
 // FEAT-PHOTO wire-up patch (2026-04-28)

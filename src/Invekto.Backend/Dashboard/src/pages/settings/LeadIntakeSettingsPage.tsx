@@ -3,7 +3,8 @@
 // (FlowWarningBanner, ApiKeyManagerCard, FieldMapEditorCard, DryRunPreviewCard,
 // AuditLogTimeline) + NewKeyCopyModal. row_version threaded into every
 // mutation; 409 -> refetch + toast + preserve dirty draft state.
-// Shared state: useState/useEffect (NOT Zustand — matches ZohoStageMappingPage).
+// Shared state: useState/useEffect (NOT Zustand) for row_version + audit fetching;
+// keeps optimistic-concurrency 409 dirty-draft preservation simple per-form-scope.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Webhook, AlertCircle } from 'lucide-react';
 import { api, ApiClientError } from '../../lib/api';

@@ -15,7 +15,6 @@ import {
   Activity,
   Megaphone,
   CalendarDays,
-  Link2,
   Star,
   ShieldAlert,
   Settings,
@@ -66,13 +65,10 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { path: '/flow-monitor',    label: 'Flow Monitor',     tenantLabel: 'Flow Izleme', icon: Activity, feature: 'FlowBuilder', section: 'Analiz' },
   { path: '/analytics',       label: 'Analizler',        icon: BarChart3,    feature: 'Analytics' },
   { path: '/revenue-intelligence', label: 'Revenue Intelligence', tenantLabel: 'Gelir Analizi', icon: TrendingUp, feature: 'Analytics' },
-  // — Tenant: Diğer —
-  { path: '/integrations',    label: 'Entegrasyonlar',   icon: Link2,        feature: 'Integrations', section: 'Diğer' },
   // — Ops: Yönetim —
   { path: '/tenants',         label: 'Firmalar',         icon: Building2,     opsOnly: true, section: 'Yönetim' },
   { path: '/yol-haritasi',    label: 'Yol Haritası',      icon: Kanban,        opsOnly: true },
   { path: '/licenses',        label: 'Lisanslama',        icon: Key,           opsOnly: true },
-  { path: '/ops/zoho',        label: 'Zoho Yönetim',      icon: Link2,         opsOnly: true },
   // — Ops: İçerik —
   { path: '/templates',        label: 'Sablon Sistemi',    icon: LayoutTemplate,  opsOnly: true, section: 'İçerik' },
   { path: '/templates/ingestion', label: 'Veri Besleme',  icon: Upload,          opsOnly: true },

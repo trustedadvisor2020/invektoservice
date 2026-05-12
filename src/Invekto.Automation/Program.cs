@@ -241,7 +241,7 @@ builder.Services.AddSingleton<TranslationHopClient>(sp =>
 
 // FEAT-LIW Chunk B: BackendIntakeClient — POST wa-direct payload to Backend's
 // /api/internal/leads/intake/wa-direct via the existing Backend:BaseUrl. Shared
-// secret mirrors Zoho's pattern (InternalServices:SharedSecret); Singleton
+// secret follows the canonical peer-service pattern (InternalServices:SharedSecret); Singleton
 // lifecycle matches the named-HttpClient pool above. Empty secret degrades the
 // wa-direct hook gracefully (BackendIntakeClient logs INV-AT-070 and returns
 // null) instead of blocking service startup — keeps Automation bootable on

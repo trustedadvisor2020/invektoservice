@@ -1,5 +1,4 @@
 using Invekto.Backend.Services.Internal;
-using Invekto.Backend.Services.Zoho;
 using Invekto.Shared.Auth;
 using Invekto.Shared.Constants;
 using Invekto.Shared.Contracts.Lifecycle;
@@ -14,10 +13,13 @@ namespace Invekto.Backend.Services.Lifecycle;
 /// future lifecycle events (engaged, qualified, etc.) land as sibling handlers
 /// in the same class as they come online.
 ///
-/// The fire-and-forget semantics run on the Backend side: this handler returns
-/// 202 immediately after the dispatcher is kicked off on the thread pool, so
-/// the Automation-side HTTP call completes fast and retains best-effort shape
-/// regardless of Zoho transport latency or Blueprint transition cost.
+/// FEAT-INMA-PIPELINE-V2 C1 (2026-05-13): Zoho Blueprint dispatch removed. Handler
+/// now accepts + validates + logs the welcome-sent notification with no downstream
+/// sync side effects. The endpoint contract (POST 202 with internal-auth + JWT
+/// tenant-match + payload validation) is preserved so Automation TriggerWelcomeFlowJob
+/// continues to receive 202 without behavior change on its side. INMA-authoritative
+/// customer_status flow (V2 C2-C4) will replace this hop when INMA contract ships;
+/// at that point welcome events feed into the new flow trigger channel.
 ///
 /// Auth is the FEAT-LIW Chunk B pattern:
 ///   * JWT middleware on <c>/api/internal/</c> establishes TenantContext
@@ -34,7 +36,6 @@ public static class LifecycleInternalEndpoints
             HttpContext ctx,
             IConfiguration appConfig,
             JsonLinesLogger jsonLog,
-            ZohoLifecycleDispatcher dispatcher,
             WelcomeSentNotification? request) =>
         {
             var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
@@ -77,12 +78,9 @@ public static class LifecycleInternalEndpoints
                     statusCode: 403);
             }
 
-            // Fire-and-forget: dispatcher kicks Zoho sync onto the thread pool and
-            // returns immediately. 202 Accepted signals "received and enqueued,
-            // no outcome guarantee" which matches the Automation-side fire-and-
-            // forget semantic of the calling TriggerWelcomeFlowJob hook.
-            dispatcher.DispatchEvent(tc.TenantId, request.LeadId, "welcome_sent");
-
+            // FEAT-INMA-PIPELINE-V2 C1: dispatch side effect removed; log + 202 preserved
+            // for Automation TriggerWelcomeFlowJob contract compatibility. C3 trigger
+            // channel BLOCKED pending INMA contract.
             jsonLog.StepInfo(
                 $"lifecycle welcome-sent accepted: tenant={tc.TenantId} lead={request.LeadId} triggered_at={request.TriggeredAt:O}",
                 rid);

@@ -3,8 +3,6 @@ using Hangfire;
 using Invekto.Integrations.Data;
 using Invekto.Integrations.Services;
 using Invekto.Integrations.Services.Jobs;
-using Invekto.Integrations.Services.Zoho;
-using Microsoft.AspNetCore.DataProtection;
 using Invekto.Shared.Hosting;
 using Invekto.Shared.Auth;
 using Invekto.Shared.Constants;
@@ -112,53 +110,6 @@ builder.Services.AddSingleton<ICargoProvider, YurticiCargoMockProvider>();
 var hangfireConnStr = HangfireSetup.ResolveConnectionString(builder.Configuration);
 builder.Services.AddInvektoHangfire("integrations", hangfireConnStr, enableScheduler: false);
 builder.Services.AddScoped<OrderSyncJob>();
-
-// Adim 2 Paket B: Zoho OAuth backend (token exchange + lazy refresh + endpoints)
-// Persist Data Protection keys to a stable on-disk location so encrypted refresh tokens
-// survive process restarts. Default uses C:\Invekto\Integrations\keys (override via Zoho:KeyRingPath).
-var zohoKeyRingPath = builder.Configuration["Zoho:KeyRingPath"] ?? @"C:\Invekto\Integrations\keys";
-Directory.CreateDirectory(zohoKeyRingPath);
-builder.Services.AddDataProtection()
-    .SetApplicationName("Invekto.Integrations.Zoho")
-    .PersistKeysToFileSystem(new DirectoryInfo(zohoKeyRingPath));
-builder.Services.AddMemoryCache();
-builder.Services.AddSingleton<ZohoConnectionRepository>();
-builder.Services.AddSingleton<ZohoRegionResolver>();
-builder.Services.AddSingleton<ZohoOAuthStateService>(_ => new ZohoOAuthStateService(jwtSecretKey));
-builder.Services.AddHttpClient<ZohoTokenProvider>(client =>
-{
-    client.Timeout = TimeSpan.FromSeconds(15);
-    client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
-});
-builder.Services.AddSingleton<IZohoTokenProvider>(sp => sp.GetRequiredService<ZohoTokenProvider>());
-builder.Services.AddSingleton<ZohoConnectionService>(sp => new ZohoConnectionService(
-    sp.GetRequiredService<ZohoConnectionRepository>(),
-    sp.GetRequiredService<ZohoRegionResolver>(),
-    sp.GetRequiredService<ZohoOAuthStateService>(),
-    sp.GetRequiredService<ZohoTokenProvider>(),
-    sp.GetRequiredService<Microsoft.AspNetCore.DataProtection.IDataProtectionProvider>(),
-    builder.Configuration["Zoho:DefaultRegion"] ?? "eu"));
-
-// Adim 3 Paket 1: Zoho sync (Blueprint + Lead + StageMapping + SyncService + internal-auth endpoint).
-builder.Services.AddSingleton<ZohoStageMappingRepository>();
-builder.Services.AddSingleton<ZohoSyncLogRepository>();
-builder.Services.AddSingleton<IZohoStageMappingService, ZohoStageMappingService>();
-builder.Services.AddHttpClient<ZohoBlueprintClient>(client =>
-{
-    client.Timeout = TimeSpan.FromSeconds(30);
-    client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
-});
-builder.Services.AddHttpClient<ZohoLeadClient>(client =>
-{
-    client.Timeout = TimeSpan.FromSeconds(30);
-    client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
-});
-builder.Services.AddSingleton<IZohoBlueprintClient>(sp => sp.GetRequiredService<ZohoBlueprintClient>());
-builder.Services.AddSingleton<IZohoLeadClient>(sp => sp.GetRequiredService<ZohoLeadClient>());
-builder.Services.AddSingleton<IZohoSyncService, ZohoSyncService>();
-
-// Adim 3 Paket 2: retry worker (5-min tick, failed + >10min + attempt<2).
-builder.Services.AddHostedService<ZohoRetryWorker>();
 
 builder.Services.AddAuthorization();
 
@@ -775,17 +726,6 @@ app.MapGet("/api/v1/reviews/stats", async (
 // Ops endpoints
 // ============================================================
 
-// Adim 2 Paket B: Zoho OAuth endpoints
-app.MapZohoConnectEndpoints();
-app.MapZohoSyncEndpoints();
-// Adim 3 Paket 3-B1: Dashboard UI icin tenant-scoped connection + sync-log endpoints.
-app.MapZohoConnectionEndpoints();
-app.MapZohoSyncLogEndpoints();
-// Adim 3 Paket 3-C: Super-admin cross-tenant ops endpoints (shared-secret).
-app.MapZohoOpsEndpoints();
-// Adim 4: Stage mapping editor endpoints (blueprint transitions + test).
-app.MapZohoStageMappingEditorEndpoints();
-
 // FEAT-VCP Chunk B: internal video meeting creation hop consumed by
 // Invekto.Appointments VideoMeetingCreationJob. Header-secret auth (no JWT) —
 // tenant_id travels in the body because the caller is a Hangfire job without
@@ -815,18 +755,6 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "GET", Path = "/api/v1/reviews/alerts", Description = "List review alerts (PKT-6B1)", Auth = "Bearer", Category = "Reviews" },
         new() { Method = "PUT", Path = "/api/v1/reviews/alerts/{alertId}/status", Description = "Update review recovery status (PKT-6B1)", Auth = "Bearer", Category = "Reviews" },
         new() { Method = "GET", Path = "/api/v1/reviews/stats", Description = "Review recovery stats (PKT-6B1)", Auth = "Bearer", Category = "Reviews" },
-        new() { Method = "GET", Path = "/api/v1/zoho/connect-url", Description = "Build Zoho OAuth authorize URL for tenant (Adim 2)", Auth = "Bearer", Category = "Zoho" },
-        new() { Method = "GET", Path = "/integrations/zoho/callback", Description = "Zoho OAuth callback (public, processes code+state)", Auth = "none", Category = "Zoho" },
-        new() { Method = "POST", Path = "/api/internal/zoho/sync", Description = "Source -> Zoho sync (Adim 3 P1, internal-auth shared secret)", Auth = "X-Internal-Service-Token", Category = "Zoho" },
-        new() { Method = "GET", Path = "/api/v1/zoho/stage-mappings", Description = "List tenant Zoho stage mappings (Adim 3 P1)", Auth = "Bearer", Category = "Zoho" },
-        new() { Method = "PUT", Path = "/api/v1/zoho/stage-mappings", Description = "Replace tenant Zoho stage mappings (Adim 3 P1)", Auth = "Bearer", Category = "Zoho" },
-        new() { Method = "GET", Path = "/api/v1/zoho/sync-log/failed-count", Description = "Failed sync count badge (Adim 3 P1)", Auth = "Bearer", Category = "Zoho" },
-        new() { Method = "GET", Path = "/api/internal/ops/zoho/connections", Description = "Super-admin cross-tenant Zoho connections list (Adim 3 P3-C)", Auth = "X-Internal-Service-Token", Category = "Zoho" },
-        new() { Method = "GET", Path = "/api/internal/ops/zoho/sync-log", Description = "Super-admin cross-tenant Zoho sync log (Adim 3 P3-C)", Auth = "X-Internal-Service-Token", Category = "Zoho" },
-        new() { Method = "DELETE", Path = "/api/internal/ops/zoho/connections/{tenantId}", Description = "Super-admin force-disconnect tenant Zoho (Adim 3 P3-C)", Auth = "X-Internal-Service-Token", Category = "Zoho" },
-        new() { Method = "POST", Path = "/api/internal/ops/zoho/sync-log/retry", Description = "Super-admin batch retry failed sync rows (Adim 3 P3-C, max 50)", Auth = "X-Internal-Service-Token", Category = "Zoho" },
-        new() { Method = "GET", Path = "/api/v1/zoho/blueprint/transitions", Description = "Adim 4: Module-level Blueprint transitions for stage mapping editor dropdown (?refresh=true bypasses cache)", Auth = "Bearer", Category = "Zoho" },
-        new() { Method = "POST", Path = "/api/v1/zoho/stage-mappings/test", Description = "Adim 4: Stage mapping dry-run (transition_id whitelist check, no Zoho mutation)", Auth = "Bearer", Category = "Zoho" },
         new() { Method = "POST", Path = "/internal/video/meetings", Description = "FEAT-VCP Chunk B: Appointments -> Integrations video meeting hop (factory resolve + provider CreateMeetingAsync)", Auth = "X-Internal-Service-Token", Category = "Video" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "none", Category = "Ops" }
     };

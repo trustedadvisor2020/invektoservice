@@ -8,9 +8,11 @@ namespace Invekto.Automation.Services.Lifecycle;
 ///
 /// Contract: fire-and-forget semantics. Failures are logged with INV-AT-072
 /// by the implementation and surfaced to the job only as "don't retry,
-/// don't throw" — the welcome message already reached the user, so the
-/// Zoho "1. Mesaj Atildi" transition miss is tolerable (next inbound
-/// engagement triggers its own lifecycle events).
+/// don't throw" — the welcome message already reached the user, so a
+/// downstream lifecycle-notification miss is tolerable (next inbound
+/// engagement triggers its own lifecycle events). FEAT-INMA-PIPELINE-V2 C1
+/// (2026-05-13): Backend handler is currently log-only; V2 C3 INMA-otorite
+/// customer_status trigger will consume welcome-sent events when ready.
 ///
 /// Interface kept tight (one method) to preserve unit-test surface for
 /// <c>TriggerWelcomeFlowJobTests</c> without paying for unused methods.

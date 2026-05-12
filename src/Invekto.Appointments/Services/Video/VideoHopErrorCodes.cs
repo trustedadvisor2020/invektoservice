@@ -1,10 +1,10 @@
 // FEAT-VCP Chunk B: service-local error code constants for Appointments-side video
 // meeting orchestration. Mirrors arch/errors.md INV-INT-144..146.
 //
-// Pattern follows Invekto.Integrations.Services.Video.VideoErrorCodes (Chunk A) and
-// Invekto.Integrations.Services.Zoho.ZohoErrorCodes — service-scoped error codes live
-// in the consuming service rather than Invekto.Shared.Constants.ErrorCodes (reserved
-// for cross-service generics such as INV-INT-001..004 webhook/callback). Microservice
+// Pattern follows Invekto.Integrations.Services.Video.VideoErrorCodes (Chunk A) —
+// service-scoped error codes live in the consuming service rather than
+// Invekto.Shared.Constants.ErrorCodes (reserved for cross-service generics such as
+// INV-INT-001..004 webhook/callback). Microservice
 // isolation requirement: Appointments does NOT reference Invekto.Integrations, so it
 // cannot reuse VideoErrorCodes directly for 140/141/142/143 — those codes surface
 // from the HTTP hop response body and are logged as-received strings.

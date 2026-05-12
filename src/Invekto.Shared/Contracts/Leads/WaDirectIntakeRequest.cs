@@ -6,11 +6,11 @@ namespace Invekto.Shared.Contracts.Leads;
 /// FEAT-LIW Chunk B: POST /api/internal/leads/intake/wa-direct payload.
 /// Service-to-service contract used by Automation's WA inbound hook to register a
 /// lead row in Backend before chat-flow execution. The caller is the Automation
-/// service (authenticated via the X-Internal-Service-Token header — same shared-
-/// secret pattern as the Zoho internal endpoints); end-users never reach this
-/// endpoint. Consent is implied by user-initiated contact (GDPR Recital 32
-/// affirmative action), so no explicit consent field is required — distinct from
-/// landing intake which validates a checkbox value.
+/// service (authenticated via the X-Internal-Service-Token header — canonical
+/// peer-service shared-secret pattern); end-users never reach this endpoint.
+/// Consent is implied by user-initiated contact (GDPR Recital 32 affirmative
+/// action), so no explicit consent field is required — distinct from landing
+/// intake which validates a checkbox value.
 /// </summary>
 public sealed class WaDirectIntakeRequest
 {

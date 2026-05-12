@@ -793,103 +793,6 @@ errors:
     description: inma:navigate postMessage rejected (invalid path or unauthenticated session; no queue, parent must retry)
     user_message: Yönlendirme reddedildi.
 
-  # Zoho OAuth (INV-INT-110+) — Adim 2 backend integration
-  - code: INV-INT-110
-    description: Unknown Zoho region (accounts-server URL not in registry)
-    user_message: Zoho bağlantı bölgesi tanınmadı.
-  - code: INV-INT-111
-    description: OAuth state JWT invalid or expired
-    user_message: Bağlantı oturumu geçersiz veya süresi dolmuş; tekrar deneyin.
-  - code: INV-INT-112
-    description: OAuth state tenant mismatch
-    user_message: Bağlantı oturumu eşleşmedi.
-  - code: INV-INT-113
-    description: Zoho token exchange failed
-    user_message: Zoho yetkilendirme başarısız oldu.
-  - code: INV-INT-114
-    description: Zoho token refresh failed
-    user_message: Zoho oturumu yenilenemedi.
-  - code: INV-INT-115
-    description: Zoho connection not found for tenant
-    user_message: Bu hesap için Zoho bağlantısı bulunamadı.
-  - code: INV-INT-116
-    description: Zoho region not configured (missing client_id/secret block)
-    user_message: Zoho bölgesi yapılandırılmamış.
-  - code: INV-INT-117
-    description: Refresh token decryption failed
-    user_message: Zoho oturum bilgisi okunamadı.
-  - code: INV-INT-118
-    description: Zoho disconnected by tenant (refresh blocked)
-    user_message: Zoho bağlantısı kapalı.
-  - code: INV-INT-119
-    description: Zoho rate limit reached
-    user_message: Zoho istek limiti aşıldı, lütfen sonra deneyin.
-  # Zoho Sync (INV-INT-120+) — Adim 3 Paket 1: Source -> Zoho sync pipeline
-  - code: INV-INT-120
-    description: Zoho stage mapping not configured for zoho_event
-    user_message: Zoho aşama eşleştirmesi yapılmamış, lütfen Zoho ayarlarını tamamlayın.
-  - code: INV-INT-121
-    description: Zoho Leads Blueprint not configured (Blueprint-only policy)
-    user_message: Zoho Leads modülünde Blueprint aktif değil.
-  - code: INV-INT-122
-    description: Zoho Blueprint transition id not found for lead
-    user_message: Zoho blueprint geçişi bulunamadı, eşleştirmeyi yenileyin.
-  - code: INV-INT-123
-    description: Zoho Lead not found
-    user_message: Zoho kaydı bulunamadı.
-  - code: INV-INT-124
-    description: Internal service auth token missing/invalid (POST /api/internal/zoho/sync)
-    user_message: Dahili servis yetki hatası.
-  - code: INV-INT-125
-    description: Zoho sync infrastructure failure (DB/transport/parse/unexpected Zoho API shape)
-    user_message: Zoho senkronizasyonunda beklenmeyen bir hata oluştu, tekrar denenecek.
-  - code: INV-INT-126
-    description: Internal service auth shared secret not configured on integrations service
-    user_message: Sistem yapılandırma hatası, lütfen yöneticiye bildirin.
-  - code: INV-INT-127
-    description: Backend-side Zoho sync HTTP transport failure (Adim 3 Paket 2, fire-and-forget dispatcher)
-    user_message: Zoho ile senkronizasyon arka planda başarısız oldu, otomatik yeniden denenecek.
-  # Zoho Dashboard UI (INV-INT-128+) — Adim 3 Paket 3-B1: Dashboard UI API surface
-  - code: INV-INT-128
-    description: Zoho sync log row not found for tenant (retry endpoint)
-    user_message: Senkronizasyon kaydı bulunamadı.
-  - code: INV-INT-129
-    description: Zoho sync log row not in 'failed' state (retry allowed only on failed rows)
-    user_message: Sadece başarısız senkronizasyon kayıtları tekrar denenebilir.
-  - code: INV-INT-130
-    description: Zoho refresh_token revoke best-effort failure during disconnect (non-fatal; local disconnect proceeds)
-    user_message: Zoho bağlantısı kapatıldı (uzaktan iptal doğrulanamadı).
-  # Zoho super-admin cross-tenant ops dashboard (INV-INT-131+) — Adim 3 Paket 3-C
-  - code: INV-INT-131
-    description: Super-admin cross-tenant Zoho ops read failure (DB/transport unexpected error)
-    user_message: Zoho yönetim verisi okunamadı, tekrar deneyin.
-  - code: INV-INT-132
-    description: Force-disconnect target tenant has no active Zoho connection (already disconnected or never connected)
-    user_message: Bu firma için aktif Zoho bağlantısı bulunamadı.
-  - code: INV-INT-133
-    description: Ops batch retry payload invalid (empty ids list or malformed body)
-    user_message: Tekrar denenecek kayıt listesi boş veya geçersiz.
-  - code: INV-INT-134
-    description: Ops batch retry exceeded max 50 ids per request
-    user_message: Toplu tekrar deneme en fazla 50 kayıt içerebilir.
-  - code: INV-INT-135
-    description: Ops query parameter validation failure (filter/status/event/date inputs on /api/internal/ops/zoho/*)
-    user_message: Filtre değerleri geçersiz, kontrol edin.
-  # Adim 4 P4.1: Stage Mapping editor full state coverage
-  - code: INV-INT-136
-    description: Lead_Status field not found in Zoho /crm/v6/settings/fields response (Lead_Status field missing or pick_list_values empty)
-    user_message: Zoho Leads modulunde Lead_Status alani bulunamadi, alan ayarlarini kontrol edin.
-  - code: INV-INT-FE-131
-    description: Frontend-only fallback when upstream envelope is missing (P3-C OpsZohoPage extractError)
-    user_message: Beklenmedik bir hata oluştu, tekrar deneyin.
-  - code: INV-INT-FE-132
-    description: Frontend-only fallback for Stage Mapping editor (P4 ZohoStageMappingPage extractError)
-    user_message: Beklenmedik bir hata oluştu, tekrar deneyin.
-  # Adim 4 P4.2: Stage Mapping discover — fallback aggregation observability
-  - code: INV-INT-137
-    description: All sampled Zoho leads returned RECORD_NOT_IN_PROCESS during blueprint aggregation (no lead is engaged in the blueprint workflow); distinct from BlueprintNotConfigured (no leads at all)
-    user_message: Zoho'daki lead'ler Blueprint sürecine dahil değil. Manuel ID ile her satırı elle girin (Zoho → Setup → Automation → Blueprint → ilgili Blueprint → her geçişe tıklayın → URL'deki son segmenti kopyalayın).
-
   # FEAT-VCP Video Consultation Provider (INV-INT-140+) — Chunk A/B/C
   - code: INV-INT-140
     description: Video consultation provider (Chunk C GoogleMeetProvider) OAuth refresh token is invalid or expired. Tenant must reconnect their Google Workspace account via the Dashboard provider-settings flow. Declared in Chunk A, actively surfaced by Chunk C.
@@ -1608,6 +1511,20 @@ errors:
   - code: INV-SEED-034
     description: Migration 040 §6 hardcoded literal cleanup verification FAIL — faqs tablosu Dent (tenant_id=18173130) icin hardcoded 6 literal (Dr. Özge Yılmazoğlu, +90 545 343 09 09, https://dentadavista.com/, Instagram URL, Facebook URL, Dent Adavista Dental Clinic) hala mevcut (post-state count 0 olmali) VEYA chatbot_flows flow_id=29 nodes[1].data.text 3 placeholder ({{team.receptionist.name}}, {{clinic.name}}, {{team.dentist.name}}) icermiyor. §4 REPLACE statement'lari partial uygulandi (UTF-8 normalization mismatch, embedded variant) yahut §5 jsonb_set silent no-op. Tani: SELECT id, intent_slug, answer FROM faqs WHERE tenant_id=18173130 AND answer LIKE ANY (ARRAY['%Dr. Özge%', '%+90 545%', '%dentadavista.com%', '%dentadavistaclinic%', '%Dent Adavista Dental%']); + SELECT flow_config->'nodes'->1->'data'->>'text' FROM chatbot_flows WHERE flow_id=29. Fix-forward: §4-§5 manuel re-run.
     user_message: Klinik bilgileri migration doğrulaması başarısız — FAQ veya welcome metinlerinde hardcoded değerler temizlenemedi.
+
+  # FEAT-INMA-PIPELINE-V2 C1 Zoho-out (migration 048 — 2026-05-13). 030..031 buffer slots remain reserved.
+  - code: INV-SEED-035
+    description: Migration 048 §4 archive table existence verification FAIL — zoho_connections_archive_20260513 / zoho_stage_mappings_archive_20260513 / zoho_sync_log_archive_20260513 tablolarinin biri yahut hepsi snapshot sonrasi yok. Root cause: §1 DO block snapshot skipped (to_regclass live tablo zaten dropped — out-of-band DROP migration oncesi). Tani: SELECT to_regclass('public.zoho_connections_archive_20260513'), to_regclass('public.zoho_stage_mappings_archive_20260513'), to_regclass('public.zoho_sync_log_archive_20260513'). Fix-forward: 11 tenant production data logical backup'tan restore (audit/recovery icin); migration sadece archive confirmed snapshot mevcutsa re-run.
+    user_message: Zoho silme migration doğrulaması başarısız — arşiv tabloları oluşturulamadı, veri kaybı riski; backup'tan restore gerekli.
+  - code: INV-SEED-036
+    description: Migration 048 §4 archive row count sanity verification FAIL — zoho_*_archive_20260513 tablolarindan birinin row count negatif (PostgreSQL bug, NOT data drift). Root cause: COUNT(*) bozuk donus (pg_stat_user_tables veya pg_class corruption). Defensive sanity check — V35 once fire eder normalde. Tani: pg_stat_user_tables WHERE relname LIKE 'zoho_%_archive_20260513' n_live_tup kontrol; pg_dump archive logical backup. Fix-forward: DBA escalation.
+    user_message: Zoho arşiv tablolarında row count anomali — sistem hatası, DBA'ya bildirin.
+  - code: INV-SEED-037
+    description: Migration 048 §4 live table cleanup verification FAIL — zoho_connections / zoho_stage_mappings / zoho_sync_log tablolarindan biri yahut hepsi post-drop hala mevcut. Root cause: §3 DROP TABLE IF EXISTS silently skipped (dependent view, foreign table, veya running transaction holding lock). Tani: SELECT * FROM pg_locks WHERE relation IN (SELECT oid FROM pg_class WHERE relname IN ('zoho_connections','zoho_stage_mappings','zoho_sync_log')); pg_blocking_pids() blocker session identify. Fix-forward: blocker session terminate + retry DROP (view dependency varsa onceden drop view).
+    user_message: Zoho silme migration doğrulaması başarısız — canlı zoho_* tabloları silinemedi, blocker session veya bağımlılık kontrol edin.
+  - code: INV-SEED-038
+    description: Migration 048 §4 GRANT verification FAIL — zoho_*_archive_20260513 tablolarinda invekto role GRANT ALL eksik. Root cause: §2 DO block GRANT statement skipped (DO block hata yutmus, archive tablo create silently failed olmus, role rename drift). Tani: SELECT * FROM information_schema.role_table_grants WHERE grantee='invekto' AND table_name LIKE 'zoho_%_archive_20260513'; SELECT rolname FROM pg_roles WHERE rolname='invekto'. Fix-forward: GRANT ALL ON zoho_connections_archive_20260513 TO invekto; GRANT ALL ON zoho_stage_mappings_archive_20260513 TO invekto; GRANT ALL ON zoho_sync_log_archive_20260513 TO invekto; — manuel re-run.
+    user_message: Zoho arşiv tablolarında erişim hakkı eksik — sistem yapılandırma hatası.
 
   # FEAT-PILOT-KANBAN runtime (KanbanEndpoints + Repository — 2026-04-28)
   - code: INV-KB-001

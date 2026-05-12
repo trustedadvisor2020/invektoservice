@@ -442,7 +442,7 @@ app.MapPost("/api/v1/internal/optout", async (
     // secret, and the Backend proxy (/api/v1/optout) validates the JWT-bound
     // tenant context before forwarding. Outbound does not expose this path
     // externally — only service-to-service callers with the shared secret can
-    // reach it. Same trust model as the Zoho internal endpoints.
+    // reach it. Canonical peer-service trust model.
     if (request.EventType is not null and not ("opt_out" or "opt_in"))
     {
         return Results.Json(

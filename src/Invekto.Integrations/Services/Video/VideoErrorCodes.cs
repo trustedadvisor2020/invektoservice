@@ -1,7 +1,7 @@
 // FEAT-VCP Chunk A: service-local error code constants mirroring arch/errors.md INV-INT-140..142.
-// Pattern follows Invekto.Integrations.Services.Zoho.ZohoErrorCodes — service-scoped error codes
-// live in the consuming service rather than Invekto.Shared.Constants.ErrorCodes, which is reserved
-// for cross-service codes (INV-INT-001..004 generic webhook/callback).
+// Service-scoped error codes live in the consuming service rather than
+// Invekto.Shared.Constants.ErrorCodes, which is reserved for cross-service
+// codes (INV-INT-001..004 generic webhook/callback).
 //
 // Chunk A only surfaces INV-INT-142 (provider_not_configured) via VideoProviderFactory's
 // graceful null-return path; INV-INT-140 / INV-INT-141 are declared for forward use by

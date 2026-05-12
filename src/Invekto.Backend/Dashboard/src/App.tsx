@@ -11,11 +11,9 @@ import { KnowledgePage } from './pages/KnowledgePage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { CampaignsPage } from './pages/CampaignsPage';
 import { AppointmentsPage } from './pages/AppointmentsPage';
-import { IntegrationsPage } from './pages/IntegrationsPage';
 import { MarketingPage } from './pages/MarketingPage';
 import { MessagesPage } from './pages/MessagesPage';
 import { TenantsPage } from './pages/TenantsPage';
-import { OpsZohoPage } from './pages/OpsZohoPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { OnboardingGuidePage } from './pages/OnboardingGuidePage';
 import { OnboardingWizardPage } from './pages/OnboardingWizardPage';
@@ -39,11 +37,6 @@ const RiTemplateManagementPage = lazy(() => import('./pages/RiTemplateManagement
 const FlowMonitorPage = lazy(() => import('./pages/FlowMonitorPage').then(m => ({ default: m.FlowMonitorPage })));
 const FlowTemplateGalleryPage = lazy(() => import('./pages/FlowTemplateGalleryPage').then(m => ({ default: m.FlowTemplateGalleryPage })));
 const RescueDashboardPage = lazy(() => import('./pages/RescueDashboardPage').then(m => ({ default: m.RescueDashboardPage })));
-
-// Adim 3 P3-B2: Zoho integration sub-pages (lazy).
-const ZohoConnectionPage = lazy(() => import('./pages/zoho/ZohoConnectionPage').then(m => ({ default: m.ZohoConnectionPage })));
-const ZohoStageMappingPage = lazy(() => import('./pages/zoho/ZohoStageMappingPage').then(m => ({ default: m.ZohoStageMappingPage })));
-const ZohoSyncLogPage = lazy(() => import('./pages/zoho/ZohoSyncLogPage').then(m => ({ default: m.ZohoSyncLogPage })));
 
 // FEAT-LIW Chunk C: tenant landing settings (lazy).
 const LeadIntakeSettingsPage = lazy(() => import('./pages/settings/LeadIntakeSettingsPage').then(m => ({ default: m.LeadIntakeSettingsPage })));
@@ -148,13 +141,6 @@ export default function App() {
         <Route path="/revenue-intelligence" element={<Suspense><RevenueIntelligencePage /></Suspense>} />
         <Route path="/campaigns" element={<CampaignsPage />} />
         <Route path="/appointments" element={<AppointmentsPage />} />
-        <Route path="/integrations" element={<IntegrationsPage />}>
-          <Route index element={<Navigate to="/integrations/zoho/connection" replace />} />
-          <Route path="zoho" element={<Navigate to="/integrations/zoho/connection" replace />} />
-          <Route path="zoho/connection" element={<Suspense><ZohoConnectionPage /></Suspense>} />
-          <Route path="zoho/stage-mappings" element={<Suspense><ZohoStageMappingPage /></Suspense>} />
-          <Route path="zoho/sync-log" element={<Suspense><ZohoSyncLogPage /></Suspense>} />
-        </Route>
         <Route path="/marketing" element={<MarketingPage />} />
         <Route path="/rescue" element={<Suspense><RescueDashboardPage /></Suspense>} />
         <Route path="/messages" element={<MessagesPage />} />
@@ -169,7 +155,6 @@ export default function App() {
         <Route path="/yol-haritasi" element={<Suspense><PilotKanbanPage /></Suspense>} />
         <Route path="/yol-haritasi/:boardKey" element={<Suspense><PilotKanbanPage /></Suspense>} />
         <Route path="/pilot-kanban" element={<Navigate to="/yol-haritasi/inse" replace />} />
-        <Route path="/ops/zoho" element={<OpsZohoPage />} />
         <Route path="/licenses" element={<LicensesPage />} />
         <Route path="/payment" element={<PaymentPage />} />
         <Route path="/templates" element={<Suspense><TemplateLibraryPage /></Suspense>} />
