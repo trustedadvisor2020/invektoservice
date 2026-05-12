@@ -129,9 +129,14 @@
 
 <header class="hero">
   <div class="wrap">
-    <span class="kicker">Dent Adavista Pilot · 2026-04-24</span>
+    <span class="kicker">Dent Adavista Pilot · 2026-04-24 · Updated 2026-05-12 (FEAT-INMA-PIPELINE-V2 C1)</span>
     <h1 style="margin:12px 0 8px">Dent Adavista Canlıya Alma — Yapılacaklar Listesi</h1>
     <p class="sub">Tenant <code>18173130</code> için Stage 1 (soft launch) → Stage 2 (limited beta) → Stage 3 (full traffic) + B-C2 post-pilot overhaul tam konsolide checklist. Tüm adımlar durum rozeti + tarih ile izleniyor. Kaynak: <code>pilot-stage1-prep.md</code> + <code>pilot-checklist.md</code> + <code>pilot-golive.md</code> + <code>tracking/pilot-launch-roadmap.md</code>.</p>
+    <div class="callout warn" style="margin-top:18px;background:rgba(245,158,11,.08)">
+      <h4 style="margin-top:0">🔄 V2 Mimari Güncellemesi (2026-05-12, commit <code>0c0733b</code>)</h4>
+      <p><strong>Zoho INSE'den TAMAMEN çıkıyor — FEAT-INMA-PIPELINE-V2 C1 Zoho-out 2026-05-12 17:50 UTC DONE+DEPLOYED+SMOKED.</strong> Lead pipeline (customer_status) artık INMA-otorite: INMA agent UI manuel dropdown + INMA→INSE webhook (C2 BLOCKED INMA contract). Bu doc'ta eski Zoho Blueprint / OAuth / stage mapping bölümleri kaldırıldı; yerine §V2 Customer Status Akışı (V2) bölümü eklendi (dosya sonu).</p>
+      <p>Pilot Stage 1-2-3 akışı korunuyor — sadece "Zoho transition tetikleme" hop'u "INMA agent UI dropdown" ile yer değiştirdi.</p>
+    </div>
     <div class="stats">
       <div class="stat"><div class="n">15 / 15</div><div class="l">Pilot-critical paket DONE</div></div>
       <div class="stat"><div class="n">3</div><div class="l">Aşama (Stage 1/2/3)</div></div>
@@ -154,7 +159,7 @@
         <li><a href="#stage1">Stage 1 — Soft Launch (2 gün)</a>
           <ul class="sub-list">
             <li><a href="#s1-b">B. Meta Business Manager</a></li>
-            <li><a href="#s1-c">C. Zoho CRM Blueprint</a></li>
+            <li><a href="#s1-c">C. <s>Zoho CRM Blueprint</s> → V2 Customer Status (kaldırıldı, §V2 bakın)</a></li>
             <li><a href="#s1-d">D. WABA & INMA Allowlist</a></li>
             <li><a href="#s1-e">E. Dashboard Config (7 sayfa)</a></li>
             <li><a href="#s1-f1">F.1 Gün 1 — Happy Path Smoke</a></li>
@@ -182,6 +187,7 @@
         <li><a href="#lead-stages">Lead Aşamaları — 8 Durum</a></li>
         <li><a href="#scope-gaps">Kapsam Boşlukları Detay (#5-#9 + 3 Kritik Soru)</a></li>
         <li><a href="#scenarios">6 Senaryo — Sistem Davranış Referansı</a></li>
+        <li><a href="#v2-customer-status">§V2 Customer Status Akışı (FEAT-INMA-PIPELINE-V2)</a></li>
       </ol>
       <p class="note" style="margin-top:14px">Tarih: 2026-04-28 · §19-24 toplantı dokümanından konsolide edildi (dent-toplanti.html arşivlendi).</p>
     </nav>
@@ -208,7 +214,7 @@
         <h3 style="margin-top:0">🔴 Bekleyen (Kritik Yol)</h3>
         <ul>
           <li>Müşteri Meta App + Lead Form + <strong>HSM welcome template</strong> onayı (24-48h)</li>
-          <li>Müşteri Zoho Blueprint 7 transition + scope authorize</li>
+          <li>INMA agent UI customer_status dropdown akışı (V2 — §V2 bakın)</li>
           <li>Müşteri WABA phone_number_id + display name</li>
           <li>Invekto ops INMA allowlist + Dashboard 7-sayfa config</li>
           <li>Stage 1 smoke — 5 numara × 6 senaryo</li>
@@ -226,7 +232,7 @@
       <div class="card">
         <h3 style="margin-top:0">⚠️ Tek Gerçek Blocker</h3>
         <p><strong>HSM template onayı 24-48h.</strong> Meta Business Manager'da <code>dent_welcome_roadshow_v1</code> submit edilmezse pilot Stage 1 başlayamaz. Gün 0'da submit zorunlu.</p>
-        <p>Zoho Blueprint yayınlanmadan <code>welcome_sent</code> dispatch <code>INV-INT-121</code> log'a düşer — test başlanamaz.</p>
+        <p><em>Eski Zoho Blueprint blocker'ı V2 ile irrelevant (2026-05-12 C1 Zoho-out). customer_status INMA agent UI dropdown — pilot Stage 1 öncesi setup §V2 bakın.</em></p>
       </div>
     </div>
   </section>
@@ -251,7 +257,7 @@
     <table class="task-table">
       <thead><tr><th>#</th><th>Paket</th><th>Durum</th><th>Tarih</th></tr></thead>
       <tbody>
-        <tr><td>3.1</td><td>B-META Meta Leadgen Webhook Native Entegrasyon (endpoint + Dashboard + migration 033 + ZohoLifecycleDispatcher welcome_sent hook) — commit <code>9763012</code>, Codex 4-chunk merged PASS, AC1 smoke 4/4</td><td><span class="pill good">DONE</span></td><td>2026-04-24 22:30 UTC</td></tr>
+        <tr><td>3.1</td><td>B-META Meta Leadgen Webhook Native Entegrasyon (endpoint + Dashboard + migration 033 + welcome_sent hook — eski ZohoLifecycleDispatcher path V2 ile irrelevant 2026-05-12) — commit <code>9763012</code>, Codex 4-chunk merged PASS, AC1 smoke 4/4</td><td><span class="pill good">DONE</span></td><td>2026-04-24 22:30 UTC</td></tr>
         <tr><td>3.2</td><td>Paket A Dent plan_tier upgrade <code>baslangic → kurumsal</code> (Appointments feature flag aç)</td><td><span class="pill good">DONE</span></td><td>2026-04-24 11:25 UTC</td></tr>
         <tr><td>3.3</td><td>Paket B B-VCP-DOCTORS doctors tablosu bootstrap + 1 Dent doctor seed + 4 slot backfill — Migration 031</td><td><span class="pill good">DONE</span></td><td>2026-04-24 12:20 UTC</td></tr>
         <tr><td>3.4</td><td>Paket C1 Dent FAQ Surface Content Bind (36 faqs INSERT + flow welcome node DocX content + 36 embedding NOT NULL + S4 smoke 9/9) — Migration 032</td><td><span class="pill good">DONE</span></td><td>2026-04-24 18:00 UTC</td></tr>
@@ -298,22 +304,19 @@
       <p>FAQ template'leri pilot için zorunlu DEĞİL — ai_faq node semantic search 24h window içinde free-form cevap veriyor (Paket C1 embeddings hazır, S4 smoke 9/9 PASS).</p>
     </div>
 
-    <h3 id="s1-c">4.2 C. Müşteri Zoho CRM Blueprint Hazırlığı</h3>
-    <p class="note">Müşteri Zoho Admin ile ~45dk. Screenshare ile Invekto ops ortak yapabilir.</p>
-    <div class="callout warn">
-      <h4 style="margin-top:0">Aşama listesi sahibi: INMA — Zoho transition'ları INMA'ya hizalanır</h4>
-      <p>Aşağıdaki C.2 state listesi ve C.3 7 transition <strong>INMA tarafında tanımlanan aşama listesinin Zoho'ya yansıtılması</strong>. Pilot başlangıcı için pratik yol: INMA ekibiyle aşama isim/sıra hizalanır → bu liste Zoho Blueprint'e birebir kopyalanır → ileride INMA'da değişiklik olursa Zoho otomatik senkron için ayrı paket (UP1 Embedded Sync) açılır. Pilot süresince <strong>aşama listesi dondurulur</strong>; isim değişikliği post-pilot.</p>
+    <h3 id="s1-c">4.2 C. Customer Status Akışı (V2) — INMA-otorite</h3>
+    <div class="callout good" style="background:rgba(52,211,153,.06)">
+      <h4 style="margin-top:0">🔄 Bölüm tamamen yenilendi (2026-05-12, FEAT-INMA-PIPELINE-V2 C1 Zoho-out)</h4>
+      <p>Eski "Müşteri Zoho CRM Blueprint Hazırlığı" bölümü <strong>kaldırıldı</strong> — Zoho INSE'den TAMAMEN çıkarıldı (commit <code>0c0733b</code>, Migration 048). Yeni akış: <strong>INMA agent UI'da customer_status manuel dropdown</strong> + INMA→INSE webhook (C2 BLOCKED INMA contract). Müşteri tarafında Zoho Admin / OAuth / Blueprint setup YOK — pilot Stage 1 için 0 setup adımı.</p>
+      <p>Detaylı V2 akış: <a href="#v2-customer-status">§V2 Customer Status Akışı</a> bölümüne bakın.</p>
     </div>
     <table class="task-table">
       <thead><tr><th>#</th><th>Adım</th><th>Durum</th><th>Tarih</th></tr></thead>
       <tbody>
-        <tr><td>C.1</td><td>Zoho CRM → Setup → Automation → Blueprint → Create → Module=Leads, Field=Lead Status, Name=<code>Dent Roadshow Pipeline</code>.</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
-        <tr><td>C.2</td><td>State list: New → Contacted → Engaged → Qualified → Offer Sent → Deposit Paid → Won (+ Lost branch).</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
-        <tr><td>C.3</td><td>7 transition ekle (isimleri serbest ama Invekto event eşleşmesi): <code>1. Mesaj Atıldı</code> (welcome_sent), <code>Konuşma Başladı</code> (engaged), <code>Nitelikli Aday</code> (qualified), <code>Teklif Gönderildi</code> (offer_sent), <code>Kapora Alındı</code> (deposit_paid), <code>Tedavi Tamamlandı</code> (closed_won), <code>İptal</code> (closed_lost).</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
-        <tr><td>C.4</td><td>[Save & Publish] → Status=<code>Active</code>.</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
-        <tr><td>C.5</td><td>Zoho API Console → Self Client → Client ID + Secret al. Scopes: <code>ZohoCRM.modules.Leads.ALL</code>, <code>ZohoCRM.settings.ALL</code>, <code>ZohoCRM.users.READ</code>. Redirect: <code>https://app.invekto.com/api/integrations/zoho/oauth/callback</code>.</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
-        <tr><td>C.6</td><td>Invekto Dashboard → [Settings] → [Entegrasyonlar] → [Zoho CRM] → [Bağlan] → OAuth popup onay → [Bağlantıyı Test Et] = 200 OK + org info.</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
-        <tr><td>C.7</td><td>Invekto Dashboard → [Settings] → [Zoho Stage Mapping] → [Discover Transitions] → 7 satır dropdown eşleştir → [Kaydet] → [Dry Run Test] PASS (Zoho'da gerçek kayıt oluşmaz).</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>C.1</td><td>INMA ekibi customer_status field tanımı + dropdown values setup (INMA admin panel) — INMA-side iş, Invekto ops verify.</td><td><span class="pill bad">BLOCKED</span></td><td>INMA contract bekliyor (C2)</td></tr>
+        <tr><td>C.2</td><td>INMA agent UI'da Dent Adavista tenant için customer_status dropdown values: <code>new / contacted / engaged / qualified / offer_sent / deposit_paid / won / lost</code> (8 değer, INMA admin set).</td><td><span class="pill bad">BLOCKED</span></td><td>INMA contract bekliyor (C2)</td></tr>
+        <tr><td>C.3</td><td>INMA→INSE webhook endpoint hazır olunca (FEAT-INMA-PIPELINE-V2 C2): <code>POST /api/v1/inbound/inma/customer-status-change</code> HMAC + idempotency + opaque TEXT store INSE side.</td><td><span class="pill bad">BLOCKED</span></td><td>C2 PENDING (INMA contract)</td></tr>
+        <tr><td>C.4</td><td>Flow Builder 4. trigger kanalı <code>customer_status_changed</code> + action node <code>Set Customer Status</code> (C3/C4 BLOCKED, post-C2).</td><td><span class="pill bad">BLOCKED</span></td><td>C3/C4 BLOCKED</td></tr>
       </tbody>
     </table>
 
@@ -330,7 +333,7 @@
     </table>
 
     <h3 id="s1-e">4.4 E. Invekto Dashboard Konfigürasyon (7 Sayfa)</h3>
-    <p class="note">Müşteri Meta/Zoho/WABA config hazır olduktan sonra. Sırayla tik atılır, her sayfa ~2-5dk.</p>
+    <p class="note">Müşteri Meta/WABA config hazır olduktan sonra (eski Zoho config kaldırıldı, V2 2026-05-12). Sırayla tik atılır, her sayfa ~2-5dk.</p>
     <table class="task-table">
       <thead><tr><th>#</th><th>Sayfa + İş</th><th>Durum</th><th>Tarih</th></tr></thead>
       <tbody>
@@ -341,7 +344,7 @@
         <tr><td>E.5</td><td><strong>Campaigns (MCC):</strong> <code>roadshow_ireland_2026</code> seed zaten yüklü (Paket 11). Active window tarihleri güncel Stage 1 için doğrula (gerekirse bugünden sonraya çek).</td><td><span class="pill neu">TODO</span></td><td>—</td></tr>
         <tr><td>E.6</td><td><strong>Followup Sequence (EFS):</strong> Test Mode=ON (delay_days dk'ya döner), Enabled=ON, Threshold=3 days no reply. 3 stage: Day 3 → <code>post_event_day3_en</code>, Day 7 → <code>post_event_day7_en</code>, Day 14 → <code>post_event_day14_en</code>. Triggers (4): welcome_chain_no_reply / offer_declined / offer_timeout / offer_on_hold_7d. A/B=50%. Dashboard TEST MODE banner görünmeli.</td><td><span class="pill neu">TODO</span></td><td>—</td></tr>
         <tr><td>E.7</td><td><strong>Flow Builder:</strong> <code>dent_welcome_roadshow</code> (flow_id=29) → [Edit] → welcome node data.group_tag=<code>welcome_with_date</code> + message_text_welcome_1 Paket C1 DocX content doğrula. ai_faq nodes 12 intent verify. [Validate Flow] = 0 error → [Kaydet].</td><td><span class="pill neu">TODO</span></td><td>—</td></tr>
-        <tr><td>E.8</td><td><strong>Zoho Stage Mapping:</strong> C.7 ile yapıldıysa burada sadece doğrulama tiki. [Dry Run All] = 7 transition test PASS.</td><td><span class="pill neu">TODO</span></td><td>—</td></tr>
+        <tr><td>E.8</td><td><strong>~~Zoho Stage Mapping~~ DEPRECATED (V2 2026-05-12):</strong> Zoho-out C1 ile bu Dashboard sayfası kaldırıldı. customer_status setup INMA agent UI tarafında (§V2 bakın). Bu satır geriye dönük referans için tutulur.</td><td><span class="pill neu">N/A</span></td><td>2026-05-12 V2</td></tr>
       </tbody>
     </table>
 
@@ -361,7 +364,7 @@
           <li><code>[INV-META-000]</code> leadgen received</li>
           <li><code>[INV-AT-069]</code> welcome flow triggered</li>
           <li><code>[FEAT-WTP]</code> + <code>[FEAT-DMP]</code> + <code>[TFM resolver]</code></li>
-          <li><code>zoho_sync_log</code> yeni row status=success</li>
+          <li><em>(eski <code>zoho_sync_log</code> check'i V2 ile kaldırıldı, 2026-05-12 C1 Zoho-out)</em></li>
           <li><code>event_followup_runs</code> stage rows scheduled</li>
         </ul>
       </div>
@@ -369,10 +372,10 @@
     <table class="task-table">
       <thead><tr><th>Senaryo</th><th>Ne yapılır + Beklenen</th><th>Durum</th><th>Tarih</th></tr></thead>
       <tbody>
-        <tr><td>S1</td><td><strong>Meta form intake:</strong> Form doldur + submit → Invekto webhook 200 OK + Backend log + [Leads] yeni satır + WhatsApp welcome HSM delivered + Zoho Leads yeni kayıt status=Contacted + [Zoho Sync Log] welcome_sent success.</td><td><span class="pill hold">HOLD</span></td><td>Stage 1 Gün 1</td></tr>
-        <tr><td>S2</td><td><strong>Reply "Dublin":</strong> FlowEngineV2 city detection → rotation_group city=dublin → slot list interactive message + custom_1=dublin DB güncellendi + pipeline_status=contacted → Zoho engaged success.</td><td><span class="pill hold">HOLD</span></td><td>Stage 1 Gün 1</td></tr>
+        <tr><td>S1</td><td><strong>Meta form intake:</strong> Form doldur + submit → Invekto webhook 200 OK + Backend log + [Leads] yeni satır + WhatsApp welcome HSM delivered. <em>(eski Zoho Leads + Zoho Sync Log check'leri V2 ile kaldırıldı 2026-05-12; INMA→INSE webhook hop C2 BLOCKED)</em>.</td><td><span class="pill hold">HOLD</span></td><td>Stage 1 Gün 1</td></tr>
+        <tr><td>S2</td><td><strong>Reply "Dublin":</strong> FlowEngineV2 city detection → rotation_group city=dublin → slot list interactive message + custom_1=dublin DB güncellendi. <em>(eski Zoho engaged transition V2 ile kaldırıldı; INMA agent UI customer_status manuel set 2026-05-12)</em>.</td><td><span class="pill hold">HOLD</span></td><td>Stage 1 Gün 1</td></tr>
         <tr><td>S3</td><td><strong>FAQ sor:</strong> "Is it really free?" → ai_faq semantic search top hit score &gt;0.6 (is_it_free intent) → variant A/B/C biri (C1 pool) + chat_sessions yeni row.</td><td><span class="pill hold">HOLD</span></td><td>Stage 1 Gün 1</td></tr>
-        <tr><td>S4</td><td><strong>Appointment booking:</strong> Slot list'ten seç → appointments INSERT + VideoMeetingCreationJob Succeeded ~500ms + meeting_link non-null (mock) + reminder 24h+1h scheduled + pipeline_status=consultation → Zoho offer_sent success.</td><td><span class="pill hold">HOLD</span></td><td>Stage 1 Gün 1</td></tr>
+        <tr><td>S4</td><td><strong>Appointment booking:</strong> Slot list'ten seç → appointments INSERT + VideoMeetingCreationJob Succeeded ~500ms + meeting_link non-null (mock) + reminder 24h+1h scheduled + pipeline_status=consultation. <em>(eski Zoho offer_sent transition V2 ile kaldırıldı 2026-05-12)</em>.</td><td><span class="pill hold">HOLD</span></td><td>Stage 1 Gün 1</td></tr>
         <tr><td>S5</td><td><strong>Followup sequence (test_mode=ON):</strong> Welcome'a REPLY gönderme → 3dk bekle → FollowupStageJob queue=marketing-followup pickup + stage[0] Succeeded ~16s + Day 3 template gönderildi + event_followup_runs success row.</td><td><span class="pill hold">HOLD</span></td><td>Stage 1 Gün 1</td></tr>
         <tr><td>S6</td><td><strong>Opt-out:</strong> "STOP" yaz → inma_optout_outbox event_type=optout_stop + outbound_messages status=blocked + Dashboard [Leads] satırında opt-out icon.</td><td><span class="pill hold">HOLD</span></td><td>Stage 1 Gün 1</td></tr>
       </tbody>
@@ -385,7 +388,7 @@
         <tr><td>F.2.1</td><td>Geçersiz telefon formatı ("abc") → Meta form submit → <code>INV-BE-105</code> reject verify.</td><td><span class="pill hold">HOLD</span></td><td>Stage 1 Gün 2</td></tr>
         <tr><td>F.2.2</td><td>Consent=false → LIW reject verify.</td><td><span class="pill hold">HOLD</span></td><td>Stage 1 Gün 2</td></tr>
         <tr><td>F.2.3</td><td>Aynı telefon 2 kez submit → dup merge (tek lead, 2 audit log entry).</td><td><span class="pill hold">HOLD</span></td><td>Stage 1 Gün 2</td></tr>
-        <tr><td>F.2.4</td><td>Zoho token expire simulate → Invekto retry worker verify + <code>sync_log</code> failed/retry pattern.</td><td><span class="pill hold">HOLD</span></td><td>Stage 1 Gün 2</td></tr>
+        <tr><td>F.2.4</td><td><s>Zoho token expire simulate</s> — DEPRECATED V2 2026-05-12 (Zoho-out C1). Yeni: INMA→INSE webhook signature mismatch simulate → HMAC reject 401 INV-INTAKE-* + idempotency dedup test (C2 BLOCKED).</td><td><span class="pill bad">BLOCKED</span></td><td>C2 PENDING</td></tr>
         <tr><td>F.2.5</td><td>INMA bridge 500 simulate → outbound retry worker verify.</td><td><span class="pill hold">HOLD</span></td><td>Stage 1 Gün 2</td></tr>
         <tr><td>F.2.6</td><td>Monitoring dashboard: WAA webhook error count=0 + flow stuck lead=0 + LLM cost &lt;$5/gün + intent confidence avg &gt;0.7.</td><td><span class="pill hold">HOLD</span></td><td>Stage 1 Gün 2</td></tr>
       </tbody>
@@ -397,7 +400,7 @@
       <ul>
         <li>1/1 test numarası için 6/6 senaryo PASS</li>
         <li>0 blocker bug</li>
-        <li>Zoho sync log success rate ≥ %95</li>
+        <li><em>(eski Zoho sync log %95 metriği V2 ile kaldırıldı; INMA→INSE webhook delivery rate yeni metrik, C2 PENDING)</em></li>
         <li>Müşteri sign-off email (ekran görüntüsü + onay)</li>
       </ul>
     </div>
@@ -419,7 +422,7 @@
       <tbody>
         <tr><td>5.1</td><td>Stage 1 sign-off alındıktan sonra Invekto Dashboard → [Lead Intake] → source_slug=<code>meta-leadgen</code> rate limit gerçek trafik açık, landing URL müşteriye devir.</td><td><span class="pill hold">HOLD</span></td><td>Stage 1 PASS sonrası</td></tr>
         <tr><td>5.2</td><td>Müşteri Meta Ads Manager → Lead Form'a bağlı reklam kampanyası <strong>sınırlı bütçe</strong> ile aç (günlük &lt;20 lead hedefleyecek tavan).</td><td><span class="pill hold">HOLD</span></td><td>Stage 2 Gün 1</td></tr>
-        <tr><td>5.3</td><td>İlk 20 lead geldikçe Invekto ops (coordinator dashboard) <strong>her lead'i manuel inceleme</strong>: welcome delivered tick / reply rate / slot booking flow / Zoho sync log success.</td><td><span class="pill hold">HOLD</span></td><td>Stage 2 Gün 1-3</td></tr>
+        <tr><td>5.3</td><td>İlk 20 lead geldikçe Invekto ops (coordinator dashboard) <strong>her lead'i manuel inceleme</strong>: welcome delivered tick / reply rate / slot booking flow. <em>(eski Zoho sync log check'i V2 ile kaldırıldı 2026-05-12 — INMA agent UI customer_status takibi)</em>.</td><td><span class="pill hold">HOLD</span></td><td>Stage 2 Gün 1-3</td></tr>
         <tr><td>5.4</td><td>Ops ekibi <strong>her saat review</strong> — monitoring dashboard kontrolü + anomali ops-hot-channel'a bildirim.</td><td><span class="pill hold">HOLD</span></td><td>Stage 2 Gün 1-3</td></tr>
         <tr><td>5.5</td><td>EFS test_mode=OFF flip → delay_days gerçek gün değerlerine dön (Day 3 / 7 / 14).</td><td><span class="pill hold">HOLD</span></td><td>Stage 2 Gün 2</td></tr>
         <tr><td>5.6</td><td>Her lead için intent log + confidence + handoff trigger analizi. Intent confidence &lt;0.5 olan mesajlar manuel kategorize.</td><td><span class="pill hold">HOLD</span></td><td>Stage 2 Gün 1-3</td></tr>
@@ -551,7 +554,7 @@
         <p>Meta template onayı reddedilirse pilot ertelenir. Mitigation: Utility category seç (marketing'den hızlı onay) + body'de CTA doğal dilde, template policy uyumlu + sample value ver.</p>
       </div>
       <div class="card">
-        <h3 style="margin-top:0;color:var(--bad)">Zoho token expire</h3>
+        <h3 style="margin-top:0;color:var(--bad)"><s>Zoho token expire</s> → DEPRECATED V2 (Zoho-out 2026-05-12)</h3>
         <p>Refresh token 30 gün dönüyor olmazsa sync kesilir. Mitigation: Invekto retry worker + sync_log failed alert + token health check.</p>
       </div>
       <div class="card">
@@ -564,8 +567,8 @@
   <section id="timeline">
     <h2>13. Timeline (Gün 0 → 30+)</h2>
     <div class="timeline">
-      <div class="tl-item"><div class="tl-day">Gün 0<br><span class="note">2026-04-24</span></div><div class="tl-body"><strong>DONE:</strong> Invekto B-META kod paketi deploy + AC1 smoke 4/4. <strong>Müşteri tetikler:</strong> Meta App (B.1-B.7) + <strong>HSM template submit (B.8 KRİTİK 48h)</strong> + Zoho Blueprint (C.1-C.5).</div></div>
-      <div class="tl-item"><div class="tl-day">Gün 1<br><span class="note">~2026-04-25</span></div><div class="tl-body">Invekto ops: Dashboard config 7 sayfa (E.1-E.8) + INMA allowlist (D.3-D.5). Müşteri: Zoho Invekto OAuth bağla (C.6-C.7). HSM onay bekleniyor.</div></div>
+      <div class="tl-item"><div class="tl-day">Gün 0<br><span class="note">2026-04-24</span></div><div class="tl-body"><strong>DONE:</strong> Invekto B-META kod paketi deploy + AC1 smoke 4/4. <strong>Müşteri tetikler:</strong> Meta App (B.1-B.7) + <strong>HSM template submit (B.8 KRİTİK 48h)</strong>. <em>(eski Zoho Blueprint setup C.1-C.5 V2 ile kaldırıldı 2026-05-12 C1 Zoho-out — INMA agent UI customer_status §V2 bakın)</em>.</div></div>
+      <div class="tl-item"><div class="tl-day">Gün 1<br><span class="note">~2026-04-25</span></div><div class="tl-body">Invekto ops: Dashboard config 7 sayfa (E.1-E.7) + INMA allowlist (D.3-D.5). <em>(eski Zoho OAuth C.6-C.7 V2 ile kaldırıldı)</em>. HSM onay bekleniyor.</div></div>
       <div class="tl-item"><div class="tl-day">Gün 2<br><span class="note">~2026-04-26</span></div><div class="tl-body">HSM template approved (umut). Stage 1 Gün 1 F.1 smoke başlar: 5 numara × 6 senaryo happy path.</div></div>
       <div class="tl-item"><div class="tl-day">Gün 3<br><span class="note">~2026-04-27</span></div><div class="tl-body">Stage 1 Gün 2 F.2 edge case + monitoring + Go/No-Go kriter F.3. Sign-off alınırsa Stage 2 başlar.</div></div>
       <div class="tl-item"><div class="tl-day">Gün 4-6<br><span class="note">~2026-04-28 → 04-30</span></div><div class="tl-body">Stage 2 limited beta: ilk 20 gerçek lead manuel inceleme + ops her saat review + EFS test_mode OFF + UAT S4-S20.</div></div>
@@ -607,7 +610,7 @@
         <tr><td>15.6</td><td>Google Workspace hesabı (Meet) — <code>ops@dentadavista.com</code> tahmini, onay bekliyor.</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
         <tr><td>15.7</td><td>Fiyat listesi (PDF veya link) — FAQ price_quote intent için.</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
         <tr><td>15.8</td><td>Instagram / Facebook URL'leri (sosyal proof FAQ inject için).</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
-        <tr><td>15.9</td><td>Zoho Admin erişim + Blueprint yayınlama onayı + API Client ID/Secret + scope authorize.</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
+        <tr><td>15.9</td><td><s>Zoho Admin erişim + Blueprint yayınlama onayı + API Client ID/Secret + scope authorize</s>. DEPRECATED V2 2026-05-12 — Zoho-out, müşteri Zoho Admin verisi gerekmez (INMA agent UI tarafında customer_status yönetilir).</td><td><span class="pill neu">N/A</span></td><td>2026-05-12 V2</td></tr>
         <tr><td>15.10</td><td>1 test numarası (Stage 1 smoke için).</td><td><span class="pill bad">BLOCKED</span></td><td>—</td></tr>
       </tbody>
     </table>
@@ -650,7 +653,7 @@
         <ul>
           <li><code>MessagesPage.tsx</code> + INMA chat (manuel outbound)</li>
           <li><code>AppointmentsPage.tsx</code> (randevu yönetimi)</li>
-          <li><code>zoho/ZohoSyncLogPage.tsx</code> (sync log)</li>
+          <li><em>(eski <code>zoho/ZohoSyncLogPage.tsx</code> + ZohoConnectionPage + ZohoStageMappingPage V2 ile silindi, 2026-05-12 commit <code>0c0733b</code>)</em></li>
           <li><code>RescueDashboardPage.tsx</code> (PKT-12 yorum kurtarma)</li>
           <li><code>TemplateLibraryPage.tsx</code> + <code>TemplateCreatePage.tsx</code></li>
           <li><code>FlowMonitorPage.tsx</code> (FM-1b canlı izleme)</li>
@@ -785,7 +788,7 @@
         <tr><td>T-R6</td><td>Hatırlatma performansı (Day 3/7/14)</td><td>event_followup_runs</td><td>❌</td><td><span class="pill warn">P1</span></td></tr>
         <tr><td>T-R7</td><td>Welcome A/B varyant kıyaslaması</td><td>chat_sessions</td><td>❌</td><td><span class="pill neu">P2</span></td></tr>
         <tr><td>T-R8</td><td>Lead aşaması geçiş süreleri</td><td>lead_activities</td><td>❌</td><td><span class="pill neu">P2</span></td></tr>
-        <tr><td>T-R9</td><td>Zoho sync sağlık özeti kart</td><td>zoho_sync_log</td><td>✅ Raw log var ❌ Kart yok</td><td><span class="pill warn">P1</span></td></tr>
+        <tr><td>T-R9</td><td><s>Zoho sync sağlık özeti kart</s> DEPRECATED V2 2026-05-12 (Zoho-out C1). Yerine: INMA→INSE webhook delivery rate kart (C2 PENDING).</td><td>—</td><td>N/A V2</td><td><span class="pill neu">N/A</span></td></tr>
         <tr><td>T-R10</td><td>TFM custom field doluluk oranı</td><td>leads.custom_1..10</td><td>❌</td><td><span class="pill neu">P2</span></td></tr>
         <tr><td>T-R11</td><td>Attribution drill-down + cost per lead</td><td>leads.utm_*</td><td>⚠️ AttributionPanel zayıf</td><td><span class="pill neu">P2</span></td></tr>
       </tbody>
@@ -889,8 +892,8 @@
           </tr>
           <tr>
             <td>17.4.3</td>
-            <td><strong>AppointmentsPage UI + Zoho takvim senkronu</strong> (T-Y6 + T-G4 + T-G10/G11). Slot tanımlama + takvim view + meeting link kopyalama. Çift yönlü Zoho takvim bağı: Zoho'dan oluşan görüşme Invekto'ya yansır, tersi de.</td>
-            <td>~6 gün (UI 4 + Zoho 2)</td>
+            <td><strong>AppointmentsPage UI</strong> (T-Y6 + T-G4 + T-G10/G11). Slot tanımlama + takvim view + meeting link kopyalama. <em>(eski Zoho takvim çift yönlü sync V2 ile iptal 2026-05-12 — Google Meet Mock + Chunk C OAuth backlog ile devam, Zoho takvim hop YOK)</em>.</td>
+            <td>~4 gün (UI 4, eski Zoho 2 gün hop kaldırıldı)</td>
             <td><span class="pill bad">P0</span></td>
             <td>—</td>
           </tr>
@@ -955,7 +958,7 @@
 
     <div class="callout warn">
       <h4 style="margin-top:0">Takvim Etkisi</h4>
-      <p>Pilot başlangıcı 28-29 Nisan'dı. P0 işler (~12-18 gün) eklenirse Stage 1 başlangıcı <strong>~3 hafta kayar</strong> (paralel ekip kapasitesi varsayımıyla 2 hafta). Alternatif: pilot mevcut planla başlasın, P0 işler Stage 2'ye yetiştirilsin (manuel SQL/Zoho ile geçici çözüm). Pilot tarihi yeniden netleştirilmeli.</p>
+      <p>Pilot başlangıcı 28-29 Nisan'dı. P0 işler (~12-18 gün) eklenirse Stage 1 başlangıcı <strong>~3 hafta kayar</strong> (paralel ekip kapasitesi varsayımıyla 2 hafta). Alternatif: pilot mevcut planla başlasın, P0 işler Stage 2'ye yetiştirilsin (manuel SQL ile geçici çözüm — eski Zoho fallback V2 ile iptal 2026-05-12). Pilot tarihi yeniden netleştirilmeli.</p>
     </div>
 
     <p class="ref">Detaylı analiz ve toplantı kararları: <code>dent-toplanti.html §15</code> (Kapsamlı UI Envanteri + 15.4 Kararlar). Önceki kısa envanter: <code>§16</code> (UI #10-#18). Foto paketi: <code>arch/plans/20260427-feat-photo-request-flow.json</code>.</p>
@@ -1087,7 +1090,7 @@
         <tr><td>Multi-city event campaign (roadshow)</td><td>✅</td><td>Sağlık turizmi</td></tr>
         <tr><td>Online görüşme + meeting link + reminders</td><td>✅</td><td>Tüm klinikler</td></tr>
         <tr><td>Foto isteme akışı (X-ray / ağız / lezyon)</td><td>✅</td><td>Diş + dermatoloji + plastik cerrahi (placeholder ile)</td></tr>
-        <tr><td>Pipeline status + Zoho sync</td><td>✅</td><td>Tüm klinikler</td></tr>
+        <tr><td>Pipeline status (INMA agent UI customer_status, V2 INMA-otorite — eski Zoho sync V2 ile kaldırıldı 2026-05-12)</td><td>⚠ C2 PENDING</td><td>Tüm klinikler (INMA contract sonrası)</td></tr>
         <tr><td>Hatırlatma akışı (3-stage drip)</td><td>✅</td><td>Tüm klinikler — Day süreleri config</td></tr>
         <tr><td>Çok dilli welcome rotation (locale-aware)</td><td>✅</td><td>Sağlık turizmi (kritik)</td></tr>
         <tr><td>Doctor + slot management</td><td>✅</td><td>Tüm klinikler</td></tr>
@@ -1195,7 +1198,7 @@
     <p>Anlaması büyük ihtimal. Ama "Güneş" karakteri samimi ve yardımcı tonda; anlık cevap veriyor olmasını avantaj olarak konumluyoruz. İsterseniz açıkça "Ben Dent Adavista'nın dijital asistanıyım" diyen bir cümle de ekleriz — şeffaflık.</p>
 
     <h3>"Verilerimizi nereye yazıyorsunuz?"</h3>
-    <p>Hasta verileri AB içindeki sunucularımızda + Zoho CRM'inizde tutulur. WhatsApp mesajlaşma akışı (gelen + giden) <strong>INMA</strong> altyapımız üzerinden geçer; WABA numaranız INMA'ya tanımlandığı için tek hat ve tek log noktası vardır. GDPR uyumlu. Hasta "verimi sil" derse 30 gün içinde her üç sistemden (bizim DB + Zoho + INMA) silinir.</p>
+    <p>Hasta verileri AB içindeki sunucularımızda tutulur ve customer_status takibi <strong>INMA agent UI</strong>'da yapılır (V2 2026-05-12 itibariyla — Zoho CRM entegrasyonu kaldırıldı, FEAT-INMA-PIPELINE-V2 C1 Zoho-out). WhatsApp mesajlaşma akışı (gelen + giden) <strong>INMA</strong> altyapımız üzerinden geçer; WABA numaranız INMA'ya tanımlandığı için tek hat ve tek log noktası vardır. GDPR uyumlu. Hasta "verimi sil" derse 30 gün içinde her iki sistemden (bizim DB + INMA) silinir.</p>
 
     <h3>"Pilot başarısız olursa ne olacak?"</h3>
     <p>Sistem kapatılır, fatura çıkmaz. Toplanan veriler size devrediliyor (hastalarınızla iletişime geçmiş olduğunuz için sizin müşteriniz). Reklam ve WABA hesabınız zaten sizde, kalıyor.</p>
@@ -1216,20 +1219,20 @@
 
     <div class="callout">
       <h4 style="margin-top:0">Aşamaların sahibi: INMA</h4>
-      <p style="margin-bottom:0">8 durumun isimleri, sırası ve geçiş kuralları <strong>INMA tarafında tanımlanır</strong>. Yönetim paneli ve Zoho CRM bu listeyi INMA'dan çekip kullanır. Yeni aşama eklemek / silmek / yeniden adlandırmak istendiğinde sadece INMA tarafında değişir; biz ve Zoho otomatik senkron olur.</p>
+      <p style="margin-bottom:0">8 durumun isimleri, sırası ve geçiş kuralları <strong>INMA tarafında tanımlanır</strong>. INSE bu listeyi INMA agent UI dropdown'ından alır (V2 INMA-otorite, 2026-05-12 — eski Zoho CRM 3-way sync iptal). Yeni aşama eklemek / silmek / yeniden adlandırmak istendiğinde INMA tarafında değişir; INSE INMA→INSE webhook ile customer_status'u opaque TEXT olarak saklar (C2 PENDING).</p>
     </div>
 
     <table>
       <thead><tr><th>#</th><th>Müşterinin beklediği durum</th><th>Bizdeki karşılığı</th><th>Durum</th><th>Otomatik mi?</th></tr></thead>
       <tbody>
-        <tr><td>1</td><td><b>Cevap Verdi mi</b></td><td>"Konuşma Başladı" (Zoho)</td><td><span class="pill good">Hazır</span></td><td>✅ Otomatik — hasta WhatsApp'ta cevap verince anında geçer</td></tr>
-        <tr><td>2</td><td><b>İlgili mi</b></td><td>"Nitelikli Aday" (Zoho)</td><td><span class="pill warn">Yarı hazır</span></td><td>⚠️ Karar bekliyor — sistem mi otomatik tespit etsin (cevap içeriği + niyet), yoksa koordinatör elle mi işaretlesin?</td></tr>
+        <tr><td>1</td><td><b>Cevap Verdi mi</b></td><td>INMA dropdown <code>engaged</code> (V2)</td><td><span class="pill warn">⚠ INMA C2</span></td><td>✅ INMA agent manuel set / sistem otomatik intent (V2 INMA-otorite)</td></tr>
+        <tr><td>2</td><td><b>İlgili mi</b></td><td>INMA dropdown <code>qualified</code> (V2)</td><td><span class="pill warn">⚠ INMA C2</span></td><td>⚠️ Karar bekliyor — sistem mi otomatik tespit etsin (cevap içeriği + niyet), yoksa koordinatör elle mi işaretlesin?</td></tr>
         <tr><td>3</td><td><b>Fotoğraf geldi mi</b></td><td>YOK</td><td><span class="pill bad">Eksik</span></td><td>❌ Boşluk #4 ile bağlı — foto akışı pilotta yok. Manuel: koordinatör resim aldığında işaretler. Otomatik: yeni alan + akış (~2 gün)</td></tr>
-        <tr><td>4</td><td><b>Fiyat teklifi</b></td><td>"Teklif Gönderildi" (Zoho)</td><td><span class="pill good">Hazır</span></td><td>✅ Yarı otomatik — koordinatör paneli üzerinden teklif gönderildiğinde geçer</td></tr>
-        <tr><td>5</td><td><b>Teklif Kabul</b></td><td>"Kapora Alındı" (Zoho)</td><td><span class="pill warn">Karar gerekli</span></td><td>⚠️ "Kabul" = "Kapora alındı" mı, yoksa "sözlü kabul" ayrı bir ara durum mu?</td></tr>
-        <tr><td>6</td><td><b>Teklif Red</b></td><td>"İptal" (Zoho closed_lost)</td><td><span class="pill warn">Yarı hazır</span></td><td>⚠️ Tek "iptal" var; "red sebebi" ayrı bir alan olarak Yönetim Paneli'nde tutulabilir (cf3 boşta). Karar: red sebepleri standart liste mi, serbest mi?</td></tr>
+        <tr><td>4</td><td><b>Fiyat teklifi</b></td><td>INMA dropdown <code>offer_sent</code> (V2)</td><td><span class="pill warn">⚠ INMA C2</span></td><td>✅ Yarı otomatik — koordinatör INMA agent UI'da set eder, INMA→INSE webhook ile INSE saklar (C2 PENDING)</td></tr>
+        <tr><td>5</td><td><b>Teklif Kabul</b></td><td>INMA dropdown <code>deposit_paid</code> (V2)</td><td><span class="pill warn">Karar gerekli</span></td><td>⚠️ "Kabul" = "Kapora alındı" mı, yoksa "sözlü kabul" ayrı bir ara durum mu?</td></tr>
+        <tr><td>6</td><td><b>Teklif Red</b></td><td>INMA dropdown <code>lost</code> (V2)</td><td><span class="pill warn">⚠ INMA C2</span></td><td>⚠️ Tek "lost" var; "red sebebi" ayrı bir alan olarak Yönetim Paneli'nde tutulabilir (cf3 boşta). Karar: red sebepleri standart liste mi, serbest mi?</td></tr>
         <tr><td>7</td><td><b>Uçak bileti</b></td><td>cf5: <code>flight_booked</code> (Field Mapping)</td><td><span class="pill warn">Alan var, akış yok</span></td><td>⚠️ Manuel — koordinatör hastadan haber alınca işareti açar. Otomatik tespit ("biletim hazır" yakalama) yapılabilir, pilotta yok</td></tr>
-        <tr><td>8</td><td><b>Tedavi oldu</b></td><td>"Tedavi Tamamlandı" (Zoho closed_won)</td><td><span class="pill good">Hazır</span></td><td>✅ Manuel — koordinatör panelinden işaretlenir</td></tr>
+        <tr><td>8</td><td><b>Tedavi oldu</b></td><td>INMA dropdown <code>won</code> (V2)</td><td><span class="pill warn">⚠ INMA C2</span></td><td>✅ Manuel — koordinatör INMA agent UI'da işaretler</td></tr>
       </tbody>
     </table>
 
@@ -1279,7 +1282,7 @@
         <tr><td>12 SSS × 3 cevap varyantı, anlam aramayla doğru başlık seçimi</td><td><span class="pill good">🟢</span></td><td>Paket C1: 36 cevap, anlam vektörleri yüklü, test 9/9 geçti</td></tr>
         <tr><td>Cevap vermeyen hastaya hatırlatma akışı (otomatik)</td><td><span class="pill good">🟢</span></td><td>Hatırlatma motoru hazır; A/B testi açık</td></tr>
         <tr><td>Şehir bazlı saat listesi (Dublin / Cork)</td><td><span class="pill good">🟢</span></td><td>Multi-City Campaign (FEAT-MCC) tamamlandı</td></tr>
-        <tr><td>Zoho CRM'e otomatik aşama geçişi (7 transition)</td><td><span class="pill good">🟢</span></td><td>Pipeline kurulu, eşleştirme bekliyor (§4.2-C)</td></tr>
+        <tr><td>customer_status INMA agent UI dropdown (8 değer, V2 INMA-otorite — eski Zoho 7 transition V2 ile kaldırıldı 2026-05-12)</td><td><span class="pill warn">⚠ INMA C2</span></td><td>INMA contract bekliyor — §V2 bakın</td></tr>
         <tr><td>Randevu + Görüşme bağlantısı</td><td><span class="pill good">🟢</span></td><td>Pilotta sahte link, tam açılışta gerçek (B0)</td></tr>
         <tr><td>STOP / iptal akışı</td><td><span class="pill good">🟢</span></td><td>Yasal akış hazır (Senaryo 6, §24)</td></tr>
       </tbody>
@@ -1332,10 +1335,10 @@
     <div class="card">
       <h4 style="margin-top:0;color:var(--bad)">🔴 Boşluk #6 — Teklif Süreci 3 Ara Durumlu (Hazırlanıyor / Hazırlandı / Verildi)</h4>
       <p><b>Müşteri istiyor:</b> Flowchart'ta teklif aşaması ayrıntılı: Online Görüşme → Bilgi Girildi → <b>Teklif Hazırlanıyor</b> → <b>Teklif Hazırlandı</b> → <b>Teklif Verildi</b> → Kabul / İptal / Karar Vermedi.</p>
-      <p><b>Bizde durum:</b> Zoho aşamaları: "Teklif Gönderildi" → "Kapora Alındı" → "Tedavi Tamamlandı / İptal". Yani <strong>"hazırlanıyor / hazırlandı"</strong> ara durumu otomatik geçiş olarak yok; manuel takip edilebilir.</p>
+      <p><b>Bizde durum:</b> INMA agent UI dropdown V2 değerleri: <code>offer_sent</code> → <code>deposit_paid</code> → <code>won</code> / <code>lost</code>. Yani <strong>"hazırlanıyor / hazırlandı"</strong> ara durumu otomatik geçiş olarak yok; manuel takip edilebilir. <em>(eski Zoho transition V2 ile kaldırıldı 2026-05-12)</em></p>
       <p><b>Aksiyon:</b><br>
       (a) Manuel takip: Koordinatör panelinden "Teklif hazırlanıyor" notu düşer, hazırlanınca "verildi" yapar. Pilot için yeterli.<br>
-      (b) Otomatik geçiş: Zoho aşaması ekleyip Invekto'da yeni alan açmamız gerekir. ~1 gün geliştirme.<br>
+      (b) Otomatik geçiş: INMA agent UI'da yeni dropdown değer + Invekto leads.pipeline_status mapping eklenir. ~1 gün geliştirme. <em>(eski Zoho aşama ekleme V2 ile kaldırıldı 2026-05-12)</em><br>
       Önerimiz (a).</p>
     </div>
 
@@ -1356,7 +1359,7 @@
       <p><b>Mevcut:</b></p>
       <ul>
         <li>✅ <b>Akış Takibi sayfası</b> (Flow Monitor): canlı 5sn yenilenir, durum filtreleri + adım-bazlı iz.</li>
-        <li>✅ <b>Lead listesi</b> + Zoho aşaması + son temas tarihi.</li>
+        <li>✅ <b>Lead listesi</b> + INMA customer_status (V2) + son temas tarihi.</li>
         <li>✅ <b>INMA sohbet ekranı</b> tam döküm.</li>
         <li>✅ <b>Akış izleri DB'de</b>: <code>flow_executions</code> + <code>node_trace</code>. <em>Veri var, agregat ekran yok.</em></li>
       </ul>
@@ -1383,9 +1386,9 @@
     </div>
 
     <div class="card">
-      <h4 style="margin-top:0;color:var(--bad)">🔴 Boşluk #9 — INMA'da Pipeline Status Alanı + Agent Dropdown (Çift Yönlü)</h4>
+      <h4 style="margin-top:0;color:var(--bad)">🔴 Boşluk #9 — INMA'da customer_status Alanı + Agent Dropdown (One-Way INMA→INSE, V2 2026-05-12)</h4>
 
-      <p><b>İhtiyaç:</b> INMA sohbet panelinde her hasta için "Şu anki aşama" alanı görünsün. Agent (koordinatör) bu alandaki dropdown'dan elle aşama değiştirebilsin (örn. "Konuşma Başladı" → "Nitelikli Aday"). Değişiklik bizim sisteme geri akarak Zoho'ya yansısın.</p>
+      <p><b>İhtiyaç:</b> INMA sohbet panelinde her hasta için "Şu anki aşama" alanı görünsün. Agent (koordinatör) bu alandaki dropdown'dan elle aşama değiştirebilsin (örn. <code>engaged</code> → <code>qualified</code>). Değişiklik INMA→INSE webhook ile INSE'ye yansır ve opaque TEXT olarak saklanır (V2 INMA-otorite — eski Zoho push V2 ile kaldırıldı 2026-05-12, C2 PENDING INMA contract).</p>
 
       <p><b>Toplantı kararları (Q onayı, 28 Nisan):</b></p>
       <table>
@@ -1398,13 +1401,13 @@
           </tr>
           <tr>
             <td>Senkron yönü</td>
-            <td><b>Çift yönlü (bidirectional)</b></td>
-            <td>Invekto → INMA push (mevcut tek yön) + INMA → Invekto webhook (yeni). Agent INMA'dan değiştirince Invekto leads.pipeline_status güncellenir, sonra Zoho'ya push.</td>
+            <td><b>Tek yönlü (one-way INMA→INSE, V2)</b></td>
+            <td>INMA agent UI dropdown source-of-truth. INMA agent customer_status değiştirince INMA→INSE webhook (FEAT-INMA-PIPELINE-V2 C2 PENDING) → INSE leads.customer_status opaque TEXT store. <strong>INSE→INMA forward YOK</strong> (loop prevention + one-way ownership). <em>(eski Zoho forward + bidirectional sync V2 ile kaldırıldı 2026-05-12)</em></td>
           </tr>
           <tr>
             <td>Aşama listesinin sahibi</td>
             <td><b>INMA — sistem genelinde tek doğru kaynak</b></td>
-            <td>Aşama isimleri, sırası ve geçiş kuralları <strong>tüm sistemde</strong> INMA tarafında. Invekto yönetim paneli, koordinatör ekranı, Zoho CRM Blueprint — hepsi INMA'dan çekip kullanır. Bu §22'deki 8 durumu, §15-C Zoho 7 transition'ı, koordinatör panelindeki dropdown'ı ve INMA agent dropdown'ını <strong>tek listeden besler</strong>.</td>
+            <td>Aşama isimleri, sırası ve geçiş kuralları <strong>tüm sistemde</strong> INMA tarafında. Invekto yönetim paneli, koordinatör ekranı ve INMA agent dropdown'ı <strong>tek listeden beslenir</strong> (V2 INMA-otorite). Bu §22'deki 8 durumu INMA agent UI'dan çekilir. <em>(eski Zoho CRM Blueprint hop V2 ile kaldırıldı 2026-05-12 — Zoho-out C1)</em></td>
           </tr>
         </tbody>
       </table>
@@ -1412,7 +1415,7 @@
       <p><b>İş yükü:</b></p>
       <ul>
         <li><b>INMA ekibi (5-10 gün):</b> Yeni kolon + dropdown UI + API endpoint + INMA → Invekto webhook + status enum yönetim ekranı.</li>
-        <li><b>Bizim ekip (3-5 gün):</b> INMA webhook handler + reverse sync (INMA → Invekto leads.pipeline_status update) + status enum mapping (INMA enum → mevcut LeadStatusEventMap → Zoho gunes_event) + idempotency (sonsuz döngü koruması) + audit trail.</li>
+        <li><b>Bizim ekip (3-5 gün):</b> INMA→INSE webhook handler (one-way receive) + INSE leads.customer_status opaque TEXT store + status enum mapping (INMA dropdown → INSE leads.customer_status; INSE→INMA forward YOK) + idempotency (24h dedup window) + audit trail. <em>(eski Zoho gunes_event forward + bidirectional reverse sync V2 ile kaldırıldı 2026-05-12 — FEAT-INMA-PIPELINE-V2 C3/C4 BLOCKED)</em>.</li>
         <li><b>Toplam paralel süre:</b> En az 2 hafta — eş zamanlı çalışırsa.</li>
       </ul>
 
@@ -1431,7 +1434,7 @@
 
       <div class="callout warn">
         <h4 style="margin-top:0">Pilot kapsamı dışında — Stage 3 sonrası</h4>
-        <p>Bu özellik <strong>pilot başlamadan yetiştirilemez</strong>. Pilot süresince koordinatör Invekto Dashboard'dan aşama değişikliği yapar; INMA ekranında salt-okunur etiket olarak gösterilir (cf6'ya tek yön push). Native alan + dropdown + bidirectional sync entegrasyonu Stage 3 sonrası ayrı paket.</p>
+        <p>Bu özellik <strong>pilot başlamadan yetiştirilemez</strong>. Pilot süresince koordinatör Invekto Dashboard'dan leads.pipeline_status değişikliği yapar (INSE-side); INMA agent UI'da customer_status (V2) ayrı bir alan olarak ileride aktive edilir (FEAT-INMA-PIPELINE-V2 C2/C3/C4 BLOCKED INMA contract). <em>(Eski "cf6'ya tek yön push" pattern V2 ile irrelevant 2026-05-12 — V2 mimari one-way INMA→INSE webhook olarak yeniden tasarlandı, INSE→INMA forward YOK.)</em></p>
       </div>
 
       <p><b>Toplantıda netleşmesi gereken son madde:</b> INMA ekibinden bu işin <strong>roadmap planlamasını</strong> almak — ne zaman geliştirilebileceğini öğrenmek. Bizim taraf onların başlangıç tarihi belli olunca paralel devreye girer.</p>
@@ -1474,7 +1477,7 @@
           <li class="flow-arrow">→</li>
           <li class="flow-step"><div class="ico">📝</div><div class="ttl">Form</div><div class="desc">İsim, telefon, e-posta, şehir tercihi (Dublin/Cork), önceki tedavi.</div></li>
           <li class="flow-arrow">→</li>
-          <li class="flow-step"><div class="ico">⚙️</div><div class="ttl">Sistem</div><div class="desc">Bilgileri yakalar, kayıt açar, Zoho'ya da yazar.</div></li>
+          <li class="flow-step"><div class="ico">⚙️</div><div class="ttl">Sistem</div><div class="desc">Bilgileri yakalar, INSE'de kayıt açar, INMA agent UI'da yeni lead olarak gözükür (V2 — eski Zoho yazma V2 ile kaldırıldı 2026-05-12).</div></li>
           <li class="flow-arrow">→</li>
           <li class="flow-step"><div class="ico">💬</div><div class="ttl">WhatsApp</div><div class="desc">Karşılama mesajı saniyeler içinde hastanın WhatsApp'ına düşer.</div></li>
         </ul>
@@ -1485,7 +1488,7 @@
         <h4>Arka planda olanlar</h4>
         <ul>
           <li>Hasta bilgileri Invekto sistemine kayıt edildi.</li>
-          <li>Aynı bilgi Zoho CRM'inize <b>"Yeni Aday"</b> olarak yazıldı.</li>
+          <li>INMA agent UI'da <b>customer_status=new</b> (yeni hasta kaydı) olarak gözüküyor. <em>(eski Zoho "Yeni Aday" V2 ile kaldırıldı 2026-05-12)</em></li>
           <li>Karşılama mesajı kayıt altında, gönderim onay bilgisi var.</li>
           <li>Eğer hasta cevap vermezse 3 gün sonra hatırlatma akışı devreye girecek (Senaryo 5).</li>
         </ul>
@@ -1514,7 +1517,7 @@
         <h4>Arka planda olanlar</h4>
         <ul>
           <li>Hastanın "şehir tercihi" kaydı <code>Dublin</code> olarak güncellendi.</li>
-          <li>Zoho'da aşama "İletişim Kuruldu" → "Konuşma Başladı" olarak ilerletildi.</li>
+          <li>INMA agent UI'da customer_status <code>contacted</code> → <code>engaged</code> olarak ilerletildi (manuel agent veya sistem otomatik). <em>(V2 INMA-otorite — eski Zoho aşama V2 ile kaldırıldı 2026-05-12)</em></li>
           <li>Saatler Dr. Özge'nin takvim ayarına göre canlı çekiliyor (geçmiş ve dolu olanlar listeye girmez).</li>
         </ul>
       </div>
@@ -1583,7 +1586,7 @@
         </div>
         <h4>Arka planda olanlar</h4>
         <ul>
-          <li>Zoho CRM'de aşama "Teklif Aşaması" olarak güncellendi.</li>
+          <li>INMA agent UI'da customer_status <code>offer_sent</code> olarak güncellendi. <em>(V2 INMA-otorite — eski Zoho aşama V2 ile kaldırıldı 2026-05-12)</em></li>
           <li>Aynı saat başka biri tarafından alınamayacak şekilde kilitlendi.</li>
           <li>Pilot süresince Meet bağlantısı sahte (link dolu görünür ama gerçek odaya bağlamaz). Tam açılışta gerçek bağlantı (B0 Google Workspace OAuth).</li>
         </ul>
@@ -1632,7 +1635,7 @@
           <li class="flow-arrow">→</li>
           <li class="flow-step"><div class="ico">🚫</div><div class="ttl">Kayıt</div><div class="desc">Sistem "iletişim kapalı" işareti koyar.</div></li>
           <li class="flow-arrow">→</li>
-          <li class="flow-step"><div class="ico">📋</div><div class="ttl">CRM</div><div class="desc">Zoho'da bu kişiye bir daha kampanya mesajı gitmez.</div></li>
+          <li class="flow-step"><div class="ico">📋</div><div class="ttl">CRM</div><div class="desc">INMA agent UI'da opt-out işaretli + leads.opted_out=true; bu kişiye bir daha kampanya mesajı gitmez (V2 — eski Zoho V2 ile kaldırıldı 2026-05-12).</div></li>
           <li class="flow-arrow">→</li>
           <li class="flow-step"><div class="ico">✅</div><div class="ttl">Onay</div><div class="desc">Hastaya kısa bir teyit mesajı: "Kaydın silindi, bir daha mesaj gelmeyecek."</div></li>
         </ul>
@@ -1659,6 +1662,96 @@
         <li>Koordinatör cevapladıktan sonra sistem yine devralabilir veya konuşma manuel modda devam eder.</li>
       </ul>
     </div>
+  </section>
+
+  <section id="v2-customer-status">
+    <h2>§V2 Customer Status Akışı — FEAT-INMA-PIPELINE-V2</h2>
+    <div class="callout warn" style="background:rgba(245,158,11,.08)">
+      <h4 style="margin-top:0">🔄 V2 Mimari Pivot (2026-05-12, Q kararı)</h4>
+      <p><strong>Zoho INSE'den TAMAMEN çıkıyor.</strong> Lead CRUD + Stage Sync + Blueprint + COQL + OAuth + 3 prod tablo (zoho_connections, zoho_stage_mappings, zoho_sync_log) HEPSİ silindi (Migration 048 archive + DROP). Yeni mimari: <strong>INMA otorite, one-way INMA→INSE webhook</strong>. INSE customer_status'u opaque TEXT olarak saklar, validate ETMEZ, Zoho'ya forward ETMEZ.</p>
+      <p><strong>Eski FEAT-PIPELINE 3-way sync DRAFT CANCELLED 2026-05-12</strong> (commit <code>0d9a4f3</code>). Yerine FEAT-INMA-PIPELINE-V2 (5 chunk).</p>
+    </div>
+
+    <h3>5 Chunk Yol Haritası</h3>
+    <table class="task-table">
+      <thead><tr><th>Chunk</th><th>Scope</th><th>Status</th><th>Tarih</th></tr></thead>
+      <tbody>
+        <tr><td>C1</td><td>Zoho-out — Backend/Integrations/Dashboard SPA kod silme + Migration 048 atomik tx snapshot-then-drop (3 archive table preservation + 3 live table DROP CASCADE)</td><td><span class="pill good">DONE+DEPLOYED+SMOKED</span></td><td>2026-05-12 17:50 UTC (commit <code>0c0733b</code>)</td></tr>
+        <tr><td>C2</td><td>INSE inbound endpoint <code>POST /api/v1/inbound/inma/customer-status-change</code> HMAC + idempotency + opaque TEXT store</td><td><span class="pill bad">BLOCKED</span></td><td>INMA contract bekliyor</td></tr>
+        <tr><td>C3</td><td>Flow Builder 4. trigger kanalı <code>customer_status_changed</code> (mevcut trigger kanalları: message_received, button_clicked, flow_completed + bu yeni)</td><td><span class="pill bad">BLOCKED</span></td><td>INMA contract bekliyor (C2 bağımlılık)</td></tr>
+        <tr><td>C4</td><td>Flow Builder action node <code>Set Customer Status</code> — INSE flow içinden <code>leads.customer_status</code> alanı LOCAL update (INMA'ya forward YOK, one-way INMA→INSE preserved). Audit: değişiklik audit trail'e yazılır; INMA bir sonraki INMA agent UI dropdown refresh'inde INSE'den okur (opsiyonel polling) veya manuel reconcile. <strong>Bu reverse hop DEĞİL</strong> — INMA otoritesinde değişiklik yok.</td><td><span class="pill bad">BLOCKED</span></td><td>INMA contract bekliyor (C2 bağımlılık)</td></tr>
+        <tr><td>C5</td><td>Dashboard cleanup + DentAdavista/plan/ doc refresh (bu paket) — Zoho doc referansları DELETE + INMA-otorite section'lar + Migration 049 kanban 6 kart V2 context rewrite</td><td><span class="pill warn">IN_PROGRESS</span></td><td>2026-05-12 20:56 UTC</td></tr>
+      </tbody>
+    </table>
+
+    <h3>V2 Akış Diyagramı</h3>
+    <div class="card">
+      <pre style="margin:0">
+INMA Agent UI                    INMA Backend                   INSE Backend (Invekto)
+─────────────                    ────────────                   ──────────────────────
+Operator opens chat              ──────────────────────────►   Lead detail view
+Customer_status dropdown                                       Shows current customer_status
+shows current value                                            (opaque TEXT from prev webhook)
+  │
+  │ Operator selects new value
+  │ (e.g. "engaged" → "qualified")
+  ▼
+INMA persists internally        ──HMAC POST webhook───►        /api/v1/inbound/inma/
++ fires INMA→INSE webhook        (idempotency_key)             customer-status-change (C2)
+                                                                  │
+                                                                  │ Validate HMAC
+                                                                  │ Dedup (24h window)
+                                                                  ▼
+                                                                INSE leads.customer_status
+                                                                = opaque TEXT (no validation,
+                                                                no forward to Zoho, no enum)
+                                                                  │
+                                                                  │ Trigger flow rule
+                                                                  ▼
+                                                                Flow Builder rule (C3):
+                                                                "On customer_status_changed
+                                                                 from 'engaged' to 'qualified'
+                                                                 → Run Welcome Re-engage Flow"
+      </pre>
+    </div>
+
+    <h3>Mimari Kararlar</h3>
+    <ul>
+      <li><strong>INMA otorite:</strong> customer_status field tanımı (dropdown values + labels) INMA admin paneli tarafından yönetilir. INSE field tanımına müdahale etmez.</li>
+      <li><strong>One-way INMA→INSE:</strong> INSE customer_status'u Zoho'ya forward ETMEZ; eski 3-way sync (Invekto + Zoho INMA'dan çeker) iptal.</li>
+      <li><strong>Opaque TEXT:</strong> INSE customer_status'u VARCHAR olarak saklar, enum validate ETMEZ. INMA'dan ne gelirse o saklanır — INMA dropdown values değişirse INSE side migration GEREKMEZ.</li>
+      <li><strong>Idempotency:</strong> 24h dedup window (tenant_id + lead_id + customer_status + occurred_at_ms hash). Sonsuz döngü koruması (INSE→INMA push YOK, sadece INMA→INSE pull).</li>
+      <li><strong>Auth:</strong> HMAC shared secret per-tenant (INMA tenant config'ten okur, INSE webhook endpoint header'da bekler).</li>
+      <li><strong>Flow trigger kanalı (C3):</strong> Mevcut 3 trigger (message_received + button_clicked + flow_completed) yanına 4. eklenir: <code>customer_status_changed</code> ('from' + 'to' parametreli rule).</li>
+      <li><strong>Flow action node (C4):</strong> Flow içinde "Set Customer Status" node — <strong>INSE leads.customer_status LOCAL update</strong> (INMA'ya forward YOK, one-way INMA→INSE preserved). INMA bu değişikliği bir sonraki agent UI refresh'inde INSE'den okuyabilir (opsiyonel polling), ama INMA otoritesinde değişiklik YOK — INMA bu değişikliği görmek zorunda değil. Reverse webhook DEĞİL.</li>
+    </ul>
+
+    <h3>Müşteri Onboarding Etkisi (Stage 1 öncesi)</h3>
+    <ul>
+      <li><strong>Müşteri Zoho Admin verisi gerekmez</strong> (eski C.1-C.7 Blueprint setup kaldırıldı — §4.2-C bakın).</li>
+      <li><strong>Müşteri OAuth onayı gerekmez</strong> (eski Zoho OAuth flow kaldırıldı — §4.4 E.8 deprecated).</li>
+      <li>INMA admin tarafında customer_status field setup edilir (INMA-side iş, Invekto ops verify) — pilot Stage 1 için 0 müşteri-side setup adımı.</li>
+      <li>INMA agent operator training: 8 dropdown değer (new / contacted / engaged / qualified / offer_sent / deposit_paid / won / lost) + ne zaman manuel set edilir politikası.</li>
+    </ul>
+
+    <h3>Pilot Smoke Test Etkisi</h3>
+    <ul>
+      <li>Stage 1 smoke S1-S2-S4 (eski Zoho sync log + transition check) → INMA→INSE webhook check'leri (C2 PENDING — INMA contract ready olunca aktif).</li>
+      <li>F.2.4 (eski Zoho token expire simulate) → INMA→INSE HMAC signature mismatch + idempotency dedup simulate (C2 PENDING).</li>
+      <li>F.3 Go/No-Go (eski Zoho sync success rate %95) → INMA→INSE webhook delivery rate (C2 PENDING).</li>
+    </ul>
+
+    <h3>Refences</h3>
+    <ul>
+      <li><strong>Migration 048</strong> (C1 Zoho-out): <code>arch/db/migrations/048-zoho-out-drop-tables.sql</code></li>
+      <li><strong>Migration 049</strong> (C5 kanban refresh): <code>arch/db/migrations/049-kanban-zoho-out-content-refresh.sql</code></li>
+      <li><strong>Plan JSON</strong>: <code>arch/plans/20260513-feat-inma-pipeline-v2-c1-zoho-out.json</code> + <code>20260513-feat-inma-pipeline-v2-c5-dashboard-cleanup.json</code></li>
+      <li><strong>Tracking</strong>: <code>tracking/feat-inma-pipeline-v2-c1.md</code> + <code>tracking/feat-inma-pipeline-v2-c5.md</code></li>
+      <li><strong>Memory</strong>: <code>~/.claude/projects/c--CRMs-InvektoServices/memory/project_inma_pipeline_v2_decision.md</code></li>
+      <li><strong>Master Queue</strong>: <code>tracking/pilot-launch-roadmap.md</code> Faz B section</li>
+    </ul>
+
+    <p class="ref">Bu §V2 bölümü FEAT-INMA-PIPELINE-V2 C5 (2026-05-12 20:56 UTC) ile eklendi. C2-C4 INMA contract sonrası tamamlanacak, bu doc o aşamada güncellenir.</p>
   </section>
 
   <footer class="footer">

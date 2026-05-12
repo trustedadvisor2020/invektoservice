@@ -47,12 +47,17 @@
 
 **Detay:** [`arch/platform/inma-inse-unification/`](../../arch/platform/inma-inse-unification/)
 
-## Blueprint Sync (Zoho)
+## ~~Blueprint Sync (Zoho)~~ → V2 Customer Status (INMA-otorite, 2026-05-12)
 
-- **Pipeline status alani:** `leads.pipeline_status` VARCHAR(30) — **INSE'de**, INMA'da degil
-- **Event map:** `LeadStatusEventMap.Map(pipeline_status -> zoho_event)` Backend'de
-- **Sync yonu:** INSE -> Zoho (Blueprint transition). INMA pipeline kavramina dokunmaz.
-- **Field mapping vs pipeline:** Farkli kavramlar. `pipeline_status` = CRM-standart lifecycle; field mapping (INMA custom_1..10) = tenant domain vocabulary.
+> **🔄 V2 Mimari Pivot (2026-05-12, FEAT-INMA-PIPELINE-V2 C1 Zoho-out, commit `0c0733b`):**
+> Eski "Blueprint Sync (Zoho)" karari kaldirildi. Zoho INSE'den TAMAMEN cikti — lead CRUD + stage sync + Blueprint + OAuth + zoho_* tablolar HEPSI silindi (Migration 048). LeadStatusEventMap class'i + ZohoLifecycleDispatcher silindi.
+>
+> **V2 Karar:**
+> - **Pipeline status alani:** `leads.pipeline_status` VARCHAR(30) — **INSE'de**, INMA'da degil (degismedi, INSE-native).
+> - **customer_status alani:** YENI — INSE'de opaque TEXT olarak saklanir, INMA-otorite (INMA agent UI dropdown manuel set), INSE validate ETMEZ.
+> - **Sync yonu:** ONE-WAY INMA→INSE webhook (`POST /api/v1/inbound/inma/customer-status-change` C2 BLOCKED INMA contract). Eski INSE→Zoho push iptal.
+> - **Loop prevention:** INSE customer_status'u INMA'ya forward ETMEZ; INMA dropdown sahipligi.
+> - **Field mapping vs pipeline:** Farkli kavramlar. `pipeline_status` = INSE-native CRM lifecycle; `customer_status` = INMA-otorite (V2 yeni); field mapping (INMA custom_1..10) = tenant domain vocabulary.
 
 ## Gap Fix Durumu
 

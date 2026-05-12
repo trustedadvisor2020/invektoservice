@@ -39,6 +39,6 @@ Potansiyel adaylar:
 
 ## Pipeline Status vs Field Mapping
 
-**Onemli ayrim:** Lead pipeline_status (new/contacted/qualified/offer_sent/closed_won/closed_lost) INSE-native `leads.pipeline_status` kolonunda tutulur, custom field DEGILDIR. Zoho Blueprint sync bu kolondan beslenir. Field mapping 5 alani `pipeline_status`'tan bagimsiz.
+**Onemli ayrim:** Lead pipeline_status (new/contacted/qualified/offer_sent/closed_won/closed_lost) INSE-native `leads.pipeline_status` kolonunda tutulur, custom field DEGILDIR. _(Eski Zoho Blueprint sync hop V2 ile kaldirildi 2026-05-12, FEAT-INMA-PIPELINE-V2 C1 Zoho-out. customer_status takibi INMA agent UI'da, INMA-otorite — INMA→INSE webhook ile INSE opaque TEXT store, C2 BLOCKED INMA contract.)_ Field mapping 5 alani `pipeline_status`'tan bagimsiz.
 
 Karar: pipeline_status = CRM-standart lifecycle; field mapping = tenant domain vocabulary.

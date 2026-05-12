@@ -54,7 +54,7 @@ Tenant'in mevcut landing page'i/form'u/3rd party lead source'u (Meta Lead Ads, G
 
 ### Out of Scope (Explicit)
 - Meta Lead Ads native integration (v2, ayri feature)
-- Reverse-ETL to tenant's CRM (Zoho sync ayri feature — `ZohoLifecycleDispatcher` pattern kullanilir)
+- ~~Reverse-ETL to tenant's CRM (Zoho sync ayri feature — `ZohoLifecycleDispatcher` pattern kullanilir)~~ DEPRECATED 2026-05-12 (FEAT-INMA-PIPELINE-V2 C1 Zoho-out). Yerine: customer_status INMA-otorite (INMA agent UI dropdown + INMA→INSE webhook C2 BLOCKED INMA contract).
 - Email-only leads (v2 — phone zorunlu v1)
 - Captcha/anti-bot (tenant landing sorumluluu)
 

@@ -1,14 +1,17 @@
 # Dent Adavista Pilot — Stage 1 Hazırlık Dokümanı
 
 Hazırlık tarihi: 2026-04-24
+**Updated: 2026-05-12 (FEAT-INMA-PIPELINE-V2 C1 Zoho-out — Bölüm A.3 + Bölüm C tamamen kaldırıldı)**
 Pilot tenant: 18173130 (Dent Adavista)
-Kapsam: Meta Lead Ads → Invekto → WhatsApp welcome + Zoho stage ilerletme
+Kapsam: Meta Lead Ads → Invekto → WhatsApp welcome (customer_status INMA-otorite V2 2026-05-12)
 Zapier/Make.com KULLANILMIYOR — Meta webhook direkt Invekto'ya gelecek.
 
-Bu doküman 4 tarafa iş veriyor:
+> **🔄 V2 Mimari Pivot (2026-05-12, commit `0c0733b`):** Zoho INSE'den TAMAMEN çıkıyor (FEAT-INMA-PIPELINE-V2 C1 DONE+DEPLOYED+SMOKED). Bu dokümanda eski Zoho Blueprint setup (Bölüm C 80+ satır) + ZohoLifecycleDispatcher welcome_sent hook (Bölüm A.3) kaldırıldı. customer_status artık INMA agent UI dropdown manuel + INMA→INSE webhook (C2 BLOCKED INMA contract). Detaylı V2 akış için `dent-golive.html` §V2 bölümüne bakın.
+
+Bu doküman 3 tarafa iş veriyor (eski 4 → 3, Zoho tarafı kaldırıldı):
 A) Invekto tarafı (biz — kod micro-paket + Dashboard config)
 B) Müşteri Meta Business Manager tarafı
-C) Müşteri Zoho CRM Console tarafı
+C) ~~Müşteri Zoho CRM Console tarafı~~ DEPRECATED V2 2026-05-12 (Zoho-out, INMA agent UI tarafı)
 D) Müşteri WhatsApp Business numarası tarafı (INMA allowlist)
 
 Her adım numaralı. Her UI adımında tıklanacak yer `[ ... ]` ile belirtildi.
@@ -59,15 +62,11 @@ Kolonlar (tenant_settings.meta_leadgen_config JSONB):
 
 Migration: 033-meta-leadgen-config.sql
 
-### A.3 — ZohoLifecycleDispatcher welcome_sent hook
+### A.3 — ~~ZohoLifecycleDispatcher welcome_sent hook~~ DEPRECATED V2 (2026-05-12)
 
-Şu an LeadStatusEventMap.cs:13-22 welcome_sent event'ini map etmiyor. Müşteri "1. mesaj atıldı" Zoho'da görmek istiyorsa welcome flow completion point'inden dispatcher'a call eklenmeli.
-
-Scope:
-1. ZohoLifecycleDispatcher → yeni metot DispatchEvent(tenantId, leadId, zohoEvent)
-2. TriggerWelcomeFlowJob.ExecuteAsync → terminal status success olduktan sonra dispatcher.DispatchEvent(tenantId, leadId, "welcome_sent") fire-and-forget
-3. AllowedEvents whitelist zaten mevcut (7 event), yeni whitelist entry GEREKMİYOR
-4. Test: prod'da Dent'te test lead → welcome flow success → zoho_sync_log yeni row welcome_sent success + Zoho Console Leads history'de transition görünür
+> **🔄 V2 Pivot 2026-05-12 (FEAT-INMA-PIPELINE-V2 C1):** Zoho-out C1 ile ZohoLifecycleDispatcher class'ı + tüm Zoho service'ler silindi (commit `0c0733b`). welcome_sent event'i artık Zoho'ya dispatch ETMEZ. Yerine V2 akışı: lead welcome completion → INMA agent UI'da customer_status manuel set (Invekto agent training scope'unda, kod tarafı dispatch YOK).
+>
+> Eğer otomatik customer_status transition gerekirse C3/C4 (FEAT-INMA-PIPELINE-V2 BLOCKED INMA contract) flow action node ile yapılır. Bu paketin scope'u DEPRECATED.
 
 ### A.4 — Dashboard /settings/meta-leadgen ekranı
 
@@ -88,7 +87,7 @@ Scope:
 
 - A.1 endpoint (1.5h)
 - A.2 config tablosu + migration (0.5h)
-- A.3 welcome_sent hook (0.5h)
+- A.3 ~~welcome_sent hook~~ DEPRECATED V2 (0h — Zoho-out C1 ile iptal 2026-05-12)
 - A.4 Dashboard sayfası (1.5h)
 - Unit test + /rev Codex PASS + deploy (1h)
 
@@ -186,78 +185,25 @@ Meta Business App `Invekto` (App ID `1141500866374561`, App Mode: Live, Business
 FAQ template'leri pilot için zorunlu DEĞİL — ai_faq node semantic search ile 24h window içinde free-form cevap veriyor (template gerekmez).
 
 
-## BÖLÜM C — Müşteri Zoho CRM Hazırlığı
+## BÖLÜM C — ~~Müşteri Zoho CRM Hazırlığı~~ → V2 Customer Status (INMA-otorite)
 
-Müşteri Zoho Admin'i (veya biz onunla screenshare) aşağıdakileri yapar. ~45dk.
-
-### C.1 — Leads modülü için Blueprint oluştur
-
-1. Zoho CRM → [Setup] (sağ üst dişli)
-2. [Automation] → [Blueprint]
-3. [Create Blueprint] → Module: `Leads`
-4. Field: `Lead Status` seç
-5. Blueprint Name: `Dent Roadshow Pipeline`
-6. Description: "Invekto AI agent lifecycle stages"
-7. [Next]
-
-### C.2 — State + Transition ekle
-
-State list (soldan sağa pipeline):
-- New (start) → Contacted → Engaged → Qualified → Offer Sent → Deposit Paid → Won
-- (branch) Lost
-
-Transition list (aşağıdaki 7 transition MUTLAKA olmalı, isim serbest ama aşağıdaki mapping'te Invekto event ile eşleşecek):
-
-| Transition Adı (Zoho) | From | To | Invekto Event |
-|---|---|---|---|
-| 1. Mesaj Atıldı | New | Contacted | welcome_sent |
-| Konuşma Başladı | Contacted | Engaged | engaged |
-| Nitelikli Aday | Engaged | Qualified | qualified |
-| Teklif Gönderildi | Qualified | Offer Sent | offer_sent |
-| Kapora Alındı | Offer Sent | Deposit Paid | deposit_paid |
-| Tedavi Tamamlandı | Deposit Paid | Won | closed_won |
-| İptal | * (any) | Lost | closed_lost |
-
-Her transition için:
-1. Blueprint tasarlama alanında [+ Transition]
-2. Name: yukarıdaki tablo
-3. Before Transition: (boş — Invekto otomatik tetikleyecek)
-4. During Transition: (opsiyonel — örn. offer_sent'te Notes zorunlu yapılabilir)
-5. After Transition: (opsiyonel — örn. deposit_paid'e geçince owner'a notification)
-6. Save
-
-### C.3 — Blueprint'i aktive et
-
-1. Tüm state + transition tanımlandıktan sonra üst sağda [Save & Publish]
-2. Status: `Active` görünmeli
-
-### C.4 — Zoho API Console'dan scope ayarla
-
-1. https://api-console.zoho.com/ → Self Client (veya Server-based Application)
-2. Client ID + Client Secret not al (Invekto'ya vereceğiz)
-3. Scopes (INMA sonrası Invekto'ya verilir): `ZohoCRM.modules.Leads.ALL`, `ZohoCRM.settings.ALL`, `ZohoCRM.users.READ`
-4. Redirect URL: `https://app.invekto.com/api/integrations/zoho/oauth/callback`
-
-### C.5 — Invekto Zoho bağlantısını kur
-
-1. Invekto Dashboard → [Settings] → [Entegrasyonlar] → [Zoho CRM]
-2. [Bağlan] butonu → Zoho OAuth popup → onay → Invekto'ya token kaydedilir
-3. [Bağlantıyı Test Et] butonu → 200 OK + org info görünmeli
-
-### C.6 — Stage Mapping'i Invekto'ya taşı
-
-1. Invekto Dashboard → [Settings] → [Zoho Stage Mapping]
-2. [Discover Transitions] butonu → Zoho'daki 7 transition listelenir
-3. 7 satır için dropdown'dan transition seç:
-   - welcome_sent → "1. Mesaj Atıldı"
-   - engaged → "Konuşma Başladı"
-   - qualified → "Nitelikli Aday"
-   - offer_sent → "Teklif Gönderildi"
-   - deposit_paid → "Kapora Alındı"
-   - closed_won → "Tedavi Tamamlandı"
-   - closed_lost → "İptal"
-4. [Kaydet]
-5. [Dry Run Test] butonu → Invekto bir test lead için transition deneme çalıştırır (Zoho'da gerçek kayıt oluşmaz, sadece API validate)
+> **🔄 V2 Mimari Pivot (2026-05-12, FEAT-INMA-PIPELINE-V2 C1 Zoho-out):**
+>
+> Eski Bölüm C ("Müşteri Zoho CRM Hazırlığı" — ~80 satır, Blueprint setup + 7 transition + OAuth + Stage Mapping) **TAMAMEN kaldırıldı**. Zoho INSE'den çıkarıldı (commit `0c0733b`).
+>
+> Yeni Bölüm C: **Müşteri Zoho Admin verisi gerekmez.** customer_status field artık INMA agent UI'da manuel dropdown ile yönetilir.
+>
+> **C.1 — INMA admin tarafı (INMA-side iş, Invekto ops verify):**
+> INMA ekibi Dent Adavista tenant için customer_status field dropdown values setup eder:
+> `new / contacted / engaged / qualified / offer_sent / deposit_paid / won / lost` (8 değer).
+>
+> **C.2 — Invekto operator training:**
+> INMA agent UI'da customer_status dropdown ne zaman manuel set edilir politikası belirlenir. Stage 1 pilot'unda 1-2 saat training (Q + INMA admin ile).
+>
+> **C.3 — INMA→INSE webhook (BLOCKED INMA contract — FEAT-INMA-PIPELINE-V2 C2 PENDING):**
+> `POST /api/v1/inbound/inma/customer-status-change` endpoint INMA contract sonrası açılır. Hızlı yol: INMA tarafı endpoint hazır olana kadar müşteri customer_status'u sadece INMA agent UI'da görür, INSE side'a yansımaz.
+>
+> Detaylı V2 mimari ve akış için: `dent-golive.html` §V2 bölümüne bakın.
 
 
 ## BÖLÜM D — Müşteri WhatsApp Business & INMA Hazırlığı
@@ -390,10 +336,9 @@ Tüm yukarıdaki config'ler hazır olduktan sonra Invekto Dashboard'da 7 sayfay�
 4. [Validate Flow] → 0 error
 5. [Kaydet]
 
-### E.8 — Zoho Stage Mapping (Bölüm C.6'da yapıldı, burada sadece tik)
+### E.8 — ~~Zoho Stage Mapping~~ DEPRECATED V2 2026-05-12 (Zoho-out C1)
 
-1. Dashboard → [Settings] → [Zoho Stage Mapping]
-2. 7 satır görünüyor + transition ID dolu mu kontrol
+> **🔄 V2 Pivot:** Bu Dashboard sayfası FEAT-INMA-PIPELINE-V2 C1 ile silindi (Migration 048 + Zoho Backend/Integrations kod silme). customer_status setup INMA agent UI tarafında yapılır (Bölüm C V2 bakın).
 3. [Dry Run All] → 7 transition test PASS
 
 
@@ -421,8 +366,7 @@ Senaryo 1 — Meta Form'dan intake:
    - Invekto Backend log: [INV-META-000] leadgen received + [INV-AT-069] welcome flow triggered
    - Dashboard [Leads] sayfasında yeni satır
    - WhatsApp'a welcome HSM template ulaştı (delivered tick)
-   - Zoho Console → Leads → yeni kayıt + status "Contacted" (welcome_sent transition executed)
-   - Invekto [Zoho Sync Log] sayfasında welcome_sent success
+   - _(eski Zoho Console + Zoho Sync Log check'leri V2 ile kaldırıldı 2026-05-12 — customer_status takibi INMA agent UI'da)_
 
 Senaryo 2 — Reply "Dublin":
 1. Test numarasından WhatsApp'a "Dublin" yaz
@@ -430,8 +374,8 @@ Senaryo 2 — Reply "Dublin":
    - FlowEngineV2 welcome node → city detection → rotation_group city=dublin
    - Bir sonraki mesaj: Dublin için slot list (interactive list)
    - custom_1 = "dublin" DB'de güncellendi
-   - pipeline_status → `contacted` → Zoho engaged transition
-   - Invekto [Zoho Sync Log] engaged success
+   - pipeline_status → `contacted` (INSE leads.pipeline_status)
+   - _(eski Zoho engaged transition + sync_log check'leri V2 ile kaldırıldı 2026-05-12 — INMA agent UI customer_status manuel set)_
 
 Senaryo 3 — FAQ sor:
 1. Test numarasından "Is it really free?" yaz
@@ -447,7 +391,7 @@ Senaryo 4 — Appointment booking:
    - VideoMeetingCreationJob Hangfire → Succeeded (~500ms)
    - meeting_link non-null (mock provider)
    - reminder jobs (24h + 1h before) scheduled
-   - pipeline_status → `consultation` → Zoho offer_sent transition
+   - pipeline_status → `consultation` (INSE leads.pipeline_status — eski Zoho offer_sent transition V2 ile kaldırıldı 2026-05-12)
 
 Senaryo 5 — Followup sequence (test_mode=ON dk bazlı):
 1. Test numarasından welcome mesajına REPLY GÖNDERME
@@ -470,7 +414,7 @@ Senaryo 6 — Opt-out:
 1. Geçersiz telefon formatı (ör. "abc") → Meta form'dan submit → INV-BE-105 reject verify
 2. Consent false → LIW reject verify
 3. Aynı telefonla 2 kez submit → dup merge (tek lead, 2 audit log entry)
-4. Zoho token expire simulate → Invekto retry worker verify + sync_log failed/retry pattern
+4. ~~Zoho token expire simulate~~ DEPRECATED V2 2026-05-12 (Zoho-out). Yeni: INMA→INSE webhook HMAC signature mismatch simulate → 401 reject + idempotency dedup (C2 BLOCKED INMA contract)
 5. INMA bridge 500 simulate → outbound retry worker verify
 6. Monitoring dashboard:
    - WAA webhook error count: 0
@@ -483,7 +427,7 @@ Senaryo 6 — Opt-out:
 Stage 2'ye (3 gün, ilk 20 gerçek lead) geçiş için:
 - 5/5 test numarası için 6/6 senaryo PASS
 - 0 blocker bug
-- Zoho sync log success rate ≥ %95
+- ~~Zoho sync log success rate ≥ %95~~ DEPRECATED V2 2026-05-12. Yeni: INMA→INSE webhook delivery rate ≥ %95 (C2 BLOCKED — metrik aktif olunca aktive)
 - Müşteri sign-off email (ekran görüntüsü + onay)
 
 Başarısızsa:
@@ -498,14 +442,14 @@ Gün 0 (bugün 2026-04-24):
 - Biz: Bölüm A kod micro-paketi /auto başlat (Meta Leadgen endpoint + welcome_sent hook)
 - Müşteri: Bölüm B.4-B.6 (Page Access Token + Page ID + Lead Form) — Invekto ops'a ilet (Invekto admin tek-sefer Meta App kurulumu zaten yapıldı, eski B.1-B.3 kaldırıldı)
 - Müşteri: Bölüm B.8 HSM template v1 submit (24-48h onay bekler)
-- Müşteri: Bölüm C.1-C.5 Zoho Blueprint setup
+- ~~Müşteri: Bölüm C.1-C.5 Zoho Blueprint setup~~ DEPRECATED V2 2026-05-12 (Zoho-out C1). Yeni: INMA admin tarafı customer_status dropdown setup (Bölüm C V2 bakın)
 - Invekto ops: Bölüm B.7 Dashboard Meta Leadgen config (müşteri B.4-B.6 verisini iletince)
 
 Gün 1 (2026-04-25):
 - Biz: Bölüm A deploy + Codex PASS
 - Biz: Bölüm E Dashboard config (7 sayfa)
 - Müşteri: HSM onay bekleniyor
-- Müşteri: Bölüm C.6 Invekto Zoho stage mapping
+- ~~Müşteri: Bölüm C.6 Invekto Zoho stage mapping~~ DEPRECATED V2 2026-05-12 (Zoho-out C1, Dashboard sayfası silindi)
 
 Gün 2 (2026-04-26):
 - HSM template approved (umut)
@@ -533,8 +477,9 @@ Müşteri yapacaklar:
 - [ ] Page ID bul — Invekto ops'a ilet (Bölüm B.5)
 - [ ] Lead Form yayınla + Question ID listesi Invekto ops'a ilet (Bölüm B.6)
 - [ ] HSM welcome template v1 submit (Bölüm B.8) — KRİTİK, 48h onay
-- [ ] Zoho Blueprint oluştur + 7 transition (Bölüm C.1-C.3)
-- [ ] Zoho API Client ID + Secret + scope (Bölüm C.4)
+- ~~[ ] Zoho Blueprint oluştur + 7 transition (Bölüm C.1-C.3)~~ DEPRECATED V2 2026-05-12 (Zoho-out C1)
+- ~~[ ] Zoho API Client ID + Secret + scope (Bölüm C.4)~~ DEPRECATED V2 2026-05-12 (Zoho-out C1)
+- [ ] INMA admin: customer_status dropdown values setup (Bölüm C V2, 8 değer)
 - [ ] WABA phone_number_id + display name (Bölüm D.1)
 - [ ] 5 test numarası Invekto'ya ver (Bölüm F.1)
 
@@ -542,7 +487,7 @@ Müşteri yapacaklar:
 
 Biz (Invekto) yapacaklar:
 - [ ] Meta Leadgen endpoint kod paketi (Bölüm A.1-A.4, ~5h)
-- [ ] welcome_sent Zoho dispatch hook (Bölüm A.3)
+- ~~[ ] welcome_sent Zoho dispatch hook (Bölüm A.3)~~ DEPRECATED V2 2026-05-12 (Zoho-out C1)
 - [ ] Dashboard Meta Leadgen config (Bölüm B.7) — müşteriden gelen B.4-B.6 verisini App Secret + mapping ile birleştir
 - [ ] INMA allowlist Dent WABA (Bölüm D.2)
 - [ ] Dashboard 7 config sayfası tik (Bölüm E.1-E.8)
@@ -556,6 +501,6 @@ Biz (Invekto) yapacaklar:
 1. Bu doküman `pilot-checklist.md` dosyasının tamamlayıcısı. Checklist canonical kurulum maddelerini, bu doküman Stage 1 launch için tıkla-tıkla akışı gösteriyor.
 2. Zapier olmayacağı için Meta Leadgen endpoint micro-paketi KRİTİK — bu kod olmadan Meta form → Invekto bağlantısı kurulamaz.
 3. HSM template onayı 24-48h alıyor — müşteri ilk gün submit etmezse pilot ertelenir. Gün 0'da submit zorunlu.
-4. Zoho Blueprint yoksa `welcome_sent` dispatch INV-INT-121 ile log'a düşer + sync_log failed (terminal). Müşteri Blueprint'i yayınlamadan test başlanamaz.
+4. ~~Zoho Blueprint yoksa `welcome_sent` dispatch INV-INT-121 ile log'a düşer + sync_log failed (terminal). Müşteri Blueprint'i yayınlamadan test başlanamaz.~~ DEPRECATED V2 2026-05-12 (Zoho-out C1 — welcome_sent dispatch class silindi, blocker irrelevant).
 5. Google Meet real OAuth (B0 paketi) Stage 3 öncesi. Stage 1-2'de mock provider kullanılıyor (meeting_link fake URL ama flow ve reminder job'lar gerçek).
 6. Welcome rotation (B-C2) Stage 3'te. Stage 1'de tek varyant kullanılıyor (DocX with-date variant 1).

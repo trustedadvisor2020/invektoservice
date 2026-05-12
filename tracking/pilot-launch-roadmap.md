@@ -79,7 +79,7 @@ Q 2026-05-12 demo sonrası: "bu hafta servisleri çalışır hale getirelim". Pi
 - **C2 INSE inbound endpoint** BLOCKED — INMA contract bekliyor (`POST /api/v1/inbound/inma/customer-status-change` HMAC + idempotency + opaque TEXT store).
 - **C3 Flow Builder customer_status_changed trigger** BLOCKED.
 - **C4 Flow Builder Set Customer Status action node** BLOCKED.
-- **C5 dashboard cleanup + DentAdavista/plan refresh** PENDING (C1 sonrası bağımsız ilerleyebilir).
+- **C5 dashboard cleanup DONE+EXECUTED+VERIFIED 2026-05-12 22:00 UTC** — Migration 049 (LIKE + INSERT atomik + NULL-safe + tenant_id IS NULL + DO $verify$ INV-SEED-039..045) prod execute 6/6 V2 marker + 6 archive row PASS; DentAdavista/plan 4 doc Zoho 91 mention DELETE + V2 INMA-otorite section'lar + 8 durum tablosu INMA dropdown rewrite; arch/lessons-learned Zoho-bound banner; arch/errors.md INV-SEED-039..045; memory deprecated_historical tag; arch/db/kanban-board.sql executable archive DDL. Codex iter 0→4 → Q FORCE PASS (11/12 CQ + 3/4 CoVe substantively PASS, tek kalan pedantic CTAS schema drift recovery). Service deploy YOK (kod sıfır).
 
 ---
 

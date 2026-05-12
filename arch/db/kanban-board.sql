@@ -173,6 +173,8 @@ GRANT USAGE, SELECT ON SEQUENCE kanban_cards_id_seq TO invekto;
 --   INV-SEED-027  : Migration 037 depends_on regex postcondition failure
 --   INV-SEED-028  : Migration 038 audit data fix postcondition failure
 --   INV-SEED-029  : Migration 041 feat-meta-paketleri postcondition failure (D029/D030/D031 INSERT eksik veya stale content)
+--   INV-SEED-039  : Migration 049 archive table row count mismatch (FEAT-INMA-PIPELINE-V2 C5 — 6 kart Zoho-out V2 refresh)
+--   INV-SEED-040..045 : Migration 049 6 kart V2 marker postcondition failure (C003/C004/D007/D019/D027/K012)
 --   INV-KB-001    : KanbanStatus enum out-of-range (defensive guard)
 --   INV-KB-002    : KanbanCategory enum out-of-range (defensive guard)
 --   INV-KB-003    : PATCH body status invalid (400)
@@ -193,3 +195,28 @@ GRANT USAGE, SELECT ON SEQUENCE kanban_cards_id_seq TO invekto;
 --                  Position 240/250/260; depends_on: D029 NULL, D030='D029', D031='D029,D030'.
 --                  DO $verify$ block per-row content check (status + position + depends_on)
 --                  + count check (3 ref_code) → INV-SEED-029 fail-loud on stale state drift.
+--   Migration 049: 6 kart body_markdown V2 context prepend (FEAT-INMA-PIPELINE-V2 C5 Zoho-out refresh):
+--                  C003 (Zoho Blueprint setup → INMA agent UI customer_status), C004 (Zoho OAuth → DEPRECATED),
+--                  D007 (Zoho takvim sync → Google Meet only), D019 (FEAT-PIPELINE 3-way → one-way INMA→INSE),
+--                  D027 (Zoho COQL adapter → INMA contact only), K012 (3-way sync ownership → INMA-otorite).
+--                  Atomic tx (explicit BEGIN/COMMIT): archive snapshot 6 row + 6 UPDATE + DO $verify$
+--                  INV-SEED-039..045 7 postcondition fail-loud + NULL-safe idempotent guard
+--                  COALESCE(body_markdown,'') NOT LIKE '%FEAT-INMA-PIPELINE-V2 C1%' +
+--                  verifier IS DISTINCT FROM TRUE NULL/row-missing detection.
+--
+-- Archive Table DDL — Source-of-Truth (canonical mirror for Migration 049):
+-- =====================================================================
+-- Migration 049 §1 dinamik yaratır (CREATE TABLE AS SELECT). Aşağıdaki executable
+-- DDL block schema invariant'ı SOURCE-OF-TRUTH olarak kapsar: declarative LIKE
+-- syntax ile kanban_cards parent schema'sından otomatik türetilir. Idempotent
+-- IF NOT EXISTS — Migration 049 ile çakışmaz; archive zaten varsa skip (re-run
+-- safe). Schema source-of-truth: kanban_cards'taki herhangi kolon ekle/silme
+-- bu DDL'i otomatik yansıtır (LIKE syntax sayesinde).
+--
+-- Retention: 24 ay (post-pilot ops decision, B-META precedent dent_paket_*_archive_*).
+-- Snapshot pattern: data Migration 049 §1 SELECT * FROM kanban_cards WHERE
+-- board_key='inse' AND tenant_id IS NULL AND ref_code IN (6 list).
+CREATE TABLE IF NOT EXISTS dent_paket_kanban_zoho_refresh_archive_20260513
+    (LIKE kanban_cards INCLUDING DEFAULTS);
+
+GRANT ALL ON dent_paket_kanban_zoho_refresh_archive_20260513 TO invekto;

@@ -1526,6 +1526,29 @@ errors:
     description: Migration 048 §4 GRANT verification FAIL — zoho_*_archive_20260513 tablolarinda invekto role GRANT ALL eksik. Root cause: §2 DO block GRANT statement skipped (DO block hata yutmus, archive tablo create silently failed olmus, role rename drift). Tani: SELECT * FROM information_schema.role_table_grants WHERE grantee='invekto' AND table_name LIKE 'zoho_%_archive_20260513'; SELECT rolname FROM pg_roles WHERE rolname='invekto'. Fix-forward: GRANT ALL ON zoho_connections_archive_20260513 TO invekto; GRANT ALL ON zoho_stage_mappings_archive_20260513 TO invekto; GRANT ALL ON zoho_sync_log_archive_20260513 TO invekto; — manuel re-run.
     user_message: Zoho arşiv tablolarında erişim hakkı eksik — sistem yapılandırma hatası.
 
+  # FEAT-INMA-PIPELINE-V2 C5 Kanban Zoho-out content refresh (migration 049 — 2026-05-13). 7 postcondition asıllarına ayrılmış INV-SEED slot.
+  - code: INV-SEED-039
+    description: Migration 049 archive table row count mismatch — dent_paket_kanban_zoho_refresh_archive_20260513 tablosunda 6 row beklenirken farklı sayı. Root cause: snapshot SELECT execute aşamasında 6 ref_code'dan biri kanban_cards'ta yok (Migration 046 sonrası DROP/RENAME yapılmış olabilir, beklenmedik schema drift). Tanı: SELECT COUNT(*) FROM dent_paket_kanban_zoho_refresh_archive_20260513; SELECT ref_code FROM kanban_cards WHERE board_key='inse' AND ref_code IN ('C003','C004','D007','D019','D027','K012'). Fix-forward: eksik ref_code'ları kanban_cards'a re-seed Migration 046 pattern + Migration 049 re-run.
+    user_message: Kanban Zoho-out refresh migration'da kart sayısı uyuşmazlığı — beklenen 6 karttan biri tabloda yok.
+  - code: INV-SEED-040
+    description: Migration 049 §3 C003 V2 marker postcondition FAIL — kanban_cards body_markdown'da 'FEAT-INMA-PIPELINE-V2 C1' marker yok. Root cause: UPDATE statement etkilenmedi (WHERE condition false — body_markdown zaten marker içeriyordu re-run scenario'sunda DEĞİL, ya da kart silinmiş). Tanı: SELECT body_markdown FROM kanban_cards WHERE board_key='inse' AND ref_code='C003'. Fix-forward: kartın body_markdown'unu manuel V2 context'e set + Migration 049 idempotent re-run.
+    user_message: Kanban C003 kartı V2 context'e güncellenememiş — manuel düzeltme gerekli.
+  - code: INV-SEED-041
+    description: Migration 049 §3 C004 V2 marker postcondition FAIL — kanban_cards body_markdown'da 'FEAT-INMA-PIPELINE-V2 C1' marker yok (C004 = Zoho OAuth bağlanma kartı). Aynı INV-SEED-040 root cause + tanı + fix-forward.
+    user_message: Kanban C004 kartı V2 context'e güncellenememiş — manuel düzeltme gerekli.
+  - code: INV-SEED-042
+    description: Migration 049 §3 D007 V2 marker postcondition FAIL — kanban_cards body_markdown'da 'FEAT-INMA-PIPELINE-V2 C1' marker yok (D007 = Zoho takvim sync kartı). Aynı INV-SEED-040 root cause + tanı + fix-forward.
+    user_message: Kanban D007 kartı V2 context'e güncellenememiş — manuel düzeltme gerekli.
+  - code: INV-SEED-043
+    description: Migration 049 §3 D019 V2 marker postcondition FAIL — kanban_cards body_markdown'da 'FEAT-INMA-PIPELINE-V2 C1' marker yok (D019 = INMA sohbet paneli dropdown + 3-way sync FEAT-PIPELINE kartı). Aynı INV-SEED-040 root cause + tanı + fix-forward.
+    user_message: Kanban D019 kartı V2 context'e güncellenememiş — manuel düzeltme gerekli.
+  - code: INV-SEED-044
+    description: Migration 049 §3 D027 V2 marker postcondition FAIL — kanban_cards body_markdown'da 'FEAT-INMA-PIPELINE-V2 C1' marker yok (D027 = Outbound INMA + Zoho COQL adapter kartı). Aynı INV-SEED-040 root cause + tanı + fix-forward.
+    user_message: Kanban D027 kartı V2 context'e güncellenememiş — manuel düzeltme gerekli.
+  - code: INV-SEED-045
+    description: Migration 049 §3 K012 V2 marker postcondition FAIL — kanban_cards body_markdown'da 'FEAT-INMA-PIPELINE-V2 C1' marker yok (K012 = Lead pipeline INMA-otorite 3-way sync karar kartı). Aynı INV-SEED-040 root cause + tanı + fix-forward.
+    user_message: Kanban K012 kartı V2 context'e güncellenememiş — manuel düzeltme gerekli.
+
   # FEAT-PILOT-KANBAN runtime (KanbanEndpoints + Repository — 2026-04-28)
   - code: INV-KB-001
     description: KanbanStatusExtensions.ToDbValue called with a value outside the declared enum range. Defensive guard — should be unreachable through normal API paths because PATCH endpoint TryParse rejects unknown strings with INV-KB-003. Indicates an internal serialization or refactor bug.

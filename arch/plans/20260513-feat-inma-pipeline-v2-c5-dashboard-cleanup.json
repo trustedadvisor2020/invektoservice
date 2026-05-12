@@ -1,0 +1,207 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260513-feat-inma-pipeline-v2-c5-dashboard-cleanup",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-05-12T20:56:00Z",
+  "updated_at": "2026-05-12T21:30:00Z",
+  "plan": {
+    "summary": "FEAT-INMA-PIPELINE-V2 Chunk 5 — dashboard cleanup + Dent pilot doc Zoho-out refresh. C1 (Zoho-out kod silme) 2026-05-12 17:50 UTC DONE+DEPLOYED+SMOKED. C5 bağımsız doc + DB-content refresh paketi: kod sıfır, sadece (a) 6 kanban kart body_markdown V2 context rewrite (C003/C004/D007/D019/D027/K012) via Migration 049 atomic tx + DO $verify$, (b) DentAdavista/plan/ Zoho 91 mention DELETE + INMA-otorite Customer Status Akışı (V2) section ekle, (c) arch/lessons-learned.md Zoho-bound entry'lere DEPRECATED 2026-05-12 inline tag, (d) arch/docs/whatisinvekto.md + arch/features/lead-intake-webhook.md 3 mention strip, (e) memory zoho_blueprint_api_quirks.md frontmatter deprecated_historical + V2 cross-link.",
+    "q_intent": "FEAT-INMA-PIPELINE-V2 C5 (dashboard cleanup + Dent pilot doc refresh) — C1 sonrası bağımsız doc paketi. Q karari: Dent doc DELETE + INMA section, kanban Migration 049 atomik UPDATE, lessons + memory sadece Zoho-bound DEPRECATED tag, Codex single submission.",
+    "interview_notes": "4 gate Q-onaylı 2026-05-12 20:56: G1 Dent doc=DELETE + INMA-otorite yeni section (en agresif, Zoho referansları temizlenir + V2 mimari section yazılır); G2 kanban=Migration 049 atomik UPDATE (6 kart body_markdown V2 context rewrite + DO $verify$ INV-SEED-039..045 postcondition + archive snapshot); G3 lessons+memory=sadece Zoho-bound entry'lere DEPRECATED tag (evrensel Codex CQ pattern'leri DOKUNULMAZ; memory frontmatter status update); G4 Codex=single submission (MEDIUM risk (Migration 049 + 1 yeni archive table), kod sıfır, C1 chunked review MCP server bug ışığında daha güvenli).",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Migration 049-kanban-zoho-out-content-refresh.sql atomic transaction execute olur: 6 kart (C003/C004/D007/D019/D027/K012) body_markdown V2 context'e rewrite + dent_paket_kanban_zoho_refresh_archive_20260513 pre-state snapshot + DO $verify$ INV-SEED-039..045 7 postcondition fail-loud PASS (idempotent re-run safe).",
+        "verified": true,
+        "verification_note": "Q FORCE PASS 2026-05-12 22:00 UTC — substantively PASS, audit trail in commit + arch/plans/diffs/"
+      },
+      {
+        "id": "AC2",
+        "criterion": "DentAdavista/plan/dent-golive.html + pilot-stage1-prep.md + pilot-field-mapping.md + decisions.md toplam 91 Zoho mention sıfırlanır; her dosyaya 'Customer Status Akışı (V2)' INMA-otorite section eklenir (Zoho referans yerine INMA agent UI manuel dropdown + INMA→INSE webhook V2 mimari açıklaması).",
+        "verified": true,
+        "verification_note": "Q FORCE PASS 2026-05-12 22:00 UTC — substantively PASS, audit trail in commit + arch/plans/diffs/"
+      },
+      {
+        "id": "AC3",
+        "criterion": "arch/lessons-learned.md Zoho-bound entry'lere (Blueprint API quirks + OAuth scope mismatch + ZohoConnectionPage helper dedup gibi purely Zoho lesson'lar) inline 'DEPRECATED 2026-05-12 — FEAT-INMA-PIPELINE-V2 C1 Zoho-out, V2 ile irrelevant' tag eklenir; evrensel Codex CQ / migration / state pattern'leri DOKUNULMAZ (audit guard).",
+        "verified": true,
+        "verification_note": "Q FORCE PASS 2026-05-12 22:00 UTC — substantively PASS, audit trail in commit + arch/plans/diffs/"
+      },
+      {
+        "id": "AC4",
+        "criterion": "arch/docs/whatisinvekto.md (1 mention) + arch/features/lead-intake-webhook.md (2 mention) Zoho referansları strip + V2 audit trail comment; arch/errors.md INV-SEED-039..045 entry'leri eklenir.",
+        "verified": true,
+        "verification_note": "Q FORCE PASS 2026-05-12 22:00 UTC — substantively PASS, audit trail in commit + arch/plans/diffs/"
+      },
+      {
+        "id": "AC5",
+        "criterion": "Memory zoho_blueprint_api_quirks.md frontmatter status='deprecated_historical' + body banner 'DEPRECATED 2026-05-12 — FEAT-INMA-PIPELINE-V2 C1 ile irrelevant' + [[project-inma-pipeline-v2-decision]] cross-link.",
+        "verified": true,
+        "verification_note": "Q FORCE PASS 2026-05-12 22:00 UTC — substantively PASS, audit trail in commit + arch/plans/diffs/"
+      },
+      {
+        "id": "AC6",
+        "criterion": "Codex single submission /rev verdict = PASS (MEDIUM risk (Migration 049 + 1 yeni archive table)). Grep 'Zoho' (case-insensitive) DentAdavista/plan/ + arch/docs/whatisinvekto.md + arch/features/lead-intake-webhook.md = 0 active mention (audit trail block-comment veya DEPRECATED tag içindekiler hariç).",
+        "verified": true,
+        "verification_note": "Q FORCE PASS 2026-05-12 22:00 UTC — substantively PASS, audit trail in commit + arch/plans/diffs/"
+      }
+    ]
+  },
+  "allowed_files": [
+    "arch/db/migrations/049-kanban-zoho-out-content-refresh.sql",
+    "arch/db/kanban-board.sql",
+    "DentAdavista/plan/dent-golive.html",
+    "DentAdavista/plan/pilot-stage1-prep.md",
+    "DentAdavista/plan/pilot-field-mapping.md",
+    "DentAdavista/plan/decisions.md",
+    "arch/lessons-learned.md",
+    "arch/docs/whatisinvekto.md",
+    "arch/features/lead-intake-webhook.md",
+    "arch/errors.md",
+    "arch/plans/20260513-feat-inma-pipeline-v2-c5-dashboard-cleanup.json",
+    "tracking/feat-inma-pipeline-v2-c5.md",
+    "tracking/README.md",
+    "tracking/pilot-launch-roadmap.md",
+    "arch/session-memory.md",
+    "C:/Users/taner/.claude/projects/c--CRMs-InvektoServices/memory/zoho_blueprint_api_quirks.md"
+  ],
+  "files_changed": [],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": null,
+    "full_path": "arch/plans/diffs/20260513-feat-inma-pipeline-v2-c5-dashboard-cleanup.diff",
+    "stats": {
+      "insertions": 0,
+      "deletions": 0,
+      "files_count": 0
+    }
+  },
+  "build": {
+    "status": "N/A",
+    "command": null,
+    "timestamp": null,
+    "duration_ms": null,
+    "output_tail": null,
+    "error_summary": "Doc + DB-content paketi, kod sıfır. Build gerek yok.",
+    "services": []
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Migration 049 atomic transaction içinde idempotent guard NULL-safe mi? COALESCE(body_markdown,'') NOT LIKE pattern + DO $verify$ IS DISTINCT FROM TRUE pattern ile NULL body_markdown veya silinmiş kart durumunda silent pass YOK mu?",
+      "category": "Data"
+    },
+    {
+      "id": "Q2",
+      "question": "Risk MEDIUM doğru mu — Migration 049 yeni table create (dent_paket_kanban_zoho_refresh_archive_20260513) içeriyor + 6 row UPDATE; review policy gereği LOW yetersiz, ama HIGH/CRITICAL de değil (data-content refresh, schema invariant degişikliği YOK)?",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q3",
+      "question": "V2 mimari one-way INMA→INSE ownership korunuyor mu — C4 action node 'Set Customer Status' INSE leads.customer_status LOCAL update yapar, INMA'ya forward YOK; reverse hop ifadesi düzeltildi (CQ9 iter 0 FAIL fix)?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q4",
+      "question": "arch/lessons-learned.md banner stratejisi (purely Zoho-bound vs evrensel pattern ayrımı) Q'nun G3 kararını doğru karşılıyor — Codex CQ / NSSM recovery / Migration DO $verify$ pattern'lerinin EVRENSEL kategoride kaldığı, Zoho-bound entry'lerin DEPRECATED tag aldığı?",
+      "category": "Process/Policy"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Backend/Integrations/.cs (kod tarafı C1'de zaten silindi, dokunulmaz)",
+      "Dashboard SPA (kod tarafı C1'de zaten silindi, dokunulmaz)",
+      "arch/db/migrations/048-zoho-out-drop-tables.sql (C1 artifact, dokunulmaz)",
+      "tracking/feat-inma-pipeline-v2-c1.md (C1 final state, dokunulmaz — audit trail)",
+      "arch/lessons-learned.md evrensel Codex CQ / migration / state / SCHEDULER HOST EXCEPTION pattern'leri (sadece purely Zoho-bound olanlar tag)"
+    ],
+    "non_goals": [
+      "C2 INMA inbound endpoint implementation (INMA contract BLOCKED)",
+      "C3 Flow Builder customer_status_changed trigger (INMA contract BLOCKED)",
+      "C4 Flow Builder Set Customer Status action node (INMA contract BLOCKED)",
+      "Migration 048 archive table cleanup (24 ay tutulacak, post-pilot ops decision)",
+      "Service redeploy (kod sıfır, deploy gereksiz)"
+    ],
+    "intentional_exclusions": [
+      "Migration 046 üzerine ALTER (Migration 049 yeni UPDATE statement'larla 6 kartı V2'ye çekiyor, 046 historical kalır)",
+      "DentAdavista/plan/pilot-checklist.md (zaten Zoho-free, dokunulmaz)",
+      "DentAdavista/plan/pilot-golive.md + README.md + diğer Dent doc'lar (Zoho mention yok, dokunulmaz)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Doc + DB-content paketi. Migration 049 atomic transaction içinde DO $verify$ INV-SEED-039..045 RAISE EXCEPTION ile fail-loud (silent failure imkansız — postcondition fail rollback). Doc edit'lerinde silent failure surface yok (Edit/Write tool atomic)."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Dent pilot docs Zoho referansları içermeye devam ederse pilot-go-live Q için confusion riski (Zoho-out 17:50 UTC ama doc'lar hala stage sync diyor).",
+      "suggestion": "DELETE + INMA-otorite section: dent-golive.html + pilot-stage1-prep.md V2 mimari section yazılır, Q ve INMA ekibi tek source-of-truth görür.",
+      "aha_moment": "Q pilot go-live öncesi doc'lara bakar, Zoho referansı görmez, INMA agent UI manuel dropdown akışı kristal nettir."
+    },
+    {
+      "category": "UX",
+      "user_pain": "Dashboard /yol-haritasi/inse board'unda 6 kart (C003/C004/D007/D019/D027/K012) Zoho referansları gösteriyor — Q günlük açıyor, görsel kirlilik.",
+      "suggestion": "Migration 049 atomic UPDATE 6 kart body_markdown V2 context'e rewrite — DO $verify$ ile idempotent, audit-safe.",
+      "aha_moment": "Q kanban'a bakar — C003 'Customer status INMA otorite', C004 'Zoho-out 2026-05-12', K012 'INMA agent UI source-of-truth'. Cleaner reading."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Yeni session başında 'Bu Zoho lesson hala geçerli mi?' sorusu lessons-learned.md'de cevap bulamıyor — entry'ler 2026-04-16 tarihli, V2 pivot 2026-05-12.",
+      "suggestion": "Zoho-bound entry'lere inline 'DEPRECATED 2026-05-12' tag — evrensel pattern'ler korunur, Zoho-purely olanlar işaretlenir.",
+      "aha_moment": "Future session lessons-learned'i okur, Blueprint API quirk entry'sinde 'DEPRECATED' görür, atlar; Codex CQ pattern'ini görür, uygular."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Memory zoho_blueprint_api_quirks.md MEMORY.md'de hala aktif görünüyor — yeni session her başlangıçta yükleniyor, gereksiz token harcaması.",
+      "suggestion": "Frontmatter status='deprecated_historical' + V2 cross-link [[project-inma-pipeline-v2-decision]] — gelecekteki memory pruning kararı için işaret.",
+      "aha_moment": "Memory bakar, deprecated_historical tag görür, V2 decision'a yönlendirilir, Zoho API mecrasında zaman harcamaz."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "INMA ekibi C2-C4 contract draft yazarken Dent pilot docs'a bakar, Zoho stage sync görür, 'INSE Zoho beklemi yoksa kaldırdı mı?' confusion.",
+      "suggestion": "C5 paketi Dent docs'ta INMA-otorite section yazınca, INMA ekibi açık akış görür: agent UI → INMA→INSE webhook → INSE opaque TEXT store + flow trigger/action.",
+      "aha_moment": "INMA ekibi C2 endpoint contract yazımına başlar, Dent doc'tan akış net, geriye dönük soru yok."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-05-12T22:00:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-05-12T22:00:00Z",
+    "raw_text": "Q FORCE PASS 2026-05-12 — iter 4 son blocker (CQ11+Q1: CTAS-derived archive schema drift) pedantik concern, real prod state correct (6 row preserved + data integrity tam). 11/12 CQ + 3/4 CoVe PASS. A3+A4a Faz A precedent (substantively kod kalitesi PASS, meta-shell taxonomy itirazı). Iter arc 0→4 trail commit message + arch/plans/diffs/*.diff'te audit edilebilir.",
+    "code_quality_gate": {
+      "CQ1": {"result": "PASS", "evidence": "INV-SEED-039..045 RAISE EXCEPTION + arch/errors.md actionable descriptions"},
+      "CQ2": {"result": "PASS", "evidence": "BEGIN/COMMIT + IS DISTINCT FROM TRUE fail-loud verifier"},
+      "CQ3": {"result": "PASS", "evidence": "All files in allowed_files list"},
+      "CQ4": {"result": "PASS", "evidence": "No application code duplication; SQL UPDATE repetition acceptable for migration"},
+      "CQ5": {"result": "PASS", "evidence": "Risk MEDIUM consistent + snake_case + GRANT ALL"},
+      "CQ6": {"result": "PASS", "evidence": "6 bounded UPDATE statements + tenant_id filter"},
+      "CQ7": {"result": "PASS", "evidence": "No new TODO/HACK/FIXME markers"},
+      "CQ8": {"result": "PASS", "evidence": "No C# interfaces/DTOs/endpoints changed"},
+      "CQ9": {"result": "PASS", "evidence": "V2 one-way INMA→INSE consistent; tenant_id IS NULL filter"},
+      "CQ10": {"result": "PASS", "evidence": "Documentation updates aligned to V2 customer_status"},
+      "CQ11": {"result": "FAIL", "evidence": "CTAS-derived archive schema drift not reconciled — Q FORCE PASS (pedantic, prod data integrity intact)"},
+      "CQ12": {"result": "PASS", "evidence": "INV-SEED codes documented + RAISE EXCEPTION"}
+    },
+    "cove_verification": {
+      "Q1": {"result": "FAIL", "reasoning": "CTAS schema drift not closed for prior execution path — Q FORCE PASS (archive snapshot DEFAULTS not critical)"},
+      "Q2": {"result": "PASS", "reasoning": "Idempotent v_existing_count guard re-run safe"},
+      "Q3": {"result": "PASS", "reasoning": "tenant_id IS NULL + COALESCE + IS DISTINCT FROM TRUE + BEGIN/COMMIT all in place"},
+      "Q4": {"result": "PASS", "reasoning": "V2 one-way + MEDIUM risk + lessons banner all consistent"}
+    },
+    "blocking_issues": [
+      "CQ11/Q1: CTAS-derived archive schema drift (Q FORCE PASS — pedantic, prod data integrity intact)"
+    ],
+    "iteration": 4,
+    "escalation_required": true,
+    "escalation_reason": "Q FORCE PASS 2026-05-12 22:00 UTC. Iter arc 0→4: arc 0 FAIL (4 blocker) → iter 1 FAIL (4 blocker, 2 yeni) → iter 2 FAIL (6 blocker, kalıntılar) → iter 3 FAIL (2 blocker, CTAS drift discovered) → iter 4 FAIL (1 blocker, CTAS drift recovery edge-case). Substantively 11/12 CQ + 3/4 CoVe PASS — tek kalan CQ11+Q1 pedantik schema drift (archive snapshot table, DEFAULTS preserve not critical, prod 6 row data integrity tam). A3+A4a Faz A precedent (auth/Shared CRITICAL meta-shell taxonomy precedent). Plan JSON status=DONE, audit trail commit message + arch/plans/diffs/*.diff."
+  }
+}

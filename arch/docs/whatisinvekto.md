@@ -163,7 +163,7 @@
 
 ### 12. Entegrasyonlar
 - Shopify entegrasyonu
-- Zoho entegrasyonu
+- ~~Zoho entegrasyonu~~ DEPRECATED 2026-05-12 (FEAT-INMA-PIPELINE-V2 C1 Zoho-out — customer_status artık INMA-otorite, INMA agent UI dropdown manuel + INMA→INSE webhook)
 - Webhook API bağlantıları (dışa veri gönderme)
 - InvektoServis API entegrasyonu (ChatAnalysis)
 - **Trendyol / Hepsiburada API YOK**
