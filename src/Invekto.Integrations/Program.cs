@@ -830,7 +830,17 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "POST", Path = "/internal/video/meetings", Description = "FEAT-VCP Chunk B: Appointments -> Integrations video meeting hop (factory resolve + provider CreateMeetingAsync)", Auth = "X-Internal-Service-Token", Category = "Video" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "none", Category = "Ops" }
     };
-    return Results.Ok(endpoints);
+    // Faz A A2 fix 2026-05-12: peer-parity wrapper. Backend IntegrationsClient.GetEndpointsAsync
+    // deserialises EndpointDiscoveryResponse (object with Service/Port/Endpoints). Returning the
+    // bare endpoints array produced "LineNumber: 0 BytePositionInLine: 1" JSON parse failures
+    // every ~30s in Backend stdout for ~6 days. Other peers (Appointments:1065, AgentAI:516,
+    // WhatsAppAnalytics:2283) already wrap; this restores parity.
+    return Results.Ok(new EndpointDiscoveryResponse
+    {
+        Service = ServiceConstants.IntegrationsServiceName,
+        Port = ServiceConstants.IntegrationsPort,
+        Endpoints = endpoints
+    });
 });
 
 logger.SystemInfo($"Invekto.Integrations starting on port {listenPort}");
