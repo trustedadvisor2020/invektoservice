@@ -57,6 +57,25 @@ Bu dosya **pilot launch boyunca execution queue'nun tek kaynagidir**. Session bo
 
 ---
 
+## FAZ A — Demo Toparlama Queue (2026-05-12 acil)
+
+Q 2026-05-12 demo sonrası: "bu hafta servisleri çalışır hale getirelim". Pilot Mode mevcut tüm paketler DONE, ama production runtime'da 4 büyük problem tespit edildi (rapor: oturum). Sıra Q onayı (2026-05-12 sondan):
+
+| # | Paket | Slug | Scope | Tahmin | Status |
+|---|-------|------|-------|--------|--------|
+| **A1** | JsonLinesLogger 0-byte Fix | `20260512-a1-jsonl-logger-fix` | Tüm 12 servisin `logs/2026-05-12.jsonl` 0 byte — wire-up OK ama hiç yazılmıyor. Hipotez: `LogDirectory` config'i hala eski `E:\Invekto\...` path'ine yazıyor olabilir veya `NSSM` working directory mismatch. Her servisin appsettings.Production.json'daki `LogDirectory` (veya benzer key) audit edilecek, doğru `C:\Invekto\{Service}\logs\` path'i set edilecek. | 2-4 saat | PENDING |
+| **A2** | `/api/discovery/endpoints` 404 Fix | `20260512-a2-integrations-discovery` | Backend `IntegrationsClient.cs:43` her 30sn `/api/discovery/endpoints` çağırıyor → Integrations 404 dönüyor → JSON parse FAIL → log gürültüsü + microservice routing patlamış. Karar: endpoint implement et VEYA `IntegrationsClient` consumer'dan kaldır (FEAT-INMA-PIPELINE-V2'de Integrations zaten küçülecek). | 2-3 saat | PENDING |
+| **A3** | JWT BOM 500→401 Fix | `20260512-a3-jwt-bom-fix` | `JwtValidator.ValidateToken` UTF-8 BOM (`0xEF`) ile başlayan bozuk token'da `IDX12729` exception throw → middleware 500. UI bozuk token gönderirse 401 gelmeli, 500 değil. Try-catch + INV-AUTH-XXX error code. | 1-2 saat | PENDING |
+| **A4** | 2026-05-06 Boot Crash Root Causes | `20260512-a4-boot-crash-rootfixes` | Son deploy'da 5 farklı tip boot crash yaşandı, sonradan toparlandı ama kodda hala risk var (sonraki restart aynı patlar): (a) Backend endpoint'inde `cacheRepo` parametresine `[FromServices]` attribute eksik; (b) Hangfire `SchedulePollingInterval` config validation (negatif/MaxValue üstü); (c) `JsonLinesLogger.cs:25` veya appsettings'te `E:\Invekto\...` eski path referansları (A1 ile örtüşür); (d) JWT SecretKey < 32 byte AgentAI/Knowledge/Outbound; (e) WhatsAppAnalytics `Hangfire.JobStorage` DI register eksik. | 4-6 saat | PENDING |
+| **A5** | Demo Retry (Q ile birlikte) | manuel | Q yeniden demo yapar, Claude UI/HTTP network monitor + log izleyici. Kalan failing endpoint'ler tespit edilir. | 30dk-1saat | PENDING |
+| **A6** | A5'ten çıkan ek bug fix'leri | esnek | Demo'da gözüken kalan problemler için ad-hoc paketler. | esnek | PENDING |
+
+**Tamamlanma kriteri:** Q'nun A5 demo'sunda tüm akış (lead intake → flow trigger → outbound → INMA → status) hatasız.
+
+**Faz B (Faz A sonrası):** `FEAT-INMA-PIPELINE-V2` 5 chunk (bkz. tracking/README.md). INMA contract gelene kadar C1 (Zoho-out) bağımsız ilerleyebilir, C2-C4 BLOCKED.
+
+---
+
 ## MASTER QUEUE (Pilot Critical Path — 9 Paket)
 
 ### FAZ 1 — Retro-Fix & Lessons (context warm, dusuk risk)

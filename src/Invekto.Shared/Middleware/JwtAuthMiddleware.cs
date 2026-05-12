@@ -76,14 +76,19 @@ public sealed class JwtAuthMiddleware
             return;
         }
 
-        var token = authHeader["Bearer ".Length..].Trim();
+        // Defense-in-depth: strip UTF-8 BOM (﻿) that some misbehaving clients prepend after
+        // the "Bearer " literal. Trim() does not remove BOM by itself. Empty result falls through
+        // to the JwtValidator which returns a malformed-token 401 (not a 500).
+        var token = authHeader["Bearer ".Length..].Trim().TrimStart('﻿').Trim();
         var (tenantContext, error) = _jwtValidator.ValidateToken(token);
 
         if (tenantContext == null)
         {
             var errorCode = error?.Contains("expired", StringComparison.OrdinalIgnoreCase) == true
                 ? ErrorCodes.AuthTokenExpired
-                : ErrorCodes.AuthTokenInvalid;
+                : error?.Contains("malformed", StringComparison.OrdinalIgnoreCase) == true
+                    ? ErrorCodes.AuthTokenMalformed
+                    : ErrorCodes.AuthTokenInvalid;
 
             _logger.SystemWarn($"[{errorCode}] JWT validation failed: path={path}, error={error}");
             context.Response.StatusCode = 401;

@@ -84,5 +84,14 @@ public sealed class JwtValidator
         {
             return (null, $"Token validation failed: {ex.Message}");
         }
+        catch (ArgumentException ex)
+        {
+            // IDX12729-class: Microsoft.IdentityModel throws ArgumentException when the header/payload
+            // segment fails Base64Url decode (BOM prefix, whitespace, non-ASCII bytes). This is OUTSIDE
+            // the SecurityTokenException hierarchy, so without this catch it bubbles up to a 500.
+            // Any other exception class is treated as a genuine bug — bubbling up to Kestrel 500 is the
+            // correct signal for an unmodeled failure mode, not a malformed-credential swallow.
+            return (null, $"Token malformed: {ex.Message}");
+        }
     }
 }

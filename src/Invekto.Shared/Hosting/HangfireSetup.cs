@@ -82,11 +82,24 @@ public static class HangfireSetup
             {
                 // Follow-up #1: Worker servers must not race Backend for the shared
                 // `recurring-jobs` advisory lock. Hangfire 1.8 has no direct toggle to
-                // suppress RecurringJobScheduler; push polling to the Int32-ms cap
-                // (~24.86 days). Worker processes are recycled far more frequently
-                // than that, so in practice the scheduler never fires. Leader
-                // (Backend) remains sole owner of recurring-job scheduling.
-                options.SchedulePollingInterval = TimeSpan.FromMilliseconds(int.MaxValue);
+                // suppress RecurringJobScheduler; push polling far into the future so
+                // a worker rarely competes for the lock. Race-safety note: even if a
+                // worker outlives the polling delay, Hangfire's advisory-lock leader
+                // election still serialises scheduling; Backend (the canonical leader,
+                // enableScheduler=true) wins under normal ops. The interval is a
+                // best-effort suppression, not a hard exclusivity guarantee.
+                //
+                // Boot-time crash (observed in production stderr 2026-05-06 for
+                // Appointments / Automation / Integrations workers — see
+                // arch/lessons-learned.md): Hangfire 1.8 setter at
+                // BackgroundJobServerOptions.cs:123 threw ArgumentOutOfRangeException
+                // for TimeSpan.FromMilliseconds(int.MaxValue) with message "must be
+                // non-negative and either equal to or less than 2147483647 ms".
+                // Empirical fix — reduced to TimeSpan.FromDays(20) (~1.73e9 ms, well
+                // under the int32-ms cap). We make no claim about the setter's exact
+                // boundary semantics beyond "int.MaxValue rejected, 20-day value
+                // accepted across all worker services post-deploy".
+                options.SchedulePollingInterval = TimeSpan.FromDays(20);
             }
         });
 

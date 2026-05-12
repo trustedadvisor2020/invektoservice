@@ -245,6 +245,9 @@ errors:
   - code: INV-AUTH-009
     description: Lazy auto-provision tenant resolve failed (PostgreSQL NpgsqlException during CompanyCode→tenant_id lookup/insert). Introduced 2026-04-17 (migration 016) to map opaque INMA CompanyCode string to INSE integer tenant_id via tenant_registry.inma_code.
     user_message: Tenant provision hatasi, kisa sure sonra tekrar deneyin.
+  - code: INV-AUTH-011
+    description: Token bytes corrupted before reaching IdentityModel — IDX12729-class Base64Url decode fail (UTF-8 BOM prefix, whitespace inside token, non-ASCII bytes, or partial token). Microsoft.IdentityModel throws ArgumentException which is OUTSIDE the SecurityTokenException hierarchy; JwtValidator catches ArgumentException explicitly and returns 401 with this code instead of letting the exception bubble up to a Kestrel 500. Any other exception class is intentionally not caught here (typed-catch-only policy) — those represent genuine bugs and surface as 500 with full stack traces for triage. Introduced 2026-05-12 (Faz A3 demo-fix) after Kestrel[13] 500 ile UI logout-after-logout looplari production stdout'ta gözlenmesi.
+    user_message: Geçersiz oturum tokeni, lütfen tekrar giriş yapın.
 
   # ── AT — Automation (GR-1.1) ──
   - code: INV-AT-001

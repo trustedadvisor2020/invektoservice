@@ -146,6 +146,9 @@ public static class ErrorCodes
     // FEAT-TFM MVP (INV-AUTH-010+) — explicit cross-tenant write defense
     public const string AuthCrossTenantBlocked = "INV-AUTH-010";           // 403: body-supplied tenant_id mismatches JWT claim (defensive guard)
 
+    // A3 demo-fix (INV-AUTH-011) — token bytes corrupted before reaching IdentityModel
+    public const string AuthTokenMalformed = "INV-AUTH-011";               // 401: Base64Url decode failed (BOM/whitespace/non-UTF8 prefix) — IDX12729-class boot fail caught defensively in JwtValidator
+
     // Backward-compat aliases (pre-GR-1.9 names, do not use in new code)
     public const string AuthForbidden = AuthTokenInvalid;
 
