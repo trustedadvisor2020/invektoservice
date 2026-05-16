@@ -33,6 +33,10 @@ export function FlowEditorPage() {
   const [isActive, setIsActive] = useState(false);
   const [currentVersion, setCurrentVersion] = useState(0);
   const [isToggling, setIsToggling] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(() => {
+    try { return localStorage.getItem('invekto_flow_palette_open') !== 'false'; }
+    catch { return true; }
+  });
   const loadFlow = useFlowStore((s) => s.loadFlow);
 
   // Load flow from API on mount
@@ -94,6 +98,14 @@ export function FlowEditorPage() {
 
     return () => { cancelled = true; };
   }, [flowId, tenantId, loadFlow, navigate]);
+
+  const handleTogglePalette = useCallback(() => {
+    setPaletteOpen((v) => {
+      const next = !v;
+      try { localStorage.setItem('invekto_flow_palette_open', String(next)); } catch {}
+      return next;
+    });
+  }, []);
 
   const handleSave = useCallback(async () => {
     setIsSaving(true);
@@ -308,7 +320,7 @@ export function FlowEditorPage() {
     <ReactFlowProvider>
       <div className="h-screen flex flex-col bg-navy-50">
         {/* Toolbar */}
-        <Toolbar onSave={handleSave} isSaving={isSaving} onBack={handleBack} onTest={handleTest} aiChatOpen={aiChatOpen} onToggleAiChat={handleToggleAiChat} flowLogOpen={flowLogOpen} onToggleFlowLog={handleToggleFlowLog} isActive={isActive} isToggling={isToggling} onToggleActive={handleToggleActive} currentVersion={currentVersion} tenantId={tenantId} flowId={flowId} onRollback={handleRollback} />
+        <Toolbar onSave={handleSave} isSaving={isSaving} onBack={handleBack} onTest={handleTest} paletteOpen={paletteOpen} onTogglePalette={handleTogglePalette} aiChatOpen={aiChatOpen} onToggleAiChat={handleToggleAiChat} flowLogOpen={flowLogOpen} onToggleFlowLog={handleToggleFlowLog} isActive={isActive} isToggling={isToggling} onToggleActive={handleToggleActive} currentVersion={currentVersion} tenantId={tenantId} flowId={flowId} onRollback={handleRollback} />
 
         {/* Save error banner */}
         {saveError && (
@@ -321,7 +333,7 @@ export function FlowEditorPage() {
         {/* Main area */}
         <div className="flex-1 flex overflow-hidden">
           {/* Left: Node palette */}
-          <NodePalette />
+          <NodePalette open={paletteOpen} />
 
           {/* Left: AI Chat panel (next to palette, mutual exclusion with flow log) */}
           <AiChatPanel onApply={handleAiApply} />

@@ -211,8 +211,14 @@ function PaletteItem({ info }: { info: NodeTypeInfo }) {
   );
 }
 
-export function NodePalette() {
+interface NodePaletteProps {
+  open?: boolean;
+}
+
+export function NodePalette({ open = true }: NodePaletteProps) {
   const grouped = groupByCategory(NODE_TYPE_REGISTRY);
+
+  if (!open) return null;
 
   return (
     <div className="w-52 bg-white border-r border-navy-100 overflow-y-auto flex-shrink-0">
