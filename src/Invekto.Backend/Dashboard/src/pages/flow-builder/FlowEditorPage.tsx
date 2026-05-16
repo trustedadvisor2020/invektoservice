@@ -66,23 +66,24 @@ export function FlowEditorPage() {
         setCurrentVersion(detail.current_version ?? 0);
         setIsLoading(false);
 
-        // Auto-open AI wizard if loaded from template
+        // Auto-open AI wizard if loaded from template — show template as a banner,
+        // send a HIDDEN TEMPLATE_SEED signal so the AI greets the user first (no visible user message).
         const params = new URLSearchParams(window.location.search);
         const templateId = params.get('template');
         if (templateId) {
           window.history.replaceState({}, '', window.location.pathname);
           import('../../data/flow-templates').then(({ FLOW_TEMPLATES }) => {
             const tpl = FLOW_TEMPLATES.find(t => t.id === templateId);
-            const aiStore = useAiChatStore.getState();
+            if (!tpl) {
+              // Stale/invalid template id (renamed or removed). Surface a diagnostic + fall back to a
+              // standard non-template AI chat open so the user still gets the editor, just without a banner/seed.
+              console.warn('[FlowEditor] Unknown template id in URL:', templateId, '— opening chat without template context.');
+              useSimulationStore.getState().close();
+              useAiChatStore.getState().open(flowId, tenantId);
+              return;
+            }
             useSimulationStore.getState().close();
-            aiStore.open(flowId, tenantId).then(() => {
-              if (tpl) {
-                aiStore.sendMessage(
-                  `Bu akis "${tpl.title}" sablonundan olusturuldu. Isletmeme gore ozellestir. Oncelikle sektorum ve marka tonumu sor.`,
-                  config
-                );
-              }
-            });
+            useAiChatStore.getState().openWithTemplate(flowId, tenantId, { title: tpl.title }, config);
           });
         }
       })

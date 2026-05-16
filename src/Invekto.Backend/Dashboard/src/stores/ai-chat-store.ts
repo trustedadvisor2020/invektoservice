@@ -31,6 +31,16 @@ function stripStreamingBlocks(text: string): string {
   return clean.trimEnd();
 }
 
+/** Optional context about the template the user started from. Shown as a banner above the chat. */
+export interface TemplateContext {
+  title: string;
+}
+
+interface SendMessageOptions {
+  /** If true, the user message is NOT shown in the chat (sent to backend silently — used for template seed greeting). */
+  hidden?: boolean;
+}
+
 interface AiChatStore {
   isOpen: boolean;
   flowId: number | null;
@@ -45,10 +55,14 @@ interface AiChatStore {
   autoApplyPending: boolean;
   /** Pre-apply snapshot of canvas; non-null means "Geri al" is available */
   lastAppliedSnapshot: FlowConfigV2 | null;
+  /** Template the user started this flow from — shown as a header banner. */
+  templateContext: TemplateContext | null;
 
   open: (flowId: number, tenantId: number) => Promise<void>;
+  /** Open + set template banner + auto-send hidden TEMPLATE_SEED greeting so AI welcomes the user first. */
+  openWithTemplate: (flowId: number, tenantId: number, template: TemplateContext, currentFlowConfig: FlowConfigV2) => Promise<void>;
   close: () => void;
-  sendMessage: (message: string, currentFlowConfig: FlowConfigV2) => Promise<void>;
+  sendMessage: (message: string, currentFlowConfig: FlowConfigV2, options?: SendMessageOptions) => Promise<void>;
   acceptChanges: () => FlowConfigV2 | null;
   rejectChanges: () => void;
   clearAutoApply: () => void;
@@ -70,30 +84,44 @@ export const useAiChatStore = create<AiChatStore>((set, get) => ({
   error: null,
   autoApplyPending: false,
   lastAppliedSnapshot: null,
+  templateContext: null,
 
   open: async (flowId: number, tenantId: number) => {
     const state = get();
-    // Already open for this flow — just toggle visibility
-    if (state.flowId === flowId && state.messages.length > 0) {
+    // Already open for this flow AND same tenant — just toggle visibility (preserve templateContext).
+    // tenantId check prevents reusing another tenant's stored messages/templateContext when the SPA
+    // state survives a tenant/session switch and the new tenant happens to open a flow with the same id.
+    if (state.flowId === flowId && state.tenantId === tenantId && state.messages.length > 0) {
       set({ isOpen: true });
       return;
     }
 
-    set({ isOpen: true, flowId, tenantId, messages: [], error: null, pendingFlowConfig: null, pendingOptions: null });
+    // New/different flow OR different tenant: reset chat state and clear any stale template banner.
+    set({ isOpen: true, flowId, tenantId, messages: [], error: null, pendingFlowConfig: null, pendingOptions: null, templateContext: null });
 
     // Load existing wizard_history if any
     try {
       const data = await getWizardState(tenantId, flowId);
       const raw = Array.isArray(data.wizard_history) ? data.wizard_history : [];
       // Normalize: handle both PascalCase (legacy DB) and camelCase property names
-      const history: WizardMessage[] = raw.map((m: Record<string, unknown>) => ({
+      const normalized: WizardMessage[] = raw.map((m: Record<string, unknown>) => ({
         role: (m.role ?? m.Role ?? 'user') as WizardMessage['role'],
         content: (m.content ?? m.Content ?? '') as string,
         timestamp: (m.timestamp ?? m.Timestamp ?? '') as string,
         flow_config_snapshot: (m.flow_config_snapshot ?? m.FlowConfigSnapshot) as WizardMessage['flow_config_snapshot'],
         options: (m.options ?? m.Options) as WizardMessage['options'],
       }));
-      set({ messages: history });
+      // Restore template banner from persisted history: TEMPLATE_SEED user message acts as the
+      // single source of truth for "this flow was started from template X". The seed is hidden
+      // from display below but its presence keeps the banner alive across refresh/re-open.
+      const seedMsg = normalized.find(m => m.role === 'user' && m.content.startsWith('TEMPLATE_SEED:'));
+      const restoredTemplate: TemplateContext | null = seedMsg
+        ? { title: seedMsg.content.substring('TEMPLATE_SEED:'.length).trim() || 'Sablon' }
+        : null;
+      // Hide all TEMPLATE_SEED user messages from the visible chat (they remain in backend history
+      // so Claude API conversation context stays intact with alternating user/assistant turns).
+      const history = normalized.filter(m => !(m.role === 'user' && m.content.startsWith('TEMPLATE_SEED:')));
+      set({ messages: history, templateContext: restoredTemplate });
     } catch (err: unknown) {
       // 404 = no history yet (normal for non-wizard flows), other errors surface to user
       const isNotFound = err instanceof Error && err.message.includes('404');
@@ -103,12 +131,41 @@ export const useAiChatStore = create<AiChatStore>((set, get) => ({
     }
   },
 
+  openWithTemplate: async (flowId, tenantId, template, currentFlowConfig) => {
+    const state = get();
+    // Skip re-seed only when: SAME tenant AND same flow with visible messages, OR seed/stream in flight,
+    // OR templateContext already set for this same-tenant flow. tenantId check prevents reusing another
+    // tenant's in-memory state after a tenant/session switch.
+    const alreadySeeded =
+      state.flowId === flowId &&
+      state.tenantId === tenantId &&
+      (state.messages.length > 0 || state.isStreaming || state.templateContext !== null);
+    if (alreadySeeded) {
+      set({ isOpen: true, templateContext: template });
+      return;
+    }
+    set({
+      isOpen: true,
+      flowId,
+      tenantId,
+      messages: [],
+      error: null,
+      pendingFlowConfig: null,
+      pendingOptions: null,
+      templateContext: template,
+    });
+    // Send a hidden TEMPLATE_SEED signal so the AI greets first.
+    // The backend prompt recognizes this prefix and responds with a warm onboarding message + sector question.
+    await get().sendMessage(`TEMPLATE_SEED: ${template.title}`, currentFlowConfig, { hidden: true });
+  },
+
   close: () => set({ isOpen: false }),
 
-  sendMessage: async (message: string, currentFlowConfig: FlowConfigV2) => {
+  sendMessage: async (message: string, currentFlowConfig: FlowConfigV2, options?: SendMessageOptions) => {
     const { flowId, tenantId, messages } = get();
     if (!flowId || !tenantId) return;
 
+    const hidden = options?.hidden === true;
     const userMsg: WizardMessage = {
       role: 'user',
       content: message,
@@ -116,7 +173,8 @@ export const useAiChatStore = create<AiChatStore>((set, get) => ({
     };
 
     set({
-      messages: [...messages, userMsg],
+      // Hidden seed messages bypass the visible message list but still go to backend
+      messages: hidden ? messages : [...messages, userMsg],
       isStreaming: true,
       streamingText: '',
       pendingOptions: null,
@@ -192,5 +250,6 @@ export const useAiChatStore = create<AiChatStore>((set, get) => ({
     error: null,
     autoApplyPending: false,
     lastAppliedSnapshot: null,
+    templateContext: null,
   }),
 }));

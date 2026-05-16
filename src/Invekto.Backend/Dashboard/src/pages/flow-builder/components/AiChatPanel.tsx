@@ -153,6 +153,7 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
   const error = useAiChatStore(s => s.error);
   const autoApplyPending = useAiChatStore(s => s.autoApplyPending);
   const lastAppliedSnapshot = useAiChatStore(s => s.lastAppliedSnapshot);
+  const templateContext = useAiChatStore(s => s.templateContext);
   const sendMessage = useAiChatStore(s => s.sendMessage);
   const close = useAiChatStore(s => s.close);
   const acceptChanges = useAiChatStore(s => s.acceptChanges);
@@ -439,6 +440,19 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
           </svg>
         </button>
       </div>
+
+      {/* Template banner — shown when user started this flow from a template */}
+      {templateContext && (
+        <div className="flex-shrink-0 bg-purple-50 border-b border-purple-100 px-3 py-2 flex items-center gap-2">
+          <svg className="w-3.5 h-3.5 text-purple-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" />
+          </svg>
+          <div className="flex-1 min-w-0">
+            <div className="text-[9px] uppercase tracking-wide text-purple-500 font-semibold leading-none">Sablon</div>
+            <div className="text-[11px] text-purple-800 font-medium truncate leading-tight mt-0.5">{templateContext.title}</div>
+          </div>
+        </div>
+      )}
 
       {/* Messages area */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-3 min-h-0 space-y-3">

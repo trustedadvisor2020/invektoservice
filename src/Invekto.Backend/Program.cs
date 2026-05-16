@@ -3731,6 +3731,10 @@ app.MapPost("/api/v1/flow-builder/wizard/{flowId:int}/message", async (int flowI
         // Only save history when AI responded successfully
         if (!hadError && fullAssistantText.Length > 0)
         {
+            // Always persist BOTH user and assistant turns so Claude conversation history stays intact
+            // for subsequent API calls (Claude expects alternating user/assistant pairs starting with user).
+            // Hidden TEMPLATE_SEED user messages are filtered out at the FE display layer only —
+            // see ai-chat-store.ts open() history-load filter. This preserves Claude context across reloads.
             history.Add(new WizardMessage { Role = "user", Content = userMessage, Timestamp = DateTime.UtcNow.ToString("o") });
             history.Add(new WizardMessage
             {
