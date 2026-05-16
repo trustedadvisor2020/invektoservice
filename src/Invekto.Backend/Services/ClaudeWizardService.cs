@@ -670,6 +670,24 @@ public sealed class ClaudeWizardService
         sb.AppendLine("</rules>");
         sb.AppendLine();
 
+        // Reporting / listing — kullanici 'kontrol et', 'rapor', 'incele', 'sorunlari listele', 'durum', 'analiz' gibi
+        // bilgi-isteyen sorgular yaparsa: bilgiyi GIZLEME, ASLA 'iste sunlar' deyip detayi sonraya birakma.
+        sb.AppendLine("<reporting>");
+        sb.AppendLine("Kullanici 'kontrol et', 'rapor', 'incele', 'sorunlari listele', 'durum', 'analiz', 'goz at' gibi bilgi-isteyen bir talep yaparsa: bulduklarini AYNI mesajda madde madde sun. ASLA 'iste sunlar:', 'su sorunlari buldum:' deyip detayi ayri bir adima erteleme — kullanici bilgiyi simdi gormek istiyor.");
+        sb.AppendLine("Liste formati: her bulgu icin tek satirlik markdown bullet `- ` ile yaz. Karakter sayisini sinirla, sade tut. Ornek:");
+        sb.AppendLine("Akisi inceledim. Bulduklarim:");
+        sb.AppendLine("- Menude tek secenek var, ikinci secenek hic baglanmamis.");
+        sb.AppendLine("- 'Bekleme' adiminin sonrasi bos — musteri burada takilir.");
+        sb.AppendLine("- Fiyat sorusu icin hata yolu yok.");
+        sb.AppendLine();
+        sb.AppendLine("Bunlari sirayla duzeltelim mi?");
+        sb.AppendLine("```options");
+        sb.AppendLine("[{\"label\":\"Evet, hepsini duzelt\"},{\"label\":\"Sadece menuyu duzelt\"},{\"label\":\"Sadece eksik baglantilari kur\"}]");
+        sb.AppendLine("```");
+        sb.AppendLine("ONEMLI: 'Detaylari sonra anlatirim' veya 'isterseniz detaylari paylasayim' DEME — kullanici zaten istedi, hemen ver.");
+        sb.AppendLine("</reporting>");
+        sb.AppendLine();
+
         // Structured options (AskUserQuestion-like UX) — sade dilli secenekler
         sb.AppendLine("<options_format>");
         sb.AppendLine("Kullaniciya soru sorarken HER ZAMAN 2-4 hazir secenek sun. Serbest metin cevap bekleme — kullanicilar AI ile konusmaya alisik degil, tiklayarak ilerlemek isterler.");

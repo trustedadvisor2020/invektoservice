@@ -17,9 +17,11 @@ import type { WizardMessage, WizardOption } from '../../../types/wizard';
 import type { FlowConfigV2 } from '../../../types/flow';
 
 const MIN_WIDTH = 240;
-const MAX_WIDTH = 520;
+const MAX_WIDTH = 800;
 const DEFAULT_WIDTH = 320;
+const EXPANDED_WIDTH = 600;
 const STORAGE_KEY = 'invekto_ai_chat_width';
+const EXPANDED_STORAGE_KEY = 'invekto_ai_chat_expanded';
 const TEXTAREA_MIN_HEIGHT = 44; // ~2 lines
 const TEXTAREA_MAX_HEIGHT = 160; // ~7 lines
 
@@ -165,6 +167,10 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
   const [input, setInput] = useState('');
   const [freeInput, setFreeInput] = useState('');
   const [panelWidth, setPanelWidth] = useState(getStoredWidth);
+  const [isExpanded, setIsExpanded] = useState<boolean>(() => {
+    try { return localStorage.getItem(EXPANDED_STORAGE_KEY) === 'true'; }
+    catch { return false; }
+  });
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -184,8 +190,21 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
   const suggestions = useContextualSuggestions();
   const flowNodes = useFlowStore(s => s.nodes);
 
-  // Keep ref in sync
+  // Effective width: when "expanded" toggle is on, snap to EXPANDED_WIDTH (unless the user's
+  // manually-resized width is already wider — preserve it). When off, use the manual width.
+  const effectiveWidth = isExpanded ? Math.max(panelWidth, EXPANDED_WIDTH) : panelWidth;
+
+  // Keep ref in sync with the rendered width (manual drag persists the stored width — not the
+  // ephemeral expanded snap).
   useEffect(() => { latestWidth.current = panelWidth; }, [panelWidth]);
+
+  const handleToggleExpand = useCallback(() => {
+    setIsExpanded(v => {
+      const next = !v;
+      try { localStorage.setItem(EXPANDED_STORAGE_KEY, String(next)); } catch {}
+      return next;
+    });
+  }, []);
 
   // --- Resize handlers ---
   const handleResizeStart = useCallback((e: ReactMouseEvent) => {
@@ -376,7 +395,7 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="flex-shrink-0 border-r border-navy-100 bg-navy-50 flex flex-col relative" style={{ width: panelWidth }}>
+    <div className="flex-shrink-0 border-r border-navy-100 bg-navy-50 flex flex-col relative" style={{ width: effectiveWidth }}>
       {/* Resize handle */}
       <div
         onMouseDown={handleResizeStart}
@@ -406,6 +425,33 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
             Geri al
           </button>
         )}
+
+        {/* Expand / collapse panel width */}
+        <button
+          onClick={handleToggleExpand}
+          className="p-1 rounded hover:bg-purple-500 transition-colors text-purple-200 hover:text-white"
+          title={isExpanded ? 'Paneli daralt' : 'Paneli genislet'}
+          aria-label={isExpanded ? 'Paneli daralt' : 'Paneli genislet'}
+          aria-pressed={isExpanded}
+        >
+          {isExpanded ? (
+            // Collapse: arrows pointing inward
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+              <path d="M20 9h-4V5" />
+              <path d="m21 4-5 5" />
+              <path d="M4 15h4v4" />
+              <path d="m3 20 5-5" />
+            </svg>
+          ) : (
+            // Expand: arrows pointing outward
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+              <path d="M15 3h6v6" />
+              <path d="m21 3-7 7" />
+              <path d="M9 21H3v-6" />
+              <path d="m3 21 7-7" />
+            </svg>
+          )}
+        </button>
 
         {/* Reset (with confirm) */}
         <button
@@ -751,24 +797,6 @@ function CommandPopup({ kind, slashItems, mentionItems, activeIndex, onHover, on
   );
 }
 
-/** Split long assistant messages into summary + collapsible detail.
- *  If the last paragraph contains a question (?), keep it visible in the summary
- *  so the user always sees what's being asked. */
-function splitContent(text: string): { summary: string; detail: string | null } {
-  const paragraphs = text.split(/\n\n+/);
-  if (paragraphs.length <= 2 && text.length < 300) {
-    return { summary: text, detail: null };
-  }
-  const last = paragraphs[paragraphs.length - 1];
-  if (last.includes('?') && paragraphs.length > 2) {
-    return {
-      summary: paragraphs[0] + '\n\n' + last,
-      detail: paragraphs.slice(1, -1).join('\n\n'),
-    };
-  }
-  return { summary: paragraphs[0], detail: paragraphs.slice(1).join('\n\n') };
-}
-
 type CopyState = 'idle' | 'success' | 'error';
 
 function CopyButton({ text, position }: { text: string; position: 'left' | 'right' }) {
@@ -872,27 +900,13 @@ function ChatBubble({ message, showOptions = true }: { message: WizardMessage; s
   }
 
   const cleaned = cleanAssistantText(message.content);
-  const { summary, detail } = splitContent(cleaned);
 
   return (
     <div className="flex gap-2 group/bubble">
       <AssistantAvatar />
       <div className="relative bg-white border border-navy-100 rounded-lg px-3 py-2 max-w-[88%] text-xs text-navy-800 leading-relaxed">
         <CopyButton text={copyText} position="right" />
-        <div className="whitespace-pre-wrap break-words">{renderWithNodeChips(summary)}</div>
-        {detail && (
-          <details className="mt-1.5 group/detail">
-            <summary className="text-[10px] text-purple-500 cursor-pointer hover:text-purple-600 select-none list-none flex items-center gap-0.5">
-              <svg className="w-3 h-3 transition-transform group-open/detail:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-              </svg>
-              Detaylari goster
-            </summary>
-            <div className="mt-1 pt-1 border-t border-navy-50 whitespace-pre-wrap break-words text-navy-600">
-              {renderWithNodeChips(detail)}
-            </div>
-          </details>
-        )}
+        <div className="whitespace-pre-wrap break-words">{renderWithNodeChips(cleaned)}</div>
         {showOptions && message.options && message.options.length > 0 && (
           <div className="mt-1.5 pt-1.5 border-t border-navy-50 space-y-1">
             {message.options.map((opt, j) => (
