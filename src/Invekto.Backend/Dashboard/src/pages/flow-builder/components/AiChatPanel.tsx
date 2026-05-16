@@ -9,7 +9,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from 'react';
-import { useAiChatStore } from '../../../stores/ai-chat-store';
+import { useAiChatStore, stripCodeBlocks as cleanAssistantText } from '../../../stores/ai-chat-store';
 import { useFlowStore } from '../../../stores/flow-store';
 import { renderWithNodeChips, NODE_COLORS } from './NodeChip';
 import { cn } from '../../../lib/utils';
@@ -49,23 +49,6 @@ const SLASH_COMMANDS: SlashCommand[] = [
   { key: 'dal', label: '/dal', description: 'Yeni bir dal/senaryo ekle', prompt: 'Mevcut akisa yeni bir dal ekleyelim. Once ne tur bir senaryo eklemek istedigimi sor.' },
   { key: 'faq', label: '/faq', description: 'FAQ dugumu ve bilgi bankasi entegre et', prompt: 'Akisa bir FAQ dugumu ekle ve dogru baglantilari kur.' },
 ];
-
-/** Check if a JSON string looks like FlowConfigV2 */
-function isFlowConfigJson(json: string): boolean {
-  try {
-    const obj = JSON.parse(json);
-    return obj?.version === 2 && Array.isArray(obj?.nodes) && Array.isArray(obj?.edges);
-  } catch { return false; }
-}
-
-/** Strip ```options, ```flowconfig, and FlowConfigV2-containing ```json blocks from assistant text */
-function cleanAssistantText(text: string): string {
-  return text
-    .replace(/```options\s*[\s\S]*?```/g, '')
-    .replace(/```flowconfig\s*[\s\S]*?```/g, '')
-    .replace(/```json\s*([\s\S]*?)```/g, (m, json) => isFlowConfigJson(json.trim()) ? '' : m)
-    .trimEnd();
-}
 
 function getStoredWidth(): number {
   try {

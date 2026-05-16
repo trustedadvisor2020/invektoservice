@@ -11,13 +11,101 @@ function isFlowConfigJson(json: string): boolean {
   } catch { return false; }
 }
 
+/** Strip multi-line JSON object/array blocks that the AI emits WITHOUT a code fence.
+ *  Heuristic: a line that opens with `{` or `[` and is NOT closed on the same line
+ *  starts a JSON block; count brackets (string-aware) until balanced, drop the block.
+ *  If the block never closes (streaming truncated), drop the tail. */
+function stripRawJsonBlocks(text: string): string {
+  const lines = text.split('\n');
+  const out: string[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
+    if (trimmed[0] !== '{' && trimmed[0] !== '[') {
+      out.push(line);
+      i++;
+      continue;
+    }
+    let depth = 0;
+    let inStr = false;
+    let esc = false;
+    const count = (s: string) => {
+      for (const ch of s) {
+        if (esc) { esc = false; continue; }
+        if (ch === '\\' && inStr) { esc = true; continue; }
+        if (ch === '"') { inStr = !inStr; continue; }
+        if (inStr) continue;
+        if (ch === '{' || ch === '[') depth++;
+        else if (ch === '}' || ch === ']') depth--;
+      }
+    };
+    count(trimmed);
+    if (depth <= 0) {
+      // Same-line balanced. Distinguish:
+      //  - keep: markdown link `[text](url)`, markdown image `![alt](url)` (no `"` inside)
+      //  - strip: ANY bracket-wrapped content that contains a `"` quote — this catches
+      //    JSON objects (`{"k":1}`), JSON-string arrays (`["a","b"]`), and minified
+      //    FlowConfigV2 (`{"version":2,"nodes":[...]}`).
+      if (trimmed.includes('"')) {
+        i++;
+        continue;
+      }
+      out.push(line);
+      i++;
+      continue;
+    }
+    let endIdx = -1;
+    for (let j = i + 1; j < lines.length; j++) {
+      count(lines[j]);
+      if (depth <= 0) { endIdx = j; break; }
+    }
+    if (endIdx === -1) {
+      // Unterminated (streaming): drop the entire tail
+      i = lines.length;
+    } else {
+      i = endIdx + 1;
+    }
+  }
+  return out.join('\n');
+}
+
+/** Strip sequences of 2+ consecutive lines that look like raw JSON properties
+ *  (`"key":` start) or stray bracket-only lines. Defense for cases where the AI
+ *  drops outer braces but still spills JSON-shaped lines into the message body. */
+function stripJsonKeywordSequences(text: string): string {
+  const lines = text.split('\n');
+  const isJsonLine = (l: string) => {
+    const t = l.trim();
+    return /^"[^"]+"\s*:/.test(t) || /^[{}\[\]],?$/.test(t);
+  };
+  const out: string[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    if (!isJsonLine(lines[i])) { out.push(lines[i]); i++; continue; }
+    let j = i;
+    while (j < lines.length && isJsonLine(lines[j])) j++;
+    if (j - i >= 2) { i = j; } else { out.push(lines[i]); i++; }
+  }
+  return out.join('\n');
+}
+
+/** Collapse 3+ blank lines (left over after stripping) into 2. */
+function collapseBlankLines(text: string): string {
+  return text.replace(/\n{3,}/g, '\n\n').trim();
+}
+
 /** Strip ```options, ```flowconfig, and FlowConfigV2-containing ```json blocks from text */
-function stripCodeBlocks(text: string): string {
-  return text
+export function stripCodeBlocks(text: string): string {
+  let clean = text
     .replace(/```options\s*[\s\S]*?```/g, '')
     .replace(/```flowconfig\s*[\s\S]*?```/g, '')
-    .replace(/```json\s*([\s\S]*?)```/g, (m, json) => isFlowConfigJson(json.trim()) ? '' : m)
-    .trimEnd();
+    .replace(/```json\s*([\s\S]*?)```/g, (m, json) => isFlowConfigJson(json.trim()) ? '' : m);
+  // Defensive: AI sometimes ignores the fence rule and emits raw JSON in plain text.
+  // These users are non-technical (dentists, restaurant owners); JSON in chat loses them instantly.
+  clean = stripRawJsonBlocks(clean);
+  clean = stripJsonKeywordSequences(clean);
+  return collapseBlankLines(clean);
 }
 
 /** Strip only incomplete (unterminated) code blocks from streaming text */
@@ -28,7 +116,11 @@ function stripStreamingBlocks(text: string): string {
     .replace(/```json\s*([\s\S]*?)```/g, (m, json) => isFlowConfigJson(json.trim()) ? '' : m);
   // Strip incomplete block at the end (started but not closed)
   clean = clean.replace(/```(?:options|flowconfig|json)\s*[\s\S]*$/g, '');
-  return clean.trimEnd();
+  // Same defensive JSON strip as in stripCodeBlocks — applied during streaming too so the
+  // user never sees JSON flash on the screen even briefly.
+  clean = stripRawJsonBlocks(clean);
+  clean = stripJsonKeywordSequences(clean);
+  return collapseBlankLines(clean);
 }
 
 /** Optional context about the template the user started from. Shown as a banner above the chat. */

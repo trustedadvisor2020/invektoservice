@@ -649,6 +649,33 @@ public sealed class ClaudeWizardService
         sb.AppendLine("</response_style>");
         sb.AppendLine();
 
+        // CRITICAL: zero-tolerance JSON / technical leakage guard.
+        // Q feedback 2026-05-17 (dis hekimi screenshot): AI raw flowconfig JSON'unu ham olarak yazip
+        // gondermisti -> kullanici uygulamayi terk eder. Asagidaki kurallar TARTISMASIZ.
+        sb.AppendLine("<no_raw_json>");
+        sb.AppendLine("KESIN YASAK: Kullaniciya gonderecegin metin govdesinde ASLA su karakterler/yapilar olmasin:");
+        sb.AppendLine("- Satir basinda { veya [ karakteri (object/array baslangici)");
+        sb.AppendLine("- \"version\": 2, \"metadata\":, \"nodes\":, \"edges\":, \"settings\":, \"data\":, \"position\": gibi JSON key'leri");
+        sb.AppendLine("- Ardisik 2+ satir \"keyword\": value formatinda (JSON property dump)");
+        sb.AppendLine("- Tip isimleri: trigger_start, ai_intent, message_text, action_handoff, logic_condition, flow_config, flowconfig, FlowConfigV2");
+        sb.AppendLine("- Coordinate/pozisyon: x: 300, y: 50 gibi pixel sayilar");
+        sb.AppendLine("Eger flow_config uretmen gerekiyorsa MUTLAKA ```flowconfig fence blogunun ICINDE yap — bu blok kullaniciya hic gosterilmez, FE filtreler. Fence DISINDA tek satir bile JSON yazma.");
+        sb.AppendLine("Eger bir akisi sade dille anlatmak istiyorsan: dugum isimlerini KULLANICI DILINDE soyle ('basla', 'mesaj gonder', 'menu', 'AI'a sor', 'temsilciye baglan') — type isimleri (trigger_start vs.) ASLA gecmesin.");
+        sb.AppendLine("YANLIS ornek (asla yapma):");
+        sb.AppendLine("  Akisi guncelliyorum:");
+        sb.AppendLine("  {");
+        sb.AppendLine("    \"version\": 2,");
+        sb.AppendLine("    \"nodes\": [{ \"id\": \"trigger_start_1\", \"type\": \"trigger_start\" }]");
+        sb.AppendLine("  }");
+        sb.AppendLine("DOGRU ornek:");
+        sb.AppendLine("  Akisi guncelledim. Bekleme sorgusundan sonra musteriyi temsilciye baglayan adim ekledim.");
+        sb.AppendLine("  ```flowconfig");
+        sb.AppendLine("  {\"version\":2,\"nodes\":[...],\"edges\":[...]}");
+        sb.AppendLine("  ```");
+        sb.AppendLine("FE tarafinda ek bir guvenlik agi seninle birlikte calisiyor — yine de bu yasagi sen de uygulamak ZORUNDASIN, cunku FE'ye guvenip leaking yapmak Q'nun guvenini kaybettirir.");
+        sb.AppendLine("</no_raw_json>");
+        sb.AppendLine();
+
         // Template seed mode — when user starts from a template, AI greets first
         sb.AppendLine("<template_seed_mode>");
         sb.AppendLine("Eger kullanici mesajinda 'TEMPLATE_SEED: <sablon_adi>' formatinda gizli bir baslangic sinyali gorursen, bu kullanicinin bir hazir sablondan baslattigi anlamina gelir. Bu durumda:");
