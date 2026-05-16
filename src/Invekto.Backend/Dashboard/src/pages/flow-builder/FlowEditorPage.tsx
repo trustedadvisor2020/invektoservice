@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ReactFlowProvider } from '@xyflow/react';
 import { FlowCanvas } from './components/FlowCanvas';
-import { FlowPreviewPanel } from './components/FlowSummaryBar';
 import { NodePalette } from './components/NodePalette';
 import { Toolbar } from './components/Toolbar';
 import { SimulationPanel } from './components/SimulationPanel';
@@ -34,10 +33,6 @@ export function FlowEditorPage() {
   const [isActive, setIsActive] = useState(false);
   const [currentVersion, setCurrentVersion] = useState(0);
   const [isToggling, setIsToggling] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(() => {
-    try { return localStorage.getItem('invekto_flow_preview_open') !== 'false'; }
-    catch { return true; }
-  });
   const loadFlow = useFlowStore((s) => s.loadFlow);
 
   // Load flow from API on mount
@@ -99,14 +94,6 @@ export function FlowEditorPage() {
 
     return () => { cancelled = true; };
   }, [flowId, tenantId, loadFlow, navigate]);
-
-  const handleTogglePreview = useCallback(() => {
-    setPreviewOpen((v) => {
-      const next = !v;
-      try { localStorage.setItem('invekto_flow_preview_open', String(next)); } catch {}
-      return next;
-    });
-  }, []);
 
   const handleSave = useCallback(async () => {
     setIsSaving(true);
@@ -321,7 +308,7 @@ export function FlowEditorPage() {
     <ReactFlowProvider>
       <div className="h-screen flex flex-col bg-navy-50">
         {/* Toolbar */}
-        <Toolbar onSave={handleSave} isSaving={isSaving} onBack={handleBack} onTest={handleTest} previewOpen={previewOpen} onTogglePreview={handleTogglePreview} aiChatOpen={aiChatOpen} onToggleAiChat={handleToggleAiChat} flowLogOpen={flowLogOpen} onToggleFlowLog={handleToggleFlowLog} isActive={isActive} isToggling={isToggling} onToggleActive={handleToggleActive} currentVersion={currentVersion} tenantId={tenantId} flowId={flowId} onRollback={handleRollback} />
+        <Toolbar onSave={handleSave} isSaving={isSaving} onBack={handleBack} onTest={handleTest} aiChatOpen={aiChatOpen} onToggleAiChat={handleToggleAiChat} flowLogOpen={flowLogOpen} onToggleFlowLog={handleToggleFlowLog} isActive={isActive} isToggling={isToggling} onToggleActive={handleToggleActive} currentVersion={currentVersion} tenantId={tenantId} flowId={flowId} onRollback={handleRollback} />
 
         {/* Save error banner */}
         {saveError && (
@@ -346,9 +333,6 @@ export function FlowEditorPage() {
           <div className="flex-1 flex flex-col min-w-0">
             <FlowCanvas />
           </div>
-
-          {/* Right: Preview panel (toggleable) */}
-          <FlowPreviewPanel open={previewOpen} />
 
           {/* Right: Node properties */}
           <NodePropertyPanel />
