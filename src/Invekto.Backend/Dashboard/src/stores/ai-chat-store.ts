@@ -43,6 +43,8 @@ interface AiChatStore {
   error: string | null;
   /** Set to true when AI generates a new flow_config — triggers auto-apply in AiChatPanel */
   autoApplyPending: boolean;
+  /** Pre-apply snapshot of canvas; non-null means "Geri al" is available */
+  lastAppliedSnapshot: FlowConfigV2 | null;
 
   open: (flowId: number, tenantId: number) => Promise<void>;
   close: () => void;
@@ -50,6 +52,9 @@ interface AiChatStore {
   acceptChanges: () => FlowConfigV2 | null;
   rejectChanges: () => void;
   clearAutoApply: () => void;
+  captureSnapshot: (config: FlowConfigV2) => void;
+  consumeUndoSnapshot: () => FlowConfigV2 | null;
+  clearUndoSnapshot: () => void;
   reset: () => void;
 }
 
@@ -64,6 +69,7 @@ export const useAiChatStore = create<AiChatStore>((set, get) => ({
   pendingOptions: null,
   error: null,
   autoApplyPending: false,
+  lastAppliedSnapshot: null,
 
   open: async (flowId: number, tenantId: number) => {
     const state = get();
@@ -166,6 +172,17 @@ export const useAiChatStore = create<AiChatStore>((set, get) => ({
 
   clearAutoApply: () => set({ autoApplyPending: false }),
 
+  captureSnapshot: (config: FlowConfigV2) => set({ lastAppliedSnapshot: config }),
+
+  consumeUndoSnapshot: () => {
+    const snap = get().lastAppliedSnapshot;
+    if (!snap) return null;
+    set({ lastAppliedSnapshot: null });
+    return snap;
+  },
+
+  clearUndoSnapshot: () => set({ lastAppliedSnapshot: null }),
+
   reset: () => set({
     messages: [],
     isStreaming: false,
@@ -174,5 +191,6 @@ export const useAiChatStore = create<AiChatStore>((set, get) => ({
     pendingOptions: null,
     error: null,
     autoApplyPending: false,
+    lastAppliedSnapshot: null,
   }),
 }));

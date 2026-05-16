@@ -201,8 +201,10 @@ export function FlowEditorPage() {
   }, [flowId, tenantId]);
 
   const handleAiApply = useCallback((config: FlowConfigV2) => {
-    const wizardHistory = useFlowStore.getState().wizardHistory;
-    loadFlow(config, wizardHistory);
+    const flowState = useFlowStore.getState();
+    // Capture pre-apply snapshot so the panel can offer "Geri al"
+    useAiChatStore.getState().captureSnapshot(flowState.toFlowConfig());
+    loadFlow(config, flowState.wizardHistory);
   }, [loadFlow]);
 
   // Flow log toggle — independent panel, only controlled by its button
