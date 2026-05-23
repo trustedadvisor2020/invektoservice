@@ -303,7 +303,7 @@ Pilot Launch 15/15 paket DONE (100%). Q customer prospect motivasyonu ile **FEAT
 
 | # | Faz | Slug | Status | Sure | Risk | Exit Criteria |
 |---|-----|------|--------|------|------|---------------|
-| V-F0 | F0 PoC microphone-based | `20260523-feat-vfb-f0-poc` | **PLANNING** (Plan JSON DONE) | 5-7 gun | HIGH | Sub-saniye p95 <1000ms + Q live demo PASS + Toniva proto FROZEN + Codex iter ≤ 2 |
+| V-F0 | F0 PoC microphone-based | `20260523-feat-vfb-f0-poc` | **DONE+COMMITTED** 2026-05-24 02:30 (commit `b78e8126` master, 35 files / +4137 / -2; Codex 3-iter 24 chunk → Q FORCE PASS, A3+A4a precedent; Build 0E/26W; sales-ready demo deliverable + 15-senaryo smoke plan hazır) | 5-7 gun (1 session) | HIGH | ✅ Substantive issues resolved (security/concurrency/encoding/auth/lifecycle/secret-mgmt). 🔄 Q live smoke + latency report + customer prospect demo pending. |
 | V-F1 | WA Voice Note (mevcut Whisper API extension) | `2026MMDD-feat-vfb-f1-wa-voice-note` | PENDING | 1 hafta | MEDIUM | WA ses notu → bot text cevap + 0 regression Automation text path |
 | V-F2 | PBX Live MVP (Toniva + 5 voice node + Migration 050 + TTS DI + Dashboard /calls + KVKK) | `2026MMDD-feat-vfb-f2-pbx-live-mvp` | PENDING | 3-4 hafta | HIGH | AC-2..AC-9 PASS + tek tenant smoke + Codex iter ≤ 3 |
 | V-F3 | WhatsApp Calling + Multi-tenant rollout | `2026MMDD-feat-vfb-f3-wa-calling` | BLOCKED (Meta BM allowlist 4 hafta) | 2 hafta | HIGH | AC-10 PASS + 2 tenant smoke + feature flag rollout |
