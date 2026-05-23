@@ -1,0 +1,159 @@
+syntax = "proto3";
+
+package invekto.voice.v1;
+
+option csharp_namespace = "Invekto.VoiceRuntime.Grpc.Toniva.V1";
+
+// ─────────────────────────────────────────────────────────────────────
+// Toniva ↔ Invekto.VoiceRuntime gRPC bridge — v1 FROZEN (FEAT-VFB F0, 2026-05-24)
+//
+// FROZEN: Q parallel C++ development on Toniva (PJSIP pjmedia hook + agent
+// queue + REFER routing) begins at end of F1 against this exact schema.
+// Breaking changes require version bump to v2 + parallel server-side support.
+//
+// Pipeline:
+//   Toniva (C++, PJSIP) ──streams Opus 48k mono 20ms frames─→ Invekto.VoiceRuntime
+//   Invekto.VoiceRuntime ──streams bot voice Opus frames + signaling─→ Toniva
+//                       ──REFER signal─→ Toniva (transfer to human queue)
+//
+// Audio codec: Opus 48kHz mono 20ms frame (AD-3 canonical). Toniva
+// transcodes G.711/G.722 ↔ Opus internally before/after RTP.
+// ─────────────────────────────────────────────────────────────────────
+
+service TonivaVoiceBridge {
+  // Bi-directional streaming RPC. Toniva opens this when an inbound SIP
+  // call arrives. The first message Toniva sends MUST be a CallStart
+  // event with the SessionDescriptor. Subsequent messages are either
+  // AudioFrame (Opus 20ms) or ControlEvent (DTMF, hangup, etc.).
+  //
+  // The Invekto.VoiceRuntime response stream consists of AudioFrame
+  // (bot voice) and ControlEvent (barge_in_cancel, transfer_refer, etc.).
+  rpc StreamCall(stream ClientMessage) returns (stream ServerMessage);
+}
+
+// ─── Client → Server (Toniva → VoiceRuntime) ────────────────────────
+
+message ClientMessage {
+  oneof payload {
+    CallStart call_start = 1;
+    OpusAudioFrame audio_frame = 2;
+    ClientControl control = 3;
+    CallEnd call_end = 4;
+  }
+}
+
+message CallStart {
+  // Required: Toniva-issued unique call/session id. Used as
+  // call_sessions.id (F2 DB).
+  string session_id = 1;
+
+  // Required: tenant identifier (Invekto-side tenant_registry.tenant_id).
+  // Toniva looks this up from the SIP trunk → tenant mapping.
+  int32 tenant_id = 2;
+
+  // BCP-47 locale e.g. "tr-TR" (drives Realtime voice + instructions).
+  string locale = 3;
+
+  // SHA256(caller phone number) — KVKK pseudonymization. May be empty
+  // for anonymous/blocked CallerID.
+  string caller_id_hash = 4;
+
+  // Toniva-side timestamp (ms since unix epoch) for call connect.
+  int64 started_at_ms = 5;
+
+  // Optional provider-specific metadata (e.g., DID, SIP From URI).
+  map<string, string> metadata = 6;
+}
+
+message OpusAudioFrame {
+  // Raw Opus packet bytes. No RTP header, no container.
+  // 48kHz mono 20ms = 960 PCM samples worth, 1-1275 bytes encoded.
+  bytes opus_payload = 1;
+
+  // Monotonically increasing per-direction sequence number.
+  uint32 sequence = 2;
+
+  // Toniva-side capture timestamp (ms since session start).
+  int64 timestamp_ms = 3;
+}
+
+message ClientControl {
+  oneof event {
+    DtmfDigit dtmf = 1;
+    HangupRequest hangup = 2;
+  }
+}
+
+message DtmfDigit {
+  // RFC 4733 DTMF digit: 0-9, *, #, A-D. Single character.
+  string digit = 1;
+  int64 timestamp_ms = 2;
+}
+
+message HangupRequest {
+  string reason = 1;
+}
+
+message CallEnd {
+  string reason = 1;
+  int64 ended_at_ms = 2;
+}
+
+// ─── Server → Client (VoiceRuntime → Toniva) ────────────────────────
+
+message ServerMessage {
+  oneof payload {
+    SessionAck session_ack = 1;
+    OpusAudioFrame audio_frame = 2;
+    ServerControl control = 3;
+  }
+}
+
+message SessionAck {
+  // VoiceRuntime acknowledgement of CallStart. session_id echoed.
+  string session_id = 1;
+
+  // Latency budget hint (ms) Toniva should target for jitter buffer
+  // configuration. Default 60ms.
+  int32 jitter_buffer_ms = 2;
+}
+
+message ServerControl {
+  oneof event {
+    BargeInCancel barge_in = 1;
+    TransferRefer transfer = 2;
+    PlayAnnouncement announce = 3;
+    HangupCommand hangup = 4;
+  }
+}
+
+message BargeInCancel {
+  // VoiceRuntime instructs Toniva to FLUSH any pending outbound audio
+  // (i.e., stop playing bot voice already in flight) within 250ms.
+  int64 issued_at_ms = 1;
+}
+
+message TransferRefer {
+  // SIP REFER target. Format: queue:<name> | extension:<n> | uri:<sip uri>.
+  string target = 1;
+
+  // Optional warm-handoff TTS text Toniva should play before transferring
+  // (already converted to Opus audio frames by VoiceRuntime; this is a
+  // hint for Toniva's display/log).
+  string warm_handoff_text = 2;
+
+  // If queue is full, request Toniva to send back a CallbackRequest
+  // signal so Hangfire can schedule SMS/WA callback.
+  bool fallback_callback_on_queue_full = 3;
+}
+
+message PlayAnnouncement {
+  // Pre-recorded announcement key (e.g., "kvkk_consent", "outage_message").
+  // Toniva may have local audio cached for these to avoid streaming on
+  // every call.
+  string announcement_key = 1;
+}
+
+message HangupCommand {
+  string reason = 1;
+}

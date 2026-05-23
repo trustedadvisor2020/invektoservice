@@ -33,6 +33,8 @@ public static class ServiceConstants
     public const int WebChatPort = 7113;
     // VoiceAI service port
     public const int VoiceAIPort = 7114;
+    // VoiceRuntime service port (FEAT-VFB live voice orchestration)
+    public const int VoiceRuntimePort = 7115;
 
     // Service names
     public const string BackendServiceName = "Invekto.Backend";

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Invekto Voice PoC — F0</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Invekto Voice PoC</h1>
+      <p class="subtitle">F0 — OpenAI Realtime mikrofon testi</p>
+    </header>
+
+    <section class="hud">
+      <div class="metric">
+        <div class="label">Durum</div>
+        <div id="status" class="value status-idle">Hazır</div>
+      </div>
+      <div class="metric">
+        <div class="label">İlk byte (last)</div>
+        <div id="latencyLast" class="value">— ms</div>
+      </div>
+      <div class="metric">
+        <div class="label">İlk byte (p95 son 100)</div>
+        <div id="latencyP95" class="value">— ms</div>
+      </div>
+      <div class="metric">
+        <div class="label">Barge-in tepkisi</div>
+        <div id="bargeLatency" class="value">— ms</div>
+      </div>
+      <div class="metric">
+        <div class="label">Tur sayısı</div>
+        <div id="turnCount" class="value">0</div>
+      </div>
+    </section>
+
+    <section class="controls">
+      <button id="startBtn" class="primary">🎤 Mikrofonu Başlat</button>
+      <button id="stopBtn" disabled>⏹ Durdur</button>
+      <a href="/metrics/latency" target="_blank" class="link-btn">/metrics/latency</a>
+    </section>
+
+    <section class="transcript">
+      <h2>Transcript</h2>
+      <div id="transcriptLog" class="log"></div>
+    </section>
+
+    <section class="events">
+      <h2>Olaylar</h2>
+      <div id="eventLog" class="log small"></div>
+    </section>
+
+    <footer>
+      <p>
+        F0 PoC — <code>OpusFrame 48kHz mono 20ms</code> → <code>WSS /ws/voice/microphone</code> →
+        <code>VoiceRuntime</code> → <code>OpenAI Realtime API</code> → tarayıcı hoparlör.
+        <br />Test sırasında konuşun. Sub-saniye barge-in için bot konuşurken sözünü kesin.
+      </p>
+    </footer>
+  </main>
+
+  <script type="module" src="voice-poc.js"></script>
+</body>
+</html>

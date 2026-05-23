@@ -31,6 +31,7 @@ services:
   KB:   { name: Kanban,        description: "FEAT-PILOT-KANBAN: SuperAdmin pilot tracking board hataları" }
   WA:   { name: WhatsAppAnalytics, description: "WA Analytics pipeline + Revenue Intelligence hataları" }
   VA:   { name: VoiceAI,          description: "PKT-11: Voice Message AI — STT + intent hataları" }
+  VR:   { name: VoiceRuntime,     description: "FEAT-VFB: Live voice orchestration — Realtime API + VAD + Opus + barge-in (Invekto.VoiceRuntime :7115, AD-11/AD-15)" }
   JOB:  { name: HangfireJob,      description: "G7: Hangfire recurring/enqueued job altyapı hataları" }
   SEED: { name: DeploymentSeed,   description: "Tenant seed SQL postcondition assertions (one-shot deploy; PL/pgSQL RAISE EXCEPTION — no ErrorCodes.cs mirror)" }
 ```
@@ -1565,6 +1566,38 @@ errors:
   - code: INV-KB-005
     description: KanbanEndpoints GET /api/ops/kanban/{board_key} VEYA PATCH NpgsqlException (DB connection drop / query timeout / table missing). 503 user-facing; aksiyon: PostgreSQL servis durumu kontrolu + Migration 035 uygulanmis mi dogrulamasi.
     user_message: Kanban veritabanı geçici olarak kullanılamıyor — birkaç dakika sonra tekrar deneyin.
+
+  # ── VR — VoiceRuntime (FEAT-VFB F0 PoC, AD-11/AD-15; reserved INV-VR-011..040 F2, INV-VR-041..050 F3) ──
+  - code: INV-VR-001
+    description: OpenAI Realtime API WebSocket connection failure. RealtimeApiClient could not establish bidi WS to wss://api.openai.com/v1/realtime (DNS, TLS handshake, network drop). Aksiyon - OpenAI status sayfasi kontrol + tenant settings API key dogrula + retry exponential backoff (1s/2s/4s max 3) sonra hard-fail.
+    user_message: Sesli yanıt servisi geçici olarak kullanılamıyor. Lütfen birkaç saniye sonra tekrar deneyin.
+  - code: INV-VR-002
+    description: OpenAI Realtime API authentication failure (HTTP 401 / WS close 1008). Realtime tier aktif degil veya API key revoked. Aksiyon - tenant_settings.openai_api_key dogrula + Realtime tier OpenAI hesabinda aktif mi kontrol et + ops admin uyari.
+    user_message: Sesli yanıt servisi yapılandırması hatalı. Yöneticinizle iletişime geçin.
+  - code: INV-VR-003
+    description: OpenAI Realtime API rate limit (HTTP 429 / WS close 1013). Concurrent session veya per-minute audio token quota asildi. Aksiyon - circuit breaker 30sn aciliyor + AD-16 outage fallback tetiklenir (REFER + callback) + jsonl WARN log.
+    user_message: Sistem yoğunluğu nedeniyle sesli yanıt verilemiyor. Sizi temsilciye yönlendiriyoruz.
+  - code: INV-VR-004
+    description: Browser WebSocket handshake failure on /ws/voice/microphone endpoint. JWT validation failed (missing Bearer or expired) OR Origin not allowed OR subprotocol mismatch. Aksiyon - VoicePocEndpoints.cs auth gate dogrula + browser console JWT expiry kontrol.
+    user_message: Mikrofon bağlantısı kurulamadı. Sayfayı yenileyip tekrar deneyin.
+  - code: INV-VR-005
+    description: Opus codec decode failure. Concentus library raised exception on incoming frame (corrupt header, unsupported sample rate, truncated payload). Aksiyon - frame dropped + counter increment + 10+ consecutive drops → session abort INV-VR-001.
+    user_message: Ses kalitesi sorunu nedeniyle bağlantı kesildi. Lütfen tekrar deneyin.
+  - code: INV-VR-006
+    description: Opus codec encode failure. Outgoing PCM (Realtime audio-out) Opus'a encode edilemedi. Beklenmeyen — internal bug indicator. Aksiyon - jsonl ERROR + session abort + Codex defect ticket.
+    user_message: Ses çıkışı oluşturulamadı. Lütfen tekrar arayın.
+  - code: INV-VR-007
+    description: Silero VAD ONNX runtime inference exception. Microsoft.ML.OnnxRuntime threw on model.Run() (corrupted model file, incompatible OS runtime, GPU/CPU provider mismatch). Aksiyon - SileroVad.cs catch + fallback to no-VAD mode (Realtime native turn detection only) + jsonl ERROR.
+    user_message: Konuşma algılama servisi sorunu — yanıtlar gecikebilir.
+  - code: INV-VR-008
+    description: Silero VAD model file not found at expected path (Models/silero_vad.onnx missing or corrupt SHA256). Aksiyon - VoiceRuntime boot-time check fail-fast + deploy log + ops uyari (model file deploy package'a dahil mi?).
+    user_message: Ses servisi başlatılamadı. Yöneticinizle iletişime geçin.
+  - code: INV-VR-009
+    description: Browser microphone access denied (getUserMedia NotAllowedError or NotFoundError). User declined permission OR no microphone hardware detected. Aksiyon - voice-poc.html UI explicit permission re-prompt + troubleshoot link.
+    user_message: Tarayıcı mikrofon iznini reddetti. Lütfen izin verip tekrar deneyin.
+  - code: INV-VR-010
+    description: F0 PoC latency budget exceeded warning. p95 first-byte > 1500ms in last 100 turns (rolling window). Non-fatal but flags performance regression. Aksiyon - LatencyTracker.cs jsonl WARN + /metrics endpoint anomaly flag + F0 go/no-go report row.
+    user_message: (internal warning, no user message)
 
 ```
 

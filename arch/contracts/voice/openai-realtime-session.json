@@ -1,0 +1,62 @@
+{
+  "_meta": {
+    "spec_ref": "SPEC-008 (FEAT-VFB)",
+    "captured_at": "2026-05-24",
+    "phase": "F0 PoC microphone-based",
+    "source": "Invekto.VoiceRuntime/Realtime/RealtimeSession.cs (RealtimeSessionFactory.DefaultConfig)",
+    "notes": [
+      "Snapshot of the session.update payload sent on Realtime WS connect.",
+      "Values mirror appsettings.OpenAI.* — change DefaultConfig builder to update.",
+      "F2 will add per-tenant overrides (tenant_settings.voice_realtime_overrides JSONB)."
+    ]
+  },
+  "type": "session.update",
+  "session": {
+    "modalities": ["audio", "text"],
+    "instructions": "Sen Invekto'nun Türkçe sesli AI asistanısın. Kısa, doğal, samimi konuşursun. Müşteri sorularını anlamadığında 'Tekrar eder misiniz?' dersin. Karmaşık sorularda 'Sizi temsilciye yönlendireyim mi?' önerirsin.",
+    "voice": "alloy",
+    "input_audio_format": "pcm16",
+    "output_audio_format": "pcm16",
+    "input_audio_transcription": {
+      "model": "whisper-1"
+    },
+    "turn_detection": {
+      "type": "semantic_vad",
+      "eagerness": "medium",
+      "create_response": true
+    },
+    "temperature": 0.8,
+    "max_response_output_tokens": "inf"
+  },
+  "_endpoints": {
+    "wss": "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview",
+    "auth_headers": {
+      "Authorization": "Bearer ${OPENAI_API_KEY}",
+      "openai-beta": "realtime=v1"
+    }
+  },
+  "_audio_pipeline": {
+    "user_to_realtime": {
+      "sample_rate": 24000,
+      "encoding": "pcm16",
+      "container": "base64",
+      "event": "input_audio_buffer.append",
+      "field": "audio"
+    },
+    "realtime_to_user": {
+      "sample_rate": 24000,
+      "encoding": "pcm16",
+      "container": "base64",
+      "event": "response.audio.delta",
+      "field": "delta"
+    }
+  },
+  "_turn_detection_decision_log": {
+    "f0_choice": "semantic_vad (beta)",
+    "rationale": "AD-12: F0 tests OpenAI's native semantic EOT in real Turkish conversation. If accuracy < ~85% on hesitation scenarios, F2 will layer pipecat-ai/smart-turn-v2 ONNX on top of Silero VAD.",
+    "alternatives_considered": [
+      { "type": "server_vad", "rejected_because": "VAD-only — over-eager on mid-sentence pauses" },
+      { "type": "none", "rejected_because": "client-side endpointing not implemented in F0 (Silero VAD instruments but does not gate turn_detection)" }
+    ]
+  }
+}

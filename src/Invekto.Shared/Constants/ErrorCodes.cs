@@ -599,6 +599,19 @@ public static class ErrorCodes
     public const string VoiceAITranscriptionLogFailed = "INV-VA-005";    // Transcription log DB insert failed
     public const string VoiceAIUnsupportedFormat = "INV-VA-006";         // Unsupported audio format
 
+    // VoiceRuntime errors (INV-VR-xxx) -- FEAT-VFB F0 PoC (AD-11/AD-15)
+    // F0 reserved 001..010; F2 will allocate 011..040; F3 will allocate 041..050.
+    public const string VoiceRuntimeRealtimeConnectionFailed = "INV-VR-001";  // OpenAI Realtime WS connect failure (DNS/TLS/network drop)
+    public const string VoiceRuntimeRealtimeAuthFailed = "INV-VR-002";        // OpenAI Realtime auth 401 / WS close 1008 (tier not active, key revoked)
+    public const string VoiceRuntimeRealtimeRateLimited = "INV-VR-003";       // OpenAI Realtime 429 / WS close 1013 — outage fallback REFER+callback
+    public const string VoiceRuntimeWebSocketHandshakeFailed = "INV-VR-004";  // Browser WS /ws/voice/microphone JWT/Origin/subprotocol mismatch
+    public const string VoiceRuntimeOpusDecodeFailed = "INV-VR-005";          // Concentus Opus decode exception (corrupt frame)
+    public const string VoiceRuntimeOpusEncodeFailed = "INV-VR-006";          // Concentus Opus encode exception (internal bug indicator)
+    public const string VoiceRuntimeVadInferenceFailed = "INV-VR-007";        // Silero VAD ONNX runtime exception — fallback no-VAD mode
+    public const string VoiceRuntimeVadModelMissing = "INV-VR-008";           // Models/silero_vad.onnx missing/corrupt — boot-time fail-fast
+    public const string VoiceRuntimeMicAccessDenied = "INV-VR-009";           // Browser getUserMedia NotAllowedError/NotFoundError
+    public const string VoiceRuntimeLatencyBudgetExceeded = "INV-VR-010";     // F0 p95 first-byte > 1500ms rolling window (non-fatal WARN)
+
     // Hangfire Job Infrastructure (INV-JOB-xxx) -- G7
     public const string JobStorageConnectionFailed = "INV-JOB-001";   // Hangfire PG storage connection failed
     public const string JobHandlerUnresolved = "INV-JOB-002";         // DI could not resolve job handler

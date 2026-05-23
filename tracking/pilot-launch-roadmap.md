@@ -5,6 +5,8 @@
 > **Q tercihi (2026-04-21):** "Hepsini bitirelim, smoke en son" — pilota giden zincir optimize edildi.
 > **Codex iter 0 feedback (2026-04-21 23:25):** P7 OAuth blocker ile BACKLOG'a tasindi (B0). P5/P6 UI exit criteria'ya dahil. Interview gate P4/P8/P9/P10 eklendi. Smoke S5a/S5b FEAT-TFM resolver dedicated. Error code collision evidence grep-verified.
 
+> **POST-PILOT ACTIVATION (2026-05-23):** Pilot Launch 15/15 paket DONE. **ACTIVE PACKAGE: FEAT-VFB F0 PoC** (Voice Flow Builder, musteri prospect motivasyonu). Roadmap pilot-only history olarak kalir, yeni execution queue [`tracking/feat-vfb-voice-flow-builder.md`](feat-vfb-voice-flow-builder.md) master tracking. Asagidaki POST-PILOT ACTIVE QUEUE section bakiniz.
+
 Bu dosya **pilot launch boyunca execution queue'nun tek kaynagidir**. Session bootstrap zorunlu okuma.
 
 ---
@@ -290,3 +292,50 @@ Q 2026-05-12 demo sonrası: "bu hafta servisleri çalışır hale getirelim". Pi
 
 **Hazirlayan:** Claude 2026-04-21 23:20 UTC (post-P1 deep audit + Codex planning review)
 **Ilk PENDING:** P2 `20260422-lessons-tfm-auth-hotfix`
+
+---
+
+## POST-PILOT ACTIVE QUEUE (2026-05-23 itibariyla)
+
+Pilot Launch 15/15 paket DONE (100%). Q customer prospect motivasyonu ile **FEAT-VFB** voice flow builder paketine geciliyor. Spec SPEC-008 APPROVED (OQ-1..7 resolved).
+
+### Active Master Queue — FEAT-VFB (Voice Flow Builder, HIGH risk, 7-9 hafta toplam)
+
+| # | Faz | Slug | Status | Sure | Risk | Exit Criteria |
+|---|-----|------|--------|------|------|---------------|
+| V-F0 | F0 PoC microphone-based | `20260523-feat-vfb-f0-poc` | **PLANNING** (Plan JSON DONE) | 5-7 gun | HIGH | Sub-saniye p95 <1000ms + Q live demo PASS + Toniva proto FROZEN + Codex iter ≤ 2 |
+| V-F1 | WA Voice Note (mevcut Whisper API extension) | `2026MMDD-feat-vfb-f1-wa-voice-note` | PENDING | 1 hafta | MEDIUM | WA ses notu → bot text cevap + 0 regression Automation text path |
+| V-F2 | PBX Live MVP (Toniva + 5 voice node + Migration 050 + TTS DI + Dashboard /calls + KVKK) | `2026MMDD-feat-vfb-f2-pbx-live-mvp` | PENDING | 3-4 hafta | HIGH | AC-2..AC-9 PASS + tek tenant smoke + Codex iter ≤ 3 |
+| V-F3 | WhatsApp Calling + Multi-tenant rollout | `2026MMDD-feat-vfb-f3-wa-calling` | BLOCKED (Meta BM allowlist 4 hafta) | 2 hafta | HIGH | AC-10 PASS + 2 tenant smoke + feature flag rollout |
+| V-F4 | Optim & Analytics (full-duplex + RI insight 8 + cost widget + opsiyonel hybrid pipeline activation) | `2026MMDD-feat-vfb-f4-optim` | PENDING | 1 hafta | MEDIUM | Production-grade + Codex iter ≤ 2 |
+
+### External Onkosullar
+
+| Item | Sahip | Hedef | Status |
+|------|-------|-------|--------|
+| OpenAI Realtime API tier aktive | Q | F0 baslamadan once | **PENDING** (1-2 saat is, interview Tur-1) |
+| Toniva PJSIP pjmedia hook (C++) | Q | F1 sonu basla | NOT STARTED |
+| Toniva agent queue + REFER routing | Q | F2 baslamadan once | NOT STARTED |
+| Meta WhatsApp Calling allowlist (BM submit) | Q | F3 baslamadan 4 hafta once | NOT STARTED |
+| ElevenLabs Turbo Pro key | Q (F2'de) | F2 baslangic | NOT REQUESTED |
+| Azure Cognitive Services key (TR Neural HD) | Q (F2'de) | F2 baslangic | NOT REQUESTED |
+| AWS S3 / MinIO bucket (recording, opsiyonel) | Q (F2'de) | F2 baslangic | NOT REQUESTED |
+
+### Activated Backlog
+
+| # | Slug | Aciklama | Activation Gate |
+|---|------|----------|-----------------|
+| **B-VFB-SELFHOST** | `feat-vfb-selfhost-stack` | HuggingFace self-host (Faster-Whisper Turbo + XTTS-v2 voice clone) — KVKK saglik premium tier + cost optim | 15+ premium tenant VEYA $300+/ay LLM spend |
+
+### FEAT-INMA-PIPELINE-V2 (Backlog beklemede)
+
+C2/C3/C4 INMA contract bekliyor (BLOCKED). FEAT-VFB durdurmuyor — INMA contract gelince paralel devam.
+
+### Devam Protokolu
+
+1. Session basi: oku `tracking/feat-vfb-voice-flow-builder.md` (FEAT-VFB master tracking) + bu dosya POST-PILOT ACTIVE QUEUE
+2. ILK PENDING/PLANNING paket: **V-F0 `20260523-feat-vfb-f0-poc`** (Plan JSON arch/plans/ altinda DONE)
+3. Q'ya sun: "Siradaki: V-F0 microphone PoC, plan JSON hazir, kodlamaya basla?"
+4. Q onay → `/auto` workflow (interview tamamlanmis, plan DONE → DEV phase)
+5. Faz DONE → Paket Tamamlama Checklist (yukaridaki) + tracking/feat-vfb-voice-flow-builder.md F0 satiri DONE + V-F1 PENDING → PLANNING
+

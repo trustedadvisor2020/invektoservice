@@ -78,3 +78,6 @@ test-results/
 # Postman collections
 *.postman_collection.json
 arch/plans/*.diff
+
+# Invekto.VoiceRuntime — large binary models (downloaded per Models/README.md)
+src/Invekto.VoiceRuntime/Models/*.onnx
