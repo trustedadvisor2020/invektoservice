@@ -1,0 +1,117 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "spec_ref": "SPEC-008",
+  "slug": "20260525-feat-vfb-f0-5-tenant-aware-voice-test",
+  "risk": "MEDIUM",
+  "status": "PLANNING",
+  "created_at": "2026-05-25T19:00:00+03:00",
+  "updated_at": "2026-05-25T19:00:00+03:00",
+  "plan": {
+    "summary": "FEAT-VFB F0.5: Voice Test sayfasını tenant + flow seçimli, knowledge-base function calling destekli gerçek arama simülasyonuna yükselt. Tenant=0 sysadmin Voice Test sayfasından bir tenant ve onun flow'unu seçer, mikrofona konuşur, OpenAI Realtime model konuşmayı dinlerken bilgi gerektiğinde `search_knowledge_base` tool'unu çağırır, VoiceRuntime servis-JWT mint ederek Knowledge :7104'e proxy eder, sonucu model'e geri verir, Türkçe sesli cevap üretilir. F2 PBX Live MVP'nin tüm kritik pipeline'ı (function calling + cross-service auth + dinamik context build) önceden test edilmiş olur.",
+    "q_intent": "sayfaya bir sürü fonksiyon ekleyip, flow ile entegre etmemiz lazım. tenant ve flow seçim dropdownlar lazım. yani ben mikrofonla sanki arama gelmiş gibi o firmanın, seçili flowundaki bilgi bankasından bilgi çekebiliyor olması lazım. bunun için ne aksik, ne yapmak lazım hepsini planla",
+    "interview_notes": "Q AskUserQuestion 4 karar (2026-05-25 18:55):\n- Tenant impersonation: tenant=0 JWT + WS query ?tenant_id=X&flow_id=Y simulate (F2 PBX prod KULLANMAYACAK, JWT'den alır).\n- Voice persona: Generic + tenant.tenant_name + tenant.sector + flow.flow_name enjekte (DB schema değişikliği YOK).\n- KB tool: Tek tool search_knowledge_base(query, top_k=3) — Knowledge mevcut /search endpoint'i.\n- Workflow: /auto (plan JSON + dev + Codex review + commit).\n\nSistem haritalama keşifleri:\n- Backend `GET /api/ops/tenants` ops Basic Auth VEYA tenant=0 JWT (browser-direct, dashboard JWT kullanılır).\n- Automation `GET /api/v1/flows/{tenantId}` tenant-bound JWT (service token mint gerek).\n- Knowledge `POST /api/v1/knowledge/{tenantId}/search` tenant-bound JWT (service token mint gerek).\n- Mevcut pattern: AiFaqHandler (Automation) `JwtGenerator.GenerateServiceToken(ctx.TenantId)` 5dk expire — VoiceRuntime aynı pattern.\n- OpenAI Realtime GA shape: session.update.tools[] + response.function_call_arguments.delta/done + conversation.item.create function_call_output."
+  ,
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "Voice Test sayfasında (https://voice.invekto.com:8443/voice-poc.html) tenant dropdown Backend `/api/ops/tenants`'tan tüm aktif tenant'ları listeler (tenant_id, tenant_name, sector görünür); tenant seçilince flow dropdown Automation `/api/v1/automation/flows/{tenantId}`'den o tenant'ın aktif flow'larını listeler; her iki seçim YAPILMADAN 'Mikrofonu Başlat' butonu disabled.", "verified": false, "verification_note": null },
+      { "id": "AC2", "criterion": "WS handshake `/ws/voice/microphone?token=<JWT>&tenant_id=<id>&flow_id=<id>` VoiceRuntime tarafından kabul edilir; tenant=0 JWT zorunlu (impersonation yetkisi), tenant_id 0 ise reddedilir (kendine impersonate yasak), tenant_id pozitif integer şartı; flow_id boş ise reddedilir; INV-VR-xxx error code ile.", "verified": false, "verification_note": null },
+      { "id": "AC3", "criterion": "VoiceRuntime handshake sonrası JwtGenerator ile target_tenant_id için service JWT mint eder; Automation'a `/api/v1/automation/flows/{tid}/{flowId}` çağırıp flow_name + flow_config alır, Backend'e `/api/ops/tenants` çağırıp tenant_name + sector alır (single call cache 60sn opsiyonel); başarısız fetch'te WS error frame INV-VR-xxx + close 1011.", "verified": false, "verification_note": null },
+      { "id": "AC4", "criterion": "Realtime session.update event'i instructions alanında dinamik template kullanır: 'Sen {tenant.tenant_name} firmasının ({tenant.sector}) sesli AI asistanısın. Aktif konuşma akışı: {flow.flow_name}. Müşteri sorularına Türkçe, kısa ve doğal cevap ver. Bilgi gerektiğinde search_knowledge_base aracını kullan. ...'. Tools array'inde search_knowledge_base tanımı (query:string required, top_k:int default 3) yer alır.", "verified": false, "verification_note": null },
+      { "id": "AC5", "criterion": "Model search_knowledge_base tool çağırdığında VoiceRuntime function_call_arguments.delta/done event'lerini dispatch eder; ToolExecutor JwtGenerator ile service token mint, Knowledge :7104'e `POST /api/v1/knowledge/{tenantId}/search` HTTP call (60s expire), top 3 sonucu (sourceType, question, answer, score) JSON olarak `conversation.item.create function_call_output` ile model'e geri verir; ardından `response.create` ile model konuşmaya devam eder. End-to-end roundtrip <2000ms hedef.", "verified": false, "verification_note": null },
+      { "id": "AC6", "criterion": "Smoke: Q tenant=Dent Adavista (örn id 5) + flow=ana_akis seçer, 'KVKK izniniz var mı?' sorusunu yöneltir, bot doğal Türkçe cevap verir. Sonra 'Saç ekiminden sonra ne kadar dinlenmem gerekiyor?' sorar — model search_knowledge_base çağırır, Knowledge'tan ilgili FAQ döner, model FAQ içeriğini referans alarak cevap verir. Log: `[ToolCall] search_knowledge_base query='saç ekimi dinlenme' results=3 duration=420ms`.", "verified": false, "verification_note": null }
+    ]
+  },
+  "spec_architectural_decisions": [
+    { "decision": "AD-21: Voice Test tenant impersonation pattern — tenant=0 sysadmin JWT + WS query ?tenant_id=X&flow_id=Y simulate. F2 PBX prod VoiceRuntime bu pattern'i KULLANMAYACAK (JWT'den tenant alır, query param impersonation kapalı).", "reason": "Q AskUserQuestion ile onaylandı. Test/prod ayrımı net. Production'da impersonation güvenlik açığı olmaz.", "codex_note": "EXPECTED: WS endpoint query param tenant_id kabul ediyor — production'da kapatılacak (F2'de feature flag). Codex bunu impersonation flaw olarak işaretlerse pattern intentional." },
+    { "decision": "AD-22: VoiceRuntime cross-service auth = JwtGenerator.GenerateServiceToken(targetTenantId) — Automation AiFaqHandler pattern clone. Service JWT 5dk expire, claims: tenant_id (target), user_id=0, role=service, source=voice_runtime.", "reason": "Mevcut Shared.Auth.JwtGenerator pattern AiFaqHandler'da kanıtlanmış. Automation/Knowledge `/api/v1/*` endpoint'leri tenant_id-bound JWT zorunlu, tenant=0 forward yetersiz.", "codex_note": "EXPECTED: VoiceRuntime'ta JwtGenerator DI'da kayıtlı — Automation aynı pattern. 5dk expire kabul edilebilir (single call lifetime)." },
+    { "decision": "AD-23: Tek function tool search_knowledge_base(query: string, top_k?: int=3). Tool name underscore_snake_case (OpenAI API constraint). Description English (model alignment). Top_k server-side clamped [1, 10]. transfer_to_human gibi ek tool'lar F2'ye saklı.", "reason": "Q AskUserQuestion ile onaylandı. MVP scope. Mevcut Knowledge /search endpoint yeter, yeni endpoint YOK.", "codex_note": "EXPECTED: Tek tool minimal API. Top_k clamping silent değil — log + clamped value döner." },
+    { "decision": "AD-24: System prompt template generic + tenant.tenant_name + tenant.sector + flow.flow_name enjekte. Per-flow voice_persona kolonu (F2 Migration 050) YOK bu pakette.", "reason": "Q AskUserQuestion ile onaylandı. DB schema değişikliği yok, hızlı iterasyon. F2'de promote.", "codex_note": "EXPECTED: Flow voice_persona kolonu kullanılmıyor. Codex 'why no per-flow customization?' sorarsa F2 backlog'a referans." },
+    { "decision": "AD-25: Browser dropdownlar Dashboard JWT ile DIRECT Backend `/api/ops/tenants` + Automation `/api/v1/automation/flows/{tid}` çağırır (CORS allowed origins'a voice.invekto.com:8443 eklenir). VoiceRuntime context'i kendi service-JWT'siyle yeniden çeker (defense-in-depth, browser data trust edilmez).", "reason": "Browser zaten Dashboard JWT'ye sahip (super.invekto.com login). VoiceRuntime serv-side fresh fetch source-of-truth garantisi.", "codex_note": "EXPECTED: Çift fetch (browser + VoiceRuntime) intentional. Browser sadece UI display, VoiceRuntime authoritative context." }
+  ],
+  "allowed_files": [
+    "src/Invekto.VoiceRuntime/Program.cs",
+    "src/Invekto.VoiceRuntime/appsettings.json",
+    "src/Invekto.VoiceRuntime/Endpoints/VoicePocEndpoints.cs",
+    "src/Invekto.VoiceRuntime/Realtime/RealtimeMessageTypes.cs",
+    "src/Invekto.VoiceRuntime/Realtime/RealtimeApiClient.cs",
+    "src/Invekto.VoiceRuntime/Realtime/RealtimeSession.cs",
+    "src/Invekto.VoiceRuntime/Realtime/RealtimeSessionFactory.cs",
+    "src/Invekto.VoiceRuntime/Clients/TenantInfoClient.cs",
+    "src/Invekto.VoiceRuntime/Clients/FlowInfoClient.cs",
+    "src/Invekto.VoiceRuntime/Clients/KnowledgeSearchClient.cs",
+    "src/Invekto.VoiceRuntime/Tools/ToolExecutor.cs",
+    "src/Invekto.VoiceRuntime/Tools/SearchKnowledgeBaseTool.cs",
+    "src/Invekto.VoiceRuntime/Tools/InstructionsBuilder.cs",
+    "src/Invekto.VoiceRuntime/wwwroot/voice-poc.html",
+    "src/Invekto.VoiceRuntime/wwwroot/voice-poc.js",
+    "src/Invekto.VoiceRuntime/wwwroot/styles.css",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Knowledge/Program.cs",
+    "src/Invekto.Shared/Contracts/Voice/VoiceTestContext.cs",
+    "arch/errors.md",
+    "arch/contracts/voice/voice-runtime-ws.md",
+    "arch/contracts/voice/openai-realtime-session.json",
+    "arch/specs/voice-flow-builder.md",
+    "tracking/feat-vfb-voice-flow-builder.md",
+    "tracking/README.md",
+    "arch/session-memory.md"
+  ],
+  "files_changed": [],
+  "git_diff": { "stats": { "insertions": 0, "deletions": 0, "files_count": 0 } },
+  "build": { "status": null },
+  "verification_questions": [
+    { "id": "Q1", "question": "Tenant impersonation gate: WS handshake `tenant_id=X` query param kabul ediyor mu? JWT tenant=0 olmadan reddediliyor mu? tenant_id=0 ise (self-impersonate) reddediliyor mu? tenant_id non-integer ise INV-VR-xxx ile reddediliyor mu?", "category": "Auth" },
+    { "id": "Q2", "question": "Service JWT mint: VoiceRuntime'da JwtGenerator DI'da kayıtlı mı? GenerateServiceToken(targetTenantId) çağrısı yapılıyor mu? Token 5dk expire mi? Authorization Bearer header'da Automation/Knowledge'a forward ediliyor mu? Token cache'lenmiyor mu (her call için fresh mint)?", "category": "Auth" },
+    { "id": "Q3", "question": "Function calling lifecycle: response.function_call_arguments.delta event'leri buffer'a topluyor mu? .done event'inde tool execute ediliyor mu? execute hata ise function_call_output'a structured error JSON dönüyor mu (silent failure YOK)? execute süre log'lanıyor mu?", "category": "Lifecycle" },
+    { "id": "Q4", "question": "Knowledge search timeout/cancel: HTTP call 5sn timeout, başarısız ise function_call_output'a {error: 'kb_unavailable', message: '...'} dönüyor (model 'şu an bilgi bankasına ulaşamıyorum' der), WS session düşmüyor? CancellationToken HttpContext.RequestAborted ile bağlı mı?", "category": "Lifecycle" },
+    { "id": "Q5", "question": "Instructions builder: tenant.tenant_name + sector + flow.flow_name verisi VoiceRuntime authoritative source (service JWT ile fresh fetch)? Browser'dan gelen verilere güvenilmiyor (defense-in-depth)? Veriler null/empty ise fallback string kullanılıyor (instructions hiçbir zaman {placeholder} ile gönderilmiyor)?", "category": "Data" },
+    { "id": "Q6", "question": "Top_k clamping: tool çağrısında top_k > 10 ise 10'a clamped + log, top_k < 1 ise 3'e default + log, top_k null ise 3? Yeniden Knowledge'a iletilen değer her zaman [1,10] aralığında?", "category": "Process/Policy" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Automation/Services/FlowEngineV2.cs (flow execution değişmez)",
+      "src/Invekto.Knowledge/Services/RetrievalService.cs (search algoritması değişmez)",
+      "src/Invekto.Backend/Data/TenantRegistryRepository.cs (tenant data layer değişmez)",
+      "arch/db/*.sql (DB schema değişikliği YOK — voice_persona kolonu F2'ye saklı)",
+      "src/Invekto.Backend/Dashboard/src/* (Dashboard SPA değişmez — Voice Test bağımsız sayfa)"
+    ],
+    "non_goals": [
+      "Per-flow voice_persona / instructions kolonu (F2 Migration 050)",
+      "TTS provider seçimi (AD-13 F2)",
+      "transfer_to_human / DTMF / KVKK consent function calls (F2)",
+      "Voice analytics / /reports/voice-perf (F4)",
+      "Production VoiceRuntime impersonation kapatma (F2 feature flag — bu pakette query param her zaman açık tenant=0 JWT için)"
+    ],
+    "intentional_exclusions": [
+      "Knowledge tool sonuç caching (her call fresh, latency p95 hedef 600ms)",
+      "Tool concurrency limit (max 1 in-flight tool call per session, sequential)",
+      "Flow JSON node'larından persona extraction (AD-24 generic template yeter)",
+      "Browser dropdown'unda flow.flow_config preview (AC1 sadece flow_name + id görünür)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "VoicePocEndpoints.cs: handshake tenant_id parse + flow_id parse (typed catch + INV-VR error code)",
+      "ToolExecutor.cs: Knowledge HTTP call timeout/network (typed catch + function_call_output error JSON)",
+      "TenantInfoClient.cs + FlowInfoClient.cs: HTTP call (typed catch + close 1011 + INV-VR error)",
+      "InstructionsBuilder.cs: null/empty data fallback (no try-catch, defensive null check)"
+    ],
+    "user_facing_errors": [
+      "Browser dropdown: 'Tenant listesi yüklenemedi' (Backend fetch fail)",
+      "Browser dropdown: 'Flow listesi yüklenemedi' (Automation fetch fail)",
+      "WS error frame: 'Tenant veya flow bilgisi alınamadı' (INV-VR-xxx)",
+      "Tool error: model'e Türkçe 'Bilgi bankasına ulaşamadım, lütfen tekrar deneyin' yönlendirme"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Tüm catch'ler typed + log + actionable kullanıcı geri dönüşü içerir. Tool execution hata durumunda function_call_output'a structured error JSON döner (model'i bilgilendirir, kullanıcıya doğal cevap vermesini sağlar). WS handshake fail durumunda close 1011 + INV-VR-xxx error code."
+  },
+  "aha_moments": [
+    { "category": "SALES", "user_pain": "Müşteri demolarında 'mikrofona konuş, bizim AI cevapısın' demek istiyoruz ama mevcut F0 PoC generic chatbot — müşterinin kendi bilgi bankasını kullanmıyor, satış argümanı zayıf.", "suggestion": "Tenant + flow dropdown ile demo öncesi müşterinin tenant'ını seç → bot tam o müşterinin FAQ'larını ve sektör jargonunu kullanarak konuşur. Müşteri kendi randevu süresi / fiyat / KVKK metnini bot'tan duyar.", "aha_moment": "Müşteri 'Bu benim FAQ'mı söylüyor!' diye şaşırdığında satış kapanır — generic demo'dan 100x ikna gücü." },
+    { "category": "SPEED", "user_pain": "F2 PBX MVP'de function calling + cross-service auth + dinamik instructions pipeline'ı bilinmeyen riskler içeriyor — direkt PBX integration'da test etmek geri dönüşü zor.", "suggestion": "F0.5'te bu kritik pipeline'ı mikrofon ile test et (PBX dependency YOK). Function calling latency, instructions injection doğruluğu, service JWT lifecycle hepsi shake out edilir. F2 PBX integration sadece audio I/O layer ekler.", "aha_moment": "F2 başladığında '%80'i hazır, sadece SIP/PJSIP audio bridge kaldı' realizasyonu — risk profili düşer." },
+    { "category": "RELIABILITY", "user_pain": "F2'de canlı çağrıda function_call_arguments hata verirse müşteri 5sn sessiz kalır + bot çöker — sahaya geçişte gizli risk.", "suggestion": "F0.5 ToolExecutor 5sn timeout + structured error JSON + model'e Türkçe fallback yönlendirme ('şu an bilgi bankama ulaşamıyorum') — testte 10x tetikle, edge case'ler bulunsun. F2'ye geçişte battle-tested pipeline.", "aha_moment": "Q intentional Knowledge stop testi yapar, bot 'şu an bilgi bankama ulaşamıyorum' der → fail-safe doğrulanır." },
+    { "category": "UX", "user_pain": "Dashboard'tan Voice Test açılıyor ama her seferinde tenant + flow seçimi tekrar etmek demo akışını yavaşlatıyor — özellikle Q aynı müşteriyi 5 senaryo ile test ediyorsa.", "suggestion": "Tenant + flow seçimini localStorage'a yaz, sayfa açıldığında son seçim auto-fill. 'Mikrofonu Başlat' tek tık'a düşer.", "aha_moment": "Q ikinci açışta dropdown'lar dolu, 1sn'de mikrofon başlatır — 'demo akışım kesintisiz' rahatlığı." },
+    { "category": "SUPPORT", "user_pain": "Tool call'ları görünmüyor — 'Bot neden bunu söyledi?' sorusuna cevap için Q ham log'lara bakmak zorunda.", "suggestion": "Browser HUD'a tool call rozeti: 'search_knowledge_base(saç ekimi dinlenme) → 3 sonuç, 420ms'. Transcript yanında inline gözükür.", "aha_moment": "Q konuşma sırasında 'işte bu noktada KB sorgusu attı' diye gerçek zamanlı görür — debug + sales pitch için altın." }
+  ],
+  "verdict": { "status": null, "iteration": 0 }
+}

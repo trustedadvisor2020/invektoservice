@@ -80,7 +80,7 @@ public static class VoicePocEndpoints
         // Auth: prod requires JWT (?token=... query for browser); dev allows ?dev=1 when secret empty.
         var jwtSecret = config["Jwt:SecretKey"] ?? "";
         var devBypass = env.IsDevelopment() && string.IsNullOrWhiteSpace(jwtSecret) && ctx.Request.Query["dev"] == "1";
-        int tenantId = 0;
+        int callerTenantId = 0;
 
         if (!devBypass)
         {
@@ -102,15 +102,17 @@ public static class VoicePocEndpoints
                     logger.SystemWarn($"[{ErrorCodes.VoiceRuntimeWebSocketHandshakeFailed}] [VoicePoc] WS handshake rejected: {error ?? "invalid token"}");
                     return;
                 }
-                tenantId = tenantContext.TenantId;
+                callerTenantId = tenantContext.TenantId;
 
-                // F0 PoC: superadmin (tenant=0) only — production multi-tenant gating is F2 scope.
-                // Spec AD-11 + Plan 20260523-feat-vfb-f0-poc.json AC2/Q2 require tenant=0 enforcement.
-                if (tenantId != 0)
+                // AD-21 (F0.5): Voice Test impersonation gate — caller must be sysadmin (tenant=0).
+                // Non-sysadmin tenants are rejected with INV-VR-020 (the test page is opsOnly).
+                // F2 PBX production VoiceRuntime will use a different endpoint path where caller
+                // tenant_id is the operating tenant (no impersonation).
+                if (callerTenantId != 0)
                 {
                     ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
-                    await ctx.Response.WriteAsync($"{ErrorCodes.VoiceRuntimeWebSocketHandshakeFailed}: F0 PoC requires superadmin (tenant=0); got tenant={tenantId}");
-                    logger.SystemWarn($"[{ErrorCodes.VoiceRuntimeWebSocketHandshakeFailed}] [VoicePoc] WS handshake rejected: non-superadmin tenant={tenantId} (F0 PoC scope)");
+                    await ctx.Response.WriteAsync($"{ErrorCodes.VoiceRuntimeImpersonationGateFailed}: Voice Test requires sysadmin (tenant=0); got tenant={callerTenantId}");
+                    logger.SystemWarn($"[{ErrorCodes.VoiceRuntimeImpersonationGateFailed}] [VoicePoc] WS handshake rejected: non-sysadmin caller tenant={callerTenantId} (Voice Test opsOnly)");
                     return;
                 }
             }
@@ -130,19 +132,87 @@ public static class VoicePocEndpoints
             }
         }
 
+        // AD-21 (F0.5): Impersonation target query params — ?tenant_id=X&flow_id=Y.
+        // The session runs AS IF caller is tenant_id=X using flow_id=Y.
+        //
+        // Backward-compat: when NEITHER tenant_id NOR flow_id is present, fall back to the
+        // legacy F0 microphone mode (target=0 sysadmin self, no flow context, generic instructions
+        // from appsettings). This keeps the existing voice-poc.html sales-demo path working
+        // until Chunk D ships the tenant + flow dropdowns.
+        //
+        // When tenant_id IS present, the F0.5 strict validation chain applies:
+        //  (1) Parse fail / non-integer → INV-VR-011
+        //  (2) tenant_id == 0 (self-impersonation of sysadmin) → INV-VR-013
+        //  (3) tenant_id < 0 (negative) → INV-VR-011
+        //  (4) flow_id must accompany tenant_id (positive integer) → INV-VR-012
+        // PRESENCE-based mode detection (not value-based): once a client sends EITHER `tenant_id`
+        // OR `flow_id` query KEY (even with empty value like `?tenant_id=`), strict F0.5 validation
+        // applies. This prevents Chunk D dropdown UI from silently falling back to legacy F0 when
+        // user has not yet chosen a tenant — empty value still produces actionable INV-VR-011/012.
+        var hasTenantKey = ctx.Request.Query.ContainsKey("tenant_id");
+        var hasFlowKey = ctx.Request.Query.ContainsKey("flow_id");
+        var targetTenantIdRaw = ctx.Request.Query["tenant_id"].ToString();
+        var flowIdRaw = ctx.Request.Query["flow_id"].ToString();
+        int targetTenantId = 0;
+        int flowId = 0;
+        bool f05Mode = false;
+        if (hasTenantKey || hasFlowKey)
+        {
+            f05Mode = true;
+            if (!int.TryParse(targetTenantIdRaw, out targetTenantId))
+            {
+                ctx.Response.StatusCode = StatusCodes.Status400BadRequest;
+                await ctx.Response.WriteAsync($"{ErrorCodes.VoiceRuntimeTenantIdMissingOrInvalid}: tenant_id query parameter required (positive integer)");
+                logger.SystemWarn($"[{ErrorCodes.VoiceRuntimeTenantIdMissingOrInvalid}] [VoicePoc] WS handshake rejected: tenant_id missing/non-integer (got '{targetTenantIdRaw}')");
+                return;
+            }
+            if (targetTenantId == 0)
+            {
+                ctx.Response.StatusCode = StatusCodes.Status400BadRequest;
+                await ctx.Response.WriteAsync($"{ErrorCodes.VoiceRuntimeSelfImpersonationRejected}: tenant_id=0 (sysadmin impersonate yasak)");
+                logger.SystemWarn($"[{ErrorCodes.VoiceRuntimeSelfImpersonationRejected}] [VoicePoc] WS handshake rejected: self-impersonation tenant_id=0");
+                return;
+            }
+            if (targetTenantId < 0)
+            {
+                ctx.Response.StatusCode = StatusCodes.Status400BadRequest;
+                await ctx.Response.WriteAsync($"{ErrorCodes.VoiceRuntimeTenantIdMissingOrInvalid}: tenant_id must be positive (got {targetTenantId})");
+                logger.SystemWarn($"[{ErrorCodes.VoiceRuntimeTenantIdMissingOrInvalid}] [VoicePoc] WS handshake rejected: tenant_id negative ({targetTenantId})");
+                return;
+            }
+            if (!int.TryParse(flowIdRaw, out flowId) || flowId <= 0)
+            {
+                ctx.Response.StatusCode = StatusCodes.Status400BadRequest;
+                await ctx.Response.WriteAsync($"{ErrorCodes.VoiceRuntimeFlowIdMissingOrInvalid}: flow_id query parameter required (positive integer)");
+                logger.SystemWarn($"[{ErrorCodes.VoiceRuntimeFlowIdMissingOrInvalid}] [VoicePoc] WS handshake rejected: flow_id missing/invalid (got '{flowIdRaw}')");
+                return;
+            }
+        }
+
         using var ws = await ctx.WebSockets.AcceptWebSocketAsync();
-        var sessionId = $"f0-{Guid.NewGuid():N}";
+        var sessionPrefix = f05Mode ? "f05" : "f0";
+        var sessionId = $"{sessionPrefix}-{Guid.NewGuid():N}";
         var locale = ctx.Request.Query["locale"].ToString();
         if (string.IsNullOrWhiteSpace(locale)) locale = "tr-TR";
 
+        // F0.5 mode: VoiceCallDescriptor.TenantId = TARGET tenant (impersonation target). Caller is
+        // sysadmin (0) by gate above; downstream service-JWT mints will use targetTenantId.
+        // F0 mode: descriptor.TenantId = 0 (sysadmin self), no impersonation, generic appsettings instructions.
+        // ProviderMetadata records mode + flow_id + caller_tenant_id for audit/log without changing record schema.
         var descriptor = new VoiceCallDescriptor(
             SessionId: sessionId,
-            TenantId: tenantId,
+            TenantId: targetTenantId,
             Locale: locale,
             CallerIdHash: null,
-            StartedAt: DateTimeOffset.UtcNow);
+            StartedAt: DateTimeOffset.UtcNow,
+            ProviderMetadata: new Dictionary<string, string>
+            {
+                ["flow_id"] = flowId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["caller_tenant_id"] = callerTenantId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["impersonation"] = f05Mode ? "voice_test_f05" : "f0_legacy"
+            });
 
-        logger.SystemInfo($"[VoicePoc/{sessionId}] WS opened (tenant={tenantId}, locale={locale}, dev_bypass={devBypass})");
+        logger.SystemInfo($"[VoicePoc/{sessionId}] WS opened (mode={(f05Mode ? "f05" : "f0")}, target_tenant={targetTenantId}, flow={flowId}, caller_tenant={callerTenantId}, locale={locale}, dev_bypass={devBypass})");
 
         using var sessionCts = CancellationTokenSource.CreateLinkedTokenSource(ctx.RequestAborted);
         await using var voiceSession = (MicrophoneCallSession)await provider.OpenSessionAsync(descriptor, sessionCts.Token);

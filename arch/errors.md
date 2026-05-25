@@ -1599,6 +1599,38 @@ errors:
     description: F0 PoC latency budget exceeded warning. p95 first-byte > 1500ms in last 100 turns (rolling window). Non-fatal but flags performance regression. Aksiyon - LatencyTracker.cs jsonl WARN + /metrics endpoint anomaly flag + F0 go/no-go report row.
     user_message: (internal warning, no user message)
 
+  # ── F0.5 Tenant-aware Voice Test (AD-21..25) ──
+  - code: INV-VR-011
+    description: WS handshake missing or invalid tenant_id query param. F0.5 Voice Test impersonation pattern requires ?tenant_id=<positive_int>. Aksiyon - VoicePocEndpoints.cs handshake parser typed catch + close 1008 + browser dropdown re-select prompt.
+    user_message: Test edilecek firma bilgisi eksik. Sayfayı yenileyip firma seçimi yapın.
+  - code: INV-VR-012
+    description: WS handshake missing or invalid flow_id query param. F0.5 Voice Test requires ?flow_id=<positive_int> matching tenant's active flow. Aksiyon - VoicePocEndpoints.cs handshake parser + close 1008 + browser dropdown re-select prompt.
+    user_message: Test edilecek konuşma akışı bilgisi eksik. Sayfayı yenileyip akış seçimi yapın.
+  - code: INV-VR-013
+    description: Self-impersonation rejected. WS handshake received tenant_id=0 (Voice Test gate disallows impersonating sysadmin tenant). Aksiyon - VoicePocEndpoints.cs explicit check + close 1008 + jsonl WARN (potential misconfiguration).
+    user_message: Sistem yöneticisi tenant'ı için test yapılamaz. Lütfen bir müşteri tenant seçin.
+  - code: INV-VR-014
+    description: Tenant context fetch failure. VoiceRuntime → Backend /api/ops/tenants HTTP call failed (network, 5xx, 401 auth). Aksiyon - TenantInfoClient typed catch + WS close 1011 + browser error toast + retry button. Service JWT mint correctness verify.
+    user_message: Firma bilgisi alınamadı, sunucu geçici sorun yaşıyor. Birkaç saniye sonra tekrar deneyin.
+  - code: INV-VR-015
+    description: Flow context fetch failure. VoiceRuntime → Automation /api/v1/automation/flows/{tid}/{fid} HTTP call failed (network, 404 flow not found, 401 auth). Aksiyon - FlowInfoClient typed catch + WS close 1011 + browser error toast + log fallback flow_name placeholder.
+    user_message: Akış bilgisi alınamadı, sunucu geçici sorun yaşıyor. Birkaç saniye sonra tekrar deneyin.
+  - code: INV-VR-016
+    description: Function call dispatch failure. response.function_call_arguments.delta event buffering OR .done event JSON parse exception (malformed args from OpenAI Realtime). Aksiyon - RealtimeApiClient typed catch + structured error JSON to function_call_output ({error:"dispatch_failed",message:"..."}) + jsonl ERROR + session continues.
+    user_message: (internal error, model receives structured error and apologizes naturally)
+  - code: INV-VR-017
+    description: Knowledge tool execution failure. VoiceRuntime → Knowledge /api/v1/knowledge/{tid}/search HTTP call failed (timeout 5sn, network, 5xx). Aksiyon - KnowledgeSearchClient typed catch + structured error JSON {error:"kb_unavailable",message:"Bilgi bankası geçici olarak yanıt vermiyor"} → function_call_output → model "bilgi bankasına ulaşamadım, lütfen tekrar deneyin" der.
+    user_message: (model speaks fallback message naturally to caller)
+  - code: INV-VR-018
+    description: Service JWT mint failure. JwtGenerator.GenerateServiceToken threw (rare — empty signing key, invalid claims). Aksiyon - typed catch + WS close 1011 INV-VR-018 + ops alert (Jwt:SecretKey config corruption indicator).
+    user_message: Yetki anahtarı üretilemedi. Yöneticinizle iletişime geçin.
+  - code: INV-VR-019
+    description: Tool top_k parameter out of valid range (silent clamp applied). Model requested top_k < 1 OR > 10; ToolExecutor clamped to [1,10] and logged WARN. Non-fatal, informational only.
+    user_message: (internal log only, no user message)
+  - code: INV-VR-020
+    description: F0.5 superadmin impersonation gate failure. WS handshake received non-tenant=0 JWT (regular tenant user attempting Voice Test access). Aksiyon - VoicePocEndpoints.cs auth gate close 1008 + jsonl WARN potential authorization bypass attempt + ops alert.
+    user_message: Voice Test sayfası sadece sistem yöneticileri için kullanılabilir. Normal kullanıcı yetkilerinizle giriş yapın.
+
 ```
 
 ## Adding New Codes

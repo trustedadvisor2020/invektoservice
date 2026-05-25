@@ -600,7 +600,7 @@ public static class ErrorCodes
     public const string VoiceAIUnsupportedFormat = "INV-VA-006";         // Unsupported audio format
 
     // VoiceRuntime errors (INV-VR-xxx) -- FEAT-VFB F0 PoC (AD-11/AD-15)
-    // F0 reserved 001..010; F2 will allocate 011..040; F3 will allocate 041..050.
+    // F0 reserved 001..010; F0.5 allocated 011..020 (AD-21..25 Voice Test); F2 will allocate 021..040 (SIP UA AD-26..28); F3 will allocate 041..050.
     public const string VoiceRuntimeRealtimeConnectionFailed = "INV-VR-001";  // OpenAI Realtime WS connect failure (DNS/TLS/network drop)
     public const string VoiceRuntimeRealtimeAuthFailed = "INV-VR-002";        // OpenAI Realtime auth 401 / WS close 1008 (tier not active, key revoked)
     public const string VoiceRuntimeRealtimeRateLimited = "INV-VR-003";       // OpenAI Realtime 429 / WS close 1013 — outage fallback REFER+callback
@@ -611,6 +611,18 @@ public static class ErrorCodes
     public const string VoiceRuntimeVadModelMissing = "INV-VR-008";           // Models/silero_vad.onnx missing/corrupt — boot-time fail-fast
     public const string VoiceRuntimeMicAccessDenied = "INV-VR-009";           // Browser getUserMedia NotAllowedError/NotFoundError
     public const string VoiceRuntimeLatencyBudgetExceeded = "INV-VR-010";     // F0 p95 first-byte > 1500ms rolling window (non-fatal WARN)
+
+    // F0.5 Tenant-aware Voice Test (AD-21..25)
+    public const string VoiceRuntimeTenantIdMissingOrInvalid = "INV-VR-011";  // WS handshake ?tenant_id missing or non-positive int
+    public const string VoiceRuntimeFlowIdMissingOrInvalid = "INV-VR-012";    // WS handshake ?flow_id missing or non-positive int
+    public const string VoiceRuntimeSelfImpersonationRejected = "INV-VR-013"; // WS handshake tenant_id=0 (sysadmin impersonate yasak)
+    public const string VoiceRuntimeTenantFetchFailed = "INV-VR-014";         // Backend /api/ops/tenants HTTP call failed
+    public const string VoiceRuntimeFlowFetchFailed = "INV-VR-015";           // Automation /api/v1/automation/flows/{tid}/{fid} HTTP call failed
+    public const string VoiceRuntimeFunctionCallDispatchFailed = "INV-VR-016";// response.function_call_arguments parse/buffer exception
+    public const string VoiceRuntimeKnowledgeToolFailed = "INV-VR-017";       // Knowledge /api/v1/knowledge/{tid}/search HTTP failed (5sn timeout/5xx)
+    public const string VoiceRuntimeServiceJwtMintFailed = "INV-VR-018";      // JwtGenerator.GenerateServiceToken threw
+    public const string VoiceRuntimeToolTopKClamped = "INV-VR-019";           // top_k < 1 or > 10 → silent clamp to [1,10] (WARN log)
+    public const string VoiceRuntimeImpersonationGateFailed = "INV-VR-020";   // WS handshake non-tenant=0 JWT (sadece sysadmin Voice Test eriship)
 
     // Hangfire Job Infrastructure (INV-JOB-xxx) -- G7
     public const string JobStorageConnectionFailed = "INV-JOB-001";   // Hangfire PG storage connection failed

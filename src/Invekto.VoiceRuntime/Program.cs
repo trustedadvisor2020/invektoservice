@@ -55,6 +55,39 @@ var jwtSettings = new JwtSettings
 };
 builder.Services.AddSingleton(new JwtValidator(jwtSettings));
 
+// AD-22: VoiceRuntime cross-service auth via JwtGenerator.GenerateServiceToken(targetTenantId).
+// Used by Tenant/Flow/Knowledge HTTP clients to mint a short-lived (5min) per-tenant service JWT
+// — pattern cloned from Automation.AiFaqHandler. JwtSettings reused (same SecretKey/Issuer/Audience
+// as inbound validation), so minted tokens are accepted by sibling services.
+builder.Services.AddSingleton(new JwtGenerator(jwtSettings));
+
+// ── HTTP clients (AD-22) ──────────────────────────────────────────
+// Three named clients targeting sibling microservices. BaseAddress + Timeout per service;
+// the actual ServiceJwt header is attached per-call by each client (target tenant_id varies).
+// AD-25: Voice Test browser fetches /api/ops/tenants and /api/v1/automation/flows directly with
+// the Dashboard JWT (UI display); these named clients are the SERVER-SIDE authoritative re-fetch
+// used by VoiceRuntime to build instructions (defense-in-depth).
+// Default base URLs derive from ServiceConstants (canonical port map). Override via
+// InternalServices:{Service}BaseUrl when running against non-localhost or non-default ports.
+builder.Services.AddHttpClient("Backend", c =>
+{
+    c.BaseAddress = new Uri(builder.Configuration["InternalServices:BackendBaseUrl"]
+        ?? $"http://localhost:{ServiceConstants.BackendPort}");
+    c.Timeout = TimeSpan.FromSeconds(5);
+});
+builder.Services.AddHttpClient("Automation", c =>
+{
+    c.BaseAddress = new Uri(builder.Configuration["InternalServices:AutomationBaseUrl"]
+        ?? $"http://localhost:{ServiceConstants.AutomationPort}");
+    c.Timeout = TimeSpan.FromSeconds(5);
+});
+builder.Services.AddHttpClient("Knowledge", c =>
+{
+    c.BaseAddress = new Uri(builder.Configuration["InternalServices:KnowledgeBaseUrl"]
+        ?? $"http://localhost:{ServiceConstants.KnowledgePort}");
+    c.Timeout = TimeSpan.FromSeconds(5);
+});
+
 // ── Audio + Realtime + Metrics ────────────────────────────────────
 builder.Services.AddSingleton<OpusCodec>();
 builder.Services.AddSingleton<SileroVad>(sp =>

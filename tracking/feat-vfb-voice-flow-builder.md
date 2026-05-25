@@ -25,7 +25,7 @@
 1. ✅ DNS A record: `voice.invekto.com → 213.238.172.214` (Q manuel tanımladı, dev PC'den DNS resolve OK)
 2. ✅ TLS cert: `C:\Invekto\certs\star.invekto.com.pfx` (mevcut wildcard cert, Backend ile aynı) — Kestrel HTTPS :8443 doğrudan kullanıyor
 3. ✅ Reverse proxy: **GEREK YOK** — Backend pattern (Kestrel direct TLS :443) sürdürüldü. VoiceRuntime kendi Kestrel'inde :8443 HTTPS dinliyor. Cloudflare proxy YOK (DNS-only, 8443 serbest), IIS/nginx YOK.
-4. ✅ OPENAI_API_KEY: Knowledge servisinin appsettings'inden alındı (sk-proj-... 164 char) → NSSM AppEnvironmentExtra'ya set + service restart → `/ready=ready` (degraded değil)
+4. ✅ OpenAI API key env-var → Knowledge servisinin appsettings'inden alındı (164-karakter project key) → NSSM AppEnvironmentExtra'ya set + service restart → `/ready=ready` (degraded değil)
 5. ✅ Firewall: `New-NetFirewallRule` TCP :8443 inbound allow (Profile Any)
 6. ✅ Cors:AllowedOrigins port-aware: `["https://voice.invekto.com", "https://voice.invekto.com:8443", "https://app.invekto.com"]` (WS Origin gate match)
 7. ✅ Public test (dev PC → voice.invekto.com:8443): TCP open + `/health` ok + `/voice-poc.html` 200/2087 bytes
@@ -122,25 +122,60 @@ Musteri adayi geldi: "PBX'e gelen aramalari AI ile cevaplamak istiyoruz. Onceki 
 
 **Exit:** AC-1 PASS + Codex iter ≤ 2 + deploy + smoke + 0 regression Automation text path
 
-### F2 — PBX Live (Toniva) MVP (3-4 hafta)
-- [ ] Plan JSON: `arch/plans/20260527-feat-vfb-f2-pbx-live-mvp.json`
-- [ ] Yeni servis `Invekto.VoiceRuntime` (:7115) — proje skelet + DI + Hangfire + JsonLines + Auth middleware (FEAT-DBBK precedent)
-- [ ] Migration 050: `call_sessions` + `voice_turns` + `callback_requests` + `tenant_settings.voice_*` + `leads.last_call_at`
-- [ ] `IVoiceCallProvider` (Shared) + TonivaPbxProvider + MockProvider
-- [ ] VAD (Silero veya WebRTC VAD) integration
-- [ ] OpenAI Realtime API client (WebSocket, bidi audio)
-- [ ] Paralel intent classifier (GPT-4o-mini her 2sn partial transcript)
+### F0.5 — Tenant-aware Voice Test (4-5 gun, plan onaylı 2026-05-25)
+- [ ] Plan JSON: `arch/plans/20260525-feat-vfb-f0-5-tenant-aware-voice-test.json` (5.1 schema, MEDIUM risk, 6 AC + 6 verification + 5 AHA + 5 AD)
+- [ ] **Chunk A:** VoiceRuntime altyapı — HttpClient/IHttpClientFactory DI + JwtGenerator DI (Automation pattern clone) + WS handshake tenant_id/flow_id query param gate (`?token=&tenant_id=&flow_id=`) + INV-VR-011..015 error codes
+- [ ] **Chunk B:** 3 HTTP client — `TenantInfoClient` (Backend `/api/ops/tenants` Basic Auth opsiyonel ya da super JWT), `FlowInfoClient` (Automation `/api/v1/automation/flows/{tid}/{fid}` service JWT), `KnowledgeSearchClient` (Knowledge `/api/v1/knowledge/{tid}/search` service JWT) + `InstructionsBuilder` (tenant.name + sector + flow.name template) + `VoiceTestContext` DTO (Shared.Contracts.Voice)
+- [ ] **Chunk C:** Function calling — `RealtimeMessageTypes.cs` function_call_arguments.delta/.done + conversation.item.create function_call_output event types + `RealtimeApiClient` dispatch + `RealtimeSession` session.update.tools[] registration (`search_knowledge_base` GA shape) + `ToolExecutor` + `SearchKnowledgeBaseTool` handler (top_k clamp [1,10], 5sn timeout, structured error JSON)
+- [ ] **Chunk D:** Browser dropdownlar — voice-poc.html tenant + flow dropdown + voice-poc.js fetch loop (Dashboard JWT direct call) + WS handshake update + tool call HUD rozeti (live tool name + duration) + styles.css dropdown layout + localStorage persist son seçim (Q AHA UX)
+- [ ] **Chunk E:** CORS allowed origins — Knowledge + Automation + Backend `Program.cs` `voice.invekto.com:8443` ekle + arch/contracts/voice/voice-runtime-ws.md güncel + openai-realtime-session.json snapshot + smoke (Dent Adavista + saç ekimi FAQ) + tracking + redeploy 4 servis (Knowledge/Automation/Backend/VoiceRuntime)
+
+**Exit:** AC1-AC6 PASS + Codex iter ≤ 2 per chunk + smoke (Q live mikrofon test, KB sorgu round-trip <2sn p95) + 4 servis redeploy HEALTHY
+
+---
+
+### F2 — PBX Live (SIP UA, SIPSorcery) MVP (3-4 hafta)
+
+> **Scope karar 2026-05-25 (Q):** "Asterisk yok. Hep SIP üzerinden gelip gidecek bilgiler." — AD-26/27/28 spec'te.
+> - **Mod A (AudioSocket Asterisk-based):** **İPTAL** — Türkiye pazar varsayımı geçersiz, müşteri PBX'leri Asterisk-based değil
+> - **Mod B (Direct SIP UA, SIPSorcery):** **F2 ANA SCOPE** — VoiceRuntime SIP user agent, müşterinin PBX'ine peer/trunk register, inbound INVITE'e cevap
+> - **Mod C (Toniva gRPC):** **OPSIYONEL/Q internal** — proto FROZEN kalır (b78e8126), implementasyon Q ek istegine bagli
+
+#### SIP UA Implementation (Mod B core)
+- [ ] Plan JSON: `arch/plans/20260601-feat-vfb-f2-pbx-live-mvp.json` (yeni, eski Toniva-only plan placeholder iptal)
+- [ ] SIPSorcery NuGet (BSD-3, .NET 8, ~5.6K star) — `<PackageReference Include="SIPSorcery" Version="8.x" />`
+- [ ] `IVoiceCallProvider` Shared + `SipUaProvider` impl + MicrophoneProvider F0'dan + Mock
+- [ ] SIP transport: UDP default (TCP/TLS opsiyonel feature flag), keepalive 30sn re-REGISTER
+- [ ] PBX credentials per-tenant: `tenant_settings.sip_*` kolonları (host, port, username, password, realm, transport)
+- [ ] Inbound INVITE handler: cevap → RTP UDP audio bidi → Realtime forwarding → BYE/RTP close
+- [ ] Outbound INVITE: callback flow (Hangfire `CallbackRequestJob` → SipUaProvider.OutboundCall)
+- [ ] Codec negotiation: Opus narrowband 8kHz tercih, G.711 µ-law/A-law fallback (Concentus mevcut + yeni 8k resampler component)
+- [ ] DTMF: RFC 4733 RTP telephone-event (primary) + SIP INFO fallback parser
+- [ ] SIP REFER transfer: `voice_transfer` flow node → REFER → agent yoksa Hangfire callback
+- [ ] NAT: UDP keepalive + STUN opsiyonel; production server Windows Firewall: RTP port range 10000-20000 inbound TCP/UDP
+- [ ] Error codes INV-VR-021..035 (SIP layer: register fail, INVITE timeout, codec nego fail, RTP packet loss, REFER fail)
+
+#### Diğer F2 deliverable'lar (SIP-bağımsız, mevcut plan)
+- [ ] Migration 050: `call_sessions` + `voice_turns` + `callback_requests` + `tenant_settings.voice_*` + `tenant_settings.sip_*` + `leads.last_call_at`
+- [ ] Smart-Turn v2 ONNX integration (Silero VAD üstüne semantic EOT, AD-12)
 - [ ] FlowEngineV2: 5 yeni node handler (`voice_trigger`, `voice_say`, `voice_collect`, `voice_transfer`, `channel_condition`)
 - [ ] KVKK consent flow + DTMF "9" + opt-out 24h purge job
-- [ ] `voice_transfer` → Toniva REFER + agent queue + callback fallback (Hangfire `CallbackRequestJob`)
 - [ ] Dashboard SPA `/calls` liste + detay (transcript timeline + intent + recording playback)
 - [ ] Dashboard SPA `/flow-builder` voice node palette + property panel
 - [ ] Backend proxy endpoint'ler (Backend → VoiceRuntime)
-- [ ] Tenant ayarlari `/settings/voice-runtime` (provider secimi, recording, retention, consent text)
-- [ ] Error codes INV-VR-011..040
-- [ ] Pilot smoke: Q'nun test Toniva line → 5 sn KVKK consent + bot dialog + handoff REFER
+- [ ] Tenant ayarları `/settings/voice-runtime` (SIP credentials + provider seçimi + recording + retention + consent text)
+- [ ] TTS tenant-selectable DI (Azure Neural TR + ElevenLabs Pro fallback, AD-13)
+- [ ] Realtime outage fallback (AD-16 hard-fail REFER + Hangfire callback)
+- [ ] Error codes INV-VR-011..020 zaten F0.5'te + 021..040 F2'de
 
-**Exit:** AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8, AC-9 PASS + Codex iter ≤ 3 + deploy + 1 tenant smoke
+#### Pilot smoke (F2 sonu)
+- [ ] Q test SIP PBX (kendi 3CX Standard / Mitel / herhangi SIP-compliant) VoiceRuntime'a peer/trunk olarak register
+- [ ] Q dış telefondan PBX'in DID numarasını arar → INVITE VoiceRuntime'a düşer
+- [ ] 5sn KVKK consent + bot Türkçe dialog + DTMF "9" opt-out test + REFER ile insan transfer test
+- [ ] Latency: SIP INVITE → bot first byte <2sn p95
+- [ ] Codec G.711 µ-law üzerinden geçerli olmalı (fallback path)
+
+**Exit:** AC-2..AC-9 PASS + Codex iter ≤ 3 per chunk + deploy + 1 tenant SIP smoke + Mod B = production-ready
 
 ### F3 — WhatsApp Calling + Multi-tenant (2 hafta)
 - [ ] Plan JSON: `arch/plans/20260624-feat-vfb-f3-wa-calling.json`
