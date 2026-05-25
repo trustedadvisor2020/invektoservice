@@ -21,17 +21,16 @@
 | 8. `/voice-poc.html` static serve 200 (2087 bytes) | OK |
 | 9. Backend Jwt cross-service token validation pattern | Issuer/Audience/SecretKey aynı → tenant=0 JWT VoiceRuntime'da geçerli |
 
-**Manuel adımlar Q yapacak (prod URL açılması için):**
-1. DNS A record: `voice.invekto.com` → server public IP
-2. TLS cert: voice.invekto.com (Cloudflare proxy veya IIS Win-ACME)
-3. Reverse proxy: voice.invekto.com → `localhost:7115` (**WebSocket upgrade pass-through KRİTİK** — `/ws/voice/microphone` WS endpoint, `Connection: upgrade` + `Upgrade: websocket` headers proxy edilmeli; IIS ARR/URL Rewrite ya da Cloudflare WS standart pass-through)
-4. NSSM env'e gerçek OPENAI_API_KEY:
-   ```powershell
-   C:\Invekto\nssm.exe set InvektoVoiceRuntime AppEnvironmentExtra "ASPNETCORE_ENVIRONMENT=Production`r`nOPENAI_API_KEY=sk-..."
-   Restart-Service InvektoVoiceRuntime
-   # /ready 200 ok beklenir (degraded değil)
-   ```
-5. (Opsiyonel) Dashboard'a "Voice Test" linki ekleme — JWT token query param: `https://voice.invekto.com/voice-poc.html?token={tenant=0 JWT}`
+**Manuel adımlar TAMAMLANDI (Q + otomasyon hibrit, 2026-05-25 18:25 UTC+3):**
+1. ✅ DNS A record: `voice.invekto.com → 213.238.172.214` (Q manuel tanımladı, dev PC'den DNS resolve OK)
+2. ✅ TLS cert: `C:\Invekto\certs\star.invekto.com.pfx` (mevcut wildcard cert, Backend ile aynı) — Kestrel HTTPS :8443 doğrudan kullanıyor
+3. ✅ Reverse proxy: **GEREK YOK** — Backend pattern (Kestrel direct TLS :443) sürdürüldü. VoiceRuntime kendi Kestrel'inde :8443 HTTPS dinliyor. Cloudflare proxy YOK (DNS-only, 8443 serbest), IIS/nginx YOK.
+4. ✅ OPENAI_API_KEY: Knowledge servisinin appsettings'inden alındı (sk-proj-... 164 char) → NSSM AppEnvironmentExtra'ya set + service restart → `/ready=ready` (degraded değil)
+5. ✅ Firewall: `New-NetFirewallRule` TCP :8443 inbound allow (Profile Any)
+6. ✅ Cors:AllowedOrigins port-aware: `["https://voice.invekto.com", "https://voice.invekto.com:8443", "https://app.invekto.com"]` (WS Origin gate match)
+7. ✅ Public test (dev PC → voice.invekto.com:8443): TCP open + `/health` ok + `/voice-poc.html` 200/2087 bytes
+
+**Public URL:** `https://voice.invekto.com:8443/voice-poc.html?token={tenant=0 JWT}` — JWT token Dashboard login'inden alınır (cookie veya localStorage). Q DevTools ile alıp URL'e ekleyerek test eder, ya da Dashboard'a "Voice Test" linki eklemek sonraki paket.
 
 ## Karar Trail (Q interview, 2026-05-17)
 

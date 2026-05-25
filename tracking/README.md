@@ -98,7 +98,7 @@
 | Marketing | 7112 | Implemented | PKT-6C2 |
 | WebChat | 7113 | Implemented | WebChat |
 | VoiceAI | 7114 | Implemented | PKT-11 |
-| VoiceRuntime | 7115 | **Deployed (F0)** | FEAT-VFB F0 PoC — prod 2026-05-25 |
+| VoiceRuntime | 7115 (HTTP) + 8443 (HTTPS) | **Deployed (F0) PUBLIC** | FEAT-VFB F0 PoC — `https://voice.invekto.com:8443` 2026-05-25 |
 
 ## Strateji Gecmisi
 

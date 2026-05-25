@@ -27,12 +27,18 @@
 
 **13. servis prod'a katıldı (12 → 13):** InvektoVoiceRuntime :7115 NSSM Running. Diğer 12 servis HEALTHY etkilenmedi (additive deploy, Shared.dll değişmedi — VoiceRuntime kendi published copy'sini kullanıyor).
 
-**Manuel adımlar Q sonrası (URL açılması için):**
-- DNS A record `voice.invekto.com` → server IP
-- TLS cert (Cloudflare proxy veya IIS Win-ACME)
-- Reverse proxy WebSocket pass-through (Connection: upgrade + Upgrade: websocket headers — **WS endpoint `/ws/voice/microphone` proxy'lenmeli**)
-- `nssm set InvektoVoiceRuntime AppEnvironmentExtra "ASPNETCORE_ENVIRONMENT=Production`r`nOPENAI_API_KEY=sk-..."` + Restart-Service
-- (Ops) Dashboard "Voice Test" linki → `https://voice.invekto.com/voice-poc.html?token={tenant=0 JWT}`
+**Manuel adımlar Q sonrası (URL açılması için):** ~~planlanmıştı~~ **TAMAMLANDI hibrit (Q+otomasyon)** 18:25 UTC+3:
+- ✅ DNS: `voice.invekto.com → 213.238.172.214` (Q tanımladı, dev PC resolve OK)
+- ✅ TLS cert: `C:\Invekto\certs\star.invekto.com.pfx` (Backend ile aynı wildcard, password=`1`)
+- ✅ Reverse proxy GEREK YOK: Backend pattern sürdürüldü → VoiceRuntime kendi Kestrel'inde :8443 HTTPS direct (Cloudflare proxy YOK = DNS-only, IIS YOK, nginx YOK)
+- ✅ OPENAI_API_KEY: Knowledge servisinin appsettings.Production.json'undan kopyalandı (sk-proj-... 164 char) → NSSM AppEnvironmentExtra'ya set + restart → `/ready=ready`
+- ✅ Firewall TCP :8443 inbound allow (`New-NetFirewallRule -DisplayName 'Invekto VoiceRuntime HTTPS 8443' -Profile Any`)
+- ✅ Cors port-aware fix: `["https://voice.invekto.com", "https://voice.invekto.com:8443", "https://app.invekto.com"]`
+- ✅ Public test dev PC → voice.invekto.com:8443: TCP open + `/health` ok + `/voice-poc.html` 200/2087 bytes
+
+**Public URL:** `https://voice.invekto.com:8443/voice-poc.html?token={tenant=0 JWT}` — Q DevTools'tan Dashboard JWT alıp URL'e ekler. Dashboard'a "Voice Test" linki opsiyonel sonraki paket.
+
+**Kestrel HTTPS config eklendi (server-side appsettings.Production.json):** `Kestrel: { Certificate: { Path: 'C:\\Invekto\\certs\\star.invekto.com.pfx', Password: '1' }, HttpsPort: 8443 }`. Program.cs:32-36 zaten bu config'i destekliyordu (F0 kod review b78e8126 zaten review edilmişti).
 
 **Tracking dosyaları güncellendi:** tracking/README.md servis tablo satırı (Planned → Deployed F0), FEAT-VFB satırı (DONE+COMMITTED → DONE+COMMITTED+PROD-DEPLOYED); tracking/feat-vfb-voice-flow-builder.md yeni "F0 Production Deploy" section 9 adımlık tablo + manuel adımlar (DNS+cert+reverse proxy+OPENAI_API_KEY+optional Dashboard link).
 
