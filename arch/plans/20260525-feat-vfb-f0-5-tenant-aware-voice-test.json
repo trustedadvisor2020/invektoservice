@@ -120,5 +120,9 @@
     { "category": "UX", "user_pain": "Dashboard'tan Voice Test açılıyor ama her seferinde tenant + flow seçimi tekrar etmek demo akışını yavaşlatıyor — özellikle Q aynı müşteriyi 5 senaryo ile test ediyorsa.", "suggestion": "Tenant + flow seçimini localStorage'a yaz, sayfa açıldığında son seçim auto-fill. 'Mikrofonu Başlat' tek tık'a düşer.", "aha_moment": "Q ikinci açışta dropdown'lar dolu, 1sn'de mikrofon başlatır — 'demo akışım kesintisiz' rahatlığı." },
     { "category": "SUPPORT", "user_pain": "Tool call'ları görünmüyor — 'Bot neden bunu söyledi?' sorusuna cevap için Q ham log'lara bakmak zorunda.", "suggestion": "Browser HUD'a tool call rozeti: 'search_knowledge_base(saç ekimi dinlenme) → 3 sonuç, 420ms'. Transcript yanında inline gözükür.", "aha_moment": "Q konuşma sırasında 'işte bu noktada KB sorgusu attı' diye gerçek zamanlı görür — debug + sales pitch için altın." }
   ],
-  "verdict": { "status": null, "iteration": 0 }
+  "verdict": { "status": null, "iteration": 0 },
+  "status_log": [
+    { "ts": "2026-05-25T20:25:00+03:00", "chunk": "A", "status": "DONE", "commit_sha": "65b49afe", "codex_verdict": "PASS", "codex_iterations": 3 },
+    { "ts": "2026-05-26T10:30:00+03:00", "chunk": "B", "status": "DONE", "commit_sha": "856e3bd7", "codex_verdict": "PASS", "codex_iterations": 3, "notes": "iter 0 FAIL (CQ1/2/5/6/8/9/12) -> iter 1 fix (typed catches + Task.WhenAll observe + logger + JsonPropertyName) -> iter 2 FAIL policy (MEDIUM min 3 VQ + Auth/Data/Lifecycle) -> iter 3 PASS chunk-scoped VQ" }
+  ]
 }
