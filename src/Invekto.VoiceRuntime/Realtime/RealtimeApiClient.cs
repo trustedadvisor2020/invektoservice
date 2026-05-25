@@ -18,8 +18,8 @@ namespace Invekto.VoiceRuntime.Realtime;
 /// </summary>
 public sealed class RealtimeApiClient : IAsyncDisposable
 {
-    private const string RealtimeBetaHeader = "openai-beta";
-    private const string RealtimeBetaValue = "realtime=v1";
+    // OpenAI Realtime API moved to GA on 2026-05-07; the OpenAI-Beta header is no longer
+    // sent. Authorization Bearer is the only required header now.
 
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
@@ -67,7 +67,7 @@ public sealed class RealtimeApiClient : IAsyncDisposable
 
         _ws = new ClientWebSocket();
         _ws.Options.SetRequestHeader("Authorization", $"Bearer {_apiKey}");
-        _ws.Options.SetRequestHeader(RealtimeBetaHeader, RealtimeBetaValue);
+        // GA migration (2026-05-07): no OpenAI-Beta header — Authorization Bearer only.
 
         try
         {
@@ -238,11 +238,15 @@ public sealed class RealtimeApiClient : IAsyncDisposable
                     var se = JsonSerializer.Deserialize<InputAudioBufferSpeechStoppedEvent>(json, JsonOpts);
                     if (se is not null) OnSpeechStopped?.Invoke(se);
                     break;
-                case "response.audio.delta":
+                // GA migration: response.audio.delta → response.output_audio.delta
+                //               response.audio_transcript.delta → response.output_audio_transcript.delta
+                case "response.output_audio.delta":
+                case "response.audio.delta": // legacy fallback (older preview not yet disabled)
                     var ad = JsonSerializer.Deserialize<ResponseAudioDeltaEvent>(json, JsonOpts);
                     if (ad is not null) OnAudioDelta?.Invoke(ad);
                     break;
-                case "response.audio_transcript.delta":
+                case "response.output_audio_transcript.delta":
+                case "response.audio_transcript.delta": // legacy fallback
                     var atd = JsonSerializer.Deserialize<ResponseAudioTranscriptDeltaEvent>(json, JsonOpts);
                     if (atd is not null) OnAudioTranscriptDelta?.Invoke(atd);
                     break;

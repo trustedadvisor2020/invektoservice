@@ -15,7 +15,9 @@ public sealed class RealtimeSessionFactory
     public RealtimeSessionFactory(IConfiguration config)
     {
         Endpoint = config["OpenAI:RealtimeEndpoint"] ?? "wss://api.openai.com/v1/realtime";
-        Model = config["OpenAI:RealtimeModel"] ?? "gpt-4o-realtime-preview";
+        // GA migration (2026-05-07): gpt-4o-realtime-preview → gpt-realtime (GA production model).
+        // Cheaper alternative: gpt-realtime-mini. Override via appsettings OpenAI:RealtimeModel.
+        Model = config["OpenAI:RealtimeModel"] ?? "gpt-realtime";
 
         // AD-20: API key environment-variable-ONLY policy. No appsettings fallback (plaintext
         // key in config files is FORBIDDEN at every stage — F0/F2/F3/F4). Empty key is allowed
@@ -28,7 +30,7 @@ public sealed class RealtimeSessionFactory
         var inFmt = config["OpenAI:InputAudioFormat"] ?? "pcm16";
         var outFmt = config["OpenAI:OutputAudioFormat"] ?? "pcm16";
         var instructions = config["OpenAI:Instructions"]
-            ?? "Sen Invekto'nun Türkçe sesli AI asistanısın. Kısa, doğal, samimi konuşursun.";
+            ?? "Sen Invekto'nun TÜRKÇE sesli AI asistanısın. ÇOK ÖNEMLİ: HER ZAMAN ve SADECE Türkçe konuş — başka hiçbir dilde (İngilizce, Korece, Almanca, vb.) cevap verme, kullanıcı başka dilde konuşsa bile Türkçe yanıtla. Kısa, doğal, samimi konuş. Anlamadığında 'Tekrar eder misiniz?' de.";
 
         var turnDetType = config["OpenAI:TurnDetection:Type"] ?? "semantic_vad";
         var eagerness = config["OpenAI:TurnDetection:Eagerness"];
@@ -48,16 +50,23 @@ public sealed class RealtimeSessionFactory
                 CreateResponse: true)
         };
 
+        // GA migration: voice/format/transcription/turn_detection all live under session.audio.{input,output}
         DefaultConfig = new SessionConfig(
-            Modalities: new[] { "audio", "text" },
+            Type: "realtime",
+            Model: Model,
             Instructions: instructions,
-            Voice: voice,
-            InputAudioFormat: inFmt,
-            OutputAudioFormat: outFmt,
-            InputAudioTranscription: new InputAudioTranscriptionConfig("whisper-1"),
-            TurnDetection: turnDetection,
-            Temperature: 0.8,
-            MaxResponseOutputTokens: "inf"
+            Audio: new SessionAudioConfig(
+                Input: new SessionAudioInputConfig(
+                    Format: inFmt,
+                    // Whisper language=tr hard hint — Türkçe kısa cümlede auto-detect Korece/Çince/İspanyolca sanmasını önler.
+                    Transcription: new InputAudioTranscriptionConfig("whisper-1", Language: "tr"),
+                    TurnDetection: turnDetection
+                ),
+                Output: new SessionAudioOutputConfig(
+                    Format: outFmt,
+                    Voice: voice
+                )
+            )
         );
     }
 }

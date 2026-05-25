@@ -25,19 +25,38 @@ public sealed record SessionUpdateEvent(
 }
 
 public sealed record SessionConfig(
-    [property: JsonPropertyName("modalities")] string[] Modalities,
+    // GA migration (2026-05-07):
+    // - "type" required = "realtime" (speech-to-speech) or "transcription"
+    // - "modalities" REMOVED (GA auto-emits audio+text for realtime sessions)
+    // - "voice"/"input_audio_format"/"output_audio_format"/"input_audio_transcription"/"turn_detection"
+    //   all moved UNDER session.audio.{input,output} nested objects
+    // - "temperature" + "max_response_output_tokens" REMOVED from session level
+    //   (GA: pass these per-response via response.create event if needed; F0 default behavior)
+    [property: JsonPropertyName("type")] string Type,
+    [property: JsonPropertyName("model")] string Model,
     [property: JsonPropertyName("instructions")] string Instructions,
-    [property: JsonPropertyName("voice")] string Voice,
-    [property: JsonPropertyName("input_audio_format")] string InputAudioFormat,
-    [property: JsonPropertyName("output_audio_format")] string OutputAudioFormat,
-    [property: JsonPropertyName("input_audio_transcription")] InputAudioTranscriptionConfig? InputAudioTranscription,
-    [property: JsonPropertyName("turn_detection")] TurnDetectionConfig? TurnDetection,
-    [property: JsonPropertyName("temperature")] double Temperature = 0.8,
-    [property: JsonPropertyName("max_response_output_tokens")] string MaxResponseOutputTokens = "inf"
+    [property: JsonPropertyName("audio")] SessionAudioConfig Audio
+);
+
+public sealed record SessionAudioConfig(
+    [property: JsonPropertyName("input")] SessionAudioInputConfig Input,
+    [property: JsonPropertyName("output")] SessionAudioOutputConfig Output
+);
+
+public sealed record SessionAudioInputConfig(
+    [property: JsonPropertyName("format")] string Format,
+    [property: JsonPropertyName("transcription")] InputAudioTranscriptionConfig? Transcription,
+    [property: JsonPropertyName("turn_detection")] TurnDetectionConfig? TurnDetection
+);
+
+public sealed record SessionAudioOutputConfig(
+    [property: JsonPropertyName("format")] string Format,
+    [property: JsonPropertyName("voice")] string Voice
 );
 
 public sealed record InputAudioTranscriptionConfig(
-    [property: JsonPropertyName("model")] string Model = "whisper-1"
+    [property: JsonPropertyName("model")] string Model = "whisper-1",
+    [property: JsonPropertyName("language")] string? Language = null
 );
 
 public sealed record TurnDetectionConfig(
