@@ -61,6 +61,30 @@
     </footer>
   </main>
 
+  <script>
+    // Dashboard 'Voice Test' bridge: Dashboard sol nav linki localStorage.access_token'i
+    // `?token=<JWT>` query param'i olarak ekleyerek bu sayfayi aciyor. voice-poc.js
+    // production'da window.INVEKTO_VOICE_JWT global'ini bekledigi icin token'i o global'e
+    // kopyaliyoruz. Token okunduktan SONRA URL'den HEMEN temizliyoruz
+    // (history.replaceState) — boylece:
+    //   * Adres cubugunda gorunmez (screenshot/screen-share leak engellenir)
+    //   * Browser history'e yazilmaz (back/forward + autocomplete leak engellenir)
+    //   * Bookmark'a alinmaz
+    //   * Sayfa yenilenirse token URL'de olmadigi icin re-injection olmaz (Dashboard'a donus)
+    // Access log'a token TLS-encrypted dusebilir; bu kabul edilebilir (server-side trust boundary).
+    // NOT: Hangfire'in `/ops/hangfire-login` backend cookie bridge'inden FARKLI — bu sayfa
+    // static, backend redirect yok. F0 PoC scope; F4 backlog item: backend bridge pattern.
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var tok = params.get('token');
+      if (tok && !window.INVEKTO_VOICE_JWT) {
+        window.INVEKTO_VOICE_JWT = tok;
+        params.delete('token');
+        var cleanUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash;
+        window.history.replaceState(null, '', cleanUrl);
+      }
+    })();
+  </script>
   <script type="module" src="voice-poc.js"></script>
 </body>
 </html>

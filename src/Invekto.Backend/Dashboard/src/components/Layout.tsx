@@ -30,6 +30,7 @@ import {
   Key,
   Clock,
   Kanban,
+  Mic,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { InvektoLogo } from './ui/InvektoLogo';
@@ -79,6 +80,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { path: '/messages',        label: 'Mesajlar',         icon: MessageSquare, opsOnly: true },
   { path: '/logs',            label: 'Loglar',            icon: FileText,     opsOnly: true },
   { path: 'external:hangfire', label: 'Hangfire',         icon: Clock,        opsOnly: true },
+  { path: 'external:voice-test', label: 'Voice Test',     icon: Mic,          opsOnly: true },
   // — Shared —
   { path: '/onboarding',       label: 'Onboarding',       tenantLabel: 'Kurulum Sihirbazi', icon: Rocket },
   { path: '/onboarding-guide', label: 'Onboarding Rehberi', icon: GraduationCap, opsOnly: true },
@@ -138,6 +140,35 @@ export function Layout({ children }: LayoutProps) {
         ? 'nav-item-active'
         : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
     );
+
+    // FEAT-VFB F0: Voice Test external link. NOT a backend cookie bridge like Hangfire
+    // (which exchanges JWT for an HttpOnly cookie via /ops/hangfire-login). Voice Test
+    // is a static page on a different origin (voice.invekto.com:8443), so a same-origin
+    // cookie bridge is not applicable. Instead the JWT is passed once in ?token=... query;
+    // voice-poc.html reads it into window.INVEKTO_VOICE_JWT and IMMEDIATELY clears the
+    // URL (history.replaceState) so the token does NOT linger in the address bar,
+    // browser history, or bookmarks. Token still lands in TLS-encrypted server access
+    // logs — acceptable trade-off for an F0 ops-only tool. F4 backlog: replace with
+    // backend cookie bridge pattern if Voice Test promoted beyond F0 PoC.
+    if (item.path === 'external:voice-test') {
+      return (
+        <button
+          key={item.path}
+          type="button"
+          title={collapsed ? item.label : undefined}
+          onClick={() => {
+            const t = localStorage.getItem('access_token');
+            if (!t) { alert('Oturum bulunamadi (JWT yok). Dashboard\'a login olun.'); return; }
+            const url = 'https://voice.invekto.com:8443/voice-poc.html?token=' + encodeURIComponent(t);
+            window.open(url, '_blank', 'noopener');
+          }}
+          className={cn(commonClasses, 'w-full text-left cursor-pointer bg-transparent')}
+        >
+          <Icon className={cn('w-5 h-5 flex-shrink-0', 'text-slate-500 group-hover:text-slate-900')} />
+          {!collapsed && <span className="truncate">{item.label}</span>}
+        </button>
+      );
+    }
 
     // G7: Hangfire external link — cookie bridge via /ops/hangfire-login.
     // Uses current access_token from localStorage; backend validates (tenant_id=0

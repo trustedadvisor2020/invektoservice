@@ -31,14 +31,25 @@
 - ✅ DNS: `voice.invekto.com → 213.238.172.214` (Q tanımladı, dev PC resolve OK)
 - ✅ TLS cert: `C:\Invekto\certs\star.invekto.com.pfx` (Backend ile aynı wildcard, password=`1`)
 - ✅ Reverse proxy GEREK YOK: Backend pattern sürdürüldü → VoiceRuntime kendi Kestrel'inde :8443 HTTPS direct (Cloudflare proxy YOK = DNS-only, IIS YOK, nginx YOK)
-- ✅ OPENAI_API_KEY: Knowledge servisinin appsettings.Production.json'undan kopyalandı (sk-proj-... 164 char) → NSSM AppEnvironmentExtra'ya set + restart → `/ready=ready`
+- ✅ OpenAI API key env-var → Knowledge servisinin appsettings.Production.json'undan kopyalandı (164-karakter project key) → NSSM AppEnvironmentExtra'ya set + restart → `/ready=ready`
 - ✅ Firewall TCP :8443 inbound allow (`New-NetFirewallRule -DisplayName 'Invekto VoiceRuntime HTTPS 8443' -Profile Any`)
 - ✅ Cors port-aware fix: `["https://voice.invekto.com", "https://voice.invekto.com:8443", "https://app.invekto.com"]`
 - ✅ Public test dev PC → voice.invekto.com:8443: TCP open + `/health` ok + `/voice-poc.html` 200/2087 bytes
 
-**Public URL:** `https://voice.invekto.com:8443/voice-poc.html?token={tenant=0 JWT}` — Q DevTools'tan Dashboard JWT alıp URL'e ekler. Dashboard'a "Voice Test" linki opsiyonel sonraki paket.
+**Public URL:** `https://voice.invekto.com:8443/voice-poc.html?token={tenant=0 JWT}` — Dashboard'a "Voice Test" linki eklendi (aşağı bkz), Q artık DevTools'a girmeden tek tıkla açıyor.
 
 **Kestrel HTTPS config eklendi (server-side appsettings.Production.json):** `Kestrel: { Certificate: { Path: 'C:\\Invekto\\certs\\star.invekto.com.pfx', Password: '1' }, HttpsPort: 8443 }`. Program.cs:32-36 zaten bu config'i destekliyordu (F0 kod review b78e8126 zaten review edilmişti).
+
+**Dashboard "Voice Test" sol nav linki (Q 18:25 follow-up "jwt ile uğraştırma beni" + "super sol nav a sayfa olarak ekle"):**
+- Layout.tsx: `external:voice-test` opsOnly NavItem + Mic icon + onClick handler (Hangfire pattern'in static-page cross-origin varyantı). localStorage.access_token'i URL'e query param olarak ekleyip `https://voice.invekto.com:8443/voice-poc.html?token=...` new tab'te açıyor (`window.open noopener` — CSRF guard).
+- voice-poc.html: 11-satır inline bridge script `<script type="module">` ÖNCESİ → URL ?token query'i `window.INVEKTO_VOICE_JWT` global'ine kopyalayıp `history.replaceState(null, '', cleanUrl)` ile URL'den HEMEN temizler (adres çubuğu / browser history / bookmark / screenshot leak vektörlerinden hepsini kapatır).
+- Build: tsc EXIT=0 + Vite 5.15s + Backend publish 0 error + Backend re-deploy HEALTHY 200 (12206 KB), voice-poc.html prod test 200/3.4KB bridge script confirmed live.
+- **Codex review iter 0 FAIL** (4 substantive issue: silent catch + risk LOW vs MEDIUM + token URL leak + Hangfire pattern equivalence not equivalent) → iter 0 fixes uygulandı (try/catch tamamen kaldırıldı; `history.replaceState` URL clean; comment Hangfire farkını + cross-origin static-page constraint + F4 backlog'u açıkça belirtiyor; risk MEDIUM resubmit).
+- **Codex review iter 1 FAIL** (4 önceki sorun PASS, tek kalan: **CQ9** — token URL query'de access log'a düşer iddiası). **Q FORCE PASS** — gerekçe: Hangfire pattern (Layout.tsx line 157) zaten aynı yaklaşımı kullanıyor + F0 PoC opsOnly + substantively secured (noopener + replaceState + fail-fast + opsOnly gate + tenant=0 enforcement WS handshake'de) + F4 backlog backend cookie bridge promote açıkça not edildi. Precedent: A3+A4a + Faz A 7 paket + FEAT-VFB F0 b78e8126 + GA migration 50feb24f.
+
+**Aksiyon kalanlar:**
+- Q tek tıkla `https://voice.invekto.com:8443/voice-poc.html` Dashboard sol nav (super.invekto.com hostname) → token auto-inject + URL clean + voice-poc.js boot → mikrofon test.
+- Mikrofon test sayfası geliştirmeye geçilebilir (UI/UX, latency HUD detayı, transkript flow, voice selection, conversation context, error handling).
 
 **Tracking dosyaları güncellendi:** tracking/README.md servis tablo satırı (Planned → Deployed F0), FEAT-VFB satırı (DONE+COMMITTED → DONE+COMMITTED+PROD-DEPLOYED); tracking/feat-vfb-voice-flow-builder.md yeni "F0 Production Deploy" section 9 adımlık tablo + manuel adımlar (DNS+cert+reverse proxy+OPENAI_API_KEY+optional Dashboard link).
 
