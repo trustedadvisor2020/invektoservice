@@ -7,6 +7,51 @@
 
 ## Last Update
 
+- **Date:** 2026-05-25 20:30 — **Session: FEAT-VFB F0.5 Chunk A — tenant-aware Voice Test altyapı + F2 SIP scope kararı.** Q tetiklediler: (1) "mikrofon test sayfasına tenant + flow dropdown ekle, sanki arama gelmiş gibi KB sorgu yapsın, hepsini planla" (F0.5 ihtiyaç) + (2) "hazır başlamışken sip endpoint ile bağlantıyı da planla, asterisk yok, hep sip üzerinden gelip gidecek" (F2 scope override).
+
+**Sistem haritalama (3 paralel Explore agent):**
+- VoiceRuntime mevcut: tenant=0 hard-coded, function calling YOK, instructions appsettings'ten hard-coded, HttpClient/IHttpClientFactory YOK
+- Backend `/api/ops/tenants` ops Basic Auth VEYA superadmin JWT (Dashboard direct fetch)
+- Automation `/api/v1/automation/flows/{tid}` tenant-bound JWT (service token mint gerek)
+- Knowledge `/api/v1/knowledge/{tid}/search` tenant-bound JWT (service token mint gerek), pgvector + keyword merge
+- Mevcut pattern: AiFaqHandler `JwtGenerator.GenerateServiceToken(ctx.TenantId)` 5dk expire → VoiceRuntime aynı pattern
+- OpenAI Realtime GA: `session.update.tools[]` + `response.function_call_arguments.delta/done` + `conversation.item.create function_call_output`
+
+**Plan onaylandı:** `arch/plans/20260525-feat-vfb-f0-5-tenant-aware-voice-test.json` (5.1 schema MEDIUM risk, 6 AC + 6 verification + 5 AHA + 5 AD, 5-chunk). Q AskUserQuestion ile 4 karar: tenant=0 impersonation + generic template + tek tool + /auto workflow.
+
+**Chunk A (commit `65b49afe`) — Codex iter 3 PASS (12/12 CQ + 5/5 CoVe + 0 blocking):**
+- `arch/errors.md`: INV-VR-011..020 yaml entries (10 yeni error code)
+- `src/Invekto.Shared/Constants/ErrorCodes.cs`: 10 yeni const + reserved comment
+- `src/Invekto.VoiceRuntime/Program.cs`: JwtGenerator DI + 3 named HttpClient (ServiceConstants ports: Backend=5000, Automation=7108, Knowledge=7104)
+- `src/Invekto.VoiceRuntime/Endpoints/VoicePocEndpoints.cs`: caller=0 impersonation gate (INV-VR-020) + dual-mode handshake (F0 backward-compat + F0.5 strict ContainsKey-based) + 3-katmanlı tenant_id validation (parse INV-VR-011 / zero INV-VR-013 / negative INV-VR-011) + flow_id INV-VR-012 + ProviderMetadata mode marker
+- `arch/specs/voice-flow-builder.md`: AD-21..28 yeni 8 mimari karar
+- `tracking/feat-vfb-voice-flow-builder.md`: F0.5 5-chunk checklist + F2 SIP UA SIPSorcery section
+- Plan JSON yeni
+
+**Codex iter trail (4 iter, son PASS):**
+- iter 0 FAIL 4 issue: Backend port :5000 vs :7100 yanlışı (ServiceConstants source-of-truth ihmali) + tenant_id=0 INV-VR-013 unreachable (`<=0` kombine check)
+- iter 1 FAIL 4 issue: WS endpoint contract breaking chunked workflow (browser sync yok)
+- iter 2 FAIL 8 issue: Mode detection value-based (`?tenant_id=` empty bypass)
+- iter 3 PASS: ServiceConstants ports + 3-katmanlı validation + dual-mode (F0 backward-compat) + ContainsKey presence-based detection
+
+**F2 SIP scope karari (yeni AD-26/27/28):**
+- AD-26: Asterisk YOK → Mod A AudioSocket İPTAL (Türkiye pazar varsayımı geçersiz)
+- AD-27: F2 ana scope = Mod B Direct SIP UA (SIPSorcery .NET 8 NuGet BSD-3, ~5.6K star)
+- AD-28: Mod C Toniva (gRPC proto FROZEN) opsiyonel/Q internal, F2 zorunlu DEĞİL
+
+Spec F2 satırı + tracking F2 section yenilendi: SIPSorcery NuGet + RTP UDP audio + DTMF RFC 4733 + SIP REFER + codec nego (Opus 8k tercih G.711 fallback) + NAT keepalive + Windows Firewall port 10000-20000.
+
+**Aksiyon kalanlar (yeni session):**
+- Chunk B: TenantInfoClient + FlowInfoClient + KnowledgeSearchClient + InstructionsBuilder + VoiceTestContext DTO
+- Chunk C: Function calling (RealtimeMessageTypes function_call events + RealtimeApiClient dispatch + ToolExecutor + SearchKnowledgeBaseTool)
+- Chunk D: Browser voice-poc.html dropdownlar + WS handshake update
+- Chunk E: CORS allowed origins (Knowledge/Automation/Backend) + smoke + deploy
+- F2 SIP UA plan JSON Chunk E sonrası (`arch/plans/20260601-feat-vfb-f2-pbx-live-mvp.json`, yeni)
+
+**PREV-Date:** 2026-05-25 18:25 — bkz aşağıda (F0.5 Dashboard "Voice Test" sol nav + prod URL aktivasyonu).
+
+---
+
 - **Date:** 2026-05-25 18:05 — **Session: FEAT-VFB F0 production deploy** (AD-20 override). Q "mikrofon test sayfası geliştirilecek, önce prod'a deploy" tetikledi. Interview 3 karar: URL=`voice.invekto.com` (yeni subdomain dedicated, TLS terminasyonu Q manuel), erişim=JWT-gated (tenant=0 token URL'e ekli), API key=NSSM AppEnvironmentExtra (AD-20 canonical, env-var-ONLY).
 
 **9 otomatik adım (hepsi PASS):**
