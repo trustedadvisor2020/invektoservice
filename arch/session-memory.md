@@ -7,7 +7,36 @@
 
 ## Last Update
 
-- **Date:** 2026-05-26 10:30 — **Session: FEAT-VFB F0.5 Chunk B — VoiceRuntime cross-service HTTP clients + server-side context fetch.** Q yeni session başlangıcında "/auto" workflow aktif. Chunk A foundation üzerine 3 cross-service client + InstructionsBuilder + VoiceTestContext DTO + VoicePocEndpoints post-accept fetch integration tamamlandı.
+- **Date:** 2026-05-26 14:30 — **Session: FEAT-VFB F0.5 Chunk C — Realtime function calling + ToolExecutor + search_knowledge_base tool.** Q yeni session başlangıcında "/auto" workflow aktif. Chunk B context fetch üzerine model artık mid-conversation tenant'ın knowledge base'ini çağırabiliyor.
+
+**Chunk C (commit `afe596f2`) — Codex iter 2 Q FORCE PASS (11/12 CQ + 3/4 CoVe; CQ10 HUD truth-correlation pedantic residual):**
+- 3 NEW (`src/Invekto.VoiceRuntime/Tools/`): `IVoiceTool.cs` (contract + ToolExecutionResult), `SearchKnowledgeBaseTool.cs` (KnowledgeSearchClient wrap + JSON Schema query+top_k + AD-30 Türkçe empty-results hint), `ToolExecutor.cs` (IDisposable + Interlocked guard + ConcurrentDictionary<call_id,StringBuilder> AD-31 buffer cap 8 + sessionCt.Register cleanup + 5sn linked CTS timeout + 5 explicit typed catches + DefenseFallbackAsync + CompleteCallAsync realtimeSendOk gate)
+- 5 MOD: `RealtimeMessageTypes.cs` (ToolDefinition + SessionConfig.Tools optional + 4 function_call event records + ConversationItemCreate + ResponseCreate), `RealtimeApiClient.cs` (OnFunctionCallArguments{Delta,Done} events + SendFunctionCallOutputAsync + SendResponseCreateAsync + 4 dispatcher cases), `VoicePocEndpoints.cs` (SearchKnowledgeBaseTool DI + per-call SessionConfig F0.5 build with InstructionsBuilder + tools[] + WireRealtimeHandlers returns ToolExecutor? + finally toolExecutor?.Dispose() + Task.Run OCE-when-session-cancel filter), `Program.cs` (SearchKnowledgeBaseTool Transient DI), `ErrorCodes.cs` (INV-VR-023 VoiceRuntimeUnknownToolName)
+- 3 contract doc: `arch/errors.md` (INV-VR-023 yaml + Türkçe user_message), `arch/contracts/voice/openai-realtime-session.json` (full GA shape refresh + tools[0] schema + _function_call_pipeline section 5sn budget + 4 error paths), `arch/contracts/voice/voice-runtime-ws.md` (tool_call_started+completed control frames ok+error examples + 120 char privacy note + F4 ack-gating backlog honesty note + INV-VR-023 reserved)
+- Plan: chunk_progress.C → DONE + status_log iter 0/1/2 trail + AD-29/30/31 (Q AskUserQuestion 2026-05-26)
+
+**Codex iter trail (target ≤2, achieved):**
+- iter 0 FAIL 6CQ+3VQ: top_k FormatException uncaught + bare `catch (Exception)` + orphan buffer cleanup + args_preview 123 chars + HUD ordering reversed + missing INV codes mapping
+- iter 1 FAIL 4 fresh blockers: HUD-after-send-fail emitted misleading "completed" + `catch (Exception ex) when filter` still flagged as broad + CancellationTokenRegistration not disposed + OCE swallow without session-token filter
+- iter 2 11/12 CQ + 3/4 CoVe PASS. Sadece CQ10/VQ-PROCESS-C4 FAIL: HUD truth-correlation — Codex "browser saw completed iff model received function_call_output" istiyor ama `SendFunctionCallOutputAsync` = local `EnqueueEventAsync` (Chunk A+B same enqueue pattern). **Q FORCE PASS karari**: realtimeSendOk gate honestly LOCAL enqueue success'i yansıtıyor + F4 backlog ack-gated HUD'a not edildi (voice-runtime-ws.md "Honesty note" section).
+
+**Q kararları (AskUserQuestion 2026-05-26):**
+- AD-29: Detaylı 2-event HUD (started + completed); single completed yetersiz çünkü 3-5sn KB call'da rozet görünmez
+- AD-30: Bos results structured Türkçe fallback hint (hallucination guard — empty array model'i hallüsinasyona yönlendiriyor)
+- AD-31: ConcurrentDictionary<call_id, StringBuilder> buffer defense; max-1-in-flight intentional ama interleaved model bug'a karşı izole
+
+**4 yeni lesson (arch/lessons-learned.md):**
+1. Codex broad-catch strict interpretation: `catch (Exception ex) when (filter)` HALA broad sayılır. Explicit per-type catches gerekli (JsonException + InvalidOperationException + ArgumentException ayrı)
+2. CancellationTokenRegistration IDisposable hygiene: sessionCt.Register dönen handle explicit dispose gerek; class IDisposable yap + finally Dispose
+3. HUD/UI truth-correlation Codex expectation: local enqueue ≠ "delivered"; async messaging mimaride ACK-gated UI F4 backlog (Q FORCE PASS precedent gerek)
+4. TryGetInt32 vs GetInt32 for JSON int parsing: GetInt32 FormatException + OverflowException atar, TryGetInt32(out bool) safer
+
+**Aksiyon kalanlar:**
+- Chunk D: browser voice-poc.html + voice-poc.js tenant + flow dropdownlar (Dashboard JWT ile direct Backend `/api/ops/tenants` + Automation `/api/v1/flows/{tid}` fetch) + WS handshake update (?tenant_id&flow_id) + tool call HUD rozeti UI (tool_call_started "çalışıyor" + tool_call_completed "420ms · 3 sonuç")
+- Chunk E: CORS allowed origins (Knowledge/Automation/Backend Program.cs `voice.invekto.com:8443` ekle) + 4 servis redeploy + end-to-end smoke (Q tenant=Dent + flow seç → "saç ekimi dinlenme?" → bot KB'den cevap)
+- F2 SIP UA plan JSON Chunk E sonrası (`arch/plans/20260601-feat-vfb-f2-pbx-live-mvp.json`, yeni)
+
+**PREV-Date:** 2026-05-26 10:30 — **Session: FEAT-VFB F0.5 Chunk B — VoiceRuntime cross-service HTTP clients + server-side context fetch.** Q yeni session başlangıcında "/auto" workflow aktif. Chunk A foundation üzerine 3 cross-service client + InstructionsBuilder + VoiceTestContext DTO + VoicePocEndpoints post-accept fetch integration tamamlandı.
 
 **Chunk B (commit `856e3bd7`) — Codex iter 3 PASS (12/12 CQ + 4/4 CoVe):**
 - `src/Invekto.Shared/Contracts/Voice/VoiceTestContext.cs` (NEW) — additive Shared record (TargetTenantId + TenantName + Sector + FlowId + FlowName + CallerTenantId + ImpersonationMode)
