@@ -1,9 +1,37 @@
 # FEAT-VFB: Voice Flow Builder
 
-> **Slug:** feat-vfb | **Spec:** [SPEC-008](../arch/specs/voice-flow-builder.md) | **Mod:** ACTIVE-F0
-> **Versiyon:** v2.0 | **Olusturma:** 2026-05-17 | **Son Guncelleme:** 2026-05-23 (Q customer prospect interview, OQ resolved, F0 microphone-based PoC)
+> **Slug:** feat-vfb | **Spec:** [SPEC-008](../arch/specs/voice-flow-builder.md) | **Mod:** ACTIVE-F0 (PROD-DEPLOYED)
+> **Versiyon:** v2.0 | **Olusturma:** 2026-05-17 | **Son Guncelleme:** 2026-05-25 (F0 prod deploy — `InvektoVoiceRuntime` NSSM service Running on :7115, voice.invekto.com URL reverse proxy Q manuel adım)
 > **Risk:** HIGH | **Sure tahmini:** 7-9 hafta (F0-F4 toplam)
 > **Onkosul:** Faz A demo toparlama DONE (su an A6 son), Toniva-tarafi paralel work hazirligi (Q) → 2026-05-23: **Q karari F1 sonu Toniva C++ basla, F0 microphone-only**
+
+## F0 Production Deploy (2026-05-25 18:03 UTC+3)
+
+**AD-20 override:** F0 başlangıçta "sadece Q laptop'unda, F2'de NSSM register" olarak planlanmıştı. Q kararı 2026-05-25: müşteri demo + mikrofon test sayfası iteration için prod'a deploy. Otomatik 9 adım completed.
+
+| Adım | Sonuç |
+|------|-------|
+| 1. `dotnet publish -c Release` | 0 error / 5 warning (Opus obsolete + Shared async, F0-known) |
+| 2. Zip publish output (106.88 MB; silero_vad.onnx + Microsoft.ML.OnnxRuntime runtimes + Shared.dll + wwwroot voice-poc) | OK |
+| 3. Server folder: `C:\Invekto\VoiceRuntime\{current,previous,incoming}` | Created |
+| 4. Upload zip + Expand-Archive → current\ | OK; .exe + Models\silero_vad.onnx + wwwroot\voice-poc.html doğrulandı |
+| 5. `appsettings.Production.json` (Backend Jwt copy + Cors `voice.invekto.com` + `app.invekto.com` + ListenPort 7115) | OK; HasSecret=True Issuer=InvektoServis Audience=InvektoServis CorsCount=2 |
+| 6. NSSM install `InvektoVoiceRuntime` + AppDir + DisplayName + AppRotate + AppEnvironmentExtra=`ASPNETCORE_ENVIRONMENT=Production` | OK |
+| 7. Start-Service → Running; `/health` 200 ok; `/ready` 200 degraded (missing OPENAI_API_KEY, beklenen) | OK |
+| 8. `/voice-poc.html` static serve 200 (2087 bytes) | OK |
+| 9. Backend Jwt cross-service token validation pattern | Issuer/Audience/SecretKey aynı → tenant=0 JWT VoiceRuntime'da geçerli |
+
+**Manuel adımlar Q yapacak (prod URL açılması için):**
+1. DNS A record: `voice.invekto.com` → server public IP
+2. TLS cert: voice.invekto.com (Cloudflare proxy veya IIS Win-ACME)
+3. Reverse proxy: voice.invekto.com → `localhost:7115` (**WebSocket upgrade pass-through KRİTİK** — `/ws/voice/microphone` WS endpoint, `Connection: upgrade` + `Upgrade: websocket` headers proxy edilmeli; IIS ARR/URL Rewrite ya da Cloudflare WS standart pass-through)
+4. NSSM env'e gerçek OPENAI_API_KEY:
+   ```powershell
+   C:\Invekto\nssm.exe set InvektoVoiceRuntime AppEnvironmentExtra "ASPNETCORE_ENVIRONMENT=Production`r`nOPENAI_API_KEY=sk-..."
+   Restart-Service InvektoVoiceRuntime
+   # /ready 200 ok beklenir (degraded değil)
+   ```
+5. (Opsiyonel) Dashboard'a "Voice Test" linki ekleme — JWT token query param: `https://voice.invekto.com/voice-poc.html?token={tenant=0 JWT}`
 
 ## Karar Trail (Q interview, 2026-05-17)
 

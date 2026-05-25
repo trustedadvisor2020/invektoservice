@@ -7,6 +7,47 @@
 
 ## Last Update
 
+- **Date:** 2026-05-25 18:05 — **Session: FEAT-VFB F0 production deploy** (AD-20 override). Q "mikrofon test sayfası geliştirilecek, önce prod'a deploy" tetikledi. Interview 3 karar: URL=`voice.invekto.com` (yeni subdomain dedicated, TLS terminasyonu Q manuel), erişim=JWT-gated (tenant=0 token URL'e ekli), API key=NSSM AppEnvironmentExtra (AD-20 canonical, env-var-ONLY).
+
+**9 otomatik adım (hepsi PASS):**
+1. `dotnet publish src/Invekto.VoiceRuntime -c Release -o deploy_output/VoiceRuntime-fresh` → 0 error, 5 warning (Opus obsolete + Shared async F0-known, .NET 8 normal).
+2. `Compress-Archive` → `deploy_output/VoiceRuntime-fresh.zip` 106.88 MB (silero_vad.onnx 2.3MB + Microsoft.ML.OnnxRuntime runtimes ~50MB + Concentus + Shared.dll + wwwroot voice-poc).
+3. Server: `New-Item C:\Invekto\VoiceRuntime\{current,previous,incoming}` (NSSM rotation pattern Backend ile aynı).
+4. MCP `server-upload` zip → `C:\Invekto\VoiceRuntime\incoming\VoiceRuntime-fresh.zip` (109443 KB).
+5. `Expand-Archive` zip → current\; doğrulama: `Invekto.VoiceRuntime.exe` + `Models\silero_vad.onnx` + `wwwroot\voice-poc.html` hepsi True.
+6. `appsettings.Production.json` server-side oluşturuldu (`[IO.File]::WriteAllText()` UTF-8 no-BOM, lessons-learned `deploy_config_backup` pattern):
+   - **Jwt:** Backend `appsettings.Production.json`'dan kopyalandı (SecretKey 33 char + Issuer=`InvektoServis` + Audience=`InvektoServis` + ClockSkewSeconds=60) → cross-service tenant=0 JWT validation çalışır.
+   - **Cors:AllowedOrigins:** `["https://voice.invekto.com", "https://app.invekto.com"]` (browser WS Origin gate prod'da localhost reddeder, sadece bu 2 origin).
+   - **Service:ListenPort:** 7115 (Kestrel ListenAnyIP).
+   - **Logging:FilePath:** `logs`.
+   - **OPENAI_API_KEY YAZILMADI** (AD-20: env-var-ONLY, appsettings'e koymak yasak).
+7. `nssm install InvektoVoiceRuntime "C:\Invekto\VoiceRuntime\current\Invekto.VoiceRuntime.exe"` + AppDirectory + DisplayName + Description + Start=SERVICE_AUTO_START + AppStdout/AppStderr + AppRotateFiles=1 + AppRotateBytes=10485760 + AppEnvironmentExtra=`ASPNETCORE_ENVIRONMENT=Production` (OPENAI_API_KEY YOK — Q manuel ekleyecek).
+8. `Start-Service InvektoVoiceRuntime` → Running. `/health` 200 ok. `/ready` 200 **degraded** `["OPENAI_API_KEY environment variable"]` — beklenen, fail-fast yok (Program.cs:94-98 SystemWarn).
+9. `/voice-poc.html` static serve 200 (2087 bytes); logs `2026-05-25.jsonl` 0 byte (henüz WS attempt yok).
+
+**13. servis prod'a katıldı (12 → 13):** InvektoVoiceRuntime :7115 NSSM Running. Diğer 12 servis HEALTHY etkilenmedi (additive deploy, Shared.dll değişmedi — VoiceRuntime kendi published copy'sini kullanıyor).
+
+**Manuel adımlar Q sonrası (URL açılması için):**
+- DNS A record `voice.invekto.com` → server IP
+- TLS cert (Cloudflare proxy veya IIS Win-ACME)
+- Reverse proxy WebSocket pass-through (Connection: upgrade + Upgrade: websocket headers — **WS endpoint `/ws/voice/microphone` proxy'lenmeli**)
+- `nssm set InvektoVoiceRuntime AppEnvironmentExtra "ASPNETCORE_ENVIRONMENT=Production`r`nOPENAI_API_KEY=sk-..."` + Restart-Service
+- (Ops) Dashboard "Voice Test" linki → `https://voice.invekto.com/voice-poc.html?token={tenant=0 JWT}`
+
+**Tracking dosyaları güncellendi:** tracking/README.md servis tablo satırı (Planned → Deployed F0), FEAT-VFB satırı (DONE+COMMITTED → DONE+COMMITTED+PROD-DEPLOYED); tracking/feat-vfb-voice-flow-builder.md yeni "F0 Production Deploy" section 9 adımlık tablo + manuel adımlar (DNS+cert+reverse proxy+OPENAI_API_KEY+optional Dashboard link).
+
+**Codex review:** YAPILMADI (kod değişikliği YOK — sadece tracking md update + server-side config). Önceki precedent: deploy paketi config-only commit pattern (b78e8126 ile F0 kod review zaten DONE, GA migration 50feb24f review zaten Q FORCE PASS).
+
+**Aksiyon kalanlar:**
+- Q manuel 4 adımı (DNS + cert + reverse proxy + OPENAI_API_KEY + restart) yaparak `voice.invekto.com` URL'i aktive
+- Q gerçek OPENAI_API_KEY set ettikten sonra `/ready` 200 ok dönmeli (degraded değil)
+- Browser WS smoke: `https://voice.invekto.com/voice-poc.html?token=...` → "Mikrofonu Başlat" → Türkçe konuşma loop confirm
+- Mikrofon test sayfası geliştirme (Q yönlendirecek — sonraki paket)
+
+**PREV-Date:** 2026-05-25 17:20 — Beta→GA migration + Türkçe lock-in + light theme (bkz aşağıda).
+
+---
+
 - **Date:** 2026-05-25 17:20 — **Session: FEAT-VFB F0 demo run + OpenAI Realtime API Beta→GA acil migration + Türkçe-only lock-in fix + light theme.** Q "demo için projeyi çalıştırıp sayfayı aç" tetikledi, browser PoC'yi canlandırdık. **Şok bulgu:** OpenAI 2026-05-07'de Realtime Beta API'yi disable etmiş — F0 kodu (commit `b78e8126`, 2 gün önce yazılmış) Beta shape ile bağlanamıyor (`beta_api_shape_disabled` server error). Acil GA migration patches uygulandı:
 
 **Bootstrap kararsızlık (~10 dk debug):**
