@@ -4,9 +4,16 @@
   "spec_ref": "SPEC-008",
   "slug": "20260525-feat-vfb-f0-5-tenant-aware-voice-test",
   "risk": "MEDIUM",
-  "status": "PLANNING",
+  "status": "IN_PROGRESS",
   "created_at": "2026-05-25T19:00:00+03:00",
-  "updated_at": "2026-05-25T19:00:00+03:00",
+  "updated_at": "2026-05-25T20:35:00+03:00",
+  "chunk_progress": {
+    "A": { "status": "DONE", "commit_sha": "65b49afe", "codex_verdict": "PASS", "codex_iterations": 3, "completed_at": "2026-05-25T20:25:00+03:00", "notes": "VoiceRuntime altyapı: JwtGenerator DI + HttpClient + dual-mode handshake (F0 backward-compat + F0.5 strict) + INV-VR-011..020 + AD-21..28 (F0.5 + F2 SIP scope)" },
+    "B": { "status": "PENDING", "notes": "TenantInfoClient + FlowInfoClient + KnowledgeSearchClient + InstructionsBuilder + VoiceTestContext DTO" },
+    "C": { "status": "PENDING", "notes": "RealtimeMessageTypes function_call events + RealtimeApiClient dispatch + RealtimeSession tools[] + ToolExecutor + SearchKnowledgeBaseTool" },
+    "D": { "status": "PENDING", "notes": "Browser voice-poc.html + voice-poc.js dropdownlar + WS handshake update + tool call HUD rozeti" },
+    "E": { "status": "PENDING", "notes": "CORS allowed origins (Knowledge/Automation/Backend) + voice-runtime-ws.md update + smoke + tracking + redeploy 4 servis" }
+  },
   "plan": {
     "summary": "FEAT-VFB F0.5: Voice Test sayfasını tenant + flow seçimli, knowledge-base function calling destekli gerçek arama simülasyonuna yükselt. Tenant=0 sysadmin Voice Test sayfasından bir tenant ve onun flow'unu seçer, mikrofona konuşur, OpenAI Realtime model konuşmayı dinlerken bilgi gerektiğinde `search_knowledge_base` tool'unu çağırır, VoiceRuntime servis-JWT mint ederek Knowledge :7104'e proxy eder, sonucu model'e geri verir, Türkçe sesli cevap üretilir. F2 PBX Live MVP'nin tüm kritik pipeline'ı (function calling + cross-service auth + dinamik context build) önceden test edilmiş olur.",
     "q_intent": "sayfaya bir sürü fonksiyon ekleyip, flow ile entegre etmemiz lazım. tenant ve flow seçim dropdownlar lazım. yani ben mikrofonla sanki arama gelmiş gibi o firmanın, seçili flowundaki bilgi bankasından bilgi çekebiliyor olması lazım. bunun için ne aksik, ne yapmak lazım hepsini planla",
