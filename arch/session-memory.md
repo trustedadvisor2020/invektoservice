@@ -7,7 +7,42 @@
 
 ## Last Update
 
-- **Date:** 2026-05-26 23:10 — **Session: FEAT-VFB F0.5 Chunk D — Browser dropdown + tool-call HUD + WS handshake.** Q yeni session başlangıcında "/auto" workflow aktif. Voice Test sayfası artık header altında tenant + flow native `<select>` dropdownları ile geliyor; her ikisi seçilmeden "Mikrofonu Başlat" disabled. AD-32 sticky 2-col workspace (transcript sol, tool-call HUD sağ), tool_call_started → pending pulse → tool_call_completed yeşil/kırmızı rozet.
+- **Date:** 2026-05-27 00:50 — **Session: FEAT-VFB F0.5 Chunk E — CORS + voice-runtime-ws.md final doc + Codex iter 1 PASS, ama PRODUCTION INCIDENT — Backend startup crash döngüsü.** Q yeni session başlangıcında "/auto" workflow aktif. Chunk E code+doc tarafı (commit `46e4e01a`) Codex iter 1 PASS aldı (12/12 CQ + 4/4 CoVe, blocking_issues NONE) ve master'a push'landı, fakat 3-servis deploy aşamasında Backend 4 deploy attempt × 4 crash ile DOWN kaldı.
+
+**Chunk E (commit `46e4e01a`) — Codex iter 1 PASS (12/12 CQ + 4/4 CoVe):**
+- `src/Invekto.Backend/Program.cs` — `VoicePocCors` named CORS policy (`WithOrigins("https://voice.invekto.com:8443").WithMethods("GET").AllowAnyHeader()`, AllowCredentials OFF, mevcut `InmaNavCors` sibling pattern clone) + `/api/ops/tenants` GET endpoint `.RequireCors("VoicePocCors")` attach
+- `src/Invekto.Automation/Program.cs` — first-time CORS introduction: aynı `VoicePocCors` named policy + `app.UseCors()` AFTER `UseTrafficLogging` BEFORE `UseJwtAuth` (preflight OPTIONS bypass) + `/api/v1/flows/{tenantId:int}` GET `.RequireCors("VoicePocCors")` attach (sibling `/{tenantId}/{flowId}` ve ~30 diğer flow/faq endpoint intentionally undecorated)
+- `arch/contracts/voice/voice-runtime-ws.md` — additive "Browser acquisition & UI (F0.5 Chunk D)" section: URL-bridge JWT pattern (window.INVEKTO_VOICE_JWT page-lifetime global + history.replaceState scrub) + cross-origin CORS prereq + AHA-4 localStorage persistence (strict /^[1-9][0-9]*$/) + tool-call HUD rendering rules (pending pulse → ok/error rozet, last-5 DOM cap, no auto-collapse on timeout by design) + INV-VR-CLIENT-001..010 pointer + Knowledge exclusion note (server-to-server service-JWT only)
+- `tracking/feat-vfb-voice-flow-builder.md` — F0.5 5-chunk checklist Chunks A-D = DONE with commit SHAs + Codex iter counts; Chunk E expanded with 3-service deploy scope (Knowledge skip per AD-36)
+- Plan JSON — chunk_progress.E + AD-35 (named VoicePocCors + selective binding pattern) + AD-36 (Knowledge scope exclusion: F0.5'te browser fetch yok, AddCors+UseCors dead code olur, F4 widget gate)
+
+**Codex iter trail (target ≤2, achieved at 1):**
+- iter 0 FAIL (methodology): inline `git_diff` placeholder ("(omitted inline — see diff_file_path...)") 50+ chars idi → MCP server inline content sandı → diff_file_path fallback ÇAĞRILMADI → tüm 22 check UNKNOWN "diff omitted" reasoning ile. Lesson: MCP codex tool için `git_diff: ""` (empty) zorunlu — placeholder string fallback'i bypass eder.
+- iter 1 PASS 12/12 CQ + 4/4 CoVe — Q7-AUTH (preflight-before-auth + AllowCredentials off) + Q8-DATA (surface minimization endpoint-scoped + GET-only) + Q9-LIFECYCLE (no-default-policy isolation invariant) + Q10-PROCESS (AD-36 Knowledge exclusion documented). Summary: "Chunk E is a minimal, additive CORS allowlist change with named-policy endpoint binding only for the two intended GET endpoints. Middleware ordering, Knowledge exclusion, no-default-policy isolation, and documentation/tracking updates are consistent with the submitted MEDIUM-risk plan."
+
+**Q kararları (AskUserQuestion 2026-05-26 23:00-23:10):**
+- Deploy sıralı 1'er servis (recommended)
+- Smoke tek tenant Dent + ana_akis AC6 baseline
+- Doc additive Chunk D detay
+- CORS sadece `voice.invekto.com:8443`
+- Knowledge scope SKIP — 3 servis deploy (Backend + Automation + VoiceRuntime), Knowledge dokunulmaz (AD-36 intentional exclusion)
+
+**🚨 PRODUCTION INCIDENT (2026-05-27 00:05-00:42, ~45dk, OPEN):**
+- 4 Backend deploy attempt × 4 crash. Hepsi `System.InvalidOperationException: Body was inferred but the method does not allow inferred body parameters` startup'ta. NSSM service Running ama port 5100 listen YOK + /health HTTP=000.
+- **Root cause (Codex 2 turn triage):** .NET 8.0.19 RequestDelegateFactory stricter inspection. Backend 245 endpoint'in çoğu implicit DI parameter pattern kullanıyor (244/245 attribute-less). Bazı service tip param'ları conditional-registered → startup'ta `IServiceProviderIsService` listede yok → "Body (Inferred)" misclassification → AuthorizationMiddleware..ctor → EndpointDataSource.get_Endpoints → InferMetadata throw.
+- **Hotfix 1 (00:14):** `[FromServices]` on `cacheRepo: TranslationCacheRepository` (line 1528) + `using Microsoft.AspNetCore.Mvc;` → 2. crash, log truncated, başka endpoint.
+- **Hotfix 2 (00:20):** `if (!string.IsNullOrEmpty(pgConnectionString))` block (line 329-397) removed; tüm ~20 DB-backed service unconditional registered + `pgFactory = new PostgresConnectionFactory(pgConnectionString ?? string.Empty)` runtime fail-late → 3. crash, aynı stack.
+- **Codex Incident Triage 1 (00:25, slug=incident-backend-startup-crash):** stale binary RULED OUT (lokal vs prod Backend.dll SHA256 `e329ffee...` match, mtime 00:20:44 fresh). CORS metadata trigger DEĞİL. Runtime switch YOK. Source-level audit gerekli.
+- **Codex Endpoint Scan (00:30, slug=incident-backend-endpoint-scan):** 245 endpoint signature (51KB) gönderildi. CQ5 FAIL evidence 8 yüksek-risk endpoint listeledi: lines 2294 (OnboardingStatusService), 2670 (AnalyticsRepository), 5624/5772 (LiwSettingsService x2), 5815 (LeadRepository), 6086 (AnalyticsRepository), 6488 (AttributionRepository), 8239 (InmaDynamicFieldsCache + TenantRegistryRepository, 2 param).
+- **Hotfix 3 (00:35):** 8 endpoint × 10 param `[FromServices]` ekle. Build PASS, deploy → **4. crash**, aynı exception. 9. veya sonraki suspect endpoint var.
+- **STOP (00:42):** Q kararı. Hotfix attempts (8 [FromServices] + 1 cacheRepo + 1 conditional removal + 1 using) `git stash push -m "Backend startup-crash hotfix attempts 1-3 ..."` ile saklandı (`git stash@{0}`, recoverable via `git stash pop` next session). Failed-20260527-000759 klasörü server'da artifact olarak duruyor.
+
+**Aksiyon kalanlar (next session BLOCKED on Backend recovery):**
+- **CRITICAL/Backend recovery:** Q manuel triage gerekiyor. Systematic 245-endpoint audit (regex ile tüm `app.Map(Get|Post|Put|Delete).*=>` lambda param listesi çıkar, service-typed unannotated param'ları tespit). Bulk strategy karar: (A) full `[FromServices]` attribute sweep 500+ yer (mass edit), (B) sadece kalan GET/DELETE endpoint'lere odakla (POST body-binding zaten valid), (C) ServiceCollection sealing pattern (`builder.Services.Configure<RouteHandlerOptions>(...)`), (D) controllers'a partial migration. Codex SCAN-Q2 PASS: source-level explicit classification = safer than global convention.
+- Backend recovery sonrası **Chunk E resume:** Automation + VoiceRuntime deploy (Backend dependency chain) + Q live Voice Test smoke (Dent + ana_akis + saç ekimi FAQ → KB call + HUD rozet doğrulama, AC6).
+- **F2 SIP UA plan JSON** (`arch/plans/20260601-feat-vfb-f2-pbx-live-mvp.json`, yeni) F0.5 tam validate olunca başla.
+
+**PREV-Date:** 2026-05-26 23:10 — **Session: FEAT-VFB F0.5 Chunk D — Browser dropdown + tool-call HUD + WS handshake.** Q yeni session başlangıcında "/auto" workflow aktif. Voice Test sayfası artık header altında tenant + flow native `<select>` dropdownları ile geliyor; her ikisi seçilmeden "Mikrofonu Başlat" disabled. AD-32 sticky 2-col workspace (transcript sol, tool-call HUD sağ), tool_call_started → pending pulse → tool_call_completed yeşil/kırmızı rozet.
 
 **Chunk D (commit `b67e6747`) — Codex iter 2 PASS (12/12 CQ + 4/4 CoVe, blocking_issues NONE):**
 - `src/Invekto.VoiceRuntime/wwwroot/voice-poc.html` — header altına `.selector` section (tenant + flow native select + hint), workspace 2-col (transcript + tool-call sticky panel), toast container, footer F0.5 metni. URL-bridge script korundu (window.INVEKTO_VOICE_JWT mevcut pattern).

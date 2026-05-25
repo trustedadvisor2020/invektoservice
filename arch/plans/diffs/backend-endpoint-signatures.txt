@@ -1,0 +1,1038 @@
+﻿===LINE 697===
+    app.MapGet("/ops/hangfire-login", (HttpContext ctx, string? token, JwtValidator validator, JwtGenerator generator, JsonLinesLogger logger) =>
+    {
+
+===LINE 786===
+app.MapGet("/health", () =>
+{
+
+===LINE 906===
+app.MapGet("/ops", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, LogReader logReader) =>
+{
+
+===LINE 943===
+app.MapGet("/ops/debug", (HttpContext ctx) =>
+{
+
+===LINE 978===
+app.MapGet("/ops/debug2", async (HttpContext ctx, LogReader logReader) =>
+{
+
+===LINE 1041===
+app.MapGet("/ops/errors", async (HttpContext ctx, LogReader logReader) =>
+{
+
+===LINE 1053===
+app.MapGet("/ops/slow", async (HttpContext ctx, LogReader logReader) =>
+{
+
+===LINE 1065===
+app.MapGet("/ops/search", async (HttpContext ctx, LogReader logReader, string? requestId) =>
+{
+
+===LINE 1087===
+app.MapGet("/api/ops/webchat/conversations", async (HttpContext ctx, WebChatClient webChatClient) =>
+{
+
+===LINE 1100===
+app.MapGet("/api/ops/webchat/conversations/{id}/messages", async (long id, HttpContext ctx, WebChatClient webChatClient) =>
+{
+
+===LINE 1112===
+app.MapPost("/api/ops/webchat/conversations/{id}/messages", async (long id, HttpContext ctx, WebChatClient webChatClient) =>
+{
+
+===LINE 1129===
+app.MapPut("/api/ops/webchat/conversations/{id}/close", async (long id, HttpContext ctx, WebChatClient webChatClient) =>
+{
+
+===LINE 1141===
+app.MapPut("/api/ops/webchat/conversations/{id}/route-ai", async (long id, HttpContext ctx, WebChatClient webChatClient) =>
+{
+
+===LINE 1153===
+app.MapGet("/api/ops/webchat/conversations/{id}/visitor", async (long id, HttpContext ctx, WebChatClient webChatClient) =>
+{
+
+===LINE 1169===
+app.MapPost("/api/v1/voice/transcribe", async (HttpContext ctx, VoiceAIClient voiceClient) =>
+{
+
+===LINE 1195===
+app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, IntegrationsClient integrationsClient, WhatsAppAnalyticsClient waAnalyticsClient, MarketingClient marketingClient, WebChatClient webChatClient, VoiceAIClient voiceAIClient) =>
+{
+
+===LINE 1395===
+app.MapGet("/api/ops/logs/stream", async (
+    HttpContext ctx,
+    LogReader logReader,
+    string? level,
+    string? service,
+    string? search,
+    string? after,
+    int? limit) =>
+
+===LINE 1428===
+app.MapGet("/api/ops/logs/grouped", async (
+    HttpContext ctx,
+    LogReader logReader,
+    string? level,
+    string? service,
+    string? search,
+    string? after,
+    int? limit,
+
+===LINE 1467===
+app.MapGet("/api/ops/logs/context", async (
+    HttpContext ctx,
+    LogReader logReader,
+    string? file,
+    int? line,
+    int? range) =>
+
+===LINE 1494===
+app.MapDelete("/api/ops/logs/clear", (HttpContext ctx, LogReader logReader, string? service) =>
+{
+
+===LINE 1515===
+app.MapGet("/api/ops/stats/errors", async (HttpContext ctx, LogReader logReader, int? hours) =>
+{
+
+===LINE 1537===
+app.MapGet("/api/ops/stats/translations", async (HttpContext ctx, [FromServices] TranslationCacheRepository cacheRepo) =>
+{
+
+===LINE 1597===
+app.MapPost("/api/ops/services/{serviceName}/restart", async (HttpContext ctx, string serviceName) =>
+{
+
+===LINE 1671===
+app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, IntegrationsClient integrationsClient, WhatsAppAnalyticsClient waAnalyticsClient, MarketingClient marketingClient, WebChatClient webChatClient, VoiceAIClient voiceAIClient, string serviceName, string? path) =>
+{
+
+===LINE 1877===
+app.MapPost("/api/v1/webhook/event", async (HttpContext ctx, JsonLinesLogger jsonLogger, IncomingWebhookEvent? webhookEvent) =>
+{
+
+===LINE 2145===
+app.MapGet("/api/v1/tenant/verify", (HttpContext ctx, JsonLinesLogger jsonLogger) =>
+{
+
+===LINE 2201===
+app.MapPost("/api/v1/chat/analyze", async (
+    HttpContext ctx,
+    ChatAnalysisClient chatClient,
+    JsonLinesLogger jsonLogger,
+    ChatAnalysisRequest? analysisRequest) =>
+
+===LINE 2294===
+app.MapGet("/api/v1/onboarding/status", async (HttpContext ctx, OnboardingStatusService onboardingService, JsonLinesLogger jsonLogger) =>
+{
+
+===LINE 2328===
+app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, IntegrationsClient integrationsClient, WhatsAppAnalyticsClient waAnalyticsClient, MarketingClient marketingClient, WebChatClient webChatClient, VoiceAIClient voiceAIClient) =>
+{
+
+===LINE 2547===
+app.MapGet("/api/ops/postman", async (HttpContext ctx) =>
+{
+
+===LINE 2571===
+app.MapPost("/api/v1/agent-assist/suggest", async (HttpContext ctx, AgentAIClient agentAIClient, JsonLinesLogger jsonLogger) =>
+{
+
+===LINE 2604===
+app.MapPost("/api/v1/agent-assist/feedback", async (HttpContext ctx, AgentAIClient agentAIClient, JsonLinesLogger jsonLogger) =>
+{
+
+===LINE 2634===
+app.MapPost("/api/v1/automation/webhook", async (HttpContext ctx, AutomationClient automationClient, JsonLinesLogger jsonLogger) =>
+{
+
+===LINE 2666===
+app.MapGet("/api/v1/automation/flows/{tenantId:int}", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLogger, int tenantId) =>
+    await FbProxyGet(ctx, fbClient, jsonLogger, $"/api/v1/flows/{tenantId}"));
+
+===LINE 2670===
+app.MapGet("/api/v1/dashboard/analytics/summary", async (HttpContext ctx, AnalyticsRepository analyticsRepo, JsonLinesLogger jsonLogger, string? from, string? to) =>
+{
+
+===LINE 2820===
+app.MapGet("/api/v1/settings/instances", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 2859===
+app.MapPost("/api/v1/settings/instances/refresh", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 2894===
+app.MapPut("/api/v1/settings/instances/{instanceId}/toggle", async (HttpContext ctx, JsonLinesLogger jsonLog, string instanceId) =>
+{
+
+===LINE 2934===
+app.MapGet("/api/v1/settings/working-hours", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 2991===
+app.MapPut("/api/v1/settings/working-hours", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 3078===
+app.MapGet("/api/v1/settings/sector", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 3102===
+app.MapPut("/api/v1/settings/sector", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 3148===
+app.MapGet("/api/v1/templates/available", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 3169===
+app.MapPost("/api/v1/templates/adopt/{templateId:int}", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int templateId) =>
+{
+
+===LINE 3189===
+app.MapGet("/api/v1/templates/adoptions", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 3210===
+app.MapGet("/api/v1/flow-builder/instances/available", async (HttpContext ctx, JsonLinesLogger jsonLog, int? flow_id) =>
+{
+
+===LINE 3226===
+app.MapGet("/api/v1/flow-builder/tenant/working-hours", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 3378===
+app.MapPost("/api/v1/outbound/broadcast/send", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, "/api/v1/broadcast/send"));
+
+===LINE 3381===
+app.MapGet("/api/v1/outbound/broadcast/{broadcastId}/status", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, string broadcastId) =>
+    await OutboundProxyGet(ctx, obClient, jsonLog, $"/api/v1/broadcast/{broadcastId}/status"));
+
+===LINE 3385===
+app.MapPost("/api/v1/outbound/webhook/trigger", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, "/api/v1/webhook/trigger"));
+
+===LINE 3388===
+app.MapPost("/api/v1/outbound/webhook/delivery-status", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, "/api/v1/webhook/delivery-status"));
+
+===LINE 3391===
+app.MapPost("/api/v1/outbound/webhook/message", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, "/api/v1/webhook/message"));
+
+===LINE 3395===
+app.MapGet("/api/v1/outbound/templates", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyGet(ctx, obClient, jsonLog, "/api/v1/templates"));
+
+===LINE 3398===
+app.MapPost("/api/v1/outbound/templates", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, "/api/v1/templates"));
+
+===LINE 3401===
+app.MapPut("/api/v1/outbound/templates/{id:int}", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, int id) =>
+    await OutboundProxyPut(ctx, obClient, jsonLog, $"/api/v1/templates/{id}"));
+
+===LINE 3404===
+app.MapDelete("/api/v1/outbound/templates/{id:int}", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, int id) =>
+    await OutboundProxyDelete(ctx, obClient, jsonLog, $"/api/v1/templates/{id}"));
+
+===LINE 3408===
+app.MapPost("/api/v1/outbound/optout", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, "/api/v1/optout"));
+
+===LINE 3411===
+app.MapDelete("/api/v1/outbound/optout/{phone}", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, string phone) =>
+    await OutboundProxyDelete(ctx, obClient, jsonLog, $"/api/v1/optout/{phone}"));
+
+===LINE 3414===
+app.MapGet("/api/v1/outbound/optout/check/{phone}", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, string phone) =>
+    await OutboundProxyGet(ctx, obClient, jsonLog, $"/api/v1/optout/check/{phone}"));
+
+===LINE 3473===
+app.MapGet("/api/v1/flow-builder/flows/{tenantId:int}", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, int tenantId) =>
+    await FbProxyGet(ctx, fbClient, jsonLog, $"/api/v1/flows/{tenantId}"));
+
+===LINE 3476===
+app.MapGet("/api/v1/flow-builder/flows/{tenantId:int}/{flowId:int}", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, int tenantId, int flowId) =>
+    await FbProxyGet(ctx, fbClient, jsonLog, $"/api/v1/flows/{tenantId}/{flowId}"));
+
+===LINE 3479===
+app.MapPost("/api/v1/flow-builder/flows/{tenantId:int}", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, int tenantId) =>
+    await FbProxyPost(ctx, fbClient, jsonLog, $"/api/v1/flows/{tenantId}"));
+
+===LINE 3482===
+app.MapPut("/api/v1/flow-builder/flows/{tenantId:int}/{flowId:int}", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, int tenantId, int flowId) =>
+    await FbProxyPut(ctx, fbClient, jsonLog, $"/api/v1/flows/{tenantId}/{flowId}"));
+
+===LINE 3485===
+app.MapDelete("/api/v1/flow-builder/flows/{tenantId:int}/{flowId:int}", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, int tenantId, int flowId) =>
+    await FbProxyDelete(ctx, fbClient, jsonLog, $"/api/v1/flows/{tenantId}/{flowId}"));
+
+===LINE 3488===
+app.MapPost("/api/v1/flow-builder/flows/{tenantId:int}/{flowId:int}/activate", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, int tenantId, int flowId) =>
+    await FbProxyPost(ctx, fbClient, jsonLog, $"/api/v1/flows/{tenantId}/{flowId}/activate"));
+
+===LINE 3491===
+app.MapPost("/api/v1/flow-builder/flows/{tenantId:int}/{flowId:int}/deactivate", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, int tenantId, int flowId) =>
+    await FbProxyPost(ctx, fbClient, jsonLog, $"/api/v1/flows/{tenantId}/{flowId}/deactivate"));
+
+===LINE 3495===
+app.MapGet("/api/v1/flow-builder/monitor/{tenantId:int}/executions", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, int tenantId) =>
+    await FbProxyGet(ctx, fbClient, jsonLog, $"/api/v1/flows/{tenantId}/executions{ctx.Request.QueryString}"));
+
+===LINE 3499===
+app.MapGet("/api/v1/flow-builder/flows/{tenantId:int}/{flowId:int}/executions", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, int tenantId, int flowId) =>
+    await FbProxyGet(ctx, fbClient, jsonLog, $"/api/v1/flows/{tenantId}/{flowId}/executions{ctx.Request.QueryString}"));
+
+===LINE 3502===
+app.MapGet("/api/v1/flow-builder/flows/{tenantId:int}/{flowId:int}/executions/{logId:long}", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, int tenantId, int flowId, long logId) =>
+    await FbProxyGet(ctx, fbClient, jsonLog, $"/api/v1/flows/{tenantId}/{flowId}/executions/{logId}"));
+
+===LINE 3506===
+app.MapGet("/api/v1/flow-builder/flows/{tenantId:int}/{flowId:int}/versions", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, int tenantId, int flowId) =>
+    await FbProxyGet(ctx, fbClient, jsonLog, $"/api/v1/flows/{tenantId}/{flowId}/versions"));
+
+===LINE 3509===
+app.MapGet("/api/v1/flow-builder/flows/{tenantId:int}/{flowId:int}/versions/{versionNumber:int}", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, int tenantId, int flowId, int versionNumber) =>
+    await FbProxyGet(ctx, fbClient, jsonLog, $"/api/v1/flows/{tenantId}/{flowId}/versions/{versionNumber}"));
+
+===LINE 3512===
+app.MapPost("/api/v1/flow-builder/flows/{tenantId:int}/{flowId:int}/versions/{versionNumber:int}/rollback", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, int tenantId, int flowId, int versionNumber) =>
+    await FbProxyPost(ctx, fbClient, jsonLog, $"/api/v1/flows/{tenantId}/{flowId}/versions/{versionNumber}/rollback"));
+
+===LINE 3516===
+app.MapPost("/api/v1/flow-builder/flows/validate", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog) =>
+    await FbProxyPost(ctx, fbClient, jsonLog, "/api/v1/flows/validate"));
+
+===LINE 3520===
+app.MapPost("/api/v1/flow-builder/simulation/start", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog) =>
+    await FbProxyPost(ctx, fbClient, jsonLog, "/api/v1/simulation/start"));
+
+===LINE 3523===
+app.MapPost("/api/v1/flow-builder/simulation/step", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog) =>
+    await FbProxyPost(ctx, fbClient, jsonLog, "/api/v1/simulation/step"));
+
+===LINE 3526===
+app.MapDelete("/api/v1/flow-builder/simulation/{sessionId}", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, string sessionId) =>
+    await FbProxyDelete(ctx, fbClient, jsonLog, $"/api/v1/simulation/{sessionId}"));
+
+===LINE 3547===
+app.MapPost("/api/v1/flow-builder/wizard/start", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 3603===
+app.MapPost("/api/v1/flow-builder/wizard/{flowId:int}/message", async (int flowId, HttpContext ctx,
+    FlowBuilderClient fbClient, ClaudeWizardService wizardService, JsonLinesLogger jsonLog) =>
+
+===LINE 3805===
+app.MapGet("/api/v1/flow-builder/wizard/{flowId:int}", async (int flowId, HttpContext ctx,
+    FlowBuilderClient fbClient, JsonLinesLogger jsonLog) =>
+
+===LINE 3816===
+app.MapPost("/api/v1/flow-builder/wizard/{flowId:int}/confirm", async (int flowId, HttpContext ctx,
+    FlowBuilderClient fbClient, JsonLinesLogger jsonLog) =>
+
+===LINE 3921===
+app.MapPost("/api/v1/flow-builder/auth/login", async (HttpContext ctx, JsonLinesLogger jsonLogger) =>
+{
+
+===LINE 4110===
+app.MapPost("/api/ops/knowledge/{tenantId:int}/documents/upload", async (
+    HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId) =>
+
+===LINE 4172===
+app.MapPost("/api/ops/knowledge/{tenantId:int}/documents/website", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId) =>
+    await KnProxyPost(ctx, knClient, jsonLog, tenantId, $"/api/v1/knowledge/{tenantId}/documents/website"));
+
+===LINE 4176===
+app.MapGet("/api/ops/knowledge/{tenantId:int}/documents", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId) =>
+    await KnProxyGet(ctx, knClient, jsonLog, tenantId, $"/api/v1/knowledge/{tenantId}/documents"));
+
+===LINE 4179===
+app.MapDelete("/api/ops/knowledge/{tenantId:int}/documents/{docId:int}", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId, int docId) =>
+    await KnProxyDelete(ctx, knClient, jsonLog, tenantId, $"/api/v1/knowledge/{tenantId}/documents/{docId}"));
+
+===LINE 4183===
+app.MapGet("/api/ops/knowledge/{tenantId:int}/faqs", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId) =>
+    await KnProxyGet(ctx, knClient, jsonLog, tenantId, $"/api/v1/knowledge/{tenantId}/faqs"));
+
+===LINE 4186===
+app.MapPost("/api/ops/knowledge/{tenantId:int}/faqs", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId) =>
+    await KnProxyPost(ctx, knClient, jsonLog, tenantId, $"/api/v1/knowledge/{tenantId}/faqs"));
+
+===LINE 4189===
+app.MapPut("/api/ops/knowledge/{tenantId:int}/faqs/{faqId:int}", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId, int faqId) =>
+    await KnProxyPut(ctx, knClient, jsonLog, tenantId, $"/api/v1/knowledge/{tenantId}/faqs/{faqId}"));
+
+===LINE 4192===
+app.MapDelete("/api/ops/knowledge/{tenantId:int}/faqs/{faqId:int}", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId, int faqId) =>
+    await KnProxyDelete(ctx, knClient, jsonLog, tenantId, $"/api/v1/knowledge/{tenantId}/faqs/{faqId}"));
+
+===LINE 4196===
+app.MapGet("/api/ops/knowledge/{tenantId:int}/intents", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId) =>
+    await KnProxyGet(ctx, knClient, jsonLog, tenantId, $"/api/v1/knowledge/{tenantId}/intents/full"));
+
+===LINE 4199===
+app.MapPost("/api/ops/knowledge/{tenantId:int}/intents", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId) =>
+    await KnProxyPost(ctx, knClient, jsonLog, tenantId, $"/api/v1/knowledge/{tenantId}/intents"));
+
+===LINE 4202===
+app.MapPut("/api/ops/knowledge/{tenantId:int}/intents/{intentId:int}", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId, int intentId) =>
+    await KnProxyPut(ctx, knClient, jsonLog, tenantId, $"/api/v1/knowledge/{tenantId}/intents/{intentId}"));
+
+===LINE 4205===
+app.MapDelete("/api/ops/knowledge/{tenantId:int}/intents/{intentId:int}", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId, int intentId) =>
+    await KnProxyDelete(ctx, knClient, jsonLog, tenantId, $"/api/v1/knowledge/{tenantId}/intents/{intentId}"));
+
+===LINE 4209===
+app.MapPost("/api/ops/knowledge/{tenantId:int}/search", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId) =>
+    await KnProxyPost(ctx, knClient, jsonLog, tenantId, $"/api/v1/knowledge/{tenantId}/search"));
+
+===LINE 4212===
+app.MapPost("/api/ops/knowledge/{tenantId:int}/generate-embeddings", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId) =>
+    await KnProxyPost(ctx, knClient, jsonLog, tenantId, $"/api/v1/knowledge/{tenantId}/generate-embeddings"));
+
+===LINE 4220===
+app.MapGet("/api/ops/templates/catalog", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog) =>
+    await KnProxyGet(ctx, knClient, jsonLog, 0, "/api/v1/templates/catalog"));
+
+===LINE 4223===
+app.MapGet("/api/ops/templates/catalog/{id:int}", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int id) =>
+    await KnProxyGet(ctx, knClient, jsonLog, 0, $"/api/v1/templates/catalog/{id}"));
+
+===LINE 4226===
+app.MapPost("/api/ops/templates/catalog", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog) =>
+    await KnProxyPost(ctx, knClient, jsonLog, 0, "/api/v1/templates/catalog"));
+
+===LINE 4230===
+app.MapPost("/api/ops/templates/catalog/bulk", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog) =>
+    await KnProxyPost(ctx, knClient, jsonLog, 0, "/api/v1/templates/catalog/bulk"));
+
+===LINE 4233===
+app.MapPut("/api/ops/templates/catalog/{id:int}", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int id) =>
+    await KnProxyPut(ctx, knClient, jsonLog, 0, $"/api/v1/templates/catalog/{id}"));
+
+===LINE 4236===
+app.MapDelete("/api/ops/templates/catalog/{id:int}", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int id) =>
+    await KnProxyDelete(ctx, knClient, jsonLog, 0, $"/api/v1/templates/catalog/{id}"));
+
+===LINE 4239===
+app.MapPost("/api/ops/templates/catalog/{id:int}/publish", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int id) =>
+    await KnProxyPost(ctx, knClient, jsonLog, 0, $"/api/v1/templates/catalog/{id}/publish"));
+
+===LINE 4242===
+app.MapGet("/api/ops/templates/catalog/{id:int}/versions", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int id) =>
+    await KnProxyGet(ctx, knClient, jsonLog, 0, $"/api/v1/templates/catalog/{id}/versions"));
+
+===LINE 4246===
+app.MapGet("/api/ops/templates/suggestions", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog) =>
+    await KnProxyGet(ctx, knClient, jsonLog, 0, "/api/v1/templates/suggestions"));
+
+===LINE 4249===
+app.MapGet("/api/ops/templates/suggestions/{id:int}", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int id) =>
+    await KnProxyGet(ctx, knClient, jsonLog, 0, $"/api/v1/templates/suggestions/{id}"));
+
+===LINE 4252===
+app.MapPost("/api/ops/templates/suggestions/{id:int}/review", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int id) =>
+    await KnProxyPost(ctx, knClient, jsonLog, 0, $"/api/v1/templates/suggestions/{id}/review"));
+
+===LINE 4255===
+app.MapPost("/api/ops/templates/suggestions/bulk-review", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog) =>
+    await KnProxyPost(ctx, knClient, jsonLog, 0, "/api/v1/templates/suggestions/bulk-review"));
+
+===LINE 4259===
+app.MapPost("/api/ops/templates/extract-from-analysis/{analysisId:int}", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int analysisId) =>
+    await KnProxyPost(ctx, knClient, jsonLog, 0, $"/api/v1/templates/extract-from-analysis/{analysisId}"));
+
+===LINE 4263===
+app.MapPost("/api/ops/templates/{tenantId:int}/adopt/{templateId:int}", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId, int templateId) =>
+    await KnProxyPost(ctx, knClient, jsonLog, 0, $"/api/v1/templates/{tenantId}/adopt/{templateId}"));
+
+===LINE 4266===
+app.MapPost("/api/ops/templates/{tenantId:int}/onboard", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId) =>
+    await KnProxyPost(ctx, knClient, jsonLog, 0, $"/api/v1/templates/{tenantId}/onboard"));
+
+===LINE 4269===
+app.MapGet("/api/ops/templates/{tenantId:int}/adoptions", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId) =>
+    await KnProxyGet(ctx, knClient, jsonLog, 0, $"/api/v1/templates/{tenantId}/adoptions"));
+
+===LINE 4272===
+app.MapPost("/api/ops/templates/seed-from-se", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 4283===
+app.MapPost("/api/ops/ri/sync-knowledge/{tenantId:int}", async (
+    HttpContext ctx,
+    WhatsAppAnalyticsClient waClient,
+    KnowledgeClient knClient,
+    JsonLinesLogger jsonLog,
+    int tenantId) =>
+
+===LINE 4438===
+app.MapPost("/api/ops/ri/rescue-trigger/{tenantId:int}", async (
+    HttpContext ctx,
+    WhatsAppAnalyticsClient waClient,
+    OutboundClient obClient,
+    JsonLinesLogger jsonLog,
+    int tenantId) =>
+
+===LINE 4568===
+app.MapPost("/api/ops/ri/sync-marketing/{tenantId:int}", async (
+    HttpContext ctx,
+    WhatsAppAnalyticsClient waClient,
+    MarketingClient mktClient,
+    JsonLinesLogger jsonLog,
+    int tenantId) =>
+
+===LINE 4850===
+app.MapGet("/api/v1/appointments/slots", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
+    await AppointmentsProxyGet(ctx, apClient, jsonLog, "/api/v1/slots"));
+
+===LINE 4853===
+app.MapPost("/api/v1/appointments/slots", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
+    await AppointmentsProxyPost(ctx, apClient, jsonLog, "/api/v1/slots"));
+
+===LINE 4856===
+app.MapPut("/api/v1/appointments/slots/{id:int}", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog, int id) =>
+    await AppointmentsProxyPut(ctx, apClient, jsonLog, $"/api/v1/slots/{id}"));
+
+===LINE 4859===
+app.MapDelete("/api/v1/appointments/slots/{id:int}", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog, int id) =>
+    await AppointmentsProxyDelete(ctx, apClient, jsonLog, $"/api/v1/slots/{id}"));
+
+===LINE 4894===
+app.MapPost("/api/v1/appointments/book", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 5073===
+app.MapGet("/api/v1/appointments/list", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
+    await AppointmentsProxyGet(ctx, apClient, jsonLog, "/api/v1/appointments"));
+
+===LINE 5076===
+app.MapGet("/api/v1/appointments/{id:long}", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog, long id) =>
+    await AppointmentsProxyGet(ctx, apClient, jsonLog, $"/api/v1/appointments/{id}"));
+
+===LINE 5079===
+app.MapPost("/api/v1/appointments/{id:long}/cancel", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog, long id) =>
+    await AppointmentsProxyPost(ctx, apClient, jsonLog, $"/api/v1/appointments/{id}/cancel"));
+
+===LINE 5083===
+app.MapGet("/api/v1/appointments/available-slots", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
+    await AppointmentsProxyGet(ctx, apClient, jsonLog, "/api/v1/appointments/available-slots"));
+
+===LINE 5087===
+app.MapGet("/api/v1/appointments/no-show-stats", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
+    await AppointmentsProxyGet(ctx, apClient, jsonLog, "/api/v1/appointments/no-show-stats"));
+
+===LINE 5091===
+app.MapGet("/api/v1/appointments/waitlist", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
+    await AppointmentsProxyGet(ctx, apClient, jsonLog, "/api/v1/waitlist"));
+
+===LINE 5094===
+app.MapPost("/api/v1/appointments/waitlist", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
+    await AppointmentsProxyPost(ctx, apClient, jsonLog, "/api/v1/waitlist"));
+
+===LINE 5097===
+app.MapPut("/api/v1/appointments/waitlist/{id:int}/status", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog, int id) =>
+    await AppointmentsProxyPut(ctx, apClient, jsonLog, $"/api/v1/waitlist/{id}/status"));
+
+===LINE 5101===
+app.MapGet("/api/v1/appointments/pricing", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
+    await AppointmentsProxyGet(ctx, apClient, jsonLog, "/api/v1/pricing"));
+
+===LINE 5104===
+app.MapPost("/api/v1/appointments/pricing", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
+    await AppointmentsProxyPost(ctx, apClient, jsonLog, "/api/v1/pricing"));
+
+===LINE 5107===
+app.MapPut("/api/v1/appointments/pricing/{id:int}", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog, int id) =>
+    await AppointmentsProxyPut(ctx, apClient, jsonLog, $"/api/v1/pricing/{id}"));
+
+===LINE 5111===
+app.MapGet("/api/v1/appointments/calendar/status", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
+    await AppointmentsProxyGet(ctx, apClient, jsonLog, "/api/v1/calendar/status"));
+
+===LINE 5115===
+app.MapPost("/api/v1/appointments/lifecycle/start", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
+    await AppointmentsProxyPost(ctx, apClient, jsonLog, "/api/v1/lifecycle/start"));
+
+===LINE 5118===
+app.MapGet("/api/v1/appointments/lifecycle", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
+    await AppointmentsProxyGet(ctx, apClient, jsonLog, "/api/v1/lifecycle"));
+
+===LINE 5121===
+app.MapGet("/api/v1/appointments/lifecycle/{id:int}", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog, int id) =>
+    await AppointmentsProxyGet(ctx, apClient, jsonLog, $"/api/v1/lifecycle/{id}"));
+
+===LINE 5124===
+app.MapPost("/api/v1/appointments/lifecycle/{id:int}/cancel", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog, int id) =>
+    await AppointmentsProxyPost(ctx, apClient, jsonLog, $"/api/v1/lifecycle/{id}/cancel"));
+
+===LINE 5127===
+app.MapPost("/api/v1/appointments/lifecycle/{id:int}/response", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog, int id) =>
+    await AppointmentsProxyPost(ctx, apClient, jsonLog, $"/api/v1/lifecycle/{id}/response"));
+
+===LINE 5204===
+app.MapPost("/api/v1/reviews/request", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyPost(ctx, mkClient, jsonLog, "/api/v1/reviews/request"));
+
+===LINE 5207===
+app.MapGet("/api/v1/reviews", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyGet(ctx, mkClient, jsonLog, "/api/v1/reviews"));
+
+===LINE 5210===
+app.MapPost("/api/v1/reviews/{id:int}/sent", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog, int id) =>
+    await MarketingProxyPost(ctx, mkClient, jsonLog, $"/api/v1/reviews/{id}/sent"));
+
+===LINE 5213===
+app.MapPost("/api/v1/reviews/{id:int}/posted", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog, int id) =>
+    await MarketingProxyPost(ctx, mkClient, jsonLog, $"/api/v1/reviews/{id}/posted"));
+
+===LINE 5216===
+app.MapGet("/api/v1/reviews/stats", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyGet(ctx, mkClient, jsonLog, "/api/v1/reviews/stats"));
+
+===LINE 5220===
+app.MapPost("/api/v1/referrals", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyPost(ctx, mkClient, jsonLog, "/api/v1/referrals"));
+
+===LINE 5223===
+app.MapGet("/api/v1/referrals", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyGet(ctx, mkClient, jsonLog, "/api/v1/referrals"));
+
+===LINE 5226===
+app.MapGet("/api/v1/referrals/lookup/{code}", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog, string code) =>
+    await MarketingProxyGet(ctx, mkClient, jsonLog, $"/api/v1/referrals/lookup/{code}"));
+
+===LINE 5229===
+app.MapPut("/api/v1/referrals/{id:int}/redeem", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog, int id) =>
+    await MarketingProxyPut(ctx, mkClient, jsonLog, $"/api/v1/referrals/{id}/redeem"));
+
+===LINE 5233===
+app.MapPost("/api/v1/tourism/leads", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyPost(ctx, mkClient, jsonLog, "/api/v1/tourism/leads"));
+
+===LINE 5236===
+app.MapGet("/api/v1/tourism/leads", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyGet(ctx, mkClient, jsonLog, "/api/v1/tourism/leads"));
+
+===LINE 5239===
+app.MapGet("/api/v1/tourism/leads/{id:int}", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog, int id) =>
+    await MarketingProxyGet(ctx, mkClient, jsonLog, $"/api/v1/tourism/leads/{id}"));
+
+===LINE 5242===
+app.MapPut("/api/v1/tourism/leads/{id:int}", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog, int id) =>
+    await MarketingProxyPut(ctx, mkClient, jsonLog, $"/api/v1/tourism/leads/{id}"));
+
+===LINE 5245===
+app.MapGet("/api/v1/tourism/stats", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyGet(ctx, mkClient, jsonLog, "/api/v1/tourism/stats"));
+
+===LINE 5249===
+app.MapPost("/api/v1/rescue/risks", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyPost(ctx, mkClient, jsonLog, "/api/v1/rescue/risks"));
+
+===LINE 5252===
+app.MapGet("/api/v1/rescue/risks", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyGet(ctx, mkClient, jsonLog, "/api/v1/rescue/risks"));
+
+===LINE 5255===
+app.MapPut("/api/v1/rescue/risks/{id:int}", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog, int id) =>
+    await MarketingProxyPut(ctx, mkClient, jsonLog, $"/api/v1/rescue/risks/{id}"));
+
+===LINE 5258===
+app.MapGet("/api/v1/rescue/stats", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyGet(ctx, mkClient, jsonLog, "/api/v1/rescue/stats"));
+
+===LINE 5261===
+app.MapPost("/api/v1/rescue/templates", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyPost(ctx, mkClient, jsonLog, "/api/v1/rescue/templates"));
+
+===LINE 5264===
+app.MapGet("/api/v1/rescue/templates", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyGet(ctx, mkClient, jsonLog, "/api/v1/rescue/templates"));
+
+===LINE 5267===
+app.MapPut("/api/v1/rescue/templates/{id:int}", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog, int id) =>
+    await MarketingProxyPut(ctx, mkClient, jsonLog, $"/api/v1/rescue/templates/{id}"));
+
+===LINE 5270===
+app.MapDelete("/api/v1/rescue/templates/{id:int}", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog, int id) =>
+    await MarketingProxyDelete(ctx, mkClient, jsonLog, $"/api/v1/rescue/templates/{id}"));
+
+===LINE 5274===
+app.MapPost("/api/v1/tourism/catalog", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyPost(ctx, mkClient, jsonLog, "/api/v1/tourism/catalog"));
+
+===LINE 5277===
+app.MapGet("/api/v1/tourism/catalog", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyGet(ctx, mkClient, jsonLog, "/api/v1/tourism/catalog"));
+
+===LINE 5280===
+app.MapPut("/api/v1/tourism/catalog/{id:int}", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog, int id) =>
+    await MarketingProxyPut(ctx, mkClient, jsonLog, $"/api/v1/tourism/catalog/{id}"));
+
+===LINE 5283===
+app.MapDelete("/api/v1/tourism/catalog/{id:int}", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog, int id) =>
+    await MarketingProxyDelete(ctx, mkClient, jsonLog, $"/api/v1/tourism/catalog/{id}"));
+
+===LINE 5286===
+app.MapPost("/api/v1/tourism/conversations", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyPost(ctx, mkClient, jsonLog, "/api/v1/tourism/conversations"));
+
+===LINE 5289===
+app.MapGet("/api/v1/tourism/conversations", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyGet(ctx, mkClient, jsonLog, "/api/v1/tourism/conversations"));
+
+===LINE 5292===
+app.MapPost("/api/v1/tourism/respond", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyPost(ctx, mkClient, jsonLog, "/api/v1/tourism/respond"));
+
+===LINE 5295===
+app.MapGet("/api/v1/tourism/conversations/stats", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyGet(ctx, mkClient, jsonLog, "/api/v1/tourism/conversations/stats"));
+
+===LINE 5304===
+app.MapGet("/api/v1/attribution/leads", async (HttpContext ctx, AttributionRepository attrRepo, JsonLinesLogger jsonLog, string? from, string? to) =>
+{
+
+===LINE 5335===
+app.MapPut("/api/v1/attribution/leads/{id:int}/status", async (HttpContext ctx, AttributionRepository attrRepo, JsonLinesLogger jsonLog, int id) =>
+{
+
+===LINE 5369===
+app.MapGet("/api/v1/attribution/summary", async (HttpContext ctx, AttributionRepository attrRepo, JsonLinesLogger jsonLog, string? from, string? to) =>
+{
+
+===LINE 5400===
+app.MapGet("/api/v1/attribution/cost-per-lead", async (HttpContext ctx, AttributionRepository attrRepo, JsonLinesLogger jsonLog, string? from, string? to) =>
+{
+
+===LINE 5431===
+app.MapGet("/api/v1/attribution/costs", async (HttpContext ctx, AttributionRepository attrRepo, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 5450===
+app.MapPost("/api/v1/attribution/costs", async (HttpContext ctx, AttributionRepository attrRepo, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 5480===
+app.MapDelete("/api/v1/attribution/costs/{id:int}", async (HttpContext ctx, AttributionRepository attrRepo, JsonLinesLogger jsonLog, int id) =>
+{
+
+===LINE 5511===
+app.MapPost("/api/v1/leads/intake/{source_slug}", async (
+    string source_slug,
+    LeadIntakeRequest? request,
+    HttpContext ctx,
+    LeadIntakeService intakeService) =>
+
+===LINE 5546===
+app.MapPost("/api/internal/leads/intake/wa-direct", async (
+    WaDirectIntakeRequest? request,
+    HttpContext ctx,
+    IConfiguration config,
+    JsonLinesLogger jsonLog,
+    LeadIntakeService intakeService) =>
+
+===LINE 5624===
+app.MapGet("/api/v1/tenant/landing/settings", async (HttpContext ctx, LiwSettingsService svc) =>
+{
+
+===LINE 5640===
+app.MapPost("/api/v1/tenant/landing/apikey/rotate", async (HttpContext ctx, LiwSettingsService svc) =>
+{
+
+===LINE 5673===
+app.MapPost("/api/v1/tenant/landing/apikey/revoke", async (HttpContext ctx, LiwSettingsService svc) =>
+{
+
+===LINE 5710===
+app.MapPut("/api/v1/tenant/landing/fieldmap", async (HttpContext ctx, UpdateFieldMapRequest? request, LiwSettingsService svc) =>
+{
+
+===LINE 5756===
+app.MapPost("/api/v1/tenant/landing/dry-run", async (HttpContext ctx, DryRunRequest? request, LiwSettingsService svc) =>
+{
+
+===LINE 5772===
+app.MapGet("/api/v1/tenant/landing/audit", async (HttpContext ctx, LiwSettingsService svc, int? limit) =>
+{
+
+===LINE 5788===
+app.MapPost("/api/v1/leads", async (HttpContext ctx, LeadRepository leadRepo, JsonLinesLogger jsonLog, LeadRequest? request) =>
+{
+
+===LINE 5815===
+app.MapGet("/api/v1/leads", async (
+    HttpContext ctx, LeadRepository leadRepo,
+    string? status, bool? is_hot, string? search, int? limit, int? offset) =>
+
+===LINE 5842===
+app.MapGet("/api/v1/leads/{id:int}", async (HttpContext ctx, LeadRepository leadRepo, int id) =>
+{
+
+===LINE 5865===
+app.MapPut("/api/v1/leads/{id:int}/status", async (
+    HttpContext ctx, LeadRepository leadRepo, JsonLinesLogger jsonLog,
+    int id, LeadPipelineUpdateRequest? request) =>
+
+===LINE 5905===
+app.MapPut("/api/v1/leads/{id:int}/score", async (
+    HttpContext ctx, LeadRepository leadRepo, JsonLinesLogger jsonLog, int id) =>
+
+===LINE 5943===
+app.MapPost("/api/v1/leads/{id:int}/activities", async (
+    HttpContext ctx, LeadRepository leadRepo, JsonLinesLogger jsonLog, int id) =>
+
+===LINE 5981===
+app.MapGet("/api/v1/leads/{id:int}/activities", async (
+    HttpContext ctx, LeadRepository leadRepo, int id, int? limit) =>
+
+===LINE 6002===
+app.MapGet("/api/v1/leads/funnel", async (HttpContext ctx, LeadRepository leadRepo, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 6021===
+app.MapGet("/api/v1/leads/hot", async (HttpContext ctx, LeadRepository leadRepo, int? limit) =>
+{
+
+===LINE 6041===
+app.MapPost("/api/v1/leads/{id:int}/followup", async (
+    HttpContext ctx, LeadRepository leadRepo, JsonLinesLogger jsonLog, int id) =>
+
+===LINE 6086===
+app.MapGet("/api/ops/analytics/tenants", async (HttpContext ctx, AnalyticsRepository analyticsRepo) =>
+{
+
+===LINE 6106===
+app.MapGet("/api/ops/analytics/automation/summary", async (HttpContext ctx, AnalyticsRepository analyticsRepo, int? tenant_id, string? from, string? to) =>
+{
+
+===LINE 6147===
+app.MapGet("/api/ops/analytics/automation/trends", async (HttpContext ctx, AnalyticsRepository analyticsRepo, int? tenant_id, string? from, string? to) =>
+{
+
+===LINE 6188===
+app.MapGet("/api/ops/analytics/automation/intents", async (HttpContext ctx, AnalyticsRepository analyticsRepo, int? tenant_id, string? from, string? to) =>
+{
+
+===LINE 6229===
+app.MapGet("/api/ops/analytics/wa/analyses", async (HttpContext ctx, AnalyticsRepository analyticsRepo, int? tenant_id) =>
+{
+
+===LINE 6254===
+app.MapGet("/api/ops/analytics/wa/summary", async (HttpContext ctx, AnalyticsRepository analyticsRepo, int? tenant_id, int? analysis_id) =>
+{
+
+===LINE 6279===
+app.MapGet("/api/ops/analytics/wa/agents", async (HttpContext ctx, AnalyticsRepository analyticsRepo, int? tenant_id, int? analysis_id) =>
+{
+
+===LINE 6304===
+app.MapGet("/api/ops/analytics/wa/trends", async (HttpContext ctx, AnalyticsRepository analyticsRepo, int? tenant_id, int? analysis_id) =>
+{
+
+===LINE 6333===
+app.MapGet("/api/ops/analytics/wa/intents-nlp", async (HttpContext ctx, WhatsAppAnalyticsClient waClient, int? tenant_id, int? analysis_id) =>
+{
+
+===LINE 6351===
+app.MapGet("/api/ops/analytics/wa/sentiments", async (HttpContext ctx, WhatsAppAnalyticsClient waClient, int? tenant_id, int? analysis_id) =>
+{
+
+===LINE 6369===
+app.MapGet("/api/ops/analytics/wa/products", async (HttpContext ctx, WhatsAppAnalyticsClient waClient, int? tenant_id, int? analysis_id, int? limit) =>
+{
+
+===LINE 6388===
+app.MapGet("/api/ops/analytics/wa/prices", async (HttpContext ctx, WhatsAppAnalyticsClient waClient, int? tenant_id, int? analysis_id, int? limit) =>
+{
+
+===LINE 6407===
+app.MapGet("/api/ops/analytics/wa/faq-clusters", async (HttpContext ctx, WhatsAppAnalyticsClient waClient, int? tenant_id, int? analysis_id, int? limit) =>
+{
+
+===LINE 6426===
+app.MapGet("/api/ops/analytics/wa/nlp-summary", async (HttpContext ctx, WhatsAppAnalyticsClient waClient, int? tenant_id, int? analysis_id) =>
+{
+
+===LINE 6488===
+app.MapGet("/api/ops/analytics/attribution/summary", async (HttpContext ctx, AttributionRepository attrRepo, int? tenant_id, string? from, string? to) =>
+{
+
+===LINE 6520===
+app.MapGet("/api/ops/analytics/attribution/cost-per-lead", async (HttpContext ctx, AttributionRepository attrRepo, int? tenant_id, string? from, string? to) =>
+{
+
+===LINE 6552===
+app.MapGet("/api/ops/analytics/campaigns", async (HttpContext ctx, AnalyticsRepository analyticsRepo, int? tenant_id) =>
+{
+
+===LINE 6577===
+app.MapGet("/api/ops/messages", async (HttpContext ctx, JsonLinesLogger jsonLog,
+    int? tenant_id, string? phone, string? direction,
+    string? from, string? to, string? instance_id,
+    int? limit, int? offset) =>
+
+===LINE 6623===
+app.MapGet("/api/ops/channels", async (HttpContext ctx, int? tenant_id) =>
+{
+
+===LINE 6640===
+app.MapGet("/api/ops/messages/{id}/story", async (HttpContext ctx, long id, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 6737===
+app.MapGet("/api/ops/tenants", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 6762===
+app.MapPost("/api/ops/tenants/{id}/impersonate", async (HttpContext ctx, int id, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 6840===
+app.MapGet("/api/ops/plans", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 6882===
+app.MapGet("/api/ops/plans/{tierName}", async (HttpContext ctx, string tierName, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 6924===
+app.MapPost("/api/ops/plans", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 6983===
+app.MapPut("/api/ops/plans/{tierName}", async (HttpContext ctx, string tierName, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 7065===
+app.MapDelete("/api/ops/plans/{tierName}", async (HttpContext ctx, string tierName, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 7110===
+app.MapGet("/api/ops/tenants/{id}/plan", async (HttpContext ctx, int id, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 7169===
+app.MapPut("/api/ops/tenants/{id}/plan", async (HttpContext ctx, int id, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 7252===
+app.MapPost("/api/ops/plans/invalidate/{tenantId}", async (HttpContext ctx, int tenantId, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 7273===
+app.MapGet("/api/ops/tenants/{id}/license", async (HttpContext ctx, int id, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 7441===
+app.MapPost("/api/v1/inma/auth/exchange", async (HttpContext ctx, IHttpClientFactory httpClientFactory, JsonLinesLogger jsonLogger, IFeatureFlagService featureFlagService, TenantRegistryRepository tenantRepo) =>
+{
+
+===LINE 7512===
+app.MapPost("/api/v1/inma/auth/login", async (HttpContext ctx, IHttpClientFactory httpClientFactory, JsonLinesLogger jsonLogger, IFeatureFlagService featureFlagService, TenantRegistryRepository tenantRepo) =>
+{
+
+===LINE 7652===
+app.MapPost("/api/v1/inma/auth/mock-login", async (HttpContext ctx, JsonLinesLogger jsonLogger) =>
+{
+
+===LINE 7707===
+app.MapPost("/api/v1/ops/auth/quicklogin", (HttpContext ctx, JsonLinesLogger jsonLogger) =>
+{
+
+===LINE 7752===
+app.MapPost("/api/v1/inma/auth/refresh", async (HttpContext ctx, IHttpClientFactory httpClientFactory, JsonLinesLogger jsonLogger) =>
+{
+
+===LINE 7870===
+app.MapGet("/api/v1/inma/nav", async (HttpContext ctx) =>
+{
+
+===LINE 7937===
+app.MapGet("/api/v1/inma/welcome", async (HttpContext ctx, IHttpClientFactory httpClientFactory, JsonLinesLogger jsonLogger) =>
+{
+
+===LINE 7997===
+app.MapPost("/api/v1/callback/wapcrm", async (HttpContext ctx, JsonLinesLogger jsonLog, IHttpClientFactory httpClientFactory) =>
+{
+
+===LINE 8239===
+app.MapGet("/api/v1/dynamic-fields", async (
+    HttpContext ctx,
+    JsonLinesLogger jsonLog,
+    Invekto.Shared.Services.InmaDynamicFieldsCache cache,
+    TenantRegistryRepository tenantRepo) =>
+
+===LINE 8288===
+app.MapPost("/api/v1/dynamic-fields/cache-invalidate", (
+    HttpContext ctx,
+    JsonLinesLogger jsonLog,
+    Invekto.Shared.Services.InmaDynamicFieldsCache cache) =>
+
+===LINE 8347===
+app.MapPost("/api/v1/optout", async (HttpContext ctx, JsonLinesLogger jsonLog, IHttpClientFactory httpClientFactory) =>
+{
+
+===LINE 8417===
+app.MapPost("/api/ops/outbox/retry-skipped", async (HttpContext ctx, JsonLinesLogger jsonLog, IHttpClientFactory httpClientFactory) =>
+{
+
+===LINE 8444===
+app.MapPost("/api/v1/payment/initiate", async (HttpContext ctx, QnbVPosService vpos, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 8502===
+app.MapPost("/api/v1/payment/callback", async (HttpContext ctx, QnbVPosService vpos, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 8565===
+app.MapGet("/api/v1/payment/history", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 8688===
+app.MapPost("/api/v1/translate", async (HttpContext ctx, TranslationService translationService, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 8752===
+app.MapPost("/api/v1/translate/batch", async (HttpContext ctx, TranslationService translationService, JsonLinesLogger jsonLog) =>
+{
+
+===LINE 8804===
+app.MapPost("/api/v1/detect-language", DetectLanguageHandler);
+app.MapPost("/api/v1/translate/detect", DetectLanguageHandler);
+
+async Task<IResult> DetectLanguageHandler(HttpContext ctx, TranslationService translationService, JsonLinesLogger jsonLog)
+{
+    // Auth: JWT TenantContext VEYA InternalApiKey + X-Tenant-Id header
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+
+===LINE 8805===
+app.MapPost("/api/v1/translate/detect", DetectLanguageHandler);
+
+async Task<IResult> DetectLanguageHandler(HttpContext ctx, TranslationService translationService, JsonLinesLogger jsonLog)
+{
+    // Auth: JWT TenantContext VEYA InternalApiKey + X-Tenant-Id header
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+    {
+
+===LINE 8854===
+app.MapGet("/api/v1/translate/languages", (HttpContext ctx) =>
+{
+
+===LINE 8869===
+app.MapPost("/ops/translation/warmup", async (HttpContext ctx, TranslationService translationService, JsonLinesLogger log) =>
+{
+
+===LINE 9030===
+app.MapGet("/", (HttpContext ctx) => Results.Redirect($"/app/{ctx.Request.QueryString}"));
+
