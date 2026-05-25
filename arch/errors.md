@@ -1636,6 +1636,9 @@ errors:
   - code: INV-VR-022
     description: Automation /api/v1/flows/{tenantId}/{flowId} returned 404 (flow deleted/renamed between dropdown render and WS handshake). Aksiyon - FlowInfoClient returns null → VoicePocEndpoints close WS 1011 + control frame INV-VR-022 + jsonl WARN. Caller should refresh the flow dropdown.
     user_message: Seçili akış artık mevcut değil. Lütfen listeyi yenileyip tekrar deneyin.
+  - code: INV-VR-023
+    description: Realtime model emitted response.function_call_arguments.done with a function name not registered in the session.update.tools[] array (typo, prompt drift, or model hallucination). Aksiyon - ToolExecutor returns structured error JSON `{error:"unknown_tool", message:"..."}` via conversation.item.create function_call_output → response.create → session continues + jsonl WARN. WS session is NOT terminated (single bad tool call is non-fatal).
+    user_message: Bu sırada içsel bir hata oluştu; lütfen sorunuzu farklı şekilde tekrar sorun.
 
 ```
 

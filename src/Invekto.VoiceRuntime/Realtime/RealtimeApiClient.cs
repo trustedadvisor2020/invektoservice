@@ -45,6 +45,8 @@ public sealed class RealtimeApiClient : IAsyncDisposable
     public event Action<ResponseAudioTranscriptDeltaEvent>? OnAudioTranscriptDelta;
     public event Action<InputAudioTranscriptionCompletedEvent>? OnUserTranscriptCompleted;
     public event Action<ResponseDoneEvent>? OnResponseDone;
+    public event Action<ResponseFunctionCallArgumentsDeltaEvent>? OnFunctionCallArgumentsDelta;
+    public event Action<ResponseFunctionCallArgumentsDoneEvent>? OnFunctionCallArgumentsDone;
     public event Action<RealtimeErrorEvent>? OnRealtimeError;
     public event Action<string>? OnUnknownEvent;
 
@@ -133,6 +135,27 @@ public sealed class RealtimeApiClient : IAsyncDisposable
     public ValueTask SendResponseCancelAsync(CancellationToken ct)
     {
         return EnqueueEventAsync(ResponseCancelEvent.Instance, ct);
+    }
+
+    /// <summary>
+    /// F0.5 Chunk C: appends a `function_call_output` conversation item with the tool result (or
+    /// structured error JSON). Caller MUST follow with SendResponseCreateAsync so the model
+    /// resumes — without it the model stays silent waiting for response.create.
+    /// </summary>
+    public ValueTask SendFunctionCallOutputAsync(string callId, string outputJson, CancellationToken ct)
+    {
+        var evt = ConversationItemCreateEvent.FunctionCallOutput(callId, outputJson);
+        return EnqueueEventAsync(evt, ct);
+    }
+
+    /// <summary>
+    /// F0.5 Chunk C: triggers the model to resume after a function_call_output item. Sent
+    /// immediately after SendFunctionCallOutputAsync (no payload override — model uses the active
+    /// session.update settings).
+    /// </summary>
+    public ValueTask SendResponseCreateAsync(CancellationToken ct)
+    {
+        return EnqueueEventAsync(ResponseCreateEvent.Instance, ct);
     }
 
     private async ValueTask EnqueueEventAsync<T>(T evt, CancellationToken ct)
@@ -257,6 +280,19 @@ public sealed class RealtimeApiClient : IAsyncDisposable
                 case "response.done":
                     var rd = JsonSerializer.Deserialize<ResponseDoneEvent>(json, JsonOpts);
                     if (rd is not null) OnResponseDone?.Invoke(rd);
+                    break;
+                // F0.5 Chunk C: function calling lifecycle. GA event names use the
+                // `response.function_call_arguments.{delta,done}` convention with a legacy fallback
+                // pair retained for parity with the audio/transcript event handling above.
+                case "response.function_call_arguments.delta":
+                case "response.output_function_call_arguments.delta": // legacy fallback (older preview)
+                    var fcd = JsonSerializer.Deserialize<ResponseFunctionCallArgumentsDeltaEvent>(json, JsonOpts);
+                    if (fcd is not null) OnFunctionCallArgumentsDelta?.Invoke(fcd);
+                    break;
+                case "response.function_call_arguments.done":
+                case "response.output_function_call_arguments.done": // legacy fallback
+                    var fcDone = JsonSerializer.Deserialize<ResponseFunctionCallArgumentsDoneEvent>(json, JsonOpts);
+                    if (fcDone is not null) OnFunctionCallArgumentsDone?.Invoke(fcDone);
                     break;
                 case "error":
                     var err = JsonSerializer.Deserialize<RealtimeErrorEvent>(json, JsonOpts);

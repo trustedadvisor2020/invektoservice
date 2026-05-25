@@ -1,6 +1,6 @@
 # Browser ↔ VoiceRuntime WebSocket Protocol — F0 + F0.5
 
-> **Status:** F0 frozen (2026-05-24). F0.5 Chunks A (handshake gate) + B (server-side context fetch) shipped 2026-05-26. Chunks C-E in progress.
+> **Status:** F0 frozen (2026-05-24). F0.5 Chunks A (handshake gate) + B (server-side context fetch) + C (function calling + ToolExecutor) shipped 2026-05-26. Chunks D-E in progress.
 > **Endpoint:** `wss://<host>/ws/voice/microphone`
 > **Spec ref:** [SPEC-008 §4](../../specs/voice-flow-builder.md), [FEAT-VFB F0 plan](../../plans/20260523-feat-vfb-f0-poc.json), [F0.5 plan](../../plans/20260525-feat-vfb-f0-5-tenant-aware-voice-test.json)
 
@@ -138,6 +138,68 @@ Realtime finished current response. Bot is silent until user speaks again.
 { "type": "response_done" }
 ```
 
+### `tool_call_started` (F0.5 Chunk C, AD-29)
+
+Model emitted `response.function_call_arguments.done` — execution about to begin. Frame fires
+**immediately** so the UI can show a "çalışıyor" rozet during slow KB roundtrips (up to 5s).
+
+```json
+{
+  "type": "tool_call_started",
+  "call_id": "call_abc123",
+  "name": "search_knowledge_base",
+  "args_preview": "{\"query\":\"saç ekimi dinlenme\",\"top_k\":3}"
+}
+```
+
+`args_preview` is truncated to ≤120 chars with `...` suffix when longer (full args go to jsonl).
+Newlines collapsed to spaces. Privacy: search query is also audible in the user transcript, so
+no hashing required.
+
+### `tool_call_completed` (F0.5 Chunk C, AD-29)
+
+Tool execution finished — fires after `function_call_output` + `response.create` have been
+**enqueued for delivery** to the Realtime WebSocket send loop (local channel buffer). The frame
+is SUPPRESSED entirely when either enqueue raises an OperationCanceledException (session ending)
+or InvalidOperationException (Realtime client disposed) — the browser keeps the "started" rozet
+in that case so it never shows a misleading "completed" badge for a payload the model could not
+receive. Browser updates the same rozet with duration + result count.
+
+> **Honesty note (F4 backlog):** The current contract guarantees LOCAL enqueue success, not
+> server-side ACK from OpenAI / model. F4 will gate this frame on the upstream `response.created`
+> event so the rozet flips to "completed" only after the model has actually started a new
+> response — providing true end-to-end truth correlation. F0.5 + F2 + F3 keep the enqueue-based
+> guarantee because all other outbound Realtime events follow the same pattern.
+
+```json
+{
+  "type": "tool_call_completed",
+  "call_id": "call_abc123",
+  "name": "search_knowledge_base",
+  "duration_ms": 420,
+  "result_count": 3,
+  "status": "ok",
+  "error_code": null
+}
+```
+
+Error variant (`status: "error"`):
+
+```json
+{
+  "type": "tool_call_completed",
+  "call_id": "call_xyz789",
+  "name": "search_knowledge_base",
+  "duration_ms": 5042,
+  "result_count": 0,
+  "status": "error",
+  "error_code": "INV-VR-017"
+}
+```
+
+Possible `error_code` values: `INV-VR-016` (args parse / executor exception), `INV-VR-017`
+(KB HTTP/timeout — model gets `kb_unavailable` JSON), `INV-VR-023` (unknown tool name).
+
 ### `error`
 
 Surface for unrecoverable errors. Browser shows toast + status indicator.
@@ -264,3 +326,4 @@ F0 target: `barge_in.elapsed_ms < 500ms` (browser overhead allowed). F2 PBX path
 | INV-VR-020 | F0.5 impersonation gate — non-sysadmin caller |
 | INV-VR-021 | F0.5 target tenant not found in active list |
 | INV-VR-022 | F0.5 target flow not found for tenant |
+| INV-VR-023 | F0.5 Chunk C — model called an unregistered tool name (non-fatal, structured error sent) |

@@ -96,6 +96,13 @@ builder.Services.AddTransient<Invekto.VoiceRuntime.Clients.TenantInfoClient>();
 builder.Services.AddTransient<Invekto.VoiceRuntime.Clients.FlowInfoClient>();
 builder.Services.AddTransient<Invekto.VoiceRuntime.Clients.KnowledgeSearchClient>();
 
+// ── Function tools (Chunk C AD-23/29/30/31) ───────────────────────
+// SearchKnowledgeBaseTool wraps KnowledgeSearchClient; transient so a tool execution gets a fresh
+// HttpClient per call (the IHttpClientFactory itself is singleton; the typed client wrapping it
+// stays lightweight). ToolExecutor is instantiated PER WS session inside VoicePocEndpoints (one
+// per-call StringBuilder buffer dictionary), so it is NOT registered in DI.
+builder.Services.AddTransient<Invekto.VoiceRuntime.Tools.SearchKnowledgeBaseTool>();
+
 // ── Audio + Realtime + Metrics ────────────────────────────────────
 builder.Services.AddSingleton<OpusCodec>();
 builder.Services.AddSingleton<SileroVad>(sp =>

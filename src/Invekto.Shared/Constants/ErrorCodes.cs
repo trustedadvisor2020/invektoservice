@@ -600,7 +600,7 @@ public static class ErrorCodes
     public const string VoiceAIUnsupportedFormat = "INV-VA-006";         // Unsupported audio format
 
     // VoiceRuntime errors (INV-VR-xxx) -- FEAT-VFB F0 PoC (AD-11/AD-15)
-    // F0 reserved 001..010; F0.5 allocated 011..022 (AD-21..25 Voice Test); F2 will allocate 023..040 (SIP UA AD-26..28); F3 will allocate 041..050.
+    // F0 reserved 001..010; F0.5 allocated 011..023 (AD-21..25 Voice Test + AD-29..31 tool exec); F2 will allocate 024..040 (SIP UA AD-26..28); F3 will allocate 041..050.
     public const string VoiceRuntimeRealtimeConnectionFailed = "INV-VR-001";  // OpenAI Realtime WS connect failure (DNS/TLS/network drop)
     public const string VoiceRuntimeRealtimeAuthFailed = "INV-VR-002";        // OpenAI Realtime auth 401 / WS close 1008 (tier not active, key revoked)
     public const string VoiceRuntimeRealtimeRateLimited = "INV-VR-003";       // OpenAI Realtime 429 / WS close 1013 — outage fallback REFER+callback
@@ -625,6 +625,7 @@ public static class ErrorCodes
     public const string VoiceRuntimeImpersonationGateFailed = "INV-VR-020";   // WS handshake non-tenant=0 JWT (sadece sysadmin Voice Test eriship)
     public const string VoiceRuntimeTenantNotFound = "INV-VR-021";            // Backend /api/ops/tenants 200 OK ama target_tenant_id listede yok (silinmis/inaktif)
     public const string VoiceRuntimeFlowNotFound = "INV-VR-022";              // Automation /api/v1/flows/{tid}/{fid} 404 (flow tenant'ta yok)
+    public const string VoiceRuntimeUnknownToolName = "INV-VR-023";           // Realtime model emitted function_call with unregistered name (e.g. typo, prompt drift) — structured error JSON returned, session continues
 
     // Hangfire Job Infrastructure (INV-JOB-xxx) -- G7
     public const string JobStorageConnectionFailed = "INV-JOB-001";   // Hangfire PG storage connection failed

@@ -56,6 +56,7 @@ public static class VoicePocEndpoints
         JwtValidator jwt,
         TenantInfoClient tenantClient,
         FlowInfoClient flowClient,
+        SearchKnowledgeBaseTool searchKnowledgeBaseTool,
         IConfiguration config,
         IWebHostEnvironment env)
     {
@@ -240,13 +241,7 @@ public static class VoicePocEndpoints
             providerMetadata["tenant_name"] = voiceContext.TenantName;
             providerMetadata["sector"] = voiceContext.Sector;
             providerMetadata["flow_name"] = voiceContext.FlowName;
-
-            // Exercise InstructionsBuilder so Chunk B has a concrete render path before Chunk C
-            // wires the result into the Realtime session.update. Logged truncated (120 chars) to
-            // keep jsonl readable; full instructions are deterministic from voiceContext.
-            var instructionsPreview = InstructionsBuilder.Build(voiceContext);
-            var truncated = instructionsPreview.Length > 120 ? instructionsPreview[..120] + "..." : instructionsPreview;
-            logger.SystemInfo($"[VoicePoc/{sessionId}] F0.5 context built: tenant='{voiceContext.TenantName}'({voiceContext.Sector}) flow='{voiceContext.FlowName}' instructions_preview=\"{truncated}\"");
+            logger.SystemInfo($"[VoicePoc/{sessionId}] F0.5 context built: tenant='{voiceContext.TenantName}'({voiceContext.Sector}) flow='{voiceContext.FlowName}'");
         }
 
         // F0.5 mode: VoiceCallDescriptor.TenantId = TARGET tenant (impersonation target). Caller is
@@ -270,15 +265,49 @@ public static class VoicePocEndpoints
         await using var realtime = new RealtimeApiClient(
             realtimeFactory.Endpoint, realtimeFactory.ApiKey, realtimeFactory.Model, sessionId, logger);
 
+        // Chunk C (AD-23/24/29/30/31): F0.5 sessions override the factory's generic instructions
+        // with the per-tenant InstructionsBuilder output and attach the function tools[] array.
+        // F0 legacy keeps DefaultConfig untouched (Tools=null → field omitted on the wire).
+        SessionConfig sessionConfig;
+        IReadOnlyDictionary<string, IVoiceTool>? tools = null;
+        if (f05Mode && voiceContext != null)
+        {
+            var instructions = InstructionsBuilder.Build(voiceContext);
+            var toolDefinitions = new List<ToolDefinition>
+            {
+                ToolDefinition.Function(
+                    searchKnowledgeBaseTool.Name,
+                    searchKnowledgeBaseTool.Description,
+                    searchKnowledgeBaseTool.Parameters)
+            };
+            sessionConfig = realtimeFactory.DefaultConfig with
+            {
+                Instructions = instructions,
+                Tools = toolDefinitions
+            };
+            tools = new Dictionary<string, IVoiceTool>(StringComparer.Ordinal)
+            {
+                [searchKnowledgeBaseTool.Name] = searchKnowledgeBaseTool
+            };
+        }
+        else
+        {
+            sessionConfig = realtimeFactory.DefaultConfig;
+        }
+
         var orchestrator = new VoicePocOrchestrator(
             ws, voiceSession, realtime, vad, vadState, turnTiming, latency, logger, sessionId);
 
+        // CQ6 iter 2 fix: own the ToolExecutor IDisposable so its CancellationTokenRegistration is
+        // explicitly disposed at session end (instead of relying on the token's automatic
+        // unregistration once the callback fires). `using` ensures Dispose runs even on early throw.
+        ToolExecutor? toolExecutor = null;
         try
         {
             await realtime.ConnectAsync(sessionCts.Token);
-            await realtime.SendSessionUpdateAsync(realtimeFactory.DefaultConfig, sessionCts.Token);
+            await realtime.SendSessionUpdateAsync(sessionConfig, sessionCts.Token);
 
-            orchestrator.WireRealtimeHandlers();
+            toolExecutor = orchestrator.WireRealtimeHandlers(tools, targetTenantId, sessionCts.Token);
             await orchestrator.SendControlAsync(new { type = "ready", session_id = sessionId }, sessionCts.Token);
 
             var browserRxTask = orchestrator.BrowserRxLoopAsync(sessionCts.Token);
@@ -303,6 +332,10 @@ public static class VoicePocEndpoints
         finally
         {
             sessionCts.Cancel();
+            // CQ6 iter 2 fix: explicitly dispose the ToolExecutor so its CancellationTokenRegistration
+            // unregisters BEFORE the session token's automatic cleanup runs. Dispose is idempotent
+            // (Interlocked guard), so a redundant call from a future code path stays safe.
+            toolExecutor?.Dispose();
             try
             {
                 if (ws.State == WebSocketState.Open)
@@ -487,8 +520,50 @@ public static class VoicePocEndpoints
             _turn = turn; _latency = latency; _logger = logger; _sessionId = sessionId;
         }
 
-        public void WireRealtimeHandlers()
+        /// <summary>
+        /// Wires Realtime → orchestrator event callbacks. When <paramref name="tools"/> is non-null
+        /// (F0.5 mode) a ToolExecutor is instantiated, bound to OnFunctionCallArguments*, and
+        /// RETURNED so the caller (HandleMicrophoneWsAsync) can dispose it at session end (CQ6
+        /// iter 2 fix — explicit IDisposable ownership). F0 legacy mode returns null — function
+        /// call events go to OnUnknownEvent (fine — F0 session.update sends no tools).
+        /// </summary>
+        public ToolExecutor? WireRealtimeHandlers(IReadOnlyDictionary<string, IVoiceTool>? tools, int impersonationTenantId, CancellationToken sessionCt)
         {
+            ToolExecutor? executor = null;
+            if (tools != null)
+            {
+                executor = new ToolExecutor(
+                    realtime: _realtime,
+                    tools: tools,
+                    impersonationTenantId: impersonationTenantId,
+                    sessionId: _sessionId,
+                    logger: _logger,
+                    sendHudFrame: SendControlAsync,
+                    sessionCt: sessionCt);
+                var executorLocal = executor; // capture for lambda
+
+                _realtime.OnFunctionCallArgumentsDelta += executorLocal.OnArgumentsDelta;
+                _realtime.OnFunctionCallArgumentsDone += evt =>
+                {
+                    // Fire-and-forget on the thread pool: the Realtime receive loop must not block
+                    // on the tool's HTTP roundtrip + Realtime write-back. ToolExecutor.OnArgumentsDoneAsync
+                    // owns its own defensive outer try/catch (CQ2/CQ5/CQ12 fix), so the only thing
+                    // this wrapper has to swallow is the OperationCanceledException raised when the
+                    // session token fires mid-flight (CQ2 iter 2 fix — `when` filter on
+                    // sessionCt.IsCancellationRequested so unrelated OCEs still surface in logs).
+                    _ = Task.Run(async () =>
+                    {
+                        try { await executorLocal.OnArgumentsDoneAsync(evt); }
+                        catch (OperationCanceledException) when (sessionCt.IsCancellationRequested) { /* session ended */ }
+                        catch (InvalidOperationException ex)
+                        {
+                            _logger.SystemError($"[{ErrorCodes.VoiceRuntimeFunctionCallDispatchFailed}] [VoicePoc/{_sessionId}] tool executor invalid state (call_id={evt.CallId}, tool={evt.Name}): {ex.Message}");
+                        }
+                    });
+                };
+            }
+            // continues below with the existing Realtime-handler wiring (unchanged)
+
             _realtime.OnSpeechStarted += startEvt =>
             {
                 if (_botSpeaking)
@@ -588,6 +663,8 @@ public static class VoicePocEndpoints
                     message = err.Error.Message
                 }, CancellationToken.None);
             };
+
+            return executor; // CQ6 iter 2 fix: hand ownership of the IDisposable up to the caller.
         }
 
         public async Task BrowserRxLoopAsync(CancellationToken ct)

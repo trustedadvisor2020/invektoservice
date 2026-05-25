@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Invekto.VoiceRuntime.Realtime;
@@ -32,11 +33,33 @@ public sealed record SessionConfig(
     //   all moved UNDER session.audio.{input,output} nested objects
     // - "temperature" + "max_response_output_tokens" REMOVED from session level
     //   (GA: pass these per-response via response.create event if needed; F0 default behavior)
+    //
+    // F0.5 Chunk C (AD-23): optional Tools array enables function calling. When null the GA wire
+    // payload omits the field entirely (DefaultIgnoreCondition.WhenWritingNull on serializer), so
+    // F0 legacy sessions keep their original shape — only F0.5 mode sends tools[].
     [property: JsonPropertyName("type")] string Type,
     [property: JsonPropertyName("model")] string Model,
     [property: JsonPropertyName("instructions")] string Instructions,
-    [property: JsonPropertyName("audio")] SessionAudioConfig Audio
+    [property: JsonPropertyName("audio")] SessionAudioConfig Audio,
+    [property: JsonPropertyName("tools")] IReadOnlyList<ToolDefinition>? Tools = null
 );
+
+/// <summary>
+/// OpenAI Realtime GA function tool definition (sent inside session.update.tools[]).
+/// Names MUST be snake_case (OpenAI validation). Description is English-only (AD-23: model alignment).
+/// Parameters is a JSON Schema object (kept as JsonElement so the caller can build the schema in C#
+/// or load it from disk without forcing a record-per-tool here).
+/// </summary>
+public sealed record ToolDefinition(
+    [property: JsonPropertyName("type")] string Type,
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("description")] string Description,
+    [property: JsonPropertyName("parameters")] JsonElement Parameters
+)
+{
+    public static ToolDefinition Function(string name, string description, JsonElement parameters) =>
+        new("function", name, description, parameters);
+}
 
 public sealed record SessionAudioConfig(
     [property: JsonPropertyName("input")] SessionAudioInputConfig Input,
@@ -82,6 +105,43 @@ public sealed record ResponseCancelEvent(
 )
 {
     public static ResponseCancelEvent Instance { get; } = new("response.cancel");
+}
+
+// F0.5 Chunk C — function calling outbound events ────────────────────
+
+/// <summary>
+/// `conversation.item.create` with a function_call_output item: returns tool execution result to
+/// the model after ToolExecutor finishes (success or structured error JSON). Output field is the
+/// raw JSON string the model will read — caller is responsible for serializing the payload.
+/// </summary>
+public sealed record ConversationItemCreateEvent(
+    [property: JsonPropertyName("type")] string Type,
+    [property: JsonPropertyName("item")] ConversationItem Item
+)
+{
+    public static ConversationItemCreateEvent FunctionCallOutput(string callId, string outputJson) =>
+        new("conversation.item.create", new ConversationItem(
+            Type: "function_call_output",
+            CallId: callId,
+            Output: outputJson));
+}
+
+public sealed record ConversationItem(
+    [property: JsonPropertyName("type")] string Type,
+    [property: JsonPropertyName("call_id")] string? CallId,
+    [property: JsonPropertyName("output")] string? Output
+);
+
+/// <summary>
+/// `response.create` triggers the model to resume after a function_call_output item is appended.
+/// GA accepts an optional `response` config override; F0.5 sends the bare event (model continues
+/// with the active session.update settings).
+/// </summary>
+public sealed record ResponseCreateEvent(
+    [property: JsonPropertyName("type")] string Type
+)
+{
+    public static ResponseCreateEvent Instance { get; } = new("response.create");
 }
 
 // ── Server → Client events (parsed via Type discriminator) ───────────
@@ -136,6 +196,39 @@ public sealed record ResponseDoneEvent(
     [property: JsonPropertyName("type")] string Type,
     [property: JsonPropertyName("event_id")] string EventId,
     [property: JsonPropertyName("response_id")] string ResponseId
+);
+
+// F0.5 Chunk C — function calling inbound events ─────────────────────
+
+/// <summary>
+/// `response.function_call_arguments.delta` — streaming JSON args fragment. Multiple deltas with
+/// the same call_id accumulate into the final args string. ToolExecutor buffers per call_id
+/// (AD-31 ConcurrentDictionary defense) until the matching .done arrives.
+/// </summary>
+public sealed record ResponseFunctionCallArgumentsDeltaEvent(
+    [property: JsonPropertyName("type")] string Type,
+    [property: JsonPropertyName("event_id")] string EventId,
+    [property: JsonPropertyName("response_id")] string? ResponseId,
+    [property: JsonPropertyName("item_id")] string? ItemId,
+    [property: JsonPropertyName("output_index")] int? OutputIndex,
+    [property: JsonPropertyName("call_id")] string CallId,
+    [property: JsonPropertyName("delta")] string Delta
+);
+
+/// <summary>
+/// `response.function_call_arguments.done` — final args + tool name. Triggers ToolExecutor.
+/// `arguments` is the COMPLETE JSON string (model may also emit it incrementally via deltas; both
+/// paths must agree — see AD-31 buffer invariant).
+/// </summary>
+public sealed record ResponseFunctionCallArgumentsDoneEvent(
+    [property: JsonPropertyName("type")] string Type,
+    [property: JsonPropertyName("event_id")] string EventId,
+    [property: JsonPropertyName("response_id")] string? ResponseId,
+    [property: JsonPropertyName("item_id")] string? ItemId,
+    [property: JsonPropertyName("output_index")] int? OutputIndex,
+    [property: JsonPropertyName("call_id")] string CallId,
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("arguments")] string Arguments
 );
 
 public sealed record RealtimeErrorEvent(

@@ -1,39 +1,70 @@
 {
   "_meta": {
     "spec_ref": "SPEC-008 (FEAT-VFB)",
-    "captured_at": "2026-05-24",
-    "phase": "F0 PoC microphone-based",
-    "source": "Invekto.VoiceRuntime/Realtime/RealtimeSession.cs (RealtimeSessionFactory.DefaultConfig)",
+    "captured_at": "2026-05-26",
+    "phase": "F0.5 Chunk C (tenant-aware Voice Test + function calling)",
+    "source": "Invekto.VoiceRuntime/Realtime/RealtimeSession.cs (RealtimeSessionFactory.DefaultConfig) + Endpoints/VoicePocEndpoints.cs (per-call override) + Tools/SearchKnowledgeBaseTool.cs (tools[0] schema)",
     "notes": [
-      "Snapshot of the session.update payload sent on Realtime WS connect.",
-      "Values mirror appsettings.OpenAI.* — change DefaultConfig builder to update.",
-      "F2 will add per-tenant overrides (tenant_settings.voice_realtime_overrides JSONB)."
+      "GA migration (2026-05-07): session.type required = 'realtime' | 'transcription'. modalities REMOVED (audio+text auto). voice/transcription/turn_detection/format moved UNDER session.audio.{input,output}. temperature + max_response_output_tokens REMOVED at session level (per-response on response.create).",
+      "F0 legacy: tools field omitted (DefaultIgnoreCondition.WhenWritingNull). Instructions from appsettings.OpenAI.Instructions (generic Türkçe).",
+      "F0.5: VoicePocEndpoints overrides Instructions via InstructionsBuilder.Build(voiceContext) and attaches tools[0] = search_knowledge_base. CHANGES to either path require updating this contract.",
+      "F2 will add per-tenant overrides (tenant_settings.voice_realtime_overrides JSONB) + multi-tool catalog (transfer_to_human, voice_dtmf, collect_field)."
     ]
   },
   "type": "session.update",
   "session": {
-    "modalities": ["audio", "text"],
-    "instructions": "Sen Invekto'nun Türkçe sesli AI asistanısın. Kısa, doğal, samimi konuşursun. Müşteri sorularını anlamadığında 'Tekrar eder misiniz?' dersin. Karmaşık sorularda 'Sizi temsilciye yönlendireyim mi?' önerirsin.",
-    "voice": "alloy",
-    "input_audio_format": "pcm16",
-    "output_audio_format": "pcm16",
-    "input_audio_transcription": {
-      "model": "whisper-1"
+    "type": "realtime",
+    "model": "gpt-realtime",
+    "instructions": "[F0.5] InstructionsBuilder.Build → 'Sen {tenant_name} firmasinin ({sector}) sesli AI asistanisin. Aktif konusma akisi: {flow_name}. ...' (deterministic from VoiceTestContext). [F0 legacy] appsettings.OpenAI.Instructions generic Türkçe.",
+    "audio": {
+      "input": {
+        "format": "pcm16",
+        "transcription": {
+          "model": "whisper-1",
+          "language": "tr"
+        },
+        "turn_detection": {
+          "type": "semantic_vad",
+          "eagerness": "medium",
+          "create_response": true
+        }
+      },
+      "output": {
+        "format": "pcm16",
+        "voice": "alloy"
+      }
     },
-    "turn_detection": {
-      "type": "semantic_vad",
-      "eagerness": "medium",
-      "create_response": true
-    },
-    "temperature": 0.8,
-    "max_response_output_tokens": "inf"
+    "tools": [
+      {
+        "type": "function",
+        "name": "search_knowledge_base",
+        "description": "Search the active tenant's knowledge base (FAQs + documents) for the user's question. Use whenever the customer asks about specific information you do not already know with certainty (e.g. pricing, working hours, procedure details, appointment policy, address). Returns top results with scores; if results is empty, follow the included Turkish guidance.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "The customer question in natural Turkish (e.g. 'saç ekimi sonrası ne kadar dinlenmek gerekir?'). Do NOT translate to English."
+            },
+            "top_k": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10,
+              "description": "How many results to return (default 3). Server-side clamped to [1,10]."
+            }
+          },
+          "required": ["query"],
+          "additionalProperties": false
+        }
+      }
+    ]
   },
   "_endpoints": {
-    "wss": "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview",
+    "wss": "wss://api.openai.com/v1/realtime?model=gpt-realtime",
     "auth_headers": {
-      "Authorization": "Bearer ${OPENAI_API_KEY}",
-      "openai-beta": "realtime=v1"
-    }
+      "Authorization": "Bearer ${OPENAI_API_KEY}"
+    },
+    "_ga_header_notes": "OpenAI-Beta: realtime=v1 REMOVED on 2026-05-07 GA migration. Authorization Bearer is the only required header now."
   },
   "_audio_pipeline": {
     "user_to_realtime": {
@@ -47,12 +78,42 @@
       "sample_rate": 24000,
       "encoding": "pcm16",
       "container": "base64",
-      "event": "response.audio.delta",
-      "field": "delta"
+      "event": "response.output_audio.delta",
+      "field": "delta",
+      "_legacy_fallback_event": "response.audio.delta"
+    }
+  },
+  "_function_call_pipeline": {
+    "_notes": [
+      "F0.5 Chunk C. Model emits args incrementally via .delta then a final .done with the complete args + name.",
+      "VoiceRuntime ToolExecutor buffers per call_id (AD-31 ConcurrentDictionary defense), executes under 5sn timeout, replies with conversation.item.create function_call_output + response.create."
+    ],
+    "inbound": {
+      "delta_event": "response.function_call_arguments.delta",
+      "delta_legacy_fallback": "response.output_function_call_arguments.delta",
+      "done_event": "response.function_call_arguments.done",
+      "done_legacy_fallback": "response.output_function_call_arguments.done",
+      "fields": ["event_id", "response_id", "item_id", "output_index", "call_id", "name", "arguments|delta"]
+    },
+    "outbound": {
+      "result_event": "conversation.item.create",
+      "result_item_shape": {
+        "type": "function_call_output",
+        "call_id": "{echoed from .done}",
+        "output": "{stringified JSON — see SearchKnowledgeBaseTool result shape}"
+      },
+      "resume_event": "response.create"
+    },
+    "execution_budget_ms": 5000,
+    "error_handling": {
+      "unknown_tool_name": "ToolExecutor returns INV-VR-023 structured error JSON → model speaks Turkish fallback. Session continues.",
+      "args_parse_failed": "INV-VR-016 → 'Arac argumanlari JSON formatinda degil.' → fallback.",
+      "execute_timeout_5s": "INV-VR-017 'kb_unavailable' shape → model speaks 'şu an bilgi bankama ulaşamıyorum'.",
+      "kb_http_error": "INV-VR-017 same kb_unavailable shape via KnowledgeSearchException."
     }
   },
   "_turn_detection_decision_log": {
-    "f0_choice": "semantic_vad (beta)",
+    "f0_choice": "semantic_vad (GA)",
     "rationale": "AD-12: F0 tests OpenAI's native semantic EOT in real Turkish conversation. If accuracy < ~85% on hesitation scenarios, F2 will layer pipecat-ai/smart-turn-v2 ONNX on top of Silero VAD.",
     "alternatives_considered": [
       { "type": "server_vad", "rejected_because": "VAD-only — over-eager on mid-sentence pauses" },
