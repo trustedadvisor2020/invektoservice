@@ -1640,6 +1640,42 @@ errors:
     description: Realtime model emitted response.function_call_arguments.done with a function name not registered in the session.update.tools[] array (typo, prompt drift, or model hallucination). Aksiyon - ToolExecutor returns structured error JSON `{error:"unknown_tool", message:"..."}` via conversation.item.create function_call_output → response.create → session continues + jsonl WARN. WS session is NOT terminated (single bad tool call is non-fatal).
     user_message: Bu sırada içsel bir hata oluştu; lütfen sorunuzu farklı şekilde tekrar sorun.
 
+  # ----- Browser-side (voice-poc.js) diagnostic codes — F0.5 Chunk D 2026-05-26 -----
+  # DISPLAY-ONLY codes surfaced in the Voice PoC browser console, event log, and toast UI.
+  # NOT authoritative server codes — the server still returns its own INV-VR-* response when
+  # involved. They give Q a stable handle to correlate browser-side regressions with this
+  # file. No server logic should branch on these.
+  - code: INV-VR-CLIENT-001
+    description: Browser dropdown bootstrap could not find window.INVEKTO_VOICE_JWT (Dashboard wrapper URL-bridge missing — direct bookmark visit OR session expired). Aksiyon - voice-poc.js disables tenant/flow dropdowns + shows toast + skips fetch. WS handshake later fails the same way unless the user re-opens via Dashboard "Voice Test" link.
+    user_message: Dashboard JWT bulunamadı. Lütfen app.invekto.com'da giriş yapıp Voice Test linkini tekrar açın.
+  - code: INV-VR-CLIENT-002
+    description: localStorage.getItem() threw on the voice.invekto.com origin (browser privacy mode, SecurityError, disabled storage). Aksiyon - voice-poc.js typed catch + event log WARN + treat key as absent. AHA-4 auto-fill silently degrades to manual selection.
+    user_message: Tarayıcı yerel depolaması okunamadı; son seçim otomatik doldurulamadı.
+  - code: INV-VR-CLIENT-003
+    description: localStorage.setItem() threw on persistence write (quota exceeded, private mode). Aksiyon - voice-poc.js typed catch + event log WARN. The current selection still works for the active session; only persistence to the next visit is lost.
+    user_message: Tarayıcı yerel depolamasına yazılamadı; seçimleriniz kaydedilmeyecek.
+  - code: INV-VR-CLIENT-004
+    description: Browser tenant fetch failed (Backend /api/ops/tenants returned non-2xx OR network error OR CORS rejected). Aksiyon - voice-poc.js error toast + tenant dropdown disabled + event log includes HTTP status. Most common cause is CORS origin missing for voice.invekto.com:8443 (Chunk E config) OR Dashboard JWT expired/invalid.
+    user_message: Firma listesi yüklenemedi. Dashboard oturumunuzun aktif olduğunu kontrol edin.
+  - code: INV-VR-CLIENT-005
+    description: Browser flow fetch failed (Automation /api/v1/flows/{tenantId} non-2xx OR network OR CORS rejected). Aksiyon - voice-poc.js error toast + flow dropdown disabled + event log includes HTTP status + tenant_id context.
+    user_message: Akış listesi yüklenemedi. Dashboard oturumunuzun aktif olduğunu kontrol edin.
+  - code: INV-VR-CLIENT-006
+    description: Browser received tool_call_completed without a prior tool_call_started for the same call_id (server↔browser frame ordering drift OR network reordering OR server bug). Aksiyon - voice-poc.js synthesizes a placeholder rozet + event log WARN. Non-fatal; rozet displays the completed metrics.
+    user_message: (internal log only — Q debug context)
+  - code: INV-VR-CLIENT-007
+    description: WebSocket.onerror fired (low-level transport error before/after handshake). Browser API does not expose the underlying reason; close event usually follows with code/reason for the actual cause. Aksiyon - voice-poc.js status to error + event log.
+    user_message: WebSocket bağlantı hatası — bağlantı kapanıyor.
+  - code: INV-VR-CLIENT-008
+    description: WebSocket close event included an INV-VR-* server-side rejection reason (server rejected handshake / tore down mid-session due to auth/data/lifecycle failure). Aksiyon - voice-poc.js toast + status preserves the server INV code + event log.
+    user_message: Oturum sunucu tarafından kapatıldı (sunucu hata kodu görünür durumda).
+  - code: INV-VR-CLIENT-009
+    description: Browser mic-pipeline init failed for a reason other than permission. Covers (a) getUserMedia non-permission failures (NotReadableError hardware busy, OverconstrainedError, AbortError, generic), (b) AudioContext sample-rate mismatch (hardware refused 48 kHz), and (c) AudioWorklet module load failure (network/SecurityError/missing file). Permission-denied paths still use INV-VR-009. Aksiyon - voice-poc.js status to error + event log includes err.name and err.message.
+    user_message: Mikrofon başlatılamadı; tarayıcı izinlerini ve donanımı kontrol edin.
+  - code: INV-VR-CLIENT-010
+    description: start() invoked without tenant_id + flow_id selection. Defensive guard — the start button is disabled by updateStartButtonState until both dropdowns have valid integer values, so this should only fire on a UI state race (extremely unlikely). Aksiyon - voice-poc.js toast + event log WARN; no resources allocated.
+    user_message: Önce firma ve akış seçin.
+
 ```
 
 ## Adding New Codes

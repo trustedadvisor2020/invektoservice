@@ -3,15 +3,33 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Invekto Voice PoC — F0</title>
+  <title>Invekto Voice PoC — F0.5</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <main>
     <header>
       <h1>Invekto Voice PoC</h1>
-      <p class="subtitle">F0 — OpenAI Realtime mikrofon testi</p>
+      <p class="subtitle">F0.5 — Tenant + Flow seçimli mikrofon testi (function calling)</p>
     </header>
+
+    <section class="selector">
+      <div class="selector-row">
+        <label for="tenantSelect">Firma (Tenant)</label>
+        <select id="tenantSelect" disabled>
+          <option value="">Yükleniyor…</option>
+        </select>
+      </div>
+      <div class="selector-row">
+        <label for="flowSelect">Akış (Flow)</label>
+        <select id="flowSelect" disabled>
+          <option value="">— Önce firma seçin —</option>
+        </select>
+      </div>
+      <div id="selectorHint" class="selector-hint">
+        Mikrofonu başlatmak için firma ve akış seçin.
+      </div>
+    </section>
 
     <section class="hud">
       <div class="metric">
@@ -37,14 +55,33 @@
     </section>
 
     <section class="controls">
-      <button id="startBtn" class="primary">🎤 Mikrofonu Başlat</button>
+      <button id="startBtn" class="primary" disabled>🎤 Mikrofonu Başlat</button>
       <button id="stopBtn" disabled>⏹ Durdur</button>
       <a href="/metrics/latency" target="_blank" class="link-btn">/metrics/latency</a>
     </section>
 
-    <section class="transcript">
-      <h2>Transcript</h2>
-      <div id="transcriptLog" class="log"></div>
+    <!--
+      Toast container — non-blocking error/info banners (tenant fetch fail, flow fetch fail,
+      WS handshake error). 4sn auto-dismiss; rolling cap 3 to bound DOM growth in long sessions.
+    -->
+    <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="false"></div>
+
+    <!--
+      F0.5 two-column workspace: transcript on the left, tool-call HUD on the right.
+      AD-32: sticky tool-call panel — Q sees pending/ok/error rozet badges during the conversation
+      without losing transcript context. <800px viewport stacks columns (CSS @media).
+    -->
+    <section class="workspace">
+      <div class="workspace-col transcript">
+        <h2>Transcript</h2>
+        <div id="transcriptLog" class="log"></div>
+      </div>
+      <aside class="workspace-col tool-calls" aria-label="Tool call HUD">
+        <h2>Bilgi Bankası Çağrıları</h2>
+        <div id="toolCallList" class="tool-call-list" role="log" aria-live="polite">
+          <div class="tool-call-empty">Henüz çağrı yok. Bot konuştukça burada görünecek.</div>
+        </div>
+      </aside>
     </section>
 
     <section class="events">
@@ -54,9 +91,10 @@
 
     <footer>
       <p>
-        F0 PoC — <code>OpusFrame 48kHz mono 20ms</code> → <code>WSS /ws/voice/microphone</code> →
-        <code>VoiceRuntime</code> → <code>OpenAI Realtime API</code> → tarayıcı hoparlör.
-        <br />Test sırasında konuşun. Sub-saniye barge-in için bot konuşurken sözünü kesin.
+        F0.5 PoC — Tenant + Flow seçimi → <code>WSS /ws/voice/microphone?tenant_id=X&amp;flow_id=Y</code>
+        → <code>VoiceRuntime</code> → <code>OpenAI Realtime API</code> +
+        <code>search_knowledge_base</code> function call → tarayıcı hoparlör.
+        <br />Bot bilgi bankasına ihtiyaç duyduğunda sağ paneldeki rozet görünür.
       </p>
     </footer>
   </main>
@@ -72,8 +110,11 @@
     //   * Bookmark'a alinmaz
     //   * Sayfa yenilenirse token URL'de olmadigi icin re-injection olmaz (Dashboard'a donus)
     // Access log'a token TLS-encrypted dusebilir; bu kabul edilebilir (server-side trust boundary).
-    // NOT: Hangfire'in `/ops/hangfire-login` backend cookie bridge'inden FARKLI — bu sayfa
-    // static, backend redirect yok. F0 PoC scope; F4 backlog item: backend bridge pattern.
+    // NOT: F0.5 dropdown fetch ve WS handshake AYNI token'i kullanir (AD-33 iter 1 fix).
+    // window.INVEKTO_VOICE_JWT BU URL bridge'inden gelir — Backend + Automation cross-origin
+    // fetch + WS query token hepsi tek source. voice.invekto.com ve app.invekto.com farkli
+    // origin oldugu icin Dashboard'in localStorage.access_token degeri burada okunamaz; o
+    // sebeple URL-bridge tek portable kanaldir. Token yoksa fetch + WS reddedilir (toast).
     (function () {
       var params = new URLSearchParams(window.location.search);
       var tok = params.get('token');
