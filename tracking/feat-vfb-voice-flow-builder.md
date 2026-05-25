@@ -1,7 +1,7 @@
 # FEAT-VFB: Voice Flow Builder
 
-> **Slug:** feat-vfb | **Spec:** [SPEC-008](../arch/specs/voice-flow-builder.md) | **Mod:** ACTIVE-F0 (PROD-DEPLOYED)
-> **Versiyon:** v2.0 | **Olusturma:** 2026-05-17 | **Son Guncelleme:** 2026-05-25 (F0 prod deploy — `InvektoVoiceRuntime` NSSM service Running on :7115, voice.invekto.com URL reverse proxy Q manuel adım)
+> **Slug:** feat-vfb | **Spec:** [SPEC-008](../arch/specs/voice-flow-builder.md) | **Mod:** ACTIVE-F0.5 (Chunks A+B+C+D MERGED master, Chunk E IN-PROGRESS — CORS + 3-svc redeploy + smoke)
+> **Versiyon:** v2.1 | **Olusturma:** 2026-05-17 | **Son Guncelleme:** 2026-05-26 (F0.5 Chunks A-D done — AD-32/33/34 (Chunk D) ve AD-35/36 (Chunk E) eklendi, Chunk E = CORS Backend+Automation + voice-poc.html browser dropdown live)
 > **Risk:** HIGH | **Sure tahmini:** 7-9 hafta (F0-F4 toplam)
 > **Onkosul:** Faz A demo toparlama DONE (su an A6 son), Toniva-tarafi paralel work hazirligi (Q) → 2026-05-23: **Q karari F1 sonu Toniva C++ basla, F0 microphone-only**
 
@@ -123,14 +123,14 @@ Musteri adayi geldi: "PBX'e gelen aramalari AI ile cevaplamak istiyoruz. Onceki 
 **Exit:** AC-1 PASS + Codex iter ≤ 2 + deploy + smoke + 0 regression Automation text path
 
 ### F0.5 — Tenant-aware Voice Test (4-5 gun, plan onaylı 2026-05-25)
-- [ ] Plan JSON: `arch/plans/20260525-feat-vfb-f0-5-tenant-aware-voice-test.json` (5.1 schema, MEDIUM risk, 6 AC + 6 verification + 5 AHA + 5 AD)
-- [ ] **Chunk A:** VoiceRuntime altyapı — HttpClient/IHttpClientFactory DI + JwtGenerator DI (Automation pattern clone) + WS handshake tenant_id/flow_id query param gate (`?token=&tenant_id=&flow_id=`) + INV-VR-011..015 error codes
-- [ ] **Chunk B:** 3 HTTP client — `TenantInfoClient` (Backend `/api/ops/tenants` Basic Auth opsiyonel ya da super JWT), `FlowInfoClient` (Automation `/api/v1/automation/flows/{tid}/{fid}` service JWT), `KnowledgeSearchClient` (Knowledge `/api/v1/knowledge/{tid}/search` service JWT) + `InstructionsBuilder` (tenant.name + sector + flow.name template) + `VoiceTestContext` DTO (Shared.Contracts.Voice)
-- [ ] **Chunk C:** Function calling — `RealtimeMessageTypes.cs` function_call_arguments.delta/.done + conversation.item.create function_call_output event types + `RealtimeApiClient` dispatch + `RealtimeSession` session.update.tools[] registration (`search_knowledge_base` GA shape) + `ToolExecutor` + `SearchKnowledgeBaseTool` handler (top_k clamp [1,10], 5sn timeout, structured error JSON)
-- [ ] **Chunk D:** Browser dropdownlar — voice-poc.html tenant + flow dropdown + voice-poc.js fetch loop (Dashboard JWT direct call) + WS handshake update + tool call HUD rozeti (live tool name + duration) + styles.css dropdown layout + localStorage persist son seçim (Q AHA UX)
-- [ ] **Chunk E:** CORS allowed origins — Knowledge + Automation + Backend `Program.cs` `voice.invekto.com:8443` ekle + arch/contracts/voice/voice-runtime-ws.md güncel + openai-realtime-session.json snapshot + smoke (Dent Adavista + saç ekimi FAQ) + tracking + redeploy 4 servis (Knowledge/Automation/Backend/VoiceRuntime)
+- [x] Plan JSON: `arch/plans/20260525-feat-vfb-f0-5-tenant-aware-voice-test.json` (5.1 schema, MEDIUM risk, 6 AC + 6 verification + 5 AHA + **8 AD** (AD-21..28 + AD-29..31 Chunk C + AD-32..34 Chunk D + AD-35..36 Chunk E))
+- [x] **Chunk A** (DONE 2026-05-25, commit `65b49afe`, Codex iter 3 PASS): VoiceRuntime altyapı — JwtGenerator DI + 3 named HttpClient + WS handshake dual-mode (F0 backward-compat + F0.5 strict ContainsKey-based) + 3-katmanlı tenant_id validation + INV-VR-011..020 + AD-21..28
+- [x] **Chunk B** (DONE 2026-05-26, commit `856e3bd7`, Codex iter 3 PASS): TenantInfoClient (admin JWT, Q kararı 2026-05-26) + FlowInfoClient (`/api/v1/flows/{tid}/{fid}` path drift fix) + KnowledgeSearchClient (top_k clamp [1,10]) + InstructionsBuilder (Türkçe template) + VoiceTestContext DTO (Shared) + VoicePocEndpoints Task.WhenAll fetch + INV-VR-021/022 + voice-runtime-ws.md F0+F0.5 lifecycle
+- [x] **Chunk C** (DONE 2026-05-26, commit `afe596f2`, Codex iter 2 Q FORCE PASS HUD truth-correlation): Function calling — RealtimeMessageTypes function_call events + RealtimeApiClient dispatch + per-call SessionConfig.Tools + IVoiceTool + ToolExecutor (Interlocked guard + ConcurrentDictionary<call_id, StringBuilder> AD-31 + 5sn timeout + 5 typed catches + DefenseFallbackAsync) + SearchKnowledgeBaseTool + INV-VR-023 + AD-29/30/31 + openai-realtime-session.json full GA refresh + voice-runtime-ws.md tool_call frames + Honesty note
+- [x] **Chunk D** (DONE 2026-05-26, commit `b67e6747`, Codex iter 2 PASS 12/12 CQ + 4/4 CoVe): Browser tenant + flow dropdowns (`<select>` native) + sticky 2-col workspace (transcript sol, tool-call HUD sağ, <800px stacked) + URL-bridge JWT (`window.INVEKTO_VOICE_JWT`, AD-33 iter 1 architectural fix — cross-origin localStorage YOK) + tool_call HUD rendering rules (pending pulse → ok/error rozet) + voice-poc-tenant-id/flow-id localStorage AHA-4 (AD-34) + INV-VR-CLIENT-001..010 browser diagnostic codes + AD-32/33/34
+- [ ] **Chunk E** IN-PROGRESS: CORS allowed origins — Backend + Automation Program.cs `VoicePocCors` named policy (`voice.invekto.com:8443`, GET-only) + endpoint `.RequireCors("VoicePocCors")` (`/api/ops/tenants` + `/api/v1/flows/{tenantId}`) + voice-runtime-ws.md Chunk D additive (URL-bridge JWT + HUD rendering rules + CORS prereq) + tracking güncel + smoke (Dent Adavista + ana_akis + saç ekimi FAQ) + redeploy **3 servis** (Backend + Automation + VoiceRuntime — **Knowledge skip**, AD-36 no browser fetch in F0.5) + AD-35/36
 
-**Exit:** AC1-AC6 PASS + Codex iter ≤ 2 per chunk + smoke (Q live mikrofon test, KB sorgu round-trip <2sn p95) + 4 servis redeploy HEALTHY
+**Exit:** AC1-AC6 PASS + Codex iter ≤ 2 per chunk + smoke (Q live mikrofon test, KB sorgu round-trip <2sn p95) + 3 servis redeploy HEALTHY (Knowledge unchanged, F4 widget gate)
 
 ---
 

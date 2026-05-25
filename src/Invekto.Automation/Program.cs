@@ -401,11 +401,31 @@ builder.Services.AddSingleton<AutomationOrchestrator>();
 // Satisfy .NET 8 EndpointMiddleware authorization metadata check (no policies configured)
 builder.Services.AddAuthorization();
 
+// FEAT-VFB F0.5 Chunk E (AD-35, 2026-05-26): named CORS policy for the Voice Test page
+// (voice.invekto.com:8443) — browser fetches /api/v1/flows/{tenantId} with the Dashboard
+// JWT to populate the flow dropdown. GET-only; AllowCredentials off (Bearer header passed
+// explicitly). Default policy is NOT registered, so this only applies to endpoints with
+// .RequireCors("VoicePocCors"). UseCors() is wired BEFORE UseJwtAuth() in the pipeline so
+// preflight OPTIONS requests bypass the auth gate.
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("VoicePocCors", policy => policy
+        .WithOrigins("https://voice.invekto.com:8443")
+        .WithMethods("GET")
+        .AllowAnyHeader());
+});
+
 var app = builder.Build();
 app.EnsureJobStorageInitialized();
 
 // Enable traffic logging middleware
 app.UseTrafficLogging();
+
+// FEAT-VFB F0.5 Chunk E (AD-35, 2026-05-26): CORS for the Voice Test browser fetch
+// of /api/v1/flows/{tenantId}. MUST be BEFORE UseJwtAuth so preflight OPTIONS reaches
+// the CORS middleware before the auth gate rejects unauthenticated requests. Only
+// endpoints with .RequireCors("VoicePocCors") are CORS-enabled (no global default).
+app.UseCors();
 
 // Enable JWT auth for /api/v1/ prefixed paths
 // FEAT-LIW Chunk C: /api/v1/automation/flows/ — cross-service HTTP lookup from
@@ -686,7 +706,7 @@ app.MapGet("/api/v1/flows/{tenantId:int}", async (int tenantId, HttpContext ctx,
         jsonLogger.StepError($"Flow list failed: {ex.Message}", "-");
         return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", "-"), statusCode: 500);
     }
-});
+}).RequireCors("VoicePocCors"); // FEAT-VFB F0.5 Chunk E (AD-35): Voice Test browser dropdown fetch.
 
 // GET /api/v1/flows/{tenantId}/{flowId} — Get single flow by ID
 app.MapGet("/api/v1/flows/{tenantId:int}/{flowId:int}", async (int tenantId, int flowId, HttpContext ctx, AutomationRepository repo, JsonLinesLogger jsonLogger) =>

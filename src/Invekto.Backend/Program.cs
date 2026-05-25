@@ -500,10 +500,21 @@ builder.Services.AddSingleton<QnbVPosService>();
 // Origins match the INMA bridge whitelist (parent INMA shell hosts).
 // AllowCredentials NOT enabled: Angular HttpClient sends Bearer header explicitly,
 // browser does NOT auto-propagate credentials cross-origin without it.
+//
+// VoicePocCors (FEAT-VFB F0.5 Chunk E, AD-35, 2026-05-26): named policy for the
+// Voice Test page (voice.invekto.com:8443) — browser fetches /api/ops/tenants with
+// the Dashboard JWT to populate the tenant dropdown. GET-only; AllowCredentials off
+// (Bearer header passed explicitly). Default policy is NOT registered, so this only
+// applies to endpoints with .RequireCors("VoicePocCors").
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("InmaNavCors", policy => policy
         .WithOrigins("https://app.wapcrm.net", "https://developer.wapcrm.net", "http://localhost:4200")
+        .WithMethods("GET")
+        .AllowAnyHeader());
+
+    options.AddPolicy("VoicePocCors", policy => policy
+        .WithOrigins("https://voice.invekto.com:8443")
         .WithMethods("GET")
         .AllowAnyHeader());
 });
@@ -6730,7 +6741,7 @@ app.MapGet("/api/ops/tenants", async (HttpContext ctx, JsonLinesLogger jsonLog) 
             new { error = ErrorCodes.BackendTenantListQueryFailed, message = "Firma listesi yuklenemedi." },
             statusCode: 500);
     }
-});
+}).RequireCors("VoicePocCors"); // FEAT-VFB F0.5 Chunk E (AD-35): Voice Test browser dropdown fetch.
 
 app.MapPost("/api/ops/tenants/{id}/impersonate", async (HttpContext ctx, int id, JsonLinesLogger jsonLog) =>
 {

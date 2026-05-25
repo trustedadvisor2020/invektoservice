@@ -1,6 +1,6 @@
 # Browser ↔ VoiceRuntime WebSocket Protocol — F0 + F0.5
 
-> **Status:** F0 frozen (2026-05-24). F0.5 Chunks A (handshake gate) + B (server-side context fetch) + C (function calling + ToolExecutor) shipped 2026-05-26. Chunks D-E in progress.
+> **Status:** F0 frozen (2026-05-24). F0.5 Chunks A (handshake gate) + B (server-side context fetch) + C (function calling + ToolExecutor) + D (browser dropdown + HUD + URL-bridge JWT) shipped 2026-05-26. Chunk E (CORS allowlist + redeploy) in progress 2026-05-26.
 > **Endpoint:** `wss://<host>/ws/voice/microphone`
 > **Spec ref:** [SPEC-008 §4](../../specs/voice-flow-builder.md), [FEAT-VFB F0 plan](../../plans/20260523-feat-vfb-f0-poc.json), [F0.5 plan](../../plans/20260525-feat-vfb-f0-5-tenant-aware-voice-test.json)
 
@@ -27,7 +27,7 @@ GET /ws/voice/microphone?token=<sysadmin JWT>&tenant_id=<target>&flow_id=<flow>&
 | `flow_id`   | F0.5 mode       | Required whenever `tenant_id` is present (presence-based). Positive integer; missing/invalid yields `INV-VR-012`. |
 | `locale`    | optional        | BCP-47, default `tr-TR`. Used to set Realtime voice instructions language. |
 
-### F0.5 Lifecycle (Chunks A + B, before audio loops start)
+### F0.5 Lifecycle (Chunks A + B, server-side, before audio loops start)
 
 1. **Origin gate** — `Cors:AllowedOrigins` match required.
 2. **JWT validate** — `token` must be a sysadmin JWT (`tenant_id == 0`). Non-sysadmin → `INV-VR-020`.
@@ -297,6 +297,93 @@ When the browser keeps sending audio while bot voice is being delivered:
    - Stamps `BargeInTtsStopped` and emits TEXT `{ "type": "barge_in", "elapsed_ms": <n> }`
 
 F0 target: `barge_in.elapsed_ms < 500ms` (browser overhead allowed). F2 PBX path: `<250ms` (spec AC-4).
+
+---
+
+## Browser acquisition & UI (F0.5 Chunk D)
+
+The Voice Test page (`https://voice.invekto.com:8443/voice-poc.html`) is opened from a
+Dashboard wrapper on `https://app.invekto.com`. Because the two share no localStorage
+origin, the page acquires its Dashboard JWT through a one-shot URL bridge and uses the
+same token for both the dropdown fetches and the WS handshake.
+
+### Token acquisition (URL-bridge, AD-33)
+
+1. Dashboard wrapper opens `https://voice.invekto.com:8443/voice-poc.html?token=<JWT>`.
+2. Inline `<script>` in `voice-poc.html` reads `URLSearchParams.get("token")`, assigns
+   it to `window.INVEKTO_VOICE_JWT` (page-lifetime global), and immediately calls
+   `history.replaceState(null, "", location.pathname)` to strip the token from the
+   address bar (browser history / refresh leak prevention).
+3. `voice-poc.js` reads `window.INVEKTO_VOICE_JWT` for two consumers:
+   - Bearer header on dropdown fetches (`/api/ops/tenants`, `/api/v1/flows/{tenantId}`).
+   - `?token=<JWT>` query parameter on the WS handshake.
+4. If the token is missing the page renders a disabled state (toast `INV-VR-CLIENT-001`,
+   both dropdowns disabled, Mic button disabled). No localStorage fallback —
+   `localStorage` is per-origin and not shared with `app.invekto.com`.
+
+### Cross-origin dropdown fetch (CORS prerequisite, AD-35 / Chunk E)
+
+Both dropdown fetches are cross-origin (`voice.invekto.com:8443` → backend origins).
+Backend (`/api/ops/tenants`) and Automation (`/api/v1/flows/{tenantId}`) MUST allow the
+Voice Test origin via the `VoicePocCors` named policy:
+
+```csharp
+// Backend / Automation Program.cs
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("VoicePocCors", policy => policy
+        .WithOrigins("https://voice.invekto.com:8443")
+        .WithMethods("GET")
+        .AllowAnyHeader());
+});
+// Pipeline: app.UseCors() MUST be before app.UseJwtAuth(...) so preflight OPTIONS
+// requests reach the CORS middleware before the auth gate rejects them.
+
+// Endpoint binding (explicit, no global default policy):
+app.MapGet("/api/ops/tenants", ...).RequireCors("VoicePocCors");
+app.MapGet("/api/v1/flows/{tenantId:int}", ...).RequireCors("VoicePocCors");
+```
+
+Knowledge is **not** in the allowlist for F0.5 — the `search_knowledge_base` tool runs
+inside VoiceRuntime with a service JWT (server-to-server, no browser preflight). It will
+be added when the F4 voice-analytics dashboard widgets begin calling Knowledge directly.
+
+### Selection persistence (AHA-4, AD-34)
+
+After a successful dropdown fetch the page writes `voice-poc-tenant-id` and
+`voice-poc-flow-id` into `localStorage` (same-origin, no cross-origin concern). On the
+next load it parses each value with the strict pattern `/^[1-9][0-9]*$/` (rejects
+`12abc`, `1e3`, `0x10`, leading zeros, negatives) and only restores the selection when
+the value is still present in the freshly fetched options. Corrupted or stale values
+fall back to `selectedIndex = 0` and the Mic button stays disabled until the user picks
+explicitly.
+
+### HUD rendering rules (AD-32, paired with `tool_call_*` frames)
+
+The Voice Test workspace uses a sticky two-column layout (transcript on the left, tool
+call panel on the right) and collapses to stacked above each other below 800px viewport
+width. Tool call rozets are kept to the last 5 (DOM rolling cap, oldest pruned) to
+mirror the existing transcript trim policy.
+
+| Frame                  | DOM action                                                              |
+|------------------------|-------------------------------------------------------------------------|
+| `tool_call_started`    | Append rozet with state `pending` (yellow pulse), text = `name(args_preview)`. |
+| `tool_call_completed`  | Locate rozet by `call_id`; flip to `ok` (green) or `error` (red); append `duration_ms` and `result_count`; on `status:"error"` show `error_code`. |
+| `tool_call_completed` with no matching `call_id` | Log `INV-VR-CLIENT-006` (out-of-order or duplicate) and skip render — never spawn a stray "completed" rozet. |
+
+A rozet that received only `tool_call_started` (no completion frame) is intentional —
+see the Honesty note under `tool_call_completed` above. The browser does not
+auto-collapse pending rozets to "error" on timeout; it leaves them visible so the user
+can see that the model never finished delivering the function call output.
+
+### Browser-side diagnostic codes (display-only)
+
+`INV-VR-CLIENT-001..010` are browser-side display codes (see [arch/errors.md](../../errors.md))
+used in toasts and `setStatus()` calls when client-side paths fail (token missing,
+localStorage corrupted, fetch network error, AudioContext failure, AudioWorklet load
+failure, etc.). They are disjoint from the server `INV-VR-001..023` range and never
+leave the browser — server logs use the server codes for the same events when they
+originate server-side.
 
 ---
 
