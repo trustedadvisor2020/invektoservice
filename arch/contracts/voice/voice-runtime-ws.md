@@ -1,32 +1,67 @@
-# Browser ↔ VoiceRuntime WebSocket Protocol — F0 PoC
+# Browser ↔ VoiceRuntime WebSocket Protocol — F0 + F0.5
 
-> **Status:** F0 frozen (2026-05-24). F2 may add Opus encoding alongside (config-driven).
+> **Status:** F0 frozen (2026-05-24). F0.5 Chunks A (handshake gate) + B (server-side context fetch) shipped 2026-05-26. Chunks C-E in progress.
 > **Endpoint:** `wss://<host>/ws/voice/microphone`
-> **Spec ref:** [SPEC-008 §4](../../specs/voice-flow-builder.md), [FEAT-VFB F0 plan](../../plans/20260523-feat-vfb-f0-poc.json)
+> **Spec ref:** [SPEC-008 §4](../../specs/voice-flow-builder.md), [FEAT-VFB F0 plan](../../plans/20260523-feat-vfb-f0-poc.json), [F0.5 plan](../../plans/20260525-feat-vfb-f0-5-tenant-aware-voice-test.json)
 
 ---
 
 ## Handshake
 
 ```
-GET /ws/voice/microphone?token=<JWT>&locale=tr-TR
+F0 legacy (microphone sales demo, sysadmin self-test):
+GET /ws/voice/microphone?token=<sysadmin JWT>&locale=tr-TR
 GET /ws/voice/microphone?dev=1&locale=tr-TR    (development bypass, only when Jwt:SecretKey empty)
+
+F0.5 tenant-aware Voice Test (AD-21, sysadmin impersonates a tenant):
+GET /ws/voice/microphone?token=<sysadmin JWT>&tenant_id=<target>&flow_id=<flow>&locale=tr-TR
 ```
 
 ### Query parameters
 
-| Name      | Required        | Notes |
-|-----------|-----------------|-------|
-| `token`   | prod (yes)      | JWT issued by Invekto.Backend. Tenant claim drives `tenant_id` context. |
-| `dev`     | dev only        | `dev=1` enables bypass when running with `ASPNETCORE_ENVIRONMENT=Development` AND empty `Jwt:SecretKey`. |
-| `locale`  | optional        | BCP-47, default `tr-TR`. Used to set Realtime voice instructions language. |
+| Name        | Required        | Notes |
+|-------------|-----------------|-------|
+| `token`     | prod (yes)      | JWT issued by Invekto.Backend. F0.5 mode: `tenant_id` claim must be `0` (sysadmin); non-sysadmin callers are rejected with `INV-VR-020`. |
+| `dev`       | dev only        | `dev=1` enables bypass when running with `ASPNETCORE_ENVIRONMENT=Development` AND empty `Jwt:SecretKey`. Only valid in F0 legacy mode. |
+| `tenant_id` | F0.5 mode       | **Presence-based mode switch** — once the query key is present (even empty), strict F0.5 validation applies. Positive integer; `0` rejected (self-impersonation) with `INV-VR-013`; non-int with `INV-VR-011`. |
+| `flow_id`   | F0.5 mode       | Required whenever `tenant_id` is present (presence-based). Positive integer; missing/invalid yields `INV-VR-012`. |
+| `locale`    | optional        | BCP-47, default `tr-TR`. Used to set Realtime voice instructions language. |
 
-### Error responses
+### F0.5 Lifecycle (Chunks A + B, before audio loops start)
+
+1. **Origin gate** — `Cors:AllowedOrigins` match required.
+2. **JWT validate** — `token` must be a sysadmin JWT (`tenant_id == 0`). Non-sysadmin → `INV-VR-020`.
+3. **Mode detection** — presence of `tenant_id` OR `flow_id` query keys triggers strict F0.5 validation chain (`INV-VR-011/012/013`).
+4. **WS accept** — `101 Switching Protocols`.
+5. **Context fetch (Chunk B, F0.5 only):** VoiceRuntime issues two short-lived (5min) service JWTs and fetches the impersonation target in parallel:
+   - `GET /api/ops/tenants` (Backend, admin-scope JWT `JwtGenerator.GenerateToken(0, "admin", "voice_runtime", 5min)`) → tenant lookup by id.
+   - `GET /api/v1/flows/{tenantId}/{flowId}` (Automation, per-tenant service JWT `JwtGenerator.GenerateServiceToken(targetTenantId)`).
+   - Browser-supplied tenant/flow display values are NEVER trusted (AD-25 defense-in-depth) — VoiceRuntime always re-fetches authoritative `tenant_name` + `sector` + `flow_name`.
+6. **Failure handling** — any fetch fail / 404 / not found sends a single error control frame (`type:"error", code, message`) and closes the WS with `1011 InternalServerError`. See "Reserved error codes" below for the code mapping.
+7. **Context build** — `VoiceTestContext` populated; `descriptor.ProviderMetadata` enriched with `tenant_name`, `sector`, `flow_name` (audit trail); `InstructionsBuilder.Build(ctx)` previewed in jsonl. Chunk C wires the rendered instructions into `session.update`.
+8. **Realtime connect + audio loops start** (existing F0 flow).
+
+### Error responses (pre-accept)
 
 | HTTP | Code | Meaning |
 |------|------|---------|
 | 400  | —    | Not a WebSocket upgrade request |
+| 400  | INV-VR-011 | F0.5 `tenant_id` missing or non-positive integer |
+| 400  | INV-VR-012 | F0.5 `flow_id` missing or non-positive integer |
+| 400  | INV-VR-013 | F0.5 `tenant_id=0` (sysadmin self-impersonation forbidden) |
 | 401  | INV-VR-004 | Missing/invalid JWT (prod) or dev bypass not allowed |
+| 403  | INV-VR-020 | F0.5 caller JWT is not sysadmin (`tenant_id != 0`) — Voice Test ops-only |
+| 403  | —          | Origin not in `Cors:AllowedOrigins` |
+
+### Error responses (post-accept, via control frame + WS close 1011)
+
+| Control code | Meaning | Recovery |
+|--------------|---------|----------|
+| INV-VR-014   | Backend `/api/ops/tenants` HTTP error (5xx/network/auth) | Retry handshake; check Backend health |
+| INV-VR-015   | Automation `/api/v1/flows/{tid}/{fid}` HTTP error | Retry handshake; check Automation health |
+| INV-VR-018   | Service JWT mint failed | Check `Jwt:SecretKey` config — corruption indicator |
+| INV-VR-021   | Target tenant not found in active list (deleted/inactive after dropdown render) | Refresh tenant dropdown |
+| INV-VR-022   | Target flow not found for tenant (deleted/renamed after dropdown render) | Refresh flow dropdown |
 
 ---
 
@@ -217,3 +252,15 @@ F0 target: `barge_in.elapsed_ms < 500ms` (browser overhead allowed). F2 PBX path
 | INV-VR-008 | VAD model file missing/corrupt |
 | INV-VR-009 | Browser microphone permission denied |
 | INV-VR-010 | F0 latency budget exceeded (non-fatal warning) |
+| INV-VR-011 | F0.5 handshake `tenant_id` missing/invalid |
+| INV-VR-012 | F0.5 handshake `flow_id` missing/invalid |
+| INV-VR-013 | F0.5 handshake `tenant_id=0` (self-impersonation rejected) |
+| INV-VR-014 | Backend `/api/ops/tenants` fetch failed (post-accept) |
+| INV-VR-015 | Automation flow fetch failed (post-accept) |
+| INV-VR-016 | Realtime function_call dispatch failed (Chunk C) |
+| INV-VR-017 | Knowledge tool execution failed (Chunk C) |
+| INV-VR-018 | Service JWT mint failed |
+| INV-VR-019 | Tool `top_k` clamped (non-fatal log) |
+| INV-VR-020 | F0.5 impersonation gate — non-sysadmin caller |
+| INV-VR-021 | F0.5 target tenant not found in active list |
+| INV-VR-022 | F0.5 target flow not found for tenant |

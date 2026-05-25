@@ -6,9 +6,11 @@ using Invekto.Shared.Constants;
 using Invekto.Shared.Contracts.Voice;
 using Invekto.Shared.Logging;
 using Invekto.VoiceRuntime.Audio;
+using Invekto.VoiceRuntime.Clients;
 using Invekto.VoiceRuntime.Metrics;
 using Invekto.VoiceRuntime.Providers;
 using Invekto.VoiceRuntime.Realtime;
+using Invekto.VoiceRuntime.Tools;
 
 namespace Invekto.VoiceRuntime.Endpoints;
 
@@ -52,6 +54,8 @@ public static class VoicePocEndpoints
         RealtimeSessionFactory realtimeFactory,
         MicrophoneCallProvider provider,
         JwtValidator jwt,
+        TenantInfoClient tenantClient,
+        FlowInfoClient flowClient,
         IConfiguration config,
         IWebHostEnvironment env)
     {
@@ -195,26 +199,70 @@ public static class VoicePocEndpoints
         var locale = ctx.Request.Query["locale"].ToString();
         if (string.IsNullOrWhiteSpace(locale)) locale = "tr-TR";
 
+        using var sessionCts = CancellationTokenSource.CreateLinkedTokenSource(ctx.RequestAborted);
+
+        // Chunk B (AD-22 + AD-25): server-side authoritative tenant + flow lookup. Browser
+        // dropdown values are display-only; the names/sectors used downstream MUST come from
+        // a fresh service-JWT-authenticated fetch so a tampered ?tenant_id cannot inject a
+        // forged prompt. F0 legacy mode skips this (no impersonation context to validate).
+        VoiceTestContext? voiceContext = null;
+        var providerMetadata = new Dictionary<string, string>
+        {
+            ["flow_id"] = flowId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["caller_tenant_id"] = callerTenantId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["impersonation"] = f05Mode ? "voice_test_f05" : "f0_legacy"
+        };
+
+        if (f05Mode)
+        {
+            var (ctxResult, ctxError) = await FetchVoiceTestContextAsync(
+                tenantClient, flowClient, targetTenantId, flowId, callerTenantId, logger, sessionId, sessionCts.Token);
+
+            if (ctxError != null)
+            {
+                await SendErrorControlFrameAsync(ws, ctxError.Value.Code, ctxError.Value.Message, logger, sessionId, sessionCts.Token);
+                await CloseWsAsync(ws, WebSocketCloseStatus.InternalServerError, "context fetch failed", logger, sessionId);
+                logger.SystemWarn($"[{ctxError.Value.Code}] [VoicePoc/{sessionId}] F0.5 context fetch aborted: {ctxError.Value.Message}");
+                return;
+            }
+            if (ctxResult == null)
+            {
+                // Defensive guard: FetchVoiceTestContextAsync returns exactly one of (Context, Error)
+                // non-null on every code path. If both are null here, the helper has been misused —
+                // surface as INV-VR-014 rather than crashing on null dereference.
+                logger.SystemError($"[{ErrorCodes.VoiceRuntimeTenantFetchFailed}] [VoicePoc/{sessionId}] FetchVoiceTestContextAsync returned (null, null) — invariant violated");
+                await SendErrorControlFrameAsync(ws, ErrorCodes.VoiceRuntimeTenantFetchFailed, "Beklenmeyen icsel hata. Lutfen tekrar deneyin.", logger, sessionId, sessionCts.Token);
+                await CloseWsAsync(ws, WebSocketCloseStatus.InternalServerError, "context invariant violated", logger, sessionId);
+                return;
+            }
+
+            voiceContext = ctxResult;
+            providerMetadata["tenant_name"] = voiceContext.TenantName;
+            providerMetadata["sector"] = voiceContext.Sector;
+            providerMetadata["flow_name"] = voiceContext.FlowName;
+
+            // Exercise InstructionsBuilder so Chunk B has a concrete render path before Chunk C
+            // wires the result into the Realtime session.update. Logged truncated (120 chars) to
+            // keep jsonl readable; full instructions are deterministic from voiceContext.
+            var instructionsPreview = InstructionsBuilder.Build(voiceContext);
+            var truncated = instructionsPreview.Length > 120 ? instructionsPreview[..120] + "..." : instructionsPreview;
+            logger.SystemInfo($"[VoicePoc/{sessionId}] F0.5 context built: tenant='{voiceContext.TenantName}'({voiceContext.Sector}) flow='{voiceContext.FlowName}' instructions_preview=\"{truncated}\"");
+        }
+
         // F0.5 mode: VoiceCallDescriptor.TenantId = TARGET tenant (impersonation target). Caller is
         // sysadmin (0) by gate above; downstream service-JWT mints will use targetTenantId.
         // F0 mode: descriptor.TenantId = 0 (sysadmin self), no impersonation, generic appsettings instructions.
-        // ProviderMetadata records mode + flow_id + caller_tenant_id for audit/log without changing record schema.
+        // ProviderMetadata records mode + flow_id + caller_tenant_id (and Chunk B context fields
+        // when F0.5) for audit/log without changing record schema.
         var descriptor = new VoiceCallDescriptor(
             SessionId: sessionId,
             TenantId: targetTenantId,
             Locale: locale,
             CallerIdHash: null,
             StartedAt: DateTimeOffset.UtcNow,
-            ProviderMetadata: new Dictionary<string, string>
-            {
-                ["flow_id"] = flowId.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                ["caller_tenant_id"] = callerTenantId.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                ["impersonation"] = f05Mode ? "voice_test_f05" : "f0_legacy"
-            });
+            ProviderMetadata: providerMetadata);
 
         logger.SystemInfo($"[VoicePoc/{sessionId}] WS opened (mode={(f05Mode ? "f05" : "f0")}, target_tenant={targetTenantId}, flow={flowId}, caller_tenant={callerTenantId}, locale={locale}, dev_bypass={devBypass})");
-
-        using var sessionCts = CancellationTokenSource.CreateLinkedTokenSource(ctx.RequestAborted);
         await using var voiceSession = (MicrophoneCallSession)await provider.OpenSessionAsync(descriptor, sessionCts.Token);
         var vadState = vad.CreateSession();
         var turnTiming = latency.CreateTurnTiming(sessionId);
@@ -280,6 +328,129 @@ public static class VoicePocEndpoints
             return idx > 0 ? message[..idx] : "INV-VR-001";
         }
         return ErrorCodes.VoiceRuntimeRealtimeConnectionFailed;
+    }
+
+    /// <summary>
+    /// Chunk B (AD-25): parallel fetch tenant + flow via per-call service JWTs. Both tasks are
+    /// started concurrently and observed via Task.WhenAll — if either throws, the other is still
+    /// awaited via its Task handle so no in-flight HTTP request is left unobserved (CQ6).
+    /// Returns (context, null) on success or (null, error) on any fetch/validate failure.
+    /// Error tuple carries the INV-VR code + Turkish actionable message for the WS control frame.
+    /// </summary>
+    private static async Task<(VoiceTestContext? Context, (string Code, string Message)? Error)> FetchVoiceTestContextAsync(
+        TenantInfoClient tenantClient,
+        FlowInfoClient flowClient,
+        int targetTenantId,
+        int flowId,
+        int callerTenantId,
+        JsonLinesLogger logger,
+        string sessionId,
+        CancellationToken ct)
+    {
+        var tenantTask = tenantClient.GetTenantAsync(targetTenantId, ct);
+        var flowTask = flowClient.GetFlowAsync(targetTenantId, flowId, ct);
+
+        // Observe BOTH tasks even if either faults — Task.WhenAll surfaces only the first exception,
+        // but the underlying tasks complete and any subsequent failures become observable here.
+        try
+        {
+            await Task.WhenAll(tenantTask, flowTask);
+        }
+        catch (TenantInfoFetchException) { /* inspected per-task below */ }
+        catch (FlowInfoFetchException) { /* inspected per-task below */ }
+        catch (OperationCanceledException) { throw; }
+
+        if (tenantTask.IsFaulted)
+        {
+            // Unwrap aggregate; we know the inner is TenantInfoFetchException because GetTenantAsync
+            // only throws that type. Defensive cast back to inspect ErrorCode.
+            var ex = tenantTask.Exception?.InnerException as TenantInfoFetchException;
+            var code = ex?.ErrorCode ?? ErrorCodes.VoiceRuntimeTenantFetchFailed;
+            return (null, (code, "Firma bilgisi servisi yanit vermedi. Birkac saniye sonra tekrar deneyin."));
+        }
+        if (flowTask.IsFaulted)
+        {
+            var ex = flowTask.Exception?.InnerException as FlowInfoFetchException;
+            var code = ex?.ErrorCode ?? ErrorCodes.VoiceRuntimeFlowFetchFailed;
+            return (null, (code, "Akis bilgisi servisi yanit vermedi. Birkac saniye sonra tekrar deneyin."));
+        }
+
+        var tenant = tenantTask.Result;
+        var flow = flowTask.Result;
+
+        if (tenant == null)
+        {
+            logger.SystemWarn($"[{ErrorCodes.VoiceRuntimeTenantNotFound}] [VoicePoc/{sessionId}] target tenant {targetTenantId} not in active list");
+            return (null, (ErrorCodes.VoiceRuntimeTenantNotFound, $"Firma {targetTenantId} aktif degil. Listeyi yenileyip tekrar deneyin."));
+        }
+        if (flow == null)
+        {
+            logger.SystemWarn($"[{ErrorCodes.VoiceRuntimeFlowNotFound}] [VoicePoc/{sessionId}] target flow {flowId} not found for tenant {targetTenantId}");
+            return (null, (ErrorCodes.VoiceRuntimeFlowNotFound, $"Akis {flowId} bulunamadi. Listeyi yenileyip tekrar deneyin."));
+        }
+
+        var context = new VoiceTestContext(
+            TargetTenantId: targetTenantId,
+            TenantName: tenant.TenantName ?? string.Empty,
+            Sector: tenant.Sector ?? string.Empty,
+            FlowId: flowId,
+            FlowName: flow.FlowName ?? string.Empty,
+            CallerTenantId: callerTenantId,
+            ImpersonationMode: "voice_test_f05");
+
+        return (context, null);
+    }
+
+    /// <summary>
+    /// Sends a single JSON control frame (text) to the browser before WS close. Best-effort
+    /// delivery: WS exceptions during error-path send are logged at WARN (not swallowed) so the
+    /// operator can still diagnose double-failures from jsonl logs (CQ2).
+    /// </summary>
+    private static async Task SendErrorControlFrameAsync(WebSocket ws, string code, string message, JsonLinesLogger logger, string sessionId, CancellationToken ct)
+    {
+        if (ws.State != WebSocketState.Open)
+        {
+            logger.SystemWarn($"[VoicePoc/{sessionId}] SendErrorControlFrame skipped — ws state={ws.State} (code={code})");
+            return;
+        }
+        try
+        {
+            var json = JsonSerializer.Serialize(new { type = "error", code, message }, ControlJsonOpts);
+            var bytes = Encoding.UTF8.GetBytes(json);
+            await ws.SendAsync(bytes, WebSocketMessageType.Text, endOfMessage: true, ct);
+        }
+        catch (WebSocketException ex)
+        {
+            logger.SystemWarn($"[VoicePoc/{sessionId}] SendErrorControlFrame WS error (code={code}): {ex.WebSocketErrorCode} {ex.Message}");
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger.SystemWarn($"[VoicePoc/{sessionId}] SendErrorControlFrame invalid state (code={code}): {ex.Message}");
+        }
+        catch (OperationCanceledException)
+        {
+            logger.SystemWarn($"[VoicePoc/{sessionId}] SendErrorControlFrame cancelled (code={code})");
+        }
+    }
+
+    /// <summary>
+    /// Best-effort WS close — swallows WS state exceptions, logs at WARN.
+    /// </summary>
+    private static async Task CloseWsAsync(WebSocket ws, WebSocketCloseStatus status, string description, JsonLinesLogger logger, string sessionId)
+    {
+        try
+        {
+            if (ws.State == WebSocketState.Open)
+                await ws.CloseAsync(status, description, CancellationToken.None);
+        }
+        catch (WebSocketException ex)
+        {
+            logger.SystemWarn($"[VoicePoc/{sessionId}] CloseWs WS error: {ex.WebSocketErrorCode} {ex.Message}");
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger.SystemWarn($"[VoicePoc/{sessionId}] CloseWs invalid state: {ex.Message}");
+        }
     }
 
     /// <summary>

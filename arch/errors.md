@@ -1630,6 +1630,12 @@ errors:
   - code: INV-VR-020
     description: F0.5 superadmin impersonation gate failure. WS handshake received non-tenant=0 JWT (regular tenant user attempting Voice Test access). Aksiyon - VoicePocEndpoints.cs auth gate close 1008 + jsonl WARN potential authorization bypass attempt + ops alert.
     user_message: Voice Test sayfası sadece sistem yöneticileri için kullanılabilir. Normal kullanıcı yetkilerinizle giriş yapın.
+  - code: INV-VR-021
+    description: Backend /api/ops/tenants returned 200 OK but the impersonation target tenant_id is not present in the list (tenant deleted/inactive after Chunk D dropdown render). Aksiyon - TenantInfoClient returns null → VoicePocEndpoints close WS 1011 + control frame INV-VR-021 + jsonl WARN. Caller should refresh the tenant dropdown.
+    user_message: Seçili firma artık aktif değil. Lütfen listeyi yenileyip tekrar deneyin.
+  - code: INV-VR-022
+    description: Automation /api/v1/flows/{tenantId}/{flowId} returned 404 (flow deleted/renamed between dropdown render and WS handshake). Aksiyon - FlowInfoClient returns null → VoicePocEndpoints close WS 1011 + control frame INV-VR-022 + jsonl WARN. Caller should refresh the flow dropdown.
+    user_message: Seçili akış artık mevcut değil. Lütfen listeyi yenileyip tekrar deneyin.
 
 ```
 

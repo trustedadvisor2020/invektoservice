@@ -88,6 +88,14 @@ builder.Services.AddHttpClient("Knowledge", c =>
     c.Timeout = TimeSpan.FromSeconds(5);
 });
 
+// ── Cross-service clients (Chunk B AD-22 + AD-25) ─────────────────
+// TenantInfoClient uses admin-scope JWT (Backend ValidateOpsAuth Bearer path requires Role==admin AND
+// TenantId==0). FlowInfoClient + KnowledgeSearchClient use per-tenant service JWTs (AiFaqHandler pattern).
+// All three are scoped to a single WS session lifetime — registered as transient.
+builder.Services.AddTransient<Invekto.VoiceRuntime.Clients.TenantInfoClient>();
+builder.Services.AddTransient<Invekto.VoiceRuntime.Clients.FlowInfoClient>();
+builder.Services.AddTransient<Invekto.VoiceRuntime.Clients.KnowledgeSearchClient>();
+
 // ── Audio + Realtime + Metrics ────────────────────────────────────
 builder.Services.AddSingleton<OpusCodec>();
 builder.Services.AddSingleton<SileroVad>(sp =>
