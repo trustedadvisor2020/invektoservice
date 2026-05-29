@@ -34,6 +34,33 @@
     "model": "gpt-5.5",
     "_model_source": "Tek kaynak: .mcp.json env.CODEX_MODEL. Aynı değer burada yansır."
   },
+  "review": {
+    "dual_reviewer": false,
+    "providers": ["codex"],
+    "plan_review": true,
+    "_note": "plan_review=true → auto Phase 1 + /rev plan, implement öncesi planı Codex'e gönderip iyileştirme ister (advisory)."
+  },
+  "deploy": {
+    "enabled": true,
+    "method": "command",
+    "delegate_command": "/deploy",
+    "auto_deploy": false,
+    "requires_target_confirmation": false,
+    "targets": [
+      { "id": "prod", "host": "services.invekto.com", "role": "NSSM Windows Services 'Invekto-{Service}', 11 tenant", "path": "C:\\Invekto\\{Service}\\current\\", "default": true }
+    ],
+    "mcp": {
+      "deploy": "mcp__invekto-ops__server-deploy",
+      "status": "mcp__invekto-ops__server-status",
+      "logs": "mcp__invekto-ops__server-logs",
+      "exec": "mcp__invekto-ops__server-exec",
+      "upload": "mcp__invekto-ops__server-upload",
+      "health": "mcp__invekto-ops__server-health"
+    },
+    "health_check": { "type": "command", "value": "mcp__invekto-ops__server-health", "expect": "PASS" },
+    "post_deploy": "NSSM restart Invekto-{Service}",
+    "notes": "Dev PC ≠ Production (services.invekto.com). auto deploy gate'u /deploy'a delege eder (primary). NSSM binary: C:\\Invekto\\nssm.exe. Shared değiştiyse full solution build. Eski E:\\InvektoServices\\ path GEÇERSİZ. Detay: .claude/commands/deploy.md + deploy-info.md. deploy_output/ secret leak vektörü — git add öncesi dikkat."
+  },
   "intent": {
     "trade_offs": {
       "speed_vs_quality": "quality — CODEX UTANSIN: iteration=0 hedefi, never rush for speed",
