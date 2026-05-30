@@ -32,6 +32,7 @@ using Invekto.Shared.DTOs.Translation;
 using Invekto.Shared.Logging;
 using Invekto.Shared.Logging.Reader;
 using Invekto.Shared.Services;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -325,9 +326,18 @@ IResult MapInmaIntrospectError(string? errorCode, string? detail, string request
 PostgresConnectionFactory? pgFactory = null;
 var pgConnectionString = builder.Configuration.GetConnectionString("PostgreSQL");
 var inmaConnectionString = builder.Configuration.GetConnectionString("InmaManagementDb");
-if (!string.IsNullOrEmpty(pgConnectionString))
+// HOTFIX 2026-05-26: registration is now unconditional. Previously this entire
+// block was wrapped in `if (!string.IsNullOrEmpty(pgConnectionString))`. Under
+// .NET 8.0.19 the stricter RequestDelegateFactory inspects every endpoint at
+// startup and crashes the host (InvalidOperationException: "Body was inferred
+// but the method does not allow inferred body parameters") whenever an endpoint
+// parameter type was conditionally registered. Keeping registration
+// unconditional means startup always succeeds; a missing connection string now
+// fails at the first DB call site (anlamli runtime hata) instead of bringing
+// the entire host down. The braces below are kept as a standalone block to
+// preserve scope/indentation and minimise the diff.
 {
-    pgFactory = new PostgresConnectionFactory(pgConnectionString);
+    pgFactory = new PostgresConnectionFactory(pgConnectionString ?? string.Empty);
     builder.Services.AddSingleton(pgFactory);
 
     // PKT-3: AnalyticsRepository (singleton, thread-safe via connection pooling)
@@ -1518,7 +1528,13 @@ app.MapGet("/api/ops/stats/errors", async (HttpContext ctx, LogReader logReader,
 });
 
 // Dashboard: Translation Stats (Ops auth)
-app.MapGet("/api/ops/stats/translations", async (HttpContext ctx, TranslationCacheRepository cacheRepo) =>
+// HOTFIX 2026-05-26: TranslationCacheRepository conditional-registered (line ~387, inside
+// `if (!string.IsNullOrEmpty(pgConnectionString))`). .NET 8.0.19 RequestDelegateFactory
+// stricter — without [FromServices] the parameter resolves as "Body (Inferred)" at startup
+// and the host crashes with InvalidOperationException. Adding the attribute forces explicit
+// DI lookup. (Other 244 endpoints in this file rely on the same implicit pattern but their
+// services are unconditionally registered, so the fallback heuristic still works for them.)
+app.MapGet("/api/ops/stats/translations", async (HttpContext ctx, [FromServices] TranslationCacheRepository cacheRepo) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -2275,7 +2291,7 @@ app.MapPost("/api/v1/chat/analyze", async (
 // Onboarding status (PKT-2: aggregated from Knowledge + Automation + tenant_registry)
 // ============================================================
 
-app.MapGet("/api/v1/onboarding/status", async (HttpContext ctx, OnboardingStatusService onboardingService, JsonLinesLogger jsonLogger) =>
+app.MapGet("/api/v1/onboarding/status", async (HttpContext ctx, [FromServices] OnboardingStatusService onboardingService, JsonLinesLogger jsonLogger) =>
 {
     var tenantContext = ctx.Items["TenantContext"] as TenantContext;
     if (tenantContext == null)
@@ -2651,7 +2667,7 @@ app.MapGet("/api/v1/automation/flows/{tenantId:int}", async (HttpContext ctx, Fl
     await FbProxyGet(ctx, fbClient, jsonLogger, $"/api/v1/flows/{tenantId}"));
 
 // Tenant-level automation analytics summary (manual JWT validation: INSE + INMA fallback)
-app.MapGet("/api/v1/dashboard/analytics/summary", async (HttpContext ctx, AnalyticsRepository analyticsRepo, JsonLinesLogger jsonLogger, string? from, string? to) =>
+app.MapGet("/api/v1/dashboard/analytics/summary", async (HttpContext ctx, [FromServices] AnalyticsRepository analyticsRepo, JsonLinesLogger jsonLogger, string? from, string? to) =>
 {
     // Single source of truth for INSE+INMA tenant extraction (CQ4 dedup, iter 2 fix).
     var (tenantContext, extractFailure) = await ExtractTenantFromBearer(ctx);
@@ -5605,7 +5621,7 @@ app.MapPost("/api/internal/leads/intake/wa-direct", async (
 // arch/errors.md contract ("Oturum gecerli degil; tekrar giris yapin.").
 const string tenantContextUnauthorizedMessage = "Oturum gecerli degil; tekrar giris yapin.";
 
-app.MapGet("/api/v1/tenant/landing/settings", async (HttpContext ctx, LiwSettingsService svc) =>
+app.MapGet("/api/v1/tenant/landing/settings", async (HttpContext ctx, [FromServices] LiwSettingsService svc) =>
 {
     var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
     var tenantContext = ctx.Items["TenantContext"] as TenantContext;
@@ -5753,7 +5769,7 @@ app.MapPost("/api/v1/tenant/landing/dry-run", async (HttpContext ctx, DryRunRequ
         statusCode: outcome.HttpStatus);
 });
 
-app.MapGet("/api/v1/tenant/landing/audit", async (HttpContext ctx, LiwSettingsService svc, int? limit) =>
+app.MapGet("/api/v1/tenant/landing/audit", async (HttpContext ctx, [FromServices] LiwSettingsService svc, int? limit) =>
 {
     var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
     var tenantContext = ctx.Items["TenantContext"] as TenantContext;
@@ -5797,7 +5813,7 @@ app.MapPost("/api/v1/leads", async (HttpContext ctx, LeadRepository leadRepo, Js
 });
 
 app.MapGet("/api/v1/leads", async (
-    HttpContext ctx, LeadRepository leadRepo,
+    HttpContext ctx, [FromServices] LeadRepository leadRepo,
     string? status, bool? is_hot, string? search, int? limit, int? offset) =>
 {
     var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
@@ -6067,7 +6083,7 @@ app.MapPost("/api/v1/leads/{id:int}/followup", async (
 // ============================================
 
 // Analytics: List tenants with metrics availability
-app.MapGet("/api/ops/analytics/tenants", async (HttpContext ctx, AnalyticsRepository analyticsRepo) =>
+app.MapGet("/api/ops/analytics/tenants", async (HttpContext ctx, [FromServices] AnalyticsRepository analyticsRepo) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -6469,7 +6485,7 @@ app.Map("/api/v1/wa/{tenantId:int}/ri/{**path}", async (HttpContext ctx, WhatsAp
 // GR-3.18: ATTRIBUTION + CAMPAIGN ANALYTICS (ops-level, Basic auth)
 // ============================================
 
-app.MapGet("/api/ops/analytics/attribution/summary", async (HttpContext ctx, AttributionRepository attrRepo, int? tenant_id, string? from, string? to) =>
+app.MapGet("/api/ops/analytics/attribution/summary", async (HttpContext ctx, [FromServices] AttributionRepository attrRepo, int? tenant_id, string? from, string? to) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -8223,8 +8239,8 @@ static string? ExtractWapStatusCode(string? body)
 app.MapGet("/api/v1/dynamic-fields", async (
     HttpContext ctx,
     JsonLinesLogger jsonLog,
-    Invekto.Shared.Services.InmaDynamicFieldsCache cache,
-    TenantRegistryRepository tenantRepo) =>
+    [FromServices] Invekto.Shared.Services.InmaDynamicFieldsCache cache,
+    [FromServices] TenantRegistryRepository tenantRepo) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
 
