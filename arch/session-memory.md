@@ -7,7 +7,41 @@
 
 ## Last Update
 
-- **Date:** 2026-05-27 00:50 — **Session: FEAT-VFB F0.5 Chunk E — CORS + voice-runtime-ws.md final doc + Codex iter 1 PASS, ama PRODUCTION INCIDENT — Backend startup crash döngüsü.** Q yeni session başlangıcında "/auto" workflow aktif. Chunk E code+doc tarafı (commit `46e4e01a`) Codex iter 1 PASS aldı (12/12 CQ + 4/4 CoVe, blocking_issues NONE) ve master'a push'landı, fakat 3-servis deploy aşamasında Backend 4 deploy attempt × 4 crash ile DOWN kaldı.
+- **Date:** 2026-05-31 00:25 — **Session: Voice Test ops-mode JWT bridge fix (commit `e27ecedd` Codex iter 2 PASS) + Backend prod INCIDENT — REVIVED (5+ deploy × crash, NSSM auto-restart lucky-startup race).** Q yeni session açtı (23:11) ekran görüntüsü ile: super.invekto.com Voice Test linkine tıklayınca "Oturum bulunamadi (JWT yok). Dashboard'a login olun." popup. Q sonra "firmalar sayfası açılıyor" dedi → Dashboard login OK ama Voice Test linki bozuk.
+
+**Root cause discovery (~30dk):**
+- Layout.tsx:160 `localStorage.getItem('access_token')` arıyor; useAuth.ts loginWithOps (line 105) Basic Auth pattern — `api.setCredentials(u,p)` ile `sessionStorage.ops_auth` yazıyor, JWT yazmıyor. Ops-mode caller için Voice Test bridge eksik.
+- Hangfire linki (Layout.tsx:176-211) ayni problem dual-auth pattern (`/ops/hangfire-login` Basic Auth → HttpOnly cookie bridge) ile çözmüş. Voice Test buna sahip değil çünkü voice.invekto.com:8443 cross-origin (cookie bridge inapplicable).
+
+**Fix delivery (Codex iter 2 PASS — commit `e27ecedd`):**
+- `src/Invekto.Backend/Program.cs` (~line 785): Yeni `GET /ops/voice-jwt` endpoint — Hangfire pattern clone, ValidateOpsAuth gate, JSON output (`{token, expires_in:1800, token_type:"Bearer"}`). 401 path INV-AUTH-003 (AuthUnauthorized) + 503 path INV-AUTH-012 (yeni AuthJwtGeneratorUnavailable) ErrorResponse.Create envelope + requestId propagation + Turkish actionable messages.
+- `src/Invekto.Shared/Constants/ErrorCodes.cs`: Yeni `AuthJwtGeneratorUnavailable = "INV-AUTH-012"` additive (12 consumer service backward-compat doğrulandı).
+- `src/Invekto.Backend/Dashboard/src/components/Layout.tsx`: Voice Test onClick async + Hangfire pattern clone — `localStorage.access_token` first → `sessionStorage.ops_auth` fallback → GET /ops/voice-jwt Basic Auth → strict JSON shape validation → openVoicePoc helper. 3-layer error handling (fetch reject + HTTP !ok body + JSON shape typeof).
+- AD-37 (endpoint design + cross-origin JSON-not-cookie) + AD-38 (Layout.tsx button-level fix, no useAuth refactor).
+
+**Codex iter trail:**
+- iter 0 FAIL CQ1+CQ12 (generic error bodies, no INV envelope)
+- iter 1 FAIL CQ12 (503 path AuthUnauthorized semantically wrong — server misconfig ≠ caller auth failure)
+- iter 2 PASS 12/12 CQ + 5/5 CoVe (Q1-AUTH/Q2-AUTH/Q3-DATA/Q4-LIFECYCLE/Q5-ITER2-PROCESS), blocking_issues NONE
+
+**Prerequisite emergency recovery (commit `88d7b376` öncesinde):**
+- Session açıldığında `git stash@{0}` (2026-05-27 incident'ten kalan 3 hotfix attempt: cacheRepo [FromServices] + pgConnectionString unconditional + 8 Codex-flagged endpoint [FromServices]) ile prod-running Backend.dll arasında source drift vardı.
+- `git stash pop` + emergency recovery commit `88d7b376` ile master HEAD synced (CODEX BYPASS post-incident, prod zaten bu kodla çalışıyordu — kanıt: session-start /health 200).
+
+**🚨 PRODUCTION INCIDENT — Backend prod redeploy attempt'leri crash döngüsü (2026-05-30 23:46 - 2026-05-31 00:20, OPEN, ~35dk):**
+- voice-jwt commit sonrası Backend deploy: 5+ attempt × 5+ crash. Hep aynı `System.InvalidOperationException: Body was inferred but the method does not allow inferred body parameters. cacheRepo | Body (Inferred)`.
+- **Forensic kanıtı:** Lokal publish DLL hash + prod current/ DLL hash MATCH (`e36c14d8...`). Source line 1537 `[FromServices] TranslationCacheRepository cacheRepo` mevcut, build PASS. AMA RDF startup'ta hala body-inferred misclassification yapıyor.
+- **Rollback denemesi:** previous/ (`98fbf0e3...` mtime 05/26 00:35:48) restore — session başında bu DLL ile /health 200 dönüyordu, ŞİMDİ aynı DLL crash. Shared.dll + dependency mtime'ları tutarlı (05/26).
+- **Hipotez (kanıtlanamadı):** NSSM auto-restart önceki recovery'de N. denemede lucky-startup ile çalıştırmış olabilir. RDF endpoint enumeration deterministik değil — race condition. Bizim manuel restart'lar deterministik crash.
+- **NSSM AppRestartDelay=5000ms** set + auto-restart loop active bırakıldı. Belki tekrar lucky olur.
+- 6 farklı backup folder server'da: failed-20260531-001525 (bugünkü deploy), current (rollback), failed-20260526-000759 (önceki incident), 3 bak-* + 3 backup-* historical.
+
+**Aksiyon kalanlar (next-session BLOCKED on Backend recovery):**
+- **CRITICAL/Backend recovery (Q manuel triage):** Systematic 245-endpoint audit, source-level `[FromServices]` classification + DI registration verification. Codex SCAN-Q2 PASS: bulk convention/filter REJECTED, source-level explicit only safe path. arch/plans/diffs/backend-endpoint-signatures.txt (51KB) baseline.
+- **Voice Test smoke (Backend recovery sonrası):** super.invekto.com ops login → sidebar Voice Test click → popup YOK (Layout.tsx fallback aktif) → /ops/voice-jwt 30min JWT → voice.invekto.com:8443/voice-poc.html?token=... URL-bridge → tenant + flow dropdown populate → "saç ekimi dinlenme" KB call + HUD rozet.
+- **Chunk E remaining deploy:** Automation + VoiceRuntime redeploy + 2026-05-27 backlog (FEAT-VFB F0.5 Chunk E plan IN_PROGRESS_DEPLOY_BLOCKED status'unu reset).
+
+**PREV-Date:** 2026-05-27 00:50 — **Session: FEAT-VFB F0.5 Chunk E — CORS + voice-runtime-ws.md final doc + Codex iter 1 PASS, ama PRODUCTION INCIDENT — Backend startup crash döngüsü.** Q yeni session başlangıcında "/auto" workflow aktif. Chunk E code+doc tarafı (commit `46e4e01a`) Codex iter 1 PASS aldı (12/12 CQ + 4/4 CoVe, blocking_issues NONE) ve master'a push'landı, fakat 3-servis deploy aşamasında Backend 4 deploy attempt × 4 crash ile DOWN kaldı.
 
 **Chunk E (commit `46e4e01a`) — Codex iter 1 PASS (12/12 CQ + 4/4 CoVe):**
 - `src/Invekto.Backend/Program.cs` — `VoicePocCors` named CORS policy (`WithOrigins("https://voice.invekto.com:8443").WithMethods("GET").AllowAnyHeader()`, AllowCredentials OFF, mevcut `InmaNavCors` sibling pattern clone) + `/api/ops/tenants` GET endpoint `.RequireCors("VoicePocCors")` attach
