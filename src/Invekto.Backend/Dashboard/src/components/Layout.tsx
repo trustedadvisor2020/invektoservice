@@ -141,26 +141,56 @@ export function Layout({ children }: LayoutProps) {
         : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
     );
 
-    // FEAT-VFB F0: Voice Test external link. NOT a backend cookie bridge like Hangfire
-    // (which exchanges JWT for an HttpOnly cookie via /ops/hangfire-login). Voice Test
-    // is a static page on a different origin (voice.invekto.com:8443), so a same-origin
-    // cookie bridge is not applicable. Instead the JWT is passed once in ?token=... query;
-    // voice-poc.html reads it into window.INVEKTO_VOICE_JWT and IMMEDIATELY clears the
-    // URL (history.replaceState) so the token does NOT linger in the address bar,
-    // browser history, or bookmarks. Token still lands in TLS-encrypted server access
-    // logs — acceptable trade-off for an F0 ops-only tool. F4 backlog: replace with
-    // backend cookie bridge pattern if Voice Test promoted beyond F0 PoC.
+    // FEAT-VFB F0.5: Voice Test external link. Voice Test is a static page on a
+    // different origin (voice.invekto.com:8443), so a same-origin HttpOnly cookie
+    // bridge (Hangfire pattern below) is not applicable; the JWT is passed once
+    // in ?token=... query and voice-poc.html's inline script reads it into
+    // window.INVEKTO_VOICE_JWT and IMMEDIATELY scrubs the URL via
+    // history.replaceState so the token does NOT linger in the address bar,
+    // browser history, or bookmarks. Token still lands in TLS-encrypted server
+    // access logs — acceptable trade-off for an ops-only tool.
+    //
+    // Two auth paths (symmetric with the Hangfire link below):
+    //  (1) INMA session → JWT in localStorage.access_token, used directly.
+    //  (2) Ops mode → Basic Auth in sessionStorage.ops_auth, exchanged for a
+    //      short-lived (30min) tenant=0 superadmin JWT via /ops/voice-jwt,
+    //      then used. Ops login (useAuth.ts loginWithOps) does not write a JWT
+    //      to localStorage — it stores Basic credentials only — so without
+    //      this exchange the Ops-mode caller would see "JWT yok" and bounce.
     if (item.path === 'external:voice-test') {
       return (
         <button
           key={item.path}
           type="button"
           title={collapsed ? item.label : undefined}
-          onClick={() => {
+          onClick={async () => {
+            const openVoicePoc = (jwt: string) => {
+              const url = 'https://voice.invekto.com:8443/voice-poc.html?token=' + encodeURIComponent(jwt);
+              window.open(url, '_blank', 'noopener');
+            };
             const t = localStorage.getItem('access_token');
-            if (!t) { alert('Oturum bulunamadi (JWT yok). Dashboard\'a login olun.'); return; }
-            const url = 'https://voice.invekto.com:8443/voice-poc.html?token=' + encodeURIComponent(t);
-            window.open(url, '_blank', 'noopener');
+            if (t) { openVoicePoc(t); return; }
+            const opsAuth = sessionStorage.getItem('ops_auth');
+            if (!opsAuth) { alert('Oturum bulunamadı (ne JWT ne Ops giriş). Dashboard\'a login olun.'); return; }
+            try {
+              const r = await fetch('/ops/voice-jwt', {
+                method: 'GET',
+                headers: { Authorization: 'Basic ' + opsAuth },
+              });
+              if (!r.ok) {
+                const body = await r.text().catch(() => '');
+                alert('Voice JWT alınamadı: ' + (body || r.status));
+                return;
+              }
+              const data = await r.json();
+              if (!data || typeof data.token !== 'string' || data.token.length === 0) {
+                alert('Voice JWT yanıtı geçersiz (token alanı yok).');
+                return;
+              }
+              openVoicePoc(data.token);
+            } catch (e) {
+              alert('Voice Test giriş hatası: ' + (e instanceof Error ? e.message : String(e)));
+            }
           }}
           className={cn(commonClasses, 'w-full text-left cursor-pointer bg-transparent')}
         >

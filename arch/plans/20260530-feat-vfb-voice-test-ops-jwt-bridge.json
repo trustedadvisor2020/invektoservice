@@ -1,0 +1,96 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "spec_ref": "SPEC-008",
+  "slug": "20260530-feat-vfb-voice-test-ops-jwt-bridge",
+  "risk": "MEDIUM",
+  "status": "REVIEW",
+  "created_at": "2026-05-30T23:30:00+03:00",
+  "updated_at": "2026-05-30T23:45:00+03:00",
+  "plan": {
+    "summary": "Fix Voice Test ops-mode auth gap: Dashboard ops login (useAuth.ts loginWithOps) writes Basic Auth credentials to sessionStorage.ops_auth but does NOT mint a JWT to localStorage.access_token. The Voice Test sidebar button (Layout.tsx:153) only knew the localStorage.access_token path, so ops-mode users hit 'Oturum bulunamadı (JWT yok). Dashboard\\'a login olun.' alert despite being logged in. Add a backend JWT-mint endpoint /ops/voice-jwt (Basic Auth in, JSON token out, 30min TTL, tenant=0 superadmin) and extend the Layout.tsx button with the same two-path pattern already used by the Hangfire link (try localStorage.access_token first, fall back to Basic Auth + /ops/voice-jwt exchange). This unblocks Voice Test for ops-mode callers (super.invekto.com production path).",
+    "q_intent": "voice test hata (Q ekran goruntusu: 'Oturum bulunamadi (JWT yok). Dashboard\\'a login olun.' popup voice-test linkine tiklayince + Dashboard /firmalar acliyor / ops login OK -- Voice Test JWT eksik bridge sorunu)",
+    "interview_notes": "Q AskUserQuestion 2026-05-30 23:25 (4 secenek): A=Hangfire pattern clone (/ops/voice-jwt + Layout.tsx fix + redeploy, ~15dk kalici), B=gecici MockEnabled env tweak (5dk smoke ama prod state acik), C=dev PC lokal test (10dk prod dokunulmaz). Q karari: A (kalici fix). Recovery prereq: Backend incident (2026-05-27) hotfix attempts master HEAD ile prod-running .dll arasinda drift vardi -- `git stash pop` + emergency recovery commit `88d7b376` ile master sync edildi ONCESINDE bu fix.\n\nRoot cause discovery: useAuth.ts loginWithOps (line 105-122) Basic Auth pattern (api.setCredentials + api.getOpsStatus dogrulama). JWT YOK. Layout.tsx Voice Test onClick (line 159-164) sadece localStorage.access_token path biliyor. Hangfire link (line 176-211) ayni problem dual-auth pattern ile cozulmus (cookie bridge same-origin, voice.invekto.com cross-origin oldugu icin JSON token alternatif kullanilacak)."
+  ,
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "Backend Program.cs'e yeni endpoint: GET /ops/voice-jwt (Basic Auth zorunlu, ValidateOpsAuth gate). Basarili durumda JSON `{token: <jwt>, expires_in: 1800, token_type: \"Bearer\"}` donus + JsonLines log entry. Basarisiz Basic Auth: HTTP 401 + JSON `{error: 'unauthorized'}` + WARN log INV-AUTH-001. JwtGenerator null ise HTTP 503 + ERROR log INV-AUTH-001.", "verified": false, "verification_note": null },
+      { "id": "AC2", "criterion": "JWT mint: jwtGenerator.GenerateServiceToken(0, TimeSpan.FromMinutes(30)) -- tenant=0 superadmin, 30dk TTL, source='voice_runtime' (mevcut JwtGenerator.GenerateServiceToken pattern). expires_in response field=1800 (30*60). 8 saatlik quicklogin disinda short-lived secim (voice test ops/demo tool).", "verified": false, "verification_note": null },
+      { "id": "AC3", "criterion": "Layout.tsx Voice Test button (line 153, item.path==='external:voice-test') iki auth path: (1) localStorage.access_token varsa direkt openVoicePoc(t) cagrir. (2) Yoksa sessionStorage.ops_auth check; varsa GET /ops/voice-jwt Basic Auth header ile, JSON parse, data.token validation (typeof === 'string' && length > 0), sonra openVoicePoc(data.token). 3-katmanli error handling: fetch reject (network), HTTP !ok (status code body), invalid JSON shape (typeof check).", "verified": false, "verification_note": null },
+      { "id": "AC4", "criterion": "Existing voice-poc.html ?token= URL-bridge AD-33 davranisi DEGISMEDI -- voice-poc.html'in inline script'i window.INVEKTO_VOICE_JWT + history.replaceState ile token'i URL'den temizler. Backend yeni endpoint sadece JSON donduyor, voice-poc.html ile etkilesimi YOK.", "verified": false, "verification_note": null },
+      { "id": "AC5", "criterion": "Backward-compat: INMA-session callers (localStorage.access_token var) icin davranis IDENTIK -- mevcut F0.5 flow (token query param) korunur. Sadece Ops-mode fallback eklendi. Hicbir regression yok mevcut INMA path icin.", "verified": false, "verification_note": null },
+      { "id": "AC6", "criterion": "Q smoke: super.invekto.com Ops login (password) -> Voice Test sidebar link click -> popup YOK -> voice.invekto.com:8443/voice-poc.html?token=<JWT> acilir -> URL 1sn icinde temizlenir -> tenant + flow dropdown dolu gelir -> dropdown secimi sonrasi 'Mikrofonu Baslat' enabled.", "verified": false, "verification_note": null }
+    ]
+  },
+  "spec_architectural_decisions": [
+    { "decision": "AD-37 (2026-05-30): Voice Test ops-mode JWT mint endpoint /ops/voice-jwt -- Hangfire-login pattern clone, ama cookie yerine JSON donduyor cunku voice.invekto.com:8443 cross-origin (same-origin HttpOnly cookie bridge inapplicable). Basic Auth (sessionStorage.ops_auth) -> 30dk tenant=0 superadmin JWT -> Dashboard caller token'i ?token= URL bridge ile voice-poc.html'e iletir.", "reason": "Q AskUserQuestion 2026-05-30 23:25 'A: Hangfire pattern clone (Recommended)' onayli. Alternatifler reddedildi: B=MockEnabled env tweak prod state geçici açık (5dk window'da quicklogin public), C=dev PC lokal test prod dokunulmaz ama F0.5 prod validate edemez.", "codex_note": "EXPECTED: Yeni endpoint Hangfire-login pattern clone (line 697-742). Basic Auth + ValidateOpsAuth + JwtGenerator + 30dk TTL. JSON output (cross-origin sebebiyle cookie bridge inapplicable). 401 + structured error response. SystemWarn log INV-AUTH-001 for failures." },
+    { "decision": "AD-38 (2026-05-30): Layout.tsx Voice Test button two-auth-path Hangfire pattern clone. (1) JWT-first localStorage.access_token, (2) Ops-fallback sessionStorage.ops_auth -> /ops/voice-jwt fetch. Hicbir wholesale auth refactor yok -- sadece mevcut button onClick logic genisletildi. opsAuth verification + fetch error handling + JSON shape validation 3 katmanli.", "reason": "Q AskUserQuestion 2026-05-30 'A' onayli. Existing INMA path KORUNDU (regression yok). Hangfire pattern (line 176-211) zaten production'da kanitlanmis pattern -- aynisi clone edildi.", "codex_note": "EXPECTED: async onClick (await fetch icin). Hangfire 3-katmanli error handling (fetch reject + HTTP !ok + JSON shape) pattern. openVoicePoc helper iki path icin shared. localStorage.access_token undefined check (var degil string), sessionStorage.ops_auth undefined check, data.token typeof === 'string' && length > 0 strict validation." }
+  ],
+  "allowed_files": [
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Dashboard/src/components/Layout.tsx",
+    "src/Invekto.Backend/wwwroot/app/**",
+    "arch/plans/20260530-feat-vfb-voice-test-ops-jwt-bridge.json",
+    "arch/session-memory.md"
+  ],
+  "files_changed": [
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Dashboard/src/components/Layout.tsx",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs"
+  ],
+  "git_diff": {
+    "stats": { "insertions": 200, "deletions": 50, "files_count": 36, "code_only_files_count": 3, "code_only_insertions": 200, "code_only_deletions": 50 },
+    "sha256": "af230c33d64930c2b0a40e1fcf1f91dc2850751dfb81cb3eb815772f8a4e7c0c",
+    "full_path": "arch/plans/diffs/20260530-feat-vfb-voice-test-ops-jwt-bridge.diff",
+    "notes": "Stats above include 33 Vite-rebuilt SPA bundle JS chunks (wwwroot/app/assets/*.js) as derived output of Layout.tsx source change. The diff_file_path is FILTERED to only the 3 reviewable files (Backend Program.cs + Layout.tsx source + plan JSON) so Codex reviews source, not Vite output. Committed diff will still include the Vite bundles (production deploy needs the rebuilt static assets)."
+  },
+  "build": { "status": "PASS", "timestamp": "2026-05-30T23:35:00+03:00", "errors": 0, "warnings": 17, "notes": "Backend csproj build PASS 0 error / 17 warning (Opus obsolete + Backend CA1416 windows-only ServiceController + pre-existing baseline, no new). Vite build SPA Dashboard PASS, output wwwroot/app/ mtime 23:34:35 fresh. wwwroot/app/** auto-included by Microsoft.NET.Sdk.Web -- dotnet publish output'una otomatik dahil." },
+  "verification_questions": [
+    { "id": "Q1", "category": "Auth", "question": "ValidateOpsAuth gate: /ops/voice-jwt endpoint Basic Auth header'siz cagrildiginda 401 doner mi? Basic Auth dogru ise tenant=0 superadmin JWT mint eder mi (3rd-party caller arbitrary tenant_id injection edemez -- her zaman 0)?" },
+    { "id": "Q2", "category": "Auth", "question": "JWT TTL + claims: GenerateServiceToken(0, 30min) ile mint edilen token'in tenant_id=0, role=service (veya admin), expiry=30dk olur mu? Token cache'lenmiyor mu (her call fresh mint)?" },
+    { "id": "Q3", "category": "Data", "question": "JSON response shape: `{token: <jwt>, expires_in: 1800, token_type: 'Bearer'}` formati Hangfire-login response shape ile uyumlu mu (developers familiar pattern)? data.token typeof === 'string' && length > 0 client-side strict validation -- malformed response'a karsi koruma var mi?" },
+    { "id": "Q4", "category": "Lifecycle", "question": "Cross-origin behavior: voice.invekto.com:8443 != super.invekto.com origin'inde voice-poc.html ?token=<JWT> URL'ye acilir -- inline script window.INVEKTO_VOICE_JWT'ye token'i koyar + history.replaceState ile URL'den temizler (AD-33 davranisi degisti mi)? Backend /ops/voice-jwt response Dashboard caller'a JSON donduyor (cookie bridge inapplicable cross-origin)?" },
+    { "id": "Q5", "category": "Process/Policy", "question": "Backward-compat: INMA-session callers (localStorage.access_token var) icin Voice Test button davranis IDENTIK mi -- yeni Ops path SADECE fallback (JWT var ise hicbir degisiklik yok)? Mevcut F0 flow regression yok?" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Backend/Dashboard/src/hooks/useAuth.ts (login flow refactor scope disi -- mevcut Basic Auth pattern korunur)",
+      "src/Invekto.Backend/Dashboard/src/lib/api.ts (auth abstraction refactor scope disi -- sadece setCredentials/ops_auth mevcut pattern okunur)",
+      "src/Invekto.VoiceRuntime/** (sadece Backend + Dashboard SPA degisikligi -- VoiceRuntime kodu dokunulmadi)",
+      "src/Invekto.Backend/Program.cs Hangfire-login endpoint (line 697-742) -- yeni endpoint paralel olarak eklendi, mevcut Hangfire pattern degismedi"
+    ],
+    "non_goals": [
+      "useAuth.ts loginWithOps refactor (Basic Auth + JWT mint inline'a tasimak) -- mevcut Hangfire-pattern simetrik fix yeterli",
+      "Voice Test sayfasinda dropdown / mic loop kod degisikligi -- bu paket sadece JWT bridge",
+      "F4 backend cookie bridge promotion (voice.invekto.com cross-origin oldugu surece JSON token kalir)",
+      "Yeni INV error code series (mevcut INV-AUTH-001 yeterli unauthorized response icin)"
+    ],
+    "intentional_exclusions": [
+      "30dk TTL refresh mechanism (Voice Test ops/demo tool -- 30dk sonunda Q'nun manual yeniden tiklamasi kabul edilebilir)",
+      "Voice JWT revocation list / token blacklist (kisa TTL + tenant=0 superadmin scope -- gerek yok)",
+      "Layout.tsx onClick logging / telemetry (mevcut button'da yok, simetri korunur)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "Layout.tsx Voice Test onClick: try/catch fetch network errors + HTTP !ok body + JSON shape validation 3 katmanli"
+    ],
+    "user_facing_errors": [
+      "alert('Oturum bulunamadı (ne JWT ne Ops giriş). Dashboard\\'a login olun.') -- ops_auth da yoksa",
+      "alert('Voice JWT alınamadı: ' + body) -- HTTP !ok",
+      "alert('Voice JWT yanıtı geçersiz (token alanı yok).') -- JSON shape invalid",
+      "alert('Voice Test giriş hatası: ' + err) -- fetch reject (network)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Tum auth path failure'lari user-visible alert + structured backend SystemWarn/SystemError log. Backend 401 response body alert'e dahil. JSON shape validation strict (typeof + length check)."
+  },
+  "verdict": { "status": "PASS", "iteration": 2 },
+  "status_log": [
+    { "ts": "2026-05-30T23:30:00+03:00", "event": "PLAN_CREATED", "notes": "Q ekran goruntusu (Voice Test linki 'Oturum bulunamadi JWT yok' popup) + Q soru 'voice test hata' tetikledi. Root cause analiz: useAuth.ts loginWithOps Basic Auth pattern (JWT yok) vs Layout.tsx Voice Test button localStorage.access_token JWT bekliyor. Hangfire link (line 176-211) ayni problem dual-auth ile cozmus -- Voice Test buna sahip degil. Q AskUserQuestion 4 secenek 'A: Hangfire pattern clone' onayladi. Prereq: Backend incident hotfix attempts (git stash@{0}) master HEAD ile prod-running .dll sync icin emergency recovery commit (88d7b376) yapildi." },
+    { "ts": "2026-05-30T23:35:00+03:00", "event": "DEV_DONE", "notes": "Backend Program.cs: yeni endpoint /ops/voice-jwt (line ~785 oncesi, Hangfire-block sonrasi, ValidateOpsAuth gate + 30dk JWT mint + structured 401 + INV-AUTH-001 log). Layout.tsx: Voice Test onClick async + Hangfire pattern clone (openVoicePoc helper + localStorage-first + ops_auth fallback + 3-katmanli error handling). Backend build PASS 0 error / 17 warning baseline. Vite build SPA PASS, wwwroot/app/ mtime fresh." },
+    { "ts": "2026-05-30T23:45:00+03:00", "event": "CODEX_ITER_0_FAIL", "codex_iterations": 0, "model_used": "gpt-5.5-2026-04-23", "tokens": { "total": 15510 }, "notes": "FAIL: CQ1 + CQ12 blockers. Backend error responses generic ({error:'unauthorized'} + {error:'jwt-generator-unavailable'}) yerine standart ErrorResponse.Create envelope kullanmali + INV code body'sinde olmali. CoVe 5/5 PASS (Q1-Q5 hepsi)." },
+    { "ts": "2026-05-30T23:50:00+03:00", "event": "ITER_1_FIX", "notes": "Backend Program.cs: both 401 and 503 paths refactored to ErrorResponse.Create envelope + actionable Turkish messages + requestId propagation + INV code interpolated logs. Log entry literal 'INV-AUTH-001' yanlisti -- mevcut canonical 401 INV-AUTH-003 (ErrorCodes.AuthUnauthorized). Build PASS." },
+    { "ts": "2026-05-30T23:55:00+03:00", "event": "CODEX_ITER_1_FAIL", "codex_iterations": 1, "model_used": "gpt-5.5-2026-04-23", "tokens": { "total": 15801 }, "notes": "CQ1 + 10/12 CQ PASS, ama CQ12 hala FAIL: 503 path (JwtGenerator-not-configured) INV-AUTH-003 (unauthorized) semantically yanlis -- server misconfiguration code'u olmali, caller auth failure degil. Q5-ITER1 FAIL same reason." },
+    { "ts": "2026-05-30T23:58:00+03:00", "event": "ITER_2_FIX", "notes": "Shared.Constants.ErrorCodes.cs: added AuthJwtGeneratorUnavailable = 'INV-AUTH-012' additive (Shared additive change, 12 consumer service backward-compat). Backend Program.cs: 503 path now uses INV-AUTH-012 instead of INV-AUTH-003. Full sln build PASS 0 error / 17 warning (additive Shared change verified across all consumers)." },
+    { "ts": "2026-05-31T00:02:00+03:00", "event": "CODEX_ITER_2_PASS", "codex_iterations": 2, "model_used": "gpt-5.5-2026-04-23", "tokens": { "prompt": 11742, "completion": 3489, "total": 15231 }, "notes": "PASS 12/12 CQ + 5/5 CoVe (Q1-Q4 + Q5-ITER2). blocking_issues NONE. Summary: 'The iter 2 change correctly separates caller authentication failure from server JWT-generator misconfiguration using INV-AUTH-003 and INV-AUTH-012, while preserving the existing JWT-first Voice Test path. No tenant injection, DB/schema drift, breaking Shared change, or silent failure was found.' Pending: commit + push + Backend redeploy (Backend.dll + wwwroot/app/ SPA bundles 33 chunks) + Q smoke (super.invekto.com ops login -> Voice Test sidebar click -> popup YOK -> voice-poc.html acilir)." }
+  ]
+}

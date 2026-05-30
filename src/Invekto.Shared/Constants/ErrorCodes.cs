@@ -149,6 +149,9 @@ public static class ErrorCodes
     // A3 demo-fix (INV-AUTH-011) — token bytes corrupted before reaching IdentityModel
     public const string AuthTokenMalformed = "INV-AUTH-011";               // 401: Base64Url decode failed (BOM/whitespace/non-UTF8 prefix) — IDX12729-class boot fail caught defensively in JwtValidator
 
+    // FEAT-VFB F0.5 Voice Test bridge (INV-AUTH-012) — server-side JWT mint dependency missing
+    public const string AuthJwtGeneratorUnavailable = "INV-AUTH-012";       // 503: jwtGenerator DI not configured (Jwt:SecretKey missing at startup) — server misconfiguration, NOT a caller auth failure
+
     // Backward-compat aliases (pre-GR-1.9 names, do not use in new code)
     public const string AuthForbidden = AuthTokenInvalid;
 

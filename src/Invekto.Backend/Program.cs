@@ -782,6 +782,46 @@ else
         "ConnectionStrings:PostgreSQL is not configured. Recurring jobs will NOT run.");
 }
 
+// FEAT-VFB F0.5 Voice Test browser JWT bridge — symmetric to /ops/hangfire-login
+// (line ~697) but JSON instead of cookie. The Voice Test page lives at
+// https://voice.invekto.com:8443 (different origin from Dashboard), so the
+// same-origin HttpOnly cookie bridge used for /hangfire is not applicable —
+// the Dashboard caller mints a short-lived tenant=0 JWT here and passes it
+// inline via the URL bridge (?token=<JWT>) consumed by voice-poc.html's
+// inline script (history.replaceState scrubs the token from the address bar).
+//
+// Auth: Ops Basic Auth (sessionStorage.ops_auth from useAuth.ts loginWithOps).
+// INMA-session callers don't need this endpoint — they already have a JWT in
+// localStorage.access_token and the Dashboard Voice Test button uses that
+// directly. This endpoint is the Ops-mode fallback (no JWT in localStorage).
+//
+// TTL: 30 minutes — Voice Test is a short-lived ops/demo tool; matches the
+// expected single-session usage window without leaving long-lived tokens in
+// browser memory.
+app.MapGet("/ops/voice-jwt", (HttpContext ctx, JsonLinesLogger logger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (!ValidateOpsAuth(ctx))
+    {
+        logger.SystemWarn($"[{ErrorCodes.AuthUnauthorized}] voice-jwt rejected: ops basic auth invalid (rid={requestId})");
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
+                "Voice Test JWT mint icin gecerli Ops Basic Auth gerekli. Dashboard'a tekrar login olun.", requestId),
+            statusCode: 401);
+    }
+    if (jwtGenerator == null)
+    {
+        logger.SystemError($"[{ErrorCodes.AuthJwtGeneratorUnavailable}] voice-jwt: JwtGenerator not configured (server misconfig, rid={requestId})");
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.AuthJwtGeneratorUnavailable,
+                "Voice Test JWT mint servisi su an kullanilamiyor (yapilandirma hatasi). Yoneticinize bildirin.", requestId),
+            statusCode: 503);
+    }
+    var jwt = jwtGenerator.GenerateServiceToken(0, TimeSpan.FromMinutes(30));
+    logger.StepInfo($"voice-jwt: 30min superadmin JWT issued (tenant=0, rid={requestId})", requestId);
+    return Results.Ok(new { token = jwt, expires_in = 1800, token_type = "Bearer" });
+});
+
 // Health endpoint (no auth, no logging)
 app.MapGet("/health", () =>
 {
