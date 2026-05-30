@@ -67,14 +67,23 @@ public sealed record SessionAudioConfig(
 );
 
 public sealed record SessionAudioInputConfig(
-    [property: JsonPropertyName("format")] string Format,
+    [property: JsonPropertyName("format")] AudioFormatConfig Format,
     [property: JsonPropertyName("transcription")] InputAudioTranscriptionConfig? Transcription,
     [property: JsonPropertyName("turn_detection")] TurnDetectionConfig? TurnDetection
 );
 
 public sealed record SessionAudioOutputConfig(
-    [property: JsonPropertyName("format")] string Format,
+    [property: JsonPropertyName("format")] AudioFormatConfig Format,
     [property: JsonPropertyName("voice")] string Voice
+);
+
+// GA Realtime API changed session.audio.{input,output}.format from a bare string
+// ("pcm16") to an object { type, rate }. type is a MIME-like codec id; rate is the
+// sample rate in Hz. pcm16 -> { "type": "audio/pcm", "rate": 24000 }.
+// (OpenAI rejected the legacy string with INV-VR-001 "expected an object".)
+public sealed record AudioFormatConfig(
+    [property: JsonPropertyName("type")] string Type,
+    [property: JsonPropertyName("rate")] int Rate
 );
 
 public sealed record InputAudioTranscriptionConfig(

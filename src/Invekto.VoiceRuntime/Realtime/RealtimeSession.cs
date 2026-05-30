@@ -27,8 +27,8 @@ public sealed class RealtimeSessionFactory
         MaxConcurrentSessions = config.GetValue<int>("OpenAI:MaxConcurrentSessions", 3);
 
         var voice = config["OpenAI:Voice"] ?? "alloy";
-        var inFmt = config["OpenAI:InputAudioFormat"] ?? "pcm16";
-        var outFmt = config["OpenAI:OutputAudioFormat"] ?? "pcm16";
+        var inFmt = MapAudioFormat(config["OpenAI:InputAudioFormat"] ?? "pcm16");
+        var outFmt = MapAudioFormat(config["OpenAI:OutputAudioFormat"] ?? "pcm16");
         var instructions = config["OpenAI:Instructions"]
             ?? "Sen Invekto'nun TÜRKÇE sesli AI asistanısın. ÇOK ÖNEMLİ: HER ZAMAN ve SADECE Türkçe konuş — başka hiçbir dilde (İngilizce, Korece, Almanca, vb.) cevap verme, kullanıcı başka dilde konuşsa bile Türkçe yanıtla. Kısa, doğal, samimi konuş. Anlamadığında 'Tekrar eder misiniz?' de.";
 
@@ -69,4 +69,15 @@ public sealed class RealtimeSessionFactory
             )
         );
     }
+
+    // GA Realtime API expects session.audio.{input,output}.format as an object { type, rate },
+    // not the legacy "pcm16" string. Map the appsettings codec id (kept for backward-compat) to
+    // the GA object. pcm16 is 16-bit little-endian PCM at 24 kHz; G.711 variants are 8 kHz.
+    private static AudioFormatConfig MapAudioFormat(string codec) => codec switch
+    {
+        "pcm16" => new AudioFormatConfig("audio/pcm", 24000),
+        "g711_ulaw" => new AudioFormatConfig("audio/pcmu", 8000),
+        "g711_alaw" => new AudioFormatConfig("audio/pcma", 8000),
+        _ => new AudioFormatConfig("audio/pcm", 24000)
+    };
 }

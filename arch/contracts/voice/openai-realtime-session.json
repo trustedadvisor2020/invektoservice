@@ -18,7 +18,7 @@
     "instructions": "[F0.5] InstructionsBuilder.Build → 'Sen {tenant_name} firmasinin ({sector}) sesli AI asistanisin. Aktif konusma akisi: {flow_name}. ...' (deterministic from VoiceTestContext). [F0 legacy] appsettings.OpenAI.Instructions generic Türkçe.",
     "audio": {
       "input": {
-        "format": "pcm16",
+        "format": { "type": "audio/pcm", "rate": 24000 },
         "transcription": {
           "model": "whisper-1",
           "language": "tr"
@@ -30,7 +30,7 @@
         }
       },
       "output": {
-        "format": "pcm16",
+        "format": { "type": "audio/pcm", "rate": 24000 },
         "voice": "alloy"
       }
     },
