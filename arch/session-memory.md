@@ -7,7 +7,32 @@
 
 ## Last Update
 
-- **Date:** 2026-05-31 00:25 — **Session: Voice Test ops-mode JWT bridge fix (commit `e27ecedd` Codex iter 2 PASS) + Backend prod INCIDENT — REVIVED (5+ deploy × crash, NSSM auto-restart lucky-startup race).** Q yeni session açtı (23:11) ekran görüntüsü ile: super.invekto.com Voice Test linkine tıklayınca "Oturum bulunamadi (JWT yok). Dashboard'a login olun." popup. Q sonra "firmalar sayfası açılıyor" dedi → Dashboard login OK ama Voice Test linki bozuk.
+- **Date:** 2026-05-31 02:45 — **Session: Voice Test FULL prod rollout — stale-binary root cause çözüldü + 4 fix deploy + 2 incident kurtarıldı + F0.5 ERTELENDİ.** Q "voice test sayfası oturum bulamıyor" + ekran (super.invekto.com Voice Test → "JWT yok") ile açtı. Sonra "içine al" (embed) + WS/format/dropdown hatalarını ardışık bildirdi. **Codex MCP tüm session DOWN (`undefined.map` x4, codex+kimi) → tüm deploy'lar Q OVERRIDE ile.**
+
+  **Kök neden (ana bulgu):** Voice Test "JWT yok" → fix (commit `e27ecedd`) prod'a HİÇ ulaşmamış. `/ops/voice-jwt` 404 + eski frontend bundle. Önceki session'ın "5+ deploy crash" incident'i = **STALE BINARY** (kaynak doğru). **.NET 8.0.19 RDF body-inference kuralı minimal-repro ile KANITLANDI:** body-less (GET/DELETE) endpoint'te complex param SADECE DI'da KAYITSIZSA crash eder; kayıtlıysa veya `[FromServices]` varsa crash YOK. Backend'in 28 offender tipinin hepsi kayıtlı (instance-registration formları regex'in kaçırdığı) → master HEAD crash etmez. Temiz publish + deploy → Backend HEALTHY, voice-jwt 404→401.
+
+  **4 fix (DEPLOYED + commit `62a5f613` + `af00f498`):**
+  1. **Backend stale-binary:** bin/obj temizle + master HEAD publish + server-deploy → /ops/voice-jwt CANLI (Chunk E `/api/ops/tenants` CORS dahil)
+  2. **Embed:** Voice Test artık dashboard içinde (`/voice-test` route + `VoiceTestPage.tsx` cross-origin iframe + 2 auth path token + INV-VR-CLIENT-011/012/013) — `window.open` yeni-sekme kaldırıldı. Codex iter-0 FAIL (CQ5/CQ9/CQ12) → hepsi fix (CQ9 = Q FORCE PASS: origin zaten ops_auth tutuyor)
+  3. **WS-over-HTTP/2 405:** tarayıcı HTTP/2 CONNECT WS'i MapGet'e routing eşleşmiyor → VoiceRuntime Kestrel `EndpointDefaults:Protocols=Http1` (appsettings, durable repo+server) → HTTP/1.1 GET upgrade
+  4. **OpenAI format (INV-VR-001):** `audio.{input,output}.format` string→object `{type:"audio/pcm",rate:24000}` (GA API). RealtimeMessageTypes `AudioFormatConfig` + RealtimeSession `MapAudioFormat`. (Korece selamlama bunun yan etkisiydi — session reddedilince Türkçe instructions uygulanmıyordu.)
+
+  **VoiceRuntime + Automation deploy (manuel/server-deploy):** VoiceRuntime `server-deploy` enum'unda YOK → manuel (VoiceRuntime.dll + Shared.dll pair; tek-DLL TypeLoad `VoiceTestContext` verdi → Shared.dll de gerekti). Automation master HEAD deploy (Chunk E `/api/v1/flows`+CORS) — RDF audit ile crash-safe doğrulandı.
+
+  **🚨 2 INCIDENT (ikisi de kurtarıldı, tüm servisler HEALTHY):**
+  - **Knowledge misdeploy:** `server-deploy` enum'unda VoiceRuntime yok → yanlışlıkla **Knowledge** seçip VoiceRuntime binary'lerini Knowledge'a deploy ettim → Knowledge ~2dk DOWN → master HEAD publish + redeploy ile restore.
+  - **Automation SSH-channel mid-deploy fail:** 1. deneme `(SSH) Channel open failure` ile yarıda kaldı (dizin temizlendi, start olmadı) → rollback-backup'tan restore → 2. deneme başarılı.
+
+  **⏸️ F0.5 tenant/flow dropdownları ERTELENDİ (Q kararı) — 3 KADEMELİ ENTEGRASYON DEFEKTİ (Chunk D/E hiç e2e test edilmemiş):**
+  1. **Host:** voice-poc.js `app.invekto.com` (IIS) çağırıyor → 404; ops API `super.invekto.com` (Kestrel) CORS'lu serve ediyor (`BACKEND_BASE`/`AUTOMATION_BASE` satır 58-59 yanlış)
+  2. **Automation expose:** Hiçbir external host Automation:7108'e route etmiyor (super+app ikisi de /api/v1/flows 404) → browser-direct imkansız, **Backend flow-proxy gerekir** (Backend zaten `/api/v1/flow-builder/flows/{tid}` ile Automation'ı proxy'liyor, CORS eklenmeli)
+  3. **Token rolü (auth):** voice JWT `role=service` (GenerateServiceToken), `/api/ops/tenants` `ValidateOpsAuth` `role=="admin" AND TenantId==0` istiyor (D027 audit daraltması) → service token REDDEDİLİR. **Auth tasarım kararı:** voice-jwt'yi admin mintle (ama WS+KB service bekleyebilir) VEYA ValidateOpsAuth genişlet (D027 geri açar). → **Stabil infra + Codex up'lı gündüz session'ı işi.**
+
+  **prod=F0 / repo=F0.5 DIVERGENCE (bilinçli):** Q kararı F0'a revert — prod voice-poc.html/js/css git pre-Chunk-D (`b67e6747~1`) F0 sürümüne döndürüldü (dropdown yok, DefaultConfig, master HEAD DLL F0'ı destekliyor + format fix içeriyor) → voice mic→OpenAI→Türkçe TEST EDİLEBİLİR. Repo'da voice-poc F0.5 kalıyor (topoloji+auth fix bekliyor). **Sonraki session F0.5'i deploy ederken bu 3 defekti çöz, sonra static dosyaları yeniden deploy et.**
+
+  **Rollback yedekleri (server):** `Backend/rollback-known-good-20260531`, `Automation/rollback-known-good-20260531`, VoiceRuntime `.dll.bak-20260531-fmt` + `appsettings.Production.json.bak-20260531-ws`, `Knowledge` restored.
+
+- **PREV-Date:** 2026-05-31 00:25 — **Session: Voice Test ops-mode JWT bridge fix (commit `e27ecedd` Codex iter 2 PASS) + Backend prod INCIDENT — REVIVED (5+ deploy × crash, NSSM auto-restart lucky-startup race).** Q yeni session açtı (23:11) ekran görüntüsü ile: super.invekto.com Voice Test linkine tıklayınca "Oturum bulunamadi (JWT yok). Dashboard'a login olun." popup. Q sonra "firmalar sayfası açılıyor" dedi → Dashboard login OK ama Voice Test linki bozuk.
 
 **Root cause discovery (~30dk):**
 - Layout.tsx:160 `localStorage.getItem('access_token')` arıyor; useAuth.ts loginWithOps (line 105) Basic Auth pattern — `api.setCredentials(u,p)` ile `sessionStorage.ops_auth` yazıyor, JWT yazmıyor. Ops-mode caller için Voice Test bridge eksik.
