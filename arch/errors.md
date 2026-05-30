@@ -249,6 +249,9 @@ errors:
   - code: INV-AUTH-011
     description: Token bytes corrupted before reaching IdentityModel — IDX12729-class Base64Url decode fail (UTF-8 BOM prefix, whitespace inside token, non-ASCII bytes, or partial token). Microsoft.IdentityModel throws ArgumentException which is OUTSIDE the SecurityTokenException hierarchy; JwtValidator catches ArgumentException explicitly and returns 401 with this code instead of letting the exception bubble up to a Kestrel 500. Any other exception class is intentionally not caught here (typed-catch-only policy) — those represent genuine bugs and surface as 500 with full stack traces for triage. Introduced 2026-05-12 (Faz A3 demo-fix) after Kestrel[13] 500 ile UI logout-after-logout looplari production stdout'ta gözlenmesi.
     user_message: Geçersiz oturum tokeni, lütfen tekrar giriş yapın.
+  - code: INV-AUTH-012
+    description: Server-side JWT mint dependency missing — jwtGenerator DI not configured because Jwt:SecretKey is empty at startup. Emitted by /ops/voice-jwt (FEAT-VFB Voice Test bridge, AD-37, 2026-05-31) and any future endpoint that needs to mint a tenant=0 superadmin JWT from Ops Basic Auth context. 503 status (server misconfiguration), NOT 401 (which is INV-AUTH-003 for caller auth failure — semantically distinct). Recovery: check appsettings.Production.json Jwt:SecretKey, then NSSM restart Backend.
+    user_message: Bu servis şu an kullanılamıyor (yapılandırma hatası). Yöneticinize bildirin.
 
   # ── AT — Automation (GR-1.1) ──
   - code: INV-AT-001
