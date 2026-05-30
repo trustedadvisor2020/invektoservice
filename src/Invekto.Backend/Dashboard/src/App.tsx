@@ -21,6 +21,7 @@ import { LogsPage } from './pages/LogsPage';
 import { WebChatPage } from './pages/WebChatPage';
 import { LicensesPage } from './pages/LicensesPage';
 import { PaymentPage } from './pages/PaymentPage';
+import { VoiceTestPage } from './pages/VoiceTestPage';
 
 const FlowListPage = lazy(() => import('./pages/flow-builder/FlowListPage').then(m => ({ default: m.FlowListPage })));
 const FlowEditorPage = lazy(() => import('./pages/flow-builder/FlowEditorPage').then(m => ({ default: m.FlowEditorPage })));
@@ -145,6 +146,8 @@ export default function App() {
         <Route path="/rescue" element={<Suspense><RescueDashboardPage /></Suspense>} />
         <Route path="/messages" element={<MessagesPage />} />
         <Route path="/webchat" element={<WebChatPage />} />
+        {/* FEAT-VFB: Voice Test embedded in-dashboard (was Layout.tsx external new-tab). */}
+        <Route path="/voice-test" element={<VoiceTestPage />} />
         <Route path="/tenants" element={<TenantsPage />} />
         {/* FEAT-ROADMAP-V2: yeni URL /yol-haritasi/:boardKey? + backward-compat /pilot-kanban.
             Audit fix D035 (2026-04-29 Batch C): /pilot-kanban alias-render yerine

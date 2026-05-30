@@ -80,7 +80,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { path: '/messages',        label: 'Mesajlar',         icon: MessageSquare, opsOnly: true },
   { path: '/logs',            label: 'Loglar',            icon: FileText,     opsOnly: true },
   { path: 'external:hangfire', label: 'Hangfire',         icon: Clock,        opsOnly: true },
-  { path: 'external:voice-test', label: 'Voice Test',     icon: Mic,          opsOnly: true },
+  { path: '/voice-test',       label: 'Voice Test',     icon: Mic,          opsOnly: true },
   // — Shared —
   { path: '/onboarding',       label: 'Onboarding',       tenantLabel: 'Kurulum Sihirbazi', icon: Rocket },
   { path: '/onboarding-guide', label: 'Onboarding Rehberi', icon: GraduationCap, opsOnly: true },
@@ -90,7 +90,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
 export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const { logout, session } = useAuth();
-  const isFullscreen = location.pathname.startsWith('/flow-builder');
+  const isFullscreen = location.pathname.startsWith('/flow-builder') || location.pathname.startsWith('/voice-test');
   const isImpersonating = session && api.isImpersonating();
   // INMA parent shell (WapCRM) already renders an outer sidebar with equivalent
   // menu items; hide Dashboard's own sidebar when running inside an iframe.
@@ -141,64 +141,10 @@ export function Layout({ children }: LayoutProps) {
         : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
     );
 
-    // FEAT-VFB F0.5: Voice Test external link. Voice Test is a static page on a
-    // different origin (voice.invekto.com:8443), so a same-origin HttpOnly cookie
-    // bridge (Hangfire pattern below) is not applicable; the JWT is passed once
-    // in ?token=... query and voice-poc.html's inline script reads it into
-    // window.INVEKTO_VOICE_JWT and IMMEDIATELY scrubs the URL via
-    // history.replaceState so the token does NOT linger in the address bar,
-    // browser history, or bookmarks. Token still lands in TLS-encrypted server
-    // access logs — acceptable trade-off for an ops-only tool.
-    //
-    // Two auth paths (symmetric with the Hangfire link below):
-    //  (1) INMA session → JWT in localStorage.access_token, used directly.
-    //  (2) Ops mode → Basic Auth in sessionStorage.ops_auth, exchanged for a
-    //      short-lived (30min) tenant=0 superadmin JWT via /ops/voice-jwt,
-    //      then used. Ops login (useAuth.ts loginWithOps) does not write a JWT
-    //      to localStorage — it stores Basic credentials only — so without
-    //      this exchange the Ops-mode caller would see "JWT yok" and bounce.
-    if (item.path === 'external:voice-test') {
-      return (
-        <button
-          key={item.path}
-          type="button"
-          title={collapsed ? item.label : undefined}
-          onClick={async () => {
-            const openVoicePoc = (jwt: string) => {
-              const url = 'https://voice.invekto.com:8443/voice-poc.html?token=' + encodeURIComponent(jwt);
-              window.open(url, '_blank', 'noopener');
-            };
-            const t = localStorage.getItem('access_token');
-            if (t) { openVoicePoc(t); return; }
-            const opsAuth = sessionStorage.getItem('ops_auth');
-            if (!opsAuth) { alert('Oturum bulunamadı (ne JWT ne Ops giriş). Dashboard\'a login olun.'); return; }
-            try {
-              const r = await fetch('/ops/voice-jwt', {
-                method: 'GET',
-                headers: { Authorization: 'Basic ' + opsAuth },
-              });
-              if (!r.ok) {
-                const body = await r.text().catch(() => '');
-                alert('Voice JWT alınamadı: ' + (body || r.status));
-                return;
-              }
-              const data = await r.json();
-              if (!data || typeof data.token !== 'string' || data.token.length === 0) {
-                alert('Voice JWT yanıtı geçersiz (token alanı yok).');
-                return;
-              }
-              openVoicePoc(data.token);
-            } catch (e) {
-              alert('Voice Test giriş hatası: ' + (e instanceof Error ? e.message : String(e)));
-            }
-          }}
-          className={cn(commonClasses, 'w-full text-left cursor-pointer bg-transparent')}
-        >
-          <Icon className={cn('w-5 h-5 flex-shrink-0', 'text-slate-500 group-hover:text-slate-900')} />
-          {!collapsed && <span className="truncate">{item.label}</span>}
-        </button>
-      );
-    }
+    // FEAT-VFB: Voice Test now renders in-dashboard at /voice-test (VoiceTestPage embeds
+    // voice.invekto.com:8443/voice-poc.html in a cross-origin iframe with the JWT bridged
+    // via ?token=). It falls through to the default <Link> branch below — the token
+    // exchange logic that used to live here moved into VoiceTestPage.
 
     // G7: Hangfire external link — cookie bridge via /ops/hangfire-login.
     // Uses current access_token from localStorage; backend validates (tenant_id=0

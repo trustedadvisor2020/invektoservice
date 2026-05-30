@@ -1678,6 +1678,15 @@ errors:
   - code: INV-VR-CLIENT-010
     description: start() invoked without tenant_id + flow_id selection. Defensive guard — the start button is disabled by updateStartButtonState until both dropdowns have valid integer values, so this should only fire on a UI state race (extremely unlikely). Aksiyon - voice-poc.js toast + event log WARN; no resources allocated.
     user_message: Önce firma ve akış seçin.
+  - code: INV-VR-CLIENT-011
+    description: Dashboard wrapper (VoiceTestPage.tsx) found neither localStorage.access_token (INMA session) nor sessionStorage.ops_auth (Ops mode) at mount — no credential to acquire a voice JWT. Aksiyon - VoiceTestPage shows in-page error state and does NOT render the iframe. User must log in to the Dashboard first. (Parent-side analogue of INV-VR-CLIENT-001, which is the child voice-poc.js URL-bridge miss.)
+    user_message: Oturum bulunamadı (ne JWT ne Ops giriş). Dashboard'a login olun.
+  - code: INV-VR-CLIENT-012
+    description: Dashboard wrapper (VoiceTestPage.tsx) Ops-mode token exchange failed — GET /ops/voice-jwt returned non-2xx (Backend INV-AUTH-003/INV-AUTH-012 surfaced in body) OR the fetch threw (network/CORS/runtime). Aksiyon - VoiceTestPage shows in-page error with the HTTP status/body and does NOT render the iframe.
+    user_message: Voice JWT alınamadı (Ops token exchange başarısız). Dashboard oturumunuzun aktif olduğunu kontrol edin.
+  - code: INV-VR-CLIENT-013
+    description: Dashboard wrapper (VoiceTestPage.tsx) received a 2xx from GET /ops/voice-jwt but the JSON had no usable token field (token missing, not a string, or empty). Aksiyon - VoiceTestPage shows in-page error and does NOT render the iframe. Indicates a Backend contract drift on the /ops/voice-jwt response shape.
+    user_message: Voice JWT yanıtı geçersiz (token alanı yok).
 
 ```
 
