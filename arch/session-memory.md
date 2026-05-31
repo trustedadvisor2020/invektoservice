@@ -7,7 +7,19 @@
 
 ## Last Update
 
-- **Date:** 2026-06-01 02:10 — **Session: Voice F-VR-A cevap-uzunluğu enforcement + F-VR-E KB confidence banding — 2 paket, ikisi Codex iter0 PASS + prod deploy health 200.** Q continuation prompt'tan başladı, 2 roadmap item seçti (AskUserQuestion).
+- **Date:** 2026-06-01 03:35 — **Session: Voice F-VR-B Chunk B1 — voice_tenant_profile DATA+CONTRACT katmanı (Codex iter2 PASS, commit `47cf8797`).** Q continuation prompt'tan başladı → "F-VR-B multi-tenant runtime" seçti (AskUserQuestion). Interview (3 karar): (1) per-tenant DB tablosu + override ŞİMDİ, (2) adapter seti spec §4 + hair_transplant (6 adapter), (3) goal + brand_tone dahil.
+
+  **Mimari (kodbazından türetildi):** VoiceRuntime'in **DB erişimi YOK** (Shared-only csproj, Npgsql yok, Data klasörü yok) → `voice_tenant_profile` tablosu **Backend domaininde** (tenant_registry sibling), VoiceRuntime HTTP ile okur (TenantInfoClient pattern). Mikroservis izolasyonu korundu. İki katman: **tenant_profile** (DB, per-tenant, override edilebilir) = business_type + capability flags + goal/tone; **sector_adapter** (kod-versiyonlu, VoiceRuntime, B2) = vocabulary/intent/banned/required_fields.
+
+  **B1 deliverables (commit `47cf8797`, 8 dosya):** `arch/db/voice-tenant-profile.sql` + migration `050` (business_type NOT NULL CHECK 9 değer [clinic/dental_clinic/aesthetic_clinic/hair_transplant/ecommerce/service_business/education/real_estate/generic] + NULLABLE capability/goal/tone override + FK tenant_registry CASCADE + **GRANT ALL** + updated_at trigger; backfill business_type sector slug'ından CASE [dis_klinik→dental_clinic, eticaret→ecommerce, genel→generic] override'lar NULL=inherit; ON CONFLICT DO NOTHING idempotent + DO $verify$ INV-SEED-050 fail-loud). Backend `GET /api/ops/tenants/{id}/voice-profile` (ValidateOpsAuth, server-to-server, satır yoksa→generic synth 200 [404 değil], INV-BE-126). Shared `VoiceTenantProfileDto` (additive) + read-only `VoiceTenantProfileRepository`. **Override RESOLUTION B2'de** (tek kaynak, backfill'e CASE duplike edilmedi). **Hiçbir prompt davranışı değişmedi** (override'lar NULL).
+
+  **Codex trail:** iter0 FAIL (CQ5/CQ11 GRANT ALL eksik — codex-context.md L20/L69 declared kural, "owner-implicit" gerekçem yanlıştı; CQ12 generic mesaj) → iter1 FAIL (CQ12 diakritik EXACT-match: errors.md user_message geçici/yüklenemiyor/birkaç) → iter2 PASS 12/12 CQ + 4/4 CoVe. 2 ders kaydedildi.
+
+  **⚠️ Migration prod'a HENÜZ uygulanmadı** — endpoint'in tüketicisi B2; migration `050` B2 ile birlikte `/deploy` edilecek (şu an endpoint consumer-less).
+
+  **KALAN (B2 — VoiceRuntime prompt katmanı):** `VoiceProfileClient` (HTTP fetch) + `BusinessType` enum + `SectorAdapter` registry (6 adapter) + capability-default RESOLUTION + `VoiceTestContext` ext + **dinamik `InstructionsBuilder`** + endpoint wiring → sonra B1+B2 migration birlikte deploy.
+
+- **PREV-Date:** 2026-06-01 02:10 — **Session: Voice F-VR-A cevap-uzunluğu enforcement + F-VR-E KB confidence banding — 2 paket, ikisi Codex iter0 PASS + prod deploy health 200.** Q continuation prompt'tan başladı, 2 roadmap item seçti (AskUserQuestion).
 
   **1) Cevap uzunluğu (F-VR-A, commit `174b6e29`):** Model 2-5 cümle kuralına uymuyor, ~20-30sn rambling. Q kararı: **SADECE prompt sertleştirme** (API riski yok). Mimari bulgu: ana turlar **server_vad ile OTOMATIK response** oluşturuyor → per-response `max_output_tokens` zor; session-level kaldırılmış (GA migration, INV-VR-001 session death riski) + voice'ta token cap mid-word keser. Kök neden: UZUNLUK kuralı persona'da ~10. sırada soft guideline'dı. Fix (`InstructionsBuilder.cs`): persona EN BAŞINA `KISALIK` hard-rule (≤2-3 cümle, tek konu, dur, diğer tüm kuralların önünde) + UZUNLUK 2-5→2-3/max-4 + NIHAI TEST uzunluk self-check.
 
