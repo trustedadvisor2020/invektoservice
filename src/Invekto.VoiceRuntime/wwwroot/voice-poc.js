@@ -6,9 +6,10 @@
 //                           error / response_done / tool_call_started / tool_call_completed)
 //
 // F0.5 additions:
-//   * Tenant + flow dropdowns: window.INVEKTO_VOICE_JWT (URL-bridged Dashboard JWT) → Backend
-//     /api/ops/tenants + Automation /api/v1/flows/{tid}. SAME token powers WS handshake. Browser
-//     data is DISPLAY ONLY (AD-25 defense-in-depth); VoiceRuntime re-fetches tenant + flow with
+//   * Tenant + flow dropdowns: window.INVEKTO_VOICE_JWT (URL-bridged Dashboard admin JWT) → Backend
+//     /api/ops/tenants + /api/ops/tenants/{tid}/flows (both ops-scoped on super.invekto.com; the
+//     flow list goes through Backend, NOT Automation directly — AD-42). SAME token powers the WS
+//     handshake. Browser data is DISPLAY ONLY (AD-25 defense-in-depth); VoiceRuntime re-fetches with
 //     its own service JWT before building instructions. voice.invekto.com and app.invekto.com
 //     are SEPARATE origins so localStorage is NOT shared — the URL bridge is the only portable
 //     cross-origin channel (AD-33 iter 1 architectural fix).
@@ -50,13 +51,16 @@ const CLIENT_ERR = {
   SELECTION_MISSING: 'INV-VR-CLIENT-010', // start() called without tenant+flow selection (defensive — button is also disabled)
 };
 
-// Cross-origin Backend host. Dashboard origin is app.invekto.com; Voice Test runs on
-// voice.invekto.com:8443. CORS is enabled server-side via Chunk E (AllowedOrigins update).
-// On localhost dev we hit same-origin (window.location.host) so the dropdown works without
-// production CORS config — useful for local smoke before deploy.
+// Cross-origin Backend host. The ops Dashboard and its /api/ops endpoints are served by the Backend
+// Kestrel host at super.invekto.com; Voice Test runs on voice.invekto.com:8443. CORS is enabled
+// server-side via VoicePocCors (Chunk E + F0.5 defect fix). NOTE: app.invekto.com is the
+// tenant-facing IIS app and returns 404 for /api/ops — the dropdowns MUST hit super.invekto.com
+// (the earlier app.invekto.com value was defect #1). BOTH the tenant list and the flow list are
+// Backend /api/ops endpoints; flows are NOT fetched from Automation directly (Automation:7108 is
+// not externally routed and rejects the tenant=0 token — defect #2; see fetchFlows). On localhost
+// dev we hit same-origin (window.location.host) so the dropdowns work without production CORS config.
 const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(location.hostname);
-const BACKEND_BASE = isLocalhost ? '' : 'https://app.invekto.com';
-const AUTOMATION_BASE = isLocalhost ? '' : 'https://app.invekto.com';
+const BACKEND_BASE = isLocalhost ? '' : 'https://super.invekto.com';
 
 const els = {
   tenantSelect: document.getElementById('tenantSelect'),
@@ -201,19 +205,24 @@ async function fetchTenants(jwt) {
 }
 
 async function fetchFlows(jwt, tenantId) {
-  // Automation /api/v1/flows/{tenantId} returns an ARRAY of flow objects with snake_case keys:
+  // F0.5 defect #2 fix: fetch through the Backend OPS endpoint, not Automation directly and not the
+  // generic flow-builder proxy. Two constraints make those impossible for the Voice Test browser:
+  //   (a) Automation:7108 is not externally routed (no host maps to it), so browser-direct fails.
+  //   (b) Automation.GetValidatedTenant requires the JWT tenant_id == route tenantId (no cross-tenant
+  //       bypass), and our voice-jwt is tenant=0 — so both a direct call AND the generic
+  //       /api/v1/flow-builder/flows proxy (which forwards the caller token verbatim) get a 403.
+  // Backend's GET /api/ops/tenants/{id}/flows (AD-42) validates ops auth, then mints a per-tenant
+  // SERVICE token and proxies to Automation /api/v1/flows/{id}, returning the response verbatim:
+  // an ARRAY of flow objects with snake_case keys
   //   { flow_id, flow_name, flow_description, is_active, is_default, config_version, ... }
-  // Browser JWT (Dashboard admin tenant=0) must satisfy GetValidatedTenant — Backend ops JWT has
-  // tenant_id=0, Automation will accept it via cross-tenant ops scope. (If Automation rejects
-  // ops scope, browser falls back to error path — Chunk E may need explicit ops bypass.)
-  const url = `${AUTOMATION_BASE}/api/v1/flows/${encodeURIComponent(tenantId)}`;
+  const url = `${BACKEND_BASE}/api/ops/tenants/${encodeURIComponent(tenantId)}/flows`;
   const res = await fetch(url, {
     method: 'GET',
     headers: { 'Authorization': `Bearer ${jwt}`, 'Accept': 'application/json' },
     credentials: 'omit',
   });
   if (!res.ok) {
-    throw new Error(`${CLIENT_ERR.FLOW_FETCH}: Automation /api/v1/flows/${tenantId} ${res.status} ${res.statusText}`);
+    throw new Error(`${CLIENT_ERR.FLOW_FETCH}: Backend /api/ops/tenants/${tenantId}/flows ${res.status} ${res.statusText}`);
   }
   const body = await res.json();
   const list = Array.isArray(body) ? body : [];

@@ -817,8 +817,15 @@ app.MapGet("/ops/voice-jwt", (HttpContext ctx, JsonLinesLogger logger) =>
                 "Voice Test JWT mint servisi su an kullanilamiyor (yapilandirma hatasi). Yoneticinize bildirin.", requestId),
             statusCode: 503);
     }
-    var jwt = jwtGenerator.GenerateServiceToken(0, TimeSpan.FromMinutes(30));
-    logger.StepInfo($"voice-jwt: 30min superadmin JWT issued (tenant=0, rid={requestId})", requestId);
+    // FEAT-VFB F0.5: mint a 30min ADMIN token (NOT service). The SAME token is URL-bridged to
+    // voice.invekto.com and powers BOTH (a) the cross-origin dropdown fetches to
+    // /api/ops/tenants + /api/v1/flow-builder/flows/{tid} — whose ValidateOpsAuth Bearer path
+    // requires Role==admin AND TenantId==0 (D027 narrowing) — AND (b) the VoiceRuntime WS
+    // handshake, which is role-agnostic (only checks TenantId==0, VoicePocEndpoints.cs).
+    // A service-role token (the old value) is rejected by ValidateOpsAuth, so the dropdowns
+    // stayed empty. tenant_id=0 keeps the superadmin/no-tenant scope unchanged.
+    var jwt = jwtGenerator.GenerateToken(0, "admin", "voice_test", TimeSpan.FromMinutes(30));
+    logger.StepInfo($"voice-jwt: 30min admin JWT issued (tenant=0, rid={requestId})", requestId);
     return Results.Ok(new { token = jwt, expires_in = 1800, token_type = "Bearer" });
 });
 
@@ -6798,6 +6805,35 @@ app.MapGet("/api/ops/tenants", async (HttpContext ctx, JsonLinesLogger jsonLog) 
             statusCode: 500);
     }
 }).RequireCors("VoicePocCors"); // FEAT-VFB F0.5 Chunk E (AD-35): Voice Test browser dropdown fetch.
+
+// GET /api/ops/tenants/{id}/flows — FEAT-VFB F0.5 (AD-42): ops-scoped flow list for the Voice Test
+// flow dropdown. The browser holds only a tenant=0 admin voice-jwt; it CANNOT call Automation
+// /api/v1/flows/{id} directly because (a) Automation:7108 is not externally routed and (b)
+// Automation.GetValidatedTenant requires the JWT's tenant_id == route tenantId (no cross-tenant ops
+// bypass) so a tenant=0 token is rejected 403. The generic /api/v1/flow-builder/flows proxy forwards
+// the caller token verbatim (works only for the impersonation path the Dashboard uses), so it does
+// not help here. This endpoint instead mints a per-tenant SERVICE token (the same pattern as the
+// Knowledge ops proxies above) and forwards THAT to Automation, mirroring /api/ops/tenants/{id}/plan.
+app.MapGet("/api/ops/tenants/{id:int}/flows", async (HttpContext ctx, int id, FlowBuilderClient fbClient, JsonLinesLogger jsonLog) =>
+{
+    if (!ValidateOpsAuth(ctx))
+        return OpsUnauthorized(ctx);
+
+    if (id <= 0)
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "Gecersiz tenant_id." });
+
+    if (jwtGenerator == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthJwtGeneratorUnavailable, "JWT mint servisi su an kullanilamiyor (yapilandirma hatasi).", "-"), statusCode: 503);
+
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    // Mint a service token bound to the TARGET tenant so Automation.GetValidatedTenant(tenant==route) passes.
+    var serviceToken = jwtGenerator.GenerateServiceToken(id);
+    var (statusCode, body) = await fbClient.ProxyGetAsync($"/api/v1/flows/{id}", $"Bearer {serviceToken}", requestId);
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (body != null) await ctx.Response.WriteAsync(body);
+    return Results.Empty;
+}).RequireCors("VoicePocCors"); // Voice Test browser flow dropdown fetch (cross-origin from voice.invekto.com:8443).
 
 app.MapPost("/api/ops/tenants/{id}/impersonate", async (HttpContext ctx, int id, JsonLinesLogger jsonLog) =>
 {

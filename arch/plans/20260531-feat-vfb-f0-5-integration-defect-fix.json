@@ -1,0 +1,78 @@
+{
+  "schema_version": "6.0",
+  "review_protocol_version": "6.0",
+  "spec_ref": "SPEC-008",
+  "slug": "20260531-feat-vfb-f0-5-integration-defect-fix",
+  "risk": "MEDIUM",
+  "status": "REVIEW",
+  "created_at": "2026-05-31T15:50:00+03:00",
+  "updated_at": "2026-05-31T15:50:00+03:00",
+  "parent_plan": "20260525-feat-vfb-f0-5-tenant-aware-voice-test",
+  "plan": {
+    "summary": "FEAT-VFB F0.5 entegrasyon defekt fix: tenant + flow dropdownlarini canli hale getiren 3 kademeli defektin cozumu. (1) AUTH defekt #3 — /ops/voice-jwt role=service mintliyordu; /api/ops/tenants ValidateOpsAuth Bearer yolu role==admin && TenantId==0 istiyor (D027 audit daraltmasi) -> service token reddediliyordu. Fix: voice-jwt'yi GenerateToken(0, 'admin', 'voice_test', 30min) ile admin mintle. VoiceRuntime WS handshake role-agnostic (yalnizca TenantId==0 kontrol ediyor, VoicePocEndpoints.cs:116) oldugundan AYNI token hem dropdown fetch'i hem WS'i besler; D027 daraltmasi geri acilmaz, blast radius = tek endpoint. (2) HOST defekt #1 — voice-poc.js BACKEND_BASE/AUTOMATION_BASE = app.invekto.com (IIS, /api/ops 404). Backend Kestrel host super.invekto.com -> her ikisi de super.invekto.com'a cekildi. (3) AUTOMATION-EXPOSE defekt #2 — Automation:7108 externally route edilmiyor (browser-direct imkansiz). Backend zaten /api/v1/flow-builder/flows/{tid} -> Automation /api/v1/flows/{tid} proxy'liyor; voice-poc.js flow fetch'i bu proxy'ye yonlendirildi + Backend GET endpoint'ine .RequireCors('VoicePocCors') eklendi. Prod F0 -> F0.5 deploy (Backend + VoiceRuntime static) bu fix sonrasi.",
+    "q_intent": "voice test de tenant ve flow ekle",
+    "interview_notes": "Q AskUserQuestion 3 karar (2026-05-31 15:45):\n- Auth modeli: voice-jwt'yi admin mintle (Recommended). WS role-agnostic (sadece tenant==0) — kod seviyesinde dogrulandi (VoicePocEndpoints.cs:116). ValidateOpsAuth Bearer yolu role==admin && tenant==0 ister (Program.cs:864). Tek token her ikisini cozer, D027 dokunulmaz.\n- Backend public host: super.invekto.com (Recommended). app.invekto.com IIS, /api/ops 404 (defekt #1 mevcut yanlis deger).\n- Kapsam: Kod + Codex + deploy (Recommended). Prod F0->F0.5.\n\nKod-seviyesi defekt dogrulamasi:\n- /ops/voice-jwt: jwtGenerator.GenerateServiceToken(0, 30min) (Program.cs:820) -> role=service (JwtGenerator.cs:38).\n- ValidateOpsAuth Bearer: context.Role == 'admin' && context.TenantId == 0 (Program.cs:864, D027 2026-04-29).\n- WS handshake: token validate -> callerTenantId != 0 ise reddet (VoicePocEndpoints.cs:116), role kontrolu YOK.\n- Backend flow proxy mevcut: GET /api/v1/flow-builder/flows/{tenantId:int} -> FbProxyGet -> /api/v1/flows/{tid} (Program.cs:3513). FbProxyGet authHeader'i Automation'a as-is forward eder (Program.cs:3462). Dashboard flow builder ayni proxy'yi kullaniyor (cross-tenant ops scope kanitli).\n- VoicePocCors named policy zaten kayitli (Program.cs:526), /api/ops/tenants'a attach (Program.cs:6800). flow-builder GET'e bu fix'te attach edildi."
+  },
+  "acceptance_criteria": [
+    { "id": "AC1", "criterion": "/ops/voice-jwt artik 30dk admin-scope JWT mintliyor (role=admin, tenant_id=0, source=voice_test). GenerateServiceToken yerine GenerateToken(0,'admin','voice_test',30min). Token /api/ops/tenants ValidateOpsAuth Bearer yolundan (role==admin && tenant==0) gecer.", "verified": false, "verification_note": null },
+    { "id": "AC2", "criterion": "Ayni admin token VoiceRuntime WS handshake'inden de gecer — handshake role kontrol etmiyor, yalnizca tenant==0 (VoicePocEndpoints.cs:116). Yani token degisikligi WS akisini bozmuyor (regresyon yok).", "verified": false, "verification_note": null },
+    { "id": "AC3", "criterion": "voice-poc.js BACKEND_BASE ve AUTOMATION_BASE production'da https://super.invekto.com (eski app.invekto.com -> 404 defekti giderildi). localhost dev'de bos string (same-origin) korunur.", "verified": false, "verification_note": null },
+    { "id": "AC4", "criterion": "voice-poc.js fetchFlows() yeni Backend ops endpoint'ini cagiriyor: GET {super}/api/ops/tenants/{tid}/flows (eski direct Automation /api/v1/flows/{tid} -> route+403 defekti giderildi). Response shape ayni (snake_case flow array) — parse mantigi degismedi. Hata mesaji da yeni path'i yansitiyor. Kullanilmayan AUTOMATION_BASE const kaldirildi.", "verified": false, "verification_note": null },
+    { "id": "AC5", "criterion": "Yeni Backend endpoint GET /api/ops/tenants/{id:int}/flows: ValidateOpsAuth (admin tenant=0) -> id>0 validation -> jwtGenerator.GenerateServiceToken(id) (HEDEF tenant-bound) -> FlowBuilderClient ile Automation /api/v1/flows/{id}'e Bearer service token forward -> response verbatim. .RequireCors('VoicePocCors') (GET-only, AllowCredentials off). jwtGenerator null ise INV-AUTH-012 503. Generic flow-builder proxy'ye eklenen RequireCors geri alindi.", "verified": false, "verification_note": null },
+    { "id": "AC6", "criterion": "Smoke (deploy sonrasi): super.invekto.com ops login -> Voice Test -> tenant dropdown dolu (aktif firmalar) -> tenant secince flow dropdown dolu -> tenant+flow secip mikrofon basla -> WS baglaniyor (INV-VR rejection yok) -> Turkce konusma + search_knowledge_base HUD rozeti.", "verified": false, "verification_note": null }
+  ],
+  "architectural_decisions": [
+    { "decision": "AD-39 (2026-05-31): voice-jwt admin-scope mint. /ops/voice-jwt GenerateServiceToken(0) -> GenerateToken(0,'admin','voice_test',30min). Tek URL-bridged token hem cross-origin dropdown fetch (ValidateOpsAuth Bearer: role==admin && tenant==0) hem VoiceRuntime WS handshake (role-agnostic, tenant==0) icin gecerli.", "reason": "Q AskUserQuestion 2026-05-31. Onceki service-role token ValidateOpsAuth Bearer yolundan reddediliyordu (dropdownlar bos kaliyordu). Admin role D027 daraltmasini KARSILAR (zaten istenen role). WS role bakmadigi icin regresyon yok. Alternatif (ValidateOpsAuth'u service role'e acmak) D027 audit daraltmasini 30+ call site'ta geri acardi — reddedildi.", "codex_note": "EXPECTED: tenant_id=0 superadmin scope korunuyor (sadece role claim service->admin degisti). 30dk TTL ayni. source=voice_test audit ayirt edilebilirligi icin. WS handshake VoicePocEndpoints.cs:116 yalnizca tenant==0 dogruluyor — admin token kabul." },
+    { "decision": "AD-40 (2026-05-31): Browser host = super.invekto.com (Backend Kestrel). BACKEND_BASE + AUTOMATION_BASE production'da app.invekto.com -> super.invekto.com. app.invekto.com tenant-facing IIS app, /api/ops + /api/v1/flow-builder 404 dondurur.", "reason": "Q AskUserQuestion 2026-05-31. Ops Dashboard + ops API Backend Kestrel'de super.invekto.com'da servis ediliyor. app.invekto.com onceki defekt #1 yanlis degeriydi.", "codex_note": "EXPECTED: localhost dev same-origin '' korunur. VoicePocCors origin allowlist voice.invekto.com:8443 (requester) — host degisikligi fetch hedefini etkiler, CORS origin'i degil." },
+    { "decision": "AD-42 (2026-05-31, Codex iter 0 FAIL düzeltmesi): Flow fetch YENI ops-scoped Backend endpoint uzerinden — GET /api/ops/tenants/{id}/flows. ONCEKI AD-41 (generic /api/v1/flow-builder/flows proxy) YANLISTI: FbProxyGet caller token'ini as-is forward eder; Automation.GetValidatedTenant tenant.TenantId == routeTenantId ister (cross-tenant ops bypass YOK, Automation Program.cs:621-624) -> tenant=0 voice-jwt 403 alir. Dashboard flow builder bunu IMPERSONATION (tenant-specific JWT) ile yapiyor; Voice Test'te impersonation yok. Yeni endpoint ValidateOpsAuth (admin tenant=0) dogrular, sonra HEDEF tenant icin GenerateServiceToken(id) mintler (Knowledge ops-proxy + /api/ops/tenants/{id}/plan pattern'i), Automation /api/v1/flows/{id}'e service token forward eder. .RequireCors('VoicePocCors').", "reason": "Codex iter 0 CQ8/Q2 incelemesi sirasinda Automation GetValidatedTenant tenant-match enforcement kesfedildi — generic proxy yolu 403 ile patlardi. Service-token-per-target-tenant pattern Backend'de zaten 5+ Knowledge ops proxy + impersonate endpoint'inde kanitli. Ops-scoped endpoint impersonation gerektirmez, read-only, surface minimal.", "codex_note": "EXPECTED: GenerateServiceToken(id) target-tenant-bound -> Automation GetValidatedTenant(tenant==route) gecer. FbProxyGet response'u Automation array'ini verbatim donduruyor (snake_case flow_id/flow_name/is_active/is_default — browser parse degismedi). Generic /api/v1/flow-builder/flows proxy'ye eklenen RequireCors GERI ALINDI (o yol calismazdi)." }
+  ],
+  "allowed_files": [
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.VoiceRuntime/wwwroot/voice-poc.js",
+    "arch/plans/20260531-feat-vfb-f0-5-integration-defect-fix.json"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false, "change": "voice-jwt admin mint (defekt #3) + YENI GET /api/ops/tenants/{id}/flows ops endpoint (per-tenant service token mint, defekt #2 AD-42) + generic flow-builder proxy RequireCors revert" },
+    { "path": "src/Invekto.VoiceRuntime/wwwroot/voice-poc.js", "is_new": false, "change": "BACKEND_BASE app->super (defekt #1) + fetchFlows -> /api/ops/tenants/{tid}/flows (defekt #2, AD-42) + AUTOMATION_BASE kaldirildi + header/error mesaj guncelleme" }
+  ],
+  "git_diff": {
+    "stats": { "insertions": 62, "deletions": 17, "files_count": 2 },
+    "sha256": "6fdc89a62952bf50250d62a413b06903788dc9a17123352a54e2eca84a2e911b",
+    "full_path": "arch/plans/diffs/20260531-feat-vfb-f0-5-integration-defect-fix.diff"
+  },
+  "build": { "status": "PASS", "timestamp": "2026-05-31T15:48:00+03:00", "errors": 0, "warnings": 40, "notes": "Full solution build (Backend Program.cs degisti; Shared dokunulmadi ama full sln cross-service compile dogrulama). 0 error / 40 warning baseline (pre-existing MSB3277 + xUnit1013 + CA1416 — yeni warning yok)." },
+  "verification_questions": [
+    { "id": "Q1", "question": "AUTH: voice-jwt artik GenerateToken(0,'admin','voice_test',30min) ile admin role mintliyor mu? Bu token /api/ops/tenants ValidateOpsAuth Bearer yolunu (role=='admin' && TenantId==0) gecer mi? tenant_id hala 0 (superadmin scope degismedi)? 30dk TTL korundu mu?", "category": "Auth" },
+    { "id": "Q2", "question": "AUTH/REGRESYON: Ayni admin token VoiceRuntime WS handshake'inden gecer mi? Handshake yalnizca tenant==0 kontrol ediyor (VoicePocEndpoints.cs:116), role bakmiyor — yani service->admin degisikligi WS akisini bozmuyor mu? Baska bir yerde voice-jwt'nin role=service olmasina bagimlilik var mi?", "category": "Auth" },
+    { "id": "Q3", "question": "CORS/SURFACE: .RequireCors('VoicePocCors') yalnizca GET /api/v1/flow-builder/flows/{tenantId:int}'e mi eklendi? Diger flow-builder endpoint'leri (POST/PUT/DELETE, {flowId}, executions, versions) attach EDILMEDI mi? VoicePocCors GET-only + AllowCredentials off oldugundan POST/PUT yuzeyi acilmiyor mu?", "category": "Process/Policy" },
+    { "id": "Q4", "question": "DATA/PROXY: fetchFlows() artik Backend ops endpoint /api/ops/tenants/{tid}/flows cagiriyor; endpoint Automation response'unu verbatim donduruyor (snake_case flow array). Browser parse mantigi (flow_id/flow_name/is_active/is_default) degismedi mi? BACKEND_BASE super.invekto.com, localhost'ta same-origin '' korundu mu? Kullanilmayan AUTOMATION_BASE temizlendi mi?", "category": "Data" },
+    { "id": "Q5", "question": "FLOW ENDPOINT AUTH: Yeni GET /api/ops/tenants/{id}/flows ValidateOpsAuth ile gate'li mi (browser admin tenant=0 token gecer)? id<=0 reddediliyor mu? jwtGenerator.GenerateServiceToken(id) HEDEF tenant'a (route id) bound mu — boylece Automation GetValidatedTenant(tenant.TenantId==routeTenantId) 403 vermez? Caller token DEGIL minted service token forward ediliyor mu? jwtGenerator null path INV-AUTH-012 503 mu?", "category": "Auth" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Shared/Auth/JwtGenerator.cs (mevcut GenerateToken kullaniliyor — degismez)",
+      "ValidateOpsAuth fonksiyonu (D027 daraltmasi korunur — admin token zaten geciyor, genisletme YOK)",
+      "Automation Program.cs (flow proxy zaten Backend'de — Automation degismez)",
+      "src/Invekto.Backend/Dashboard/src/* (VoiceTestPage.tsx /ops/voice-jwt yolu degismedi)"
+    ],
+    "non_goals": [
+      "Production VoiceRuntime impersonation kapatma (F2)",
+      "ValidateOpsAuth'u service role'e acma (D027 reddedildi)",
+      "Yeni endpoint / yeni error code"
+    ],
+    "intentional_exclusions": [
+      "voice-poc.html / styles.css degismedi (F0.5 dropdown DOM + URL-bridge zaten Chunk D'de yazildi, dogru)",
+      "Automation /api/v1/flows endpoint'ine CORS attach (browser artik oraya gitmiyor, Backend proxy uzerinden)"
+    ]
+  },
+  "error_handling": {
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Auth degisikligi tek satir method swap (GenerateServiceToken->GenerateToken) — mevcut 401/503 error path'leri (INV-AUTH-003 / INV-AUTH-012) korunuyor. voice-poc.js flow fetch hata yolu (CLIENT_ERR.FLOW_FETCH toast + log + disabled dropdown) degismedi, yalnizca path string + error mesaji guncellendi."
+  },
+  "verdict": { "status": "PASS", "iteration": 1 },
+  "status_log": [
+    { "ts": "2026-05-31T15:50:00+03:00", "event": "PLAN_CREATED", "notes": "F0.5 entegrasyon defekt fix plani. Parent 20260525-feat-vfb-f0-5-tenant-aware-voice-test (Chunk A-E DONE, deploy F0'a revert edilmisti). 3 defekt fix: voice-jwt admin mint + host super.invekto.com + flow Backend proxy + flow-builder GET CORS. Build PASS." },
+    { "ts": "2026-05-31T16:05:00+03:00", "event": "CODEX_ITER0_FAIL", "model_used": "gpt-5.5-2026-04-23", "tokens": { "total": 12265 }, "notes": "iter 0 FAIL — 3 blocking (CQ8 + Q2 + Q3) hepsi 'diff'ten dogrulanamiyor' (UNKNOWN) tipinde. Verification sirasinda GERCEK DEFEKT bulundu: Automation GetValidatedTenant (Program.cs:621-624) tenant.TenantId != routeTenantId ise 403, cross-tenant ops bypass YOK. Onceki AD-41 (generic flow-builder proxy, caller token forward) tenant=0 voice-jwt ile 403 alirdi -> flow dropdown hic dolmazdi. FIX: AD-42 yeni ops endpoint /api/ops/tenants/{id}/flows per-tenant GenerateServiceToken(id) mintler. Generic proxy RequireCors geri alindi. voice-poc.js yeni endpoint'e yonlendirildi + AUTOMATION_BASE kaldirildi. Backend build PASS." },
+    { "ts": "2026-05-31T16:12:00+03:00", "event": "CODEX_ITER1_PASS", "model_used": "gpt-5.5-2026-04-23", "tokens": { "total": 12259 }, "notes": "iter 1 PASS 12/12 CQ + 5/5 CoVe, blocking_issues NONE. iter 0 UNKNOWN bulgulari summary'ye gomulen repo-genelinde dogrulanmis gerceklerle (voice-jwt tuketici taramasi + VoicePocCors policy tanimi + WS role-agnostic) cozuldu; GERCEK defekt #2 (AD-42 ops endpoint + per-tenant service token) ile flow dropdown 403 sorunu giderildi. Summary: 'scoped Backend ops proxy, admin tenant=0 voice JWT, corrected VoiceRuntime host/flow fetch routing'. Deploy bekliyor (Backend + VoiceRuntime static)." }
+  ]
+}
