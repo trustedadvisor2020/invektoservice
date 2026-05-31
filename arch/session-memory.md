@@ -7,7 +7,17 @@
 
 ## Last Update
 
-- **Date:** 2026-06-01 01:00 — **Session: Voice Test F0.5 canlı-test iterasyonu — persona (insan-gibi telefon temsilcisi) + barge-in TAM çözüm + konudan-sapma + dil + cızırtı.** Q ardışık canlı-test bildirimleri; her biri /diagnose + log kanıtı + fix + Codex + prod deploy. **3 commit (533e1cb8, e77c1007, 5000ad46), hepsi Codex PASS.**
+- **Date:** 2026-06-01 02:10 — **Session: Voice F-VR-A cevap-uzunluğu enforcement + F-VR-E KB confidence banding — 2 paket, ikisi Codex iter0 PASS + prod deploy health 200.** Q continuation prompt'tan başladı, 2 roadmap item seçti (AskUserQuestion).
+
+  **1) Cevap uzunluğu (F-VR-A, commit `174b6e29`):** Model 2-5 cümle kuralına uymuyor, ~20-30sn rambling. Q kararı: **SADECE prompt sertleştirme** (API riski yok). Mimari bulgu: ana turlar **server_vad ile OTOMATIK response** oluşturuyor → per-response `max_output_tokens` zor; session-level kaldırılmış (GA migration, INV-VR-001 session death riski) + voice'ta token cap mid-word keser. Kök neden: UZUNLUK kuralı persona'da ~10. sırada soft guideline'dı. Fix (`InstructionsBuilder.cs`): persona EN BAŞINA `KISALIK` hard-rule (≤2-3 cümle, tek konu, dur, diğer tüm kuralların önünde) + UZUNLUK 2-5→2-3/max-4 + NIHAI TEST uzunluk self-check.
+
+  **2) KB confidence banding (F-VR-E spec §5, commit `70142067`):** `search_knowledge_base` hep top-3 dönüyordu, relevance eşiği YOK → grounding alakasız sonucu okutuyor (konudan sapma). Q kararı: **mekanik filtre + band guidance**. Yeni `KbConfidenceOptions` (config-driven, appsettings `Knowledge:Confidence*` 0.80/0.55, boot-time validate+WARN). `SearchKnowledgeBaseTool`: top SEMANTIC skor → high(≥0.80)/medium(0.55-0.79)/low(<0.55). low→TÜM hit DROP + Türkçe "iletişim al/yönlendir" steer; medium→sub-floor drop + temkin steer; high→normal. **Keyword-fallback thresholdlanMAZ** (ts_rank farklı ölçek, recall korunur). Her semantic search'te `top_score+band+kept/total` SystemInfo log (Q live-test'te eşik kalibre etsin). **Shared Knowledge /search DOKUNULMADI** (web chat güvenli).
+
+  **Deploy (her ikisi tek-DLL swap):** VoiceRuntime = NSSM `InvektoVoiceRuntime` servisi, `C:\Invekto\VoiceRuntime\current\`, port **8443(https)+7115(http /health)**. **Shared değişmediği için tek-DLL swap yeterli** (publish→backup→incoming upload→nssm stop/copy/start→health 200). Backup'lar: `.bak-20260601-brevity` + `.bak-20260601-prebrevity-kbband`. **⚠️ deploy tablosu yanıltıcı: VoiceAI ≠ VoiceRuntime — iki AYRI servis (`InvektoVoiceAI` + `InvektoVoiceRuntime`), iki ayrı dizin.** VoiceRuntime `server-deploy` enum'unda YOK → manuel DLL swap.
+
+  **KALAN (Q sıralayacak):** (a) **eşik kalibrasyonu** — Q off-topic + in-KB soru sorup `server-logs`'tan `top_score`/`band` görsün, 0.80/0.55 tune; (b) **F-VR-B multi-tenant runtime** (tenant_profile + sector_adapter, §3/§4). STT marka adı ("Invekto"→inventör) hâlâ yanlış duyuyor (grounding telafi ediyor).
+
+- **PREV-Date:** 2026-06-01 01:00 — **Session: Voice Test F0.5 canlı-test iterasyonu — persona (insan-gibi telefon temsilcisi) + barge-in TAM çözüm + konudan-sapma + dil + cızırtı.** Q ardışık canlı-test bildirimleri; her biri /diagnose + log kanıtı + fix + Codex + prod deploy. **3 commit (533e1cb8, e77c1007, 5000ad46), hepsi Codex PASS.**
 
   **Çözülen 6 şey:**
   1. **Cızırtı** (`533e1cb8`): `OnAudioDelta` re-framing'de her delta'da `%960` artık örnek DROP ediliyordu (OpenAI değişken delta) → periyodik kopukluk. Fix: tüm upsample buffer tek frame (lossless). Browser handleAudio her boyutu kabul ediyor.
