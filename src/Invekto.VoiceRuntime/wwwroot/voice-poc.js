@@ -650,6 +650,14 @@ async function start() {
 
   state.audioCtx = new AudioContext({ sampleRate: SAMPLE_RATE });
   state.playbackTime = state.audioCtx.currentTime;
+  // Master gain: ALL bot audio routes through this so barge-in can mute everything instantly
+  // (gain=0) regardless of how many BufferSourceNodes are scheduled ahead. OpenAI streams audio
+  // far faster than realtime (e.g. 23s buffered after 6s), and stop() on dozens of future-scheduled
+  // sources does not reliably silence playback — a gain cut does. Restored to 1 on the next
+  // response's first byte. (Barge-in F1 fix.)
+  state.masterGain = state.audioCtx.createGain();
+  state.masterGain.gain.value = 1;
+  state.masterGain.connect(state.audioCtx.destination);
 
   if (state.audioCtx.sampleRate !== SAMPLE_RATE) {
     // Sample-rate mismatch is a hardware/policy issue (browser refused 48kHz). It's the same
@@ -817,6 +825,8 @@ function handleControl(msg) {
       break;
     }
     case 'first_byte':
+      // A new response is starting to speak — lift any barge-in mute so this turn is audible.
+      if (state.masterGain) state.masterGain.gain.value = 1;
       recordFirstByte(msg.elapsed_ms);
       setStatus('Bot konuşuyor', 'status-bot-speaking');
       logEvent(`İlk byte: ${msg.elapsed_ms}ms`);
@@ -862,7 +872,7 @@ function handleAudio(arrayBuffer) {
   buf.copyToChannel(floatArr, 0);
   const src = state.audioCtx.createBufferSource();
   src.buffer = buf;
-  src.connect(state.audioCtx.destination);
+  src.connect(state.masterGain || state.audioCtx.destination);
 
   const now = state.audioCtx.currentTime;
   // Keep a small lead. On start or after an underrun (playbackTime fell to ~now) we schedule
@@ -887,9 +897,16 @@ function handleAudio(arrayBuffer) {
 function flushPlayback() {
   for (const s of state.playbackSources) {
     try { s.onended = null; s.stop(); } catch (_) { /* already stopped/ended */ }
+    try { s.disconnect(); } catch (_) { /* already disconnected */ }
   }
   state.playbackSources = [];
   if (state.audioCtx) state.playbackTime = state.audioCtx.currentTime;
+  // Instant hard-mute via DIRECT .value assignment. setValueAtTime() only schedules automation and
+  // does NOT silence synchronously (it left audio playing); a direct .value=0 mutes everything routed
+  // through masterGain immediately — needed because OpenAI streams TTS faster than realtime, so the
+  // browser can hold many seconds of bot audio that stop() on future-scheduled sources won't reliably
+  // kill. Restored to 1 on the next response's first_byte.
+  if (state.masterGain) state.masterGain.gain.value = 0;
 }
 
 function stop() {

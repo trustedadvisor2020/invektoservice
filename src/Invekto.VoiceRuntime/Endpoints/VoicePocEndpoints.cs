@@ -602,36 +602,56 @@ public static class VoicePocEndpoints
 
             _realtime.OnSpeechStarted += startEvt =>
             {
-                if (_botSpeaking)
+                // ALWAYS flush the browser when the user starts speaking. OpenAI streams TTS far faster
+                // than realtime, so the browser's jitter buffer can hold many seconds of bot audio that
+                // is STILL PLAYING after the server-side response has already completed (_botSpeaking=false,
+                // response.done seen). In that state the old gate (if _botSpeaking) sent nothing, so the
+                // browser kept playing the buffered answer and the user heard the bot "not stop". We now
+                // always tell the browser to flush; the suppress + latency stamp are gated on a response
+                // that was actually in flight when the user barged (so we don't suppress the NEXT response).
+                var hadActiveResponse = _botSpeaking || _responseActive;
+                if (hadActiveResponse)
                 {
                     var bargeEvt = _turn.StampBargeInDetected();
                     _latency.RecordEvent(bargeEvt);
                     // Set synchronously so audio.delta events arriving on the very next pump tick are
-                    // dropped immediately (the Task.Run below only handles the async cancel/drain/notify).
+                    // dropped immediately. Cleared on response.done — only valid when a response is active.
                     _suppressBotAudio = true;
                     _botSpeaking = false;
-                    _ = Task.Run(async () =>
+                }
+                // NOTE: no manual response.cancel here. turn_detection runs server_vad with
+                // interrupt_response=true, so OpenAI truncates the in-flight response ITSELF the moment
+                // speech_started fires (logs confirm response.done status=cancelled ~24ms later). A manual
+                // cancel from here always loses that race and just returns "response_cancel_not_active"
+                // (INV-VR-001 noise) — and gating it on a captured/live flag still can't guarantee it
+                // targets the right response. So we let OpenAI own cancellation and only flush the client:
+                // drain our outbound queue + tell the browser to flush its playback buffer.
+                _ = Task.Run(async () =>
+                {
+                    try
                     {
-                        try
+                        await _session.SignalBargeInAsync(CancellationToken.None);
+                        // Record barge latency only for a real (active-response) barge; an always-flush with
+                        // no active response has no meaningful turn baseline (would log garbage ms).
+                        long elapsedMs = 0;
+                        if (hadActiveResponse)
                         {
-                            await _realtime.SendResponseCancelAsync(CancellationToken.None);
-                            await _session.SignalBargeInAsync(CancellationToken.None);
                             var stop = _turn.StampBargeInTtsStopped();
                             _latency.RecordEvent(stop);
-                            await SendControlAsync(new { type = "barge_in", elapsed_ms = stop.ElapsedMs }, CancellationToken.None);
-                            _botSpeaking = false;
+                            elapsedMs = stop.ElapsedMs;
                         }
-                        catch (OperationCanceledException) { /* session ended */ }
-                        catch (InvalidOperationException ex)
-                        {
-                            _logger.SystemWarn($"[VoicePoc/{_sessionId}] barge-in cancel invalid state: {ex.Message}");
-                        }
-                        catch (WebSocketException ex)
-                        {
-                            _logger.SystemWarn($"[VoicePoc/{_sessionId}] barge-in cancel WS error: {ex.WebSocketErrorCode} {ex.Message}");
-                        }
-                    });
-                }
+                        await SendControlAsync(new { type = "barge_in", elapsed_ms = elapsedMs }, CancellationToken.None);
+                    }
+                    catch (OperationCanceledException) { /* session ended */ }
+                    catch (InvalidOperationException ex)
+                    {
+                        _logger.SystemWarn($"[VoicePoc/{_sessionId}] barge-in flush invalid state: {ex.Message}");
+                    }
+                    catch (WebSocketException ex)
+                    {
+                        _logger.SystemWarn($"[VoicePoc/{_sessionId}] barge-in flush WS error: {ex.WebSocketErrorCode} {ex.Message}");
+                    }
+                });
             };
 
             _realtime.OnAudioDelta += delta =>

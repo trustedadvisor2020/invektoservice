@@ -1,0 +1,82 @@
+{
+  "schema_version": "6.0",
+  "review_protocol_version": "6.0",
+  "spec_ref": "SPEC-008",
+  "slug": "20260601-feat-vfb-voice-persona-barge",
+  "risk": "MEDIUM",
+  "status": "REVIEW",
+  "created_at": "2026-06-01T00:18:00+03:00",
+  "updated_at": "2026-06-01T00:18:00+03:00",
+  "parent_plan": "20260531-feat-vfb-voice-crackle-bargein",
+  "plan": {
+    "summary": "FEAT-VFB voice F0.5 canli-test iterasyonu (Q ardisik bildirim + /diagnose). DORT degisiklik: (1) PERSONA — InstructionsBuilder.Build artik tam telefon-temsilcisi personasi (Q spec): KB'yi aynen okutmaz, ic-mekanizma sizdiran/robotik ifadeleri yasaklar (bilgi bankasi/sistemde/net bilgi yok), eksik bilgide insani donus, 2-5 cumle, parca-parca lead toplama; grounding (search_knowledge_base zorunlu, halusinasyon yok) KORUNDU. (2) KONUDAN SAPMA FIX — 'nasil ilerleyelim/tamam' gibi surec sorularinda arama yapma + donen KB sonucu soruyla alakasizsa OKUMA kurallari (kok neden: KB hep top-3 doner, relevance esigi yok, model alakasiz 'iade' makalesini okudu). (3) DIL/SES — pasif yapi yasak, etken+birinci-cogul firma sesi ('sunuyoruz' degil 'sunuluyor'; 'yonetebilirsiniz' degil 'yonetebiliyorsunuz'). (4) BARGE-IN ALWAYS-FLUSH — kok neden /diagnose ile loglardan bulundu: OpenAI TTS'i gercek-zamandan ~5x hizli akitiyor, tarayici 30sn+ bot sesini onden buffer'liyor; server response'u erken bitiriyor (_botSpeaking=false) ama tarayici hala calmakta. Eski 'if(_botSpeaking)' gate'i bu durumda barge_in gondermiyordu -> bot 'durmuyor'. Fix: OnSpeechStarted kullanici konusunca HER ZAMAN tarayiciya barge_in/flush gonderir (response.cancel + suppress yalnizca aktif response varsa). Tarayici tarafinda (voice-poc.js): tum bot sesi master GainNode'dan gecer; barge'da kaynaklar stop+disconnect + gain DOGRUDAN .value=0 (setValueAtTime .value'yu sync degistirmeyip susturamiyordu); yeni response first_byte'inda gain=1. Ayrica multi-tenant runtime spec dokumante edildi (arch/specs/voice-multitenant-runtime.md, Q gelecek-mimari).",
+    "q_intent": "ses motoru canli test: cizirti, barge-in kesmiyor, bot robotik konusuyor, konudan sapiyor, pasif dil. 'telefonda insanla konusur gibi olmali'.",
+    "interview_notes": "Q ardisik canli-test bildirimleri + /diagnose 6-faz (barge-in icin enstrumantasyon -> log kaniti -> kok neden -> fix). Q onaylari: server_vad + hoparlor (onceki plan), persona spec verbatim, dil duzeltmeleri (pasif->etken). Barge kok neden loglardan kanitlandi: speech_started botSpeaking=False (server bitti) iken tarayici 31s buffer caliyordu; flush hic tetiklenmiyordu."
+  },
+  "acceptance_criteria": [
+    { "id": "AC1", "criterion": "InstructionsBuilder.Build tenant/sector/flow header + Persona const dondurur. Persona: grounding zorunlulugu + KB-aynen-okuma yasagi + yasak ifade listesi + surec-sorusu/alakasiz-sonuc kurallari + dil/ses (etken/birinci-cogul) + cevap sirasi + fiyat/eksik-bilgi/uzunluk/lead/nihai-test. Null/empty fallback korundu (tenantName/flowName).", "verified": false, "verification_note": null },
+    { "id": "AC2", "criterion": "VoicePocEndpoints OnSpeechStarted: kullanici konusunca HER ZAMAN Task.Run ile SignalBargeInAsync + barge_in control frame gonderir. response.cancel yalnizca _responseActive iken. _suppressBotAudio + _botSpeaking=false yalnizca hadActiveResponse(=_botSpeaking||_responseActive) iken set edilir (yoksa response.done gelmeyip sonraki response suppress kalirdi). Latency stamp yalnizca hadActiveResponse iken (garbage ms onlendi).", "verified": false, "verification_note": null },
+    { "id": "AC3", "criterion": "voice-poc.js: audioCtx olusturuldugunda master GainNode (gain=1) -> destination. handleAudio src'leri masterGain'e baglar. flushPlayback: tum kaynaklar stop()+disconnect() + masterGain.gain.value=0 (DOGRUDAN atama). first_byte control event: masterGain.gain.value=1. Tum [DEBUG]/[flush] versiyon loglari temizlendi.", "verified": false, "verification_note": null },
+    { "id": "AC4", "criterion": "Tum [DEBUG-BARGE] enstrumantasyon kaldirildi (RealtimeApiClient net sifir degisiklik, VoicePocEndpoints log+yorum temiz). Build PASS (VoiceRuntime), yeni warning yok.", "verified": false, "verification_note": null },
+    { "id": "AC5", "criterion": "Smoke (Q canli, prod): araya girince bot aninda susuyor (browser buffer dolu olsa bile); fiyat sorusunda robotik ifade yok + etken dil; surec sorusunda iadeye sapmiyor. Q onayi: 'fena degil oldu galiba'.", "verified": false, "verification_note": null }
+  ],
+  "architectural_decisions": [
+    { "decision": "AD-45 (2026-06-01): Barge-in ALWAYS-FLUSH. OnSpeechStarted, server response bitmis olsa bile (_botSpeaking=false), kullanici konusunca tarayiciya barge_in/flush gonderir. Sebep: OpenAI TTS gercek-zamandan cok hizli -> tarayici onbellegi 30sn+ bot sesi tutar; server'in 'bot sustu' durumu kullanicinin DUYDUGU ile uyusmaz. response.cancel/suppress yalnizca aktif response'a uygulanir (sonraki response audio suppress edilmesin diye).", "reason": "/diagnose log kaniti: speech_started botSpeaking=False iken tarayici 31s buffer caliyordu, eski if(_botSpeaking) gate flush gondermiyordu.", "codex_note": "EXPECTED: _suppressBotAudio yalnizca hadActiveResponse iken set edilir (response.done ile temizlenir); aktif-olmayan barge sadece tarayici flush'lar. Echo riski: server_vad threshold 0.6 + browser AEC mevcut." },
+    { "decision": "AD-46 (2026-06-01): Browser playback master GainNode + direct .value mute. Tum bot sesi masterGain uzerinden; barge'da stop()+disconnect()+gain.value=0. setValueAtTime(0) .value'yu sync degistirmeyip susturamadigi loglarla kanitlandi (gain=1 okundu, ses devam etti); dogrudan .value=0 aninda susturur. first_byte'da .value=1.", "reason": "OpenAI faster-than-realtime streaming -> 30sn+ buffer; stop() future-scheduled kaynaklarda guvenilir susturmuyor. Gain cut implementation-proof.", "codex_note": "EXPECTED: un-mute first_byte'a bagli (handleAudio'daki bozuk .value!==1 kontrolu kaldirildi). disconnect() eski kaynaklari graf'tan cikarir (gain=1 geri gelince eski ses resurrect olmaz)." },
+    { "decision": "AD-47 (2026-06-01): Persona tek-prompt katmani (F-VR-A). Tam telefon-temsilcisi personasi InstructionsBuilder'a gomuldu. KB source-not-script; ic-mekanizma sizintisi + robotik ifade yasak; pasif->etken dil; surec-sorusu/alakasiz-KB-sonucu filtreleri. Multi-tenant runtime spec (tenant_profile/sector_adapter/qa_validator/confidence-routing) F-VR-B+ olarak arch/specs/voice-multitenant-runtime.md'de fazlandi.", "reason": "Q spec + canli-test geri bildirimleri. Prompt seviyesi yeterli; yapisal katmanlar roadmap.", "codex_note": "EXPECTED: grounding (search_knowledge_base zorunlu) korundu. Alakasiz-sonuc okuma yasagi prompt seviyesi; deterministik relevance esigi F-VR-E roadmap." }
+  ],
+  "allowed_files": [
+    "src/Invekto.VoiceRuntime/Tools/InstructionsBuilder.cs",
+    "src/Invekto.VoiceRuntime/Endpoints/VoicePocEndpoints.cs",
+    "src/Invekto.VoiceRuntime/wwwroot/voice-poc.js",
+    "arch/specs/voice-multitenant-runtime.md",
+    "arch/plans/20260601-feat-vfb-voice-persona-barge.json"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.VoiceRuntime/Tools/InstructionsBuilder.cs", "is_new": false, "change": "Tam telefon-temsilcisi personasi (Persona const) + surec-sorusu/alakasiz-sonuc + pasif->etken dil; grounding korundu" },
+    { "path": "src/Invekto.VoiceRuntime/Endpoints/VoicePocEndpoints.cs", "is_new": false, "change": "OnSpeechStarted always-flush (browser her zaman flush; cancel/suppress yalniz aktif response); latency stamp gate; debug temizlik" },
+    { "path": "src/Invekto.VoiceRuntime/wwwroot/voice-poc.js", "is_new": false, "change": "master GainNode + barge stop+disconnect+gain.value=0 + first_byte un-mute; debug log temizlik" },
+    { "path": "arch/specs/voice-multitenant-runtime.md", "is_new": true, "change": "Multi-tenant voice runtime spec (Q) + mevcut-durum gap analizi + F-VR-A..F fazlandirma" }
+  ],
+  "git_diff": {
+    "stats": { "insertions": 98, "deletions": 39, "files_count": 4 },
+    "sha256": "29565cb90a414234766c1d4874c006a2fec8650fe95091cdbfc7c5c62b8f3f12",
+    "full_path": "arch/plans/diffs/feat-vfb-voice-persona-barge.diff"
+  },
+  "build": { "status": "PASS", "timestamp": "2026-06-01T00:17:00+03:00", "errors": 0, "warnings": 5, "notes": "VoiceRuntime build. 5 pre-existing warning (Shared CS1998 + OpusCodec CS0618 x4). Yeni warning yok. Prod'a temiz (debug-siz) DLL+voice-poc.js deploy edildi, health 200." },
+  "verification_questions": [
+    { "id": "Q1", "question": "BARGE ALWAYS-FLUSH: OnSpeechStarted artik aktif response olmasa bile barge_in/SignalBargeInAsync gonderiyor mu? response.cancel yalniz _responseActive iken mi? _suppressBotAudio yalniz hadActiveResponse iken mi set ediliyor (yoksa response.done gelmeyip sonraki response suppress kalir mi)? Latency stamp garbage-ms uretmiyor mu?", "category": "Correctness" },
+    { "id": "Q2", "question": "BROWSER MUTE: voice-poc.js masterGain audioCtx->destination arasinda mi; handleAudio src'leri masterGain'e mi bagliyor; flushPlayback stop()+disconnect()+gain.value=0 (dogrudan, setValueAtTime DEGIL) mi; first_byte gain=1 mi? Un-mute icin handleAudio'daki eski .value!==1 kontrolu kaldirildi mi (yoksa cift un-mute riski)?", "category": "Correctness" },
+    { "id": "Q3", "question": "PERSONA/GROUNDING: InstructionsBuilder grounding (search_knowledge_base zorunlu, kendi bilgini kullanma) KORUNDU mu? Surec-sorusu (nasil ilerleyelim) ve alakasiz-KB-sonucu kurallari eklendi mi? Pasif->etken dil kurali var mi? Null/empty fallback (tenantName/flowName) bozulmadi mi? Persona const verbatim string gecerli (kacis/tirnak) mi?", "category": "Process/Policy" },
+    { "id": "Q4", "question": "CLEANUP/REGRESYON: Tum [DEBUG-BARGE] kaldirildi mi (RealtimeApiClient net sifir)? OnAudioDelta crackle fix + _suppressBotAudio gate + OnResponseDone (parent plan) bozulmadi mi? Echo (hoparlor) ile always-flush yanlis barge tetikler mi (threshold 0.6 + AEC yeterli mi)?", "category": "Data" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "RealtimeSession turn_detection (parent planda server_vad ayarlandi, degismedi)",
+      "PcmResampler / OnAudioDelta crackle fix (parent plan 533e1cb8, dokunulmadi)",
+      "Knowledge servisi / KB relevance esigi (F-VR-E roadmap, bu pakette prompt seviyesi)"
+    ],
+    "non_goals": [
+      "Multi-tenant runtime katmanlari (tenant_profile/sector_adapter/qa_validator) — spec dokumante, F-VR-B+ roadmap",
+      "KB retrieval relevance threshold (kod) — F-VR-E",
+      "Cevap uzunlugu kati enforcement (prompt 2-5 cumle diyor, mekanik degil)",
+      "Client playback buffer cap/pacing (always-flush yeterli)"
+    ],
+    "intentional_exclusions": [
+      "appsettings server_vad (parent planda commit, degismedi)",
+      "INV-VR-001 'response_cancel_not_active' susturma (zararsiz; _responseActive gate bunu zaten azaltir)"
+    ]
+  },
+  "error_handling": {
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "OnSpeechStarted Task.Run mevcut OCE/InvalidOperation/WebSocket catch'leri korundu. voice-poc.js stop/disconnect try/catch ile sarili. Persona pure-string build (yan etki yok). Always-flush: aktif-olmayan barge sadece browser flush (zararsiz no-op bos buffer'da)."
+  },
+  "verdict": { "status": "PASS", "iteration": 3 },
+  "status_log": [
+    { "ts": "2026-06-01T00:18:00+03:00", "event": "PLAN_CREATED", "notes": "Persona + konudan-sapma + dil + barge always-flush + browser gain-mute. /diagnose ile barge kok neden (faster-than-realtime buffer + server-done mismatch) loglardan kanitlandi. Debug temizlendi, temiz build prod'a deploy, health 200. Q smoke 'fena degil oldu galiba'." },
+    { "ts": "2026-06-01T00:35:00+03:00", "event": "CODEX_ITER0_FAIL", "model_used": "gpt-5.5-2026-04-23", "tokens": { "total": 11712 }, "notes": "iter0 FAIL — gercek kusur DEGIL: inline git_diff'te Persona const kisaltildi (CQ5/CQ9/Q3 UNKNOWN). CQ1-4/6-8/10-12 + Q1/Q2 PASS." },
+    { "ts": "2026-06-01T00:42:00+03:00", "event": "CODEX_ITER1_FAIL", "model_used": "gpt-5.5-2026-04-23", "tokens": { "total": 13733 }, "notes": "iter1: TAM persona verbatim -> Q3/CQ5/CQ9 cozuldu. ANCAK GERCEK BUG bulundu (CQ9/Q1): barge cancel Task.Run icinde mutable _responseActive'e bakiyordu -> yeni response aktiflesirse yanlis turn cancel. Fix: captured hadActiveResponse." },
+    { "ts": "2026-06-01T00:50:00+03:00", "event": "CODEX_ITER2_FAIL", "model_used": "gpt-5.5-2026-04-23", "tokens": { "total": 11813 }, "notes": "iter2: captured boolean response-identity garanti etmiyor (CQ9 hala FAIL) + MEDIUM 3+ soru ister. KOK COZUM: manuel response.cancel TAMAMEN kaldirildi — server_vad interrupt_response zaten kesiyor (loglar: response.done cancelled 24ms; manuel cancel hep INV-VR-001 donuyordu). Race+spam+yanlis-turn hepsi gitti." },
+    { "ts": "2026-06-01T00:58:00+03:00", "event": "CODEX_ITER3_PASS", "model_used": "gpt-5.5-2026-04-23", "tokens": { "total": 10556 }, "notes": "iter3 PASS 12/12 CQ + 4/4 CoVe, blocking NONE. Manuel cancel kaldirildi (server_vad sahibi), OnSpeechStarted sadece client-flush. Persona + browser mute korundu. Temiz DLL prod'a deploy, health 200." }
+  ]
+}
