@@ -45,6 +45,10 @@ public sealed class RealtimeApiClient : IAsyncDisposable
     public event Action<ResponseAudioTranscriptDeltaEvent>? OnAudioTranscriptDelta;
     public event Action<InputAudioTranscriptionCompletedEvent>? OnUserTranscriptCompleted;
     public event Action<ResponseDoneEvent>? OnResponseDone;
+    // Fired when OpenAI starts a response (response.created). Paired with OnResponseDone to track
+    // whether a response is currently in progress — used to gate manual response.create (function
+    // calling) so we never send one while a response is active (avoids INV-VR-001 "active response").
+    public event Action? OnResponseCreated;
     public event Action<ResponseFunctionCallArgumentsDeltaEvent>? OnFunctionCallArgumentsDelta;
     public event Action<ResponseFunctionCallArgumentsDoneEvent>? OnFunctionCallArgumentsDone;
     public event Action<RealtimeErrorEvent>? OnRealtimeError;
@@ -276,6 +280,9 @@ public sealed class RealtimeApiClient : IAsyncDisposable
                 case "conversation.item.input_audio_transcription.completed":
                     var ut = JsonSerializer.Deserialize<InputAudioTranscriptionCompletedEvent>(json, JsonOpts);
                     if (ut is not null) OnUserTranscriptCompleted?.Invoke(ut);
+                    break;
+                case "response.created":
+                    OnResponseCreated?.Invoke();
                     break;
                 case "response.done":
                     var rd = JsonSerializer.Deserialize<ResponseDoneEvent>(json, JsonOpts);

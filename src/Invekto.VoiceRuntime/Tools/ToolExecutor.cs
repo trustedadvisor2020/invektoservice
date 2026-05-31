@@ -52,6 +52,7 @@ public sealed class ToolExecutor : IDisposable
     private readonly string _sessionId;
     private readonly JsonLinesLogger _logger;
     private readonly Func<object, CancellationToken, Task> _sendHudFrame;
+    private readonly Func<bool> _isResponseActive;
     private readonly CancellationToken _sessionCt;
     private readonly CancellationTokenRegistration _sessionEndCleanup;
     private int _disposed;
@@ -68,6 +69,7 @@ public sealed class ToolExecutor : IDisposable
         string sessionId,
         JsonLinesLogger logger,
         Func<object, CancellationToken, Task> sendHudFrame,
+        Func<bool> isResponseActive,
         CancellationToken sessionCt)
     {
         _realtime = realtime;
@@ -76,6 +78,7 @@ public sealed class ToolExecutor : IDisposable
         _sessionId = sessionId;
         _logger = logger;
         _sendHudFrame = sendHudFrame;
+        _isResponseActive = isResponseActive;
         _sessionCt = sessionCt;
         // CQ6 fix: when the WS session closes, drop every outstanding args buffer so orphans
         // (delta arrived, .done never came) do not survive the session lifetime. The registration
@@ -266,6 +269,19 @@ public sealed class ToolExecutor : IDisposable
         try
         {
             await _realtime.SendFunctionCallOutputAsync(callId, outputJson, _sessionCt);
+            // Gate response.create on the active-response state. The response that EMITTED this
+            // function call is still in progress; submitting function_call_output completes it
+            // (response.done → _isResponseActive() flips false). Creating the answer response while
+            // the prior one is still active is rejected by OpenAI with INV-VR-001 ("Conversation
+            // already has an active response"). Poll briefly (cap ~2s) for the gate to clear; if it
+            // never does (unexpected), send anyway so the turn is not lost (worst case = the same
+            // benign INV-VR-001 we have today, surfaced as a non-fatal error frame).
+            var waited = 0;
+            while (_isResponseActive() && waited < 2000 && !_sessionCt.IsCancellationRequested)
+            {
+                await Task.Delay(25, _sessionCt);
+                waited += 25;
+            }
             await _realtime.SendResponseCreateAsync(_sessionCt);
             realtimeSendOk = true;
         }

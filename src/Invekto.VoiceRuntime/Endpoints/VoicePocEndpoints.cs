@@ -535,6 +535,10 @@ public static class VoicePocEndpoints
         // outbound audio deltas; it is cleared when the cancelled response's response.done arrives
         // (and defensively on the user's speech_stopped), so the NEXT response plays normally.
         private volatile bool _suppressBotAudio;
+        // True while OpenAI has a response in progress (response.created → response.done). Used to
+        // gate the function-calling response.create so it never fires while a response is active
+        // (OpenAI rejects that with INV-VR-001 "Conversation already has an active response").
+        private volatile bool _responseActive;
 
         // WebSocket only supports ONE concurrent SendAsync. BrowserTxLoop (binary audio) and
         // SendControlAsync (text JSON) can both fire from different callbacks/loops, so we
@@ -570,6 +574,7 @@ public static class VoicePocEndpoints
                     sessionId: _sessionId,
                     logger: _logger,
                     sendHudFrame: SendControlAsync,
+                    isResponseActive: () => _responseActive,
                     sessionCt: sessionCt);
                 var executorLocal = executor; // capture for lambda
 
@@ -684,9 +689,12 @@ public static class VoicePocEndpoints
                 _ = SendControlAsync(new { type = "transcript_user", text = t.Transcript }, CancellationToken.None);
             };
 
+            _realtime.OnResponseCreated += () => _responseActive = true;
+
             _realtime.OnResponseDone += doneEvt =>
             {
                 _botSpeaking = false;
+                _responseActive = false;
                 // response.done is the AUTHORITATIVE end-of-audio signal for a response — including a
                 // cancelled one (OpenAI emits response.done with status=cancelled after honoring
                 // response.cancel). Reopening the audio gate here (and ONLY here) guarantees every
