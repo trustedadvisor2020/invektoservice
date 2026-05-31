@@ -7,7 +7,23 @@
 
 ## Last Update
 
-- **Date:** 2026-05-31 18:35 — **Session devamı: Voice Test F0.5 — 5050 flow+KB hazır + ses motoru 6 ardışık fix (hepsi Codex PASS + prod deploy) + F0.5→F2 regression baseline dokümante.** Q F0.5 deploy sonrası canlı test edip ardışık sorunlar bildirdi; her biri fix+Codex+VoiceRuntime deploy ile çözüldü.
+- **Date:** 2026-06-01 01:00 — **Session: Voice Test F0.5 canlı-test iterasyonu — persona (insan-gibi telefon temsilcisi) + barge-in TAM çözüm + konudan-sapma + dil + cızırtı.** Q ardışık canlı-test bildirimleri; her biri /diagnose + log kanıtı + fix + Codex + prod deploy. **3 commit (533e1cb8, e77c1007, 5000ad46), hepsi Codex PASS.**
+
+  **Çözülen 6 şey:**
+  1. **Cızırtı** (`533e1cb8`): `OnAudioDelta` re-framing'de her delta'da `%960` artık örnek DROP ediliyordu (OpenAI değişken delta) → periyodik kopukluk. Fix: tüm upsample buffer tek frame (lossless). Browser handleAudio her boyutu kabul ediyor.
+  2. **Barge-in #1** (`533e1cb8`): `semantic_vad` müdahaleye temkinli → `server_vad` + threshold 0.6 (hoparlör echo-safe) + `interrupt_response=true`. appsettings + appsettings.Development.json (gitignored, lokal). Config-driven.
+  3. **Persona** (`e77c1007`): InstructionsBuilder tam telefon satış/destek temsilcisi (Q spec). KB aynen okuma yasak, robotik/iç-mekanizma ifade yasak ("bilgi bankası/sistemde/net bilgi yok"), eksik bilgide insani dönüş, 2-5 cümle, parça-parça lead. **Grounding (search_knowledge_base zorunlu) korundu.** Q: "tam iyi gidiyor".
+  4. **Konudan sapma** (`e77c1007`): "nasıl ilerleyelim?" → bot iadeye saptı. Kök neden: KB hep top-3 döner (relevance eşiği YOK) + grounding alakasız sonucu okuttu. Fix (prompt): süreç sorularında arama yapma + alakasız sonucu okuma.
+  5. **Dil** (`e77c1007`): pasif→etken/birinci-çoğul ("sunuluyor"→"sunuyoruz", "yönetebiliyorsunuz"→"yönetebilirsiniz").
+  6. **Barge-in #2 "susmuyor"** (`e77c1007`, ASIL SORUN): /diagnose log kanıtı → OpenAI TTS ~5x hızlı, tarayıcı 30sn+ önden buffer; server response.done ile `_botSpeaking=false` derken tarayıcı hâlâ çalıyor; eski `if(_botSpeaking)` gate barge_in göndermiyordu. **Fix: (a) server OnSpeechStarted HER speech_started'da tarayıcıya flush (always-flush), suppress/latency yalnız hadActiveResponse; (b) manuel response.cancel KALDIRILDI — server_vad interrupt_response zaten kesiyor, manuel cancel hep INV-VR-001 dönüyordu + Codex CQ9 wrong-turn race; (c) browser master GainNode `gain.value=0` (setValueAtTime susturmuyordu) + source stop+disconnect, un-mute first_byte'da.** Q smoke: "fena değil oldu galiba".
+
+  **Codex trail (e77c1007):** iter0/iter1 FAIL truncated-persona (false), iter1 GERÇEK BUG buldu (cancel Task.Run mutable _responseActive race), iter2 captured-boolean yetmedi, **iter3 PASS** = manuel cancel tamamen kaldırıldı (kök çözüm). 4 ders kaydedildi (`5000ad46`).
+
+  **Spec dokümante:** `arch/specs/voice-multitenant-runtime.md` (Q multi-tenant runtime mimarisi: tenant_profile + sector_adapter + kb confidence routing + qa_validator + metrics) + gap analizi + F-VR-A…F fazlandırma. **Şu an = F-VR-A (prompt katmanı) ✅; B-F roadmap.**
+
+  **KALAN (roadmap, Q sıralayacak):** cevap uzunluğu enforcement (model ~20-30sn uzatıyor); KB relevance eşiği (sağlam off-topic çözümü, F-VR-E); multi-tenant runtime katmanları (F-VR-B sector_adapter…).
+
+- **PREV-Date:** 2026-05-31 18:35 — **Session devamı: Voice Test F0.5 — 5050 flow+KB hazır + ses motoru 6 ardışık fix (hepsi Codex PASS + prod deploy) + F0.5→F2 regression baseline dokümante.** Q F0.5 deploy sonrası canlı test edip ardışık sorunlar bildirdi; her biri fix+Codex+VoiceRuntime deploy ile çözüldü.
 
   **5050 (TestEticaret) hazırlık:** Yeni flow `flow_id=31 "Sesli Asistan - Bilgi Bankası"` (impersonate→Backend flow-proxy create; aktive edilemedi — boş v2 config 422, ama pasif-seçilebilir olduğu için sorun değil). KB zaten hazır: `invekto.com` website indexli, **58 chunk embed'li** (`chunks` tablosu; faqs=3'ten ayrı). Knowledge `/search` (port 7104) gerçek çağrıyla doğrulandı — invekto.com içeriği dönüyor. **Knowledge servisleri: 7104=Knowledge, 7108=Automation** (deploy tablosundaki 51xx YANLIŞ, gerçek 71xx).
 
