@@ -39,6 +39,12 @@ const MAX_TOAST_NODES = 3;
 // origins so localStorage is not shared).
 const LS_KEY_TENANT = 'voice-poc-tenant-id';
 const LS_KEY_FLOW = 'voice-poc-flow-id';
+const LS_KEY_VOICE = 'voice-poc-voice';
+// OpenAI Realtime voice VALIDATION allowlist (full set of 10). Identical to the server-side
+// VoicePocEndpoints.AllowedVoices — used only to guard localStorage restore/persist. NOTE: the
+// <select id="voiceSelect"> in voice-poc.html deliberately exposes a CURATED SUBSET (the
+// best-sounding ones); that subset must stay ⊆ this list, but the two are not meant to be equal.
+const ALLOWED_VOICES = ['alloy', 'ash', 'ballad', 'coral', 'echo', 'sage', 'shimmer', 'verse', 'marin', 'cedar'];
 
 // Client-side INV error codes — surfaced in event log + toast text so Q can correlate
 // production failures with arch/errors.md INV-VR-CLIENT-* entries (added in Chunk D). These
@@ -70,6 +76,7 @@ const BACKEND_BASE = isLocalhost ? '' : 'https://super.invekto.com';
 const els = {
   tenantSelect: document.getElementById('tenantSelect'),
   flowSelect: document.getElementById('flowSelect'),
+  voiceSelect: document.getElementById('voiceSelect'),
   selectorHint: document.getElementById('selectorHint'),
   startBtn: document.getElementById('startBtn'),
   stopBtn: document.getElementById('stopBtn'),
@@ -458,6 +465,17 @@ els.flowSelect.addEventListener('change', () => {
   updateStartButtonState();
 });
 
+// Voice picker: restore the last-used voice (validated against ALLOWED_VOICES) + persist on change.
+// No start-button gating — the dropdown always has a value (defaults to the first <option>).
+// The chosen voice is sent on the WS handshake (?voice=) and the server re-validates it.
+{
+  const savedVoice = lsRead(LS_KEY_VOICE);
+  if (savedVoice && ALLOWED_VOICES.includes(savedVoice)) els.voiceSelect.value = savedVoice;
+}
+els.voiceSelect.addEventListener('change', () => {
+  if (ALLOWED_VOICES.includes(els.voiceSelect.value)) lsWrite(LS_KEY_VOICE, els.voiceSelect.value);
+});
+
 // ====================================================================
 // Tool-call HUD (AD-29 / AD-32)
 // ====================================================================
@@ -672,6 +690,7 @@ async function start() {
     'locale=tr-TR',
     `tenant_id=${encodeURIComponent(state.selectedTenantId)}`,
     `flow_id=${encodeURIComponent(state.selectedFlowId)}`,
+    `voice=${encodeURIComponent(els.voiceSelect.value)}`,
   ];
   if (isLocalhost) {
     queryParts.push('dev=1');

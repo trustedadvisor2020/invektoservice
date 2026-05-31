@@ -41,6 +41,14 @@ public static class VoicePocEndpoints
         PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.SnakeCaseLower
     };
 
+    // OpenAI Realtime voice VALIDATION allowlist for the browser voice picker (?voice=X). The
+    // handshake validates against this before overriding the session voice so an arbitrary/unknown
+    // string is never forwarded to the API (unknown/empty → keep the appsettings default). This is
+    // the full set of 10 and matches voice-poc.js ALLOWED_VOICES; the <select id="voiceSelect">
+    // exposes a curated SUBSET of these for UX — the subset stays ⊆ this list but need not equal it.
+    private static readonly HashSet<string> AllowedVoices = new(StringComparer.Ordinal)
+    { "alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse", "marin", "cedar" };
+
     public static void MapVoicePocEndpoints(this WebApplication app)
     {
         app.MapGet("/ws/voice/microphone", HandleMicrophoneWsAsync);
@@ -293,6 +301,23 @@ public static class VoicePocEndpoints
         else
         {
             sessionConfig = realtimeFactory.DefaultConfig;
+        }
+
+        // Voice picker (browser ?voice=X): override the session's output voice when the requested
+        // voice is in the allowlist. Unknown/empty keeps the appsettings default already baked into
+        // DefaultConfig. Applies to both F0 and F0.5 configs. Nested record `with` rewrites only the
+        // Audio.Output.Voice leaf, leaving formats/transcription/turn-detection untouched.
+        var requestedVoice = ctx.Request.Query["voice"].ToString();
+        if (AllowedVoices.Contains(requestedVoice))
+        {
+            sessionConfig = sessionConfig with
+            {
+                Audio = sessionConfig.Audio with
+                {
+                    Output = sessionConfig.Audio.Output with { Voice = requestedVoice }
+                }
+            };
+            logger.StepInfo($"[VoicePoc/{sessionId}] voice override applied: {requestedVoice}", "-");
         }
 
         var orchestrator = new VoicePocOrchestrator(
