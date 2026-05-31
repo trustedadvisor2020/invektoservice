@@ -7,7 +7,20 @@
 
 ## Last Update
 
-- **Date:** 2026-05-31 02:45 — **Session: Voice Test FULL prod rollout — stale-binary root cause çözüldü + 4 fix deploy + 2 incident kurtarıldı + F0.5 ERTELENDİ.** Q "voice test sayfası oturum bulamıyor" + ekran (super.invekto.com Voice Test → "JWT yok") ile açtı. Sonra "içine al" (embed) + WS/format/dropdown hatalarını ardışık bildirdi. **Codex MCP tüm session DOWN (`undefined.map` x4, codex+kimi) → tüm deploy'lar Q OVERRIDE ile.**
+- **Date:** 2026-05-31 16:15 — **Session: Voice Test F0.5 tenant+flow dropdown — 3 entegrasyon defekti ÇÖZÜLDÜ + prod F0→F0.5 LIVE (Codex iter 1 PASS).** Q "voice test'e tenant ve flow ekle" dedi. Önceki session'da ERTELENEN F0.5 dropdown işi. Interview (AskUserQuestion 3 karar): voice-jwt admin mintle + host super.invekto.com + kod+Codex+deploy.
+
+  **3 defekt fix (commit `176a0063`, plan `20260531-feat-vfb-f0-5-integration-defect-fix`):**
+  1. **AUTH #3:** `/ops/voice-jwt` `GenerateServiceToken(0)` → `GenerateToken(0,'admin','voice_test',30min)`. `/api/ops/tenants` ValidateOpsAuth Bearer `role==admin && tenant==0` ister (D027) → service token reddediliyordu. WS handshake role-agnostic (VoicePocEndpoints.cs:116 yalnızca tenant==0) → aynı admin token hem dropdown fetch hem WS'i besler, D027 dokunulmadı.
+  2. **HOST #1:** voice-poc.js `BACKEND_BASE` `app.invekto.com` (IIS 404) → `super.invekto.com` (Backend Kestrel). `AUTOMATION_BASE` kaldırıldı.
+  3. **AUTOMATION-EXPOSE #2 (GERÇEK DEFEKT, Codex iter 0'da yakalandı):** Automation:7108 dışarı route edilmiyor + `GetValidatedTenant` (Automation/Program.cs:621) `tenant.TenantId==routeTenantId` ister (cross-tenant bypass YOK) → tenant=0 voice-jwt **403**. Generic flow-builder proxy caller token'ı forward ettiğinden işe yaramaz. **Fix (AD-42):** yeni `GET /api/ops/tenants/{id}/flows` → ValidateOpsAuth + hedef tenant için `GenerateServiceToken(id)` mint + Automation `/api/v1/flows/{id}` proxy (Knowledge ops-proxy pattern). voice-poc.js bu endpoint'e yönlendirildi.
+
+  **Codex iter 0 FAIL→iter 1 PASS:** iter 0'ın 3 "diff'ten doğrulanamıyor" bulgusu (CQ8/Q2/Q3) verification sırasında defekt #2'yi (403) ortaya çıkardı → AD-42 ile çözüldü. iter 1 PASS 12/12 CQ + 5/5 CoVe blocking NONE.
+
+  **Deploy (prod F0→F0.5 LIVE):** SPA build → clean Backend publish (bin/obj temizle, stale-binary'e karşı) → server-deploy Backend **HEALTHY (RDF crash YOK)**. Yeni endpoint'ler 401 auth-gated (mapped, 404 değil). VoiceRuntime F0.5 static (voice-poc.js/html/styles.css) upload (F0 yedeği `.20260531-f0bak`; DLL zaten F0.5-capable). voice.invekto.com:8443 voice-poc F0.5 serve HTTP 200 + /health ok.
+
+  **KALAN (Q human smoke AC6):** super.invekto.com ops login → Voice Test → tenant dropdown dolma → flow dropdown dolma → mic → Türkçe + search_knowledge_base HUD. (Server-side parçalar doğrulandı; CORS preflight + dropdown dolması yalnızca authenticated tarayıcıda test edilebilir.)
+
+- **PREV-Date:** 2026-05-31 02:45 — **Session: Voice Test FULL prod rollout — stale-binary root cause çözüldü + 4 fix deploy + 2 incident kurtarıldı + F0.5 ERTELENDİ.** Q "voice test sayfası oturum bulamıyor" + ekran (super.invekto.com Voice Test → "JWT yok") ile açtı. Sonra "içine al" (embed) + WS/format/dropdown hatalarını ardışık bildirdi. **Codex MCP tüm session DOWN (`undefined.map` x4, codex+kimi) → tüm deploy'lar Q OVERRIDE ile.**
 
   **Kök neden (ana bulgu):** Voice Test "JWT yok" → fix (commit `e27ecedd`) prod'a HİÇ ulaşmamış. `/ops/voice-jwt` 404 + eski frontend bundle. Önceki session'ın "5+ deploy crash" incident'i = **STALE BINARY** (kaynak doğru). **.NET 8.0.19 RDF body-inference kuralı minimal-repro ile KANITLANDI:** body-less (GET/DELETE) endpoint'te complex param SADECE DI'da KAYITSIZSA crash eder; kayıtlıysa veya `[FromServices]` varsa crash YOK. Backend'in 28 offender tipinin hepsi kayıtlı (instance-registration formları regex'in kaçırdığı) → master HEAD crash etmez. Temiz publish + deploy → Backend HEALTHY, voice-jwt 404→401.
 
