@@ -101,6 +101,10 @@ builder.Services.AddTransient<Invekto.VoiceRuntime.Clients.KnowledgeSearchClient
 // HttpClient per call (the IHttpClientFactory itself is singleton; the typed client wrapping it
 // stays lightweight). ToolExecutor is instantiated PER WS session inside VoicePocEndpoints (one
 // per-call StringBuilder buffer dictionary), so it is NOT registered in DI.
+// F-VR-E (spec §5): KB confidence thresholds, config-driven (Knowledge:Confidence*) so they can be
+// tuned on prod without a rebuild. Built once at startup (logs a WARN now if misconfigured).
+builder.Services.AddSingleton(
+    Invekto.VoiceRuntime.Tools.KbConfidenceOptions.FromConfig(builder.Configuration, logger));
 builder.Services.AddTransient<Invekto.VoiceRuntime.Tools.SearchKnowledgeBaseTool>();
 
 // ── Audio + Realtime + Metrics ────────────────────────────────────

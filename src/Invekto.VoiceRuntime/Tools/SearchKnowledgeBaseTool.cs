@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Text.Json;
 using Invekto.Shared.Constants;
 using Invekto.Shared.Logging;
@@ -9,13 +10,23 @@ namespace Invekto.VoiceRuntime.Tools;
 /// FEAT-VFB F0.5 Chunk C (AD-23, AD-30): the only function tool in F0.5 — `search_knowledge_base`.
 /// Wraps KnowledgeSearchClient and produces a compact JSON payload for the model.
 ///
+/// F-VR-E (spec §5): confidence banding. The top SEMANTIC score is mapped to a band
+/// (high ≥ 0.80 / medium 0.55–0.79 / low &lt; 0.55, all config-driven via KbConfidenceOptions).
+/// Hits below the medium floor are mechanically DROPPED from the payload so the model can never
+/// read an off-topic chunk aloud (the prior "alakasız sonucu okuma" bug). A low band drops ALL
+/// hits and ships a Türkçe steer to take contact / hand off instead of inventing; a medium band
+/// keeps the surviving hits but adds a caution steer. Banding is skipped for keyword-fallback
+/// results (different score scale — see KbConfidenceOptions).
+///
 /// Result shape (sent verbatim to the model via function_call_output):
 ///   {
 ///     "results": [ { "source_type": "faq"|"chunk", "question": "...", "answer": "...", "score": 0.83 }, ... ],
 ///     "method": "semantic"|"keyword",
 ///     "duration_ms": 420,
 ///     "clamped_top_k": 3,
-///     "message": "..."   // present only when results is empty (AD-30 Türkçe fallback hint)
+///     "confidence": "high"|"medium"|"low",  // present only for semantic results (F-VR-E band)
+///     "guidance": "..."  // present for medium/low band (Türkçe behavioural steer)
+///     "message": "..."   // present only when the ORIGINAL result set is empty (AD-30 Türkçe hint)
 ///   }
 ///
 /// Error shape (status=error, OutputJson):
@@ -49,12 +60,28 @@ public sealed class SearchKnowledgeBaseTool : IVoiceTool
         "Bu konuda bilgi bankamda kayıt yok. Lütfen müşteriye 'bu konuda spesifik bilgim yok, " +
         "ilgili uzmanla görüştüreyim' deyin — telefon, fiyat veya randevu detayını uydurmayın.";
 
+    // F-VR-E: low band — best match too weak to be the answer (all hits dropped). Steer to take
+    // contact / hand off rather than reading an off-topic chunk or inventing specifics.
+    private const string LowConfidenceGuidance =
+        "Elimdeki kayitlar bu soruyla yeterince ortusmuyor; dogru bilgi veremem. Spesifik bir sey " +
+        "(fiyat, tarih, adres, prosedur) UYDURMA ve alakasiz bir konuyu anlatma. Musteriye 'bu konuda " +
+        "size kesin bilgi vermem dogru olmaz, dogrusunu iletmem icin bilgilerinizi alip ekiple kontrol " +
+        "edeyim' tarzinda yaklas; iletisim bilgisi al ya da ilgili ekibe yonlendir.";
+
+    // F-VR-E: medium band — partial match. Help in general terms but do not commit to specifics.
+    private const string MediumConfidenceGuidance =
+        "Elimdeki bilgi bu konuya kismen uyuyor ama tam emin degilim. Genel cercevede yardimci ol; " +
+        "ancak kesin rakam, kesin tarih veya taahhut verme. Emin olmadigin spesifik detayi 'bunu " +
+        "netlestirip size donelim' diyerek dogrula, gerekirse iletisim bilgisi alip ekibe yonlendir. Uydurma.";
+
     private readonly KnowledgeSearchClient _client;
+    private readonly KbConfidenceOptions _confidence;
     private readonly JsonLinesLogger _logger;
 
-    public SearchKnowledgeBaseTool(KnowledgeSearchClient client, JsonLinesLogger logger)
+    public SearchKnowledgeBaseTool(KnowledgeSearchClient client, KbConfidenceOptions confidence, JsonLinesLogger logger)
     {
         _client = client;
+        _confidence = confidence;
         _logger = logger;
     }
 
@@ -112,8 +139,42 @@ public sealed class SearchKnowledgeBaseTool : IVoiceTool
         {
             var result = await _client.SearchAsync(tenantId, query, topK, ct);
 
-            var resultsOut = new List<object>(result.Results.Count);
-            foreach (var hit in result.Results)
+            // F-VR-E confidence banding (spec §5). Applies to SEMANTIC scores only — keyword-fallback
+            // scores use a different scale, so they pass through untouched (see KbConfidenceOptions).
+            var originalHits = result.Results;
+            IReadOnlyList<KnowledgeSearchHit> effectiveHits = originalHits;
+            string? confidenceBand = null;
+            string? guidance = null;
+
+            if (originalHits.Count > 0 &&
+                string.Equals(result.Method, "semantic", StringComparison.OrdinalIgnoreCase))
+            {
+                var topScore = originalHits.Max(h => h.Score);
+                confidenceBand = _confidence.BandFor(topScore);
+
+                if (confidenceBand == "low")
+                {
+                    // Best match too weak — drop every hit so the model can never read an off-topic
+                    // chunk aloud; the guidance steers it to take contact / hand off instead.
+                    effectiveHits = Array.Empty<KnowledgeSearchHit>();
+                    guidance = LowConfidenceGuidance;
+                }
+                else
+                {
+                    // Strong-enough top hit, but the result set may still mix in weak rows. Drop the
+                    // sub-floor hits so only relevant rows reach the model; add a caution steer when medium.
+                    effectiveHits = originalHits.Where(h => h.Score >= _confidence.MediumThreshold).ToList();
+                    if (confidenceBand == "medium")
+                        guidance = MediumConfidenceGuidance;
+                }
+
+                _logger.SystemInfo(
+                    $"[SearchKnowledgeBaseTool] confidence tenant={tenantId} method={result.Method} " +
+                    $"top_score={Math.Round(topScore, 4)} band={confidenceBand} kept={effectiveHits.Count}/{originalHits.Count}");
+            }
+
+            var resultsOut = new List<object>(effectiveHits.Count);
+            foreach (var hit in effectiveHits)
             {
                 resultsOut.Add(new
                 {
@@ -124,16 +185,18 @@ public sealed class SearchKnowledgeBaseTool : IVoiceTool
                 });
             }
 
-            // AD-30: empty results → embed Türkçe fallback message so the model speaks the policy
-            // text instead of hallucinating from training data. Non-empty results omit the field
-            // (null suppressed by serializer) to keep the payload lean.
+            // AD-30: ORIGINAL empty results → embed Türkçe fallback message so the model speaks the
+            // policy text instead of hallucinating. (A low-band drop leaves resultsOut empty too, but
+            // that path carries `guidance` instead — `message` stays reserved for a genuinely empty KB.)
             var payload = new
             {
                 results = resultsOut,
                 method = result.Method,
                 duration_ms = result.DurationMs,
                 clamped_top_k = result.ClampedTopK,
-                message = resultsOut.Count == 0 ? EmptyResultsMessage : null
+                confidence = confidenceBand,
+                guidance,
+                message = originalHits.Count == 0 ? EmptyResultsMessage : null
             };
 
             var json = JsonSerializer.Serialize(payload, OutputJsonOpts);

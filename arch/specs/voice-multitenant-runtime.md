@@ -18,7 +18,7 @@
 | **§2 forbidden_phrases** | ✅ KISMEN — prompt'ta yasak ifade listesi | Mekanik QA validator (§13) yok — sadece prompt seviyesi |
 | **§3 tenant_profile** | ❌ YOK — sadece tenant_name + sector + flow_name inject (VoiceTestContext) | capability flags (pricing_enabled, appointment_enabled, lead_capture...) DB+config yok |
 | **§4 sector_adapter** | ❌ YOK — sector sadece prompt'a string olarak giriyor | vocabulary / intent priority / banned_words / required_fields per-sector katmanı yok |
-| **§5 kb_retrieval (confidence)** | ✅ KISMEN — `search_knowledge_base` tool var (Knowledge servisi) | confidence_score bazlı routing (high/medium/low → action) yok |
+| **§5 kb_retrieval (confidence)** | ✅ KISMEN — `search_knowledge_base` tool + **confidence banding (F-VR-E, 2026-06-01):** top semantic skor → high/medium/low band, low<0.55 mekanik DROP + Türkçe steer, medium caution, config-driven (`Knowledge:Confidence*`). Keyword fallback thresholdlanmaz. | calendar/order lookup gibi intent-spesifik aksiyonlar (§7) hâlâ yok; band yalnız KB cevabını yönlendirir |
 | **§6 response_rewriter** | ✅ KISMEN — prompt "KB'yi aynen okuma, telefona çevir" diyor | ayrı deterministik rewriter katmanı yok (LLM'e gömülü) |
 | **§7 intent_routing** | ❌ YOK — model serbest | yapılandırılmış intent detection + routing rules yok |
 | **§8 lead_collection_policy** | ✅ KISMEN — prompt "parça parça topla" diyor | per-sector field şeması + state tracking yok |
@@ -42,7 +42,7 @@
 - **F-VR-B — tenant_profile + sector_adapter (config/DB):** §3/§4. Capability flags + sector vocabulary/intent/banned_words/required_fields. Prompt bunlardan dinamik kurulur.
 - **F-VR-C — qa_validation katmanı:** §13. Konuşmadan önce mekanik validator (forbidden phrase / length / unsupported claim → rewrite/escalate). Prompt'a güvenmeyen sert kapı.
 - **F-VR-D — conversation_state + intent_routing + lead engine:** §7/§8/§12. Structured state machine + next_action.
-- **F-VR-E — confidence routing + pricing/escalation engine:** §5/§10/§11. KB confidence_score bazlı aksiyon.
+- **F-VR-E — confidence routing + pricing/escalation engine:** §5/§10/§11. KB confidence_score bazlı aksiyon. ✅ **§5 confidence banding YAPILDI (2026-06-01):** `SearchKnowledgeBaseTool` top semantic skoru high(≥0.80)/medium(0.55-0.79)/low(<0.55) band'e map eder; low → tüm hit DROP + Türkçe "iletişim al/yönlendir" steer, medium → hit kalır + temkin steer, high → normal. Eşikler config-driven (`KbConfidenceOptions`, appsettings `Knowledge:Confidence*`). Keyword fallback skorları thresholdlanmaz (farklı ölçek). Pricing/escalation template engine (§10/§11) hâlâ prompt seviyesinde.
 - **F-VR-F — appointment + admin controls + metrics:** §9/§17/§19.
 
 > Sıralama Q kararı. Her faz = ayrı paket (interview → plan → dev → /rev → commit).
