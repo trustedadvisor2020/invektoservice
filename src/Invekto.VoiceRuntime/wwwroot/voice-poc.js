@@ -21,6 +21,11 @@
 const FRAME_SAMPLES = 960;          // 20ms @ 48kHz
 const FRAME_BYTES = FRAME_SAMPLES * 2; // PCM16 LE
 const SAMPLE_RATE = 48000;
+// Playback jitter buffer: schedule bot audio this far ahead of the audio clock so bursty/jittery
+// WS frame delivery doesn't open micro-gaps between back-to-back chunks (audible as clicks).
+// ~120ms is imperceptible latency for a demo/test tool. Re-established after any underrun. Does
+// NOT slow barge-in: flushPlayback() stops scheduled sources immediately regardless of lead.
+const PLAYBACK_LEAD_SEC = 0.12;
 const MAX_LOG_NODES = 200;          // DOM growth cap (rolling window)
 const MAX_TOOL_CALL_NODES = 5;      // AD-32: keep last 5 tool-call rozets visible
 const TOOL_CALL_ARGS_PREVIEW_CAP = 120; // AD-29 contract — defensive clamp on browser side too
@@ -841,7 +846,10 @@ function handleAudio(arrayBuffer) {
   src.connect(state.audioCtx.destination);
 
   const now = state.audioCtx.currentTime;
-  if (state.playbackTime < now) state.playbackTime = now;
+  // Keep a small lead. On start or after an underrun (playbackTime fell to ~now) we schedule
+  // PLAYBACK_LEAD_SEC into the future to rebuild the jitter buffer; once ahead, chunks chain
+  // back-to-back sample-accurately (no reset, no gap).
+  if (state.playbackTime < now + PLAYBACK_LEAD_SEC) state.playbackTime = now + PLAYBACK_LEAD_SEC;
   // Track the source so barge-in can stop it; self-remove from the list when it finishes
   // playing so the array doesn't grow unbounded over a long session.
   state.playbackSources.push(src);

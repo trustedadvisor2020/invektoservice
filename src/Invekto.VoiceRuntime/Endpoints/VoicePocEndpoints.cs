@@ -504,6 +504,12 @@ public static class VoicePocEndpoints
         private int _seq;
         private bool _userSpeaking;
         private bool _botSpeaking;
+        // Barge-in suppression: after the user interrupts, OpenAI keeps streaming a few hundred ms
+        // of audio.delta for the cancelled response before it honors response.cancel. Forwarding
+        // those makes the bot "keep talking" after the user cut in. While this flag is set we DROP
+        // outbound audio deltas; it is cleared when the cancelled response's response.done arrives
+        // (and defensively on the user's speech_stopped), so the NEXT response plays normally.
+        private volatile bool _suppressBotAudio;
 
         // WebSocket only supports ONE concurrent SendAsync. BrowserTxLoop (binary audio) and
         // SendControlAsync (text JSON) can both fire from different callbacks/loops, so we
@@ -570,6 +576,10 @@ public static class VoicePocEndpoints
                 {
                     var bargeEvt = _turn.StampBargeInDetected();
                     _latency.RecordEvent(bargeEvt);
+                    // Set synchronously so audio.delta events arriving on the very next pump tick are
+                    // dropped immediately (the Task.Run below only handles the async cancel/drain/notify).
+                    _suppressBotAudio = true;
+                    _botSpeaking = false;
                     _ = Task.Run(async () =>
                     {
                         try
@@ -598,6 +608,8 @@ public static class VoicePocEndpoints
             {
                 try
                 {
+                    // Drop lingering audio from a response the user just barged in on (see _suppressBotAudio).
+                    if (_suppressBotAudio) return;
                     if (!_botSpeaking)
                     {
                         var fb = _turn.StampTtsFirstByteToUser();
@@ -650,6 +662,14 @@ public static class VoicePocEndpoints
             _realtime.OnResponseDone += doneEvt =>
             {
                 _botSpeaking = false;
+                // response.done is the AUTHORITATIVE end-of-audio signal for a response — including a
+                // cancelled one (OpenAI emits response.done with status=cancelled after honoring
+                // response.cancel). Reopening the audio gate here (and ONLY here) guarantees every
+                // lingering cancelled-response audio.delta has already been seen+dropped before the
+                // NEXT response can play. (An earlier attempt also cleared this on speech_stopped,
+                // but that races AHEAD of response.done and could let stale audio slip through —
+                // Codex CQ9. response.done after cancel is reliable, so this single gate is correct.)
+                _suppressBotAudio = false;
                 _ = SendControlAsync(new { type = "response_done" }, CancellationToken.None);
             };
 

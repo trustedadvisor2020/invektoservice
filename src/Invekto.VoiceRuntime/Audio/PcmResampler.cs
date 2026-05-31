@@ -27,16 +27,24 @@ public static class PcmResampler
     }
 
     /// <summary>
-    /// 24kHz → 48kHz upsample (zero-order hold — sample replication).
-    /// Output length = input × 2.
+    /// 24kHz → 48kHz upsample (LINEAR interpolation).
+    /// Output length = input × 2. The original sample is kept and a midpoint sample is
+    /// interpolated between consecutive inputs. This replaces the earlier zero-order-hold
+    /// (sample replication), whose stairstep waveform produced harsh high-frequency imaging —
+    /// the "digital/clicky" voice quality. Linear interpolation halves that imaging energy and
+    /// gives noticeably smoother speech; a polyphase/sinc filter (F2) would improve it further.
     /// </summary>
     public static short[] Upsample24To48(ReadOnlySpan<short> pcm24k)
     {
+        if (pcm24k.Length == 0) return System.Array.Empty<short>();
         var output = new short[pcm24k.Length * 2];
         for (int i = 0; i < pcm24k.Length; i++)
         {
-            output[i * 2] = pcm24k[i];
-            output[i * 2 + 1] = pcm24k[i];
+            short cur = pcm24k[i];
+            short next = (i + 1 < pcm24k.Length) ? pcm24k[i + 1] : cur; // last sample holds (no successor)
+            output[i * 2] = cur;
+            // Average two shorts as int to avoid overflow, then narrow back to short.
+            output[i * 2 + 1] = (short)((cur + next) / 2);
         }
         return output;
     }
