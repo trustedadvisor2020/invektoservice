@@ -313,4 +313,33 @@ F0 hedef p95 PBX kosulundan yumusak (Toniva codec transcode hop yok ama browser 
 
 ---
 
+## 15. F0.5 → F2 Regression Baseline (2026-05-31)
+
+> **Amac:** F0.5 Voice Test prod'da ILK kez e2e calistirildiginda yuzeye cikan 5 sorun
+> tek tek duzeltildi. Bunlar **tenant ayari DEGIL, ses motorunun ortak davranisi** —
+> bir kez duzeltildi, TUM tenant'lara otomatik uygulanir. F2 (PBX/SIP prod) bu fixleri
+> **yeniden yazmamali**; ayni shared core'u kullanmali. F2 plan'i baslarken bu checklist'ten gecsin.
+
+**Mimari ilke:** F0.5 ↔ F2 farki SADECE **provider** olmali (browser WS = `MicrophoneCallProvider`
+↔ SIP/RTP = `TonivaPbx`). Barge-in / response-lifecycle / audio / RAG orchestration provider-agnostik
+ve PAYLASILMALI. **Musteri-basina tek degisken = bilgi bankasi icerigi** (her tenant'in website/FAQ'u —
+onboarding verisi, bug degil) + opsiyonel persona/ses config (Migration 050).
+
+| # | Fix | Nerede (shared mi?) | F2'ye durum |
+|---|-----|---------------------|-------------|
+| 1 | **RAG grounding zorunlu** (model KB'ye bakmadan uydurmasin) | `Tools/InstructionsBuilder.cs` — generic template, tenant adi/sektor/flow enjekte | ✅ Shared. F2 ayni builder'i kullanmali |
+| 2 | **Ses kalitesi** zero-order-hold → linear interpolation | `Audio/PcmResampler.Upsample24To48` | ✅ Shared. Her cagri (F2 SIP transcode dahil) |
+| 3 | **Barge-in stale-audio suppress** (cancel sonrasi OpenAI lingering audio drop) | `_suppressBotAudio` + OnAudioDelta drop + OnResponseDone clear — su an `VoicePocOrchestrator`'da | ⚠️ PoC orchestrator'da gomulu. F2 SIP endpoint AYRI yazilirsa TEKRAR yazilir → ortak session-core'a cikar |
+| 4 | **INV-VR-001 response-gate** (function-call sonrasi response.create'i prior response bitene kadar beklet) | `RealtimeApiClient.OnResponseCreated` (shared) + `_responseActive` (orchestrator) + `ToolExecutor` gate (shared) | ⚠️ Kismen shared. `_responseActive` state orchestrator'da — ortak core'a tasinmali |
+| 5 | **Ses secimi** (marin/cedar...) handshake `?voice=` + allowlist override | `VoicePocEndpoints` AllowedVoices + nested `with` | 🔌 F0.5 handshake-param; F2'de `tenant_settings.voice_*` config'ten gelir (Migration 050) |
+| — | Browser playback flush + jitter + transcript siralama | `wwwroot/voice-poc.js` | 🔌 Browser-ozel; F2 PBX'te browser YOK — ses kesme SIP/RTP `SignalBargeInAsync` provider katmaninda. Taşinmaz, gerek de yok |
+
+**F2 oncesi aksiyon (Q karari 2026-05-31: simdilik dokumante):** F2 implementasyonu basladiginda
+`VoicePocOrchestrator`'daki #3 + #4 orchestration logic'ini provider-agnostik bir `VoiceSessionEngine`'e
+extract et; F0.5 test endpoint + F2 PBX endpoint AYNI engine'i kullansin (fark = provider). Bu yapilmazsa
+#3/#4 F2'de tekrar bug riski. Detay commit'ler: `176a0063` (3-defekt), `6f980261` (RAG), `2ee65f5f`
+(ses+barge), `cdf26563` (response-gate), `a6bde8af` (ses secici).
+
+---
+
 **SPEC DURUMU:** APPROVED (Q onay 2026-05-23). F0 plan JSON `arch/plans/20260523-feat-vfb-f0-poc.json` DONE; /auto workflow F0 implementation kapsami su anda kod aşamasında.
