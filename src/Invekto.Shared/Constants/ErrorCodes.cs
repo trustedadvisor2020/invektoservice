@@ -120,6 +120,9 @@ public static class ErrorCodes
     public const string ClinicMetadataUrlInvalid       = "INV-BE-124"; // PUT body clinic_contact.website/instagram/facebook fails ^https?:// regex OR non-HTTPS in production-style mode. User-facing 400.
     public const string ClinicMetadataDbUnavailable    = "INV-BE-125"; // tenant_settings.clinic_contact / team_members DB read/write transient (Npgsql). Distinct from INV-BE-001 + INV-BE-121 so dashboards isolate clinic-metadata storage outages.
 
+    // FEAT-VFB F-VR-B: voice_tenant_profile (INV-BE-126). Backend GET /api/ops/tenants/{id}/voice-profile consumer.
+    public const string VoiceTenantProfileQueryFailed  = "INV-BE-126"; // voice_tenant_profile DB read transient (Npgsql). Distinct from INV-BE-001/011 so dashboards isolate voice-profile storage outages from the tenant-list read.
+
     // ChatAnalysis errors (INV-CA-xxx)
     public const string ChatAnalysisInvalidPayload = "INV-CA-001";
     public const string ChatAnalysisProcessingFailed = "INV-CA-002";

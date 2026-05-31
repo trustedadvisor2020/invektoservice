@@ -596,6 +596,11 @@ errors:
     description: tenant_settings.clinic_contact / team_members DB read/write transient failure (Npgsql exception during GET/PUT or DbTenantClinicMetadataResolver fetch). Distinct from INV-BE-001 + INV-BE-110 (TFM) + INV-BE-121 (MCC) so dashboards isolate clinic-metadata storage outages. Resolver fall-through on read failure: ClinicMetadata.Empty, substitution renders empty strings — outbound flow continues for clinic-agnostic messages. Endpoint GET/PUT both surface 503 to operator.
     user_message: Klinik bilgileri geçici olarak okunamıyor/kaydedilemiyor; birkaç saniye sonra tekrar deneyin.
 
+  # FEAT-VFB F-VR-B: voice_tenant_profile (INV-BE-126, 2026-06-01). GET /api/ops/tenants/{id}/voice-profile (VoiceRuntime reads over HTTP).
+  - code: INV-BE-126
+    description: voice_tenant_profile DB read transient failure (Npgsql exception during GET /api/ops/tenants/{id}/voice-profile). Distinct from INV-BE-001 + INV-BE-011 (tenant-list read) so dashboards isolate voice-profile storage outages. NOTE — a MISSING row is NOT this error: the endpoint synthesizes a 'generic' default (logs this code at WARN) so voice never breaks for a not-yet-provisioned tenant; only a real Npgsql failure returns 500. Also used as the 503 marker when the repository is not DI-registered (PostgreSQL not configured).
+    user_message: Ses profili geçici olarak yüklenemiyor; birkaç saniye sonra tekrar deneyin.
+
   # ── AA — AgentAI ──
   - code: INV-AA-001
     description: Invalid request payload

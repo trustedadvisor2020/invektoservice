@@ -1,0 +1,91 @@
+{
+  "schema_version": "6.0",
+  "review_protocol_version": "6.0",
+  "spec_ref": "SPEC-008",
+  "slug": "20260601-feat-vfb-fvrb-b1-voice-profile",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-01T03:10:00+03:00",
+  "updated_at": "2026-06-01T03:35:00+03:00",
+  "parent_plan": "20260601-feat-vfb-voice-persona-barge",
+  "plan": {
+    "summary": "FEAT-VFB F-VR-B Chunk B1 — voice tenant_profile DATA + CONTRACT layer (spec voice-multitenant-runtime.md §3). Yeni voice_tenant_profile tablosu (business_type + capability flag override'lari + goal/brand_tone) + migration 050 backfill (her tenant'a business_type sector slug'indan turetilir, override'lar NULL = business_type default'unu miras al) + Backend GET /api/ops/tenants/{id}/voice-profile endpoint (ValidateOpsAuth, server-to-server, VoiceRuntime HTTP ile okur cunku DB erisimi yok) + Shared VoiceTenantProfileDto wire contract + VoiceTenantProfileRepository (read-only) + INV-BE-126. Davranis KATMANI bu pakette (DB); DIL katmani (sector_adapter vocabulary/intent/banned_words/required_fields) + dinamik InstructionsBuilder Chunk B2'de. Bu chunk hicbir prompt davranisini DEGISTIRMEZ — sadece veri+kontrat altyapisi (override'lar NULL, mevcut F-VR-A persona aynen calismaya devam eder).",
+    "q_intent": "F-VR-B multi-tenant runtime: tenant_profile capability flags + sector_adapter. InstructionsBuilder bunlardan dinamik kurulur. Q kararlari (AskUserQuestion): (1) per-tenant DB tablosu + override SIMDI; (2) adapter seti spec §4 + hair_transplant (6 adapter); (3) goal + brand_tone de dahil.",
+    "interview_notes": "Mimari kodbazdan turetildi: VoiceRuntime'in DB erisimi YOK (Shared-only, Npgsql yok) -> profil tablosu Backend domaininde (tenant_registry sibling), VoiceRuntime HTTP ile okur (mikroservis izolasyonu korunur). Iki katmanli ayrim: tenant_profile (DB, per-tenant, override edilebilir) = business_type + capability flags + goal/tone; sector_adapter (kod-versiyonlu, VoiceRuntime) = vocabulary/intent/banned/required_fields. Capability default'lari TEK yerde (VoiceRuntime B2) — DB override'lari NULL=inherit. Prod sector slug'lari: genel(6)->generic, eticaret(2)->ecommerce, dis_klinik(1)->dental_clinic. Chunk'lama: B1 (Backend data+contract) -> /rev -> commit -> /clear -> B2 (VoiceRuntime prompt). DB rol: sadece 'invekto' var (owner), invekto_app yok -> table GRANT gereksiz."
+  },
+  "acceptance_criteria": [
+    { "id": "AC1", "criterion": "arch/db/voice-tenant-profile.sql + migration 050: voice_tenant_profile tablosu PK tenant_id FK tenant_registry ON DELETE CASCADE, business_type NOT NULL DEFAULT 'generic' + CHECK (9 deger: clinic/dental_clinic/aesthetic_clinic/hair_transplant/ecommerce/service_business/education/real_estate/generic), default_language NOT NULL, capability flags + goals + tone NULLABLE (override=inherit). updated_at trigger (shared update_updated_at_column reuse). CREATE TABLE IF NOT EXISTS idempotent.", "verified": true, "verification_note": "Build PASS 0 error + Codex iter2 PASS (12/12 CQ + 4/4 CoVe). Migration prod'a deploy B2 ile birlikte." },
+    { "id": "AC2", "criterion": "Migration 050 backfill: her tenant_registry satirina bir voice_tenant_profile satiri (business_type sector slug'indan CASE ile; dis_klinik->dental_clinic, eticaret->ecommerce, estetik->aesthetic_clinic, sac_ekimi/sacekimi->hair_transplant, klinik/saglik->clinic, diger/NULL->generic). Override kolonlari NULL. ON CONFLICT (tenant_id) DO NOTHING (re-run no-op, admin-edit ezilmez). DO $verify$ INV-SEED-050 fail-loud: profil sayisi >= tenant sayisi + orphan=0.", "verified": true, "verification_note": "Build PASS 0 error + Codex iter2 PASS (12/12 CQ + 4/4 CoVe). Migration prod'a deploy B2 ile birlikte." },
+    { "id": "AC3", "criterion": "Shared VoiceTenantProfileDto: business_type + default_language required (string), capability flags bool? + goals/tone string? (NULL=inherit). Purely additive (yeni dosya), hicbir tuketici servis icin breaking degil. VoiceTenantProfileRepository.GetAsync(tenantId) satir varsa DTO, yoksa null doner (read-only).", "verified": true, "verification_note": "Build PASS 0 error + Codex iter2 PASS (12/12 CQ + 4/4 CoVe). Migration prod'a deploy B2 ile birlikte." },
+    { "id": "AC4", "criterion": "Backend GET /api/ops/tenants/{id}/voice-profile: ValidateOpsAuth gate (admin Bearer, /api/ops/tenants ile ayni), id<=0 -> 400 GeneralValidation, repo null (DI yok) -> 503 INV-BE-126, satir yoksa -> generic default SYNTHESIZE (404 DEGIL, WARN log INV-BE-126) -> 200, NpgsqlException -> 500 INV-BE-126. Server-to-server (CORS yok). DI: VoiceTenantProfileRepository AddSingleton.", "verified": true, "verification_note": "Build PASS 0 error + Codex iter2 PASS (12/12 CQ + 4/4 CoVe). Migration prod'a deploy B2 ile birlikte." },
+    { "id": "AC5", "criterion": "Full solution build PASS (Shared degisti). 0 error. Yeni warning yok (40 pre-existing solution-wide). Mikroservis izolasyonu: VoiceRuntime DB-free kaldi (degismedi); Backend repo using'leri sadece Invekto.Shared.*/Npgsql; Shared degisiklikleri additive (DTO yeni dosya + ErrorCodes yeni const).", "verified": true, "verification_note": "Build PASS 0 error + Codex iter2 PASS (12/12 CQ + 4/4 CoVe). Migration prod'a deploy B2 ile birlikte." }
+  ],
+  "architectural_decisions": [
+    { "decision": "AD-48 (2026-06-01): voice_tenant_profile tablosu Backend domaininde (tenant_registry sibling), VoiceRuntime HTTP ile okur. VoiceRuntime'in DB erisimi YOK (Shared-only csproj, Npgsql referansi yok, Data klasoru yok) -> tabloyu VoiceRuntime'a koymak yeni bir DB bagimligini DB-free servise sokar ve mikroservis izolasyonunu bozar.", "reason": "Kodbazi gercegi: VoiceRuntime tenant verisini zaten TenantInfoClient ile Backend /api/ops/tenants'tan HTTP cekiyor. Ayni pattern profil icin de.", "codex_note": "EXPECTED: Bu B1 sadece Backend tarafi (tablo+endpoint+DTO). VoiceRuntime tuketimi (VoiceProfileClient) B2 — bu diff'te YOK. Endpoint server-to-server, CORS yok (browser endpoint degil)." },
+    { "decision": "AD-49 (2026-06-01): Override semantigi — business_type + default_language authoritative (NOT NULL); capability flags + goals + tone NULLABLE = 'business_type default'unu miras al'. Default RESOLUTION tek yerde: VoiceRuntime (B2 sector_adapter katmani). Backend ince storage/return katmani, default cozmez.", "reason": "DRY: capability default mantigi (or. dental->appointment on) hem backfill SQL'de hem runtime'da olmasin diye TEK kaynak = VoiceRuntime adapter (B2). Backfill yalniz business_type set eder, flag'ler NULL -> mevcut davranis bire bir korunur (override yok).", "codex_note": "EXPECTED: backfill sonrasi tum override kolonlari NULL — bu kasitli. Q 'per-tenant DB tablosu + override' istedi: kolonlar override KAPASITESI saglar (admin §17'de set eder), default'lar NULL=inherit ile gelir. Bos gorunen profil = pure default, bug degil." },
+    { "decision": "AD-50 (2026-06-01): Endpoint satir yoksa 404 DEGIL, 'generic' default synthesize eder (WARN INV-BE-126). Migration 050 mevcut tum tenant'lari backfill'ler; eksik satir yalniz migration sonrasi provision edilen yeni tenant'ta olur (henuz provisioning hook yok).", "reason": "Voice asla kirilmamali: yeni/eksik-profil tenant icin guvenli generic default + operator'e WARN gorunur. Sector-turetimli synthesize SQL CASE'i C#'a duplike ederdi -> kasitli olarak dumb-generic (mapping tek yerde: backfill).", "codex_note": "EXPECTED: synthesize edilen profil business_type='generic' + override'lar null. MISSING row INV-BE-126 hata DEGIL (sadece WARN marker); yalniz gercek Npgsql failure 500 doner." }
+  ],
+  "allowed_files": [
+    "arch/db/voice-tenant-profile.sql",
+    "arch/db/migrations/050-voice-tenant-profile.sql",
+    "src/Invekto.Shared/DTOs/Voice/VoiceTenantProfileDto.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Backend/Data/VoiceTenantProfileRepository.cs",
+    "src/Invekto.Backend/Program.cs",
+    "arch/errors.md",
+    "arch/plans/20260601-feat-vfb-fvrb-b1-voice-profile.json",
+    "arch/plans/diffs/feat-vfb-fvrb-b1-voice-profile.diff"
+  ],
+  "files_changed": [
+    { "path": "arch/db/voice-tenant-profile.sql", "is_new": true, "change": "Canonical DDL: voice_tenant_profile (business_type NOT NULL + CHECK 9 deger, capability flags + goals + tone NULLABLE override, FK tenant_registry CASCADE, updated_at trigger)" },
+    { "path": "arch/db/migrations/050-voice-tenant-profile.sql", "is_new": true, "change": "CREATE TABLE + backfill (business_type sector slug CASE, override'lar NULL, ON CONFLICT DO NOTHING) + DO $verify$ INV-SEED-050 fail-loud postcondition" },
+    { "path": "src/Invekto.Shared/DTOs/Voice/VoiceTenantProfileDto.cs", "is_new": true, "change": "Wire contract (additive): required business_type/default_language + nullable override flags/goals/tone" },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false, "change": "Additive const VoiceTenantProfileQueryFailed = INV-BE-126" },
+    { "path": "src/Invekto.Backend/Data/VoiceTenantProfileRepository.cs", "is_new": true, "change": "Read-only repo GetAsync(tenantId) -> DTO|null (PostgresConnectionFactory pattern, TenantRegistryRepository ile ayni posture)" },
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false, "change": "VoiceTenantProfileRepository AddSingleton DI + GET /api/ops/tenants/{id}/voice-profile endpoint (ValidateOpsAuth, synth-default, INV-BE-126)" },
+    { "path": "arch/errors.md", "is_new": false, "change": "INV-BE-126 registry entry (missing-row=WARN-not-error notu dahil)" }
+  ],
+  "git_diff": {
+    "stats": { "insertions": 307, "deletions": 0, "files_count": 7 },
+    "sha256": "e5ae3b53ff68ab4f3d7f71794a991dea89ed41f344c6cd16bf925ac0421c1136",
+    "full_path": "arch/plans/diffs/feat-vfb-fvrb-b1-voice-profile.diff"
+  },
+  "build": { "status": "PASS", "timestamp": "2026-06-01T03:05:00+03:00", "errors": 0, "warnings": 40, "notes": "Full solution build (Shared degisti). 0 error, 40 pre-existing solution-wide warning (yeni yok). Migration prod'a HENUZ uygulanmadi (deploy adimi /deploy ile, bu pakette degil)." },
+  "verification_questions": [
+    { "id": "Q1", "question": "MIGRATION GUVENLIGI: Migration 050 additive mi (yeni tablo, hicbir tenant_registry kolonu/satiri degismiyor)? CREATE TABLE IF NOT EXISTS + INSERT ON CONFLICT (tenant_id) DO NOTHING idempotent mi (re-run 0 yeni satir, admin-edit ezilmiyor)? DO $verify$ INV-SEED-050 backfill eksikse + orphan varsa fail-loud RAISE EXCEPTION ile tx'i geri aliyor mu? business_type CHECK constraint 9 spec degeriyle backfill CASE ciktilarini kapsiyor mu (her CASE dali gecerli bir enum degeri mi)?", "category": "Data" },
+    { "id": "Q2", "question": "AUTH/ENDPOINT: GET /api/ops/tenants/{id}/voice-profile ValidateOpsAuth ile gate'li mi (/api/ops/tenants ile ayni admin Bearer path, D027 daraltmasi tenant==0 && role==admin)? id<=0 -> 400, repo DI yok -> 503 INV-BE-126, NpgsqlException -> 500 INV-BE-126 dogru mu? Satir yoksa 404 DEGIL generic-default 200 donmesi voice'i kirilmaktan koruyor mu (WARN log var mi)? Endpoint server-to-server oldugu icin CORS olmamasi dogru mu?", "category": "Auth" },
+    { "id": "Q3", "question": "OVERRIDE SEMANTIK / DRY: Capability flag'leri DB'de NULLABLE + backfill'de NULL birakilmasi (default RESOLUTION VoiceRuntime B2'de) DRY acisindan dogru mu — capability default mantigi backfill SQL'e duplike edilmemis mi? VoiceTenantProfileDto bool? alanlari ile DB NULL'lari arasinda mapping (IsDBNull -> null) tutarli mi? Synthesize edilen generic default (business_type='generic', override'lar null) DTO required alanlarini (business_type/default_language) dolduruyor mu?", "category": "Process/Policy" },
+    { "id": "Q4", "question": "MIKROSERVIS IZOLASYON / REGRESYON: VoiceTenantProfileRepository using'leri sadece Invekto.Shared.*/Npgsql mi (cross-service Invekto.* yok)? VoiceRuntime bu chunk'ta DB-free kaldi mi (degismedi)? Shared degisiklikleri (DTO yeni dosya + ErrorCodes additive const) hicbir tuketici servis icin breaking degil mi? Bu chunk hicbir mevcut prompt davranisini (F-VR-A persona, F-VR-E KB banding) degistirmiyor mu — yalniz veri+kontrat altyapisi mi?", "category": "Lifecycle" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.VoiceRuntime/** (B2 chunk — bu pakette VoiceRuntime'a hic dokunulmadi, DB-free kaliyor)",
+      "InstructionsBuilder.cs / VoiceTestContext.cs (B2 — dinamik prompt + profil tuketimi)",
+      "tenant_registry tablosu kolonlari (sadece FK referansi + backfill SELECT, ALTER yok)",
+      "Shared Knowledge /search + KB confidence banding (F-VR-E, dokunulmadi)"
+    ],
+    "non_goals": [
+      "sector_adapter registry + BusinessType enum + dinamik InstructionsBuilder (B2)",
+      "VoiceProfileClient HTTP fetch + VoiceTestContext profil ext + endpoint wiring (B2)",
+      "Capability default RESOLUTION (B2 — bu chunk override'lari NULL birakir)",
+      "Admin UI / tenant-level voice ayar paneli (§17, F-VR-F)",
+      "qa_validator (§13, F-VR-C) + conversation_state (§12, F-VR-D)",
+      "Migration'in prod'a uygulanmasi + deploy (/deploy ile ayri adim)"
+    ],
+    "intentional_exclusions": [
+      "Sector-turetimli synthesize (eksik-satir fallback kasitli dumb-generic; mapping tek yerde=backfill)",
+      "voice_tenant_profile yazma/update (read-only; write = admin-controls §17)"
+    ]
+  },
+  "error_handling": {
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Endpoint: repo-null->503, NpgsqlException->500 (ikisi de INV-BE-126 envelope + WARN log), satir-yok->generic-default+WARN (kasitli, voice kirilmaz). Migration: DO $verify$ fail-loud (backfill eksik/orphan -> RAISE EXCEPTION tx rollback). Repo GetAsync: reader null-safe (IsDBNull her nullable kolonda). DTO additive — tuketici breaking yok."
+  },
+  "verdict": { "status": "PASS", "iteration": 2 },
+  "status_log": [
+    { "ts": "2026-06-01T03:10:00+03:00", "event": "PLAN_CREATED", "notes": "F-VR-B Chunk B1 (data+contract). Tablo+migration+backfill+endpoint+DTO+repo+INV-BE-126. Build PASS 0 error. Mimari: VoiceRuntime DB-free -> profil Backend domaininde, HTTP ile okunur. Override=NULL=inherit, default RESOLUTION B2'de. Codex review bekliyor." },
+    { "ts": "2026-06-01T03:20:00+03:00", "event": "CODEX_ITER0_FAIL", "model_used": "gpt-5.5-2026-04-23", "tokens": { "total": 14975 }, "notes": "iter0 FAIL 3 blocking (hepsi GERCEK): CQ5/CQ11 — yeni tablo GRANT ALL eksik (codex-context.md L20/L69 non-negotiable kural; tum migration'lar 'GRANT ALL ON {table} TO invekto'). intentional_exclusion'daki 'owner-implicit' gerekcem yanlisti. CQ12 — endpoint 503/500 mesajlari generic ('PostgreSQL not configured' + 'Ses profili yuklenemedi.') actionable degil. FIX: voice-tenant-profile.sql + migration 050'ye GRANT ALL eklendi; 503+500 mesajlari actionable user_message'a hizalandi. Q1-Q4 CoVe hepsi PASS. Backend build PASS 0 error." },
+    { "ts": "2026-06-01T03:30:00+03:00", "event": "CODEX_ITER1_FAIL", "model_used": "gpt-5.5-2026-04-23", "tokens": { "total": 15368 }, "notes": "iter1: GRANT (CQ5/CQ11) cozuldu PASS. Tek kalan CQ12/Q2 — endpoint mesaji ASCII (gecici/yuklenemiyor/birkac) idi, errors.md registered user_message Turkce diakritikli (geçici/yüklenemiyor/birkaç); Codex EXACT match istiyor. FIX: her iki mesaj (503+500) errors.md ile birebir diakritikli string'e cevrildi. Backend build PASS 0 error. Diger 11 CQ + Q1/Q3/Q4 PASS." },
+    { "ts": "2026-06-01T03:35:00+03:00", "event": "CODEX_ITER2_PASS", "model_used": "gpt-5.5-2026-04-23", "tokens": { "total": 14527 }, "notes": "iter2 PASS 12/12 CQ + 4/4 CoVe, blocking NONE. Diakritik exact-match cozuldu. Tablo+migration+backfill+endpoint+DTO+repo+INV-BE-126 hepsi onaylandi. NOT: migration prod'a HENUZ uygulanmadi (endpoint'in tuketicisi B2; migration B2 ile birlikte /deploy edilecek)." }
+  ]
+}

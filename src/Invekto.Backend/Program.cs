@@ -383,6 +383,9 @@ var inmaConnectionString = builder.Configuration.GetConnectionString("InmaManage
     // SuperAdmin: Tenant registry (list + impersonate)
     builder.Services.AddSingleton<TenantRegistryRepository>();
 
+    // FEAT-VFB F-VR-B: voice_tenant_profile read (VoiceRuntime reads it over HTTP via /api/ops/tenants/{id}/voice-profile).
+    builder.Services.AddSingleton<VoiceTenantProfileRepository>();
+
     // FEAT-PILOT-KANBAN: SuperAdmin pilot tracking board (Migration 035).
     // Read-only Dashboard surface; mutation tek path /wrap workflow Step 3.5.
     builder.Services.AddSingleton<KanbanRepository>();
@@ -6834,6 +6837,51 @@ app.MapGet("/api/ops/tenants/{id:int}/flows", async (HttpContext ctx, int id, Fl
     if (body != null) await ctx.Response.WriteAsync(body);
     return Results.Empty;
 }).RequireCors("VoicePocCors"); // Voice Test browser flow dropdown fetch (cross-origin from voice.invekto.com:8443).
+
+// GET /api/ops/tenants/{id}/voice-profile — FEAT-VFB F-VR-B: per-tenant voice behavior profile
+// (business_type + capability overrides, spec §3). Server-to-server: VoiceRuntime's VoiceProfileClient
+// fetches this with an admin Bearer (ValidateOpsAuth, same pattern as /api/ops/tenants) — VoiceRuntime
+// has no DB. NOT a browser endpoint, so no CORS. Never 404s for an active tenant: a missing row
+// (tenant provisioned after migration 050, no admin profile yet) yields a synthesized 'generic'
+// default so voice never breaks; default RESOLUTION (flag inheritance) happens in VoiceRuntime.
+app.MapGet("/api/ops/tenants/{id:int}/voice-profile", async (HttpContext ctx, int id, JsonLinesLogger jsonLog) =>
+{
+    if (!ValidateOpsAuth(ctx))
+        return OpsUnauthorized(ctx);
+
+    if (id <= 0)
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "Gecersiz tenant_id." });
+
+    var profileRepo = ctx.RequestServices.GetService<VoiceTenantProfileRepository>();
+    if (profileRepo == null)
+        return Results.Json(
+            new { error = ErrorCodes.VoiceTenantProfileQueryFailed, message = "Ses profili geçici olarak yüklenemiyor; birkaç saniye sonra tekrar deneyin."},
+            statusCode: 503);
+
+    try
+    {
+        var profile = await profileRepo.GetAsync(id, ctx.RequestAborted);
+        if (profile == null)
+        {
+            // Not-yet-provisioned tenant: synthesize a generic default rather than 404.
+            jsonLog.SystemWarn($"voice-profile synth-default ({ErrorCodes.VoiceTenantProfileQueryFailed}): tenant {id} has no voice_tenant_profile row, returning generic.");
+            profile = new Invekto.Shared.DTOs.Voice.VoiceTenantProfileDto
+            {
+                TenantId = id,
+                BusinessType = "generic",
+                DefaultLanguage = "tr-TR",
+            };
+        }
+        return Results.Ok(profile);
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"voice-profile query failed ({ErrorCodes.VoiceTenantProfileQueryFailed}): {ex.Message}");
+        return Results.Json(
+            new { error = ErrorCodes.VoiceTenantProfileQueryFailed, message = "Ses profili geçici olarak yüklenemiyor; birkaç saniye sonra tekrar deneyin."},
+            statusCode: 500);
+    }
+});
 
 app.MapPost("/api/ops/tenants/{id}/impersonate", async (HttpContext ctx, int id, JsonLinesLogger jsonLog) =>
 {
