@@ -302,10 +302,25 @@ F0 target: `barge_in.elapsed_ms < 500ms` (browser overhead allowed). F2 PBX path
 
 ## Browser acquisition & UI (F0.5 Chunk D)
 
-The Voice Test page (`https://voice.invekto.com:8443/voice-poc.html`) is opened from a
-Dashboard wrapper on `https://app.invekto.com`. Because the two share no localStorage
-origin, the page acquires its Dashboard JWT through a one-shot URL bridge and uses the
-same token for both the dropdown fetches and the WS handshake.
+The Voice Test page (`https://voice.invekto.com:8443/voice-poc.html`) is embedded as a
+cross-origin iframe inside the ops Dashboard, which is served by the Backend Kestrel host at
+`https://super.invekto.com` (NOT `app.invekto.com` — that is the tenant-facing IIS app and
+returns 404 for `/api/ops`; this was integration defect #1, fixed 2026-05-31). Because the
+iframe and the Dashboard share no localStorage origin, the page acquires its Dashboard JWT
+through a one-shot URL bridge and uses the same token for both the dropdown fetches and the
+WS handshake.
+
+> **F0.5 integration-defect fix (2026-05-31, AD-39..42, plan `20260531-feat-vfb-f0-5-integration-defect-fix`):**
+> The original Chunk D/E design (browser → `app.invekto.com` + browser → Automation
+> `/api/v1/flows/{tid}` directly) never worked in prod for three reasons, all now resolved:
+> (1) host was `app.invekto.com` not `super.invekto.com`; (2) the voice-jwt was minted
+> `role=service` but `/api/ops/*` ValidateOpsAuth requires `role=admin && tenant=0` (D027) —
+> now minted `role=admin` (the WS handshake is role-agnostic, checks `tenant==0` only, so the
+> single token still powers both); (3) Automation:7108 is not externally routed AND
+> `GetValidatedTenant` requires `jwt.tenant_id == route tenantId` (no cross-tenant bypass), so a
+> tenant=0 token gets 403 — the flow list now goes through a NEW Backend ops endpoint
+> `GET /api/ops/tenants/{id}/flows` that mints a per-tenant service token and proxies to
+> Automation. The sections below are updated to the corrected topology.
 
 ### Token acquisition (URL-bridge, AD-33)
 
@@ -315,17 +330,20 @@ same token for both the dropdown fetches and the WS handshake.
    `history.replaceState(null, "", location.pathname)` to strip the token from the
    address bar (browser history / refresh leak prevention).
 3. `voice-poc.js` reads `window.INVEKTO_VOICE_JWT` for two consumers:
-   - Bearer header on dropdown fetches (`/api/ops/tenants`, `/api/v1/flows/{tenantId}`).
+   - Bearer header on dropdown fetches — BOTH are Backend ops endpoints on `super.invekto.com`:
+     `/api/ops/tenants` (tenant list) and `/api/ops/tenants/{tid}/flows` (flow list; AD-42).
    - `?token=<JWT>` query parameter on the WS handshake.
 4. If the token is missing the page renders a disabled state (toast `INV-VR-CLIENT-001`,
    both dropdowns disabled, Mic button disabled). No localStorage fallback —
-   `localStorage` is per-origin and not shared with `app.invekto.com`.
+   `localStorage` is per-origin and not shared with the Dashboard origin.
 
 ### Cross-origin dropdown fetch (CORS prerequisite, AD-35 / Chunk E)
 
-Both dropdown fetches are cross-origin (`voice.invekto.com:8443` → backend origins).
-Backend (`/api/ops/tenants`) and Automation (`/api/v1/flows/{tenantId}`) MUST allow the
-Voice Test origin via the `VoicePocCors` named policy:
+Both dropdown fetches are cross-origin (`voice.invekto.com:8443` → `super.invekto.com`).
+Both are Backend ops endpoints (`/api/ops/tenants` + `/api/ops/tenants/{id}/flows`) and MUST
+allow the Voice Test origin via the `VoicePocCors` named policy. (The flow list is NOT fetched
+from Automation directly — see the defect-fix note above; Automation is not externally routed
+and rejects the tenant=0 token.)
 
 ```csharp
 // Backend / Automation Program.cs
@@ -339,9 +357,11 @@ builder.Services.AddCors(options =>
 // Pipeline: app.UseCors() MUST be before app.UseJwtAuth(...) so preflight OPTIONS
 // requests reach the CORS middleware before the auth gate rejects them.
 
-// Endpoint binding (explicit, no global default policy):
+// Endpoint binding (explicit, no global default policy) — BOTH on Backend (super.invekto.com):
 app.MapGet("/api/ops/tenants", ...).RequireCors("VoicePocCors");
-app.MapGet("/api/v1/flows/{tenantId:int}", ...).RequireCors("VoicePocCors");
+app.MapGet("/api/ops/tenants/{id:int}/flows", ...).RequireCors("VoicePocCors"); // AD-42: mints
+//   per-tenant service token + proxies to Automation /api/v1/flows/{id}. The Automation endpoint
+//   keeps its own RequireCors from Chunk E but is no longer the browser's direct target.
 ```
 
 Knowledge is **not** in the allowlist for F0.5 — the `search_knowledge_base` tool runs
