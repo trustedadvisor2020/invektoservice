@@ -269,8 +269,11 @@ function renderFlowOptions(flows) {
     const opt = document.createElement('option');
     opt.value = String(f.flowId);
     const label = f.isDefault ? `${f.flowName} (varsayılan)` : f.flowName;
+    // Inactive flows stay SELECTABLE — the whole point of Voice Test is to dry-run a flow
+    // BEFORE activating it for production. The `[pasif]` label is a visual hint only, not a
+    // gate (an earlier version disabled these, which blocked the primary test-before-go-live
+    // use case). VoiceRuntime fetches the flow by id regardless of is_active.
     opt.textContent = f.isActive ? label : `${label} [pasif]`;
-    if (!f.isActive) opt.disabled = true;
     els.flowSelect.appendChild(opt);
   }
   els.flowSelect.disabled = flows.length === 0;
@@ -332,7 +335,7 @@ async function loadAndPopulateFlows(jwt, tenantId, preselectFlowId) {
     const flows = await fetchFlows(jwt, tenantId);
     state.flows = flows;
     renderFlowOptions(flows);
-    if (preselectFlowId !== null && flows.some((f) => f.flowId === preselectFlowId && f.isActive)) {
+    if (preselectFlowId !== null && flows.some((f) => f.flowId === preselectFlowId)) {
       els.flowSelect.value = String(preselectFlowId);
       state.selectedFlowId = preselectFlowId;
     } else {
