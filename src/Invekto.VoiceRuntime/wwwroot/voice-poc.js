@@ -85,6 +85,10 @@ const state = {
   workletNode: null,
   micStream: null,
   playbackTime: 0,
+  // Scheduled AudioBufferSourceNodes for the current bot response. Tracked so a barge-in can
+  // STOP them immediately — otherwise audio already queued (src.start at a future time) keeps
+  // playing after the server cancels the response, so the bot "talks over" the new turn.
+  playbackSources: [],
   firstByteSamples: [],
   turns: 0,
   currentBotTranscript: '',
@@ -793,11 +797,20 @@ function handleControl(msg) {
       setStatus('Bot konuşuyor', 'status-bot-speaking');
       logEvent(`İlk byte: ${msg.elapsed_ms}ms`);
       break;
-    case 'barge_in':
+    case 'barge_in': {
+      // Server cancelled the in-flight response because the user started talking. Stop the
+      // already-queued bot audio NOW so it doesn't talk over the new turn.
+      flushPlayback();
+      // Finalize the partial bot bubble so the next response renders as a fresh turn instead of
+      // appending onto the interrupted one.
+      const interrupted = els.transcriptLog.querySelector('.turn-bot:last-child');
+      if (interrupted && !interrupted.dataset.final) interrupted.dataset.final = '1';
+      state.currentBotTranscript = '';
       els.bargeLatency.textContent = `${msg.elapsed_ms} ms`;
       logEvent(`Barge-in tepkisi: ${msg.elapsed_ms}ms`, 'event-warn');
       setStatus('Bağlı, konuşabilirsin', 'status-listening');
       break;
+    }
     case 'tool_call_started':
       handleToolCallStarted(msg);
       break;
@@ -829,8 +842,27 @@ function handleAudio(arrayBuffer) {
 
   const now = state.audioCtx.currentTime;
   if (state.playbackTime < now) state.playbackTime = now;
+  // Track the source so barge-in can stop it; self-remove from the list when it finishes
+  // playing so the array doesn't grow unbounded over a long session.
+  state.playbackSources.push(src);
+  src.onended = () => {
+    const idx = state.playbackSources.indexOf(src);
+    if (idx !== -1) state.playbackSources.splice(idx, 1);
+  };
   src.start(state.playbackTime);
   state.playbackTime += buf.duration;
+}
+
+// Stop and discard every queued/playing bot-audio source immediately, then reset the playback
+// cursor to "now". Called on barge-in (server cancelled the response because the user started
+// talking) and on cleanup. Without this the browser keeps playing audio it already scheduled,
+// so the bot talks over the user's new turn.
+function flushPlayback() {
+  for (const s of state.playbackSources) {
+    try { s.onended = null; s.stop(); } catch (_) { /* already stopped/ended */ }
+  }
+  state.playbackSources = [];
+  if (state.audioCtx) state.playbackTime = state.audioCtx.currentTime;
 }
 
 function stop() {
@@ -849,6 +881,8 @@ function cleanup() {
   // Codex iter 0 CQ1 fix: cleanup() releases resources and re-enables UI BUT does NOT touch
   // status. Callers (ws.onclose, error paths) set status themselves so error labels survive
   // the cleanup pass. F0 used to reset status to "Hazır" here, which masked actionable errors.
+  // Stop any queued bot audio before tearing down the context (must run while audioCtx is alive).
+  flushPlayback();
   if (state.micStream) {
     state.micStream.getTracks().forEach((t) => t.stop());
     state.micStream = null;
