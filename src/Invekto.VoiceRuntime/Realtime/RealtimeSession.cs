@@ -41,13 +41,21 @@ public sealed class RealtimeSessionFactory
             "semantic_vad" => new TurnDetectionConfig(
                 Type: "semantic_vad",
                 Eagerness: eagerness ?? "medium",
-                CreateResponse: true),
+                CreateResponse: true,
+                InterruptResponse: true),
+            // server_vad params are config-driven (appsettings OpenAI:TurnDetection:*) so they can be
+            // tuned without a rebuild. Echo-safe defaults: with the F0 browser tester on a SPEAKER (no
+            // headset) the bot's own audio bleeds into the mic, so Threshold defaults to 0.6 (vs 0.5)
+            // to keep that bleed from tripping a false barge-in while still cutting in on real speech.
+            // InterruptResponse=true lets OpenAI truncate the in-flight response the instant the user
+            // starts talking — the server half of barge-in (browser flushPlayback is the client half).
             _ /* "server_vad" */ => new TurnDetectionConfig(
                 Type: "server_vad",
-                Threshold: 0.5,
-                PrefixPaddingMs: 300,
-                SilenceDurationMs: 500,
-                CreateResponse: true)
+                Threshold: config.GetValue<double>("OpenAI:TurnDetection:Threshold", 0.6),
+                PrefixPaddingMs: config.GetValue<int>("OpenAI:TurnDetection:PrefixPaddingMs", 300),
+                SilenceDurationMs: config.GetValue<int>("OpenAI:TurnDetection:SilenceDurationMs", 500),
+                CreateResponse: true,
+                InterruptResponse: config.GetValue<bool>("OpenAI:TurnDetection:InterruptResponse", true))
         };
 
         // GA migration: voice/format/transcription/turn_detection all live under session.audio.{input,output}

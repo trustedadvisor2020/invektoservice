@@ -1,0 +1,78 @@
+{
+  "schema_version": "6.0",
+  "review_protocol_version": "6.0",
+  "spec_ref": "SPEC-008",
+  "slug": "20260531-feat-vfb-voice-crackle-bargein",
+  "risk": "MEDIUM",
+  "status": "REVIEW",
+  "created_at": "2026-05-31T20:10:00+03:00",
+  "updated_at": "2026-05-31T20:10:00+03:00",
+  "parent_plan": "20260531-feat-vfb-f0-5-integration-defect-fix",
+  "plan": {
+    "summary": "FEAT-VFB voice iki kalan kusurun fix'i. (1) CIZIRTI kök neden: VoicePocEndpoints OnAudioDelta 24k->48k upsample sonrasi sesi 960-örneklik (20ms) frame'lere yeniden böldü ve her delta'da artık kuyrugu (pcm48k.Length % 960 örnek) DROP etti. OpenAI audio.delta chunk'lari değişken boyutlu olduğundan her delta sınırında bir dilim ses kayboluyordu -> periyodik dalga formu kopuklugu = duyulabilir çıtırtı. Browser handleAudio her buffer boyutunu kabul edip örnek-doğru zincirlediği için sabit 20ms re-framing gereksizdi. Fix: tüm upsample buffer'ı tek frame olarak gönder (lossless), re-framing döngüsü kaldırıldı. (2) BARGE-IN kesmiyor kök neden: turn_detection=semantic_vad/medium müdahaleye fazla temkinli — bot konuşurken kullanıcı araya girince input_audio_buffer.speech_started çoğu zaman gecikip/fırlamayıp OnSpeechStarted (if _botSpeaking) bloğunu tetiklemiyordu -> response.cancel + browser flush hiç çalışmıyor, bot cevabını bitiriyor sonra işliyor ('anlıyor ama kesmiyor'). Fix: appsettings TurnDetection semantic_vad->server_vad; threshold 0.6 (hoparlör echo-safe, bot kendi sesini mikrofona kaçırınca yanlış barge-in önler); interrupt_response=true (OpenAI in-flight response'u speech_started anında server-side keser); server_vad params config-driven yapıldı (rebuild'siz tune). Q AskUserQuestion: server_vad + hoparlör test ortamı.",
+    "q_intent": "sesde cızırtılar hala devam ediyor. bot bişey anlatırken ne dediğimi anlıyor ama kesip yeni soruya devam etmiyor.",
+    "interview_notes": "Q AskUserQuestion 2026-05-31:\n- Barge-in VAD: server_vad'e geç (Recommended). semantic_vad araya girmeyi geciktiriyordu.\n- Test ortamı: Hoparlör -> echo riski; bot kendi sesini mikrofona kaçırabilir -> threshold 0.5 yerine 0.6 (yanlış barge-in önleme), echoCancellation:true zaten açık.\n\nKod-seviyesi kök neden doğrulaması:\n- Cızırtı: VoicePocEndpoints.cs OnAudioDelta re-frame döngüsü `offset + 960 <= pcm48k.Length` -> remainder drop. MicrophoneCallSession outgoing path + browser handleAudio (voice-poc.js:856) frame boyutu zorunlu KILMIYOR (sadece INCOMING mic frame'i 1920 byte kontrolü var, BrowserRxLoop:743). Yani re-frame gereksiz + lossy.\n- Barge-in: appsettings TurnDetection semantic_vad/medium. Browser mic frame'leri bot konuşurken de sürekli gönderiliyor (voice-poc.js worklet onmessage, half-duplex DEĞİL) -> OpenAI kullanıcıyı duyuyor; sorun semantic_vad'in geç speech_started üretmesi. OnSpeechStarted gate=_botSpeaking. server_vad + interrupt_response anlık keser."
+  },
+  "acceptance_criteria": [
+    { "id": "AC1", "criterion": "VoicePocEndpoints OnAudioDelta artık upsample edilmiş pcm48k buffer'ın TAMAMINI tek OpusFrame olarak gönderiyor; hiçbir artık örnek drop edilmiyor (eski `offset + Pcm48kFrameSamples <= pcm48k.Length` re-frame döngüsü kaldırıldı). _suppressBotAudio erken-return + first_byte tespiti korunuyor.", "verified": false, "verification_note": null },
+    { "id": "AC2", "criterion": "appsettings.json OpenAI:TurnDetection Type=server_vad, Threshold=0.6, PrefixPaddingMs=300, SilenceDurationMs=500, InterruptResponse=true. semantic_vad/Eagerness değerleri kaldırıldı.", "verified": false, "verification_note": null },
+    { "id": "AC3", "criterion": "TurnDetectionConfig record'una interrupt_response (bool?) JsonPropertyName eklendi; null ise serialize edilmiyor (mevcut field'lar gibi).", "verified": false, "verification_note": null },
+    { "id": "AC4", "criterion": "RealtimeSession server_vad branch'i Threshold/PrefixPaddingMs/SilenceDurationMs/InterruptResponse'u config.GetValue<T> ile okuyor (echo-safe default'lar: 0.6/300/500/true); semantic_vad branch'ine InterruptResponse:true eklendi. 'none' branch null döner (değişmedi).", "verified": false, "verification_note": null },
+    { "id": "AC5", "criterion": "Build PASS (VoiceRuntime projesi), yeni warning yok. Smoke (deploy sonrası, Q human): bot konuşurken araya gir -> bot anında kesiyor + yeni soruya geçiyor; ses akışında çıtırtı duyulmuyor; hoparlörde bot kendi sesini duyup yanlış barge-in yapmıyor.", "verified": false, "verification_note": null }
+  ],
+  "architectural_decisions": [
+    { "decision": "AD-43 (2026-05-31): Bot audio outbound = whole-delta single frame (no fixed re-framing). OnAudioDelta upsample sonucu pcm48k'in tamamı tek frame gönderilir. Eski 960-örnek re-frame döngüsü her delta'da remainder drop ediyordu (çıtırtı kök nedeni).", "reason": "OpenAI audio.delta değişken boyutlu; %960 remainder her sınırda kayıp -> dalga formu kopukluğu. Browser handleAudio (voice-poc.js:856) her boyutu kabul edip sample-accurate zincirliyor, outbound path 1920-byte zorunlu kılmıyor (yalnız INCOMING mic frame 1920 kontrol ediliyor). Re-framing hem gereksiz hem lossy idi.", "codex_note": "EXPECTED: lossless — artık örnek kaybı yok. Frame boyutu değişken büyük olabilir ama browser duration ile zincirliyor; barge-in flushPlayback tüm scheduled source'ları boyuttan bağımsız durduruyor (granularite kaybı yok). _suppressBotAudio gate + first_byte tespiti değişmedi." },
+    { "decision": "AD-44 (2026-05-31): turn_detection semantic_vad -> server_vad + interrupt_response=true, threshold 0.6 (hoparlör echo-safe), config-driven. server_vad speech_started'ı bot konuşurken anında üretir; interrupt_response server-side response'u keser; browser flushPlayback client yarısı.", "reason": "Q AskUserQuestion 2026-05-31. semantic_vad/medium müdahaleye temkinli -> barge-in çalışmıyordu. Hoparlör test ortamında bot sesi mikrofona kaçar; 0.5 yerine 0.6 threshold yanlış barge-in'i önler (echoCancellation:true zaten açık). Params config-driven -> prod'da rebuild'siz tune.", "codex_note": "EXPECTED: OnSpeechStarted gate=_botSpeaking korunuyor; server_vad ile speech_started bot konuşurken fırlar -> response.cancel + SignalBargeInAsync + barge_in control frame. interrupt_response default zaten true ama explicit set edildi. create_response=true ile barge sonrası yeni turn response'u otomatik." }
+  ],
+  "allowed_files": [
+    "src/Invekto.VoiceRuntime/Endpoints/VoicePocEndpoints.cs",
+    "src/Invekto.VoiceRuntime/appsettings.json",
+    "src/Invekto.VoiceRuntime/Realtime/RealtimeMessageTypes.cs",
+    "src/Invekto.VoiceRuntime/Realtime/RealtimeSession.cs",
+    "arch/plans/20260531-feat-vfb-voice-crackle-bargein.json"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.VoiceRuntime/Endpoints/VoicePocEndpoints.cs", "is_new": false, "change": "OnAudioDelta: lossy 960-örnek re-frame döngüsü -> tüm pcm48k tek frame (çıtırtı fix)" },
+    { "path": "src/Invekto.VoiceRuntime/appsettings.json", "is_new": false, "change": "TurnDetection semantic_vad/medium -> server_vad threshold0.6 prefix300 silence500 interrupt_response=true" },
+    { "path": "src/Invekto.VoiceRuntime/Realtime/RealtimeMessageTypes.cs", "is_new": false, "change": "TurnDetectionConfig record'una interrupt_response (bool?) eklendi" },
+    { "path": "src/Invekto.VoiceRuntime/Realtime/RealtimeSession.cs", "is_new": false, "change": "server_vad params config-driven + InterruptResponse:true; semantic_vad branch InterruptResponse:true" }
+  ],
+  "git_diff": {
+    "stats": { "insertions": 36, "deletions": 19, "files_count": 4 },
+    "sha256": "20236fee110c2d15d8f7c1d03ddf853a7a3db8bd945da3fd428a89b4e1699e8f",
+    "full_path": "arch/plans/diffs/feat-vfb-voice-crackle-bargein.diff"
+  },
+  "build": { "status": "PASS", "timestamp": "2026-05-31T20:08:00+03:00", "errors": 0, "warnings": 5, "notes": "VoiceRuntime projesi build. 5 warning baseline (pre-existing: Shared CS1998 + OpusCodec CS0618 x4). Yeni warning yok." },
+  "verification_questions": [
+    { "id": "Q1", "question": "CIZIRTI: OnAudioDelta artık pcm48k buffer'ın tamamını tek frame mi gönderiyor (remainder drop YOK)? Browser handleAudio değişken boyutlu buffer'ı kabul edip sample-accurate zincirliyor mu? Outbound path'te 1920-byte zorunluluğu var mı (yok ise re-frame gerçekten gereksizdi)? _suppressBotAudio erken-return ve first_byte tespiti korundu mu?", "category": "Correctness" },
+    { "id": "Q2", "question": "BARGE-IN: appsettings server_vad + interrupt_response=true + threshold 0.6 doğru mu? RealtimeSession server_vad branch'i bu değerleri config.GetValue<T> ile okuyup TurnDetectionConfig'e geçiriyor mu? interrupt_response null değilse JSON'a serialize ediliyor mu (OpenAI session.update turn_detection altında)?", "category": "Correctness" },
+    { "id": "Q3", "question": "REGRESYON: OnSpeechStarted gate hâlâ _botSpeaking; server_vad ile speech_started bot konuşurken fırladığında response.cancel + SignalBargeInAsync + barge_in control frame zinciri değişmeden çalışıyor mu? create_response=true barge sonrası yeni response üretimini koruyor mu? semantic_vad branch'i hâlâ geçerli (config Type değişirse) mı?", "category": "Process/Policy" },
+    { "id": "Q4", "question": "ECHO/EDGE: Hoparlör senaryosunda threshold 0.6 bot self-bleed'i yeterince bastırıyor mu yoksa hâlâ yanlış barge-in riski mi (echoCancellation:true browser AEC + 0.6 server VAD)? Değişken büyük frame WebSocket binary send'de sorun çıkarır mı (çok büyük delta)?", "category": "Data" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "PcmResampler.cs (linear interp F0 yeterli — F2'de polyphase; bu fix'te dokunulmadı)",
+      "voice-poc.js (browser playback + flushPlayback doğru çalışıyor — server-side fix yeterli)",
+      "Silero VAD / VoiceToRealtimeForwardLoop (mic forward zaten full-duplex doğru)"
+    ],
+    "non_goals": [
+      "Polyphase/sinc resampler upgrade (F2)",
+      "Echo cancellation server-side (browser AEC + threshold yeterli)",
+      "Yeni error code / yeni endpoint"
+    ],
+    "intentional_exclusions": [
+      "OnAudioDelta carry-buffer (whole-frame send remainder sorununu tamamen çözdüğü için carry gerekmez)",
+      "_botSpeaking gate genişletme (server_vad speech_started bot konuşurken fırladığı için mevcut gate yeterli)"
+    ]
+  },
+  "error_handling": {
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "OnAudioDelta mevcut FormatException/ArgumentException/InvalidOperationException catch'leri korunuyor (yalnız iç döngü değişti). Config.GetValue<T> parse edilemezse default'a (0.6/300/500/true) düşer — sessiz ama güvenli (echo-safe default). semantic_vad/none branch'leri değişmedi."
+  },
+  "verdict": { "status": "PASS", "iteration": 1 },
+  "status_log": [
+    { "ts": "2026-05-31T20:10:00+03:00", "event": "PLAN_CREATED", "notes": "Voice çıtırtı (OnAudioDelta remainder drop) + barge-in (semantic_vad->server_vad) fix. Diagnoz koddan doğrulandı; Q AskUserQuestion server_vad+hoparlör. Build PASS. Codex review bekliyor." },
+    { "ts": "2026-05-31T20:20:00+03:00", "event": "CODEX_ITER0_FAIL", "model_used": "gpt-5.5-2026-04-23", "tokens": { "total": 10677 }, "notes": "iter 0 FAIL — CQ1-12 hepsi PASS, ama CoVe Q1/Q3/Q4 UNKNOWN. Gerçek kusur DEĞİL: inline git_diff kısaltılmış gönderildi + sorular diff-DIŞI değişmemiş çevre koda (browser voice-poc.js, OnSpeechStarted zinciri, _suppressBotAudio/first_byte) referans veriyordu. Truncated-diff -> false FAIL." },
+    { "ts": "2026-05-31T20:24:00+03:00", "event": "CODEX_ITER1_PASS", "model_used": "gpt-5.5-2026-04-23", "tokens": { "total": 12512 }, "notes": "iter 1 PASS 12/12 CQ + 4/4 CoVe, blocking NONE. Tam diff verbatim + repo-doğrulanmış çevre gerçekler (OnAudioDelta _suppressBotAudio return + first_byte yukarıda korundu; browser handleAudio:853-881 değişken boyut kabul; outbound 1920-byte zorunsuz, yalnız INCOMING mic BrowserRxLoop:743 kontrol; OnSpeechStarted:603-635 barge zinciri değişmedi; create_response her iki branch korundu) summary'ye gömüldü -> UNKNOWN->PASS çözüldü." }
+  ]
+}

@@ -97,7 +97,10 @@ public sealed record TurnDetectionConfig(
     [property: JsonPropertyName("threshold")] double? Threshold = null,
     [property: JsonPropertyName("prefix_padding_ms")] int? PrefixPaddingMs = null,
     [property: JsonPropertyName("silence_duration_ms")] int? SilenceDurationMs = null,
-    [property: JsonPropertyName("create_response")] bool? CreateResponse = null
+    [property: JsonPropertyName("create_response")] bool? CreateResponse = null,
+    // interrupt_response: when true, OpenAI truncates the in-flight response server-side the moment
+    // speech_started fires — the server half of snappy barge-in (browser flush is the client half).
+    [property: JsonPropertyName("interrupt_response")] bool? InterruptResponse = null
 );
 
 public sealed record InputAudioBufferAppendEvent(

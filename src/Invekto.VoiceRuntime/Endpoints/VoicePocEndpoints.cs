@@ -651,19 +651,22 @@ public static class VoicePocEndpoints
                     var pcm24k = PcmResampler.Base64ToPcm(delta.DeltaBase64);
                     var pcm48k = PcmResampler.Upsample24To48(pcm24k);
 
-                    // Re-frame to 20ms (960 samples = 1920 bytes PCM16 LE) — Realtime may send variable-size chunks
-                    for (int offset = 0; offset + Pcm48kFrameSamples <= pcm48k.Length; offset += Pcm48kFrameSamples)
+                    // Emit the WHOLE upsampled delta as a single frame. The browser's handleAudio accepts
+                    // any buffer size and chains buffers sample-accurately, so fixed 20ms re-framing is
+                    // unnecessary here. The previous fixed-frame loop only sent COMPLETE 960-sample frames
+                    // and DROPPED the trailing remainder (pcm48k.Length % 960 samples) on every delta —
+                    // OpenAI sends variable-size deltas, so that lost a slice of audio at each delta
+                    // boundary, producing the periodic waveform discontinuity heard as crackling. Sending
+                    // the full buffer is lossless and removes that artifact.
+                    var bytes = new byte[pcm48k.Length * 2];
+                    for (int i = 0; i < pcm48k.Length; i++)
                     {
-                        var bytes = new byte[Pcm48kFrameBytes];
-                        for (int i = 0; i < Pcm48kFrameSamples; i++)
-                        {
-                            var s = pcm48k[offset + i];
-                            bytes[i * 2] = (byte)(s & 0xFF);
-                            bytes[i * 2 + 1] = (byte)((s >> 8) & 0xFF);
-                        }
-                        var frame = new OpusFrame(bytes, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), Interlocked.Increment(ref _seq));
-                        _ = _session.SendOutgoingFrameAsync(frame, CancellationToken.None);
+                        var s = pcm48k[i];
+                        bytes[i * 2] = (byte)(s & 0xFF);
+                        bytes[i * 2 + 1] = (byte)((s >> 8) & 0xFF);
                     }
+                    var frame = new OpusFrame(bytes, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), Interlocked.Increment(ref _seq));
+                    _ = _session.SendOutgoingFrameAsync(frame, CancellationToken.None);
                 }
                 catch (FormatException ex)
                 {
