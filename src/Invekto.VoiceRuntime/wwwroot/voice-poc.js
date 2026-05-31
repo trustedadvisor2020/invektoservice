@@ -744,11 +744,29 @@ function handleControl(msg) {
     case 'ready':
       logEvent(`Session hazır: ${msg.session_id}`);
       break;
-    case 'transcript_user':
-      logTranscript(msg.text, 'user');
+    case 'transcript_user': {
+      // Chronological ordering fix: Whisper transcription of the user's speech arrives a beat
+      // AFTER the model has already started its audio response (server VAD reacts to the audio
+      // immediately; the STT text lags). Appending naively renders the user line BELOW the bot
+      // reply it triggered. So if a bot bubble is currently streaming (the reply to THIS very
+      // utterance, i.e. last .turn-bot is not yet marked final), insert the user line BEFORE it.
+      const userLine = document.createElement('div');
+      userLine.className = 'turn-user';
+      userLine.textContent = msg.text;
+      const streamingBot = els.transcriptLog.querySelector('.turn-bot:last-child');
+      if (streamingBot && !streamingBot.dataset.final) {
+        // insertBefore keeps the bot bubble as :last-child, so transcript_bot deltas keep
+        // updating it correctly.
+        els.transcriptLog.insertBefore(userLine, streamingBot);
+      } else {
+        els.transcriptLog.appendChild(userLine);
+      }
+      trimLog(els.transcriptLog);
+      els.transcriptLog.scrollTop = els.transcriptLog.scrollHeight;
       state.turns += 1;
       els.turnCount.textContent = state.turns;
       break;
+    }
     case 'transcript_bot': {
       state.currentBotTranscript += msg.delta;
       const lastLine = els.transcriptLog.querySelector('.turn-bot:last-child');
