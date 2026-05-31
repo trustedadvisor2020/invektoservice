@@ -7,7 +7,25 @@
 
 ## Last Update
 
-- **Date:** 2026-05-31 16:15 — **Session: Voice Test F0.5 tenant+flow dropdown — 3 entegrasyon defekti ÇÖZÜLDÜ + prod F0→F0.5 LIVE (Codex iter 1 PASS).** Q "voice test'e tenant ve flow ekle" dedi. Önceki session'da ERTELENEN F0.5 dropdown işi. Interview (AskUserQuestion 3 karar): voice-jwt admin mintle + host super.invekto.com + kod+Codex+deploy.
+- **Date:** 2026-05-31 18:35 — **Session devamı: Voice Test F0.5 — 5050 flow+KB hazır + ses motoru 6 ardışık fix (hepsi Codex PASS + prod deploy) + F0.5→F2 regression baseline dokümante.** Q F0.5 deploy sonrası canlı test edip ardışık sorunlar bildirdi; her biri fix+Codex+VoiceRuntime deploy ile çözüldü.
+
+  **5050 (TestEticaret) hazırlık:** Yeni flow `flow_id=31 "Sesli Asistan - Bilgi Bankası"` (impersonate→Backend flow-proxy create; aktive edilemedi — boş v2 config 422, ama pasif-seçilebilir olduğu için sorun değil). KB zaten hazır: `invekto.com` website indexli, **58 chunk embed'li** (`chunks` tablosu; faqs=3'ten ayrı). Knowledge `/search` (port 7104) gerçek çağrıyla doğrulandı — invekto.com içeriği dönüyor. **Knowledge servisleri: 7104=Knowledge, 7108=Automation** (deploy tablosundaki 51xx YANLIŞ, gerçek 71xx).
+
+  **6 ardışık fix (hepsi commit + VoiceRuntime DLL+Shared pair deploy + /health OK):**
+  1. `dd274347` **Pasif akış seçilebilir** — renderFlowOptions `opt.disabled` kaldırıldı (Voice Test = canlıya almadan test; TestEticaret tüm akışları pasif). `[pasif]` etiketi görsel kaldı.
+  2. `78783b75` **Transcript kronolojik sıralama** ("bot sormadan cevap mı veriyor" — STT gecikmesi yanılsaması) + `/metrics/latency` butonu kaldırıldı. transcript_user, streaming bot bubble'ın ÖNÜNE insertBefore.
+  3. `6f980261` **RAG grounding ZORUNLU** (bot KB'ye bakmadan "envanter/stok" uydurdu — STT "Invekto"→"inventör"). InstructionsBuilder: bilgi içeren HER soruda cevaptan ÖNCE search_knowledge_base zorunlu, uydurma yasak. **Log kanıtı: araç session'a bağlıydı, model çağırmıyordu — prompt zayıftı.**
+  4. `3869420e` **Barge-in browser playback flush** — `state.playbackSources[]` + flushPlayback() (scheduled AudioBufferSourceNode'ları stop).
+  5. `2ee65f5f` **İnsan-gibi ses + barge-in stale-audio suppress** — PcmResampler zero-order-hold→**linear interpolation** (dijital/çıt-çıt kaynağı) + sunucu `_suppressBotAudio` (cancel sonrası OpenAI lingering audio drop, yalnızca OnResponseDone'da clear — Codex iter0 OnSpeechStopped race'i yakaladı) + browser PLAYBACK_LEAD_SEC=0.12 jitter buffer.
+  6. `cdf26563` **INV-VR-001 response-gate** — function-call sonrası response.create'i prior response bitene kadar beklet. RealtimeApiClient yeni `OnResponseCreated` + `_responseActive` + ToolExecutor gate (25ms poll, cap 2s).
+
+  **Ses seçici** `a6bde8af` — voiceSelect dropdown (cedar default + marin + 4) → handshake `?voice=X` → AllowedVoices(10) validation → sessionConfig.Audio.Output.Voice nested `with` override. Curated 6 ⊆ allowlist 10. (Codex iter0 LOW→MEDIUM + "mirror"→subset yorum, iter1 3-VQ policy, iter2 PASS.)
+
+  **F0.5→F2 regression baseline** `43a423f4` (Q "her müşteride olmasın diye ne yapacağız" → dokumante): spec S15 + lesson. **İlke: fix'ler motor-seviyesi (shared) → tüm tenant'lara otomatik; müşteri-başına tek değişken = bilgi bankası içeriği (onboarding). F0.5↔F2 farkı SADECE provider olmalı; barge-in+response-gate orchestration F2 öncesi provider-agnostik VoiceSessionEngine'e extract edilmeli (yoksa PBX fork'unda tekrar bug).**
+
+  **KALAN (Q smoke):** son ses-motoru fix'leri (RAG+barge+response-gate+ses seçici) hard-refresh sonrası canlı doğrulama. STT marka adını ("Invekto"→inventör) hâlâ yanlış duyuyor ama grounding telafi ediyor.
+
+- **PREV-Date:** 2026-05-31 16:15 — **Voice Test F0.5 tenant+flow dropdown — 3 entegrasyon defekti ÇÖZÜLDÜ + prod F0→F0.5 LIVE (Codex iter 1 PASS).** Q "voice test'e tenant ve flow ekle" dedi. Önceki session'da ERTELENEN F0.5 dropdown işi. Interview (AskUserQuestion 3 karar): voice-jwt admin mintle + host super.invekto.com + kod+Codex+deploy.
 
   **3 defekt fix (commit `176a0063`, plan `20260531-feat-vfb-f0-5-integration-defect-fix`):**
   1. **AUTH #3:** `/ops/voice-jwt` `GenerateServiceToken(0)` → `GenerateToken(0,'admin','voice_test',30min)`. `/api/ops/tenants` ValidateOpsAuth Bearer `role==admin && tenant==0` ister (D027) → service token reddediliyordu. WS handshake role-agnostic (VoicePocEndpoints.cs:116 yalnızca tenant==0) → aynı admin token hem dropdown fetch hem WS'i besler, D027 dokunulmadı.

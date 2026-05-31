@@ -26,6 +26,7 @@ GET /ws/voice/microphone?token=<sysadmin JWT>&tenant_id=<target>&flow_id=<flow>&
 | `tenant_id` | F0.5 mode       | **Presence-based mode switch** — once the query key is present (even empty), strict F0.5 validation applies. Positive integer; `0` rejected (self-impersonation) with `INV-VR-013`; non-int with `INV-VR-011`. |
 | `flow_id`   | F0.5 mode       | Required whenever `tenant_id` is present (presence-based). Positive integer; missing/invalid yields `INV-VR-012`. |
 | `locale`    | optional        | BCP-47, default `tr-TR`. Used to set Realtime voice instructions language. |
+| `voice`     | optional        | OpenAI Realtime voice id (voice picker, 2026-05-31). Server validates against an allowlist (`alloy, ash, ballad, coral, echo, sage, shimmer, verse, marin, cedar`) and overrides `session.audio.output.voice`; unknown/empty keeps the appsettings default. F2 will source this from `tenant_settings.voice_*` instead of the query. |
 
 ### F0.5 Lifecycle (Chunks A + B, server-side, before audio loops start)
 
