@@ -95,6 +95,9 @@ builder.Services.AddHttpClient("Knowledge", c =>
 builder.Services.AddTransient<Invekto.VoiceRuntime.Clients.TenantInfoClient>();
 builder.Services.AddTransient<Invekto.VoiceRuntime.Clients.FlowInfoClient>();
 builder.Services.AddTransient<Invekto.VoiceRuntime.Clients.KnowledgeSearchClient>();
+// Chunk B2 (AD-22/AD-53): voice tenant_profile fetch. Reuses the "Backend" named HttpClient +
+// admin-scope JWT (same pattern as TenantInfoClient). Graceful-degrade on failure (INV-VR-024).
+builder.Services.AddTransient<Invekto.VoiceRuntime.Clients.VoiceProfileClient>();
 
 // ── Function tools (Chunk C AD-23/29/30/31) ───────────────────────
 // SearchKnowledgeBaseTool wraps KnowledgeSearchClient; transient so a tool execution gets a fresh

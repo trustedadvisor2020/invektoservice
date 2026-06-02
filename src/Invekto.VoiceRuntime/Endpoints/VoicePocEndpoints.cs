@@ -4,10 +4,12 @@ using System.Text.Json;
 using Invekto.Shared.Auth;
 using Invekto.Shared.Constants;
 using Invekto.Shared.Contracts.Voice;
+using Invekto.Shared.DTOs.Voice;
 using Invekto.Shared.Logging;
 using Invekto.VoiceRuntime.Audio;
 using Invekto.VoiceRuntime.Clients;
 using Invekto.VoiceRuntime.Metrics;
+using Invekto.VoiceRuntime.Profile;
 using Invekto.VoiceRuntime.Providers;
 using Invekto.VoiceRuntime.Realtime;
 using Invekto.VoiceRuntime.Tools;
@@ -64,6 +66,7 @@ public static class VoicePocEndpoints
         JwtValidator jwt,
         TenantInfoClient tenantClient,
         FlowInfoClient flowClient,
+        VoiceProfileClient profileClient,
         SearchKnowledgeBaseTool searchKnowledgeBaseTool,
         IConfiguration config,
         IWebHostEnvironment env)
@@ -215,6 +218,7 @@ public static class VoicePocEndpoints
         // a fresh service-JWT-authenticated fetch so a tampered ?tenant_id cannot inject a
         // forged prompt. F0 legacy mode skips this (no impersonation context to validate).
         VoiceTestContext? voiceContext = null;
+        ResolvedVoiceProfile? resolvedProfile = null;
         var providerMetadata = new Dictionary<string, string>
         {
             ["flow_id"] = flowId.ToString(System.Globalization.CultureInfo.InvariantCulture),
@@ -250,6 +254,19 @@ public static class VoicePocEndpoints
             providerMetadata["sector"] = voiceContext.Sector;
             providerMetadata["flow_name"] = voiceContext.FlowName;
             logger.SystemInfo($"[VoicePoc/{sessionId}] F0.5 context built: tenant='{voiceContext.TenantName}'({voiceContext.Sector}) flow='{voiceContext.FlowName}'");
+
+            // Chunk B2 (AD-53/AD-55): voice profile fetch runs AFTER tenant/flow hard-fail validation
+            // succeeded — never fetch a profile for a session that already failed context. GRACEFUL:
+            // VoiceProfileClient returns null on any HTTP/JSON/auth/timeout failure (it logs the
+            // actionable WARN [INV-VR-024] itself) and Resolve(null) yields a generic profile, so the
+            // session never breaks. A caller-cancel (sessionCts fired) re-throws from GetAsync and is
+            // handled by the outer OperationCanceledException catch (normal WS teardown). Sequential
+            // single bounded await (HttpClient 5s timeout, no retry) — NOT added to the tenant/flow
+            // Task.WhenAll, whose failure must hard-fail the session.
+            var profileDto = await profileClient.GetAsync(targetTenantId, sessionCts.Token);
+            resolvedProfile = ResolvedVoiceProfile.Resolve(profileDto);
+            providerMetadata["business_type"] = resolvedProfile.BusinessType.ToString();
+            logger.SystemInfo($"[VoicePoc/{sessionId}] F0.5 voice profile resolved: business_type={resolvedProfile.BusinessType} (profile_fetched={(profileDto != null)})");
         }
 
         // F0.5 mode: VoiceCallDescriptor.TenantId = TARGET tenant (impersonation target). Caller is
@@ -280,7 +297,8 @@ public static class VoicePocEndpoints
         IReadOnlyDictionary<string, IVoiceTool>? tools = null;
         if (f05Mode && voiceContext != null)
         {
-            var instructions = InstructionsBuilder.Build(voiceContext);
+            // resolvedProfile is always set in the f05 block above (Resolve never returns null).
+            var instructions = InstructionsBuilder.Build(voiceContext, resolvedProfile ?? ResolvedVoiceProfile.Resolve(null));
             var toolDefinitions = new List<ToolDefinition>
             {
                 ToolDefinition.Function(

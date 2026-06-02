@@ -1,4 +1,6 @@
+using System.Text;
 using Invekto.Shared.Contracts.Voice;
+using Invekto.VoiceRuntime.Profile;
 
 namespace Invekto.VoiceRuntime.Tools;
 
@@ -57,14 +59,19 @@ LEAD TOPLAMA: Musteri teklif, yillik abonelik, demo, geri donus veya detay ister
 NIHAI TEST: Konusmadan once iki seyi kontrol et. (1) UZUNLUK: '2-3 cumleyi astim mi?' — astiysan en onemli kismi birak, gerisini kes ve 'isterseniz detaylandirayim' de. (2) DOGALLIK: 'Her cumleyi gercek bir satis temsilcisi telefonda soylese dogal durur mu?' — hayirsa sadelestir. Turkce, kisa, dogal ve sicak konus.";
 
     /// <summary>
-    /// Renders the Turkish system prompt for the impersonated tenant + flow.
-    /// Output is deterministic: same context → same string (caller can log + diff).
+    /// Renders the Turkish system prompt for the impersonated tenant + flow + resolved voice profile.
+    /// Output is deterministic: same (context, profile) → same string (caller can log + diff).
+    ///
+    /// FEAT-VFB F-VR-B Chunk B2: the <paramref name="profile"/> (sector adapter + resolved capability
+    /// flags + tenant tone/goals) drives a dynamic SEKTOR KATMANI appended AFTER the static Persona.
+    /// The Persona const is preserved byte-for-byte (Q's live-tuned core); the sector layer only adds
+    /// per-business vocabulary, sector-banned words, extra lead fields, and capability-driven steering.
     /// </summary>
-    public static string Build(VoiceTestContext ctx)
+    public static string Build(VoiceTestContext ctx, ResolvedVoiceProfile profile)
     {
         var tenantName = Sanitize(ctx.TenantName, FallbackTenantName);
         var flowName = Sanitize(ctx.FlowName, FallbackFlowName);
-        var sectorClause = BuildSectorClause(ctx.Sector);
+        var adapter = profile.Adapter;
 
         // Two layers, both mandatory:
         // (1) RAG GROUNDING (factual accuracy): force a search_knowledge_base call before ANY
@@ -74,16 +81,61 @@ NIHAI TEST: Konusmadan once iki seyi kontrol et. (1) UZUNLUK: '2-3 cumleyi astim
         //     spoken — like a real human rep on the phone, never leaking internal mechanics
         //     ("bilgi bankasi", "sistemde", "net bilgi yok"), facts stated directly, missing fixed
         //     values framed as a tailored offer, lead capture done step-by-step, answers kept short.
+        // (3) SEKTOR KATMANI (B2): per-business vocabulary + capability steering, appended last.
         var header =
-            $"Sen {tenantName} firmasinin{sectorClause} telefonda musteriyle konusan profesyonel bir " +
-            $"satis/destek temsilcisisin. Aktif konusma akisi: {flowName}.\n\n";
-        return header + Persona;
+            $"Sen {tenantName} firmasinin ({adapter.BusinessDescriptor}) telefonda musteriyle konusan " +
+            $"profesyonel bir satis/destek temsilcisisin. Aktif konusma akisi: {flowName}.\n\n";
+        return header + Persona + BuildSectorLayer(profile);
     }
 
-    private static string BuildSectorClause(string? sector)
+    /// <summary>
+    /// Builds the dynamic per-tenant sector layer appended after the Persona. Every line is gated on
+    /// the resolved profile so two different business types produce visibly different prompts. The
+    /// KISALIK (brevity) rule in the Persona still wins — this block reminds the model of that.
+    /// </summary>
+    private static string BuildSectorLayer(ResolvedVoiceProfile profile)
     {
-        var trimmed = sector?.Trim();
-        return string.IsNullOrEmpty(trimmed) ? string.Empty : $" ({trimmed})";
+        var a = profile.Adapter;
+        var c = profile.Capabilities;
+        var sb = new StringBuilder();
+
+        sb.Append("\n\nSEKTOR KATMANI (bu firmaya ozel; yukaridaki kurallarin uzerine biner, KISALIK kurali yine en onde gelir):");
+        sb.Append($"\n- HITAP & DIL: {a.VocabularyGuidance} Karsindakine '{a.CustomerNoun}' olarak yaklas; bu firmada ana aksiyon '{a.ActionNoun}'.");
+
+        if (a.BannedWords.Count > 0)
+            sb.Append($"\n- BU SEKTORDE KULLANMA: {string.Join(", ", a.BannedWords)} gibi sektore uymayan kelimeleri kullanma.");
+
+        if (a.RequiredLeadFields.Count > 0)
+            sb.Append($"\n- LEAD BILGILERI: Ad-soyad ve telefon disinda sunlari da parca parca (tek tek) topla: {string.Join(", ", a.RequiredLeadFields)}.");
+
+        if (c.AppointmentEnabled)
+            sb.Append($"\n- RANDEVU: {a.ActionNoun} talebinde gerekli bilgileri (ad, telefon, ilgi alani, tercih edilen gun/saat) tek tek al.");
+        else
+            sb.Append($"\n- RANDEVU YOK: Telefonda kesin randevu/booking verme; ilgilenen {a.CustomerNoun} bilgilerini al, ekip uygun zaman icin donus yapsin de.");
+
+        if (c.OrderLookupEnabled)
+            sb.Append("\n- SIPARIS: Siparis durumu sorulursa tahmin etme; once siparis numarasi (yoksa telefon) iste, sonra kontrol edilip donulecegini soyle.");
+
+        if (c.SensitiveTopicsEnabled)
+            sb.Append($"\n- HASSAS KONULAR: Tibbi teshis, tedavi uygunlugu, garanti veya yan etki gibi konularda kesin sey soyleme, teshis koyma; {a.CustomerNoun} bilgilerini al, klinik ekibi degerlendirip donsun de.");
+
+        if (!c.PricingEnabled)
+            sb.Append("\n- FIYAT: Telefonda rakam verme; bilgileri al, ekip uygun teklifle donus yapsin de.");
+
+        if (!c.LeadCaptureEnabled)
+            sb.Append("\n- ILETISIM TOPLAMA YOK: Bu firmada iletisim bilgisi toplama; yalniz bilgilendir, gerekirse resmi kanala yonlendir.");
+
+        if (!c.HumanHandoffEnabled)
+            sb.Append("\n- INSANA AKTARMA YOK: Telefonu canli temsilciye aktarma; surec icinde kendin yardimci ol veya geri donus notu al.");
+
+        if (profile.BrandTone is not null)
+            sb.Append($"\n- MARKA TONU: Konusurken '{profile.BrandTone}' tonunu koru (yine kisa ve dogal).");
+        if (profile.PrimaryGoal is not null)
+            sb.Append($"\n- BIRINCIL HEDEF: Bu gorusmede oncelikli hedefin: {profile.PrimaryGoal}.");
+        if (profile.SecondaryGoal is not null)
+            sb.Append($"\n- IKINCIL HEDEF: {profile.SecondaryGoal}.");
+
+        return sb.ToString();
     }
 
     private static string Sanitize(string? value, string fallback)

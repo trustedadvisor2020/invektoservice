@@ -1648,6 +1648,12 @@ errors:
     description: Realtime model emitted response.function_call_arguments.done with a function name not registered in the session.update.tools[] array (typo, prompt drift, or model hallucination). Aksiyon - ToolExecutor returns structured error JSON `{error:"unknown_tool", message:"..."}` via conversation.item.create function_call_output → response.create → session continues + jsonl WARN. WS session is NOT terminated (single bad tool call is non-fatal).
     user_message: Bu sırada içsel bir hata oluştu; lütfen sorunuzu farklı şekilde tekrar sorun.
 
+  # NOTE: "reserved INV-VR-011..040 F2" (header above) is stale — the F-VR multi-tenant phases
+  # consumed INV-VR-011..024. F2 SIP layer will allocate from the next free code.
+  - code: INV-VR-024
+    description: "F-VR-B Chunk B2: VoiceProfileClient could not fetch the tenant voice profile from Backend GET /api/ops/tenants/{id}/voice-profile (HTTP/network error, non-2xx status, JSON parse failure, admin-JWT mint failure, or HttpClient timeout). Aksiyon - NON-FATAL: VoiceProfileClient logs a WARN with actionable fields (tenant_id + endpoint + HTTP status + failure category) + returns null → ResolvedVoiceProfile.Resolve(null) yields a generic business_type profile → the voice session continues with the generic prompt (WS is NOT closed). A caller/session cancellation (sessionCts fired) is RE-THROWN, not degraded, so WS teardown is not masked. Backend already synthesizes a generic row (200) for unprovisioned tenants, so this code fires only on a real transport/parse/auth failure."
+    user_message: ""  # operator-facing WARN only — caller hears the generic prompt, no error surfaced
+
   # ----- Browser-side (voice-poc.js) diagnostic codes — F0.5 Chunk D 2026-05-26 -----
   # DISPLAY-ONLY codes surfaced in the Voice PoC browser console, event log, and toast UI.
   # NOT authoritative server codes — the server still returns its own INV-VR-* response when

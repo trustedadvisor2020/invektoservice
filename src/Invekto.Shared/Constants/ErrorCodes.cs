@@ -632,6 +632,7 @@ public static class ErrorCodes
     public const string VoiceRuntimeTenantNotFound = "INV-VR-021";            // Backend /api/ops/tenants 200 OK ama target_tenant_id listede yok (silinmis/inaktif)
     public const string VoiceRuntimeFlowNotFound = "INV-VR-022";              // Automation /api/v1/flows/{tid}/{fid} 404 (flow tenant'ta yok)
     public const string VoiceRuntimeUnknownToolName = "INV-VR-023";           // Realtime model emitted function_call with unregistered name (e.g. typo, prompt drift) — structured error JSON returned, session continues
+    public const string VoiceRuntimeVoiceProfileFetchDegraded = "INV-VR-024"; // F-VR-B B2: Backend GET /api/ops/tenants/{id}/voice-profile HTTP/JSON/auth/timeout fail — non-fatal WARN, generic business_type degrade, WS stays open (caller-cancel re-thrown, not degraded)
 
     // Hangfire Job Infrastructure (INV-JOB-xxx) -- G7
     public const string JobStorageConnectionFailed = "INV-JOB-001";   // Hangfire PG storage connection failed

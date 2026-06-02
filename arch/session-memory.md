@@ -7,7 +7,21 @@
 
 ## Last Update
 
-- **Date:** 2026-06-01 03:35 — **Session: Voice F-VR-B Chunk B1 — voice_tenant_profile DATA+CONTRACT katmanı (Codex iter2 PASS, commit `47cf8797`).** Q continuation prompt'tan başladı → "F-VR-B multi-tenant runtime" seçti (AskUserQuestion). Interview (3 karar): (1) per-tenant DB tablosu + override ŞİMDİ, (2) adapter seti spec §4 + hair_transplant (6 adapter), (3) goal + brand_tone dahil.
+- **Date:** 2026-06-02 21:25 — **Session: Voice F-VR-B Chunk B2 — VoiceRuntime tüketim/prompt katmanı (Codex iter1 PASS).** Q "öncelik 1'i auto ile başla" → `/auto`. Interview 8 karar (2 batch, hepsi önerilen): Persona korunur+sektör katmanı biner / VoiceProfileClient fail→generic graceful degrade+WARN INV-VR-024 / scope prompt-only (tool/state/qa_validator YOK, F-VR-C/D) / 6 adapter + service_business+education+real_estate→generic alias / capability matris onaylandı / adapter 4-bileşen (kelime+yasak+lead+capability) / AC=build+Codex+2-sektör diff / deploy Phase 6.
+
+  **Deliverables (10 dosya, 486 ins / 11 del, B2):** YENİ `Profile/BusinessType.cs` (enum 9 + Parse unknown→Generic), `Profile/CapabilityDefaults.cs` (CapabilityFlags + For() 9-satır Q-matris), `Profile/SectorAdapter.cs` (record + registry 9 key→6 instance, 3 alias→Generic; dil/yasak/lead), `Profile/ResolvedVoiceProfile.cs` (Resolve: dto.flag ?? default + sanitized brand_tone/goals; null→Generic graceful), `Clients/VoiceProfileClient.cs` (admin-JWT TenantInfoClient pattern, graceful-degrade). EDIT `Tools/InstructionsBuilder.cs` (Persona const BYTE-BYTE korundu, Build 2-arg, yeni BuildSectorLayer dinamik SEKTÖR KATMANI), `Endpoints/VoicePocEndpoints.cs` (VoiceProfileClient DI + f05 profil fetch tenant/flow başarı SONRASI sequential), `Program.cs` (DI), Shared `ErrorCodes.cs` (INV-VR-024 additive), `arch/errors.md`.
+
+  **Mimari (AD-51..56):** capability defaults (9 satır, business_type başına) ile dil adapter (6, 3 alias→generic) AYRI lookup — education/real_estate dil=generic ama appointment=T (tek objede paylaşılamaz). VoiceTestContext (Shared) DEĞİŞMEDİ — ResolvedVoiceProfile (VoiceRuntime-internal) Build'e 2. arg geçer (Shared yalnız INV-VR-024 const aldı, izolasyon temiz). Profil fetch graceful-degrade (fail→generic, caller-cancel re-throw). F0 legacy path Build çağırmaz (f05Mode-only) → F0 regresyonu YOK.
+
+  **Codex trail:** Plan review (advisory) 4 bulgu ACCEPT → AD-55 (typed-catch taksonomisi + caller-cancel re-throw + INV-VR-024 actionable) + AD-56 (brand_tone/goal explicit tüketim). iter0 FAIL 6 blocking (hepsi VoiceProfileClient: ResponseHeadersRead+body-read timeout/http yakalanmıyor, null-body sessiz, catch(Exception)-when typed-catch ihlali) → tek dosya fix (ResponseContentRead 5s bound + 2 typed catch + null-body WARN) → iter1 PASS 12/12 CQ + 5/5 CoVe.
+
+  **⚠️ Migration 050 prod'a HÂLÂ uygulanmadı** — B1+B2 birlikte `/deploy` edilecek (Phase 6, ayrı Q onayı). Şu an commit edildi, deploy EDİLMEDİ.
+
+  **⚠️ Working tree'de B2-dışı uncommitted Backend/Dashboard değişiklikleri var** (Backend Program.cs +22, Layout.tsx −13, Dashboard SPA Vite rebuild 33 asset + index.html — önceki session'dan, B1 değil). Commit'e KARIŞTIRILMADI (git restore --staged ile unstage, working tree'de korundu). Sahibi belirlenip ayrı ele alınmalı.
+
+  **KALAN:** (a) **B1+B2 deploy** (migration 050 + VoiceRuntime DLL+Shared) + canlı smoke (dental tenant 'hasta/randevu' duyuyor mu); (b) F-VR-E eşik kalibrasyonu; (c) F-VR-C qa_validator / F-VR-D conversation_state.
+
+- **PREV-Date:** 2026-06-01 03:35 — **Session: Voice F-VR-B Chunk B1 — voice_tenant_profile DATA+CONTRACT katmanı (Codex iter2 PASS, commit `47cf8797`).** Q continuation prompt'tan başladı → "F-VR-B multi-tenant runtime" seçti (AskUserQuestion). Interview (3 karar): (1) per-tenant DB tablosu + override ŞİMDİ, (2) adapter seti spec §4 + hair_transplant (6 adapter), (3) goal + brand_tone dahil.
 
   **Mimari (kodbazından türetildi):** VoiceRuntime'in **DB erişimi YOK** (Shared-only csproj, Npgsql yok, Data klasörü yok) → `voice_tenant_profile` tablosu **Backend domaininde** (tenant_registry sibling), VoiceRuntime HTTP ile okur (TenantInfoClient pattern). Mikroservis izolasyonu korundu. İki katman: **tenant_profile** (DB, per-tenant, override edilebilir) = business_type + capability flags + goal/tone; **sector_adapter** (kod-versiyonlu, VoiceRuntime, B2) = vocabulary/intent/banned/required_fields.
 
