@@ -664,7 +664,23 @@ if (jwtValidator != null)
 }
 
 // Enable static file serving for Dashboard UI (wwwroot/)
-app.UseStaticFiles();
+// Cache policy: HTML shell (index.html) MUST always revalidate so a fresh deploy reaches
+// clients immediately; content-hashed assets keep their default caching. Without this the
+// browser heuristically caches index.html and serves stale asset hashes -> old Dashboard nav
+// keeps showing after deploy (INMA iframe especially). Q.
+var spaStaticOptions = new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        if (ctx.File.Name.EndsWith(".html", StringComparison.OrdinalIgnoreCase))
+        {
+            ctx.Context.Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
+            ctx.Context.Response.Headers["Pragma"] = "no-cache";
+            ctx.Context.Response.Headers["Expires"] = "0";
+        }
+    }
+};
+app.UseStaticFiles(spaStaticOptions);
 
 // Start log cleanup service
 _ = app.Services.GetRequiredService<LogCleanupService>();
@@ -9148,7 +9164,9 @@ Invekto.Backend.Endpoints.PhotoEndpoints.MapPhotoEndpoints(app);
 // ============================================
 
 // Unified SPA fallback: /app/* -> wwwroot/app/index.html
-app.MapFallbackToFile("app/{*path:nonfile}", "app/index.html");
+// Reuse spaStaticOptions so the fallback-served index.html also gets no-cache headers
+// (a bare "/app/" directory request lands here, not on UseStaticFiles). Q.
+app.MapFallbackToFile("app/{*path:nonfile}", "app/index.html", spaStaticOptions);
 
 // Root redirect -> /app/ (preserve query params for SSO token flow)
 app.MapGet("/", (HttpContext ctx) => Results.Redirect($"/app/{ctx.Request.QueryString}"));
