@@ -15,7 +15,7 @@
 
   **Codex trail:** Plan review (advisory) 4 bulgu ACCEPT → AD-55 (typed-catch taksonomisi + caller-cancel re-throw + INV-VR-024 actionable) + AD-56 (brand_tone/goal explicit tüketim). iter0 FAIL 6 blocking (hepsi VoiceProfileClient: ResponseHeadersRead+body-read timeout/http yakalanmıyor, null-body sessiz, catch(Exception)-when typed-catch ihlali) → tek dosya fix (ResponseContentRead 5s bound + 2 typed catch + null-body WARN) → iter1 PASS 12/12 CQ + 5/5 CoVe.
 
-  **⚠️ Migration 050 prod'a HÂLÂ uygulanmadı** — B1+B2 birlikte `/deploy` edilecek (Phase 6, ayrı Q onayı). Şu an commit edildi, deploy EDİLMEDİ.
+  **✅ DEPLOYED (2026-06-02 22:10, Q "deploy wrap"):** Migration 050 prod execute (10 tenant→10 profil, Dent=dental_clinic/5050=ecommerce/7 generic, INV-SEED-050 PASS) + VoiceRuntime pair-swap (VoiceRuntime.dll+Shared.dll, /health 200) + Backend (B1 endpoint hiç deploy edilmemişti → 404→401 mapped, /health 200). 10/10 servis HEALTHY. Backend dirty-tree (B2-dışı uncommitted) `git stash push -- src/Invekto.Backend/` → temiz build+deploy → `stash pop` ile geri yüklendi. Shared.dll yalnız Backend+VoiceRuntime'a swap (minimal blast radius). Backup: VoiceRuntime `.bak-20260602-b2`, Backend `.bak-20260602-b1b2`. **Tam sektör-prompt E2E (mic) = Q canlı test bekliyor** (dental tenant 'hasta/randevu' duyuyor mu).
 
   **⚠️ Working tree'de B2-dışı uncommitted Backend/Dashboard değişiklikleri var** (Backend Program.cs +22, Layout.tsx −13, Dashboard SPA Vite rebuild 33 asset + index.html — önceki session'dan, B1 değil). Commit'e KARIŞTIRILMADI (git restore --staged ile unstage, working tree'de korundu). Sahibi belirlenip ayrı ele alınmalı.
 
