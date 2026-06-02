@@ -7,7 +7,17 @@
 
 ## Last Update
 
-- **Date:** 2026-06-02 21:25 — **Session: Voice F-VR-B Chunk B2 — VoiceRuntime tüketim/prompt katmanı (Codex iter1 PASS).** Q "öncelik 1'i auto ile başla" → `/auto`. Interview 8 karar (2 batch, hepsi önerilen): Persona korunur+sektör katmanı biner / VoiceProfileClient fail→generic graceful degrade+WARN INV-VR-024 / scope prompt-only (tool/state/qa_validator YOK, F-VR-C/D) / 6 adapter + service_business+education+real_estate→generic alias / capability matris onaylandı / adapter 4-bileşen (kelime+yasak+lead+capability) / AC=build+Codex+2-sektör diff / deploy Phase 6.
+- **Date:** 2026-06-02 22:25 — **Session: Dashboard tenant nav temizliği + SPA index.html no-cache fix (Codex iter0 PASS, commit `f1d1dd41`).** Q "tenant'a hangi menüler görünüyor" → 6 menü kaldır → deploy → "INMA'da hâlâ görünüyor".
+
+  **İş:** (1) `Layout.tsx` `ALL_NAV_ITEMS`'tan 6 tenant nav linki silindi (Kampanyalar/Pazarlama/Yorum Kurtarma/Randevular/Analizler/Gelir Analizi) + kullanılmayan 6 lucide ikon import'u temizlendi. **Route + sayfa component'leri korundu** (sadece nav görünürlüğü). 'Pazarlama' section başlığı tek item'ı gidince kayboldu. (2) `Program.cs` — SPA shell `index.html` için `Cache-Control: no-cache, no-store, must-revalidate` (`UseStaticFiles` OnPrepareResponse + aynı `StaticFileOptions` `MapFallbackToFile` fallback'ine de geçirildi; çıplak `/app/` fallback'e düşer). Hash'li asset'ler default cache'te.
+
+  **Kök neden (INMA'da eski menü):** `index.html` `Cache-Control` header'sız serve ediliyordu → tarayıcı/INMA iframe heuristik cache → eski asset hash → eski nav. Public `ai.invekto.com/app/` aslında YENİ build veriyordu (doğrulandı: index-01zHsndc.js, "Kampanyalar" string'i bundle'da = false alarm, /campaigns sayfası duruyor). Sorun client cache'iydi.
+
+  **Deploy:** (a) SPA `wwwroot/app` zip→upload→extract (statik, restart yok); (b) Program.cs için Backend DLL hot-swap (publish→staging upload→nssm stop→copy→start, `.bak-20260602-cachefix` yedek). Doğrulandı: index.html `no-cache` LIVE + asset Cache-Control boş + InvektoBackend RUNNING + 10/10 sağlık ima ediliyor.
+
+  **Not:** Bu session, diğer session'ın B2 commit'i (67f160ec) ÜZERİNE çalıştı; sadece kendi 3 dosyamı stage'ledim (Layout.tsx, Program.cs, wwwroot/app), B2/VoiceRuntime işine dokunmadım. KALAN: Q INMA'da bir kez `Ctrl+Shift+R` (eski cache temizliği). İsteğe bağlı: route'lar hâlâ URL'den erişilebilir, tamamen kapatma Q kararı.
+
+- **PREV-Date:** 2026-06-02 21:25 — **Session: Voice F-VR-B Chunk B2 — VoiceRuntime tüketim/prompt katmanı (Codex iter1 PASS).** Q "öncelik 1'i auto ile başla" → `/auto`. Interview 8 karar (2 batch, hepsi önerilen): Persona korunur+sektör katmanı biner / VoiceProfileClient fail→generic graceful degrade+WARN INV-VR-024 / scope prompt-only (tool/state/qa_validator YOK, F-VR-C/D) / 6 adapter + service_business+education+real_estate→generic alias / capability matris onaylandı / adapter 4-bileşen (kelime+yasak+lead+capability) / AC=build+Codex+2-sektör diff / deploy Phase 6.
 
   **Deliverables (10 dosya, 486 ins / 11 del, B2):** YENİ `Profile/BusinessType.cs` (enum 9 + Parse unknown→Generic), `Profile/CapabilityDefaults.cs` (CapabilityFlags + For() 9-satır Q-matris), `Profile/SectorAdapter.cs` (record + registry 9 key→6 instance, 3 alias→Generic; dil/yasak/lead), `Profile/ResolvedVoiceProfile.cs` (Resolve: dto.flag ?? default + sanitized brand_tone/goals; null→Generic graceful), `Clients/VoiceProfileClient.cs` (admin-JWT TenantInfoClient pattern, graceful-degrade). EDIT `Tools/InstructionsBuilder.cs` (Persona const BYTE-BYTE korundu, Build 2-arg, yeni BuildSectorLayer dinamik SEKTÖR KATMANI), `Endpoints/VoicePocEndpoints.cs` (VoiceProfileClient DI + f05 profil fetch tenant/flow başarı SONRASI sequential), `Program.cs` (DI), Shared `ErrorCodes.cs` (INV-VR-024 additive), `arch/errors.md`.
 
@@ -17,7 +27,7 @@
 
   **✅ DEPLOYED (2026-06-02 22:10, Q "deploy wrap"):** Migration 050 prod execute (10 tenant→10 profil, Dent=dental_clinic/5050=ecommerce/7 generic, INV-SEED-050 PASS) + VoiceRuntime pair-swap (VoiceRuntime.dll+Shared.dll, /health 200) + Backend (B1 endpoint hiç deploy edilmemişti → 404→401 mapped, /health 200). 10/10 servis HEALTHY. Backend dirty-tree (B2-dışı uncommitted) `git stash push -- src/Invekto.Backend/` → temiz build+deploy → `stash pop` ile geri yüklendi. Shared.dll yalnız Backend+VoiceRuntime'a swap (minimal blast radius). Backup: VoiceRuntime `.bak-20260602-b2`, Backend `.bak-20260602-b1b2`. **Tam sektör-prompt E2E (mic) = Q canlı test bekliyor** (dental tenant 'hasta/randevu' duyuyor mu).
 
-  **⚠️ Working tree'de B2-dışı uncommitted Backend/Dashboard değişiklikleri var** (Backend Program.cs +22, Layout.tsx −13, Dashboard SPA Vite rebuild 33 asset + index.html — önceki session'dan, B1 değil). Commit'e KARIŞTIRILMADI (git restore --staged ile unstage, working tree'de korundu). Sahibi belirlenip ayrı ele alınmalı.
+  **✅ ÇÖZÜLDÜ (2026-06-02 22:25):** Bu uyarıdaki B2-dışı Backend/Dashboard değişiklikleri (Program.cs +22, Layout.tsx −13, SPA rebuild) bir sonraki session'ın işiydi (Dashboard nav temizliği + index.html no-cache) → commit `f1d1dd41` (Codex iter0 PASS) + deploy edildi. Bkz. en üstteki 2026-06-02 22:25 girdisi.
 
   **KALAN:** (a) **B1+B2 deploy** (migration 050 + VoiceRuntime DLL+Shared) + canlı smoke (dental tenant 'hasta/randevu' duyuyor mu); (b) F-VR-E eşik kalibrasyonu; (c) F-VR-C qa_validator / F-VR-D conversation_state.
 
