@@ -938,6 +938,29 @@ errors:
     description: Tenant has no WapCRM secret key configured; dynamic-fields proxy returns 422 so picker shows "configure INMA first"
     user_message: INMA entegrasyonu yapılandırılmamış. Yönetici tenant ayarlarından INMA bağlantısını eklemelidir.
 
+  # ── FEAT-OBI Phase 0 — Bulk Send (CSV source) ──
+  - code: INV-OB-039
+    description: Bulk send disabled — feature flag off OR tenant not in pilot allowlist
+    user_message: Toplu mesaj gönderimi bu hesap için aktif değil.
+  - code: INV-OB-040
+    description: Bulk send invalid payload — missing campaign_id/template_id, empty CSV, or unparseable rows
+    user_message: Toplu gönderim isteği geçersiz. Kampanya kimliği, şablon ve alıcı listesini kontrol edin.
+  - code: INV-OB-041
+    description: Bulk send cap exceeded — deduped valid recipient count over the pilot hard cap
+    user_message: Alıcı sayısı bu aşama için izin verilen üst sınırı aşıyor.
+  - code: INV-OB-042
+    description: Bulk send job not found — campaign_id has no preview job for this tenant
+    user_message: Bu kampanya için önizleme bulunamadı.
+  - code: INV-OB-043
+    description: Bulk send no valid recipients — zero sendable phones after normalize + dedup
+    user_message: Geçerli telefon numarası bulunamadı. Listeyi kontrol edin.
+  - code: INV-OB-044
+    description: Bulk send already confirmed — campaign already confirmed/sending (idempotent, no re-send)
+    user_message: Bu kampanya zaten gönderildi. Yeni bir kampanya kimliği kullanın.
+  - code: INV-OB-045
+    description: Bulk send dispatch failed — one or more chunk broadcasts failed to create
+    user_message: Gönderim sırasında bir hata oluştu. Durum sayfasından kontrol edin.
+
   # ── IG — Integrations (GR-3.4/3.6) ──
   - code: INV-IG-001
     description: Invalid account payload

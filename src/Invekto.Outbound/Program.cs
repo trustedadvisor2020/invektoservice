@@ -98,6 +98,15 @@ builder.Services.AddSingleton<BroadcastOrchestrator>();
 builder.Services.AddSingleton<TriggerProcessor>();
 builder.Services.AddSingleton<CampaignOrchestrator>();
 
+// ─── FEAT-OBI Phase 0: CSV bulk send (feature-flagged, allowlisted, hard-capped) ───
+var bulkSendOptions = new BulkSendOptions();
+builder.Configuration.GetSection(BulkSendOptions.SectionName).Bind(bulkSendOptions);
+builder.Services.AddSingleton(bulkSendOptions);
+builder.Services.AddSingleton<PhoneNormalizer>();
+builder.Services.AddSingleton<CsvRecipientParser>();
+builder.Services.AddSingleton<BulkSendRepository>();
+builder.Services.AddSingleton<BulkSendOrchestrator>();
+
 // Register MainAppCallbackClient with HttpClient
 var callbackSettings = new CallbackSettings
 {
@@ -272,6 +281,86 @@ app.MapGet("/api/v1/broadcast/{broadcastId}/status", async (
     }
 
     return Results.Ok(status);
+});
+
+// ============================================================
+// Bulk send endpoints (FEAT-OBI Phase 0 — CSV source, gated)
+// ============================================================
+
+app.MapPost("/api/v1/bulk-send/preview", async (
+    HttpContext ctx,
+    BulkSendOrchestrator orchestrator,
+    BulkSendPreviewRequest? request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    ctx.Request.Headers["X-Request-Id"] = requestId;
+
+    if (request == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.BulkSendInvalidPayload, "Request body is required", requestId), statusCode: 400);
+
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (response, errorCode, errorMessage) = await orchestrator.PreviewAsync(tenantContext.TenantId, request, ctx.RequestAborted);
+    if (response == null)
+    {
+        var statusCode = errorCode switch
+        {
+            ErrorCodes.BulkSendDisabled => 403,
+            ErrorCodes.OutboundTemplateNotFound => 404,
+            _ => 400
+        };
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, errorMessage ?? "Bulk preview failed", requestId), statusCode: statusCode);
+    }
+    return Results.Ok(response);
+});
+
+app.MapPost("/api/v1/bulk-send/confirm", async (
+    HttpContext ctx,
+    BulkSendOrchestrator orchestrator,
+    BulkSendConfirmRequest? request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    ctx.Request.Headers["X-Request-Id"] = requestId;
+
+    if (request == null || string.IsNullOrWhiteSpace(request.CampaignId))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.BulkSendInvalidPayload, "campaign_id is required", requestId), statusCode: 400);
+
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (response, errorCode, errorMessage) = await orchestrator.ConfirmAsync(tenantContext.TenantId, request.CampaignId, ctx.RequestAborted);
+    if (response == null)
+    {
+        var statusCode = errorCode switch
+        {
+            ErrorCodes.BulkSendDisabled => 403,
+            ErrorCodes.BulkSendJobNotFound => 404,
+            ErrorCodes.BulkSendDispatchFailed => 500, // operational dispatch/DB failure, not bad input
+            _ => 400
+        };
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, errorMessage ?? "Bulk confirm failed", requestId), statusCode: statusCode);
+    }
+    return Results.Json(response, statusCode: 202);
+});
+
+app.MapGet("/api/v1/bulk-send/{campaignId}/status", async (
+    HttpContext ctx,
+    BulkSendOrchestrator orchestrator,
+    string campaignId) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (response, errorCode) = await orchestrator.StatusAsync(tenantContext.TenantId, campaignId, ctx.RequestAborted);
+    if (response == null)
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.BulkSendJobNotFound, $"Campaign '{campaignId}' not found", requestId), statusCode: 404);
+    return Results.Ok(response);
 });
 
 // ============================================================
