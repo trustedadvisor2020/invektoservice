@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Superadmin | InvektoServices</title>
+    <link rel="stylesheet" href="../assets/css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="index.html" class="logo">
+                    <div class="logo-icon">I</div>
+                    Invekto <span class="logo-badge">ADMIN</span>
+                </a>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-section-title">Overview</div>
+                <a href="index.html" class="nav-item active">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    Dashboard
+                </a>
+                
+                <div class="nav-section-title">Management</div>
+                <a href="tenants.html" class="nav-item">
+                    <i class="fa-solid fa-building"></i>
+                    Tenants
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                    Billing
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="fa-solid fa-server"></i>
+                    Infrastructure
+                </a>
+                
+                <div class="nav-section-title">Configuration</div>
+                <a href="#" class="nav-item">
+                    <i class="fa-solid fa-gear"></i>
+                    Global Settings
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="avatar">SA</div>
+                    <div class="user-info">
+                        <span class="user-name">Super Admin</span>
+                        <span class="user-role">System Manager</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-header">
+                <div class="header-search">
+                    <i class="fa-solid fa-magnifying-glass text-muted"></i>
+                    <input type="text" placeholder="Search tenants, users, or settings...">
+                </div>
+                
+                <div class="header-actions">
+                    <button class="icon-btn">
+                        <i class="fa-regular fa-bell"></i>
+                        <span class="badge"></span>
+                    </button>
+                    <button class="icon-btn">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                    </button>
+                </div>
+            </header>
+            
+            <div class="content-area">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Global Overview</h1>
+                        <p class="page-subtitle">Monitor system health and tenant growth across InvektoServices.</p>
+                    </div>
+                    <button class="btn btn-primary">
+                        <i class="fa-solid fa-plus"></i> New Tenant
+                    </button>
+                </div>
+                
+                <!-- Metrics -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-icon blue">
+                            <i class="fa-solid fa-building"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-label">Total Tenants</div>
+                            <div class="metric-value">1,248</div>
+                            <div class="metric-trend trend-up">
+                                <i class="fa-solid fa-arrow-up"></i> 12% vs last month
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-icon green">
+                            <i class="fa-solid fa-users"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-label">Active Users</div>
+                            <div class="metric-value">45.2K</div>
+                            <div class="metric-trend trend-up">
+                                <i class="fa-solid fa-arrow-up"></i> 8% vs last month
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-icon yellow">
+                            <i class="fa-solid fa-wallet"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-label">Monthly Revenue</div>
+                            <div class="metric-value">$1.2M</div>
+                            <div class="metric-trend trend-up">
+                                <i class="fa-solid fa-arrow-up"></i> 15% vs last month
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-icon red">
+                            <i class="fa-solid fa-heart-pulse"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-label">System Health</div>
+                            <div class="metric-value">99.9%</div>
+                            <div class="metric-trend trend-down">
+                                <i class="fa-solid fa-circle-exclamation"></i> 2 minor alerts
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+                    <!-- Recent Tenants -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">Recent Signups</div>
+                            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.85rem;">View All</button>
+                        </div>
+                        <div class="card-body" style="padding: 0;">
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Tenant Name</th>
+                                            <th>Plan</th>
+                                            <th>Status</th>
+                                            <th>Joined Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td style="font-weight: 500;">Acme Corp</td>
+                                            <td>Enterprise</td>
+                                            <td><span class="status status-active">Active</span></td>
+                                            <td class="text-muted">Just now</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: 500;">DentAdavista</td>
+                                            <td>Professional</td>
+                                            <td><span class="status status-active">Active</span></td>
+                                            <td class="text-muted">2 hours ago</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: 500;">TechSolutions Inc.</td>
+                                            <td>Starter</td>
+                                            <td><span class="status status-pending">Onboarding</span></td>
+                                            <td class="text-muted">1 day ago</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: 500;">Global Logistics</td>
+                                            <td>Enterprise</td>
+                                            <td><span class="status status-active">Active</span></td>
+                                            <td class="text-muted">2 days ago</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- System Alerts -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">System Alerts</div>
+                        </div>
+                        <div class="card-body">
+                            <div style="display: flex; gap: 12px; margin-bottom: 16px; align-items: flex-start;">
+                                <div style="color: var(--warning); margin-top: 2px;"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                                <div>
+                                    <div style="font-weight: 500; font-size: 0.95rem;">High DB Load in EU-West</div>
+                                    <div style="color: var(--text-muted); font-size: 0.85rem;">CPU utilization hit 85% for 10 mins.</div>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 12px; align-items: flex-start;">
+                                <div style="color: var(--danger); margin-top: 2px;"><i class="fa-solid fa-circle-xmark"></i></div>
+                                <div>
+                                    <div style="font-weight: 500; font-size: 0.95rem;">Payment Gateway Sync Failed</div>
+                                    <div style="color: var(--text-muted); font-size: 0.85rem;">Stripe webhook integration timed out. Retrying.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="../assets/js/app.js"></script>
+</body>
+</html>

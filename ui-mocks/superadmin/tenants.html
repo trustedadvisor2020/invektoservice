@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tenants | Superadmin | InvektoServices</title>
+    <link rel="stylesheet" href="../assets/css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="index.html" class="logo">
+                    <div class="logo-icon">I</div>
+                    Invekto <span class="logo-badge">ADMIN</span>
+                </a>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-section-title">Overview</div>
+                <a href="index.html" class="nav-item">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    Dashboard
+                </a>
+                
+                <div class="nav-section-title">Management</div>
+                <a href="tenants.html" class="nav-item active">
+                    <i class="fa-solid fa-building"></i>
+                    Tenants
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                    Billing
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="fa-solid fa-server"></i>
+                    Infrastructure
+                </a>
+                
+                <div class="nav-section-title">Configuration</div>
+                <a href="#" class="nav-item">
+                    <i class="fa-solid fa-gear"></i>
+                    Global Settings
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="avatar">SA</div>
+                    <div class="user-info">
+                        <span class="user-name">Super Admin</span>
+                        <span class="user-role">System Manager</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-header">
+                <div class="header-search">
+                    <i class="fa-solid fa-magnifying-glass text-muted"></i>
+                    <input type="text" placeholder="Search tenants...">
+                </div>
+                
+                <div class="header-actions">
+                    <button class="icon-btn">
+                        <i class="fa-regular fa-bell"></i>
+                    </button>
+                    <button class="icon-btn">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                    </button>
+                </div>
+            </header>
+            
+            <div class="content-area">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Tenant Management</h1>
+                        <p class="page-subtitle">Manage all instances, configurations, and plans across the system.</p>
+                    </div>
+                    <div style="display: flex; gap: 12px;">
+                        <button class="btn btn-secondary">
+                            <i class="fa-solid fa-filter"></i> Filter
+                        </button>
+                        <button class="btn btn-primary">
+                            <i class="fa-solid fa-plus"></i> Create Tenant
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">All Tenants</div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted);">Showing 1-10 of 1,248</div>
+                    </div>
+                    <div class="card-body" style="padding: 0;">
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Tenant Name</th>
+                                        <th>Database / Schema</th>
+                                        <th>Plan</th>
+                                        <th>Status</th>
+                                        <th>Users</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style="font-weight: 500;">
+                                            <div style="display: flex; align-items: center; gap: 12px;">
+                                                <div class="avatar" style="width: 32px; height: 32px; font-size: 0.8rem; background: #cbd5e1;">A</div>
+                                                <div>
+                                                    <div>Acme Corp</div>
+                                                    <div style="font-size: 0.75rem; color: var(--text-muted);">acme.invekto.com</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td><code style="background: var(--bg-body); padding: 4px; border-radius: 4px; font-size: 0.85rem;">t_acme</code></td>
+                                        <td>Enterprise</td>
+                                        <td><span class="status status-active">Active</span></td>
+                                        <td>245</td>
+                                        <td>
+                                            <button class="icon-btn" style="width: 32px; height: 32px; font-size: 1rem;"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="font-weight: 500;">
+                                            <div style="display: flex; align-items: center; gap: 12px;">
+                                                <div class="avatar" style="width: 32px; height: 32px; font-size: 0.8rem; background: #cbd5e1;">D</div>
+                                                <div>
+                                                    <div>DentAdavista</div>
+                                                    <div style="font-size: 0.75rem; color: var(--text-muted);">dentadavista.invekto.com</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td><code style="background: var(--bg-body); padding: 4px; border-radius: 4px; font-size: 0.85rem;">t_dentadavista</code></td>
+                                        <td>Professional</td>
+                                        <td><span class="status status-active">Active</span></td>
+                                        <td>12</td>
+                                        <td>
+                                            <button class="icon-btn" style="width: 32px; height: 32px; font-size: 1rem;"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="font-weight: 500;">
+                                            <div style="display: flex; align-items: center; gap: 12px;">
+                                                <div class="avatar" style="width: 32px; height: 32px; font-size: 0.8rem; background: #cbd5e1;">T</div>
+                                                <div>
+                                                    <div>TechSolutions Inc.</div>
+                                                    <div style="font-size: 0.75rem; color: var(--text-muted);">techsolutions.invekto.com</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td><code style="background: var(--bg-body); padding: 4px; border-radius: 4px; font-size: 0.85rem;">t_techs</code></td>
+                                        <td>Starter</td>
+                                        <td><span class="status status-pending">Onboarding</span></td>
+                                        <td>2</td>
+                                        <td>
+                                            <button class="icon-btn" style="width: 32px; height: 32px; font-size: 1rem;"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="font-weight: 500;">
+                                            <div style="display: flex; align-items: center; gap: 12px;">
+                                                <div class="avatar" style="width: 32px; height: 32px; font-size: 0.8rem; background: #cbd5e1;">G</div>
+                                                <div>
+                                                    <div>Global Logistics</div>
+                                                    <div style="font-size: 0.75rem; color: var(--text-muted);">globallogistics.invekto.com</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td><code style="background: var(--bg-body); padding: 4px; border-radius: 4px; font-size: 0.85rem;">t_glogistics</code></td>
+                                        <td>Enterprise</td>
+                                        <td><span class="status status-inactive">Suspended</span></td>
+                                        <td>1,200</td>
+                                        <td>
+                                            <button class="icon-btn" style="width: 32px; height: 32px; font-size: 1rem;"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="../assets/js/app.js"></script>
+</body>
+</html>

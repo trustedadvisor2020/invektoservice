@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent AI | InvektoServices</title>
+    <link rel="stylesheet" href="../assets/css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="index.html" class="logo">
+                    <div class="logo-icon" style="background: linear-gradient(135deg, #0ea5e9, #38bdf8);">D</div>
+                    DentAdavista
+                </a>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-section-title">Home</div>
+                <a href="index.html" class="nav-item">
+                    <i class="fa-solid fa-house"></i>
+                    Dashboard
+                </a>
+                
+                <div class="nav-section-title">Operations</div>
+                <a href="appointments.html" class="nav-item">
+                    <i class="fa-regular fa-calendar-check"></i>
+                    Appointments
+                </a>
+                <a href="marketing.html" class="nav-item">
+                    <i class="fa-solid fa-bullhorn"></i>
+                    Marketing & CRM
+                </a>
+                
+                <div class="nav-section-title">Intelligence</div>
+                <a href="agent-ai.html" class="nav-item active">
+                    <i class="fa-solid fa-robot"></i>
+                    Agent AI
+                </a>
+                <a href="knowledge.html" class="nav-item">
+                    <i class="fa-solid fa-book-open"></i>
+                    Knowledge Base
+                </a>
+                
+                <div class="nav-section-title">Settings</div>
+                <a href="#" class="nav-item">
+                    <i class="fa-solid fa-sliders"></i>
+                    Preferences
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-header">
+                <div class="header-search">
+                    <i class="fa-solid fa-magnifying-glass text-muted"></i>
+                    <input type="text" placeholder="Search prompts, flows...">
+                </div>
+            </header>
+            
+            <div class="content-area">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Agent AI Configuration</h1>
+                        <p class="page-subtitle">Manage how your AI interacts, scores solutions, and answers clients.</p>
+                    </div>
+                    <button class="btn btn-primary">
+                        <i class="fa-solid fa-floppy-disk"></i> Save Changes
+                    </button>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                    <!-- General Settings -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">Behavior & Persona</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label class="form-label">AI Persona / Tone</label>
+                                <select class="form-control">
+                                    <option>Professional & Empathetic</option>
+                                    <option>Friendly & Casual</option>
+                                    <option>Direct & Concise</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">System Prompt (Base Instructions)</label>
+                                <textarea class="form-control" rows="5">You are DentAdavista's official virtual assistant. Your primary goal is to assist patients with dental inquiries, offer the 'Solution Finder' for treatment recommendations, and book appointments via the calendar system.</textarea>
+                            </div>
+                            <div class="form-group" style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 16px;">
+                                <div>
+                                    <div style="font-weight: 500;">Retrieval-Gated Mode</div>
+                                    <div style="font-size: 0.85rem; color: var(--text-muted);">Only answer using Knowledge Base. Avoid hallucinations.</div>
+                                </div>
+                                <label class="switch" style="position: relative; display: inline-block; width: 44px; height: 24px;">
+                                    <input type="checkbox" checked style="opacity: 0; width: 0; height: 0;">
+                                    <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--primary); transition: .4s; border-radius: 24px;"></span>
+                                    <span style="position: absolute; height: 18px; width: 18px; left: 22px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%;"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Solution Finder -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">Solution Finder Configuration</div>
+                            <span class="status status-active">Active</span>
+                        </div>
+                        <div class="card-body">
+                            <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 20px;">
+                                The Solution Finder uses pgvector embeddings to map user requests to your services.
+                            </p>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Similarity Threshold</label>
+                                <input type="range" min="0" max="100" value="75" style="width: 100%;">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted);">
+                                    <span>Loose (50%)</span>
+                                    <span>Strict (75%)</span>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group mt-4">
+                                <label class="form-label">Active Tool-Calls</label>
+                                <div style="display: flex; flex-direction: column; gap: 12px;">
+                                    <label style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="checkbox" checked> <span>Calculate Treatment Pricing</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="checkbox" checked> <span>Check Calendar Availability</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="checkbox"> <span>Query Patient CRM History</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="../assets/js/app.js"></script>
+</body>
+</html>

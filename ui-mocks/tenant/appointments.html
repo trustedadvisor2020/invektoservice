@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appointments | InvektoServices</title>
+    <link rel="stylesheet" href="../assets/css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="index.html" class="logo">
+                    <div class="logo-icon" style="background: linear-gradient(135deg, #0ea5e9, #38bdf8);">D</div>
+                    DentAdavista
+                </a>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-section-title">Home</div>
+                <a href="index.html" class="nav-item">
+                    <i class="fa-solid fa-house"></i>
+                    Dashboard
+                </a>
+                
+                <div class="nav-section-title">Operations</div>
+                <a href="appointments.html" class="nav-item active">
+                    <i class="fa-regular fa-calendar-check"></i>
+                    Appointments
+                </a>
+                <a href="marketing.html" class="nav-item">
+                    <i class="fa-solid fa-bullhorn"></i>
+                    Marketing & CRM
+                </a>
+                
+                <div class="nav-section-title">Intelligence</div>
+                <a href="agent-ai.html" class="nav-item">
+                    <i class="fa-solid fa-robot"></i>
+                    Agent AI
+                </a>
+                <a href="knowledge.html" class="nav-item">
+                    <i class="fa-solid fa-book-open"></i>
+                    Knowledge Base
+                </a>
+                
+                <div class="nav-section-title">Settings</div>
+                <a href="#" class="nav-item">
+                    <i class="fa-solid fa-sliders"></i>
+                    Preferences
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-header">
+                <div class="header-search">
+                    <i class="fa-solid fa-magnifying-glass text-muted"></i>
+                    <input type="text" placeholder="Search patients or dates...">
+                </div>
+            </header>
+            
+            <div class="content-area">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Appointments</h1>
+                        <p class="page-subtitle">Manage schedule and AI-booked reservations.</p>
+                    </div>
+                    <button class="btn btn-primary">
+                        <i class="fa-solid fa-plus"></i> New Appointment
+                    </button>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Schedule - May 24, 2026</div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-secondary" style="padding: 4px 8px;"><i class="fa-solid fa-chevron-left"></i></button>
+                            <button class="btn btn-secondary" style="padding: 4px 12px;">Today</button>
+                            <button class="btn btn-secondary" style="padding: 4px 8px;"><i class="fa-solid fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                    <div class="card-body" style="padding: 0;">
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Patient</th>
+                                        <th>Service</th>
+                                        <th>Source</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style="font-weight: 600;">09:00 AM</td>
+                                        <td>Ahmet Yıldız</td>
+                                        <td>Dental Implant</td>
+                                        <td><span style="font-size: 0.8rem; color: var(--text-muted);"><i class="fa-solid fa-phone"></i> Manual</span></td>
+                                        <td><span class="status status-active">Confirmed</span></td>
+                                        <td><button class="icon-btn" style="width: 28px; height: 28px;"><i class="fa-solid fa-ellipsis"></i></button></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="font-weight: 600;">10:30 AM</td>
+                                        <td>Elif Şahin</td>
+                                        <td>Routine Cleaning</td>
+                                        <td><span style="font-size: 0.8rem; color: var(--primary);"><i class="fa-brands fa-whatsapp"></i> AI Agent</span></td>
+                                        <td><span class="status status-active">Confirmed</span></td>
+                                        <td><button class="icon-btn" style="width: 28px; height: 28px;"><i class="fa-solid fa-ellipsis"></i></button></td>
+                                    </tr>
+                                    <tr style="background-color: var(--warning-bg);">
+                                        <td style="font-weight: 600;">11:45 AM</td>
+                                        <td>Merve Çelik</td>
+                                        <td>Whitening</td>
+                                        <td><span style="font-size: 0.8rem; color: var(--primary);"><i class="fa-brands fa-whatsapp"></i> AI Agent</span></td>
+                                        <td><span class="status status-pending">Needs Approval</span></td>
+                                        <td>
+                                            <div style="display: flex; gap: 4px;">
+                                                <button class="btn btn-primary" style="padding: 4px 8px; font-size: 0.75rem;">Approve</button>
+                                                <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;">Decline</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="../assets/js/app.js"></script>
+</body>
+</html>

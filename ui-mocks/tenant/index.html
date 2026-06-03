@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | InvektoServices</title>
+    <link rel="stylesheet" href="../assets/css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="index.html" class="logo">
+                    <div class="logo-icon" style="background: linear-gradient(135deg, #0ea5e9, #38bdf8);">D</div>
+                    DentAdavista
+                </a>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-section-title">Home</div>
+                <a href="index.html" class="nav-item active">
+                    <i class="fa-solid fa-house"></i>
+                    Dashboard
+                </a>
+                
+                <div class="nav-section-title">Operations</div>
+                <a href="appointments.html" class="nav-item">
+                    <i class="fa-regular fa-calendar-check"></i>
+                    Appointments
+                </a>
+                <a href="marketing.html" class="nav-item">
+                    <i class="fa-solid fa-bullhorn"></i>
+                    Marketing & CRM
+                </a>
+                
+                <div class="nav-section-title">Intelligence</div>
+                <a href="agent-ai.html" class="nav-item">
+                    <i class="fa-solid fa-robot"></i>
+                    Agent AI
+                </a>
+                <a href="knowledge.html" class="nav-item">
+                    <i class="fa-solid fa-book-open"></i>
+                    Knowledge Base
+                </a>
+                
+                <div class="nav-section-title">Settings</div>
+                <a href="#" class="nav-item">
+                    <i class="fa-solid fa-sliders"></i>
+                    Preferences
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="avatar" style="background: #0ea5e9;">MA</div>
+                    <div class="user-info">
+                        <span class="user-name">Murat Ay</span>
+                        <span class="user-role">Clinic Manager</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-header">
+                <div class="header-search">
+                    <i class="fa-solid fa-magnifying-glass text-muted"></i>
+                    <input type="text" placeholder="Search patients, appointments, or campaigns...">
+                </div>
+                
+                <div class="header-actions">
+                    <button class="btn btn-secondary" style="border: none; background: transparent;">
+                        <i class="fa-brands fa-whatsapp text-success" style="font-size: 1.25rem;"></i> Connected
+                    </button>
+                    <button class="icon-btn">
+                        <i class="fa-regular fa-bell"></i>
+                        <span class="badge"></span>
+                    </button>
+                    <button class="icon-btn">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                    </button>
+                </div>
+            </header>
+            
+            <div class="content-area">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Welcome back, Murat!</h1>
+                        <p class="page-subtitle">Here is what's happening in your clinic today.</p>
+                    </div>
+                    <div style="display: flex; gap: 12px;">
+                        <button class="btn btn-secondary">
+                            <i class="fa-regular fa-calendar"></i> Today
+                        </button>
+                        <button class="btn btn-primary">
+                            <i class="fa-solid fa-robot"></i> Start AI Campaign
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Metrics -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-icon blue">
+                            <i class="fa-regular fa-calendar-check"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-label">Today's Appointments</div>
+                            <div class="metric-value">24</div>
+                            <div class="metric-trend trend-up">
+                                <i class="fa-solid fa-arrow-up"></i> +3 walk-ins
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-icon green">
+                            <i class="fa-brands fa-whatsapp"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-label">AI Chats Handled</div>
+                            <div class="metric-value">142</div>
+                            <div class="metric-trend trend-up">
+                                <i class="fa-solid fa-arrow-up"></i> 95% resolution rate
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-icon yellow">
+                            <i class="fa-solid fa-bullseye"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-label">New Leads (Campaign)</div>
+                            <div class="metric-value">18</div>
+                            <div class="metric-trend trend-up">
+                                <i class="fa-solid fa-arrow-up"></i> "Implant Promo"
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+                    <!-- Upcoming Appointments -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">Upcoming Appointments</div>
+                            <a href="appointments.html" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.85rem;">View Calendar</a>
+                        </div>
+                        <div class="card-body" style="padding: 0;">
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Patient Name</th>
+                                            <th>Time</th>
+                                            <th>Treatment</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td style="font-weight: 500;">Ayşe Yılmaz</td>
+                                            <td>10:00 AM</td>
+                                            <td>Teeth Whitening</td>
+                                            <td><span class="status status-active">Confirmed</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: 500;">Mehmet Kaya</td>
+                                            <td>11:30 AM</td>
+                                            <td>Implant Consultation</td>
+                                            <td><span class="status status-pending">Pending</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: 500;">Zeynep Demir</td>
+                                            <td>02:00 PM</td>
+                                            <td>Routine Checkup</td>
+                                            <td><span class="status status-active">Confirmed</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- AI Assistant Activity -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">Live AI Activity</div>
+                        </div>
+                        <div class="card-body">
+                            <div style="display: flex; gap: 12px; margin-bottom: 20px; align-items: flex-start;">
+                                <div style="color: var(--primary); margin-top: 2px;"><i class="fa-brands fa-whatsapp"></i></div>
+                                <div>
+                                    <div style="font-weight: 500; font-size: 0.95rem;">+90 532 *** 4512</div>
+                                    <div style="color: var(--text-muted); font-size: 0.85rem;">AI just booked an appointment for tomorrow at 3 PM.</div>
+                                    <div style="font-size: 0.75rem; color: #cbd5e1; margin-top: 4px;">2 mins ago</div>
+                                </div>
+                            </div>
+                            
+                            <div style="display: flex; gap: 12px; align-items: flex-start;">
+                                <div style="color: var(--primary); margin-top: 2px;"><i class="fa-brands fa-whatsapp"></i></div>
+                                <div>
+                                    <div style="font-weight: 500; font-size: 0.95rem;">+90 555 *** 8899</div>
+                                    <div style="color: var(--text-muted); font-size: 0.85rem;">Asked about implant pricing. AI provided 'Solution Finder' options.</div>
+                                    <div style="font-size: 0.75rem; color: #cbd5e1; margin-top: 4px;">15 mins ago</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="../assets/js/app.js"></script>
+</body>
+</html>

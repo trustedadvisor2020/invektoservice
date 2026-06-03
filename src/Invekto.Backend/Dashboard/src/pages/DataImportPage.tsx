@@ -281,7 +281,14 @@ export function DataImportPage() {
     try {
       const buf = await file.arrayBuffer();
       // Hardened parse: never read/eval formulas or embedded HTML; values as text.
-      const wb = XLSX.read(buf, { type: 'array', cellFormula: false, cellHTML: false, cellDates: false });
+      // CSV: decode bytes as UTF-8 ourselves (TextDecoder strips a BOM and handles Turkish
+      // characters); SheetJS otherwise guesses Windows-1252 for a BOM-less CSV and mojibakes
+      // "Yılmaz" -> "YÄ±lmaz". Excel (.xlsx/.xls) stores text as UTF-8 internally, so the binary
+      // path is correct for those.
+      const isCsv = lower.endsWith('.csv');
+      const wb = isCsv
+        ? XLSX.read(new TextDecoder('utf-8').decode(buf), { type: 'string', cellFormula: false, cellHTML: false, cellDates: false })
+        : XLSX.read(buf, { type: 'array', cellFormula: false, cellHTML: false, cellDates: false });
       if (!wb.SheetNames.length) { setUploadErr('Dosyada sayfa bulunamadı.'); return; }
       if (wb.SheetNames.length > 1) setMultiSheetNote(true); // single-sheet only: use the first.
       const sheet = wb.Sheets[wb.SheetNames[0]];
