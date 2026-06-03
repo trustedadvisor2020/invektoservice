@@ -177,6 +177,7 @@ export function DataImportPage() {
   const [lists, setLists] = useState<DataListSummary[]>([]);
   const [loadingLists, setLoadingLists] = useState(false);
   const [listsError, setListsError] = useState<string | null>(null);
+  const [featureDisabled, setFeatureDisabled] = useState(false);
 
   // ---- Wizard ----
   const [wizardOpen, setWizardOpen] = useState(false);
@@ -217,11 +218,18 @@ export function DataImportPage() {
   const loadLists = async () => {
     setLoadingLists(true);
     setListsError(null);
+    setFeatureDisabled(false);
     try {
       setLists(await api.listDataLists());
     } catch (e) {
       setLists([]);
-      setListsError(errText(e, 'Listeler yüklenemedi'));
+      // 403 = the tenant isn't enabled for contact lists (feature gate / plan), not a transient
+      // error — show a calm "not enabled" state instead of a red retryable error.
+      if (e instanceof ApiClientError && e.status === 403) {
+        setFeatureDisabled(true);
+      } else {
+        setListsError(errText(e, 'Listeler yüklenemedi'));
+      }
     } finally {
       setLoadingLists(false);
     }
@@ -518,8 +526,15 @@ export function DataImportPage() {
             <ListIcon className="w-4 h-4 text-navy-400" />
             <h2 className="text-sm font-medium text-navy-700">Listeler</h2>
           </div>
-          {listsError && <div className="px-4 py-3 text-sm text-red-600">{listsError}</div>}
-          {loadingLists ? (
+          {featureDisabled && (
+            <div className="px-4 py-10 text-center text-navy-500 text-sm flex flex-col items-center gap-2">
+              <Info className="w-5 h-5 text-navy-400" />
+              <div className="font-medium">Bu özellik hesabınızda henüz etkin değil.</div>
+              <div className="text-xs text-navy-400">Etkinleştirmek için Invekto ekibiyle iletişime geçin.</div>
+            </div>
+          )}
+          {!featureDisabled && listsError && <div className="px-4 py-3 text-sm text-red-600">{listsError}</div>}
+          {!featureDisabled && (loadingLists ? (
             <div className="px-4 py-8 text-center text-navy-400 text-sm flex items-center justify-center gap-2">
               <Loader2 className="w-4 h-4 animate-spin" /> Yükleniyor…
             </div>
@@ -564,7 +579,7 @@ export function DataImportPage() {
                 ))}
               </tbody>
             </table>
-          )}
+          ))}
         </div>
       )}
 

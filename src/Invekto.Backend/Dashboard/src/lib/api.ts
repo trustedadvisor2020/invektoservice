@@ -1162,13 +1162,15 @@ class OpsApiClient {
     );
 
     if (!response.ok) {
-      let errBody: { error_code?: string; message?: string; request_id?: string } | null = null;
+      // Services serialize the envelope camelCase (ErrorResponse.ErrorCode -> errorCode); some
+      // middleware (FeatureGuard) may use snake_case. Accept both so the code isn't shown as UNKNOWN.
+      let errBody: { error_code?: string; errorCode?: string; message?: string; request_id?: string; requestId?: string } | null = null;
       try { errBody = await response.json(); } catch (_e) { /* non-JSON error body */ }
       throw new ApiClientError(
         response.status,
-        errBody?.error_code ?? 'UNKNOWN',
+        errBody?.error_code ?? errBody?.errorCode ?? 'UNKNOWN',
         errBody?.message ?? `HTTP ${response.status}`,
-        errBody?.request_id,
+        errBody?.request_id ?? errBody?.requestId,
       );
     }
 

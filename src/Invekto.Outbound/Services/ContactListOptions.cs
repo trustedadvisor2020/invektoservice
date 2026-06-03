@@ -15,8 +15,16 @@ public sealed class ContactListOptions
     /// <summary>Master kill-switch. Default false = endpoints return INV-OB-046.</summary>
     public bool Enabled { get; set; }
 
-    /// <summary>Pilot tenant allowlist. Empty = no tenant may use contact lists.</summary>
+    /// <summary>Pilot tenant allowlist. Empty = no tenant may use contact lists (unless <see cref="AllowAllTenants"/>).</summary>
     public List<int> AllowedTenantIds { get; set; } = new();
+
+    /// <summary>
+    /// When true, every tenant may use contact lists (allowlist ignored). Import/list management
+    /// only — the SEND path (preview-from-list) is still independently gated by BulkSendOptions,
+    /// so opening this does NOT let non-pilot tenants dispatch. Explicit flag (not "empty=all") so
+    /// a misconfiguration can never silently open the feature.
+    /// </summary>
+    public bool AllowAllTenants { get; set; }
 
     /// <summary>
     /// Hard cap on TOTAL records a single list may hold. An import that would push the
@@ -33,5 +41,6 @@ public sealed class ContactListOptions
     /// <summary>Cap on invalid-row samples echoed back to the operator.</summary>
     public int InvalidSampleSize { get; set; } = 20;
 
-    public bool IsTenantAllowed(int tenantId) => Enabled && AllowedTenantIds.Contains(tenantId);
+    public bool IsTenantAllowed(int tenantId) =>
+        Enabled && (AllowAllTenants || AllowedTenantIds.Contains(tenantId));
 }
