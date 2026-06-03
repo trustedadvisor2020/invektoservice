@@ -1,0 +1,76 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260603-feat-obi-data-management-tabs",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-03T22:40:00Z",
+  "updated_at": "2026-06-03T23:05:00Z",
+  "plan": {
+    "summary": "Merge the two separate nav pages (Veri İçe Aktarma / Veri Dışa Aktarma) into one 'Veri Yönetimi' page (/data-management/:tab) with two tabs: 'Veri İçe Aktarma (Listeler)' -> DataImportPage and 'Veri Dışa Aktarma (Export)' -> ExportManagerPage. Frontend/SPA only; no backend, DB, or API change.",
+    "q_intent": "Data yönetimi sayfasında iki sekmeye yerleştir. veri içe aktarma (Listeler) ve veri dışa aktarma (Export).",
+    "interview_notes": "Path-based tab (/data-management/:tab) chosen over a query param so it is deep-linkable, survives refresh, and never collides with the inner pages' own state. Each tab page stays lazy and only the active one mounts (heavy DataImport/Export bundles never both load). Old /data-import and /data-export routes redirect to the new tabs for back-compat; the two nav items collapse into one 'Veri Yönetimi'.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "A single 'Veri Yönetimi' nav item opens /data-management with two tabs; 'Veri İçe Aktarma (Listeler)' renders DataImportPage and 'Veri Dışa Aktarma (Export)' renders ExportManagerPage; the active tab is path-based and survives refresh.", "verified": true },
+      { "id": "AC2", "criterion": "Only the active tab's page is mounted (each lazy-loaded); switching tabs loads just that bundle. Old /data-import and /data-export URLs redirect to /data-management/import and /data-management/export. SPA build (tsc+vite) PASSES with no unused-import errors.", "verified": true }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Dashboard/src/pages/DataManagementPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/Layout.tsx",
+    "arch/plans/20260603-feat-obi-data-management-tabs.json"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/DataManagementPage.tsx", "is_new": true, "change": "new two-tab container; path-based tab; lazy-mounts active inner page" },
+    { "path": "src/Invekto.Backend/Dashboard/src/App.tsx", "is_new": false, "change": "lazy DataManagementPage; /data-management/:tab route + redirect /data-import,/data-export; dropped direct DataImport/Export route imports" },
+    { "path": "src/Invekto.Backend/Dashboard/src/components/Layout.tsx", "is_new": false, "change": "two nav items collapsed into one 'Veri Yönetimi'; removed now-unused Download icon import" }
+  ],
+  "verification_questions": [
+    { "id": "Q1", "question": "Do the old /data-import and /data-export routes still resolve (Navigate redirect to /data-management/import and /data-management/export) so existing bookmarks/links do not 404 after the merge?", "category": "Process/Policy" },
+    { "id": "Q2", "question": "Is only the ACTIVE tab's page mounted (DataImportPage and ExportManagerPage each lazy, conditional render), so switching tabs does not keep both heavy pages mounted nor eagerly load both bundles?", "category": "Lifecycle" },
+    { "id": "Q3", "question": "Does the path-based tab behave correctly: refreshing on /data-management/export stays on the Export tab, an unknown :tab value falls back to the import tab without crashing, and the single 'Veri Yönetimi' nav item highlights as active on /data-management?", "category": "Process/Policy" },
+    { "id": "Q4", "question": "Does /data-management/:tab (and the /data-import,/data-export redirects) remain behind the same ProtectedRoute auth gate as every other dashboard route, introducing no unauthenticated exposure of the import/export surfaces?", "category": "Auth" },
+    { "id": "Q5", "question": "Does the merge leave the inner pages' tenant-scoped data fetching unchanged — DataImportPage's list APIs and ExportManagerPage's filter/count/history/create-list calls are untouched, with only the parent route/tab wrapper added (no data request logic altered)?", "category": "Data" }
+  ],
+  "git_diff": { "stats": { "insertions": 0, "deletions": 0, "files_count": 0 } },
+  "build": {
+    "status": "PASS",
+    "timestamp": "2026-06-03T22:38:00Z",
+    "command": "cd src/Invekto.Backend/Dashboard && npm run build (tsc && vite build)",
+    "services": ["Invekto.Backend/Dashboard"]
+  },
+  "scope_discipline": {
+    "forbidden_areas": [
+      "DataImportPage.tsx / ExportManagerPage.tsx internals (unchanged; only re-parented under tabs)",
+      "Any backend/Outbound/DB/API code (frontend route reorganization only)"
+    ],
+    "non_goals": [
+      "Changing import/export behavior or endpoints",
+      "Merging the two pages' content into one scroll view (they remain distinct tab panes)"
+    ],
+    "intentional_exclusions": [
+      "Removing the inner pages' own H1 titles (kept; redundant with tab label but harmless)"
+    ]
+  },
+  "error_handling": {
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Pure routing/UI composition. An unknown :tab value falls back to the 'import' tab (no crash). Lazy-load failures surface via the Suspense fallback spinner. No data paths changed."
+  },
+  "aha_moments": [
+    { "category": "UX", "user_pain": "Import and Export were two separate sidebar items for what is one mental task (managing contact data).", "suggestion": "Collapse them into one 'Veri Yönetimi' page with İçe/Dışa tabs.", "aha_moment": "Operator finds both data tasks in one place and flips between them without hunting the sidebar." },
+    { "category": "SPEED", "user_pain": "Loading both heavy bundles when you only need one is wasteful.", "suggestion": "Lazy-mount only the active tab's page.", "aha_moment": "Opening the page loads just the import bundle; the export bundle loads only when its tab is clicked." },
+    { "category": "RELIABILITY", "user_pain": "Existing bookmarks/links to /data-import or /data-export would break after the merge.", "suggestion": "Redirect the old routes to the matching tab.", "aha_moment": "An old /data-export bookmark still lands the operator on the Export tab." },
+    { "category": "UX", "user_pain": "A tab choice lost on refresh forces re-navigation.", "suggestion": "Path-based tab (/data-management/:tab) so refresh/deep-link preserves the tab.", "aha_moment": "Operator refreshes on the Export tab and stays on Export." },
+    { "category": "SUPPORT", "user_pain": "Support guiding a user to 'the export screen' had to explain a separate menu item.", "suggestion": "One page, two clearly-labelled tabs.", "aha_moment": "Support says 'Veri Yönetimi > Dışa Aktarma tab' and the user is there in one step." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "iteration": 2,
+    "model_used": "gpt-5.5-2026-04-23",
+    "notes": "Code was clean from iter0 (all CQ1-12 PASS, all CoVe PASS). iter0 FAIL: routing change must be MEDIUM not LOW. iter1 FAIL: MEDIUM needs verification-question coverage across Data+Auth categories. iter2 PASS: reclassified MEDIUM + added Auth (Q4) and Data (Q5) questions. No code changed across iterations — policy-only."
+  }
+}

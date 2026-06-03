@@ -64,10 +64,10 @@ const PilotKanbanPage = lazy(() => import('./pages/PilotKanbanPage').then(m => (
 // Parent paket commit 1da0da6 component-ready; runtime route binding burada.
 const LeadDetailPage = lazy(() => import('./pages/leads/LeadDetailPage').then(m => ({ default: m.LeadDetailPage })));
 
-// FEAT-OBI Phase 1A: CSV/Excel contact-list import + list->bulk-send (lazy, tenant-scoped).
-const DataImportPage = lazy(() => import('./pages/DataImportPage').then(m => ({ default: m.DataImportPage })));
-// FEAT-OBI Phase 1A Plan B: Export Manager (contact lists + campaign results -> CSV/Excel/PDF).
-const ExportManagerPage = lazy(() => import('./pages/ExportManagerPage').then(m => ({ default: m.ExportManagerPage })));
+// FEAT-OBI: Veri Yönetimi — DataImport (Listeler) + Export Manager merged into one
+// two-tab page (/data-management/:tab). The inner pages stay lazy (mounted only when
+// their tab is active); /data-import + /data-export redirect here for back-compat.
+const DataManagementPage = lazy(() => import('./pages/DataManagementPage').then(m => ({ default: m.DataManagementPage })));
 
 function ProtectedRoute() {
   const { isAuthenticated } = useAuth();
@@ -149,8 +149,11 @@ export default function App() {
         <Route path="/appointments" element={<AppointmentsPage />} />
         <Route path="/marketing" element={<MarketingPage />} />
         <Route path="/rescue" element={<Suspense><RescueDashboardPage /></Suspense>} />
-        <Route path="/data-import" element={<Suspense><DataImportPage /></Suspense>} />
-        <Route path="/data-export" element={<Suspense><ExportManagerPage /></Suspense>} />
+        {/* Veri Yönetimi (two tabs). Old single-page routes redirect here for back-compat. */}
+        <Route path="/data-management" element={<Navigate to="/data-management/import" replace />} />
+        <Route path="/data-management/:tab" element={<Suspense><DataManagementPage /></Suspense>} />
+        <Route path="/data-import" element={<Navigate to="/data-management/import" replace />} />
+        <Route path="/data-export" element={<Navigate to="/data-management/export" replace />} />
         <Route path="/messages" element={<MessagesPage />} />
         <Route path="/webchat" element={<WebChatPage />} />
         {/* FEAT-VFB: Voice Test embedded in-dashboard (was Layout.tsx external new-tab). */}
