@@ -334,11 +334,7 @@ export function FlowListPage() {
         )}
 
         {/* Loading skeleton */}
-        {loading && (
-          <div className="space-y-2">
-            {[0, 1, 2, 3].map(i => <SkeletonRow key={i} delay={i * 80} />)}
-          </div>
-        )}
+        {loading && <SkeletonTable />}
 
         {/* Empty state */}
         {!loading && flows.length === 0 && !error && (
@@ -370,104 +366,136 @@ export function FlowListPage() {
           </div>
         )}
 
-        {/* Flow Rows */}
+        {/* Flow Table */}
         {!loading && filteredFlows.length > 0 && (
-          <div className="space-y-2">
-            {filteredFlows.map((flow, i) => {
-              const { Icon, gradient } = getFlowIcon(flow.flow_name, flow.flow_description);
-              const isRowLoading = actionLoading === flow.flow_id;
+          <div className="bg-white border border-navy-100 rounded-xl shadow-soft overflow-hidden flow-card-enter">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-navy-50/50 text-navy-500 text-xs">
+                  <tr>
+                    <th className="text-left font-medium px-4 py-2.5">Flow</th>
+                    <th className="text-left font-medium px-4 py-2.5">Durum</th>
+                    <th className="text-left font-medium px-4 py-2.5">Saglik</th>
+                    <th className="text-left font-medium px-4 py-2.5 whitespace-nowrap">Surum</th>
+                    <th className="text-right font-medium px-4 py-2.5 whitespace-nowrap">Dugum / Baglanti</th>
+                    <th className="text-left font-medium px-4 py-2.5">Atanan Hat</th>
+                    <th className="text-right font-medium px-4 py-2.5 whitespace-nowrap">Guncellendi</th>
+                    <th className="text-right font-medium px-4 py-2.5">Islem</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredFlows.map((flow) => {
+                    const { Icon, gradient } = getFlowIcon(flow.flow_name, flow.flow_description);
+                    const isRowLoading = actionLoading === flow.flow_id;
 
-              return (
-                <div
-                  key={flow.flow_id}
-                  onDoubleClick={() => navigate(`/flow-builder/editor/${flow.flow_id}`)}
-                  className={`
-                    group bg-white border rounded-xl px-4 py-3 flex items-center gap-3.5
-                    hover:shadow-elevated hover:border-navy-200
-                    transition-all duration-200 cursor-pointer select-none flow-card-enter
-                    ${flow.is_active ? 'border-emerald-200/60' : 'border-navy-100'}
-                  `}
-                  style={{ animationDelay: `${i * 40}ms` }}
-                >
-                  {/* Gradient Icon */}
-                  <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${gradient} flex items-center justify-center shadow-sm flex-shrink-0`}>
-                    <Icon className="w-4 h-4 text-white" strokeWidth={2} />
-                  </div>
+                    return (
+                      <tr
+                        key={flow.flow_id}
+                        onDoubleClick={() => navigate(`/flow-builder/editor/${flow.flow_id}`)}
+                        className="group border-t border-navy-50 hover:bg-navy-50/40 transition-colors cursor-pointer select-none"
+                      >
+                        {/* Flow (icon + name) */}
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${gradient} flex items-center justify-center shadow-sm flex-shrink-0`}>
+                              <Icon className="w-4 h-4 text-white" strokeWidth={2} />
+                            </div>
+                            <span className="font-semibold text-navy-900 truncate max-w-[18rem]">{flow.flow_name}</span>
+                          </div>
+                        </td>
 
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-navy-900 truncate">{flow.flow_name}</span>
-                      {flow.is_active ? (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-px text-2xs font-medium bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-full flex-shrink-0">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flow-status-pulse" />
-                          Aktif
-                        </span>
-                      ) : (
-                        <span className="px-1.5 py-px text-2xs font-medium bg-navy-50 text-navy-400 rounded-full flex-shrink-0">
-                          Pasif
-                        </span>
-                      )}
-                      {flow.health_score != null && (
-                        <HealthBadge score={flow.health_score} issues={flow.health_issues} />
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3 mt-0.5 text-2xs text-navy-300">
-                      <span>v{flow.config_version}</span>
-                      <span>{flow.node_count} node &middot; {flow.edge_count} edge</span>
-                      <span>{timeAgo(flow.updated_at)}</span>
-                      {flow.assigned_instances && flow.assigned_instances.length > 0 && (
-                        <span className="inline-flex items-center gap-1 text-sky-500">
-                          <Phone className="w-2.5 h-2.5" />
-                          {flow.assigned_instances.map(i => i.instanceName).join(', ')}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                        {/* Durum */}
+                        <td className="px-4 py-2.5">
+                          {flow.is_active ? (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-px text-2xs font-medium bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-full">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flow-status-pulse" />
+                              Aktif
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-px text-2xs font-medium bg-navy-50 text-navy-400 rounded-full">
+                              Pasif
+                            </span>
+                          )}
+                        </td>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-0.5 flex-shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
-                    <IconBtn
-                      icon={Pencil}
-                      title="Duzenle"
-                      onClick={() => navigate(`/flow-builder/editor/${flow.flow_id}`)}
-                      className="text-brand-500 hover:bg-brand-50"
-                    />
-                    {flow.is_active ? (
-                      <IconBtn
-                        icon={Pause}
-                        title="Deaktif Et"
-                        onClick={() => handleDeactivate(flow.flow_id)}
-                        disabled={isRowLoading}
-                        className="text-amber-500 hover:bg-amber-50"
-                      />
-                    ) : (
-                      <IconBtn
-                        icon={Play}
-                        title="Aktif Et"
-                        onClick={() => handleActivate(flow.flow_id)}
-                        disabled={isRowLoading}
-                        className="text-emerald-500 hover:bg-emerald-50"
-                      />
-                    )}
-                    <IconBtn
-                      icon={Copy}
-                      title="Kopyala"
-                      onClick={() => handleDuplicate(flow)}
-                      disabled={isRowLoading}
-                      className="text-navy-400 hover:text-brand-500 hover:bg-brand-50"
-                    />
-                    <IconBtn
-                      icon={Trash2}
-                      title={flow.is_active ? 'Aktif flow silinemez' : 'Sil'}
-                      onClick={() => setDeleteTarget(flow)}
-                      disabled={isRowLoading || flow.is_active}
-                      className="text-red-400 hover:bg-red-50"
-                    />
-                  </div>
-                </div>
-              );
-            })}
+                        {/* Saglik */}
+                        <td className="px-4 py-2.5">
+                          {flow.health_score != null
+                            ? <HealthBadge score={flow.health_score} issues={flow.health_issues} />
+                            : <span className="text-navy-300">&mdash;</span>}
+                        </td>
+
+                        {/* Surum */}
+                        <td className="px-4 py-2.5 text-navy-500 whitespace-nowrap">v{flow.config_version}</td>
+
+                        {/* Dugum / Baglanti */}
+                        <td className="px-4 py-2.5 text-right text-navy-500 tabular-nums whitespace-nowrap">
+                          {flow.node_count} &middot; {flow.edge_count}
+                        </td>
+
+                        {/* Atanan Hat */}
+                        <td className="px-4 py-2.5 text-navy-500">
+                          {flow.assigned_instances && flow.assigned_instances.length > 0 ? (
+                            <span className="inline-flex items-center gap-1 text-sky-500">
+                              <Phone className="w-3 h-3 flex-shrink-0" />
+                              <span className="truncate max-w-[12rem]">{flow.assigned_instances.map(i => i.instanceName).join(', ')}</span>
+                            </span>
+                          ) : (
+                            <span className="text-navy-300">&mdash;</span>
+                          )}
+                        </td>
+
+                        {/* Guncellendi */}
+                        <td className="px-4 py-2.5 text-right text-navy-400 whitespace-nowrap">{timeAgo(flow.updated_at)}</td>
+
+                        {/* Islem */}
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center justify-end gap-0.5 opacity-70 group-hover:opacity-100 transition-opacity">
+                            <IconBtn
+                              icon={Pencil}
+                              title="Duzenle"
+                              onClick={() => navigate(`/flow-builder/editor/${flow.flow_id}`)}
+                              className="text-brand-500 hover:bg-brand-50"
+                            />
+                            {flow.is_active ? (
+                              <IconBtn
+                                icon={Pause}
+                                title="Deaktif Et"
+                                onClick={() => handleDeactivate(flow.flow_id)}
+                                disabled={isRowLoading}
+                                className="text-amber-500 hover:bg-amber-50"
+                              />
+                            ) : (
+                              <IconBtn
+                                icon={Play}
+                                title="Aktif Et"
+                                onClick={() => handleActivate(flow.flow_id)}
+                                disabled={isRowLoading}
+                                className="text-emerald-500 hover:bg-emerald-50"
+                              />
+                            )}
+                            <IconBtn
+                              icon={Copy}
+                              title="Kopyala"
+                              onClick={() => handleDuplicate(flow)}
+                              disabled={isRowLoading}
+                              className="text-navy-400 hover:text-brand-500 hover:bg-brand-50"
+                            />
+                            <IconBtn
+                              icon={Trash2}
+                              title={flow.is_active ? 'Aktif flow silinemez' : 'Sil'}
+                              onClick={() => setDeleteTarget(flow)}
+                              disabled={isRowLoading || flow.is_active}
+                              className="text-red-400 hover:bg-red-50"
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
@@ -891,22 +919,50 @@ function simplifyIssue(raw: string): string {
   return raw.split('—')[0].trim();
 }
 
-function SkeletonRow({ delay = 0 }: { delay?: number }) {
+function SkeletonTable() {
   return (
-    <div
-      className="bg-white border border-navy-100 rounded-xl px-4 py-3 flex items-center gap-3.5 flow-card-enter"
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      <div className="w-9 h-9 rounded-lg flow-skeleton flex-shrink-0" />
-      <div className="flex-1">
-        <div className="h-4 w-40 flow-skeleton rounded mb-1.5" />
-        <div className="h-3 w-64 flow-skeleton rounded" />
-      </div>
-      <div className="flex items-center gap-1">
-        <div className="w-7 h-7 flow-skeleton rounded-lg" />
-        <div className="w-7 h-7 flow-skeleton rounded-lg" />
-        <div className="w-7 h-7 flow-skeleton rounded-lg" />
-        <div className="w-7 h-7 flow-skeleton rounded-lg" />
+    <div className="bg-white border border-navy-100 rounded-xl shadow-soft overflow-hidden flow-card-enter">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-navy-50/50 text-navy-500 text-xs">
+            <tr>
+              <th className="text-left font-medium px-4 py-2.5">Flow</th>
+              <th className="text-left font-medium px-4 py-2.5">Durum</th>
+              <th className="text-left font-medium px-4 py-2.5">Saglik</th>
+              <th className="text-left font-medium px-4 py-2.5">Surum</th>
+              <th className="text-right font-medium px-4 py-2.5">Dugum / Baglanti</th>
+              <th className="text-left font-medium px-4 py-2.5">Atanan Hat</th>
+              <th className="text-right font-medium px-4 py-2.5">Guncellendi</th>
+              <th className="text-right font-medium px-4 py-2.5">Islem</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[0, 1, 2, 3].map(i => (
+              <tr key={i} className="border-t border-navy-50">
+                <td className="px-4 py-2.5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg flow-skeleton flex-shrink-0" />
+                    <div className="h-4 w-32 flow-skeleton rounded" />
+                  </div>
+                </td>
+                <td className="px-4 py-2.5"><div className="h-4 w-12 flow-skeleton rounded-full" /></td>
+                <td className="px-4 py-2.5"><div className="h-4 w-16 flow-skeleton rounded-full" /></td>
+                <td className="px-4 py-2.5"><div className="h-3 w-8 flow-skeleton rounded" /></td>
+                <td className="px-4 py-2.5"><div className="h-3 w-12 flow-skeleton rounded ml-auto" /></td>
+                <td className="px-4 py-2.5"><div className="h-3 w-20 flow-skeleton rounded" /></td>
+                <td className="px-4 py-2.5"><div className="h-3 w-16 flow-skeleton rounded ml-auto" /></td>
+                <td className="px-4 py-2.5">
+                  <div className="flex items-center justify-end gap-1">
+                    <div className="w-7 h-7 flow-skeleton rounded-lg" />
+                    <div className="w-7 h-7 flow-skeleton rounded-lg" />
+                    <div className="w-7 h-7 flow-skeleton rounded-lg" />
+                    <div className="w-7 h-7 flow-skeleton rounded-lg" />
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
