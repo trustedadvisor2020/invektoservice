@@ -1,0 +1,219 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "spec_architectural_decisions": [
+    {
+      "decision": "The filtered-recipients universe is queried with ONE static FROM+WHERE; all five filters are bound as nullable parameters and disabled via (@p::type IS NULL OR <clause>). There is NO dynamic SQL string building / concatenation of user input.",
+      "reason": "Plan B iter0 FAILED for SQL concatenation; nullable-param-with-cast keeps a single prepared statement that is injection-proof while supporting any subset of the 5 filters.",
+      "codex_note": "EXPECTED: the (@f_x::type IS NULL OR ...) pattern is the intentional injection-safe filter toggle, not a missed parameterization or a perf anti-pattern."
+    },
+    {
+      "decision": "A recipient's delivery status is computed from a LEFT JOIN LATERAL on outbound_messages scoped to THAT recipient's own job broadcast_ids (om.broadcast_id = ANY(j.broadcast_ids)), with a tenant_id predicate on r, j, om AND the membership lr. A recipient with no message row is 'not_sent' (never dropped).",
+      "reason": "Cross-job aggregation must not let one campaign's status bleed into another; status is always scoped to the recipient's own campaign. Mirrors Plan B's per-job precedence (read>delivered>sent>sending>queued>failed>blocked>not_sent).",
+      "codex_note": "EXPECTED: status is correctly per-recipient/per-campaign (no cross-campaign bleed); not_sent via COALESCE is intentional, not an inner-join drop."
+    },
+    {
+      "decision": "The 'Data Listesi' filter is phone-MEMBERSHIP (EXISTS in list_records on tenant_id+list_id+normalized_phone), NOT an FK origin link, because bulk_send_recipients has no list_id column.",
+      "reason": "Q-approved: campaign recipients are not stored with their source list id; membership ('numbers in list X that we contacted') is the meaningful, buildable semantic and needs no schema change.",
+      "codex_note": "EXPECTED: membership join is the intended design, not a missing list_id foreign key."
+    },
+    {
+      "decision": "Filtered CSV/XLSX is built in-memory (List<string[]>) exactly like Plan B's per-list/per-job paths; XLSX is row-capped (INV-OB-058), CSV is the full-data path. The realistic bound is the tenant's total bulk-send recipient volume (WhatsApp scale).",
+      "reason": "Matches the established Plan B builder (every DB error happens before a response byte -> clean INV-OB-057, no partial/un-auditable mid-stream case). True streaming was an accepted non-goal in Plan B at the 50k cap.",
+      "codex_note": "EXPECTED: in-memory CSV build is the established pattern, not a new unbounded-memory regression; XLSX cap protects the heavy path."
+    },
+    {
+      "decision": "Tarih Aralığı bounds bulk_send_jobs.created_at (the campaign date, Q decision) as UTC calendar days; 'to' is converted to the start of the next day (end-of-day inclusive).",
+      "reason": "Q chose campaign date over per-message sent_at. UTC-day bucketing is a documented v1 approximation (small edge offset for non-UTC operators).",
+      "codex_note": "EXPECTED: campaign-date filtering + UTC end-of-day-exclusive upper bound is intentional, not an off-by-one bug."
+    },
+    {
+      "decision": "'Liste Oluştur' is audited in export_logs with export_type='list_from_export', format='list', delivery_mode='internal' (CHECKs widened in migration 054). It is NOT logged as a csv/server_stream egress.",
+      "reason": "Creating an internal list is PII duplication, not file egress; honest audit semantics (Plan B's audit-honesty theme) require non-file/non-stream enum values rather than pretending bytes were produced.",
+      "codex_note": "EXPECTED: format='list'/delivery_mode='internal' is deliberate audit honesty; the widened CHECKs are additive (existing rows stay valid)."
+    },
+    {
+      "decision": "The count/read share ONE FROM that always includes the LEFT JOIN LATERAL to outbound_messages, even when no status filter is set; the lateral's LIMIT 1 + LEFT JOIN keeps it row-count-neutral, so it never changes COUNT(*)/COUNT(DISTINCT). The count is debounced (400ms) on the client.",
+      "reason": "A single shared FROM keeps count/read/create-list provably consistent (same filter semantics) and injection-safe; the lateral is genuinely needed whenever a status filter is applied. idx_outbound_messages_tenant_broadcast_phone makes each probe an index lookup; WhatsApp-scale recipient volumes keep the debounced count well within interactive latency.",
+      "codex_note": "EXPECTED: the always-present lateral is an intentional simplicity/consistency tradeoff for WhatsApp-scale data (not the excluded 9.9M dialer scale); it is row-count-neutral so the counts are correct. Acceptable v1 cost, not a missed optimization that needs splitting into two SQL variants."
+    },
+    {
+      "decision": "export_logs keeps GRANT ALL (single 'invekto' role); append-only is enforced in code (ExportRepository issues INSERT only).",
+      "reason": "Project canon (codex-context.md L20/L69); a prior package FAILED review for downgrading it. No separate audit-writer DB role exists.",
+      "codex_note": "EXPECTED: do NOT flag GRANT ALL as a least-privilege violation; append-only is enforced in code by design."
+    },
+    {
+      "decision": "Export is gated by tenant-scoped JWT + ExportOptions(Enabled,AllowAllTenants); there is NO per-operator export RBAC.",
+      "reason": "No granular operator-permission model exists; Q's decision is 'all operators can export'. Tenant isolation is the authorization boundary.",
+      "codex_note": "EXPECTED: do NOT flag missing per-operator permissions; tenant isolation is the boundary by product decision."
+    }
+  ],
+  "slug": "20260603-feat-obi-export-manager-v2",
+  "risk": "HIGH",
+  "status": "DONE",
+  "created_at": "2026-06-03T21:50:00Z",
+  "updated_at": "2026-06-03T21:50:00Z",
+  "gr_list": [
+    {
+      "id": "GR1",
+      "description": "Data+contract: migration 054 (idx_bulk_send_recipients_tenant_phone + widen export_logs type/format/delivery CHECKs) + outbound.sql mirror + Shared ExportDtos v2 (ExportFilter/FilteredCountResult/FilteredRecipientRow/ExportFilterOptions/FilterOptionItem/CreateListFromExportRequest+Result/ExportLogEntry + new ExportTypes/Formats/DeliveryModes consts) + ErrorCodes INV-OB-059..061 + errors.md",
+      "services_affected": ["Invekto.Shared", "DB"]
+    },
+    {
+      "id": "GR2",
+      "description": "Outbound filter engine: ExportRepository (CountFiltered, ReadFilteredRecipients, CreateListFromFilter [transactional], ListExportHistory, ListTemplateOptions/ListDataListOptions) + ExportService (ValidateFilter, ListFilterOptions, CountFiltered, ExportFiltered CSV/XLSX, CreateListFromExport, ListHistory) + 5 endpoints + ExportStatus/ExportMessage for the 3 new codes",
+      "services_affected": ["Invekto.Outbound"]
+    },
+    {
+      "id": "GR3",
+      "description": "Backend proxy: 5 routes (filter-options, recipients/count, recipients stream, recipients/create-list POST, history) forwarding to Outbound with JWT->tenant gate; recipients download streamed through",
+      "services_affected": ["Invekto.Backend"]
+    },
+    {
+      "id": "GR4",
+      "description": "Dashboard ExportManagerPage full rewrite (filters -> live count card -> CSV/Excel/Liste Oluştur action cards -> Kampanya Raporu PDF section -> Export Geçmişi table + Liste Oluştur modal with X-close) + api.ts v2 client methods + TS interfaces",
+      "services_affected": ["Invekto.Backend/Dashboard"]
+    }
+  ],
+  "plan": {
+    "summary": "FEAT-OBI Phase 1B Export Manager v2: replace Plan B's two per-row tables with a single filter-driven surface over ALL of the tenant's bulk-send recipients (Şablon/Kampanya/Data Listesi-membership/Teslim Durumu/Tarih) showing a live unique-vs-total count, filtered CSV/XLSX export, and 'Liste Oluştur' (a new data_list source='export' from the filtered unique sendable phones), plus an Export Geçmişi table and a kept per-campaign PDF report section. New endpoints; export_logs reused (widened).",
+    "q_intent": "Q showed a dialer Export Manager screenshot: 'export manager yapısını bu şekilde yap. formatı değil yapıyı al.' (take the structure, not the format). Then: 'arama sonucu yerine burada ne filtre kullanılabilir?'. Interview: existing WhatsApp data + new endpoints (full feature); universe=campaign recipients (send results); Proje filter=Şablon; Sonuç slot=Teslim Durumu; replace old tables entirely; v1 includes Liste Oluştur, phone search deferred to Faz 2; Data Listesi slot=both membership filter AND Kampanya filter (5 filters); date=campaign date; create-list=valid/sendable phones only; PDF report kept as a separate section.",
+    "interview_notes": "9 design questions resolved across 4 AskUserQuestion rounds. Screenshot is a dialer/call-record export; structure (search/filters/count card/action cards/history) adapted onto Invekto's WhatsApp campaign-recipients data. Hard schema finding: bulk_send_jobs has NO list_id, so 'Data Listesi' became a phone-membership join (Q chose to keep it AND add Kampanya = 5 filters). Sonuç='call result' has no WhatsApp twin except delivery status -> Teslim Durumu (reuses Plan B's outbound_messages precedence). Defaults Q-approved: campaign-date filter, sendable-only list creation, PDF section kept.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "Migration 054 adds idx_bulk_send_recipients_tenant_phone and widens export_logs type/format/delivery CHECKs (filtered_recipients, list_from_export, list, internal) idempotently with a DO $verify$ INV-SEED-054 postcondition; outbound.sql canonical mirror updated; no new table.", "verified": true },
+      { "id": "AC2", "criterion": "GET /exports/recipients/count returns unique_count (COUNT DISTINCT normalized_phone) and total_count (COUNT * incl. repeats) for any subset of the 5 filters (AND-combined), tenant-scoped, with status matched against the computed best status (not_sent for no-message recipients).", "verified": true },
+      { "id": "AC3", "criterion": "GET /exports/recipients?format=csv|xlsx streams the filtered recipients (phone/status/campaign/template/timestamps) with an export_logs row (export_type=filtered_recipients) written before bytes; XLSX is row-capped (INV-OB-058), CSV is full data; invalid filter (from>to / unknown status) -> INV-OB-060.", "verified": true },
+      { "id": "AC4", "criterion": "POST /exports/recipients/create-list creates a new data_list (source='export', status='ready') from the filter's DISTINCT sendable phones in ONE transaction (name conflict -> INV-OB-059 with rollback; zero matches -> INV-OB-061; over-cap -> INV-OB-058), recomputes total/sendable counts, and writes a 'list_from_export' export_logs row (format='list', delivery_mode='internal').", "verified": true },
+      { "id": "AC5", "criterion": "The recipient status join is scoped to each recipient's own job broadcast_ids (no cross-campaign bleed), with a tenant_id predicate on bulk_send_recipients, bulk_send_jobs, outbound_messages AND the list_records membership EXISTS; no cross-tenant leak; the whole feature is gated by ExportOptions -> INV-OB-056 when disabled.", "verified": true },
+      { "id": "AC6", "criterion": "Backend proxies the 5 routes to Outbound with JWT->tenant auth (recipients file streamed through, no buffering, Content-Disposition preserved); query string forwarded verbatim; full .NET solution build + SPA (tsc+vite) build PASS.", "verified": true },
+      { "id": "AC7", "criterion": "ExportManagerPage shows Filtreler (5 dropdowns + active-filter chips + Tümünü Temizle), a live debounced count card, CSV/Excel/Liste Oluştur action cards (disabled when total=0), a Kampanya Raporu (PDF) section (jsPDF reuse), an Export Geçmişi table from /exports/history, and a Liste Oluştur modal closed via a top-right X (no 'İptal' text button, per Q UX rule).", "verified": true }
+    ]
+  },
+  "allowed_files": [
+    "arch/db/migrations/054-export-v2.sql",
+    "arch/db/outbound.sql",
+    "src/Invekto.Shared/DTOs/Outbound/ExportDtos.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "arch/errors.md",
+    "src/Invekto.Outbound/Data/ExportRepository.cs",
+    "src/Invekto.Outbound/Services/ExportService.cs",
+    "src/Invekto.Outbound/Program.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Dashboard/src/pages/ExportManagerPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "arch/plans/20260603-feat-obi-export-manager-v2.json",
+    "tracking/feat-obi-export-manager-v2.md"
+  ],
+  "files_changed": [
+    { "path": "arch/db/migrations/054-export-v2.sql", "is_new": true },
+    { "path": "arch/db/outbound.sql", "is_new": false },
+    { "path": "src/Invekto.Shared/DTOs/Outbound/ExportDtos.cs", "is_new": false },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false },
+    { "path": "arch/errors.md", "is_new": false },
+    { "path": "src/Invekto.Outbound/Data/ExportRepository.cs", "is_new": false },
+    { "path": "src/Invekto.Outbound/Services/ExportService.cs", "is_new": false },
+    { "path": "src/Invekto.Outbound/Program.cs", "is_new": false },
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/ExportManagerPage.tsx", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "is_new": false },
+    { "path": "tracking/feat-obi-export-manager-v2.md", "is_new": true }
+  ],
+  "git_diff": {
+    "sha256": "8ac1465afe95a3c95538bd84bade7b773954f7b37fc7b422d5f68b53508e13c0",
+    "full_path": "arch/plans/diffs/20260603-feat-obi-export-manager-v2.diff",
+    "stats": { "insertions": 1620, "deletions": 138, "files_count": 13 }
+  },
+  "build": {
+    "status": "PASS",
+    "timestamp": "2026-06-03T21:45:00Z",
+    "command": "dotnet build InvektoServis.sln + (cd Dashboard && npm run build)",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Outbound", "Invekto.Backend", "Invekto.Backend/Dashboard"]
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "Does every v2 read/count/create query scope strictly by tenant_id on EVERY joined table (bulk_send_recipients r, bulk_send_jobs j, outbound_messages om, list_records lr) so a tenant can never count/export/build-a-list-from another tenant's recipients by guessing a template/job/list id?", "category": "Auth" },
+    { "id": "Q2", "question": "Is the delivery-status of each recipient computed ONLY from that recipient's own job broadcast_ids (om.broadcast_id = ANY(j.broadcast_ids)) so no other campaign's status bleeds in, and does a recipient with no outbound_messages row resolve to 'not_sent' (COALESCE) instead of being dropped, including when a status filter is applied?", "category": "Data" },
+    { "id": "Q3", "question": "Is 'Liste Oluştur' atomic: does a name conflict (unique_violation) or a zero-row result roll the whole transaction back (no orphan empty list), is the over-cap case rejected before/at insert (INV-OB-058), and does the success path recompute total_records/sendable_count authoritatively and write exactly one 'list_from_export' export_logs row?", "category": "Lifecycle" },
+    { "id": "Q4", "question": "Are all v2 DB paths in ExportService typed-caught (NpgsqlException, with PostgresException as a subtype) and mapped to INV-OB-057 (not a generic 500), do failed filtered-export and failed create-list still write a status=failed+error_code export_logs row (no silent failure), and is the export_logs INSERT-before-serve invariant preserved for the filtered export?", "category": "Lifecycle" },
+    { "id": "Q5", "question": "Are the 5 filters injection-safe (single static SQL with nullable @f_* params toggled by (@p::type IS NULL OR ...), no string concatenation of user input), is filter validation enforced (from>to and unknown delivery status -> INV-OB-060), and is the date upper bound end-of-day inclusive (to -> next-day-exclusive on bulk_send_jobs.created_at)?", "category": "Data" },
+    { "id": "Q6", "question": "Does the Backend proxy stream the /exports/recipients file body through without buffering (preserving Content-Type/Content-Disposition + no-store/nosniff) and forward the filter query string verbatim, and do the count/options/history/create-list routes use the buffered JSON proxy with the JWT->tenant gate intact?", "category": "Process/Policy" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Outbound/Services/MessageSenderService.cs (INMA bridge - export is read-only)",
+      "bulk_send_recipients / bulk_send_jobs snapshot logic (immutable; read-only consumers, no DDL)",
+      "outbound_messages (read-only; no writes)",
+      "Plan B export paths (contact-list / send-recipients / report-data) left intact"
+    ],
+    "non_goals": [
+      "Telefon Numarası Ara (single-number full history) - deferred to Faz 2",
+      "Filtered-set PDF (PDF stays per-campaign report only)",
+      "INMA MSSQL contact pull, scheduled/email exports, phone masking",
+      "Per-message sent_at date filter (campaign-date chosen by Q)"
+    ],
+    "intentional_exclusions": [
+      "list_id FK on bulk_send_recipients (membership join used instead, by design)",
+      "True streaming CSV (in-memory build, parity with Plan B; bounded by tenant recipient volume)",
+      "Per-operator export RBAC (tenant isolation is the boundary)"
+    ]
+  },
+  "error_handling": {
+    "user_facing_errors": [
+      "INV-OB-056 ExportFeatureDisabled (tenant gate off)",
+      "INV-OB-057 ExportDbError (Npgsql/Postgres on the v2 path)",
+      "INV-OB-058 ExportTooLarge (XLSX cap, or create-list unique set over cap)",
+      "INV-OB-059 ExportListNameConflict (create-list duplicate name)",
+      "INV-OB-060 ExportFilterInvalid (from>to or unknown delivery status)",
+      "INV-OB-061 ExportListEmpty (filter yields zero unique sendable phones)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Every ExportFilteredAsync and CreateListFromExportAsync failure path (gate, validation, null/invalid filter, over-cap, empty, name-conflict, DB error) writes a best-effort status=failed+error_code export_logs row via a local FailAsync helper. iter2 fixes: (a) a JSON body with filter:null is coalesced to an empty ExportFilter before any use (no NRE/500); (b) the create-list SUCCESS export_logs row is written INSIDE the create transaction (InsertLogCoreAsync with the tx), so the new data_list and its KVKK audit row commit/rollback atomically — a committed list can never lack its audit row, and an audit-insert failure rolls the list back too (no partial side effect). The filtered-export success path still audits BEFORE serving bytes (read-only, no side effect). DB exceptions are typed-caught (NpgsqlException incl. PostgresException) -> INV-OB-057. The Dashboard history refresh is non-blocking but logs (console.warn) rather than fully swallowing. count/filter-options/history endpoints intentionally do NOT audit (not egress; count fires per-keystroke debounced -> audit spam)."
+  },
+  "aha_moments": [
+    {
+      "category": "SPEED",
+      "user_pain": "Operator wants 'everyone we messaged in May who never read it' but had to eyeball each campaign export separately.",
+      "suggestion": "One filter surface spans ALL campaigns at once (template + campaign + list membership + delivery status + date) with a live unique/total count before they export.",
+      "aha_moment": "Operator sets Teslim Durumu=Gönderilmedi + a date range and instantly sees '3.412 benzersiz numara' across every campaign — one click to CSV."
+    },
+    {
+      "category": "UX",
+      "user_pain": "After filtering down to the people who didn't respond, re-using them meant manual copy-paste into a new list.",
+      "suggestion": "'Liste Oluştur' turns the current filter's unique sendable numbers directly into a new reusable data_list (source='export').",
+      "aha_moment": "Operator filters to non-readers, clicks Liste Oluştur, names it, and immediately has a ready-to-resend audience — zero export/re-import."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "KVKK: building a new audience from customer data is exactly the kind of action that must be traceable.",
+      "suggestion": "Both filtered exports and list creations write honest export_logs rows (filtered_recipients / list_from_export with format='list', delivery_mode='internal').",
+      "aha_moment": "'Who built that re-marketing list and from what?' is one audit query away, with the filter snapshot recorded."
+    },
+    {
+      "category": "UX",
+      "user_pain": "Operators distrust a count that lies about duplicates (same person reached in 3 campaigns).",
+      "suggestion": "The card shows benzersiz numara AND 'toplam kayıt (tekrarlar dahil)' so the operator knows exactly what the CSV row count will be.",
+      "aha_moment": "Operator sees 5.000 unique vs 9.900 total and understands the export before downloading it."
+    },
+    {
+      "category": "SALES",
+      "user_pain": "The owner still wants a clean forwardable per-campaign result, not a giant cross-campaign CSV.",
+      "suggestion": "The per-campaign PDF report (summary card + capped table) is kept as its own section beneath the filter surface.",
+      "aha_moment": "Operator still gets the one-pager PDF for a single campaign without losing the new cross-campaign power tools."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Support can't tell whether an operator's 'missing numbers' complaint is a filter mistake or a bug.",
+      "suggestion": "Export Geçmişi shows type/source(filter snapshot)/format/row_count/status/time for every action.",
+      "aha_moment": "Support reads the history row ('filtered_recipients, status=Gönderilmedi from=..., 3.412 rows, completed 21:32') and resolves it without a screen-share."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "iteration": 2,
+    "model_used": "gpt-5.5-2026-04-23",
+    "notes": "iter0 FAIL (failed export/create-list outcomes returned codes without a status=failed export_logs audit row — CQ2/CQ12/Q4) -> iter1 fix added FailAsync on every named failure path, but FAIL again (null nested filter NRE/500 + create-list audit-after-commit partial success + Dashboard silent history-refresh swallow) -> iter2 PASS (filter null-coalesce, success audit written INSIDE the create transaction = atomic list+audit, refreshHistory console.warn). All CQ1-12 + CoVe Q1-Q6 PASS."
+  }
+}

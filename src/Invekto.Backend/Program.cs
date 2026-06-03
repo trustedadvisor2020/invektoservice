@@ -3576,6 +3576,24 @@ app.MapGet("/api/v1/outbound/exports/send-job/{jobId:long}/recipients", async (H
 app.MapGet("/api/v1/outbound/exports/send-job/{jobId:long}/report-data", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long jobId) =>
     await OutboundProxyStreamGet(ctx, obClient, jsonLog, $"/api/v1/exports/send-job/{jobId}/report-data{ctx.Request.QueryString.Value}"));
 
+// Export Manager v2 (FEAT-OBI Phase 1B) — filter-driven recipients surface. JSON routes use
+// the buffered proxy; the recipients file download streams through (no buffering). Query string
+// (filters: ?templateId=&jobId=&listId=&status=&from=&to=&format=) is forwarded verbatim.
+app.MapGet("/api/v1/outbound/exports/filter-options", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyGet(ctx, obClient, jsonLog, "/api/v1/exports/filter-options"));
+
+app.MapGet("/api/v1/outbound/exports/recipients/count", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyGet(ctx, obClient, jsonLog, $"/api/v1/exports/recipients/count{ctx.Request.QueryString.Value}"));
+
+app.MapGet("/api/v1/outbound/exports/recipients", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyStreamGet(ctx, obClient, jsonLog, $"/api/v1/exports/recipients{ctx.Request.QueryString.Value}"));
+
+app.MapPost("/api/v1/outbound/exports/recipients/create-list", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, "/api/v1/exports/recipients/create-list"));
+
+app.MapGet("/api/v1/outbound/exports/history", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyGet(ctx, obClient, jsonLog, "/api/v1/exports/history"));
+
 // List -> bulk send wiring (preview-from-list snapshot, then the shared confirm/status path).
 app.MapPost("/api/v1/outbound/bulk-send/preview-from-list", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
     await OutboundProxyPost(ctx, obClient, jsonLog, "/api/v1/bulk-send/preview-from-list"));

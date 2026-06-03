@@ -2310,6 +2310,57 @@ class OpsApiClient {
   async getSendReportData(jobId: number): Promise<SendReportData> {
     return this.request<SendReportData>(`/api/v1/outbound/exports/send-job/${jobId}/report-data?for=pdf`);
   }
+
+  // --- FEAT-OBI Phase 1B: Export Manager v2 (filter-driven recipients surface) ---
+  // Build the recipients filter querystring (camelCase keys; ASP.NET binds case-insensitively).
+  private exportFilterQuery(f: ExportFilter): string {
+    const p = new URLSearchParams();
+    if (f.templateId != null) p.set('templateId', String(f.templateId));
+    if (f.jobId != null) p.set('jobId', String(f.jobId));
+    if (f.listId != null) p.set('listId', String(f.listId));
+    if (f.status) p.set('status', f.status);
+    if (f.from) p.set('from', f.from);
+    if (f.to) p.set('to', f.to);
+    const s = p.toString();
+    return s ? `?${s}` : '';
+  }
+
+  async getExportFilterOptions(): Promise<ExportFilterOptions> {
+    return this.request<ExportFilterOptions>('/api/v1/outbound/exports/filter-options');
+  }
+
+  async getExportRecipientCount(filter: ExportFilter): Promise<FilteredCount> {
+    return this.request<FilteredCount>(`/api/v1/outbound/exports/recipients/count${this.exportFilterQuery(filter)}`);
+  }
+
+  async downloadFilteredExport(filter: ExportFilter, format: 'csv' | 'xlsx'): Promise<{ blob: Blob; filename: string }> {
+    const q = this.exportFilterQuery(filter);
+    const sep = q ? '&' : '?';
+    return this.requestBlob(`/api/v1/outbound/exports/recipients${q}${sep}format=${format}`);
+  }
+
+  async createListFromExport(name: string, filter: ExportFilter): Promise<CreateListFromExportResult> {
+    // POST body uses the server DTO's snake_case ExportFilter shape.
+    return this.request<CreateListFromExportResult>('/api/v1/outbound/exports/recipients/create-list', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        filter: {
+          template_id: filter.templateId ?? null,
+          job_id: filter.jobId ?? null,
+          list_id: filter.listId ?? null,
+          status: filter.status ?? null,
+          from: filter.from ?? null,
+          to: filter.to ?? null,
+        },
+      }),
+    });
+  }
+
+  async listExportHistory(): Promise<ExportLogEntry[]> {
+    return this.request<ExportLogEntry[]>('/api/v1/outbound/exports/history');
+  }
 }
 
 // FEAT-OBI Phase 1A: contact-list + list->bulk-send DTOs (mirror Invekto.Shared
@@ -2394,6 +2445,53 @@ export interface SendReportData {
   recipient_table_truncated: boolean;
   recipient_table_limit: number;
   recipients: SendRecipientRow[];
+}
+
+// FEAT-OBI Phase 1B: Export Manager v2 (filter-driven recipients surface).
+// ExportFilter uses camelCase here (querystring + SPA state); the create-list POST
+// maps it to the server's snake_case ExportFilter in createListFromExport().
+export interface ExportFilter {
+  templateId?: number | null;
+  jobId?: number | null;
+  listId?: number | null;
+  status?: string | null;
+  from?: string | null; // YYYY-MM-DD (campaign date lower bound)
+  to?: string | null;   // YYYY-MM-DD (campaign date upper bound, inclusive)
+}
+
+export interface FilteredCount {
+  unique_count: number;
+  total_count: number;
+}
+
+export interface FilterOptionItem {
+  id: number;
+  label: string;
+}
+
+export interface ExportFilterOptions {
+  templates: FilterOptionItem[];
+  campaigns: FilterOptionItem[];
+  lists: FilterOptionItem[];
+}
+
+export interface CreateListFromExportResult {
+  list_id: number;
+  name: string;
+  record_count: number;
+}
+
+export interface ExportLogEntry {
+  id: number;
+  export_type: string;
+  source_name: string | null;
+  format: string;
+  delivery_mode: string;
+  row_count: number;
+  status: string;
+  requested_by: string | null;
+  error_code: string | null;
+  created_at: string;
 }
 
 export interface ImportRowDto {

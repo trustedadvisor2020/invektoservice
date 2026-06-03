@@ -239,6 +239,10 @@ CREATE TABLE IF NOT EXISTS bulk_send_recipients (
 CREATE INDEX IF NOT EXISTS idx_bulk_send_recipients_job
     ON bulk_send_recipients (job_id);
 
+-- Phase 1B (migration 054): cross-job distinct-phone count + list-membership EXISTS + create-list read.
+CREATE INDEX IF NOT EXISTS idx_bulk_send_recipients_tenant_phone
+    ON bulk_send_recipients (tenant_id, normalized_phone);
+
 GRANT ALL ON bulk_send_jobs TO invekto;
 GRANT ALL ON bulk_send_recipients TO invekto;
 GRANT ALL ON SEQUENCE bulk_send_jobs_id_seq TO invekto;
@@ -340,11 +344,12 @@ CREATE TABLE IF NOT EXISTS export_logs (
     error_code              VARCHAR(16),
     created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT chk_export_log_type
-        CHECK (export_type IN ('contact_list','send_recipients','send_summary')),
+        CHECK (export_type IN ('contact_list','send_recipients','send_summary',
+                               'filtered_recipients','list_from_export')),  -- 'filtered_*'/'list_from_export' added migration 054 (Phase 1B)
     CONSTRAINT chk_export_log_format
-        CHECK (format IN ('csv','xlsx','pdf')),
+        CHECK (format IN ('csv','xlsx','pdf','list')),  -- 'list' added migration 054 (list_from_export audit)
     CONSTRAINT chk_export_log_delivery
-        CHECK (delivery_mode IN ('server_stream','client_render')),
+        CHECK (delivery_mode IN ('server_stream','client_render','internal')),  -- 'internal' added migration 054
     CONSTRAINT chk_export_log_status
         CHECK (status IN ('completed','failed'))
 );

@@ -21,6 +21,9 @@ public static class ExportFormats
     public const string Xlsx = "xlsx";
     public const string Pdf = "pdf";
 
+    /// <summary>Phase 1B: audit-only "format" for list_from_export (no file is produced).</summary>
+    public const string List = "list";
+
     /// <summary>Formats valid for a streamed (server-side) file export.</summary>
     public static bool IsStreamFormat(string? s) => s is Csv or Xlsx;
 }
@@ -31,6 +34,10 @@ public static class ExportTypes
     public const string ContactList = "contact_list";       // a data_lists list -> list_records
     public const string SendRecipients = "send_recipients"; // per-recipient delivery status for a bulk_send_jobs campaign
     public const string SendSummary = "send_summary";       // campaign rollup (report-data / PDF)
+
+    // FEAT-OBI Phase 1B (Export Manager v2): filter-driven recipients surface.
+    public const string FilteredRecipients = "filtered_recipients"; // a filtered CSV/XLSX export across all campaigns
+    public const string ListFromExport = "list_from_export";        // "Liste Oluştur" — a new data_list built from the filter
 }
 
 /// <summary>export_logs.delivery_mode values (audit honesty — see migration 053).</summary>
@@ -38,6 +45,7 @@ public static class ExportDeliveryModes
 {
     public const string ServerStream = "server_stream"; // bytes streamed to client (csv/xlsx)
     public const string ClientRender = "client_render"; // report-data served; PDF rendered in browser
+    public const string Internal = "internal";          // Phase 1B: no egress — PII copied into a new internal list
 }
 
 /// <summary>
@@ -166,4 +174,115 @@ public sealed class SendRecipientRow
     [JsonPropertyName("delivered_at")] public DateTime? DeliveredAt { get; set; }
     [JsonPropertyName("read_at")] public DateTime? ReadAt { get; set; }
     [JsonPropertyName("failed_reason")] public string? FailedReason { get; set; }
+}
+
+// =============================================================
+// FEAT-OBI Phase 1B — Export Manager v2 (filter-driven recipients surface)
+// One surface over ALL of a tenant's bulk-send recipients, filtered by template
+// / campaign / list-membership / delivery status / campaign-date. Drives an
+// instant unique-vs-total count, filtered CSV/XLSX, and "Liste Oluştur" (a new
+// data_list source='export' from the filtered unique sendable phones). Audit:
+// export_logs (type 'filtered_recipients' | 'list_from_export').
+// =============================================================
+
+/// <summary>
+/// Filter applied across all of the tenant's bulk-send recipients. Every field is
+/// optional; present fields are AND-ed. The status is one of SendDeliveryStatus's
+/// values ('read'|'delivered'|'sent'|'sending'|'queued'|'failed'|'blocked'|'not_sent')
+/// or null/empty = all. Dates bound bulk_send_jobs.created_at (the campaign date).
+/// This is a query DTO bound from the querystring on GET endpoints.
+/// </summary>
+public sealed class ExportFilter
+{
+    /// <summary>outbound_templates.id — restrict to campaigns using this template.</summary>
+    [JsonPropertyName("template_id")] public int? TemplateId { get; set; }
+
+    /// <summary>bulk_send_jobs.id — restrict to a single campaign.</summary>
+    [JsonPropertyName("job_id")] public long? JobId { get; set; }
+
+    /// <summary>data_lists.id — keep only recipients whose phone is a member of this list.</summary>
+    [JsonPropertyName("list_id")] public long? ListId { get; set; }
+
+    /// <summary>Computed best delivery status to keep; null/empty = all statuses.</summary>
+    [JsonPropertyName("status")] public string? Status { get; set; }
+
+    /// <summary>Inclusive lower bound on the campaign date (UTC).</summary>
+    [JsonPropertyName("from")] public DateTime? From { get; set; }
+
+    /// <summary>Inclusive upper bound on the campaign date (treated as end-of-day; UTC).</summary>
+    [JsonPropertyName("to")] public DateTime? To { get; set; }
+}
+
+/// <summary>GET /api/v1/exports/recipients/count response — the count card.</summary>
+public sealed class FilteredCountResult
+{
+    /// <summary>Distinct normalized phones matching the filter ("benzersiz numara").</summary>
+    [JsonPropertyName("unique_count")] public int UniqueCount { get; set; }
+
+    /// <summary>Total recipient rows matching the filter, repeats included ("toplam kayıt").</summary>
+    [JsonPropertyName("total_count")] public int TotalCount { get; set; }
+}
+
+/// <summary>One filtered recipient row in the CSV/XLSX export (cross-campaign).</summary>
+public sealed class FilteredRecipientRow
+{
+    [JsonPropertyName("phone")] public string Phone { get; set; } = "";
+    [JsonPropertyName("status")] public string Status { get; set; } = SendDeliveryStatus.NotSent;
+    [JsonPropertyName("status_label")] public string StatusLabel { get; set; } = "";
+    [JsonPropertyName("campaign_id")] public string CampaignId { get; set; } = "";
+    [JsonPropertyName("template_name")] public string? TemplateName { get; set; }
+    [JsonPropertyName("sent_at")] public DateTime? SentAt { get; set; }
+    [JsonPropertyName("delivered_at")] public DateTime? DeliveredAt { get; set; }
+    [JsonPropertyName("read_at")] public DateTime? ReadAt { get; set; }
+    [JsonPropertyName("campaign_date")] public DateTime CampaignDate { get; set; }
+}
+
+/// <summary>GET /api/v1/exports/filter-options response — populates the 5 filter dropdowns.</summary>
+public sealed class ExportFilterOptions
+{
+    [JsonPropertyName("templates")] public List<FilterOptionItem> Templates { get; set; } = new();
+    [JsonPropertyName("campaigns")] public List<FilterOptionItem> Campaigns { get; set; } = new();
+    [JsonPropertyName("lists")] public List<FilterOptionItem> Lists { get; set; } = new();
+}
+
+/// <summary>A single id/label option for a filter dropdown.</summary>
+public sealed class FilterOptionItem
+{
+    [JsonPropertyName("id")] public long Id { get; set; }
+    [JsonPropertyName("label")] public string Label { get; set; } = "";
+}
+
+/// <summary>POST /api/v1/exports/recipients/create-list body — "Liste Oluştur".</summary>
+public sealed class CreateListFromExportRequest
+{
+    /// <summary>Name for the new data_list (must be unique among the tenant's active lists).</summary>
+    [JsonPropertyName("name")] public string Name { get; set; } = "";
+
+    /// <summary>The active filter; the list is built from its distinct sendable phones.</summary>
+    [JsonPropertyName("filter")] public ExportFilter Filter { get; set; } = new();
+}
+
+/// <summary>POST /api/v1/exports/recipients/create-list response.</summary>
+public sealed class CreateListFromExportResult
+{
+    [JsonPropertyName("list_id")] public long ListId { get; set; }
+    [JsonPropertyName("name")] public string Name { get; set; } = "";
+
+    /// <summary>Number of distinct sendable phones written into the new list.</summary>
+    [JsonPropertyName("record_count")] public int RecordCount { get; set; }
+}
+
+/// <summary>GET /api/v1/exports/history item — one export_logs row for the history table.</summary>
+public sealed class ExportLogEntry
+{
+    [JsonPropertyName("id")] public long Id { get; set; }
+    [JsonPropertyName("export_type")] public string ExportType { get; set; } = "";
+    [JsonPropertyName("source_name")] public string? SourceName { get; set; }
+    [JsonPropertyName("format")] public string Format { get; set; } = "";
+    [JsonPropertyName("delivery_mode")] public string DeliveryMode { get; set; } = "";
+    [JsonPropertyName("row_count")] public int RowCount { get; set; }
+    [JsonPropertyName("status")] public string Status { get; set; } = "";
+    [JsonPropertyName("requested_by")] public string? RequestedBy { get; set; }
+    [JsonPropertyName("error_code")] public string? ErrorCode { get; set; }
+    [JsonPropertyName("created_at")] public DateTime CreatedAt { get; set; }
 }

@@ -1005,6 +1005,17 @@ errors:
     description: Export too large — row count exceeds the XLSX hard cap; the workbook is not built. The XLSX-only cap; CSV is the unbounded full-data path (422)
     user_message: Excel için veri çok büyük. CSV formatını kullanın (CSV tüm satırları içerir).
 
+  # ── FEAT-OBI Phase 1B — Export Manager v2 (filtre-odaklı alıcı yüzeyi) ──
+  - code: INV-OB-059
+    description: create-list-from-export — an active data_list with the same (normalized) name already exists for this tenant (409)
+    user_message: Bu isimde bir liste zaten var. Farklı bir ad girin.
+  - code: INV-OB-060
+    description: Export filter invalid — bad date range (from after to), unknown delivery status value, or otherwise malformed recipients filter (400/422)
+    user_message: Filtre geçersiz. Tarih aralığını ve seçimleri kontrol edin.
+  - code: INV-OB-061
+    description: create-list-from-export — the active filter yields zero valid (sendable) unique phones, so no list can be created (422)
+    user_message: Filtreye uyan gönderilebilir numara yok; liste oluşturulamadı.
+
   # ── IG — Integrations (GR-3.4/3.6) ──
   - code: INV-IG-001
     description: Invalid account payload

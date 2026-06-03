@@ -111,7 +111,7 @@ public class ExportRepository
     private static async Task InsertLogCoreAsync(
         NpgsqlConnection conn, int tenantId, string exportType, long? sourceId, string? sourceName,
         string format, string deliveryMode, int rowCount, string status,
-        string? requestedBy, string? errorCode, CancellationToken ct)
+        string? requestedBy, string? errorCode, CancellationToken ct, NpgsqlTransaction? tx = null)
     {
         const string sql = @"
             INSERT INTO export_logs
@@ -119,7 +119,9 @@ public class ExportRepository
                  delivery_mode, row_count, status, requested_by, error_code)
             VALUES
                 (@tid, @type, @sid, @sname, @fmt, @mode, @rows, @status, @by, @err)";
-        await using var cmd = new NpgsqlCommand(sql, conn);
+        // tx is set when this INSERT must commit atomically with another write (create-list);
+        // null otherwise (standalone audit on its own connection).
+        await using var cmd = new NpgsqlCommand(sql, conn) { Transaction = tx };
         cmd.Parameters.AddWithValue("tid", tenantId);
         cmd.Parameters.AddWithValue("type", exportType);
         cmd.Parameters.AddWithValue("sid", (object?)sourceId ?? DBNull.Value);
@@ -390,6 +392,265 @@ public class ExportRepository
         cmd.Parameters.AddWithValue("id", templateId);
         var name = await cmd.ExecuteScalarAsync(ct);
         return name == null || name is DBNull ? null : (string)name;
+    }
+
+    // ==================================================================
+    // FEAT-OBI Phase 1B — filter-driven recipients surface
+    // ==================================================================
+    // ONE static FROM+WHERE over ALL of the tenant's bulk-send recipients. Every
+    // filter is bound as a nullable param (@f_*); a NULL param disables its clause
+    // via (@p::type IS NULL OR ...), so there is NO dynamic SQL string building.
+    //
+    //   * Status is matched against the COMPUTED best status from the LATERAL
+    //     (COALESCE(m.status,'not_sent')) — a recipient with no message row is
+    //     'not_sent', never dropped (LEFT JOIN), so the count/export agree with
+    //     the per-recipient precedence used elsewhere.
+    //   * The recipient's status comes from ITS OWN campaign only
+    //     (om.broadcast_id = ANY(j.broadcast_ids)) — no cross-campaign bleed.
+    //   * tenant_id predicate is on r, j, om, AND the list-membership lr.
+    //   * Dates bound bulk_send_jobs.created_at (the campaign date, Q decision).
+    private const string FilteredJoins = @"
+        FROM bulk_send_recipients r
+        JOIN bulk_send_jobs j ON j.id = r.job_id AND j.tenant_id = @tid
+        LEFT JOIN LATERAL (
+            SELECT om.status, om.sent_at, om.delivered_at, om.read_at
+            FROM outbound_messages om
+            WHERE om.tenant_id = @tid
+              AND om.broadcast_id = ANY(j.broadcast_ids)
+              AND om.recipient_phone = r.normalized_phone
+            ORDER BY CASE om.status
+                WHEN 'read' THEN 0 WHEN 'delivered' THEN 1 WHEN 'sent' THEN 2
+                WHEN 'sending' THEN 3 WHEN 'queued' THEN 4 WHEN 'failed' THEN 5
+                WHEN 'blocked' THEN 6 ELSE 7 END
+            LIMIT 1
+        ) m ON TRUE";
+
+    private const string FilteredWhere = @"
+        WHERE r.tenant_id = @tid
+          AND (@f_tpl::int          IS NULL OR j.template_id = @f_tpl)
+          AND (@f_job::bigint       IS NULL OR j.id = @f_job)
+          AND (@f_from::timestamptz IS NULL OR j.created_at >= @f_from)
+          AND (@f_toExcl::timestamptz IS NULL OR j.created_at < @f_toExcl)
+          AND (@f_status::text      IS NULL OR COALESCE(m.status,'not_sent') = @f_status)
+          AND (@f_list::bigint      IS NULL OR EXISTS (
+                SELECT 1 FROM list_records lr
+                WHERE lr.tenant_id = @tid AND lr.list_id = @f_list
+                  AND lr.normalized_phone = r.normalized_phone))";
+
+    /// <summary>Bind the 5 filter params (always, NULL = clause disabled). 'To' is end-of-day exclusive.</summary>
+    private static void BindFilter(NpgsqlCommand cmd, ExportFilter f)
+    {
+        cmd.Parameters.AddWithValue("f_tpl", (object?)f.TemplateId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("f_job", (object?)f.JobId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("f_list", (object?)f.ListId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("f_status",
+            string.IsNullOrWhiteSpace(f.Status) ? (object)DBNull.Value : f.Status.Trim());
+        // Dates are interpreted as UTC calendar days; 'to' becomes the start of the next
+        // day so the upper bound is inclusive of the whole picked end date.
+        object from = f.From.HasValue
+            ? DateTime.SpecifyKind(f.From.Value.Date, DateTimeKind.Utc) : DBNull.Value;
+        object toExcl = f.To.HasValue
+            ? DateTime.SpecifyKind(f.To.Value.Date.AddDays(1), DateTimeKind.Utc) : DBNull.Value;
+        cmd.Parameters.AddWithValue("f_from", from);
+        cmd.Parameters.AddWithValue("f_toExcl", toExcl);
+    }
+
+    /// <summary>Count card: distinct phones ("benzersiz numara") + total rows incl. repeats ("toplam kayıt").</summary>
+    public virtual async Task<FilteredCountResult> CountFilteredAsync(
+        int tenantId, ExportFilter filter, CancellationToken ct = default)
+    {
+        // COUNT(*) is bigint; ::int is safe because real WhatsApp recipient volumes stay
+        // well under int.MaxValue (and the XLSX path is capped anyway).
+        var sql = "SELECT COUNT(DISTINCT r.normalized_phone)::int, COUNT(*)::int " + FilteredJoins + FilteredWhere;
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        BindFilter(cmd, filter);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        await reader.ReadAsync(ct);
+        return new FilteredCountResult { UniqueCount = reader.GetInt32(0), TotalCount = reader.GetInt32(1) };
+    }
+
+    /// <summary>Stream filtered recipient rows for CSV/XLSX. limit caps the XLSX defensive read.</summary>
+    public virtual async IAsyncEnumerable<FilteredRecipientRow> ReadFilteredRecipientsAsync(
+        int tenantId, ExportFilter filter, int? limit, [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        var sql = @"
+            SELECT r.normalized_phone, m.status, m.sent_at, m.delivered_at, m.read_at,
+                   j.campaign_id, j.created_at, t.name "
+            + FilteredJoins
+            + " LEFT JOIN outbound_templates t ON t.id = j.template_id AND t.tenant_id = @tid "
+            + FilteredWhere
+            + " ORDER BY j.created_at DESC, r.id"
+            + (limit.HasValue ? "\n            LIMIT @lim" : "");
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        BindFilter(cmd, filter);
+        if (limit.HasValue) cmd.Parameters.AddWithValue("lim", limit.Value);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            var status = reader.IsDBNull(1) ? SendDeliveryStatus.NotSent : reader.GetString(1);
+            yield return new FilteredRecipientRow
+            {
+                Phone = reader.GetString(0),
+                Status = status,
+                StatusLabel = SendDeliveryStatus.Label(status),
+                SentAt = reader.IsDBNull(2) ? null : reader.GetDateTime(2),
+                DeliveredAt = reader.IsDBNull(3) ? null : reader.GetDateTime(3),
+                ReadAt = reader.IsDBNull(4) ? null : reader.GetDateTime(4),
+                CampaignId = reader.GetString(5),
+                CampaignDate = reader.GetDateTime(6),
+                TemplateName = S(reader, 7)
+            };
+        }
+    }
+
+    /// <summary>Outcome of the transactional "Liste Oluştur".</summary>
+    public enum CreateListOutcome { Ok, NameConflict, Empty }
+
+    /// <summary>
+    /// Create a new data_list (source='export') from the filter's DISTINCT recipient phones,
+    /// all written sendable=TRUE (recipients are already normalized at send time). Atomic: a
+    /// name conflict or an empty result rolls the whole transaction back (no orphan list). The
+    /// caller (ExportService) pre-checks empty/over-cap via CountFilteredAsync; the Empty guard
+    /// here is defensive. Counts are recomputed authoritatively after insert.
+    /// </summary>
+    public virtual async Task<(CreateListOutcome outcome, long listId, int recordCount)> CreateListFromFilterAsync(
+        int tenantId, string name, ExportFilter filter, string? requestedBy, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
+
+        long listId;
+        await using (var ins = new NpgsqlCommand(
+            "INSERT INTO data_lists (tenant_id, name, source, status) VALUES (@tid, @name, 'export', 'ready') RETURNING id",
+            conn, tx))
+        {
+            ins.Parameters.AddWithValue("tid", tenantId);
+            ins.Parameters.AddWithValue("name", name);
+            try { listId = Convert.ToInt64(await ins.ExecuteScalarAsync(ct)); }
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
+            {
+                await tx.RollbackAsync(ct);
+                return (CreateListOutcome.NameConflict, 0, 0);
+            }
+        }
+
+        int inserted;
+        var insertSql = @"
+            INSERT INTO list_records (list_id, tenant_id, normalized_phone, sendable)
+            SELECT @newList, @tid, q.phone, TRUE
+            FROM (SELECT DISTINCT r.normalized_phone AS phone " + FilteredJoins + FilteredWhere + ") q";
+        await using (var rec = new NpgsqlCommand(insertSql, conn, tx))
+        {
+            rec.Parameters.AddWithValue("newList", listId);
+            rec.Parameters.AddWithValue("tid", tenantId);
+            BindFilter(rec, filter);
+            inserted = await rec.ExecuteNonQueryAsync(ct);
+        }
+
+        if (inserted == 0)
+        {
+            await tx.RollbackAsync(ct); // no orphan empty list
+            return (CreateListOutcome.Empty, 0, 0);
+        }
+
+        await using (var upd = new NpgsqlCommand(@"
+            UPDATE data_lists SET total_records = @n, sendable_count = @n, updated_at = NOW()
+            WHERE tenant_id = @tid AND id = @newList", conn, tx))
+        {
+            upd.Parameters.AddWithValue("tid", tenantId);
+            upd.Parameters.AddWithValue("newList", listId);
+            upd.Parameters.AddWithValue("n", inserted);
+            await upd.ExecuteNonQueryAsync(ct);
+        }
+
+        // Audit IN THE SAME TRANSACTION so the list and its KVKK audit row commit (or roll back)
+        // atomically — a committed list can never exist without its export_logs row, and an audit
+        // failure rolls the list back too (no partial side effect). format='list'/'internal' = no egress.
+        await InsertLogCoreAsync(conn, tenantId, ExportTypes.ListFromExport, listId, name,
+            ExportFormats.List, ExportDeliveryModes.Internal, inserted, "completed", requestedBy, null, ct, tx);
+
+        await tx.CommitAsync(ct);
+        return (CreateListOutcome.Ok, listId, inserted);
+    }
+
+    /// <summary>Recent export_logs rows for the history table (tenant-scoped, newest first).</summary>
+    public virtual async Task<List<ExportLogEntry>> ListExportHistoryAsync(
+        int tenantId, int limit, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT id, export_type, source_name_snapshot, format, delivery_mode,
+                   row_count, status, requested_by, error_code, created_at
+            FROM export_logs
+            WHERE tenant_id = @tid
+            ORDER BY created_at DESC
+            LIMIT @lim";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("lim", limit);
+
+        var entries = new List<ExportLogEntry>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            entries.Add(new ExportLogEntry
+            {
+                Id = reader.GetInt64(0),
+                ExportType = reader.GetString(1),
+                SourceName = S(reader, 2),
+                Format = reader.GetString(3),
+                DeliveryMode = reader.GetString(4),
+                RowCount = reader.GetInt32(5),
+                Status = reader.GetString(6),
+                RequestedBy = S(reader, 7),
+                ErrorCode = S(reader, 8),
+                CreatedAt = reader.GetDateTime(9)
+            });
+        }
+        return entries;
+    }
+
+    /// <summary>Template options (id + display name) for the Şablon filter dropdown.</summary>
+    public virtual async Task<List<FilterOptionItem>> ListTemplateOptionsAsync(int tenantId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT id, name FROM outbound_templates
+            WHERE tenant_id = @tid
+            ORDER BY name NULLS LAST, id
+            LIMIT 500";
+        return await ReadOptionsAsync(sql, tenantId, ct);
+    }
+
+    /// <summary>Active data-list options (id + name) for the Data Listesi membership filter.</summary>
+    public virtual async Task<List<FilterOptionItem>> ListDataListOptionsAsync(int tenantId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT id, name FROM data_lists
+            WHERE tenant_id = @tid AND deleted_at IS NULL AND active = TRUE
+            ORDER BY lower(name), id
+            LIMIT 500";
+        return await ReadOptionsAsync(sql, tenantId, ct);
+    }
+
+    private async Task<List<FilterOptionItem>> ReadOptionsAsync(string sql, int tenantId, CancellationToken ct)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        var items = new List<FilterOptionItem>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+            // outbound_templates.id is int4 (SERIAL), data_lists.id is int8 (BIGSERIAL);
+            // Convert.ToInt64 handles both without an InvalidCastException.
+            items.Add(new FilterOptionItem { Id = Convert.ToInt64(reader.GetValue(0)), Label = S(reader, 1) ?? "" });
+        return items;
     }
 
     // ------------------------------------------------------------------

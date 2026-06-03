@@ -525,6 +525,9 @@ static int ExportStatus(string? code) => code switch
     ErrorCodes.ExportSourceNotFound => 404,
     ErrorCodes.ExportTooLarge => 422,
     ErrorCodes.ExportDbError => 503,
+    ErrorCodes.ExportListNameConflict => 409,   // Phase 1B
+    ErrorCodes.ExportListEmpty => 422,          // Phase 1B
+    ErrorCodes.ExportFilterInvalid => 400,      // Phase 1B
     _ => 400 // ExportValidationError + fallback
 };
 
@@ -537,6 +540,9 @@ static string ExportMessage(string? code) => code switch
     ErrorCodes.ExportFeatureDisabled => "Dışa aktarma bu hesap için aktif değil.",
     ErrorCodes.ExportDbError => "Veritabanı hatası nedeniyle dışa aktarma tamamlanamadı. Lütfen tekrar deneyin.",
     ErrorCodes.ExportTooLarge => "Excel için veri çok büyük. CSV formatını kullanın (CSV tüm satırları içerir).",
+    ErrorCodes.ExportListNameConflict => "Bu isimde bir liste zaten var. Farklı bir ad girin.",
+    ErrorCodes.ExportListEmpty => "Filtreye uyan gönderilebilir numara yok; liste oluşturulamadı.",
+    ErrorCodes.ExportFilterInvalid => "Filtre geçersiz. Tarih aralığını ve seçimleri kontrol edin.",
     _ => "Dışa aktarma başarısız oldu."
 };
 
@@ -614,6 +620,96 @@ app.MapGet("/api/v1/exports/send-job/{jobId:long}/report-data", async (HttpConte
 
     ExportFileHeaders(ctx);
     return Results.Ok(data);
+});
+
+// ------------------------------------------------------------
+// FEAT-OBI Phase 1B — filter-driven recipients surface
+// ------------------------------------------------------------
+// Assemble the recipients filter from the querystring (every field optional).
+static ExportFilter BuildExportFilter(int? templateId, long? jobId, long? listId, string? status, DateTime? from, DateTime? to)
+    => new()
+    {
+        TemplateId = templateId,
+        JobId = jobId,
+        ListId = listId,
+        Status = status,
+        From = from,
+        To = to
+    };
+
+// GET /api/v1/exports/filter-options — templates + recent campaigns + active lists for the 5 dropdowns.
+app.MapGet("/api/v1/exports/filter-options", async (HttpContext ctx, ExportService svc) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (err, options) = await svc.ListFilterOptionsAsync(tenantContext.TenantId, ctx.RequestAborted);
+    if (err != null)
+        return Results.Json(ErrorResponse.Create(err, ExportMessage(err), requestId), statusCode: ExportStatus(err));
+    return Results.Ok(options);
+});
+
+// GET /api/v1/exports/recipients/count?templateId=&jobId=&listId=&status=&from=&to=  (count card)
+app.MapGet("/api/v1/exports/recipients/count", async (HttpContext ctx, ExportService svc,
+    int? templateId, long? jobId, long? listId, string? status, DateTime? from, DateTime? to) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var filter = BuildExportFilter(templateId, jobId, listId, status, from, to);
+    var (err, count) = await svc.CountFilteredAsync(tenantContext.TenantId, filter, ctx.RequestAborted);
+    if (err != null)
+        return Results.Json(ErrorResponse.Create(err, ExportMessage(err), requestId), statusCode: ExportStatus(err));
+    return Results.Ok(count);
+});
+
+// GET /api/v1/exports/recipients?format=csv|xlsx&...filters  (filtered CSV/XLSX)
+app.MapGet("/api/v1/exports/recipients", async (HttpContext ctx, ExportService svc, string? format,
+    int? templateId, long? jobId, long? listId, string? status, DateTime? from, DateTime? to) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var fmt = (format ?? ExportFormats.Csv).ToLowerInvariant();
+    var filter = BuildExportFilter(templateId, jobId, listId, status, from, to);
+    var file = await svc.ExportFilteredAsync(tenantContext.TenantId, filter, fmt, tenantContext.UserId.ToString(), ctx.RequestAborted);
+    return ExportFileResult(ctx, file, requestId);
+});
+
+// POST /api/v1/exports/recipients/create-list  ("Liste Oluştur" — new data_list from the filter)
+app.MapPost("/api/v1/exports/recipients/create-list", async (HttpContext ctx, ExportService svc, CreateListFromExportRequest? request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (request == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.ExportValidationError, ExportMessage(ErrorCodes.ExportValidationError), requestId), statusCode: 400);
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (err, result) = await svc.CreateListFromExportAsync(tenantContext.TenantId, request, tenantContext.UserId.ToString(), ctx.RequestAborted);
+    if (err != null)
+        return Results.Json(ErrorResponse.Create(err, ExportMessage(err), requestId), statusCode: ExportStatus(err));
+    return Results.Ok(result);
+});
+
+// GET /api/v1/exports/history — recent export_logs rows for the history table.
+app.MapGet("/api/v1/exports/history", async (HttpContext ctx, ExportService svc) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (err, entries) = await svc.ListHistoryAsync(tenantContext.TenantId, ctx.RequestAborted);
+    if (err != null)
+        return Results.Json(ErrorResponse.Create(err, ExportMessage(err), requestId), statusCode: ExportStatus(err));
+    return Results.Ok(entries);
 });
 
 // ============================================================

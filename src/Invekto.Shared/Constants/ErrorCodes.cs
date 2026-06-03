@@ -513,6 +513,11 @@ public static class ErrorCodes
     public const string ExportDbError = "INV-OB-057";                      // DB failure (Npgsql/Postgres) on the export path. 503 transient. Aksiyon: PostgreSQL durumu + tekrar dene.
     public const string ExportTooLarge = "INV-OB-058";                     // Row count exceeds the XLSX/PDF hard cap; workbook not built. 422.
 
+    // FEAT-OBI Phase 1B: Export Manager v2 — filter-driven recipients surface + create-list-from-export (INV-OB-059+)
+    public const string ExportListNameConflict = "INV-OB-059";             // create-list-from-export: an active list with the same (normalized) name already exists for this tenant. 409.
+    public const string ExportFilterInvalid = "INV-OB-060";                // Invalid filter — bad date range (from>to), unknown delivery status, or malformed filter. 400/422.
+    public const string ExportListEmpty = "INV-OB-061";                    // create-list-from-export: filter yields zero valid (sendable) unique phones — nothing to create. 422.
+
     // Lead Management errors (INV-LD-xxx) -- GR-3.13
     public const string LeadInvalidPayload = "INV-LD-001";
     public const string LeadNotFound = "INV-LD-002";

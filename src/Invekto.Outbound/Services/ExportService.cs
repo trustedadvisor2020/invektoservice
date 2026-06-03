@@ -268,6 +268,216 @@ public sealed class ExportService
     }
 
     // ==================================================================
+    // FEAT-OBI Phase 1B — filter-driven recipients surface
+    // ==================================================================
+    private static readonly string[] FilteredHeaders =
+    {
+        "Telefon", "Durum", "Kampanya", "Sablon", "Gonderildi", "Teslim Edildi", "Okundu", "Kampanya Tarihi"
+    };
+
+    // Delivery-status values a filter may legally request (computed best status set).
+    private static readonly HashSet<string> ValidStatuses = new(StringComparer.Ordinal)
+    {
+        "read", "delivered", "sent", "sending", "queued", "failed", "blocked", SendDeliveryStatus.NotSent
+    };
+
+    /// <summary>Validate a filter. Returns an error code, or null when OK.</summary>
+    private static string? ValidateFilter(ExportFilter f)
+    {
+        if (f.From.HasValue && f.To.HasValue && f.From.Value.Date > f.To.Value.Date)
+            return ErrorCodes.ExportFilterInvalid;
+        if (!string.IsNullOrWhiteSpace(f.Status) && !ValidStatuses.Contains(f.Status.Trim()))
+            return ErrorCodes.ExportFilterInvalid;
+        return null;
+    }
+
+    /// <summary>Filter-dropdown options (templates + recent campaigns + active lists).</summary>
+    public async Task<(string? err, ExportFilterOptions? options)> ListFilterOptionsAsync(int tenantId, CancellationToken ct)
+    {
+        if (!IsTenantAllowed(tenantId)) return (ErrorCodes.ExportFeatureDisabled, null);
+        try
+        {
+            var templates = await _repo.ListTemplateOptionsAsync(tenantId, ct);
+            var lists = await _repo.ListDataListOptionsAsync(tenantId, ct);
+            var jobs = await _repo.ListRecentJobsAsync(tenantId, 200, ct);
+            var campaigns = jobs.Select(j => new FilterOptionItem { Id = j.Id, Label = j.CampaignId }).ToList();
+            return (null, new ExportFilterOptions { Templates = templates, Campaigns = campaigns, Lists = lists });
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"Export filter-options DB failure: tenant={tenantId}, msg={ex.Message}");
+            return (ErrorCodes.ExportDbError, null);
+        }
+    }
+
+    /// <summary>The count card: distinct ("benzersiz numara") + total ("toplam kayıt").</summary>
+    public async Task<(string? err, FilteredCountResult? count)> CountFilteredAsync(
+        int tenantId, ExportFilter filter, CancellationToken ct)
+    {
+        if (!IsTenantAllowed(tenantId)) return (ErrorCodes.ExportFeatureDisabled, null);
+        var invalid = ValidateFilter(filter);
+        if (invalid != null) return (invalid, null);
+        try
+        {
+            return (null, await _repo.CountFilteredAsync(tenantId, filter, ct));
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"Export filtered-count DB failure: tenant={tenantId}, msg={ex.Message}");
+            return (ErrorCodes.ExportDbError, null);
+        }
+    }
+
+    /// <summary>
+    /// Filtered CSV/XLSX export of recipients across ALL campaigns. Like the Plan B paths,
+    /// the file is built in-memory (every DB error happens before a response byte → clean
+    /// INV-OB-057) and the export_logs row is written BEFORE the bytes are returned.
+    /// XLSX is row-capped (INV-OB-058); CSV is the full-data path.
+    /// </summary>
+    public async Task<ExportFile> ExportFilteredAsync(
+        int tenantId, ExportFilter filter, string format, string? requestedBy, CancellationToken ct)
+    {
+        // Every failure path writes a best-effort status=failed export_logs row (no silent failure):
+        // a refused export attempt — gated, malformed, over-cap, or a DB error — is itself an
+        // auditable event. The logged format is clamped to a CHECK-valid value (the bad-format
+        // case must not make the audit insert violate chk_export_log_format).
+        var logFmt = ExportFormats.IsStreamFormat(format) ? format : ExportFormats.Csv;
+        async Task<ExportFile> FailAsync(string code)
+        {
+            await _repo.TryInsertFailureLogAsync(tenantId, ExportTypes.FilteredRecipients, null, FilterSnapshot(filter),
+                logFmt, ExportDeliveryModes.ServerStream, requestedBy, code, ct);
+            return new ExportFile { ErrorCode = code };
+        }
+
+        if (!IsTenantAllowed(tenantId))
+            return await FailAsync(ErrorCodes.ExportFeatureDisabled);
+        if (!ExportFormats.IsStreamFormat(format))
+            return await FailAsync(ErrorCodes.ExportValidationError);
+        var invalid = ValidateFilter(filter);
+        if (invalid != null) return await FailAsync(invalid);
+
+        try
+        {
+            var isXlsx = format == ExportFormats.Xlsx;
+            if (isXlsx)
+            {
+                // Pre-check the bound before building the workbook (ClosedXML builds in-memory).
+                var counts = await _repo.CountFilteredAsync(tenantId, filter, ct);
+                if (counts.TotalCount > _options.MaxXlsxRows)
+                    return await FailAsync(ErrorCodes.ExportTooLarge);
+            }
+
+            var rows = new List<string[]>();
+            await foreach (var r in _repo.ReadFilteredRecipientsAsync(tenantId, filter, null, ct))
+            {
+                if (isXlsx && rows.Count >= _options.MaxXlsxRows) // defensive
+                    return await FailAsync(ErrorCodes.ExportTooLarge);
+                rows.Add(FilteredCells(r));
+            }
+
+            var (bytes, contentType) = BuildFile(format, FilteredHeaders, rows, "Aramalar");
+            // AUDIT BEFORE SERVE — throws if it cannot be written; then no bytes are returned.
+            await _repo.InsertLogAsync(tenantId, ExportTypes.FilteredRecipients, null, FilterSnapshot(filter),
+                format, ExportDeliveryModes.ServerStream, rows.Count, "completed", requestedBy, null, ct);
+
+            var ext = isXlsx ? "xlsx" : "csv";
+            return new ExportFile { Bytes = bytes, ContentType = contentType, FileName = $"aramalar_export.{ext}" };
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"Filtered export DB failure: tenant={tenantId}, fmt={format}, msg={ex.Message}");
+            return await FailAsync(ErrorCodes.ExportDbError);
+        }
+    }
+
+    /// <summary>
+    /// "Liste Oluştur": create a new data_list (source='export') from the filter's distinct
+    /// sendable phones. Pre-checks empty (INV-OB-061) and over-cap (INV-OB-058) via the count,
+    /// then the repository performs an atomic create (name conflict → INV-OB-059). Writes an
+    /// export_logs row (type 'list_from_export') only on success.
+    /// </summary>
+    public async Task<(string? err, CreateListFromExportResult? result)> CreateListFromExportAsync(
+        int tenantId, CreateListFromExportRequest request, string? requestedBy, CancellationToken ct)
+    {
+        // Every failure path writes a best-effort status=failed export_logs row (no silent failure):
+        // a refused list-creation attempt — gated, malformed, empty, over-cap, name-conflict, or a
+        // DB error — is an auditable PII-derivation attempt. Logged honestly as format='list'/'internal'.
+        var name = request.Name?.Trim();
+        // A JSON body with "filter":null overrides the DTO default; treat it as an empty filter
+        // (all recipients) rather than NRE'ing on ValidateFilter/FilterSnapshot/CountFiltered.
+        var filter = request.Filter ?? new ExportFilter();
+        async Task<(string?, CreateListFromExportResult?)> FailAsync(string code)
+        {
+            await _repo.TryInsertFailureLogAsync(tenantId, ExportTypes.ListFromExport, null,
+                string.IsNullOrWhiteSpace(name) ? FilterSnapshot(filter) : name,
+                ExportFormats.List, ExportDeliveryModes.Internal, requestedBy, code, ct);
+            return (code, null);
+        }
+
+        if (!IsTenantAllowed(tenantId)) return await FailAsync(ErrorCodes.ExportFeatureDisabled);
+        if (string.IsNullOrWhiteSpace(name)) return await FailAsync(ErrorCodes.ExportValidationError);
+        var invalid = ValidateFilter(filter);
+        if (invalid != null) return await FailAsync(invalid);
+
+        try
+        {
+            var counts = await _repo.CountFilteredAsync(tenantId, filter, ct);
+            if (counts.UniqueCount == 0) return await FailAsync(ErrorCodes.ExportListEmpty);
+            if (counts.UniqueCount > _options.MaxXlsxRows) return await FailAsync(ErrorCodes.ExportTooLarge);
+
+            // CreateListFromFilterAsync writes the success export_logs row INSIDE its transaction,
+            // so the new list and its KVKK audit row commit atomically (no partial side effect).
+            var (outcome, listId, recordCount) =
+                await _repo.CreateListFromFilterAsync(tenantId, name, filter, requestedBy, ct);
+            if (outcome == ExportRepository.CreateListOutcome.NameConflict)
+                return await FailAsync(ErrorCodes.ExportListNameConflict);
+            if (outcome == ExportRepository.CreateListOutcome.Empty)
+                return await FailAsync(ErrorCodes.ExportListEmpty); // raced to empty (immutable snapshot, defensive)
+
+            return (null, new CreateListFromExportResult { ListId = listId, Name = name, RecordCount = recordCount });
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"Create-list-from-export DB failure: tenant={tenantId}, msg={ex.Message}");
+            return await FailAsync(ErrorCodes.ExportDbError);
+        }
+    }
+
+    /// <summary>Export history (export_logs) for the history table.</summary>
+    public async Task<(string? err, List<ExportLogEntry>? entries)> ListHistoryAsync(int tenantId, CancellationToken ct)
+    {
+        if (!IsTenantAllowed(tenantId)) return (ErrorCodes.ExportFeatureDisabled, null);
+        try
+        {
+            return (null, await _repo.ListExportHistoryAsync(tenantId, 50, ct));
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"Export history DB failure: tenant={tenantId}, msg={ex.Message}");
+            return (ErrorCodes.ExportDbError, null);
+        }
+    }
+
+    private static string[] FilteredCells(FilteredRecipientRow r) => new[]
+    {
+        Sanitize(r.Phone), Sanitize(r.StatusLabel), Sanitize(r.CampaignId), Sanitize(r.TemplateName),
+        Ts(r.SentAt), Ts(r.DeliveredAt), Ts(r.ReadAt), Ts(r.CampaignDate)
+    };
+
+    // Compact, ascii-safe snapshot of the active filter for the export_logs forensic column.
+    private static string FilterSnapshot(ExportFilter f)
+    {
+        var parts = new List<string>();
+        if (f.TemplateId.HasValue) parts.Add($"tpl={f.TemplateId}");
+        if (f.JobId.HasValue) parts.Add($"job={f.JobId}");
+        if (f.ListId.HasValue) parts.Add($"list={f.ListId}");
+        if (!string.IsNullOrWhiteSpace(f.Status)) parts.Add($"status={f.Status.Trim()}");
+        if (f.From.HasValue) parts.Add($"from={f.From.Value:yyyy-MM-dd}");
+        if (f.To.HasValue) parts.Add($"to={f.To.Value:yyyy-MM-dd}");
+        return parts.Count == 0 ? "filtre yok (tum aramalar)" : string.Join(" ", parts);
+    }
+
+    // ==================================================================
     // File builders (in-memory, bounded)
     // ==================================================================
     private static (byte[] bytes, string contentType) BuildFile(
