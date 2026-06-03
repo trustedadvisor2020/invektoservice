@@ -1,0 +1,300 @@
+using System.Text.Json;
+using Invekto.Shared.Data;
+using Invekto.Shared.DTOs.Outbound;
+using Invekto.Shared.Logging;
+using Npgsql;
+
+namespace Invekto.Outbound.Data;
+
+/// <summary>
+/// Persistence for FEAT-OBI Phase 0 bulk-send jobs + immutable recipient snapshot.
+/// Kept separate from the 1400-line OutboundRepository for single responsibility.
+/// Every query is tenant_id scoped (project multi-tenant isolation rule).
+/// </summary>
+public class BulkSendRepository
+{
+    private readonly PostgresConnectionFactory _db;
+    private readonly JsonLinesLogger _logger;
+
+    public BulkSendRepository(PostgresConnectionFactory db, JsonLinesLogger logger)
+    {
+        _db = db;
+        _logger = logger;
+    }
+
+    /// <summary>Snapshot of a bulk_send_jobs row for the orchestrator.</summary>
+    public sealed class JobRecord
+    {
+        public long Id { get; init; }
+        public int TenantId { get; init; }
+        public string CampaignId { get; init; } = "";
+        public int TemplateId { get; init; }
+        public string? Lang { get; init; }
+        public int HardCap { get; init; }
+        public string Status { get; init; } = "";
+        public int TotalValid { get; init; }
+        public int TotalQueued { get; init; }
+        public int TotalSkippedOptout { get; init; }
+        public int TotalSkippedConsent { get; init; }
+        public bool DispatchError { get; init; }
+        public Guid[] BroadcastIds { get; init; } = Array.Empty<Guid>();
+        public DateTime CreatedAt { get; init; }
+        public DateTime? ConfirmedAt { get; init; }
+        public DateTime? CompletedAt { get; init; }
+    }
+
+    /// <summary>Aggregated delivery counters across a job's child broadcasts (single query).</summary>
+    public sealed class BroadcastAggregate
+    {
+        public int Sent { get; init; }
+        public int Delivered { get; init; }
+        public int Read { get; init; }
+        public int Failed { get; init; }
+        public bool AllTerminal { get; init; }
+    }
+
+    /// <summary>
+    /// Replace any not-yet-confirmed preview for (tenant, campaign) and write a fresh
+    /// snapshot in a single transaction. Returns the new job id.
+    /// Caller guarantees the campaign is not already confirmed/sending (checked via GetJobAsync).
+    /// </summary>
+    public virtual async Task<long> CreatePreviewJobAsync(
+        int tenantId, string campaignId, int templateId, string? lang, int hardCap,
+        int totalInput, int totalValid, int totalDuplicate, int totalInvalid,
+        IReadOnlyList<BroadcastRecipient> validRecipients, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
+
+        // Drop a prior preview_ready job (CASCADE removes its snapshot rows)
+        await using (var del = new NpgsqlCommand(
+            "DELETE FROM bulk_send_jobs WHERE tenant_id=@tid AND campaign_id=@cid AND status='preview_ready'", conn, tx))
+        {
+            del.Parameters.AddWithValue("tid", tenantId);
+            del.Parameters.AddWithValue("cid", campaignId);
+            await del.ExecuteNonQueryAsync(ct);
+        }
+
+        long jobId;
+        await using (var ins = new NpgsqlCommand(@"
+            INSERT INTO bulk_send_jobs
+                (tenant_id, campaign_id, source, template_id, lang, hard_cap,
+                 total_input, total_valid, total_duplicate, total_invalid, status)
+            VALUES (@tid, @cid, 'csv', @tmpl, @lang, @cap,
+                 @tin, @tval, @tdup, @tinv, 'preview_ready')
+            RETURNING id", conn, tx))
+        {
+            ins.Parameters.AddWithValue("tid", tenantId);
+            ins.Parameters.AddWithValue("cid", campaignId);
+            ins.Parameters.AddWithValue("tmpl", templateId);
+            ins.Parameters.AddWithValue("lang", (object?)lang ?? DBNull.Value);
+            ins.Parameters.AddWithValue("cap", hardCap);
+            ins.Parameters.AddWithValue("tin", totalInput);
+            ins.Parameters.AddWithValue("tval", totalValid);
+            ins.Parameters.AddWithValue("tdup", totalDuplicate);
+            ins.Parameters.AddWithValue("tinv", totalInvalid);
+            jobId = Convert.ToInt64(await ins.ExecuteScalarAsync(ct));
+        }
+
+        // Snapshot rows — single set-based insert via unnest (no N+1).
+        // Empty-string vars -> NULL jsonb (phone-only recipients).
+        if (validRecipients.Count > 0)
+        {
+            var phones = new string[validRecipients.Count];
+            var vars = new string[validRecipients.Count];
+            for (var i = 0; i < validRecipients.Count; i++)
+            {
+                phones[i] = validRecipients[i].Phone;
+                vars[i] = validRecipients[i].Variables is { Count: > 0 }
+                    ? JsonSerializer.Serialize(validRecipients[i].Variables)
+                    : "";
+            }
+
+            await using var rc = new NpgsqlCommand(@"
+                INSERT INTO bulk_send_recipients (job_id, tenant_id, normalized_phone, variables_json)
+                SELECT @jid, @tid, phone, NULLIF(vars, '')::jsonb
+                FROM unnest(@phones::text[], @vars::text[]) AS t(phone, vars)
+                ON CONFLICT (job_id, normalized_phone) DO NOTHING", conn, tx);
+            rc.Parameters.AddWithValue("jid", jobId);
+            rc.Parameters.AddWithValue("tid", tenantId);
+            rc.Parameters.AddWithValue("phones", phones);
+            rc.Parameters.AddWithValue("vars", vars);
+            await rc.ExecuteNonQueryAsync(ct);
+        }
+
+        await tx.CommitAsync(ct);
+        return jobId;
+    }
+
+    public virtual async Task<JobRecord?> GetJobAsync(
+        int tenantId, string campaignId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT id, tenant_id, campaign_id, template_id, lang, hard_cap, status,
+                   total_valid, total_queued, total_skipped_optout, total_skipped_consent,
+                   dispatch_error, broadcast_ids, created_at, confirmed_at, completed_at
+            FROM bulk_send_jobs
+            WHERE tenant_id=@tid AND campaign_id=@cid";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("cid", campaignId);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        if (!await reader.ReadAsync(ct)) return null;
+
+        return new JobRecord
+        {
+            Id = reader.GetInt64(0),
+            TenantId = reader.GetInt32(1),
+            CampaignId = reader.GetString(2),
+            TemplateId = reader.GetInt32(3),
+            Lang = reader.IsDBNull(4) ? null : reader.GetString(4),
+            HardCap = reader.GetInt32(5),
+            Status = reader.GetString(6),
+            TotalValid = reader.GetInt32(7),
+            TotalQueued = reader.GetInt32(8),
+            TotalSkippedOptout = reader.GetInt32(9),
+            TotalSkippedConsent = reader.GetInt32(10),
+            DispatchError = reader.GetBoolean(11),
+            BroadcastIds = reader.IsDBNull(12) ? Array.Empty<Guid>() : (Guid[])reader.GetValue(12),
+            CreatedAt = reader.GetDateTime(13),
+            ConfirmedAt = reader.IsDBNull(14) ? null : reader.GetDateTime(14),
+            CompletedAt = reader.IsDBNull(15) ? null : reader.GetDateTime(15)
+        };
+    }
+
+    public virtual async Task<List<BroadcastRecipient>> GetRecipientsAsync(
+        int tenantId, long jobId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT normalized_phone, variables_json
+            FROM bulk_send_recipients
+            WHERE tenant_id=@tid AND job_id=@jid
+            ORDER BY id";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("jid", jobId);
+
+        var list = new List<BroadcastRecipient>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            Dictionary<string, string>? vars = null;
+            if (!reader.IsDBNull(1))
+            {
+                var json = reader.GetString(1);
+                if (!string.IsNullOrWhiteSpace(json))
+                    vars = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+            }
+            list.Add(new BroadcastRecipient { Phone = reader.GetString(0), Variables = vars });
+        }
+        return list;
+    }
+
+    /// <summary>
+    /// Atomically move a preview_ready job into 'confirming' so concurrent confirms
+    /// cannot both dispatch (idempotency). Returns true if THIS call won the transition.
+    /// </summary>
+    public virtual async Task<bool> TryClaimForConfirmAsync(
+        int tenantId, long jobId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE bulk_send_jobs
+            SET status='confirming', confirmed_at=NOW()
+            WHERE id=@jid AND tenant_id=@tid AND status='preview_ready'";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("jid", jobId);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        return await cmd.ExecuteNonQueryAsync(ct) == 1;
+    }
+
+    /// <summary>Record dispatch result: child broadcast ids + aggregated send counters + error flag.</summary>
+    public virtual async Task FinalizeDispatchAsync(
+        int tenantId, long jobId, IReadOnlyList<Guid> broadcastIds, int totalQueued,
+        int totalSkippedOptout, int totalSkippedConsent, bool dispatchError,
+        string status, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE bulk_send_jobs
+            SET broadcast_ids=@bids, total_queued=@q,
+                total_skipped_optout=@so, total_skipped_consent=@sc,
+                dispatch_error=@derr, status=@st
+            WHERE id=@jid AND tenant_id=@tid";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("jid", jobId);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("bids", broadcastIds.ToArray());
+        cmd.Parameters.AddWithValue("q", totalQueued);
+        cmd.Parameters.AddWithValue("so", totalSkippedOptout);
+        cmd.Parameters.AddWithValue("sc", totalSkippedConsent);
+        cmd.Parameters.AddWithValue("derr", dispatchError);
+        cmd.Parameters.AddWithValue("st", status);
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    public virtual async Task UpdateStatusAsync(
+        int tenantId, long jobId, string status, bool setCompleted, CancellationToken ct = default)
+    {
+        var sql = setCompleted
+            ? "UPDATE bulk_send_jobs SET status=@st, completed_at=NOW() WHERE id=@jid AND tenant_id=@tid"
+            : "UPDATE bulk_send_jobs SET status=@st WHERE id=@jid AND tenant_id=@tid";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("jid", jobId);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("st", status);
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    /// <summary>
+    /// Single-query aggregate of a job's child broadcasts (replaces per-broadcast N+1).
+    /// AllTerminal is true only when every expected broadcast exists and is completed/failed.
+    /// </summary>
+    public virtual async Task<BroadcastAggregate> AggregateBroadcastStatusAsync(
+        int tenantId, Guid[] broadcastIds, CancellationToken ct = default)
+    {
+        if (broadcastIds.Length == 0)
+            return new BroadcastAggregate { AllTerminal = false };
+
+        // PostgreSQL SUM(integer) -> bigint; cast back to int4 so GetInt32 is safe.
+        // Counters are bounded (<=1000/broadcast, few chunks) so ::int cannot overflow here.
+        const string sql = @"
+            SELECT COALESCE(SUM(sent),0)::int      AS sent,
+                   COALESCE(SUM(delivered),0)::int AS delivered,
+                   COALESCE(SUM(read),0)::int      AS read,
+                   COALESCE(SUM(failed),0)::int    AS failed,
+                   COUNT(*)                                                         AS found,
+                   COUNT(*) FILTER (WHERE status NOT IN ('completed','failed'))     AS non_terminal
+            FROM outbound_broadcasts
+            WHERE tenant_id=@tid AND id = ANY(@ids)";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("ids", broadcastIds);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        if (!await reader.ReadAsync(ct))
+            return new BroadcastAggregate { AllTerminal = false };
+
+        var found = reader.GetInt64(4);
+        var nonTerminal = reader.GetInt64(5);
+        return new BroadcastAggregate
+        {
+            Sent = reader.GetInt32(0),
+            Delivered = reader.GetInt32(1),
+            Read = reader.GetInt32(2),
+            Failed = reader.GetInt32(3),
+            AllTerminal = found == broadcastIds.Length && nonTerminal == 0
+        };
+    }
+}

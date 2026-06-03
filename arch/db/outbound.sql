@@ -190,3 +190,56 @@ GRANT USAGE, SELECT ON SEQUENCE inma_optout_outbox_id_seq TO invekto;
 -- 5. Rate limiting is handled in-memory (per tenant msg/minute), not in DB
 -- 6. external_message_id links to WapCRM/WhatsApp message ID for delivery tracking
 -- =============================================================
+
+-- =============================================================
+-- FEAT-OBI Phase 0 (Migration 051): Bulk Send (CSV source)
+-- Parent-job layer over the broadcast engine. See migration 051 for full doc.
+-- =============================================================
+
+CREATE TABLE IF NOT EXISTS bulk_send_jobs (
+    id                      BIGSERIAL PRIMARY KEY,
+    tenant_id               INTEGER NOT NULL REFERENCES tenant_registry(tenant_id),
+    campaign_id             VARCHAR(80) NOT NULL,
+    source                  VARCHAR(16) NOT NULL DEFAULT 'csv',
+    template_id             INTEGER NOT NULL REFERENCES outbound_templates(id),
+    lang                    VARCHAR(8),
+    hard_cap                INTEGER NOT NULL,
+    total_input             INTEGER NOT NULL DEFAULT 0,
+    total_valid             INTEGER NOT NULL DEFAULT 0,
+    total_duplicate         INTEGER NOT NULL DEFAULT 0,
+    total_invalid           INTEGER NOT NULL DEFAULT 0,
+    total_queued            INTEGER NOT NULL DEFAULT 0,
+    total_skipped_optout    INTEGER NOT NULL DEFAULT 0,
+    total_skipped_consent   INTEGER NOT NULL DEFAULT 0,
+    broadcast_ids           UUID[] NOT NULL DEFAULT '{}',
+    dispatch_error          BOOLEAN NOT NULL DEFAULT FALSE,
+    status                  VARCHAR(24) NOT NULL DEFAULT 'preview_ready',
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    confirmed_at            TIMESTAMPTZ,
+    completed_at            TIMESTAMPTZ,
+    CONSTRAINT chk_bulk_job_status CHECK (status IN (
+        'preview_ready','confirming','sending','completed',
+        'completed_with_errors','failed','cancelled')),
+    CONSTRAINT uq_bulk_job_tenant_campaign UNIQUE (tenant_id, campaign_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_bulk_send_jobs_tenant_created
+    ON bulk_send_jobs (tenant_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS bulk_send_recipients (
+    id                      BIGSERIAL PRIMARY KEY,
+    job_id                  BIGINT NOT NULL REFERENCES bulk_send_jobs(id) ON DELETE CASCADE,
+    tenant_id               INTEGER NOT NULL REFERENCES tenant_registry(tenant_id),
+    normalized_phone        VARCHAR(20) NOT NULL,
+    variables_json          JSONB,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_bulk_recipient_job_phone UNIQUE (job_id, normalized_phone)
+);
+
+CREATE INDEX IF NOT EXISTS idx_bulk_send_recipients_job
+    ON bulk_send_recipients (job_id);
+
+GRANT ALL ON bulk_send_jobs TO invekto;
+GRANT ALL ON bulk_send_recipients TO invekto;
+GRANT ALL ON SEQUENCE bulk_send_jobs_id_seq TO invekto;
+GRANT ALL ON SEQUENCE bulk_send_recipients_id_seq TO invekto;

@@ -487,6 +487,15 @@ public static class ErrorCodes
     public const string DynamicFieldsFetchFailed = "INV-OB-037";           // /api/dynamicfields INMA call failed (HTTP/timeout/malformed/Status:false) — upstream unreachable, transient
     public const string DynamicFieldsNotConfigured = "INV-OB-038";         // Tenant has no WapCRM secret key; Dashboard picker shows "Admin tenant ayarlarindan eklemelidir"
 
+    // FEAT-OBI Phase 0: Bulk Send (CSV source) (INV-OB-039+)
+    public const string BulkSendDisabled = "INV-OB-039";                   // Feature flag off OR tenant not in pilot allowlist
+    public const string BulkSendInvalidPayload = "INV-OB-040";             // Missing campaign_id/template_id, empty CSV, or unparseable rows
+    public const string BulkSendCapExceeded = "INV-OB-041";                // Deduped valid recipient count > hard_cap for this pilot stage
+    public const string BulkSendJobNotFound = "INV-OB-042";                // campaign_id has no preview job for this tenant
+    public const string BulkSendNoValidRecipients = "INV-OB-043";          // After normalize+dedup, zero sendable phones
+    public const string BulkSendAlreadyConfirmed = "INV-OB-044";           // Idempotent: campaign already confirmed/sending — returns existing job, no re-send
+    public const string BulkSendDispatchFailed = "INV-OB-045";             // One or more chunk broadcasts failed to create
+
     // Lead Management errors (INV-LD-xxx) -- GR-3.13
     public const string LeadInvalidPayload = "INV-LD-001";
     public const string LeadNotFound = "INV-LD-002";
