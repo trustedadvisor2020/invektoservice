@@ -1,4 +1,4 @@
-<!-- Status: DONE (GR1-GR4, build PASS, Codex /rev PASS iter2) — NOT deployed | 2026-06-03 -->
+<!-- Status: DEPLOYED+ENABLED (all tenants) — GR1-GR4, build PASS, Codex /rev PASS iter2, migration 054 applied, Outbound+Backend deployed HEALTHY | 2026-06-03 -->
 
 # FEAT-OBI Phase 1B — Export Manager v2 (Filtre-odaklı yüzey)
 
