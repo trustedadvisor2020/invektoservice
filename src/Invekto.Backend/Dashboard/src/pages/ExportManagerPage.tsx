@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import {
-  Download, FileSpreadsheet, FileText, FileType2, Loader2, ListPlus,
+  Download, FileSpreadsheet, FileText, Loader2, ListPlus,
   Filter as FilterIcon, Database, X, AlertTriangle, Info, RotateCw, History,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
@@ -11,28 +9,18 @@ import { Input } from '../components/ui/Input';
 import {
   api, ApiClientError,
   type ExportFilter, type ExportFilterOptions, type FilteredCount,
-  type ExportLogEntry, type SendReportData,
+  type ExportLogEntry,
 } from '../lib/api';
 
 // =============================================================
 // FEAT-OBI Phase 1B — Export Manager v2 (filter-driven recipients surface)
 // One surface over ALL of the tenant's bulk-send recipients: filter by
-// Şablon / Kampanya / Data Listesi (membership) / Teslim Durumu / Tarih →
-// live count card (benzersiz numara + toplam kayıt) → CSV / Excel / Liste
-// Oluştur (a new data_list source='export') → Export Geçmişi (export_logs).
-// A separate section keeps Plan B's per-campaign PDF report (jsPDF in-browser).
+// Şablon / Data Listesi (membership) / Teslim Durumu / Tarih → live count card
+// (benzersiz numara + toplam kayıt) → CSV / Excel / Liste Oluştur (a new
+// data_list source='export') → Export Geçmişi (export_logs).
 // =============================================================
 
 const FEATURE_DISABLED = 'INV-OB-056';
-
-// jsPDF built-in fonts can't render Turkish glyphs; transliterate to ASCII so a
-// forwarded report stays readable (documented v1 limitation, same as Plan B).
-const TR_MAP: Record<string, string> = {
-  'ş': 's', 'Ş': 'S', 'ğ': 'g', 'Ğ': 'G', 'ı': 'i', 'İ': 'I',
-  'ç': 'c', 'Ç': 'C', 'ö': 'o', 'Ö': 'O', 'ü': 'u', 'Ü': 'U',
-};
-const tr = (s: string | null | undefined): string =>
-  (s ?? '').replace(/[şŞğĞıİçÇöÖüÜ]/g, (c) => TR_MAP[c] ?? c);
 
 // Delivery-status options for the "Sonuç" → Teslim Durumu dropdown.
 const STATUS_OPTIONS: { value: string; label: string }[] = [
@@ -85,15 +73,12 @@ export function ExportManagerPage() {
   const [featureDisabled, setFeatureDisabled] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [busy, setBusy] = useState<string | null>(null); // 'csv' | 'xlsx' | 'create' | 'pdf'
+  const [busy, setBusy] = useState<string | null>(null); // 'csv' | 'xlsx' | 'create'
 
   // Liste Oluştur modal
   const [modalOpen, setModalOpen] = useState(false);
   const [listName, setListName] = useState('');
   const [modalError, setModalError] = useState<string | null>(null);
-
-  // PDF section
-  const [pdfJobId, setPdfJobId] = useState<string>('');
 
   function failMessage(e: unknown): string {
     if (e instanceof ApiClientError) {
@@ -207,66 +192,12 @@ export function ExportManagerPage() {
     }
   }
 
-  async function exportPdf() {
-    const jobId = Number(pdfJobId);
-    if (!jobId) { setError('Önce bir kampanya seçin.'); return; }
-    setBusy('pdf');
-    setError(null);
-    try {
-      const data: SendReportData = await api.getSendReportData(jobId);
-      const s = data.summary;
-      const doc = new jsPDF();
-      doc.setFontSize(16);
-      doc.text(tr(`Kampanya Raporu: ${data.campaign_id}`), 14, 18);
-      doc.setFontSize(10);
-      const lines = [
-        `Sablon: ${tr(s.template_name) || s.template_id}`,
-        `Durum: ${tr(s.status)}`,
-        `Toplam alici: ${s.total_recipients}`,
-        `Gonderildi: ${s.sent}   Teslim: ${s.delivered}   Okundu: ${s.read}`,
-        `Basarisiz: ${s.failed}   Engellendi: ${s.blocked}   Gonderilmedi: ${s.not_sent}`,
-        `Olusturulma: ${fmtDate(s.created_at)}`,
-      ];
-      let y = 28;
-      for (const line of lines) { doc.text(tr(line), 14, y); y += 6; }
-      autoTable(doc, {
-        startY: y + 2,
-        head: [['Telefon', 'Durum', 'Gonderildi', 'Teslim', 'Okundu']],
-        body: data.recipients.map((r) => [
-          r.phone, tr(r.status_label), fmtDate(r.sent_at), fmtDate(r.delivered_at), fmtDate(r.read_at),
-        ]),
-        styles: { fontSize: 8 },
-        headStyles: { fillColor: [30, 41, 59] },
-      });
-      if (data.recipient_table_truncated) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const finalY = (doc as any).lastAutoTable?.finalY ?? y;
-        doc.setFontSize(8);
-        doc.text(
-          tr(`Not: ilk ${data.recipient_table_limit} / ${data.total_recipient_count} alici gosteriliyor — tam liste icin CSV/Excel kullanin.`),
-          14, finalY + 8,
-        );
-      }
-      const slug = data.campaign_id.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 40) || 'kampanya';
-      doc.save(`kampanya_${slug}_rapor.pdf`);
-      await refreshHistory();
-    } catch (e) {
-      setError(failMessage(e));
-    } finally {
-      setBusy(null);
-    }
-  }
-
   // Active-filter chips (label resolution from the loaded options).
   const chips = useMemo(() => {
     const c: { key: string; label: string; clear: () => void }[] = [];
     if (filter.templateId != null) {
       const t = options?.templates.find((o) => o.id === filter.templateId);
       c.push({ key: 'tpl', label: `Şablon: ${t?.label ?? filter.templateId}`, clear: () => patchFilter({ templateId: null }) });
-    }
-    if (filter.jobId != null) {
-      const j = options?.campaigns.find((o) => o.id === filter.jobId);
-      c.push({ key: 'job', label: `Kampanya: ${j?.label ?? filter.jobId}`, clear: () => patchFilter({ jobId: null }) });
     }
     if (filter.listId != null) {
       const l = options?.lists.find((o) => o.id === filter.listId);
@@ -335,12 +266,6 @@ export function ExportManagerPage() {
                 value={filter.templateId != null ? String(filter.templateId) : ''}
                 options={opt(options?.templates, 'Tüm şablonlar')}
                 onChange={(e) => patchFilter({ templateId: e.target.value ? Number(e.target.value) : null })}
-              />
-              <Select
-                label="Kampanya"
-                value={filter.jobId != null ? String(filter.jobId) : ''}
-                options={opt(options?.campaigns, 'Tüm kampanyalar')}
-                onChange={(e) => patchFilter({ jobId: e.target.value ? Number(e.target.value) : null })}
               />
               <Select
                 label="Data Listesi"
@@ -451,28 +376,6 @@ export function ExportManagerPage() {
             {(count?.total_count ?? 0) === 0 && !countLoading && (
               <p className="text-xs text-navy-400">Filtreye uyan kayıt yok — export için filtreleri gevşetin.</p>
             )}
-          </section>
-
-          {/* ── Kampanya Raporu (PDF) ── */}
-          <section className="bg-white border border-navy-100 rounded-xl shadow-soft p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <FileType2 className="w-4 h-4 text-brand-500" />
-              <h2 className="text-sm font-medium text-navy-700">Kampanya Raporu (PDF)</h2>
-            </div>
-            <p className="text-xs text-navy-400">Tek kampanyanın özet + alıcı raporunu PDF olarak indirin (özet kart + ilk {2000} alıcı).</p>
-            <div className="flex items-end gap-3">
-              <div className="flex-1 max-w-sm">
-                <Select
-                  label="Kampanya"
-                  value={pdfJobId}
-                  options={opt(options?.campaigns, 'Kampanya seçin…')}
-                  onChange={(e) => setPdfJobId(e.target.value)}
-                />
-              </div>
-              <Button variant="primary" disabled={busy !== null || !pdfJobId} onClick={exportPdf}>
-                {busy === 'pdf' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileType2 className="w-4 h-4" />} PDF İndir
-              </Button>
-            </div>
           </section>
 
           {/* ── Export Geçmişi ── */}

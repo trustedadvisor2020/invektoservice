@@ -1,0 +1,75 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260603-feat-obi-export-ui-tweaks",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-03T23:25:00Z",
+  "updated_at": "2026-06-03T23:35:00Z",
+  "plan": {
+    "summary": "Three Q-requested UI tweaks to the Veri Yönetimi surface: (1) shorten the two tab labels to 'Listeler' and 'Export'; (2) remove the Kampanya filter dropdown from the Export tab; (3) remove the per-campaign PDF report section from the Export tab. Frontend/SPA only; no backend, DB, or API change. Removing the PDF section also drops the jsPDF/jspdf-autotable imports, shrinking the ExportManagerPage bundle ~415KB -> ~15KB.",
+    "q_intent": "sekmelerin adı Listeler ve Export. export da kampanya filtresini kaldır, pdf i export bölümünü kaldır.",
+    "interview_notes": "Reverses two earlier interview choices (Q changed their mind): the Kampanya filter (was added as the 5th filter) and the kept PDF report section are both removed. Filter bar is now Şablon · Data Listesi (membership) · Teslim Durumu · Tarih. The ExportFilter.jobId field is left in the type/DTO (harmless; never set by the UI now). The Outbound filter-options endpoint still returns campaigns (unused by the client now) and getSendReportData/listSendJobs remain in api.ts (dead-but-exported; backend endpoints untouched).",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "The two Veri Yönetimi tabs read 'Listeler' (import) and 'Export' (export); navigation/paths unchanged.", "verified": true },
+      { "id": "AC2", "criterion": "The Export tab no longer shows a Kampanya filter dropdown nor a Kampanya active-filter chip; the remaining filters (Şablon, Data Listesi, Teslim Durumu, Tarih) still drive the live count and CSV/Excel/Liste Oluştur, and jobId is no longer set from the UI.", "verified": true },
+      { "id": "AC3", "criterion": "The 'Kampanya Raporu (PDF)' section is removed; jsPDF/jspdf-autotable + the tr()/TR_MAP helpers + pdf state/handler are gone with no unused-import/var errors; SPA build (tsc+vite) PASSES and the ExportManagerPage chunk shrinks (PDF deps dropped).", "verified": true }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Dashboard/src/pages/DataManagementPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/ExportManagerPage.tsx",
+    "arch/plans/20260603-feat-obi-export-ui-tweaks.json"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/DataManagementPage.tsx", "is_new": false, "change": "tab labels -> 'Listeler' / 'Export'" },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/ExportManagerPage.tsx", "is_new": false, "change": "removed Kampanya filter Select + chip; removed PDF section + exportPdf + pdfJobId + jsPDF/autotable/tr/TR_MAP/FileType2/SendReportData imports" }
+  ],
+  "git_diff": { "stats": { "insertions": 0, "deletions": 0, "files_count": 0 } },
+  "build": {
+    "status": "PASS",
+    "timestamp": "2026-06-03T23:22:00Z",
+    "command": "cd src/Invekto.Backend/Dashboard && npm run build (tsc && vite build)",
+    "services": ["Invekto.Backend/Dashboard"]
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "After removing the Kampanya filter and PDF section, are there NO unused imports/vars left (jsPDF, autoTable, FileType2, SendReportData, tr, TR_MAP, pdfJobId, exportPdf), so tsc --noUnusedLocals and the vite build pass cleanly?", "category": "Process/Policy" },
+    { "id": "Q2", "question": "Does removing the Kampanya filter leave the remaining filters functional and the count/export/create-list calls intact, with ExportFilter.jobId simply never set from the UI (no broken reference to options.campaigns or filter.jobId chip)?", "category": "Lifecycle" },
+    { "id": "Q3", "question": "Is this strictly a frontend change that does NOT touch any backend endpoint, Outbound service, DB, or tenant-scoped query — the filter-options/count/recipients/create-list/history APIs and their auth gating are unchanged?", "category": "Data" },
+    { "id": "Q4", "question": "Do the affected pages remain behind the same ProtectedRoute auth gate (no route/auth change in this diff), i.e. the tweaks are label text + element removal only?", "category": "Auth" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Any backend/Outbound/DB/API code (frontend-only tweaks)",
+      "Routing in App.tsx / nav in Layout.tsx (unchanged — separate committed change)",
+      "ExportFilter DTO / Outbound filter-options campaigns (left intact; only the client stops using them)"
+    ],
+    "non_goals": [
+      "Removing the now-unused getSendReportData/listSendJobs api.ts methods or the Outbound report-data/send-jobs endpoints (left for back-compat / other consumers)",
+      "Removing jobId from the ExportFilter type"
+    ],
+    "intentional_exclusions": [
+      "Server-side 'campaigns' filter-option payload kept (harmless; avoids touching Outbound for a pure UI removal)"
+    ]
+  },
+  "error_handling": {
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Pure UI element/label removal. No data paths added or removed at the service layer; the remaining export/count/create-list flows keep their existing error handling (FailAsync audit + INV-OB mapping). No new catch blocks."
+  },
+  "aha_moments": [
+    { "category": "UX", "user_pain": "Long tab labels ('Veri İçe Aktarma (Listeler)') were verbose and redundant with the page context.", "suggestion": "Shorten to 'Listeler' and 'Export'.", "aha_moment": "Operator scans two crisp tab names instead of reading a sentence." },
+    { "category": "UX", "user_pain": "The Kampanya filter overlapped conceptually with Şablon/Data Listesi and cluttered the filter bar.", "suggestion": "Drop the Kampanya dropdown; keep Şablon/Data Listesi/Teslim Durumu/Tarih.", "aha_moment": "Operator sees a leaner filter bar focused on the dimensions they actually segment by." },
+    { "category": "SPEED", "user_pain": "The Export page shipped the heavy jsPDF/autotable bundle for a rarely-used PDF section (~415KB chunk).", "suggestion": "Remove the PDF section and its imports.", "aha_moment": "The Export tab loads ~15KB instead of ~415KB — noticeably snappier first paint." },
+    { "category": "UX", "user_pain": "Two ways to export (filtered CSV/Excel vs per-campaign PDF) muddled the page's purpose.", "suggestion": "Keep the single filter-driven CSV/Excel/Liste Oluştur flow.", "aha_moment": "Operator has one clear export model — filter, then pick a format." },
+    { "category": "SUPPORT", "user_pain": "Support had to explain a PDF picker that behaved differently from the filter-driven export.", "suggestion": "One consistent filter-driven surface.", "aha_moment": "Support describes one workflow regardless of format." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "iteration": 0,
+    "model_used": "gpt-5.5-2026-04-23",
+    "notes": "First-pass PASS. All CQ1-12 + CoVe Q1-Q4 PASS, zero blocking issues. Pure frontend UI tweaks (tab labels + Kampanya filter removal + PDF section removal with dependency cleanup); scope/auth/data all clean."
+  }
+}

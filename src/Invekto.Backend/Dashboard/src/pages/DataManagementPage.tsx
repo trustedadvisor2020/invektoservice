@@ -18,8 +18,8 @@ const ExportManagerPage = lazy(() => import('./ExportManagerPage').then(m => ({ 
 type TabKey = 'import' | 'export';
 
 const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { key: 'import', label: 'Veri İçe Aktarma (Listeler)', icon: Database },
-  { key: 'export', label: 'Veri Dışa Aktarma (Export)', icon: Download },
+  { key: 'import', label: 'Listeler', icon: Database },
+  { key: 'export', label: 'Export', icon: Download },
 ];
 
 export function DataManagementPage() {
