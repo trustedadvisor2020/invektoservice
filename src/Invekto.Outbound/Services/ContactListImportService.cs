@@ -1,0 +1,310 @@
+using System.Text.Json;
+using Invekto.Outbound.Data;
+using Invekto.Shared.Constants;
+using Invekto.Shared.DTOs.Outbound;
+using Invekto.Shared.Logging;
+using Npgsql;
+
+namespace Invekto.Outbound.Services;
+
+/// <summary>
+/// FEAT-OBI Phase 1A — contact-list orchestration (gating + validation + server-authoritative
+/// normalization + in-file dedup), delegating persistence to DataListRepository.
+///
+/// The Excel/CSV file is parsed CLIENT-SIDE (SheetJS); the client posts field-mapped rows. The
+/// server is the authority for phone normalization (PhoneNormalizer, reused from Phase 0), dedup
+/// (last-row-wins within a file), and the import scenario. Invalid phones are reported as counts +
+/// samples (Phase 0 PII-minimization: unsendable rows are not persisted), never silently dropped.
+/// Register as singleton.
+/// </summary>
+public sealed class ContactListImportService
+{
+    private readonly DataListRepository _repo;
+    private readonly PhoneNormalizer _normalizer;
+    private readonly ContactListOptions _options;
+    private readonly JsonLinesLogger _logger;
+
+    public ContactListImportService(
+        DataListRepository repo, PhoneNormalizer normalizer,
+        ContactListOptions options, JsonLinesLogger logger)
+    {
+        _repo = repo;
+        _normalizer = normalizer;
+        _options = options;
+        _logger = logger;
+    }
+
+    private bool Allowed(int tenantId) => _options.IsTenantAllowed(tenantId);
+
+    // ------------------------------------------------------------------
+    // List CRUD
+    // ------------------------------------------------------------------
+    public async Task<(List<DataListSummary>? lists, string? errorCode)> ListAsync(int tenantId, CancellationToken ct)
+    {
+        if (!Allowed(tenantId)) return (null, ErrorCodes.ContactListDisabled);
+        try { return (await _repo.ListAsync(tenantId, ct), null); }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"data-lists list failed (tenant={tenantId}): {ex.Message}");
+            return (null, ErrorCodes.ContactListDbError);
+        }
+    }
+
+    public async Task<(DataListSummary? list, string? errorCode, string? message)> CreateListAsync(
+        int tenantId, CreateDataListRequest request, CancellationToken ct)
+    {
+        if (!Allowed(tenantId)) return (null, ErrorCodes.ContactListDisabled, "Contact lists not enabled for this tenant");
+        var name = request.Name?.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+            return (null, ErrorCodes.ContactListInvalidPayload, "List name is required");
+
+        try
+        {
+            var (id, conflict) = await _repo.CreateAsync(tenantId, name, "upload", ct);
+            if (conflict) return (null, ErrorCodes.ContactListNameConflict, $"A list named '{name}' already exists");
+            if (id == null) return (null, ErrorCodes.ContactListInvalidPayload, "Could not create list");
+
+            var summary = await _repo.GetAsync(tenantId, id.Value, ct);
+            return (summary, null, null);
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"data-list create failed (tenant={tenantId}): {ex.Message}");
+            return (null, ErrorCodes.ContactListDbError, "List could not be created due to a database error; please retry.");
+        }
+    }
+
+    public async Task<(DataListSummary? list, string? errorCode, string? message)> UpdateListAsync(
+        int tenantId, long listId, UpdateDataListRequest request, CancellationToken ct)
+    {
+        if (!Allowed(tenantId)) return (null, ErrorCodes.ContactListDisabled, "Contact lists not enabled for this tenant");
+        var name = request.Name?.Trim();
+        if (request.Name != null && string.IsNullOrWhiteSpace(name))
+            return (null, ErrorCodes.ContactListInvalidPayload, "List name cannot be blank");
+
+        try
+        {
+            var rc = await _repo.UpdateAsync(tenantId, listId, name, request.Active, ct);
+            if (rc == -1) return (null, ErrorCodes.ContactListNameConflict, "Another list already uses that name");
+            if (rc == 0) return (null, ErrorCodes.ContactListNotFound, $"List {listId} not found");
+
+            var summary = await _repo.GetAsync(tenantId, listId, ct);
+            return (summary, null, null);
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"data-list update failed (tenant={tenantId}, list={listId}): {ex.Message}");
+            return (null, ErrorCodes.ContactListDbError, "List could not be updated due to a database error; please retry.");
+        }
+    }
+
+    public async Task<(bool ok, string? errorCode)> DeleteListAsync(int tenantId, long listId, CancellationToken ct)
+    {
+        if (!Allowed(tenantId)) return (false, ErrorCodes.ContactListDisabled);
+        try
+        {
+            var ok = await _repo.SoftDeleteAsync(tenantId, listId, ct);
+            return ok ? (true, null) : (false, ErrorCodes.ContactListNotFound);
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"data-list delete failed (tenant={tenantId}, list={listId}): {ex.Message}");
+            return (false, ErrorCodes.ContactListDbError);
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // records/exists
+    // ------------------------------------------------------------------
+    public async Task<(RecordsExistsResponse? response, string? errorCode, string? message)> RecordsExistsAsync(
+        int tenantId, RecordsExistsRequest request, CancellationToken ct)
+    {
+        if (!Allowed(tenantId)) return (null, ErrorCodes.ContactListDisabled, "Contact lists not enabled for this tenant");
+        if (request.Phones.Count == 0) return (new RecordsExistsResponse(), null, null);
+        if (request.Phones.Count > _options.MaxExistsProbe)
+            return (null, ErrorCodes.ContactListInvalidPayload,
+                $"Too many phones ({request.Phones.Count} > {_options.MaxExistsProbe})");
+
+        // Normalize server-side, then probe. Distinct to avoid redundant ANY() params.
+        var normalized = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var raw in request.Phones)
+        {
+            var n = _normalizer.Normalize(raw);
+            if (n != null) normalized.Add(n);
+        }
+        try
+        {
+            var exists = await _repo.ExistingPhonesAsync(tenantId, request.ListId, normalized, ct);
+            return (new RecordsExistsResponse { Exists = exists.ToList() }, null, null);
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"records/exists probe failed (tenant={tenantId}): {ex.Message}");
+            return (null, ErrorCodes.ContactListDbError, "Existence check failed due to a database error; please retry.");
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // import
+    // ------------------------------------------------------------------
+    public async Task<(ImportBatchResponse? response, string? errorCode, string? message)> ImportAsync(
+        int tenantId, ImportBatchRequest request, CancellationToken ct)
+    {
+        if (!Allowed(tenantId)) return (null, ErrorCodes.ContactListDisabled, "Contact lists not enabled for this tenant");
+
+        if (request.Rows == null || request.Rows.Count == 0)
+            return (null, ErrorCodes.ContactListInvalidPayload, "No rows to import");
+        if (request.Rows.Count > _options.MaxImportRows)
+            return (null, ErrorCodes.ContactListCapExceeded,
+                $"Import has {request.Rows.Count} rows; the per-request ceiling is {_options.MaxImportRows}");
+        if (!ImportScenarios.IsValid(request.Scenario))
+            return (null, ErrorCodes.ContactListInvalidPayload, $"Unknown scenario '{request.Scenario}'");
+
+        var newName = request.NewListName?.Trim();
+        var hasExisting = request.ListId.HasValue;
+        var hasNew = !string.IsNullOrWhiteSpace(newName);
+        if (hasExisting == hasNew)
+            return (null, ErrorCodes.ContactListInvalidPayload,
+                "Provide exactly one of list_id or new_list_name");
+
+        // For an existing target, validate it up-front. 'ready' and 'failed' are both retryable
+        // ('failed' = a prior import rolled back; re-importing recovers it); only 'importing'
+        // (an in-flight import) is blocked to avoid concurrent writes to the same list.
+        string listName;
+        if (request.ListId is { } targetListId)
+        {
+            DataListSummary? existing;
+            try { existing = await _repo.GetAsync(tenantId, targetListId, ct); }
+            catch (NpgsqlException ex)
+            {
+                _logger.SystemError($"data-list lookup failed (tenant={tenantId}, list={targetListId}): {ex.Message}");
+                return (null, ErrorCodes.ContactListDbError, "List lookup failed due to a database error; please retry.");
+            }
+            if (existing == null) return (null, ErrorCodes.ContactListNotFound, $"List {targetListId} not found");
+            if (existing.Status == "importing")
+                return (null, ErrorCodes.ContactListNotReady,
+                    $"List '{existing.Name}' is currently importing; wait for it to finish before re-importing");
+            listName = existing.Name;
+        }
+        else
+        {
+            // The exactly-one guard above guarantees newName is non-empty on this branch.
+            listName = newName ?? throw new InvalidOperationException("new_list_name expected after validation");
+        }
+
+        // Server-authoritative normalize + in-file dedup (last-row-wins).
+        var totalInput = request.Rows.Count;
+        var invalid = 0;
+        var invalidSamples = new List<string>();
+        var deduped = new Dictionary<string, DataListRepository.NormalizedImportRow>(StringComparer.Ordinal);
+        var validBeforeDedup = 0;
+
+        foreach (var row in request.Rows)
+        {
+            var phone = _normalizer.Normalize(row.Phone);
+            if (phone == null)
+            {
+                invalid++;
+                if (invalidSamples.Count < _options.InvalidSampleSize && !string.IsNullOrWhiteSpace(row.Phone))
+                    invalidSamples.Add(row.Phone.Trim());
+                continue;
+            }
+            validBeforeDedup++;
+            // Last-row-wins: a later row for the same normalized phone overrides an earlier one.
+            deduped[phone] = new DataListRepository.NormalizedImportRow
+            {
+                Phone = phone,
+                Name = Trim(row.Name),
+                Surname = Trim(row.Surname),
+                Email = Trim(row.Email),
+                Tags = Trim(row.Tags),
+                Note = Trim(row.Note),
+                Field1 = Trim(row.Field1),
+                Field2 = Trim(row.Field2),
+                Field3 = Trim(row.Field3),
+                Field4 = Trim(row.Field4),
+                Field5 = Trim(row.Field5),
+                CustomFieldsJson = SerializeCustom(row.CustomFields)
+            };
+        }
+
+        var rows = deduped.Values.ToList();
+        var fileDuplicate = validBeforeDedup - rows.Count;
+
+        DataListRepository.ImportWriteResult result;
+        try
+        {
+            result = await _repo.ImportRecordsAsync(
+                tenantId,
+                existingListId: hasExisting ? request.ListId : null,
+                createName: hasExisting ? null : newName,
+                request.Scenario, request.Custom, rows, _options.MaxRecordsPerList, ct);
+        }
+        catch (NpgsqlException ex)
+        {
+            // NpgsqlException (base) covers BOTH server PostgresExceptions AND connection/transient
+            // driver failures, so any DB error maps to INV-OB-053. Covers the read-only probe phase
+            // before the repo's own write-phase catch engages; the tx never committed, no half-list.
+            _logger.SystemError(
+                $"Contact import failed (tenant={tenantId}, list={request.ListId}): {ex.Message}");
+            return (null, ErrorCodes.ContactListDbError,
+                "Import could not complete due to a database error; the list was not modified. Please retry.");
+        }
+
+        if (result.NameConflict)
+            return (null, ErrorCodes.ContactListNameConflict, $"A list named '{newName}' already exists");
+        if (!result.Found)
+            return (null, ErrorCodes.ContactListNotFound, $"List {request.ListId} not found");
+        if (result.DbError)
+            return (null, ErrorCodes.ContactListDbError,
+                "Import could not complete due to a database error; the list was not modified (an existing list is flagged 'failed'). Please retry.");
+        if (result.CapExceeded)
+            return (null, ErrorCodes.ContactListCapExceeded,
+                $"List has {result.CurrentTotal} records; adding {result.AttemptedNew} would exceed the per-list cap of {_options.MaxRecordsPerList}. Reduce the file or split into another list.");
+
+        _logger.SystemInfo(
+            $"Contact import: tenant={tenantId}, list={result.ListId}, scenario={request.Scenario}, " +
+            $"input={totalInput}, valid={rows.Count}, fileDup={fileDuplicate}, invalid={invalid}, " +
+            $"inserted={result.Inserted}, updated={result.Updated}, skipped={result.Skipped}");
+
+        return (new ImportBatchResponse
+        {
+            ListId = result.ListId,
+            ListName = listName,
+            Status = "ready",
+            TotalInput = totalInput,
+            Valid = rows.Count,
+            FileDuplicate = fileDuplicate,
+            Invalid = invalid,
+            Inserted = result.Inserted,
+            Updated = result.Updated,
+            SkippedExisting = result.Skipped,
+            TotalRecords = result.TotalRecords,
+            SendableCount = result.SendableCount,
+            InvalidSamples = invalidSamples
+        }, null, null);
+    }
+
+    private static string? Trim(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+
+    // Bound the per-row custom_fields blob so a malicious/huge upload cannot bloat the JSONB column.
+    private const int MaxCustomKeys = 25;
+    private const int MaxCustomKeyLen = 64;
+    private const int MaxCustomValueLen = 512;
+
+    private static string? SerializeCustom(Dictionary<string, string>? custom)
+    {
+        if (custom == null || custom.Count == 0) return null;
+        var bounded = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var kv in custom)
+        {
+            if (bounded.Count >= MaxCustomKeys) break;
+            if (string.IsNullOrWhiteSpace(kv.Key)) continue;
+            var key = kv.Key.Length > MaxCustomKeyLen ? kv.Key[..MaxCustomKeyLen] : kv.Key;
+            var val = kv.Value ?? "";
+            if (val.Length > MaxCustomValueLen) val = val[..MaxCustomValueLen];
+            bounded[key] = val;
+        }
+        return bounded.Count == 0 ? null : JsonSerializer.Serialize(bounded);
+    }
+}

@@ -961,6 +961,33 @@ errors:
     description: Bulk send dispatch failed — one or more chunk broadcasts failed to create
     user_message: Gönderim sırasında bir hata oluştu. Durum sayfasından kontrol edin.
 
+  # ── FEAT-OBI Phase 1A — Contact Lists (data layer) ──
+  - code: INV-OB-046
+    description: Contact-list feature disabled — feature flag off OR tenant not in pilot allowlist
+    user_message: Kişi listeleri bu hesap için aktif değil.
+  - code: INV-OB-047
+    description: Contact-list import invalid payload — no list target (list_id/new name), empty rows, or unparseable import body
+    user_message: İçe aktarma isteği geçersiz. Liste hedefini ve satırları kontrol edin.
+  - code: INV-OB-048
+    description: Contact-list import cap exceeded — import would push the list over MaxRecordsPerList, or input rows over the ceiling
+    user_message: Liste için izin verilen kayıt sayısı aşıldı. Listeyi bölerek tekrar deneyin.
+  - code: INV-OB-049
+    description: Contact list not found — data list id has no active row for this tenant (or soft-deleted)
+    user_message: Liste bulunamadı.
+  - code: INV-OB-050
+    description: Contact-list name conflict — an active list with the same (normalized) name already exists for this tenant
+    user_message: Bu isimde bir liste zaten var. Farklı bir ad girin.
+  - code: INV-OB-051
+    description: Contact list not ready — list is mid-import or failed; blocked from preview-from-list/send
+    user_message: Liste henüz hazır değil. İçe aktarma tamamlanınca tekrar deneyin.
+  - code: INV-OB-052
+    description: preview-from-list has no sendable recipients after normalize/dedup, or the list exceeds the bulk-send cap
+    user_message: Gönderilebilir alıcı yok ya da liste üst sınırı aşıyor. Listeyi kontrol edin.
+
+  - code: INV-OB-053
+    description: Mid-import or records-exists DB failure (Npgsql) — the import transaction rolled back (no half-built list) and an existing target list is flagged 'failed'; transient (503)
+    user_message: Veritabanı hatası nedeniyle içe aktarma tamamlanamadı. Liste değişmedi; lütfen tekrar deneyin.
+
   # ── IG — Integrations (GR-3.4/3.6) ──
   - code: INV-IG-001
     description: Invalid account payload

@@ -1,0 +1,231 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "gr_list": [
+    {
+      "id": "GR-1",
+      "description": "Migration 052: data_lists + list_records (Outbound domain, tenant_id scoped). NO partition columns (Codex: dropped). data_lists(tenant_id FK tenant_registry, name, active, source, status importing|ready|failed, total_records, sendable_count, created/updated/deleted_at; UNIQUE(tenant_id,id) for composite FK; unique index on (tenant_id, lower(trim(name))) WHERE deleted_at IS NULL). list_records(list_id+tenant_id composite FK -> data_lists(tenant_id,id) ON DELETE CASCADE, normalized_phone NULLABLE, name/surname/email/tags/note/field1-5, custom_fields JSONB, sendable BOOL default false, invalid_reason, first_contact_at; CHECK(sendable=false OR normalized_phone IS NOT NULL); UNIQUE(list_id, normalized_phone)). Idempotent IF NOT EXISTS + DO $verify$ (INV-SEED-052) + GRANT ALL (project canon, codex-context.md L20/L69 — Codex least-privilege suggestion REJECTED). arch/db/outbound.sql canonical mirror.",
+      "services_affected": ["Postgres (shared)"]
+    },
+    {
+      "id": "GR-2",
+      "description": "Outbound contact-list backend: Shared DataListDtos + ContactListOptions (reuse BulkSendOptions allowlist gate + MaxRecordsPerList cap + MaxInputRows ceiling) + DataListRepository (tenant-scoped CRUD, unnest batch insert, records-exists batch, recompute-after-batch counters as single UPDATE=SELECT COUNT, soft delete, import-status transitions) + ContactListImportService (4 scenarios w/ DETERMINISTIC merge rules, file+DB dedup, PhoneNormalizer reuse, per-list cap reject — NO partition) + 6 endpoints (GET/POST /api/v1/data-lists, PATCH/DELETE /data-lists/{id}, POST /data-lists/records/exists, POST /data-lists/import). Import wrapped so a failure leaves list status='failed' (not a half-built 'ready' list); retry-idempotent.",
+      "services_affected": ["Invekto.Outbound", "Invekto.Shared"]
+    },
+    {
+      "id": "GR-3",
+      "description": "List -> Phase 0 bulk send via NEW POST /api/v1/bulk-send/preview-from-list. Builds the immutable bulk_send_recipients snapshot (reuses Phase 0 CreatePreviewJob path) inside a transaction, ONLY from sendable+deduped records of a list in status='ready', under the current bulk-send cap; REJECTS if over cap (INV-OB-052 no-sendable / cap handling) and rejects non-ready/deleted lists (INV-OB-051). Returns Phase 0 preview shape + rich counts (in_list/sendable/deduped/snapshotted; compliance opt-out/KVKK noted as enforced at dispatch). Existing preview/confirm/status + BulkSendConfirmRequest UNCHANGED.",
+      "services_affected": ["Invekto.Outbound", "Invekto.Shared"]
+    },
+    {
+      "id": "GR-4",
+      "description": "Dashboard SPA DataImportPage.tsx ported from TONIVA (3-step wizard: upload -> map+scenario -> summary+execute). Client CSV+Excel parse via SheetJS HARDENED (pinned version in lockfile, file-size cap, row cap before parse, single-sheet only, headers whitelisted/normalized, values treated as text, CSV/formula-injection escape on any re-emit). 4 scenarios + dedup/normalize preview + batch execute w/ progress + 'Send to this list' -> preview-from-list. localStorage key invekto_import_jobs. App.tsx route + Layout.tsx nav (auth-gated) + lib/api.ts client. ZERO 'toniva' string.",
+      "services_affected": ["Invekto.Backend (Dashboard SPA)"]
+    }
+  ],
+  "slug": "20260603-feat-obi-p1a-contact-lists",
+  "risk": "HIGH",
+  "status": "DONE",
+  "created_at": "2026-06-03T16:10:00Z",
+  "updated_at": "2026-06-03T16:10:00Z",
+  "plan": {
+    "summary": "FEAT-OBI Phase 1A: port TONIVA's 'Data' contact-list import page into Invekto. New tenant-scoped data_lists + list_records layer in the Outbound service, CSV/Excel client-side upload with 4 import scenarios + dedup + per-list cap (no partition), and list->bulk-send wiring via a snapshot-preserving preview-from-list endpoint. Backend reimplemented in .NET 8 + PostgreSQL; the React page ported from TONIVA and fully rebranded. Export Manager is split into Plan B (deferred).",
+    "q_intent": "smoke UI dan sonra. csv ve excel yuklemek icin bir yapi lazim bize. inma dan veri cekme isi sonra. toniva projesindeki gibi 'data' ve export manager sayfalari lazim. bu sayfalardaki tum ozellikler ama inse deki db den calisacak. toniva projesinden kodlari ve yapilari alabilirsin. onemli kural: inse ye cekilen kodlarin arasinda hicbir yerde toniva adi gecmeyecek. invekto olacak hersey. plan yapmadan ve bu plani codex e sormadan baslama. auto ile basla.",
+    "interview_notes": "3-batch interview + Codex plan review (codex_consult). DECISIONS: new tenant-scoped contact-list layer in Outbound; client-side SheetJS Excel parse (no .NET dep); extended fields phone(req)+name+surname+email+tags+note+field1-5+custom_fields JSONB; TONIVA's 4 import scenarios (new_only/recall_all/update_info/custom), 'callable'->'sendable'; list->send wired NOW via preview-from-list; done bar = backend + UI render + auth gate (live smoke deferred); stop at Codex PASS + master merge. CODEX PLAN REVIEW APPLIED: (1) preview-from-list endpoint kept over mutating confirm (Codex: keep — preserves Phase 0 snapshot immutability) + tightened (transaction, ready-only, cap-reject, rich counts). (2) AUTO-PARTITION DROPPED for v1 (Codex+Q: send cap 50-100 makes _partN lists a bad model) -> replaced by per-list import cap + preview selects under cap. (3) repo recompute-after-batch counters kept (Codex agreed) as single UPDATE=SELECT COUNT; contacted_count DEFERRED (needs delivery-status join -> Plan B). (4) SheetJS kept but HARDENED (pin, size/row caps, single-sheet, text-only, formula-injection escape). (5) composite FK list_records(tenant_id,list_id)->data_lists(tenant_id,id) so cross-tenant mismatch is impossible at DB level. (6) normalized unique name UNIQUE(tenant_id, lower(trim(name))) WHERE deleted_at IS NULL. (7) phone NULL handling: nullable normalized_phone + CHECK(sendable=false OR normalized_phone IS NOT NULL) + invalid_reason (invalid rows stored sendable=false). (8) import-status lifecycle importing/ready/failed + transaction + retry idempotency; preview-from-list rejects non-ready lists. (9) deterministic scenario merge rules (last-row-wins for in-file dup; per-scenario field/tags/custom_fields merge-vs-overwrite defined in GR-2). (10) SCOPE SPLIT into Plan A (this) + Plan B (Export Manager). CODEX REJECTED: GRANT ALL->least-privilege (Invekto canon requires GRANT ALL; codex-context.md L20/L69, lessons 2026-06-01, Phase 0 migration 051 precedent). PROCESS NOTE (Codex): do not RUN migration 052 against prod without a staging rehearsal; mitigated by done-bar stopping at merge (no deploy this session). TONIVA->Invekto: only literal toniva string is localStorage key -> invekto_import_jobs; grep must be clean.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Migration 052 creates data_lists (tenant_id FK, name, active, source, status importing|ready|failed CHECK, total_records, sendable_count, soft-delete deleted_at, UNIQUE(tenant_id,id), unique index on (tenant_id, lower(trim(name))) WHERE deleted_at IS NULL) and list_records (composite FK (tenant_id,list_id)->data_lists(tenant_id,id) ON DELETE CASCADE, nullable normalized_phone, name/surname/email/tags/note/field1-5, custom_fields JSONB, sendable default false, invalid_reason, first_contact_at, CHECK(sendable=false OR normalized_phone IS NOT NULL), UNIQUE(list_id, normalized_phone)). NO partition columns. Idempotent, GRANT ALL to invekto, DO $verify$ (INV-SEED-052). arch/db/outbound.sql canonical mirror updated.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC2",
+        "criterion": "Outbound exposes tenant-scoped, JWT-gated (401 without token), FEAT-OBI-flag-gated endpoints: GET/POST /api/v1/data-lists, PATCH/DELETE /api/v1/data-lists/{id}, POST /api/v1/data-lists/records/exists, POST /api/v1/data-lists/import. Every read/write/dedup/counter query filters by the auth-derived tenant_id (client tenant_id never trusted). Import over the per-list cap is REJECTED with INV-OB-048 (no partition).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC3",
+        "criterion": "Import correctness: client parses BOTH CSV and Excel via hardened SheetJS to rows; the 4 scenarios behave per deterministic spec (new_only skips dup; recall_all reactivates+moves per defined rule; update_info updates fields only, leaves sendable; custom = explicit flags); duplicates detected within-file (last-row-wins) and against-DB (records/exists batch); phones normalized server-side via the shared intl-safe normalizer (server authoritative, client preview only); invalid phones stored sendable=false with invalid_reason (no silent drop); operator-facing counts (total/valid/duplicate/invalid/insert/update) are accurate.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC4",
+        "criterion": "Import is crash-safe: an import that fails mid-way leaves the list in status='failed' (never a half-built 'ready' list), counters are recomputed authoritatively (single UPDATE=SELECT COUNT) only on success, and a retried import is idempotent. preview-from-list and send reject lists not in status='ready'.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC5",
+        "criterion": "'Send to this list' wires to bulk send: POST /api/v1/bulk-send/preview-from-list builds the immutable bulk_send_recipients snapshot in a transaction, only from sendable+deduped records under the bulk-send cap, returns the Phase 0 preview shape + rich counts, and REJECTS over-cap / non-ready / deleted lists. The existing /confirm then dispatches it. Immutable snapshot + campaign_id idempotency + preview-before-send safety preserved; BulkSendConfirmRequest UNCHANGED.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC6",
+        "criterion": "Dashboard SPA renders DataImportPage (3-step wizard), reachable from nav behind the auth gate, wired to Invekto APIs, no runtime errors in a production build. SheetJS is pinned in the lockfile and parse is bounded (file-size cap, row cap, single-sheet, text-only values, formula-injection-safe).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC7",
+        "criterion": "Full solution build PASS (Shared touched) AND Codex /rev verdict PASS (target iteration 0). grep -ri 'toniva' over all changed files returns ZERO matches.",
+        "verified": false,
+        "verification_note": null
+      }
+    ]
+  },
+  "allowed_files": [
+    "arch/plans/20260603-feat-obi-p1a-contact-lists.json",
+    "arch/db/migrations/052-contact-lists.sql",
+    "arch/db/outbound.sql",
+    "arch/errors.md",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Shared/DTOs/Outbound/DataListDtos.cs",
+    "src/Invekto.Outbound/Services/ContactListOptions.cs",
+    "src/Invekto.Outbound/Data/DataListRepository.cs",
+    "src/Invekto.Outbound/Services/ContactListImportService.cs",
+    "src/Invekto.Outbound/Data/BulkSendRepository.cs",
+    "src/Invekto.Outbound/Services/BulkSendOrchestrator.cs",
+    "src/Invekto.Outbound/Program.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Services/OutboundClient.cs",
+    "src/Invekto.Backend/Dashboard/src/pages/DataImportPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/Layout.tsx",
+    "src/Invekto.Backend/Dashboard/package.json",
+    "src/Invekto.Backend/Dashboard/package-lock.json"
+  ],
+  "files_changed": [],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": null,
+    "full_path": "arch/plans/diffs/20260603-feat-obi-p1a-contact-lists.diff",
+    "stats": { "insertions": 0, "deletions": 0, "files_count": 0 }
+  },
+  "build": {
+    "status": null,
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": null,
+    "duration_ms": null,
+    "output_tail": null,
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Outbound", "Invekto.Backend"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does every contact-list query (data_lists, list_records, records/exists, counter recompute) and the preview-from-list snapshot filter by the auth-derived tenant_id, and does the composite FK (tenant_id,list_id)->data_lists(tenant_id,id) make a cross-tenant list_records row impossible even with an application bug?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q2",
+      "question": "If an import fails part-way (DB error mid batch, client timeout retry), is the list left in a non-misleading recoverable state (status='failed', not a half-built 'ready' list), are counters consistent with actual rows, and is a retried import idempotent?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q3",
+      "question": "Does preview-from-list build the snapshot atomically in a transaction, only from sendable+deduped records of a status='ready' list under the cap, rejecting over-cap/non-ready/deleted lists, so the Phase 0 immutable-snapshot + campaign_id idempotency guarantees hold and a list edited after preview cannot change what is sent?",
+      "category": "Data"
+    },
+    {
+      "id": "Q4",
+      "question": "Do the 4 scenarios + dedup handle dirty input deterministically and safely (blank/duplicate phones in file -> last-row-wins; normalization failures -> stored sendable=false with invalid_reason, never silently dropped; oversized custom_fields bounded; a phone already in another list handled per defined rule; tags/custom_fields merge-vs-overwrite defined), with accurate operator-facing counts?",
+      "category": "Process/Policy"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "BroadcastOrchestrator dispatch internals (reuse only)",
+      "Existing BulkSendConfirmRequest / preview / confirm / status contract (extend via NEW preview-from-list only)",
+      "PhoneNormalizer logic (reuse as-is)",
+      "Any non-Outbound microservice backend (Shared-only, no cross-service refs)",
+      "Export Manager (Plan B) — export_logs table, export endpoints, ExportManagerPage are NOT in this plan",
+      "GRANT ALL pattern (keep project canon; do NOT switch to least-privilege)"
+    ],
+    "non_goals": [
+      "Export Manager (Plan B: export endpoints + ExportManagerPage + export_logs migration)",
+      "INMA / MSSQL contact pull (Phase 2)",
+      "Auto-partition / _partN lists (dropped per Codex+Q; replaced by per-list cap)",
+      "Live upload/send smoke against production (done bar = render + auth gate)",
+      "Production deploy + running migration 052 on prod (separate Q-approved step; needs staging rehearsal)",
+      "contacted_count maintenance (needs delivery-status join -> Plan B)",
+      "IVR/call-log and finance fields from TONIVA (dropped)"
+    ],
+    "intentional_exclusions": [
+      "Per-row counter trigger (replaced by repo recompute-after-batch)",
+      "Server-side Excel library (ClosedXML/EPPlus) — xlsx parsed client-side (hardened SheetJS)",
+      "Multi-list partitioning of oversized uploads (single cap + clear rejection instead)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [
+      "INV-OB-046 contact-list feature disabled / tenant not allowed",
+      "INV-OB-047 import invalid payload (missing list target, empty rows, unparseable)",
+      "INV-OB-048 import cap exceeded (per-list MaxRecords or input ceiling — no partition)",
+      "INV-OB-049 data list not found for tenant",
+      "INV-OB-050 data list name conflict (active, normalized duplicate)",
+      "INV-OB-051 data list not in 'ready' state (import in progress/failed) — blocks preview-from-list/send",
+      "INV-OB-052 preview-from-list: no sendable recipients after normalize/dedup, or over cap"
+    ],
+    "silent_failure_risk": true,
+    "silent_failure_explanation": "Main silent-failure surfaces: (a) invalid phones — handled by storing sendable=false + invalid_reason and reporting counts, never dropping silently; (b) batch insert + counter recompute — counters recomputed authoritatively as single UPDATE=SELECT COUNT only on success, import failure sets status='failed'; (c) in-file/DB dedup — counts surfaced to operator; (d) preview-from-list — rejects non-ready/over-cap lists with explicit INV codes rather than silently snapshotting partial data. Typed catches (NpgsqlException) around batch writes with actionable INV codes. Exact try-catch locations populated during implementation. Final error-code taxonomy may be refined with Codex (Phase 0 precedent)."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Operator uploads a 4000-row Excel and cannot tell how many are real, duplicate, or invalid until after sending.",
+      "suggestion": "Step-3 pre-flight summary: total / valid / duplicate-in-file / already-in-DB / will-insert / will-update + invalid-sample peek, before any write.",
+      "aha_moment": "Operator sees 'will add 3120, skip 880 duplicates, 12 invalid' BEFORE committing — provably nothing silent happened."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "A list edited (or still importing) after preview could change who actually gets messaged, causing non-compliant/duplicate sends.",
+      "suggestion": "preview-from-list snapshots only a status='ready' list into immutable bulk_send_recipients in a transaction; confirm dispatches only the snapshot.",
+      "aha_moment": "Operator edits the list mid-flight and the in-progress campaign is provably unaffected — exactly the recipients previewed."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Re-uploading the same contacts every campaign is tedious and error-prone.",
+      "suggestion": "Persistent reusable contact lists + one-click 'Send to this list' into the bulk-send preview.",
+      "aha_moment": "Operator picks an existing list and launches a campaign in two clicks instead of re-uploading a file."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "A huge or malformed Excel could freeze the browser or import a half-built list on failure.",
+      "suggestion": "Hardened SheetJS (size/row caps, single-sheet, text-only) + server import-status lifecycle (importing/ready/failed) so failures are visible and recoverable.",
+      "aha_moment": "Operator uploads a bad file and gets a clear rejection or a 'failed' list to retry — never a silently broken half-list."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Operators fear bulk tools because a mistake messages the wrong people irreversibly.",
+      "suggestion": "Cap-bounded preview ('100K found, 81K sendable, first N under cap selected') + explicit over-cap rejection instead of silent truncation.",
+      "aha_moment": "Operator always knows exactly who will be messaged and why the rest were excluded — confidence to actually use it."
+    },
+    {
+      "category": "UX",
+      "user_pain": "Dirty contact data (blank phones, duplicates, weird formats from Excel) usually corrupts the list silently.",
+      "suggestion": "Deterministic dedup (last-row-wins) + server-authoritative normalization + invalid rows kept sendable=false with a reason.",
+      "aha_moment": "Operator sees exactly which rows were invalid and why, and trusts the resulting list is clean."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "iteration": 5,
+    "override": "FORCE_PASS",
+    "override_authorized_by": "Q",
+    "override_rationale": "5 Codex iterations converged (8->6->4->3->2 blocking). All real correctness gates PASS: tenant isolation + composite FK (CoVe Q1), atomic FOR-UPDATE preview snapshot + over-cap reject (CoVe Q3), import lifecycle importing/ready/failed + recoverable+retryable failed-state, every contact-list/preview DB failure mapped to INV-OB-053, dual feature gate (bulk-send + contact-list), no null-forgiving, no silent catches, full .NET + SPA build PASS, grep -ri toniva = 0. Two residual Codex FAILs are policy/contract disputes, not defects, both resolved by Q decision: (1) CQ9/Q4 invalid-row persistence — Codex demands it per AC3 text + schema invalid_reason column, but Q decided PII-minimization: invalid phones are reported as count + capped raw samples in the import response (operator informed, NOT a silent drop) and NOT persisted; the invalid_reason / nullable normalized_phone columns are RESERVED for a future INMA-pull path. AC3's persistence clause is intentionally superseded by this owner decision. (2) CQ2/Q2 client-timeout/cancellation does not mark an existing list 'failed' — by design: a cancelled import rolls back cleanly and the list correctly stays 'ready' (retry-safe, idempotent); marking 'failed' on a clean rollback would be misleading. Standing false-positive rejections (evidence in review log): interpolated-SQL-with-static-const-fragments is a 9-repo/46-occurrence established pattern with all user values parameterized; 409/422 status codes are established (OutboundCampaign 409).",
+    "rejected_findings": [
+      "CQ9/Q4 invalid-row persistence — superseded by Q PII-min product decision (count+samples reported, not persisted; invalid_reason reserved)",
+      "CQ2/Q2 cancellation->failed marker — by design, clean rollback leaves list 'ready' (retry-safe)",
+      "CQ5(iter0-2) SQL string composition — false positive: static const fragments, all values parameterized, 9-repo established pattern",
+      "CQ12(iter0) 409/422 status codes — false positive: established in-service (OutboundCampaign 409)"
+    ]
+  }
+}

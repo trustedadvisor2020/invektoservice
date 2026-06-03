@@ -24,7 +24,9 @@ public sealed class BulkSendOrchestrator
     private readonly OutboundRepository _repository;
     private readonly BroadcastOrchestrator _broadcast;
     private readonly CsvRecipientParser _parser;
+    private readonly DataListRepository _dataListRepo;
     private readonly BulkSendOptions _options;
+    private readonly ContactListOptions _contactListOptions;
     private readonly JsonLinesLogger _logger;
 
     public BulkSendOrchestrator(
@@ -32,14 +34,18 @@ public sealed class BulkSendOrchestrator
         OutboundRepository repository,
         BroadcastOrchestrator broadcast,
         CsvRecipientParser parser,
+        DataListRepository dataListRepo,
         BulkSendOptions options,
+        ContactListOptions contactListOptions,
         JsonLinesLogger logger)
     {
         _bulkRepo = bulkRepo;
         _repository = repository;
         _broadcast = broadcast;
         _parser = parser;
+        _dataListRepo = dataListRepo;
         _options = options;
+        _contactListOptions = contactListOptions;
         _logger = logger;
     }
 
@@ -118,6 +124,96 @@ public sealed class BulkSendOrchestrator
             Sample = parsed.Valid.Take(_options.PreviewSampleSize).Select(r => r.Phone).ToList(),
             InvalidSamples = parsed.InvalidSamples
         }, null, null);
+    }
+
+    // ------------------------------------------------------------------
+    // PREVIEW FROM LIST (FEAT-OBI Phase 1A — snapshot a contact list into a send)
+    // ------------------------------------------------------------------
+    public async Task<(BulkSendPreviewResponse? response, string? errorCode, string? errorMessage)>
+        PreviewFromListAsync(int tenantId, PreviewFromListRequest request, CancellationToken ct = default)
+    {
+        // This path spans BOTH features: sending requires bulk-send enabled AND it reads contact-list
+        // data, so the contact-list gate must also pass (the two allowlists are intentionally separate).
+        if (!_options.IsTenantAllowed(tenantId))
+            return (null, ErrorCodes.BulkSendDisabled, "Bulk send is not enabled for this tenant");
+        if (!_contactListOptions.IsTenantAllowed(tenantId))
+            return (null, ErrorCodes.ContactListDisabled, "Contact lists are not enabled for this tenant");
+
+        if (string.IsNullOrWhiteSpace(request.CampaignId) || request.TemplateId <= 0 || request.ListId <= 0)
+            return (null, ErrorCodes.BulkSendInvalidPayload, "campaign_id, template_id and list_id are required");
+
+        // Every DB call below maps an NpgsqlException (server OR connection/transient) to the
+        // actionable INV-OB-053 503, so no preview DB failure escapes as an opaque 500.
+        try
+        {
+            var template = await _repository.GetTemplateByIdAsync(tenantId, request.TemplateId, ct);
+            if (template == null)
+                return (null, ErrorCodes.OutboundTemplateNotFound, $"Template {request.TemplateId} not found or inactive");
+
+            // Idempotency guard — same as the CSV preview path.
+            var existing = await _bulkRepo.GetJobAsync(tenantId, request.CampaignId, ct);
+            if (existing != null && existing.Status != "preview_ready")
+                return (null, ErrorCodes.BulkSendAlreadyConfirmed,
+                    $"Campaign '{request.CampaignId}' already {existing.Status}; use a new campaign_id");
+
+            // List must exist, be ready, and have sendable recipients within the cap.
+            var list = await _dataListRepo.GetAsync(tenantId, request.ListId, ct);
+            if (list == null)
+                return (null, ErrorCodes.ContactListNotFound, $"List {request.ListId} not found");
+            if (list.Status != "ready")
+                return (null, ErrorCodes.ContactListNotReady, $"List '{list.Name}' is {list.Status}");
+            if (list.SendableCount == 0)
+                return (null, ErrorCodes.ContactListNoSendable, "List has no sendable recipients");
+            if (list.SendableCount > _options.MaxRecipientsPerCampaign)
+                return (null, ErrorCodes.ContactListNoSendable,
+                    $"List has {list.SendableCount} sendable recipients, over the pilot cap {_options.MaxRecipientsPerCampaign}; reduce the list or raise the cap");
+
+            // The repo re-validates (ready + not deleted + sendable within cap) under a FOR UPDATE lock,
+            // so the snapshot is atomic against a concurrent import; the checks above are a fast-fail only.
+            var (jobId, snapshotted, snapErrorCode) = await _bulkRepo.CreatePreviewJobFromListAsync(
+                tenantId, request.CampaignId, request.TemplateId, request.Lang,
+                _options.MaxRecipientsPerCampaign, request.ListId, ct);
+
+            if (snapErrorCode != null)
+            {
+                var msg = snapErrorCode switch
+                {
+                    ErrorCodes.ContactListNotFound => $"List {request.ListId} not found",
+                    ErrorCodes.ContactListNotReady => $"List '{list.Name}' is not ready (changed during preview)",
+                    ErrorCodes.ContactListDbError => "Database error while building the preview; nothing was sent. Please retry.",
+                    _ => "List has no sendable recipients within the cap (changed during preview)"
+                };
+                return (null, snapErrorCode, msg);
+            }
+            if (snapshotted == 0)
+                return (null, ErrorCodes.ContactListNoSendable, "No sendable recipients were snapshotted");
+
+            var sample = await _bulkRepo.GetRecipientPhonesSampleAsync(tenantId, jobId, _options.PreviewSampleSize, ct);
+
+            _logger.SystemInfo(
+                $"Bulk preview-from-list: tenant={tenantId}, campaign={request.CampaignId}, job={jobId}, " +
+                $"list={request.ListId}, snapshotted={snapshotted}");
+
+            return (new BulkSendPreviewResponse
+            {
+                CampaignId = request.CampaignId,
+                Status = "preview_ready",
+                HardCap = _options.MaxRecipientsPerCampaign,
+                TotalInput = snapshotted,
+                TotalValid = snapshotted,
+                TotalDuplicate = 0,
+                TotalInvalid = 0,
+                Sample = sample,
+                InvalidSamples = new List<string>()
+            }, null, null);
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError(
+                $"preview-from-list DB failure: tenant={tenantId}, campaign={request.CampaignId}, list={request.ListId}: {ex.Message}");
+            return (null, ErrorCodes.ContactListDbError,
+                "Database error while building the preview; nothing was sent. Please retry.");
+        }
     }
 
     // ------------------------------------------------------------------

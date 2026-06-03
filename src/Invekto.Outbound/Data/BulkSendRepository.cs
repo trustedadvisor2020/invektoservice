@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Invekto.Shared.Constants;
 using Invekto.Shared.Data;
 using Invekto.Shared.DTOs.Outbound;
 using Invekto.Shared.Logging;
@@ -124,6 +125,145 @@ public class BulkSendRepository
 
         await tx.CommitAsync(ct);
         return jobId;
+    }
+
+    /// <summary>
+    /// FEAT-OBI Phase 1A: build a preview snapshot directly from a contact list's sendable records,
+    /// in ONE transaction (immutable snapshot identical to the CSV path). The list row is locked
+    /// FOR UPDATE and re-validated (ready + not deleted + sendable count within cap) INSIDE this
+    /// transaction — so a concurrent import (which also locks the row) cannot grow the list between
+    /// the caller's advisory check and the snapshot, and an over-cap list is REJECTED rather than
+    /// silently truncated. Returns (jobId, snapshotted count, errorCode). On errorCode != null the
+    /// transaction is rolled back and (0,0) is returned. The caller guarantees the campaign is not
+    /// already confirmed (checked via GetJobAsync).
+    /// </summary>
+    public virtual async Task<(long jobId, int snapshotted, string? errorCode)> CreatePreviewJobFromListAsync(
+        int tenantId, string campaignId, int templateId, string? lang, int hardCap,
+        long listId, CancellationToken ct = default)
+    {
+        try
+        {
+        // Connection-open + begin are inside the try so connection/transient failures also map to INV-OB-053.
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
+
+        // Lock the list row and re-validate under the lock (serializes against concurrent import,
+        // which takes the same FOR UPDATE lock). Authoritative recount — never trust a stale counter.
+        await using (var lk = new NpgsqlCommand(
+            "SELECT status FROM data_lists WHERE tenant_id=@tid AND id=@lid AND deleted_at IS NULL FOR UPDATE", conn, tx))
+        {
+            lk.Parameters.AddWithValue("tid", tenantId);
+            lk.Parameters.AddWithValue("lid", listId);
+            var status = await lk.ExecuteScalarAsync(ct) as string;
+            if (status == null)
+            {
+                await tx.RollbackAsync(ct);
+                return (0, 0, ErrorCodes.ContactListNotFound);
+            }
+            if (status != "ready")
+            {
+                await tx.RollbackAsync(ct);
+                return (0, 0, ErrorCodes.ContactListNotReady);
+            }
+        }
+
+        int sendableNow;
+        await using (var cnt = new NpgsqlCommand(
+            "SELECT COUNT(*) FROM list_records WHERE tenant_id=@tid AND list_id=@lid AND sendable=TRUE AND normalized_phone IS NOT NULL",
+            conn, tx))
+        {
+            cnt.Parameters.AddWithValue("tid", tenantId);
+            cnt.Parameters.AddWithValue("lid", listId);
+            sendableNow = Convert.ToInt32(await cnt.ExecuteScalarAsync(ct));
+        }
+        if (sendableNow == 0 || sendableNow > hardCap)
+        {
+            await tx.RollbackAsync(ct);
+            return (0, 0, ErrorCodes.ContactListNoSendable);
+        }
+
+        await using (var del = new NpgsqlCommand(
+            "DELETE FROM bulk_send_jobs WHERE tenant_id=@tid AND campaign_id=@cid AND status='preview_ready'", conn, tx))
+        {
+            del.Parameters.AddWithValue("tid", tenantId);
+            del.Parameters.AddWithValue("cid", campaignId);
+            await del.ExecuteNonQueryAsync(ct);
+        }
+
+        long jobId;
+        await using (var ins = new NpgsqlCommand(@"
+            INSERT INTO bulk_send_jobs
+                (tenant_id, campaign_id, source, template_id, lang, hard_cap, status)
+            VALUES (@tid, @cid, 'list', @tmpl, @lang, @cap, 'preview_ready')
+            RETURNING id", conn, tx))
+        {
+            ins.Parameters.AddWithValue("tid", tenantId);
+            ins.Parameters.AddWithValue("cid", campaignId);
+            ins.Parameters.AddWithValue("tmpl", templateId);
+            ins.Parameters.AddWithValue("lang", (object?)lang ?? DBNull.Value);
+            ins.Parameters.AddWithValue("cap", hardCap);
+            jobId = Convert.ToInt64(await ins.ExecuteScalarAsync(ct));
+        }
+
+        // Snapshot sendable recipients (immutable copy; list edits after this cannot change the send).
+        // No per-recipient variables — list sends use INMA dynamic placeholders resolved server-side.
+        int snapshotted;
+        await using (var rc = new NpgsqlCommand(@"
+            INSERT INTO bulk_send_recipients (job_id, tenant_id, normalized_phone, variables_json)
+            SELECT @jid, @tid, normalized_phone, NULL
+            FROM list_records
+            WHERE tenant_id=@tid AND list_id=@lid AND sendable=TRUE AND normalized_phone IS NOT NULL
+            ORDER BY id
+            LIMIT @cap
+            ON CONFLICT (job_id, normalized_phone) DO NOTHING", conn, tx))
+        {
+            rc.Parameters.AddWithValue("jid", jobId);
+            rc.Parameters.AddWithValue("tid", tenantId);
+            rc.Parameters.AddWithValue("lid", listId);
+            rc.Parameters.AddWithValue("cap", hardCap);
+            snapshotted = await rc.ExecuteNonQueryAsync(ct);
+        }
+
+        await using (var upd = new NpgsqlCommand(
+            "UPDATE bulk_send_jobs SET total_input=@n, total_valid=@n WHERE id=@jid AND tenant_id=@tid", conn, tx))
+        {
+            upd.Parameters.AddWithValue("n", snapshotted);
+            upd.Parameters.AddWithValue("jid", jobId);
+            upd.Parameters.AddWithValue("tid", tenantId);
+            await upd.ExecuteNonQueryAsync(ct);
+        }
+
+        await tx.CommitAsync(ct);
+        return (jobId, snapshotted, null);
+        }
+        catch (NpgsqlException ex)
+        {
+            // Snapshot DB failure (server error OR connection/transient — NpgsqlException base):
+            // the tx is rolled back by `await using` disposal; surface the typed code so the endpoint
+            // returns 503 INV-OB-053 rather than an opaque 500. Nothing partial was committed.
+            _logger.SystemError(
+                $"preview-from-list DB failure: tenant={tenantId}, campaign={campaignId}, list={listId}, msg={ex.Message}");
+            return (0, 0, ErrorCodes.ContactListDbError);
+        }
+    }
+
+    /// <summary>First N snapshot phones for a job (operator eyeball sample in the preview response).</summary>
+    public virtual async Task<List<string>> GetRecipientPhonesSampleAsync(
+        int tenantId, long jobId, int limit, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT normalized_phone FROM bulk_send_recipients
+            WHERE tenant_id=@tid AND job_id=@jid ORDER BY id LIMIT @lim";
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("jid", jobId);
+        cmd.Parameters.AddWithValue("lim", limit);
+        var list = new List<string>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+            list.Add(reader.GetString(0));
+        return list;
     }
 
     public virtual async Task<JobRecord?> GetJobAsync(

@@ -107,6 +107,13 @@ builder.Services.AddSingleton<CsvRecipientParser>();
 builder.Services.AddSingleton<BulkSendRepository>();
 builder.Services.AddSingleton<BulkSendOrchestrator>();
 
+// ─── FEAT-OBI Phase 1A: Contact lists (feature-flagged, allowlisted, capped) ───
+var contactListOptions = new ContactListOptions();
+builder.Configuration.GetSection(ContactListOptions.SectionName).Bind(contactListOptions);
+builder.Services.AddSingleton(contactListOptions);
+builder.Services.AddSingleton<DataListRepository>();
+builder.Services.AddSingleton<ContactListImportService>();
+
 // Register MainAppCallbackClient with HttpClient
 var callbackSettings = new CallbackSettings
 {
@@ -360,6 +367,143 @@ app.MapGet("/api/v1/bulk-send/{campaignId}/status", async (
     var (response, errorCode) = await orchestrator.StatusAsync(tenantContext.TenantId, campaignId, ctx.RequestAborted);
     if (response == null)
         return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.BulkSendJobNotFound, $"Campaign '{campaignId}' not found", requestId), statusCode: 404);
+    return Results.Ok(response);
+});
+
+app.MapPost("/api/v1/bulk-send/preview-from-list", async (
+    HttpContext ctx,
+    BulkSendOrchestrator orchestrator,
+    PreviewFromListRequest? request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    ctx.Request.Headers["X-Request-Id"] = requestId;
+
+    if (request == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.BulkSendInvalidPayload, "Request body is required", requestId), statusCode: 400);
+
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (response, errorCode, errorMessage) = await orchestrator.PreviewFromListAsync(tenantContext.TenantId, request, ctx.RequestAborted);
+    if (response == null)
+    {
+        var statusCode = errorCode switch
+        {
+            ErrorCodes.BulkSendDisabled => 403,
+            ErrorCodes.ContactListDisabled => 403,
+            ErrorCodes.OutboundTemplateNotFound => 404,
+            ErrorCodes.ContactListNotFound => 404,
+            ErrorCodes.BulkSendAlreadyConfirmed => 409,
+            ErrorCodes.ContactListNotReady => 409,
+            ErrorCodes.ContactListNoSendable => 422,
+            ErrorCodes.ContactListDbError => 503,
+            _ => 400
+        };
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, errorMessage ?? "Preview-from-list failed", requestId), statusCode: statusCode);
+    }
+    return Results.Ok(response);
+});
+
+// ============================================================
+// FEAT-OBI Phase 1A — Contact Lists (data layer)
+// ============================================================
+
+// Map a contact-list error code to an HTTP status (shared by the endpoints below).
+static int ContactListStatus(string? code) => code switch
+{
+    ErrorCodes.ContactListDisabled => 403,
+    ErrorCodes.ContactListNotFound => 404,
+    ErrorCodes.ContactListNameConflict => 409,
+    ErrorCodes.ContactListNotReady => 409,
+    ErrorCodes.ContactListCapExceeded => 422,
+    ErrorCodes.ContactListDbError => 503,   // transient DB failure — import rolled back, safe to retry
+    _ => 400
+};
+
+app.MapGet("/api/v1/data-lists", async (HttpContext ctx, ContactListImportService svc) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (lists, errorCode) = await svc.ListAsync(tenantContext.TenantId, ctx.RequestAborted);
+    if (lists == null)
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, "Contact lists could not be loaded; please retry.", requestId), statusCode: ContactListStatus(errorCode));
+    return Results.Ok(lists);
+});
+
+app.MapPost("/api/v1/data-lists", async (HttpContext ctx, ContactListImportService svc, CreateDataListRequest? request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (request == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.ContactListInvalidPayload, "Request body is required", requestId), statusCode: 400);
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (list, errorCode, message) = await svc.CreateListAsync(tenantContext.TenantId, request, ctx.RequestAborted);
+    if (list == null)
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "List could not be created; check the name and retry.", requestId), statusCode: ContactListStatus(errorCode));
+    return Results.Json(list, statusCode: 201);
+});
+
+app.MapPut("/api/v1/data-lists/{id:long}", async (HttpContext ctx, ContactListImportService svc, long id, UpdateDataListRequest? request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (request == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.ContactListInvalidPayload, "Request body is required", requestId), statusCode: 400);
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (list, errorCode, message) = await svc.UpdateListAsync(tenantContext.TenantId, id, request, ctx.RequestAborted);
+    if (list == null)
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "List could not be updated; verify it exists and retry.", requestId), statusCode: ContactListStatus(errorCode));
+    return Results.Ok(list);
+});
+
+app.MapDelete("/api/v1/data-lists/{id:long}", async (HttpContext ctx, ContactListImportService svc, long id) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (ok, errorCode) = await svc.DeleteListAsync(tenantContext.TenantId, id, ctx.RequestAborted);
+    if (!ok)
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.ContactListNotFound, $"List {id} not found", requestId), statusCode: ContactListStatus(errorCode));
+    return Results.Ok(new { id, deleted = true });
+});
+
+app.MapPost("/api/v1/data-lists/records/exists", async (HttpContext ctx, ContactListImportService svc, RecordsExistsRequest? request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (request == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.ContactListInvalidPayload, "Request body is required", requestId), statusCode: 400);
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (response, errorCode, message) = await svc.RecordsExistsAsync(tenantContext.TenantId, request, ctx.RequestAborted);
+    if (response == null)
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "Existence check failed; please retry.", requestId), statusCode: ContactListStatus(errorCode));
+    return Results.Ok(response);
+});
+
+app.MapPost("/api/v1/data-lists/import", async (HttpContext ctx, ContactListImportService svc, ImportBatchRequest? request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (request == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.ContactListInvalidPayload, "Request body is required", requestId), statusCode: 400);
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (response, errorCode, message) = await svc.ImportAsync(tenantContext.TenantId, request, ctx.RequestAborted);
+    if (response == null)
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "Import could not complete; the list was not modified. Please retry.", requestId), statusCode: ContactListStatus(errorCode));
     return Results.Ok(response);
 });
 
