@@ -988,6 +988,23 @@ errors:
     description: Mid-import or records-exists DB failure (Npgsql) — the import transaction rolled back (no half-built list) and an existing target list is flagged 'failed'; transient (503)
     user_message: Veritabanı hatası nedeniyle içe aktarma tamamlanamadı. Liste değişmedi; lütfen tekrar deneyin.
 
+  # ── FEAT-OBI Phase 1A Plan B — Export Manager ──
+  - code: INV-OB-054
+    description: Export validation error — unsupported/invalid format, export_type, or range in the export request (400/422)
+    user_message: Dışa aktarma isteği geçersiz. Format ve seçimi kontrol edin.
+  - code: INV-OB-055
+    description: Export source not found — the requested list/campaign id has no row for this tenant (or is not owned by it) (404)
+    user_message: Dışa aktarılacak liste ya da kampanya bulunamadı.
+  - code: INV-OB-056
+    description: Export feature disabled — export feature flag off OR tenant not allowed by ExportOptions (403)
+    user_message: Dışa aktarma bu hesap için aktif değil.
+  - code: INV-OB-057
+    description: Export DB failure (Npgsql/Postgres) on the export path — no partial file is served; transient (503)
+    user_message: Veritabanı hatası nedeniyle dışa aktarma tamamlanamadı. Lütfen tekrar deneyin.
+  - code: INV-OB-058
+    description: Export too large — row count exceeds the XLSX hard cap; the workbook is not built. The XLSX-only cap; CSV is the unbounded full-data path (422)
+    user_message: Excel için veri çok büyük. CSV formatını kullanın (CSV tüm satırları içerir).
+
   # ── IG — Integrations (GR-3.4/3.6) ──
   - code: INV-IG-001
     description: Invalid account payload

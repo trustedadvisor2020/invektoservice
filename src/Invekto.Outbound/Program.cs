@@ -114,6 +114,13 @@ builder.Services.AddSingleton(contactListOptions);
 builder.Services.AddSingleton<DataListRepository>();
 builder.Services.AddSingleton<ContactListImportService>();
 
+// ─── FEAT-OBI Phase 1A Plan B: Export Manager (dedicated flag, default OFF) ───
+var exportOptions = new ExportOptions();
+builder.Configuration.GetSection(ExportOptions.SectionName).Bind(exportOptions);
+builder.Services.AddSingleton(exportOptions);
+builder.Services.AddSingleton<ExportRepository>();
+builder.Services.AddSingleton<ExportService>();
+
 // Register MainAppCallbackClient with HttpClient
 var callbackSettings = new CallbackSettings
 {
@@ -505,6 +512,108 @@ app.MapPost("/api/v1/data-lists/import", async (HttpContext ctx, ContactListImpo
     if (response == null)
         return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "Import could not complete; the list was not modified. Please retry.", requestId), statusCode: ContactListStatus(errorCode));
     return Results.Ok(response);
+});
+
+// ============================================================
+// FEAT-OBI Phase 1A Plan B — Export Manager
+// ============================================================
+
+// Map an export error code to an HTTP status (shared by the endpoints below).
+static int ExportStatus(string? code) => code switch
+{
+    ErrorCodes.ExportFeatureDisabled => 403,
+    ErrorCodes.ExportSourceNotFound => 404,
+    ErrorCodes.ExportTooLarge => 422,
+    ErrorCodes.ExportDbError => 503,
+    _ => 400 // ExportValidationError + fallback
+};
+
+// Code-specific operator-facing message so each INV-OB export error is actionable
+// (not a single generic "export failed" for every distinct cause).
+static string ExportMessage(string? code) => code switch
+{
+    ErrorCodes.ExportValidationError => "Dışa aktarma isteği geçersiz. Format ve seçimi kontrol edin.",
+    ErrorCodes.ExportSourceNotFound => "Dışa aktarılacak liste ya da kampanya bulunamadı.",
+    ErrorCodes.ExportFeatureDisabled => "Dışa aktarma bu hesap için aktif değil.",
+    ErrorCodes.ExportDbError => "Veritabanı hatası nedeniyle dışa aktarma tamamlanamadı. Lütfen tekrar deneyin.",
+    ErrorCodes.ExportTooLarge => "Excel için veri çok büyük. CSV formatını kullanın (CSV tüm satırları içerir).",
+    _ => "Dışa aktarma başarısız oldu."
+};
+
+// Apply the no-store + nosniff headers every export response must carry.
+static void ExportFileHeaders(HttpContext ctx)
+{
+    ctx.Response.Headers["Cache-Control"] = "no-store, no-cache, must-revalidate";
+    ctx.Response.Headers["X-Content-Type-Options"] = "nosniff";
+}
+
+// Serve a built export file: clean JSON error (code-specific message) if the build failed,
+// else a Results.File (filename is an ascii slug; Results.File encodes Content-Disposition safely).
+static IResult ExportFileResult(HttpContext ctx, ExportService.ExportFile file, string requestId)
+{
+    if (file.ErrorCode != null)
+        return Results.Json(ErrorResponse.Create(file.ErrorCode, ExportMessage(file.ErrorCode), requestId), statusCode: ExportStatus(file.ErrorCode));
+    var bytes = file.Bytes;
+    if (bytes is null) // defensive: a successful ExportFile always carries bytes; never serve an empty 200
+        return Results.Json(ErrorResponse.Create(ErrorCodes.ExportDbError, ExportMessage(ErrorCodes.ExportDbError), requestId), statusCode: ExportStatus(ErrorCodes.ExportDbError));
+    ExportFileHeaders(ctx);
+    return Results.File(bytes, file.ContentType, file.FileName);
+}
+
+// GET /api/v1/exports/send-jobs — recent campaigns for the export picker (read-only metadata).
+app.MapGet("/api/v1/exports/send-jobs", async (HttpContext ctx, ExportService svc) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (err, jobs) = await svc.ListSendJobsAsync(tenantContext.TenantId, ctx.RequestAborted);
+    if (err != null)
+        return Results.Json(ErrorResponse.Create(err, ExportMessage(err), requestId), statusCode: ExportStatus(err));
+    return Results.Ok(jobs);
+});
+
+// GET /api/v1/exports/contact-list/{listId}?format=csv|xlsx
+app.MapGet("/api/v1/exports/contact-list/{listId:long}", async (HttpContext ctx, ExportService svc, long listId, string? format) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var fmt = (format ?? ExportFormats.Csv).ToLowerInvariant();
+    var file = await svc.ExportContactListAsync(tenantContext.TenantId, listId, fmt, tenantContext.UserId.ToString(), ctx.RequestAborted);
+    return ExportFileResult(ctx, file, requestId);
+});
+
+// GET /api/v1/exports/send-job/{jobId}/recipients?format=csv|xlsx
+app.MapGet("/api/v1/exports/send-job/{jobId:long}/recipients", async (HttpContext ctx, ExportService svc, long jobId, string? format) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var fmt = (format ?? ExportFormats.Csv).ToLowerInvariant();
+    var file = await svc.ExportSendRecipientsAsync(tenantContext.TenantId, jobId, fmt, tenantContext.UserId.ToString(), ctx.RequestAborted);
+    return ExportFileResult(ctx, file, requestId);
+});
+
+// GET /api/v1/exports/send-job/{jobId}/report-data?for=pdf  (browser renders the PDF)
+app.MapGet("/api/v1/exports/send-job/{jobId:long}/report-data", async (HttpContext ctx, ExportService svc, long jobId, string? @for) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (err, data) = await svc.BuildSendReportDataAsync(tenantContext.TenantId, jobId, tenantContext.UserId.ToString(), ctx.RequestAborted);
+    if (err != null)
+        return Results.Json(ErrorResponse.Create(err, ExportMessage(err), requestId), statusCode: ExportStatus(err));
+
+    ExportFileHeaders(ctx);
+    return Results.Ok(data);
 });
 
 // ============================================================

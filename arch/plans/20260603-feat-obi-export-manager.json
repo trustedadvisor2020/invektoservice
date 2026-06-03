@@ -1,0 +1,244 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "spec_architectural_decisions": [
+    {
+      "decision": "export_logs keeps GRANT ALL (single invekto role) and is made append-only at the application layer (ExportRepository issues INSERT only; no UPDATE/DELETE statements target export_logs).",
+      "reason": "Project canon (codex-context.md L20/L69) is GRANT ALL; a prior package (B1) FAILED review for downgrading it. There is no separate audit-writer DB role in this architecture.",
+      "codex_note": "EXPECTED: do NOT flag GRANT ALL on export_logs as a least-privilege violation. Append-only is enforced in code, not via column grants, by design."
+    },
+    {
+      "decision": "PDF bytes are generated in the browser (jsPDF); the server only serves report-data JSON and writes the export_logs row with delivery_mode='client_render'. status='completed' means 'export data served', not 'PDF physically rendered/downloaded'.",
+      "reason": "Literal server-side HTML->PDF would force Chromium/wkhtmltopdf onto the prod Outbound microservice (zero browser runtime today). PDF payload is small and bounded (summary + <=2000 rows).",
+      "codex_note": "EXPECTED: do NOT flag the browser-side PDF generation or the 'completed=data served' audit semantics as a silent-failure or audit gap; delivery_mode column + report-data forensic fields disclose this honestly."
+    },
+    {
+      "decision": "Export feature is gated by tenant-scoped JWT + ExportOptions(Enabled,AllowAllTenants); there is NO per-operator export RBAC.",
+      "reason": "The codebase has no granular operator-permission model (tenant-scoped JWT only); Q's interview answer was 'all tenants/operators can export'.",
+      "codex_note": "EXPECTED: do NOT flag missing per-operator export permissions; tenant isolation is the authorization boundary by product decision."
+    },
+    {
+      "decision": "custom_fields (JSONB) is exported as a single JSON-string column, not flattened into dynamic per-key columns.",
+      "reason": "Dynamic column expansion is unbounded (column-explosion DoS) and non-deterministic across rows.",
+      "codex_note": "EXPECTED: single custom_fields column is intentional, not a missed flattening."
+    }
+  ],
+  "slug": "20260603-feat-obi-export-manager",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-03T19:35:00Z",
+  "updated_at": "2026-06-03T19:35:00Z",
+  "gr_list": [
+    {
+      "id": "GR1",
+      "description": "Data+contract: migration 053 export_logs + outbound.sql mirror + Shared ExportDtos + ErrorCodes INV-OB-054..058 + errors.md",
+      "services_affected": [
+        "Invekto.Shared",
+        "DB"
+      ]
+    },
+    {
+      "id": "GR2",
+      "description": "Outbound export engine: ExportService (CSV/XLSX builders + send-results queries) + ExportRepository (export_logs audit + data SELECTs) + 3 endpoints",
+      "services_affected": [
+        "Invekto.Outbound"
+      ]
+    },
+    {
+      "id": "GR3",
+      "description": "Backend file-streaming proxy routes (3) forwarding to Outbound with JWT->tenant gate",
+      "services_affected": [
+        "Invekto.Backend"
+      ]
+    },
+    {
+      "id": "GR4",
+      "description": "Dashboard ExportManagerPage + api.ts client + jsPDF browser PDF + route + nav",
+      "services_affected": [
+        "Invekto.Backend/Dashboard"
+      ]
+    }
+  ],
+  "plan": {
+    "summary": "FEAT-OBI Phase 1A Plan B: an Export Manager that lets an operator export their contact lists (list_records) and bulk-send campaign results (per-recipient delivery status + campaign summary) as CSV / Excel / PDF, with an export_logs KVKK audit trail. All data is in Postgres; no INMA dependency.",
+    "q_intent": "Plan A live -> start Plan B (Export Manager): export_logs table + export endpoints + ExportManagerPage. Interview answers: export lists+send results; server-side + export_logs; CSV+Excel+PDF; all tenants (Outbound plan); PDF = both summary report + capped table; PDF via HTML->PDF no-license. 'devam'.",
+    "interview_notes": "6 interview Qs resolved. Key architecture tension surfaced + resolved with Q approval ('devam'): 'server-side generation' + 'HTML->PDF no-license' would force Chromium/wkhtmltopdf onto the prod Outbound microservice. PDF payload is small/bounded, so: CSV+XLSX generated server-side and streamed (Q's literal choice, export_logs audit); PDF (report + <=2000-row capped table) rendered in-browser (jsPDF+autotable) from a server report-data JSON endpoint that STILL writes an export_logs row on ?for=pdf -> identical audit across all 3 formats, no native browser runtime on prod. Send-results delivery status is fully captured in outbound_messages (status/sent_at/delivered_at/read_at/failed_reason), linked via bulk_send_jobs.broadcast_ids. PDF applies to send results only, not raw contact lists. Tenant gate reuses Plan A ContactListOptions (Enabled+AllowAllTenants), already enabled in prod.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Migration 053 creates export_logs (tenant_id FK, export_type/format CHECKs, GRANT ALL) idempotently with a DO $verify$ INV-SEED-053 postcondition; outbound.sql canonical mirror updated.",
+        "verified": true
+      },
+      {
+        "id": "AC2",
+        "criterion": "Operator can export a contact list as CSV (UTF-8 BOM + formula-injection escaping) and XLSX (ClosedXML) server-side; the file streams with correct Content-Disposition and an export_logs row is written (export_type=contact_list, correct format + row_count).",
+        "verified": true
+      },
+      {
+        "id": "AC3",
+        "criterion": "Bulk-send campaign export bases on the bulk_send_recipients snapshot LEFT JOIN outbound_messages (never-sent recipients appear with status=not_sent, never silently dropped), with a tenant_id predicate on every joined table and a defined status precedence (read>delivered>sent>sending>queued>failed>blocked>not_sent); per-recipient CSV/XLSX carries status + timestamps, plus a campaign summary; each writes an export_logs row.",
+        "verified": true
+      },
+      {
+        "id": "AC4",
+        "criterion": "PDF export (report page + <=2000-row capped recipient table) is rendered in the browser from GET report-data?for=pdf; the server writes an export_logs row (format=pdf) at data-serve time; over-cap requests are handled (cap note in PDF, INV-OB-058 only if a hard limit is exceeded).",
+        "verified": true
+      },
+      {
+        "id": "AC5",
+        "criterion": "Every export query is tenant-scoped and verifies source ownership (list/job belongs to the JWT tenant) -> INV-OB-055 otherwise; the whole feature is gated by the new ExportOptions (Enabled + AllowAllTenants) -> INV-OB-056 when disabled; no cross-tenant data leak.",
+        "verified": true
+      },
+      {
+        "id": "AC6",
+        "criterion": "Backend proxies the 3 export routes to Outbound with JWT->tenant auth, streaming file responses through without buffering and preserving Content-Type/Content-Disposition; full .NET solution build + SPA build PASS.",
+        "verified": true
+      }
+    ]
+  },
+  "allowed_files": [
+    "arch/db/migrations/053-export-logs.sql",
+    "arch/db/outbound.sql",
+    "src/Invekto.Shared/DTOs/Outbound/ExportDtos.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "arch/errors.md",
+    "src/Invekto.Outbound/Services/ExportService.cs",
+    "src/Invekto.Outbound/Data/ExportRepository.cs",
+    "src/Invekto.Outbound/Services/ExportOptions.cs",
+    "src/Invekto.Outbound/Program.cs",
+    "src/Invekto.Outbound/Invekto.Outbound.csproj",
+    "src/Invekto.Outbound/appsettings.json",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Services/OutboundClient.cs",
+    "src/Invekto.Backend/Dashboard/src/pages/ExportManagerPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/Layout.tsx",
+    "src/Invekto.Backend/Dashboard/package.json",
+    "src/Invekto.Backend/Dashboard/package-lock.json",
+    "arch/plans/20260603-feat-obi-export-manager.json",
+    "tracking/feat-obi-export-manager.md"
+  ],
+  "files_changed": [],
+  "git_diff": {
+    "stats": {
+      "insertions": 0,
+      "deletions": 0,
+      "files_count": 0
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "timestamp": "2026-06-03T20:55:00Z",
+    "note": "Full .NET solution build 0 errors; SPA build (tsc + vite) clean. ClosedXML 0.104.2 + jspdf/jspdf-autotable restored."
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does every export data query and export_logs insert scope strictly by tenant_id AND verify that the requested data_lists.id / bulk_send_jobs.id belongs to the JWT tenant, so a tenant cannot export another tenant's contacts or campaign delivery status by guessing an id?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q2",
+      "question": "Is the per-recipient send-results join correct and tenant-safe: does it read outbound_messages WHERE tenant_id = @tenant AND broadcast_id = ANY(bulk_send_jobs.broadcast_ids), rather than trusting client-supplied broadcast ids, and does it handle a job with empty broadcast_ids (no recipients) without error?",
+      "category": "Data"
+    },
+    {
+      "id": "Q3",
+      "question": "Are all DB paths in ExportRepository wrapped to catch BOTH NpgsqlException and PostgresException and mapped to INV-OB-057 (not a generic 500), and does an export failure write an export_logs row with status=failed + error_code (no silent failure)?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q4",
+      "question": "Does the Backend proxy stream large export file bodies through to the client without fully buffering them in memory, and preserve Content-Type + Content-Disposition, so a 50k-row XLSX/CSV download does not OOM the Backend or lose the filename?",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q5",
+      "question": "Is formula-injection hardening (leading = + - @ and leading TAB/CR/LF escaped) applied to BOTH CSV and XLSX user-controlled fields, is CSV emitted UTF-8 with BOM so Turkish characters render in Excel, and are phone/id cells written as text in XLSX (no scientific notation / leading-zero loss / no AdjustToContents at 50k)?",
+      "category": "Data"
+    },
+    {
+      "id": "Q6",
+      "question": "Does the campaign per-recipient export base on bulk_send_recipients LEFT JOIN outbound_messages (so a recipient with no message row is exported as not_sent rather than dropped by an inner join), apply a deterministic status-precedence when more than one message matches, and never trust broadcast_ids without a tenant_id predicate on outbound_messages?",
+      "category": "Data"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Outbound/Services/MessageSenderService.cs (INMA bridge - export is read-only, never sends)",
+      "src/Invekto.Outbound/Services/BulkSendOrchestrator.cs (immutable snapshot/idempotency logic untouched)",
+      "bulk_send_recipients / bulk_send_jobs schema (read-only consumers, no DDL changes)",
+      "data_lists / list_records schema (Plan A, read-only here)"
+    ],
+    "non_goals": [
+      "INMA MSSQL contact pull/export (Faz 1 INMA-approval blocker - out of scope)",
+      "Scheduled/automated exports or email delivery",
+      "Phone masking (operators need raw phones for reuse; export_logs is the KVKK control)",
+      "Server-side PDF generation via Chromium/wkhtmltopdf (deliberately rejected to keep prod Outbound free of a browser runtime)",
+      "A new feature flag (reuse Plan A ContactListOptions)"
+    ],
+    "intentional_exclusions": [
+      "PDF for raw contact lists (impractical at 50k rows; CSV/XLSX only) - PDF is send-results only",
+      "True streaming XLSX (ClosedXML builds in-memory; acceptable at the 50k cap)",
+      "Reconciling export_logs status=completed against actual browser PDF render success (log = data-served; documented)"
+    ]
+  },
+  "error_handling": {
+    "user_facing_errors": [
+      "INV-OB-054 ExportValidationError (bad format/type/range)",
+      "INV-OB-055 ExportSourceNotFound (list/campaign not found or not owned by tenant)",
+      "INV-OB-056 ExportFeatureDisabled (tenant gate off)",
+      "INV-OB-057 ExportDbError (Npgsql/Postgres on export path)",
+      "INV-OB-058 ExportTooLarge (PDF/xlsx row cap exceeded)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Every export path writes an export_logs row (completed or failed+error_code). DB exceptions are typed-caught (Npgsql+Postgres) -> INV-OB-057, never swallowed. A failed PDF data-serve returns a mapped error; the only accepted gap (documented) is that export_logs=completed means 'data served', not 'browser PDF rendered', which is a benign over-count for an audit trail."
+  },
+  "aha_moments": [
+    {
+      "category": "SALES",
+      "user_pain": "Clinic owner wants to show their boss/partner a clean campaign result they can forward, not a raw spreadsheet of phone numbers.",
+      "suggestion": "The PDF campaign report leads with a shareable summary card (sent / delivered / read / failed + opt-out skips + template + dates) before the recipient table.",
+      "aha_moment": "Operator clicks 'PDF' and gets a client-ready one-pager they can email to the clinic owner in seconds."
+    },
+    {
+      "category": "UX",
+      "user_pain": "After a bulk send, the operator has no idea which numbers actually got the message vs failed/blocked.",
+      "suggestion": "The per-recipient export includes a human-readable status column (Teslim edildi / Okundu / Basarisiz / Engellendi-optout) plus the timestamps, not just an internal code.",
+      "aha_moment": "Operator opens the CSV and instantly sees exactly who to follow up with by phone."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "KVKK exposure: nobody can prove who exported customer phone lists or when, if there's ever a complaint.",
+      "suggestion": "export_logs records tenant, operator identity, list/campaign, row count, format, and timestamp for every single export.",
+      "aha_moment": "When asked 'who exported our patient list?', the answer is one query away with a full audit trail."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Re-uploading the same contacts every time is tedious; operators want round-trip between import and export.",
+      "suggestion": "Contact-list export emits a CSV whose columns match the Plan A import mapper exactly, so an exported list re-imports cleanly (edit-in-Excel round-trip).",
+      "aha_moment": "Operator exports a list, fixes a few rows in Excel, re-imports it with zero column re-mapping."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Support can't help a confused operator because they can't see what the operator's export actually contained.",
+      "suggestion": "export_logs row_count + status let support confirm 'your export had 1,240 rows and completed at 14:32' without touching the operator's machine.",
+      "aha_moment": "Support resolves an 'export is missing rows' ticket from the audit log instead of a screen-share."
+    },
+    {
+      "category": "UX",
+      "user_pain": "A 50k-row list dumped to PDF would be a useless 800-page document.",
+      "suggestion": "PDF caps the recipient table at 2,000 rows with a visible 'showing first 2,000 of N - use CSV/Excel for full data' note, while CSV/XLSX carry the full set.",
+      "aha_moment": "Operator never gets a broken/huge PDF and is steered to the right format automatically."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "iteration": 4,
+    "model_used": "gpt-5.5-2026-04-23",
+    "notes": "iter0 FAIL (audit best-effort swallow + CSV streaming DB error unmapped + SQL concat + null-forgiving + bare catch) -> iter1 FAIL (residual null-forgiving + undisposed HttpRequestMessage) -> iter2 FAIL (COUNT(*) bigint read as GetInt32) -> iter3 FAIL (cap applied to CSV contradicted 'use CSV' guidance) -> iter4 PASS (cap XLSX-only + code-specific messages). All CQ1-12 + CoVe Q1-Q6 PASS."
+  }
+}

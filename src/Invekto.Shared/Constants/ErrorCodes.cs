@@ -506,6 +506,13 @@ public static class ErrorCodes
     public const string ContactListNoSendable = "INV-OB-052";              // preview-from-list: zero sendable recipients after normalize/dedup, or over cap
     public const string ContactListDbError = "INV-OB-053";                 // Mid-import/probe DB failure (Npgsql) — import rolled back, existing list flagged 'failed'; 503 transient. Aksiyon: PostgreSQL durumu + tekrar dene.
 
+    // FEAT-OBI Phase 1A Plan B: Export Manager (INV-OB-054+)
+    public const string ExportValidationError = "INV-OB-054";              // Bad/unsupported format, export_type, or range in an export request. 400/422.
+    public const string ExportSourceNotFound = "INV-OB-055";               // List/campaign id not found OR not owned by the JWT tenant. 404.
+    public const string ExportFeatureDisabled = "INV-OB-056";              // Export feature flag off OR tenant not allowed (ExportOptions). 403.
+    public const string ExportDbError = "INV-OB-057";                      // DB failure (Npgsql/Postgres) on the export path. 503 transient. Aksiyon: PostgreSQL durumu + tekrar dene.
+    public const string ExportTooLarge = "INV-OB-058";                     // Row count exceeds the XLSX/PDF hard cap; workbook not built. 422.
+
     // Lead Management errors (INV-LD-xxx) -- GR-3.13
     public const string LeadInvalidPayload = "INV-LD-001";
     public const string LeadNotFound = "INV-LD-002";

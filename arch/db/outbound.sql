@@ -316,3 +316,45 @@ GRANT ALL ON data_lists TO invekto;
 GRANT ALL ON list_records TO invekto;
 GRANT ALL ON SEQUENCE data_lists_id_seq TO invekto;
 GRANT ALL ON SEQUENCE list_records_id_seq TO invekto;
+
+-- =============================================================
+-- FEAT-OBI Phase 1A Plan B (Migration 053): Export Manager (audit layer)
+-- KVKK audit trail — one export_logs row per export request (contact list
+-- OR bulk-send campaign results). Append-only at the app layer (INSERT only).
+-- delivery_mode: server_stream (csv/xlsx bytes streamed) | client_render
+-- (report-data served, PDF rendered in browser). See migration 053 for full
+-- doc + verifier. Plus an additive outbound_messages join index.
+-- =============================================================
+
+CREATE TABLE IF NOT EXISTS export_logs (
+    id                      BIGSERIAL PRIMARY KEY,
+    tenant_id               INTEGER NOT NULL REFERENCES tenant_registry(tenant_id),
+    export_type             VARCHAR(24) NOT NULL,
+    source_id               BIGINT,
+    source_name_snapshot    VARCHAR(255),
+    format                  VARCHAR(8) NOT NULL,
+    delivery_mode           VARCHAR(16) NOT NULL,
+    row_count               INTEGER NOT NULL DEFAULT 0,
+    status                  VARCHAR(16) NOT NULL DEFAULT 'completed',
+    requested_by            VARCHAR(120),
+    error_code              VARCHAR(16),
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT chk_export_log_type
+        CHECK (export_type IN ('contact_list','send_recipients','send_summary')),
+    CONSTRAINT chk_export_log_format
+        CHECK (format IN ('csv','xlsx','pdf')),
+    CONSTRAINT chk_export_log_delivery
+        CHECK (delivery_mode IN ('server_stream','client_render')),
+    CONSTRAINT chk_export_log_status
+        CHECK (status IN ('completed','failed'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_export_logs_tenant_created
+    ON export_logs (tenant_id, created_at DESC);
+
+-- Additive: per-recipient send-results join (tenant_id, broadcast_id, recipient_phone).
+CREATE INDEX IF NOT EXISTS idx_outbound_messages_tenant_broadcast_phone
+    ON outbound_messages (tenant_id, broadcast_id, recipient_phone);
+
+GRANT ALL ON export_logs TO invekto;
+GRANT ALL ON SEQUENCE export_logs_id_seq TO invekto;

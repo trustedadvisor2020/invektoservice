@@ -1,0 +1,169 @@
+using System.Text.Json.Serialization;
+
+namespace Invekto.Shared.DTOs.Outbound;
+
+// =============================================================
+// FEAT-OBI Phase 1A Plan B — Export Manager
+// An operator exports their contact lists (data_lists/list_records) and
+// bulk-send campaign results (bulk_send_recipients LEFT JOIN outbound_messages,
+// per-recipient delivery status + campaign summary) as CSV / XLSX / PDF, with
+// an export_logs KVKK audit trail.
+//
+// CSV + XLSX are built + streamed server-side (Outbound). PDF is rendered in
+// the browser (jsPDF) from the report-data JSON below; the server still writes
+// an export_logs row at data-serve time (delivery_mode='client_render').
+// =============================================================
+
+/// <summary>Supported export formats. CSV/XLSX stream server-side; PDF renders in-browser.</summary>
+public static class ExportFormats
+{
+    public const string Csv = "csv";
+    public const string Xlsx = "xlsx";
+    public const string Pdf = "pdf";
+
+    /// <summary>Formats valid for a streamed (server-side) file export.</summary>
+    public static bool IsStreamFormat(string? s) => s is Csv or Xlsx;
+}
+
+/// <summary>export_logs.export_type values.</summary>
+public static class ExportTypes
+{
+    public const string ContactList = "contact_list";       // a data_lists list -> list_records
+    public const string SendRecipients = "send_recipients"; // per-recipient delivery status for a bulk_send_jobs campaign
+    public const string SendSummary = "send_summary";       // campaign rollup (report-data / PDF)
+}
+
+/// <summary>export_logs.delivery_mode values (audit honesty — see migration 053).</summary>
+public static class ExportDeliveryModes
+{
+    public const string ServerStream = "server_stream"; // bytes streamed to client (csv/xlsx)
+    public const string ClientRender = "client_render"; // report-data served; PDF rendered in browser
+}
+
+/// <summary>
+/// Per-recipient delivery status used across the send-results export. Encodes the
+/// status precedence applied when a recipient defensively matches more than one
+/// message row (best terminal state wins) and the operator-facing Turkish label.
+/// Single source of truth so CSV, XLSX, and the PDF report-data all agree.
+/// </summary>
+public static class SendDeliveryStatus
+{
+    // Synthetic status for a snapshot recipient that has no outbound_messages row
+    // (LEFT JOIN miss = the message was never created/sent for this phone).
+    public const string NotSent = "not_sent";
+
+    /// <summary>
+    /// Precedence high->low: when multiple message rows match one recipient, keep the
+    /// best terminal state. read > delivered > sent > sending > queued > failed > blocked > not_sent.
+    /// </summary>
+    private static readonly string[] PrecedenceHighToLow =
+    {
+        "read", "delivered", "sent", "sending", "queued", "failed", "blocked", NotSent
+    };
+
+    /// <summary>Lower rank = better/more-terminal state. Unknown status sorts worst.</summary>
+    public static int Rank(string? status)
+    {
+        if (string.IsNullOrEmpty(status)) return int.MaxValue;
+        var idx = Array.IndexOf(PrecedenceHighToLow, status);
+        return idx < 0 ? int.MaxValue : idx;
+    }
+
+    /// <summary>Pick the higher-precedence (better) of two statuses.</summary>
+    public static string Best(string? a, string? b)
+    {
+        if (string.IsNullOrEmpty(a)) return b ?? NotSent;
+        if (string.IsNullOrEmpty(b)) return a;
+        return Rank(a) <= Rank(b) ? a : b;
+    }
+
+    /// <summary>Operator-facing Turkish label (no internal codes leak to the export).</summary>
+    public static string Label(string? status) => status switch
+    {
+        "read"      => "Okundu",
+        "delivered" => "Teslim edildi",
+        "sent"      => "Gönderildi",
+        "sending"   => "Gönderiliyor",
+        "queued"    => "Sırada",
+        "failed"    => "Başarısız",
+        "blocked"   => "Engellendi (opt-out)",
+        NotSent     => "Gönderilmedi",
+        _           => "Bilinmiyor"
+    };
+}
+
+/// <summary>
+/// GET /api/v1/exports/send-jobs item — a recent bulk-send campaign the operator can export.
+/// Read-only metadata only (no PII); drives the Export Manager campaign picker.
+/// </summary>
+public sealed class SendJobSummary
+{
+    [JsonPropertyName("id")] public long Id { get; set; }
+    [JsonPropertyName("campaign_id")] public string CampaignId { get; set; } = "";
+    [JsonPropertyName("status")] public string Status { get; set; } = "";
+    [JsonPropertyName("template_id")] public int TemplateId { get; set; }
+    [JsonPropertyName("total_recipients")] public int TotalRecipients { get; set; }
+    [JsonPropertyName("created_at")] public DateTime CreatedAt { get; set; }
+    [JsonPropertyName("completed_at")] public DateTime? CompletedAt { get; set; }
+}
+
+/// <summary>
+/// GET /api/v1/exports/send-job/{jobId}/report-data?for=pdf response.
+/// Drives the in-browser PDF (summary card + capped recipient table). The server
+/// writes an export_logs row (format=pdf, delivery_mode=client_render) when this is served.
+/// </summary>
+public sealed class SendReportData
+{
+    [JsonPropertyName("job_id")] public long JobId { get; set; }
+    [JsonPropertyName("campaign_id")] public string CampaignId { get; set; } = "";
+    [JsonPropertyName("generated_at")] public DateTime GeneratedAt { get; set; }
+
+    [JsonPropertyName("summary")] public SendReportSummary Summary { get; set; } = new();
+
+    /// <summary>Total recipients in the campaign snapshot (may exceed the table below).</summary>
+    [JsonPropertyName("total_recipient_count")] public int TotalRecipientCount { get; set; }
+
+    /// <summary>True when the recipient table was capped (use CSV/XLSX for the full set).</summary>
+    [JsonPropertyName("recipient_table_truncated")] public bool RecipientTableTruncated { get; set; }
+
+    /// <summary>Hard cap applied to the in-PDF recipient table.</summary>
+    [JsonPropertyName("recipient_table_limit")] public int RecipientTableLimit { get; set; }
+
+    [JsonPropertyName("recipients")] public List<SendRecipientRow> Recipients { get; set; } = new();
+}
+
+/// <summary>Campaign rollup for the PDF summary card.</summary>
+public sealed class SendReportSummary
+{
+    [JsonPropertyName("template_id")] public int TemplateId { get; set; }
+    [JsonPropertyName("template_name")] public string? TemplateName { get; set; }
+    [JsonPropertyName("lang")] public string? Lang { get; set; }
+    [JsonPropertyName("status")] public string Status { get; set; } = "";
+
+    [JsonPropertyName("total_recipients")] public int TotalRecipients { get; set; }
+    [JsonPropertyName("sent")] public int Sent { get; set; }
+    [JsonPropertyName("delivered")] public int Delivered { get; set; }
+    [JsonPropertyName("read")] public int Read { get; set; }
+    [JsonPropertyName("failed")] public int Failed { get; set; }
+    [JsonPropertyName("blocked")] public int Blocked { get; set; }
+    [JsonPropertyName("not_sent")] public int NotSent { get; set; }
+
+    [JsonPropertyName("skipped_optout")] public int SkippedOptout { get; set; }
+    [JsonPropertyName("skipped_consent")] public int SkippedConsent { get; set; }
+
+    [JsonPropertyName("created_at")] public DateTime CreatedAt { get; set; }
+    [JsonPropertyName("confirmed_at")] public DateTime? ConfirmedAt { get; set; }
+    [JsonPropertyName("completed_at")] public DateTime? CompletedAt { get; set; }
+}
+
+/// <summary>One per-recipient row in the send-results report (PDF table + parity with CSV/XLSX).</summary>
+public sealed class SendRecipientRow
+{
+    [JsonPropertyName("phone")] public string Phone { get; set; } = "";
+    [JsonPropertyName("status")] public string Status { get; set; } = SendDeliveryStatus.NotSent;
+    [JsonPropertyName("status_label")] public string StatusLabel { get; set; } = "";
+    [JsonPropertyName("sent_at")] public DateTime? SentAt { get; set; }
+    [JsonPropertyName("delivered_at")] public DateTime? DeliveredAt { get; set; }
+    [JsonPropertyName("read_at")] public DateTime? ReadAt { get; set; }
+    [JsonPropertyName("failed_reason")] public string? FailedReason { get; set; }
+}

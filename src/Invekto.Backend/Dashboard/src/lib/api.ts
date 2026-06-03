@@ -1180,6 +1180,32 @@ class OpsApiClient {
     return response.json();
   }
 
+  // Blob download (FEAT-OBI Plan B export). Streams the file response; on a JSON error
+  // envelope (gate/not-found/too-large) throws ApiClientError like request<T>. Returns the
+  // blob + the server's filename (parsed from Content-Disposition).
+  private async requestBlob(endpoint: string): Promise<{ blob: Blob; filename: string }> {
+    const response = await this.executeWithRefresh(() =>
+      fetch(endpoint, { headers: this.buildHeaders() })
+    );
+
+    if (!response.ok) {
+      let errBody: { error_code?: string; errorCode?: string; message?: string; requestId?: string; request_id?: string } | null = null;
+      try { errBody = await response.json(); } catch (_e) { /* non-JSON */ }
+      throw new ApiClientError(
+        response.status,
+        errBody?.error_code ?? errBody?.errorCode ?? 'UNKNOWN',
+        errBody?.message ?? `HTTP ${response.status}`,
+        errBody?.request_id ?? errBody?.requestId,
+      );
+    }
+
+    const cd = response.headers.get('Content-Disposition') ?? '';
+    const match = /filename="?([^";]+)"?/i.exec(cd);
+    const filename = match ? match[1] : 'export';
+    const blob = await response.blob();
+    return { blob, filename };
+  }
+
   private async requestUpload<T>(endpoint: string, file: File, title?: string): Promise<T> {
     const formData = new FormData();
     formData.append('file', file);
@@ -2267,6 +2293,23 @@ class OpsApiClient {
   async getBulkSendStatus(campaignId: string): Promise<BulkSendStatusResponse> {
     return this.request<BulkSendStatusResponse>(`/api/v1/outbound/bulk-send/${encodeURIComponent(campaignId)}/status`);
   }
+
+  // --- FEAT-OBI Phase 1A Plan B: Export Manager ---
+  async listSendJobs(): Promise<SendJobSummary[]> {
+    return this.request<SendJobSummary[]>('/api/v1/outbound/exports/send-jobs');
+  }
+
+  async downloadContactListExport(listId: number, format: 'csv' | 'xlsx'): Promise<{ blob: Blob; filename: string }> {
+    return this.requestBlob(`/api/v1/outbound/exports/contact-list/${listId}?format=${format}`);
+  }
+
+  async downloadSendRecipientsExport(jobId: number, format: 'csv' | 'xlsx'): Promise<{ blob: Blob; filename: string }> {
+    return this.requestBlob(`/api/v1/outbound/exports/send-job/${jobId}/recipients?format=${format}`);
+  }
+
+  async getSendReportData(jobId: number): Promise<SendReportData> {
+    return this.request<SendReportData>(`/api/v1/outbound/exports/send-job/${jobId}/report-data?for=pdf`);
+  }
 }
 
 // FEAT-OBI Phase 1A: contact-list + list->bulk-send DTOs (mirror Invekto.Shared
@@ -2300,6 +2343,57 @@ export interface DataListSummary {
 export interface ImportCustomFlags {
   set_duplicates_sendable: boolean;
   update_duplicate_fields: boolean;
+}
+
+// FEAT-OBI Phase 1A Plan B: Export Manager DTOs (mirror Invekto.Shared ExportDtos.cs).
+export interface SendJobSummary {
+  id: number;
+  campaign_id: string;
+  status: string;
+  template_id: number;
+  total_recipients: number;
+  created_at: string;
+  completed_at: string | null;
+}
+
+export interface SendRecipientRow {
+  phone: string;
+  status: string;
+  status_label: string;
+  sent_at: string | null;
+  delivered_at: string | null;
+  read_at: string | null;
+  failed_reason: string | null;
+}
+
+export interface SendReportSummary {
+  template_id: number;
+  template_name: string | null;
+  lang: string | null;
+  status: string;
+  total_recipients: number;
+  sent: number;
+  delivered: number;
+  read: number;
+  failed: number;
+  blocked: number;
+  not_sent: number;
+  skipped_optout: number;
+  skipped_consent: number;
+  created_at: string;
+  confirmed_at: string | null;
+  completed_at: string | null;
+}
+
+export interface SendReportData {
+  job_id: number;
+  campaign_id: string;
+  generated_at: string;
+  summary: SendReportSummary;
+  total_recipient_count: number;
+  recipient_table_truncated: boolean;
+  recipient_table_limit: number;
+  recipients: SendRecipientRow[];
 }
 
 export interface ImportRowDto {

@@ -66,6 +66,8 @@ const LeadDetailPage = lazy(() => import('./pages/leads/LeadDetailPage').then(m 
 
 // FEAT-OBI Phase 1A: CSV/Excel contact-list import + list->bulk-send (lazy, tenant-scoped).
 const DataImportPage = lazy(() => import('./pages/DataImportPage').then(m => ({ default: m.DataImportPage })));
+// FEAT-OBI Phase 1A Plan B: Export Manager (contact lists + campaign results -> CSV/Excel/PDF).
+const ExportManagerPage = lazy(() => import('./pages/ExportManagerPage').then(m => ({ default: m.ExportManagerPage })));
 
 function ProtectedRoute() {
   const { isAuthenticated } = useAuth();
@@ -148,6 +150,7 @@ export default function App() {
         <Route path="/marketing" element={<MarketingPage />} />
         <Route path="/rescue" element={<Suspense><RescueDashboardPage /></Suspense>} />
         <Route path="/data-import" element={<Suspense><DataImportPage /></Suspense>} />
+        <Route path="/data-export" element={<Suspense><ExportManagerPage /></Suspense>} />
         <Route path="/messages" element={<MessagesPage />} />
         <Route path="/webchat" element={<WebChatPage />} />
         {/* FEAT-VFB: Voice Test embedded in-dashboard (was Layout.tsx external new-tab). */}

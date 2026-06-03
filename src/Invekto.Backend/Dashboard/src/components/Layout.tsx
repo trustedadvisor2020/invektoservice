@@ -26,6 +26,7 @@ import {
   Kanban,
   Mic,
   Database,
+  Download,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { InvektoLogo } from './ui/InvektoLogo';
@@ -54,6 +55,8 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { path: '/knowledge',       label: 'Bilgi Bankasi',    icon: BookOpen,     feature: 'Knowledge' },
   // FEAT-OBI Phase 1A: tenant-visible (auth-gated; "Outbound" plan + allowlist enforced server-side).
   { path: '/data-import',     label: 'Veri İçe Aktarma', icon: Database },
+  // FEAT-OBI Phase 1A Plan B: Export Manager (ExportOptions gate enforced server-side).
+  { path: '/data-export',     label: 'Veri Dışa Aktarma', icon: Download },
   // — Tenant: Analiz —
   { path: '/flow-monitor',    label: 'Flow Monitor',     tenantLabel: 'Flow Izleme', icon: Activity, feature: 'FlowBuilder', section: 'Analiz' },
   // — Ops: Yönetim —

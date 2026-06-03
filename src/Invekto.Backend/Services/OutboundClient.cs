@@ -116,6 +116,28 @@ public sealed class OutboundClient
         return await ProxyRequestAsync(HttpMethod.Delete, path, null, authHeader, requestId, ct);
     }
 
+    /// <summary>
+    /// Streaming GET proxy for file downloads (FEAT-OBI Plan B export). Returns the upstream
+    /// HttpResponseMessage with HttpCompletionOption.ResponseHeadersRead so the BODY is NOT
+    /// buffered in Backend memory — a 50k-row XLSX/CSV streams straight through. The caller
+    /// MUST dispose the returned message. NOTE: with ResponseHeadersRead, HttpClient.Timeout
+    /// governs only time-to-headers; the body copy is bounded by the caller's CancellationToken.
+    /// Throws (TaskCanceledException/HttpRequestException) on transport failure — the caller maps it.
+    /// </summary>
+    public async Task<HttpResponseMessage> ProxyStreamGetAsync(
+        string path, string? authHeader, string? requestId, CancellationToken ct = default)
+    {
+        // GET has no request content, so disposing the request after headers are read does
+        // not affect the response body stream (the response owns the connection). Disposing
+        // here keeps the IDisposable lifecycle correct under concurrent downloads.
+        using var request = new HttpRequestMessage(HttpMethod.Get, path);
+        if (!string.IsNullOrEmpty(authHeader))
+            request.Headers.TryAddWithoutValidation("Authorization", authHeader);
+        if (!string.IsNullOrEmpty(requestId))
+            request.Headers.TryAddWithoutValidation("X-Request-Id", requestId);
+        return await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+    }
+
     private async Task<(int StatusCode, string? Body)> ProxyRequestAsync(
         HttpMethod method, string path, string? requestBody, string? authHeader, string? requestId,
         CancellationToken ct)

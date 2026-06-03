@@ -3427,6 +3427,62 @@ async Task<IResult> OutboundProxyPut(HttpContext ctx, OutboundClient obClient, J
     return Results.Empty;
 }
 
+// Streaming proxy for file downloads (FEAT-OBI Plan B export): forwards the upstream body
+// straight to the client without buffering, preserving status + Content-Type/Content-Disposition
+// + the no-store/nosniff security headers. Used only for the /exports/ routes.
+async Task<IResult> OutboundProxyStreamGet(HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, string targetPath)
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    try
+    {
+        using var upstream = await obClient.ProxyStreamGetAsync(targetPath, authHeader, requestId, ctx.RequestAborted);
+        sw.Stop();
+        jsonLog.StepInfo($"Outbound stream GET {targetPath}: status={(int)upstream.StatusCode}, time={sw.ElapsedMilliseconds}ms", requestId);
+
+        ctx.Response.StatusCode = (int)upstream.StatusCode;
+
+        // Pass through the headers a download needs (content + security). Content-Length is
+        // deliberately dropped so the body can stream chunked.
+        if (upstream.Content.Headers.ContentType != null)
+            ctx.Response.ContentType = upstream.Content.Headers.ContentType.ToString();
+        if (upstream.Content.Headers.ContentDisposition != null)
+            ctx.Response.Headers["Content-Disposition"] = upstream.Content.Headers.ContentDisposition.ToString();
+        if (upstream.Headers.TryGetValues("Cache-Control", out var cc))
+            ctx.Response.Headers["Cache-Control"] = string.Join(", ", cc);
+        if (upstream.Headers.TryGetValues("X-Content-Type-Options", out var nosniff))
+            ctx.Response.Headers["X-Content-Type-Options"] = string.Join(", ", nosniff);
+
+        await using var bodyStream = await upstream.Content.ReadAsStreamAsync(ctx.RequestAborted);
+        await bodyStream.CopyToAsync(ctx.Response.Body, ctx.RequestAborted);
+        return Results.Empty;
+    }
+    catch (OperationCanceledException) when (ctx.RequestAborted.IsCancellationRequested)
+    {
+        // Client disconnected mid-download (RequestAborted); nothing more to send.
+        return Results.Empty;
+    }
+    catch (OperationCanceledException)
+    {
+        // HttpClient.Timeout elapsed before Outbound returned headers.
+        sw.Stop();
+        jsonLog.StepError($"Outbound stream GET {targetPath} timed out", requestId);
+        if (!ctx.Response.HasStarted)
+            return Results.Json(new { error_code = "INV-BE-002", message = "Outbound service timeout" }, statusCode: 504);
+        return Results.Empty;
+    }
+    catch (HttpRequestException ex)
+    {
+        // Transport failure reaching Outbound (connection refused, reset, etc.).
+        sw.Stop();
+        jsonLog.StepError($"Outbound stream GET {targetPath} failed: {ex.Message}", requestId);
+        if (!ctx.Response.HasStarted)
+            return Results.Json(new { error_code = "INV-BE-001", message = "Outbound service unavailable" }, statusCode: 502);
+        return Results.Empty;
+    }
+}
+
 async Task<IResult> OutboundProxyDelete(HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, string targetPath)
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
@@ -3502,6 +3558,23 @@ app.MapPut("/api/v1/outbound/data-lists/{id:long}", async (HttpContext ctx, Outb
 
 app.MapDelete("/api/v1/outbound/data-lists/{id:long}", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
     await OutboundProxyDelete(ctx, obClient, jsonLog, $"/api/v1/data-lists/{id}"));
+
+// Export Manager (FEAT-OBI Phase 1A Plan B). File downloads are STREAMED through
+// (ResponseHeadersRead -> CopyToAsync) so a 50k-row XLSX/CSV never buffers in Backend
+// memory, preserving Content-Type + Content-Disposition + the no-store/nosniff headers.
+// The query string (?format=, ?for=) is forwarded verbatim. JWT + "Outbound" FeatureGuard
+// are already enforced by the /api/v1/outbound/ prefix; Outbound resolves tenant from the token.
+app.MapGet("/api/v1/outbound/exports/send-jobs", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyGet(ctx, obClient, jsonLog, "/api/v1/exports/send-jobs"));
+
+app.MapGet("/api/v1/outbound/exports/contact-list/{listId:long}", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long listId) =>
+    await OutboundProxyStreamGet(ctx, obClient, jsonLog, $"/api/v1/exports/contact-list/{listId}{ctx.Request.QueryString.Value}"));
+
+app.MapGet("/api/v1/outbound/exports/send-job/{jobId:long}/recipients", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long jobId) =>
+    await OutboundProxyStreamGet(ctx, obClient, jsonLog, $"/api/v1/exports/send-job/{jobId}/recipients{ctx.Request.QueryString.Value}"));
+
+app.MapGet("/api/v1/outbound/exports/send-job/{jobId:long}/report-data", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long jobId) =>
+    await OutboundProxyStreamGet(ctx, obClient, jsonLog, $"/api/v1/exports/send-job/{jobId}/report-data{ctx.Request.QueryString.Value}"));
 
 // List -> bulk send wiring (preview-from-list snapshot, then the shared confirm/status path).
 app.MapPost("/api/v1/outbound/bulk-send/preview-from-list", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
