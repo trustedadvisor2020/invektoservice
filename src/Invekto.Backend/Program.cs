@@ -8142,6 +8142,9 @@ app.MapGet("/api/v1/inma/nav", async (HttpContext ctx) =>
             ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"),
             statusCode: 401);
 
+    // NOTE: Bu liste Dashboard'un tenant-facing menüsünü (Layout.tsx ALL_NAV_ITEMS,
+    // session + feature filtreli set) birebir aynalar. Layout.tsx'te tenant menüsü
+    // değişirse buradaki liste de güncellenmeli — iki kaynak elle senkron tutulur.
     var navResponse = new InmaNavResponse
     {
         Sections =
@@ -8152,22 +8155,11 @@ app.MapGet("/api/v1/inma/nav", async (HttpContext ctx) =>
                 Label = "Çalışma Alanı",
                 Items =
                 [
-                    new InmaNavItem { Id = "home",            Label = "Ana Sayfa",         Path = "/",                    Icon = "layout-dashboard" },
-                    new InmaNavItem { Id = "flow-builder",    Label = "Akış Oluşturucu",   Path = "/flow-builder",        Icon = "git-branch" },
-                    new InmaNavItem { Id = "flow-templates",  Label = "Şablon Galerisi",   Path = "/flow-templates",      Icon = "layout-template" },
-                    new InmaNavItem { Id = "knowledge",       Label = "Bilgi Bankası",     Path = "/knowledge",           Icon = "book-open" },
-                ]
-            },
-            new InmaNavSection
-            {
-                Id = "marketing",
-                Label = "Pazarlama",
-                Items =
-                [
-                    new InmaNavItem { Id = "campaigns",       Label = "Kampanyalar",       Path = "/campaigns",           Icon = "megaphone" },
-                    new InmaNavItem { Id = "marketing",       Label = "Pazarlama",         Path = "/marketing",           Icon = "star" },
-                    new InmaNavItem { Id = "rescue",          Label = "Yorum Kurtarma",    Path = "/rescue",              Icon = "shield-alert" },
-                    new InmaNavItem { Id = "appointments",    Label = "Randevular",        Path = "/appointments",        Icon = "calendar-days" },
+                    new InmaNavItem { Id = "home",            Label = "Ana Sayfa",       Path = "/",                Icon = "layout-dashboard" },
+                    new InmaNavItem { Id = "flow-builder",    Label = "Flow Builder",    Path = "/flow-builder",    Icon = "git-branch" },
+                    new InmaNavItem { Id = "flow-templates",  Label = "Şablon Galerisi", Path = "/flow-templates",  Icon = "layout-template" },
+                    new InmaNavItem { Id = "knowledge",       Label = "Bilgi Bankası",   Path = "/knowledge",       Icon = "book-open" },
+                    new InmaNavItem { Id = "data-management", Label = "Veri Yönetimi",   Path = "/data-management", Icon = "database" },
                 ]
             },
             new InmaNavSection
@@ -8176,9 +8168,7 @@ app.MapGet("/api/v1/inma/nav", async (HttpContext ctx) =>
                 Label = "Analiz",
                 Items =
                 [
-                    new InmaNavItem { Id = "flow-monitor",         Label = "Akış İzleme",   Path = "/flow-monitor",         Icon = "activity" },
-                    new InmaNavItem { Id = "analytics",            Label = "Analizler",     Path = "/analytics",            Icon = "bar-chart-3" },
-                    new InmaNavItem { Id = "revenue-intelligence", Label = "Gelir Analizi", Path = "/revenue-intelligence", Icon = "trending-up" },
+                    new InmaNavItem { Id = "flow-monitor",    Label = "Flow İzleme",     Path = "/flow-monitor",    Icon = "activity" },
                 ]
             },
             new InmaNavSection
@@ -8187,9 +8177,8 @@ app.MapGet("/api/v1/inma/nav", async (HttpContext ctx) =>
                 Label = "Sistem",
                 Items =
                 [
-                    new InmaNavItem { Id = "integrations",    Label = "Entegrasyonlar",    Path = "/integrations",        Icon = "link-2" },
-                    new InmaNavItem { Id = "onboarding",      Label = "Kurulum Sihirbazı", Path = "/onboarding",          Icon = "rocket" },
-                    new InmaNavItem { Id = "settings",        Label = "Ayarlar",           Path = "/settings",            Icon = "settings" },
+                    new InmaNavItem { Id = "onboarding",      Label = "Kurulum Sihirbazı", Path = "/onboarding",    Icon = "rocket" },
+                    new InmaNavItem { Id = "settings",        Label = "Ayarlar",           Path = "/settings",      Icon = "settings" },
                 ]
             }
         ]
