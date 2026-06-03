@@ -64,6 +64,9 @@ const PilotKanbanPage = lazy(() => import('./pages/PilotKanbanPage').then(m => (
 // Parent paket commit 1da0da6 component-ready; runtime route binding burada.
 const LeadDetailPage = lazy(() => import('./pages/leads/LeadDetailPage').then(m => ({ default: m.LeadDetailPage })));
 
+// FEAT-OBI Phase 1A: CSV/Excel contact-list import + list->bulk-send (lazy, tenant-scoped).
+const DataImportPage = lazy(() => import('./pages/DataImportPage').then(m => ({ default: m.DataImportPage })));
+
 function ProtectedRoute() {
   const { isAuthenticated } = useAuth();
 
@@ -144,6 +147,7 @@ export default function App() {
         <Route path="/appointments" element={<AppointmentsPage />} />
         <Route path="/marketing" element={<MarketingPage />} />
         <Route path="/rescue" element={<Suspense><RescueDashboardPage /></Suspense>} />
+        <Route path="/data-import" element={<Suspense><DataImportPage /></Suspense>} />
         <Route path="/messages" element={<MessagesPage />} />
         <Route path="/webchat" element={<WebChatPage />} />
         {/* FEAT-VFB: Voice Test embedded in-dashboard (was Layout.tsx external new-tab). */}

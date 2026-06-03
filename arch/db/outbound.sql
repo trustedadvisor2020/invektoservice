@@ -243,3 +243,76 @@ GRANT ALL ON bulk_send_jobs TO invekto;
 GRANT ALL ON bulk_send_recipients TO invekto;
 GRANT ALL ON SEQUENCE bulk_send_jobs_id_seq TO invekto;
 GRANT ALL ON SEQUENCE bulk_send_recipients_id_seq TO invekto;
+
+-- =============================================================
+-- FEAT-OBI Phase 1A (Migration 052): Contact Lists (data layer)
+-- Reusable tenant-scoped contact lists feeding the bulk send engine.
+-- NO auto-partition (single per-list cap). Composite FK guarantees
+-- cross-tenant integrity. See migration 052 for full doc + verifier.
+-- =============================================================
+
+CREATE TABLE IF NOT EXISTS data_lists (
+    id                      BIGSERIAL PRIMARY KEY,
+    tenant_id               INTEGER NOT NULL REFERENCES tenant_registry(tenant_id),
+    name                    VARCHAR(255) NOT NULL,
+    source                  VARCHAR(16) NOT NULL DEFAULT 'upload',
+    active                  BOOLEAN NOT NULL DEFAULT TRUE,
+    status                  VARCHAR(16) NOT NULL DEFAULT 'ready',
+    total_records           INTEGER NOT NULL DEFAULT 0,
+    sendable_count          INTEGER NOT NULL DEFAULT 0,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_at              TIMESTAMPTZ,
+    CONSTRAINT chk_data_list_status CHECK (status IN ('importing','ready','failed')),
+    CONSTRAINT chk_data_list_source CHECK (source IN ('upload','export')),
+    CONSTRAINT uq_data_lists_tenant_id UNIQUE (tenant_id, id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_data_lists_tenant_name_active
+    ON data_lists (tenant_id, lower(btrim(name)))
+    WHERE deleted_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_data_lists_tenant_active
+    ON data_lists (tenant_id, active, created_at DESC)
+    WHERE deleted_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS list_records (
+    id                      BIGSERIAL PRIMARY KEY,
+    list_id                 BIGINT NOT NULL,
+    tenant_id               INTEGER NOT NULL,
+    normalized_phone        VARCHAR(20),
+    invalid_reason          VARCHAR(64),
+    name                    VARCHAR(255),
+    surname                 VARCHAR(255),
+    email                   VARCHAR(320),
+    tags                    TEXT,
+    note                    TEXT,
+    field1                  VARCHAR(255),
+    field2                  VARCHAR(255),
+    field3                  VARCHAR(255),
+    field4                  VARCHAR(255),
+    field5                  VARCHAR(255),
+    custom_fields           JSONB,
+    sendable                BOOLEAN NOT NULL DEFAULT FALSE,
+    first_contact_at        TIMESTAMPTZ,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_list_records_list
+        FOREIGN KEY (tenant_id, list_id)
+        REFERENCES data_lists (tenant_id, id) ON DELETE CASCADE,
+    CONSTRAINT chk_list_record_sendable_phone
+        CHECK (sendable = FALSE OR normalized_phone IS NOT NULL),
+    CONSTRAINT uq_list_record_list_phone UNIQUE (list_id, normalized_phone)
+);
+
+CREATE INDEX IF NOT EXISTS idx_list_records_list
+    ON list_records (list_id);
+CREATE INDEX IF NOT EXISTS idx_list_records_list_sendable
+    ON list_records (list_id) WHERE sendable = TRUE;
+CREATE INDEX IF NOT EXISTS idx_list_records_tenant_phone
+    ON list_records (tenant_id, normalized_phone);
+
+GRANT ALL ON data_lists TO invekto;
+GRANT ALL ON list_records TO invekto;
+GRANT ALL ON SEQUENCE data_lists_id_seq TO invekto;
+GRANT ALL ON SEQUENCE list_records_id_seq TO invekto;

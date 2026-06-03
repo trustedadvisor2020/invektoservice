@@ -496,6 +496,16 @@ public static class ErrorCodes
     public const string BulkSendAlreadyConfirmed = "INV-OB-044";           // Idempotent: campaign already confirmed/sending — returns existing job, no re-send
     public const string BulkSendDispatchFailed = "INV-OB-045";             // One or more chunk broadcasts failed to create
 
+    // FEAT-OBI Phase 1A: Contact Lists (data layer) (INV-OB-046+)
+    public const string ContactListDisabled = "INV-OB-046";                // Contact-list feature flag off OR tenant not in pilot allowlist
+    public const string ContactListInvalidPayload = "INV-OB-047";          // Missing list target, empty rows, unparseable import payload
+    public const string ContactListCapExceeded = "INV-OB-048";             // Import would push list over MaxRecordsPerList (or input row ceiling)
+    public const string ContactListNotFound = "INV-OB-049";                // data list id not found for this tenant (or soft-deleted)
+    public const string ContactListNameConflict = "INV-OB-050";            // Active list name already exists for this tenant (normalized)
+    public const string ContactListNotReady = "INV-OB-051";                // List not in 'ready' state — blocks preview-from-list/send
+    public const string ContactListNoSendable = "INV-OB-052";              // preview-from-list: zero sendable recipients after normalize/dedup, or over cap
+    public const string ContactListDbError = "INV-OB-053";                 // Mid-import/probe DB failure (Npgsql) — import rolled back, existing list flagged 'failed'; 503 transient. Aksiyon: PostgreSQL durumu + tekrar dene.
+
     // Lead Management errors (INV-LD-xxx) -- GR-3.13
     public const string LeadInvalidPayload = "INV-LD-001";
     public const string LeadNotFound = "INV-LD-002";

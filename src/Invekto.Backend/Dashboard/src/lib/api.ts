@@ -2194,6 +2194,189 @@ class OpsApiClient {
   async listMetaLeadgenEvents(limit: number = 5): Promise<MetaLeadgenEventsResponse> {
     return this.request<MetaLeadgenEventsResponse>(`/api/v1/tenant-settings/meta-leadgen/events?limit=${limit}`);
   }
+
+  // ---- FEAT-OBI Phase 1A: Contact lists + list->bulk-send ----
+  // Routes proxy /api/v1/outbound/* (tenant JWT + "Outbound" plan feature enforced by the
+  // gateway; tenant_id is resolved from the signed claim by the Outbound service, never
+  // sent from the client). All errors surface as ApiClientError with INV-OB-* codes.
+  async listOutboundTemplates(lang?: string): Promise<{ templates: OutboundTemplateDto[] }> {
+    const q = lang ? `?lang=${encodeURIComponent(lang)}` : '';
+    return this.request<{ templates: OutboundTemplateDto[] }>(`/api/v1/outbound/templates${q}`);
+  }
+
+  async listDataLists(): Promise<DataListSummary[]> {
+    return this.request<DataListSummary[]>('/api/v1/outbound/data-lists');
+  }
+
+  async createDataList(name: string): Promise<DataListSummary> {
+    return this.request<DataListSummary>('/api/v1/outbound/data-lists', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+  }
+
+  async updateDataList(id: number, data: { name?: string; active?: boolean }): Promise<DataListSummary> {
+    return this.request<DataListSummary>(`/api/v1/outbound/data-lists/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteDataList(id: number): Promise<{ id: number; deleted: boolean }> {
+    return this.request<{ id: number; deleted: boolean }>(`/api/v1/outbound/data-lists/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async dataListRecordsExist(phones: string[], listId?: number): Promise<RecordsExistsResponse> {
+    return this.request<RecordsExistsResponse>('/api/v1/outbound/data-lists/records/exists', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phones, list_id: listId ?? null }),
+    });
+  }
+
+  async importDataList(req: ImportBatchRequest): Promise<ImportBatchResponse> {
+    return this.request<ImportBatchResponse>('/api/v1/outbound/data-lists/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req),
+    });
+  }
+
+  async previewFromList(req: PreviewFromListRequest): Promise<BulkSendPreviewResponse> {
+    return this.request<BulkSendPreviewResponse>('/api/v1/outbound/bulk-send/preview-from-list', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req),
+    });
+  }
+
+  async confirmBulkSend(campaignId: string): Promise<BulkSendStatusResponse> {
+    return this.request<BulkSendStatusResponse>('/api/v1/outbound/bulk-send/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ campaign_id: campaignId }),
+    });
+  }
+
+  async getBulkSendStatus(campaignId: string): Promise<BulkSendStatusResponse> {
+    return this.request<BulkSendStatusResponse>(`/api/v1/outbound/bulk-send/${encodeURIComponent(campaignId)}/status`);
+  }
+}
+
+// FEAT-OBI Phase 1A: contact-list + list->bulk-send DTOs (mirror Invekto.Shared
+// DTOs/Outbound/DataListDtos.cs + BulkSendDtos.cs). Inline — the surface is one SPA page.
+export type ImportScenario = 'new_only' | 'recall_all' | 'update_info' | 'custom';
+
+export interface OutboundTemplateDto {
+  id: number;
+  name: string;
+  trigger_event: string;
+  message_template: string;
+  variables_json: Record<string, string> | null;
+  is_active: boolean;
+  lang: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DataListSummary {
+  id: number;
+  name: string;
+  source: string;
+  active: boolean;
+  status: 'importing' | 'ready' | 'failed';
+  total_records: number;
+  sendable_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ImportCustomFlags {
+  set_duplicates_sendable: boolean;
+  update_duplicate_fields: boolean;
+}
+
+export interface ImportRowDto {
+  phone?: string;
+  name?: string;
+  surname?: string;
+  email?: string;
+  tags?: string;
+  note?: string;
+  field1?: string;
+  field2?: string;
+  field3?: string;
+  field4?: string;
+  field5?: string;
+  custom_fields?: Record<string, string>;
+}
+
+export interface ImportBatchRequest {
+  list_id?: number | null;
+  new_list_name?: string | null;
+  scenario: ImportScenario;
+  custom?: ImportCustomFlags;
+  rows: ImportRowDto[];
+}
+
+export interface ImportBatchResponse {
+  list_id: number;
+  list_name: string;
+  status: string;
+  total_input: number;
+  valid: number;
+  file_duplicate: number;
+  invalid: number;
+  inserted: number;
+  updated: number;
+  skipped_existing: number;
+  total_records: number;
+  sendable_count: number;
+  invalid_samples: string[];
+}
+
+export interface RecordsExistsResponse {
+  exists: string[];
+}
+
+export interface PreviewFromListRequest {
+  campaign_id: string;
+  list_id: number;
+  template_id: number;
+  lang?: string | null;
+}
+
+export interface BulkSendPreviewResponse {
+  campaign_id: string;
+  status: string;
+  hard_cap: number;
+  total_input: number;
+  total_valid: number;
+  total_duplicate: number;
+  total_invalid: number;
+  sample: string[];
+  invalid_samples: string[];
+}
+
+export interface BulkSendStatusResponse {
+  campaign_id: string;
+  status: string;
+  total_valid: number;
+  total_queued: number;
+  total_skipped_optout: number;
+  total_skipped_consent: number;
+  sent: number;
+  delivered: number;
+  read: number;
+  failed: number;
+  broadcast_count: number;
+  created_at: string;
+  confirmed_at: string | null;
+  completed_at: string | null;
 }
 
 // FEAT-TFM-UI type re-exports (pages + components consume from './api' to match the

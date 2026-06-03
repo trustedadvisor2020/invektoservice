@@ -3480,6 +3480,39 @@ app.MapDelete("/api/v1/outbound/optout/{phone}", async (HttpContext ctx, Outboun
 app.MapGet("/api/v1/outbound/optout/check/{phone}", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, string phone) =>
     await OutboundProxyGet(ctx, obClient, jsonLog, $"/api/v1/optout/check/{phone}"));
 
+// Contact lists (FEAT-OBI Phase 1A — DataImportPage SPA surface).
+// Tenant JWT + "Outbound" FeatureGuard already enforced by the /api/v1/outbound/ prefix
+// (see jwtRequiredPrefixes + UseFeatureGuard above); tenant_id is resolved by the Outbound
+// service from the forwarded Bearer token, never from the path/body.
+app.MapGet("/api/v1/outbound/data-lists", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyGet(ctx, obClient, jsonLog, "/api/v1/data-lists"));
+
+app.MapPost("/api/v1/outbound/data-lists", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, "/api/v1/data-lists"));
+
+// records/exists + import are string segments, so they never collide with the {id:long} routes below.
+app.MapPost("/api/v1/outbound/data-lists/records/exists", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, "/api/v1/data-lists/records/exists"));
+
+app.MapPost("/api/v1/outbound/data-lists/import", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, "/api/v1/data-lists/import"));
+
+app.MapPut("/api/v1/outbound/data-lists/{id:long}", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
+    await OutboundProxyPut(ctx, obClient, jsonLog, $"/api/v1/data-lists/{id}"));
+
+app.MapDelete("/api/v1/outbound/data-lists/{id:long}", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
+    await OutboundProxyDelete(ctx, obClient, jsonLog, $"/api/v1/data-lists/{id}"));
+
+// List -> bulk send wiring (preview-from-list snapshot, then the shared confirm/status path).
+app.MapPost("/api/v1/outbound/bulk-send/preview-from-list", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, "/api/v1/bulk-send/preview-from-list"));
+
+app.MapPost("/api/v1/outbound/bulk-send/confirm", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, "/api/v1/bulk-send/confirm"));
+
+app.MapGet("/api/v1/outbound/bulk-send/{campaignId}/status", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, string campaignId) =>
+    await OutboundProxyGet(ctx, obClient, jsonLog, $"/api/v1/bulk-send/{campaignId}/status"));
+
 // ============================================
 // FLOW BUILDER PROXY ENDPOINTS
 // ============================================
