@@ -25,11 +25,14 @@ export function OnboardingHomeSection() {
   const [status, setStatus] = useState<OnboardingStatusResponse | null>(null);
   const [loaded, setLoaded] = useState(false);
 
-  // Collapse state persists per tenant so we don't nag on every visit.
+  // Collapse state persists per tenant. Default = collapsed (thin progress strip)
+  // on first open so the dashboard isn't dominated by the onboarding band;
+  // an explicit user toggle is remembered thereafter.
   const storageKey = tenantId != null ? `invekto:onboarding-home-collapsed:${tenantId}` : null;
   const [collapsed, setCollapsed] = useState<boolean>(() => {
-    if (!storageKey) return false;
-    return localStorage.getItem(storageKey) === '1';
+    if (!storageKey) return true;
+    const stored = localStorage.getItem(storageKey);
+    return stored === null ? true : stored === '1';
   });
 
   useEffect(() => {
