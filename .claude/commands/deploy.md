@@ -32,10 +32,11 @@ C:\CRMs\InvektoServices    ->     C:\Invekto\{Service}\current\
 ## Service List (12 services)
 
 > **NSSM Name DASH KULLANMAZ.** Get-Service ile dogrulanmis (2026-04-15).
+> **PORT DRIFT (2026-06-04):** Backend gercek port **5000 (http) + 443 (https)**, 5100 DEGIL (Get-NetTCPConnection ile dogrulandi). `server-health` da 5000'i probe eder. Diger satirlardaki portlar dogrulanmadi — deploy oncesi `Get-NetTCPConnection -State Listen -OwningProcess <pid>` ile teyit et.
 
 | Service | Port | NSSM Name | Path |
 |---------|------|-----------|------|
-| Backend | 5100 | InvektoBackend | `C:\Invekto\Backend\current\` |
+| Backend | **5000** (+443 https) | InvektoBackend | `C:\Invekto\Backend\current\` |
 | WebChat | 5101 | InvektoWebChat | `C:\Invekto\WebChat\current\` |
 | Automation | 5102 | InvektoAutomation | `C:\Invekto\Automation\current\` |
 | AgentAI | 5103 | InvektoAgentAI | `C:\Invekto\AgentAI\current\` |
