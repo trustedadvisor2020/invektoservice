@@ -17,6 +17,8 @@ import { TenantsPage } from './pages/TenantsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { OnboardingGuidePage } from './pages/OnboardingGuidePage';
 import { OnboardingWizardPage } from './pages/OnboardingWizardPage';
+import { TenantDashboardPage } from './pages/TenantDashboardPage';
+import { OnboardingHomeSection } from './components/OnboardingHomeSection';
 import { LogsPage } from './pages/LogsPage';
 import { WebChatPage } from './pages/WebChatPage';
 import { LicensesPage } from './pages/LicensesPage';
@@ -88,10 +90,22 @@ function ProtectedRoute() {
   );
 }
 
+// Tenant home: onboarding band (collapsible, hides at 100%) + always-visible stats.
+function TenantHome() {
+  return (
+    <div className="space-y-6">
+      <OnboardingHomeSection />
+      <TenantDashboardPage />
+    </div>
+  );
+}
+
 function HomeDashboard() {
-  const { session } = useAuth();
-  // Ops mode: /tenants acilis sayfasi. Tenant mode: TenantDashboardPage.
-  return session ? <TenantDashboardPage /> : <Navigate to="/tenants" replace />;
+  const { session, isInmaSession } = useAuth();
+  // No session: ops users land on tenant list.
+  if (!session) return <Navigate to="/tenants" replace />;
+  // Ops session: service health dashboard. Tenant (INMA) session: onboarding + stats.
+  return isInmaSession ? <TenantHome /> : <DashboardPage />;
 }
 
 // FEAT-PHOTO wire-up patch (2026-04-28): /leads/:id route wrapper.
@@ -104,10 +118,6 @@ function LeadDetailRoute() {
     return <Navigate to="/tenants" replace />;
   }
   return <LeadDetailPage leadId={leadId} />;
-}
-
-function TenantDashboardPage() {
-  return <DashboardPage />;
 }
 
 export default function App() {

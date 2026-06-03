@@ -10,7 +10,7 @@ import { cn } from '../lib/utils';
 
 /* ── Step metadata with per-step accent colors ─────────────── */
 
-interface StepMeta {
+export interface StepMeta {
   label: string;
   icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   description: string;
@@ -19,7 +19,8 @@ interface StepMeta {
   accentHex: string;
 }
 
-const STEP_META: Record<string, StepMeta> = {
+// Shared with OnboardingHomeSection (home dashboard compact checklist).
+export const STEP_META: Record<string, StepMeta> = {
   sector_selected: {
     label: 'Sektör Seçimi',
     icon: Building2,

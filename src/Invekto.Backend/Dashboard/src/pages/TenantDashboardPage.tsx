@@ -68,7 +68,7 @@ const FEATURE_CARDS: FeatureCardDef[] = [
 // --- Page ---
 
 export function TenantDashboardPage() {
-  const { session, welcomeData } = useAuth();
+  const { session } = useAuth();
   const [stats, setStats] = useState<AutomationSummary | null>(null);
 
   useEffect(() => {
@@ -91,18 +91,6 @@ export function TenantDashboardPage() {
           {session?.companyCode ? `${session.companyCode} — ` : ''}Firma #{session?.tenantId}
         </p>
       </div>
-
-      {/* Welcome response from INMA */}
-      {welcomeData != null && (
-        <Card>
-          <CardContent className="py-4">
-            <h3 className="text-sm font-medium text-navy-500 mb-2">INMA Welcome</h3>
-            <pre className="text-xs text-navy-600 bg-navy-50 rounded-lg p-3 overflow-auto max-h-48 whitespace-pre-wrap">
-              {String(typeof welcomeData === 'string' ? welcomeData : JSON.stringify(welcomeData, null, 2))}
-            </pre>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Istatistikler */}
       <div>
