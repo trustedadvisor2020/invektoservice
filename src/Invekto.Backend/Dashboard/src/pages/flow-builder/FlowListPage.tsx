@@ -39,23 +39,6 @@ function getFlowIcon(name: string, description?: string | null): { Icon: LucideI
   return { Icon: Workflow, gradient: 'from-slate-500 to-navy-600' };
 }
 
-/* ── Helpers ──────────────────────────────────────── */
-
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  if (diff < 0) return 'Simdi';
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'Az once';
-  if (mins < 60) return `${mins} dk once`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} saat once`;
-  const days = Math.floor(hours / 24);
-  if (days === 1) return 'Dun';
-  if (days < 7) return `${days} gun once`;
-  if (days < 30) return `${Math.floor(days / 7)} hafta once`;
-  return new Date(iso).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
 /* ── Main Component ──────────────────────────────────────── */
 
 export function FlowListPage() {
@@ -264,7 +247,7 @@ export function FlowListPage() {
     <div className="min-h-screen bg-navy-50 text-navy-900">
       {/* ── Sticky Header ── */}
       <header className="bg-white/80 backdrop-blur-xl border-b border-navy-100 px-6 py-3 sticky top-0 z-30">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <h1 className="text-lg font-display font-bold text-navy-900 tracking-tight">
               Flow Builder
@@ -322,7 +305,7 @@ export function FlowListPage() {
       </header>
 
       {/* ── Content ── */}
-      <main className="max-w-5xl mx-auto px-6 py-5">
+      <main className="max-w-6xl mx-auto px-6 py-5">
         {/* Error banner */}
         {error && (
           <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-2.5 flex items-center justify-between flow-card-enter">
@@ -373,19 +356,16 @@ export function FlowListPage() {
               <table className="w-full text-sm">
                 <thead className="bg-navy-50/50 text-navy-500 text-xs">
                   <tr>
-                    <th className="text-left font-medium px-4 py-2.5">Flow</th>
-                    <th className="text-left font-medium px-4 py-2.5">Durum</th>
-                    <th className="text-left font-medium px-4 py-2.5">Saglik</th>
-                    <th className="text-left font-medium px-4 py-2.5 whitespace-nowrap">Surum</th>
-                    <th className="text-right font-medium px-4 py-2.5 whitespace-nowrap">Dugum / Baglanti</th>
+                    <th className="text-left font-medium px-4 py-2.5">Akış</th>
+                    <th className="text-left font-medium px-4 py-2.5">Sağlık</th>
+                    <th className="text-left font-medium px-4 py-2.5 whitespace-nowrap">Sürüm</th>
                     <th className="text-left font-medium px-4 py-2.5">Atanan Hat</th>
-                    <th className="text-right font-medium px-4 py-2.5 whitespace-nowrap">Guncellendi</th>
-                    <th className="text-right font-medium px-4 py-2.5">Islem</th>
+                    <th className="text-right font-medium px-4 py-2.5">İşlem</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredFlows.map((flow) => {
-                    const { Icon, gradient } = getFlowIcon(flow.flow_name, flow.flow_description);
+                    const { Icon } = getFlowIcon(flow.flow_name, flow.flow_description);
                     const isRowLoading = actionLoading === flow.flow_id;
 
                     return (
@@ -394,44 +374,25 @@ export function FlowListPage() {
                         onDoubleClick={() => navigate(`/flow-builder/editor/${flow.flow_id}`)}
                         className="group border-t border-navy-50 hover:bg-navy-50/40 transition-colors cursor-pointer select-none"
                       >
-                        {/* Flow (icon + name) */}
+                        {/* Akış (wireframe icon + name) */}
                         <td className="px-4 py-2.5">
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${gradient} flex items-center justify-center shadow-sm flex-shrink-0`}>
-                              <Icon className="w-4 h-4 text-white" strokeWidth={2} />
+                            <div className="w-7 h-7 rounded-md border border-navy-200 bg-white flex items-center justify-center flex-shrink-0">
+                              <Icon className="w-3.5 h-3.5 text-navy-400" strokeWidth={1.75} />
                             </div>
-                            <span className="font-semibold text-navy-900 truncate max-w-[18rem]">{flow.flow_name}</span>
+                            <span className="font-semibold text-navy-900 truncate max-w-[22rem]">{flow.flow_name}</span>
                           </div>
                         </td>
 
-                        {/* Durum */}
-                        <td className="px-4 py-2.5">
-                          {flow.is_active ? (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-px text-2xs font-medium bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-full">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flow-status-pulse" />
-                              Aktif
-                            </span>
-                          ) : (
-                            <span className="px-1.5 py-px text-2xs font-medium bg-navy-50 text-navy-400 rounded-full">
-                              Pasif
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Saglik */}
+                        {/* Sağlık */}
                         <td className="px-4 py-2.5">
                           {flow.health_score != null
                             ? <HealthBadge score={flow.health_score} issues={flow.health_issues} />
                             : <span className="text-navy-300">&mdash;</span>}
                         </td>
 
-                        {/* Surum */}
+                        {/* Sürüm */}
                         <td className="px-4 py-2.5 text-navy-500 whitespace-nowrap">v{flow.config_version}</td>
-
-                        {/* Dugum / Baglanti */}
-                        <td className="px-4 py-2.5 text-right text-navy-500 tabular-nums whitespace-nowrap">
-                          {flow.node_count} &middot; {flow.edge_count}
-                        </td>
 
                         {/* Atanan Hat */}
                         <td className="px-4 py-2.5 text-navy-500">
@@ -445,10 +406,7 @@ export function FlowListPage() {
                           )}
                         </td>
 
-                        {/* Guncellendi */}
-                        <td className="px-4 py-2.5 text-right text-navy-400 whitespace-nowrap">{timeAgo(flow.updated_at)}</td>
-
-                        {/* Islem */}
+                        {/* İşlem */}
                         <td className="px-4 py-2.5">
                           <div className="flex items-center justify-end gap-0.5 opacity-70 group-hover:opacity-100 transition-opacity">
                             <IconBtn
@@ -926,14 +884,11 @@ function SkeletonTable() {
         <table className="w-full text-sm">
           <thead className="bg-navy-50/50 text-navy-500 text-xs">
             <tr>
-              <th className="text-left font-medium px-4 py-2.5">Flow</th>
-              <th className="text-left font-medium px-4 py-2.5">Durum</th>
-              <th className="text-left font-medium px-4 py-2.5">Saglik</th>
-              <th className="text-left font-medium px-4 py-2.5">Surum</th>
-              <th className="text-right font-medium px-4 py-2.5">Dugum / Baglanti</th>
+              <th className="text-left font-medium px-4 py-2.5">Akış</th>
+              <th className="text-left font-medium px-4 py-2.5">Sağlık</th>
+              <th className="text-left font-medium px-4 py-2.5">Sürüm</th>
               <th className="text-left font-medium px-4 py-2.5">Atanan Hat</th>
-              <th className="text-right font-medium px-4 py-2.5">Guncellendi</th>
-              <th className="text-right font-medium px-4 py-2.5">Islem</th>
+              <th className="text-right font-medium px-4 py-2.5">İşlem</th>
             </tr>
           </thead>
           <tbody>
@@ -941,16 +896,13 @@ function SkeletonTable() {
               <tr key={i} className="border-t border-navy-50">
                 <td className="px-4 py-2.5">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg flow-skeleton flex-shrink-0" />
-                    <div className="h-4 w-32 flow-skeleton rounded" />
+                    <div className="w-7 h-7 rounded-md flow-skeleton flex-shrink-0" />
+                    <div className="h-4 w-40 flow-skeleton rounded" />
                   </div>
                 </td>
-                <td className="px-4 py-2.5"><div className="h-4 w-12 flow-skeleton rounded-full" /></td>
                 <td className="px-4 py-2.5"><div className="h-4 w-16 flow-skeleton rounded-full" /></td>
                 <td className="px-4 py-2.5"><div className="h-3 w-8 flow-skeleton rounded" /></td>
-                <td className="px-4 py-2.5"><div className="h-3 w-12 flow-skeleton rounded ml-auto" /></td>
                 <td className="px-4 py-2.5"><div className="h-3 w-20 flow-skeleton rounded" /></td>
-                <td className="px-4 py-2.5"><div className="h-3 w-16 flow-skeleton rounded ml-auto" /></td>
                 <td className="px-4 py-2.5">
                   <div className="flex items-center justify-end gap-1">
                     <div className="w-7 h-7 flow-skeleton rounded-lg" />
