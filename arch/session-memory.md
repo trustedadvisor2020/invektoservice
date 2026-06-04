@@ -7,6 +7,8 @@
 
 ## Last Update
 
+- **Date:** 2026-06-04 (A2) — **Follow-up: onboarding home bandı ilk açılışta KAPALI gelsin (Q).** `OnboardingHomeSection` default collapsed (stored pref yoksa `true`; kullanıcı toggle'ı korunur), commit `57fc908c`, Codex PASS iter1 (MEDIUM; iter0 FAIL yine sadece LOW→MEDIUM policy). **Deploy: CERRAHI STATIK SWAP** — zip wwwroot/app (0.7MB) → upload → server'da `robocopy /MIR current\wwwroot\app` (**restart YOK, sıfır kesinti**); canlı bundle `index-BNMdfMqm.js` doğrulandı (app/ 200, health 200, RUNNING). Multi-session not: (B) INMA-nav session'ı arada full server-deploy yaptı (index-C2LXA8Sr) ama cerrahi swap'im SONRA geldi → collapsed build canlı kaldı (deploy sonrası live-hash re-verify ile teyit). Lesson eklendi (cerrahi static swap + multi-session bundle re-verify). `$ProgressPreference='SilentlyContinue'` ile server-exec çıktı-şişmesi çözüldü.
+
 - **Date:** 2026-06-04 (B) — **Session: INMA nav stale fix — `/api/v1/inma/nav` endpoint'i tenant menüsüyle senkronlandı (Codex PASS iter1, commit `113c7f90`, DEPLOYED Backend HEALTHY).** Q: "tenant menülerinde ekleme/çıkarma yaptık ama INMA'dan çekince hâlâ eski nav listesi geliyor."
 
   **Kök neden:** Tenant nav'ın İKİ kaynağı var → (1) `Layout.tsx ALL_NAV_ITEMS` (Dashboard kendi sidebar'ı, embedded DEĞİLKEN), (2) `Program.cs GET /api/v1/inma/nav` (INMA dış shell sidebar'ı, embedded modda — Dashboard `isEmbedded` ile kendi sidebar'ını gizler). 2026-06-02 session'ı Layout.tsx'ten 6 item kaldırdı + index.html no-cache yaptı ama "INMA client cache" sandı; ASIL eksik bu backend endpoint'ti — kendi hardcoded ESKİ listesini tutuyordu (Pazarlama bölümü + Kampanyalar/Pazarlama/Yorum Kurtarma/Randevular + Analizler + Gelir Analizi + Entegrasyonlar).
