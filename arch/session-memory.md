@@ -7,6 +7,22 @@
 
 ## Last Update
 
+- **Date:** 2026-06-06 — **Session: FEAT-PROJELER / cxapi PR-1 — send-engine schema groundwork (no-op). DONE + Codex PASS iter3, commit `31ce3f15`. DEPLOY EDİLMEDİ (migration prod'a deploy'da çalışır).** Q: bulk WhatsApp gönderimini INMA köprüsünden doğrudan WapCRM cxapi /chatoperation'a taşıma motorunun 4-PR split'inin 1. parçası.
+
+  **Ne shipped (8 dosya, +552/-4):** Migration 055 (idempotent, INV-SEED-055 verifier) → `outbound_messages` +13 kolon (send_route/message_kind/instance_id/template_*/provider_*/last_attempt_at/attempt_count + 2 CHECK), `outbound_broadcasts` +6 kolon (send_route + template config + CHECK). Canonical `arch/db/outbound.sql` senkronlandı (her yeni kolonun source-of-truth evi var). Shared DTO (BulkSendPreviewRequest + BroadcastSendRequest) += opsiyonel nullable cxapi alanları + `TemplateParamMapping` (kabul edilir, KULLANILMAZ). OutboundRepository: QueuedMessage +13 read-only alan + DequeueMessagesAsync projection (okunur ama MessageSenderService routing DEĞİŞMEZ; INSERT'ler DB DEFAULT'a güvenir). **Davranış tamamen NO-OP.**
+
+  **Codex 3 fix turu (hepsi Q onaylı erteleme — CODEX UTANSIN doktrini gereği gerçek sorunlar):**
+  - **iter0 CQ9/Q2:** ext_id composite UNIQUE (tenant_id, external_message_id) PR-1'den çıkarıldı → **PR-3'e ertelendi**. Tenant-scoped uniqueness'i tenant-blind `FindMessageByExternalIdAsync` lookup'ı dururken eklemek cross-tenant ambiguity'yi resmîleştirir; unique index + tenant-scoped lookup PR-3'te G12 onayıyla ATOMİK gider. PR-1 ext_id index/lookup'a HİÇ dokunmaz.
+  - **iter1/2 CQ11:** bulk_send_jobs cxapi kolonları (instance_id/template_kind/wa_template_id/param_mapping/template_language) → **PR-4'e ertelendi**. bulk_send_jobs'ın canonical arch/db/*.sql'i YOK (migration-only tablo); kolonlar yazıcısı (BulkSendRepository) + canonical sync ile birlikte PR-4'te gider. BulkSendRepository.cs revert edildi (PR-1'de C# referansı kalmadı).
+  - **iter1 CQ12 (false-positive ama kapatıldı):** INV-SEED-055 errors.md'ye kaydedildi. INV-SEED migration-verifier namespace (errors.md 001-045 kayıtlı, 23 migration + 054 birebir kullanıyor); Codex errors.md'yi context'te görmeden non-compliant sandı.
+  - **iter3: PASS** (12/12 CQ + 4/4 CoVe, 0 blocking).
+
+  **Prod doğrulama (read-only MCP):** ext_id (tenant_id, external_message_id) intra-tenant duplicate YOK; external_message_id'de mevcut unique constraint YOK (sadece non-unique partial idx). Bu bulgular ext_id'nin güvenli olduğunu gösterdi ama yine de PR-3'e ertelendi (yarım-izolasyon riski).
+
+  **Lesson (kayda değer):** /rev'de git_diff'e "SEE diff_file_path" koymak Codex'in tüm CQ'leri UNKNOWN→FAIL yapar — TAM diff'i inline geçmek şart (diff_file_path fallback yetmiyor). + CQ11 DB-code sync: C# referans etmese bile migration'ın eklediği kolon canonical arch/db/*.sql'de olmalı; canonical'ı olmayan migration-only tablolara (bulk_send_jobs) yeni kolon eklemek o tablonun yazıldığı PR'a ertelenmeli.
+
+  **STATUS: PR-1 DONE (no-op, deploy edilmedi — migration 055 prod'a sonraki deploy'da çalışacak). SIRADAKİ: PR-2 (WapCrmSendClient + per-request secret + fake test, prod routing YOK). PR-3/4 öncesi açık INMA soruları G12 (requestID=webhook-id mi?) + G13 (template format/lang/param) netleşmeli.** ⚠️ İlgisiz ui-mocks/* + chat-design-expert WIP master working tree'de duruyor — dokunulmadı (PR-1 commit'ine dahil edilmedi).
+
 - **Date:** 2026-06-04 (A2) — **Follow-up: onboarding home bandı ilk açılışta KAPALI gelsin (Q).** `OnboardingHomeSection` default collapsed (stored pref yoksa `true`; kullanıcı toggle'ı korunur), commit `57fc908c`, Codex PASS iter1 (MEDIUM; iter0 FAIL yine sadece LOW→MEDIUM policy). **Deploy: CERRAHI STATIK SWAP** — zip wwwroot/app (0.7MB) → upload → server'da `robocopy /MIR current\wwwroot\app` (**restart YOK, sıfır kesinti**); canlı bundle `index-BNMdfMqm.js` doğrulandı (app/ 200, health 200, RUNNING). Multi-session not: (B) INMA-nav session'ı arada full server-deploy yaptı (index-C2LXA8Sr) ama cerrahi swap'im SONRA geldi → collapsed build canlı kaldı (deploy sonrası live-hash re-verify ile teyit). Lesson eklendi (cerrahi static swap + multi-session bundle re-verify). `$ProgressPreference='SilentlyContinue'` ile server-exec çıktı-şişmesi çözüldü.
 
 - **Date:** 2026-06-04 (B) — **Session: INMA nav stale fix — `/api/v1/inma/nav` endpoint'i tenant menüsüyle senkronlandı (Codex PASS iter1, commit `113c7f90`, DEPLOYED Backend HEALTHY).** Q: "tenant menülerinde ekleme/çıkarma yaptık ama INMA'dan çekince hâlâ eski nav listesi geliyor."
