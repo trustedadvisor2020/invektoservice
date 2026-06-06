@@ -8,8 +8,14 @@ INMA (wapcrm) ile paylaşılan tüm contract'ların (DTO, webhook payload, clien
 Contracts/Inma/
 ├── Dtos/        — REST API request/response DTO'ları
 ├── Webhooks/    — INMA → INSE inbound webhook payload'ları (gelecek)
+├── *Client.cs   — typed cxapi HTTP client'ları (root)
 └── README.md
 ```
+
+## cxapi Client'ları (root)
+
+- `HttpInmaContactOptOutClient` — INMA `/api/optout`+`/optin` push (J2 opt-out sync). DI-time tek (global) secret → DefaultRequestHeaders.
+- `WapCrmSendClient` (FEAT-PROJELER cxapi PR-2, 2026-06-06) — cxapi `POST /api/chatoperation` düz-metin gönderim; envelope → typed `WapCrmSendResult` (Submitted/ProviderFailed/RateLimited/Ambiguous/TransportError). **Per-request** secret (`HttpRequestMessage.TryAddWithoutValidation("X-CIB-SecretKey")`, ASLA DefaultRequestHeaders — multi-tenant pooled client). 301/302 (HTTP veya envelope, status!=true) → bounded retry+backoff/jitter → RateLimited; status==true otoriter Submitted. DI: `AllowAutoRedirect=false`+`UseCookies=false`. **PR-2'de prod routing YOK** (PR-3 cutover). DTO'lar `Dtos/WapCrmSendDtos.cs`.
 
 ## Consolidation Durumu (UP0.1 MVP)
 
