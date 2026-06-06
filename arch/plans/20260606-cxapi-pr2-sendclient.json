@@ -1,0 +1,202 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": "PKT-1",
+  "spec_ref": null,
+  "slug": "20260606-cxapi-pr2-sendclient",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-06T22:00:00Z",
+  "updated_at": "2026-06-06T22:45:00Z",
+  "plan": {
+    "summary": "PR-2 of the cxapi send-engine split: build WapCrmSendClient — an IHttpClientFactory typed client that POSTs PLAIN TEXT to cxapi /api/chatoperation, parses the WapCrM envelope (status/statusCode/requestID/message), and maps the response to a typed WapCrmSendResult (Submitted / ProviderFailed / RateLimited / Ambiguous / TransportError). Per-request secret via HttpRequestMessage TryAddWithoutValidation('X-CIB-SecretKey') (NEVER DefaultRequestHeaders). 301/302 (HTTP redirect status OR envelope statusCode '301'/'302') = rate limit → bounded internal retry with Retry-After-honoring backoff+jitter, then RateLimited. Registered in Outbound DI but NO prod caller wires it (routing = PR-3). Fake-HttpMessageHandler integration tests prove the contract. Behavior is a NO-OP for every existing send path.",
+    "q_intent": "PR-2 cxapi paketine basla — WapCrmSendClient (dev asamasi). IHttpClientFactory tabanli, cxapi /chatoperation'a duz-metin gonderim yapabilen typed client + fake/stub entegrasyon testi. HICBIR prod gonderim yolu bu client'a baglanmaz (routing PR-3). Client yazilir, DI'ya kaydedilir, testle dogrulanir, ama MessageSenderService/orchestrator cagirmaz.",
+    "interview_notes": "Interview (3 gri nokta, AskUserQuestion ile cozuldu 2026-06-06): (1) CLIENT HOME = Invekto.Shared/Contracts/Inma — cxapi'ye giden mevcut analog HttpInmaContactOptOutClient ve envelope/settings DTO'lari (WapCrmApiResponse, WapCrmSettings) zaten orada; izolasyon: Outbound Shared uzerinden cagirir (PR-3 wiring). (2) RATE LIMITER (P0 #6 tenant+instance) = client RateLimited sonucu dondurur, mevcut Outbound RateLimiter'a (tenant-only, canli bridge MessageSenderService kullaniyor) DOKUNULMAZ — no-op korunur, gercek limiter wiring PR-3; client Shared'da oldugu icin zaten Outbound.Services.RateLimiter'a referans veremez (Shared->Outbound bagimliligi yasak), bu da kararla ortusur. (3) 301/302 = bounded internal retry + backoff/jitter -> tukenirse RateLimited (mesaj GONDERILMEDIGI icin guvenli; Codex P0 #2/#6 ile uyumlu: tek guvenli delayed-retry yolu 301/302). DELAY + JITTER injectable (test deterministik, gercek sleep yok). EK KARAR (dev tarafindan, plan-review'da Codex teyidi icin isaretlendi): cxapi'nin 301/302'yi HTTP redirect statusu mu yoksa envelope statusCode'u mu olarak donduregi kilavuzda net degil (kilavuz §5 statusCode'lari uygulama-seviyesi: 509/911/622... ama Codex P0 #6 'Retry-After' diyor=HTTP header). Bu yuzden client HER IKISINI de rate-limit kabul eder (HTTP 301/302 VEYA envelope statusCode '301'/'302') — savunmaci dual-detection. AllowAutoRedirect=FALSE zorunlu (yoksa HttpClient 301/302'yi otomatik takip edip rate-limit sinyalini yutar). PR-2'de YENI runtime/error kodu YOK (cxapi INV kodlari PR-3); client typed enum doner, ErrorCodes'a dokunmaz. TEST evi = mevcut InvektoServis.Tests (Outbound+Shared zaten ref'li, MockHttpMessageHandler + FakeLoggerFactory + FluentAssertions hazir) — yeni csproj/sln wiring yok. Acik INMA sorulari G12/G13 PR-2'yi BLOKLAMAZ (PR-3/4 oncesi). PLAN-REVIEW (codex_consult critique 2026-06-06) sonucu islenen duzeltmeler: (a) PRECEDENCE FIX: envelope status==true OTORITER -> Submitted, statusCode '301'/'302' gorunse bile retry ETME (mesaj kabul edilmis; '{status:true,statusCode:301}' celiskili envelope'unu duplicate'lemekten kacin); envelope-301/302 yalniz status!=true iken rate-limit sayilir. (b) Handler hardening: AllowAutoRedirect=false + UseCookies=false (pooled handler'da cookie ile cross-tenant sizinti onlenir). (c) TryAddWithoutValidation donus degeri kontrol edilir; false ise auth'suz istek gondermek yerine InvalidOperationException. (d) Input validation: secret/phone/text bos -> ArgumentException, instanceId/userId<=0 -> ArgumentOutOfRangeException (fail-fast, secret deger loglanmaz). (e) TransportError 'provably not sent' DEGIL (response fazinda da kopabilir) -> retry-safe varsayilmaz, PR-3 muhafazakar isler; PR-2 client'i sadece 301/302 retry eder. (f) Retry-After typed RetryConditionHeaderValue ile parse (delta-seconds VE HTTP-date). (g) MaxRateLimitRetries configurable (PR-3 limiter ile double-backoff'u onlemek icin 0'a cekilebilir). (h) Secret-isolation testine CONCURRENT (paralel iki secret) senaryosu eklenir. (i) Envelope DTO reuse: mevcut WapCrmApiResponse<T> kullanilir (duplike envelope DTO yok); status alani eksikse default false -> ProviderFailed (guvenli yon, asla yanlis Submitted).",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "WapCrmSendClient.SendPlainTextAsync builds a /api/chatoperation request with {instanceID, userID, chatPhoneNumber, messageType=1, messageText} and parses the WapCrM envelope into WapCrmSendResult.", "verified": false },
+      { "id": "AC2", "criterion": "Secret is attached PER REQUEST via HttpRequestMessage.Headers.TryAddWithoutValidation('X-CIB-SecretKey', secret) (return value checked — false => InvalidOperationException, no unauthenticated send) and NEVER via DefaultRequestHeaders; secret is never logged or stored on the client. Handler sets AllowAutoRedirect=false AND UseCookies=false. Tests: (i) two SEQUENTIAL sends with different secrets and (ii) CONCURRENT parallel sends with different secrets through the same client — each captured request carries its own secret, DefaultRequestHeaders has none, no cross-contamination.", "verified": false },
+      { "id": "AC3", "criterion": "HTTP 2xx + envelope status=true => Submitted (carrying provider statusCode/requestID) and is AUTHORITATIVE — even a contradictory statusCode like '301' does NOT cause a retry once status=true. HTTP 2xx + status!=true (non-rate-limit code) => ProviderFailed. Both are structured results, never thrown exceptions.", "verified": false },
+      { "id": "AC4", "criterion": "Rate limit (HTTP 301/302 transport OR envelope statusCode '301'/'302' WHILE status!=true) triggers bounded internal retry with Retry-After-honoring (delta-seconds or HTTP-date) backoff+jitter; when retries (configurable MaxRateLimitRetries) are exhausted the result is RateLimited (final-fail=false). A 301-then-200 sequence recovers to Submitted. 301/302 is the ONLY retried outcome.", "verified": false },
+      { "id": "AC5", "criterion": "A request timeout (linked-CTS CancelAfter, original ct NOT cancelled) maps to Ambiguous and is NOT retried; an HttpRequestException/unparseable body maps to TransportError. Caller cancellation is rethrown.", "verified": false },
+      { "id": "AC6", "criterion": "NO-OP: no existing send path changes. Client is registered in Outbound DI (AddHttpClient with AllowAutoRedirect=false) but no endpoint/hosted-service/orchestrator resolves it. Full solution builds clean. No new error codes; no schema/arch change; RateLimiter and MessageSenderService untouched.", "verified": false }
+    ]
+  },
+  "spec_acceptance_criteria": [],
+  "spec_architectural_decisions": [
+    {
+      "decision": "WapCrmSendClient + its request/result/options DTOs live in Invekto.Shared/Contracts/Inma (alongside HttpInmaContactOptOutClient).",
+      "reason": "Direct analog: Outbound->cxapi.wapcrm.net opt-out push already lives there; WapCrmApiResponse/WapCrmSettings envelope DTOs are already in Contracts/Inma/Dtos. Keeps microservice isolation (Outbound consumes via Shared) and is why the client structurally CANNOT reference Outbound.Services.RateLimiter.",
+      "codex_note": "EXPECTED: new client in Shared, consumed by Outbound via DI. This is a Shared change -> full solution build is intentional, not scope creep."
+    },
+    {
+      "decision": "Rate limit is detected as EITHER an HTTP 301/302 response OR an envelope statusCode of '301'/'302' WHILE status != true. Decision precedence: (a) HTTP 301/302 -> rate-limit; (b) parse envelope (fail -> TransportError); (c) HTTP 2xx && status==true -> Submitted (AUTHORITATIVE); (d) statusCode in {'301','302'} -> rate-limit; (e) else -> ProviderFailed. Handler at DI: AllowAutoRedirect=FALSE and UseCookies=FALSE.",
+      "reason": "The integration guide documents statusCode values as application-level (509/911/622...) but Codex P0 #6 references an HTTP 'Retry-After' header — the 301/302 transport is genuinely ambiguous in the source docs (open INMA detail). Dual-detection is correct under both interpretations. status==true must win FIRST (plan-review fix): a contradictory '{status:true,statusCode:301}' means the message was accepted, so retrying it would duplicate. AllowAutoRedirect=false or HttpClient silently follows a 301/302 and the rate-limit signal is lost; UseCookies=false stops a pooled handler's shared CookieContainer from carrying state across tenants.",
+      "codex_note": "EXPECTED: 301/302 are treated as RATE LIMIT, not real redirects. status==true is authoritative and is checked BEFORE the envelope-301/302 rate-limit branch (no retry on an accepted message). AllowAutoRedirect=false + UseCookies=false are deliberate and required. 307/308 are not auto-followed and fall through to TransportError (undocumented for cxapi)."
+    },
+    {
+      "decision": "Client returns a structured WapCrmSendResult.RateLimited carrying RetryAfter + the (TenantId, InstanceId) it was called with; it does NOT touch the Outbound RateLimiter.",
+      "reason": "Q decision (interview): the (tenant_id, instance_id) RateLimiter wiring is PR-3. The live RateLimiter is keyed tenant-only and used by the bridge MessageSenderService; changing it would break the no-op guarantee. The client surfaces the cooldown signal so PR-3 can key its limiter on (tenant, instance).",
+      "codex_note": "EXPECTED: no RateLimiter change in PR-2. The (tenant,instance) key is echoed on the result for PR-3 to consume; this is intentional deferral, not a missing feature."
+    },
+    {
+      "decision": "Bounded internal retry on 301/302 ONLY. Timeout=Ambiguous (no retry). Other transport/non-2xx/parse failures=TransportError (no retry). 200+status=false=ProviderFailed (no retry). Backoff delay + jitter are injectable seams (default Task.Delay / Random.Shared).",
+      "reason": "Codex P0 #2: only 301/302 (message provably not sent) is safe to delay-retry; timeout may have reached the server so it is ambiguous and must not auto-retry (duplicate risk). Injectable delay/jitter keeps the integration tests deterministic and instant.",
+      "codex_note": "EXPECTED: retry is restricted to the rate-limit path. Ambiguous and ProviderFailed are returned, not retried. Injected no-op delay in tests is a test seam, not dead production config."
+    },
+    {
+      "decision": "WapCrmSendClient is registered in Outbound DI but intentionally has NO runtime caller in PR-2.",
+      "reason": "Scope: PR-2 ships and unit-proves the client only; routing (sender route branch, state machine, ext_id) is PR-3. Registering it (AddHttpClient) is behaviorally inert — nothing resolves it during request handling.",
+      "codex_note": "EXPECTED: 'registered but unrouted' is by design. MessageSenderService/BroadcastOrchestrator/BulkSendOrchestrator are deliberately untouched (forbidden areas)."
+    }
+  ],
+  "gr_list": [],
+  "allowed_files": [
+    "src/Invekto.Shared/Contracts/Inma/WapCrmSendClient.cs",
+    "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmSendDtos.cs",
+    "src/Invekto.Outbound/Program.cs",
+    "tests/InvektoServis.Tests/Shared/Inma/WapCrmSendClientTests.cs",
+    "tracking/feat-projeler-cxapi-roadmap.md",
+    "arch/plans/20260606-cxapi-pr2-sendclient.json"
+  ],
+  "allowed_files_note": "WapCrmSendClient.cs (NEW typed client) + WapCrmSendDtos.cs (NEW: WapCrmSendRequest, WapCrmSendResult, WapCrmSendOutcome enum, WapCrmSendOptions) in Shared/Contracts/Inma. Program.cs: additive DI registration block only (no-op). WapCrmSendClientTests.cs (NEW) in existing InvektoServis.Tests. errors.md / arch/db / canonical .sql NOT touched (no new runtime/error codes, no schema change in PR-2).",
+  "files_changed": [
+    { "path": "src/Invekto.Shared/Contracts/Inma/WapCrmSendClient.cs", "change": "NEW typed cxapi /chatoperation plain-text client: per-request secret (TryAddWithoutValidation, checked), envelope parse (reuses WapCrmApiResponse<T>), 5-outcome mapping with status==true authoritative precedence, bounded 301/302 retry (Retry-After delta/date + backoff/jitter via injectable seams), timeout=Ambiguous, transport/parse=TransportError.", "is_new": true },
+    { "path": "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmSendDtos.cs", "change": "NEW additive DTOs: WapCrmSendOutcome enum + WapCrmSendRequest + WapCrmSendResult (fields mirror PR-1 columns) + WapCrmSendOptions. No existing Shared type modified.", "is_new": true },
+    { "path": "src/Invekto.Outbound/Program.cs", "change": "Additive DI: AddHttpClient<WapCrmSendClient> (AllowAutoRedirect=false, UseCookies=false, Infinite timeout, options-bound BaseAddress) + one Shared using. Behavioural no-op — nothing resolves the client at runtime.", "is_new": false },
+    { "path": "tests/InvektoServis.Tests/Shared/Inma/WapCrmSendClientTests.cs", "change": "NEW 13 fake-HttpMessageHandler tests: all 5 outcomes, status=true-wins-over-301, 301/302 exhausted + recovery, timeout, caller-cancel rethrow, transport/parse, per-request secret isolation (sequential + concurrent x20), blank-secret fail-fast, exact wire body. 13/13 PASS in 49ms.", "is_new": true }
+  ],
+  "git_diff": {
+    "patch_truncated": "See arch/plans/diffs/20260606-cxapi-pr2-sendclient.diff (full inline diff was embedded in the codex_review git_diff arg).",
+    "sha256": "f3c198600eee83ee9a8633445e2c25d14c12a8b201f07f9142c43928fffa2874",
+    "full_path": "arch/plans/diffs/20260606-cxapi-pr2-sendclient.diff",
+    "stats": { "insertions": 763, "deletions": 0, "files_count": 4 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-06-06T22:30:00Z",
+    "duration_ms": 22550,
+    "output_tail": "Build succeeded. 0 Error(s) (42 pre-existing MSB3277/xUnit1013 warnings, none in PR-2 files). Tests: 13/13 PASS (49ms).",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Outbound", "InvektoServis.Tests"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Is the secret attached per-request (HttpRequestMessage.Headers.TryAddWithoutValidation) and never on DefaultRequestHeaders, so two concurrent sends with different tenant secrets through the same pooled HttpClient cannot leak across tenants? Is the secret kept out of all log lines?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q2",
+      "question": "Is this PR a true no-op for every existing send path — RateLimiter, MessageSenderService, BroadcastOrchestrator and BulkSendOrchestrator untouched, the new client registered in DI but resolved by nobody during request handling, and no new error codes / schema / canonical .sql changes?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q3",
+      "question": "Does the outcome mapping correctly separate retry-safe from unsafe with the right PRECEDENCE: envelope status==true is authoritative Submitted even when statusCode looks like '301' (no duplicate retry); 301/302 (HTTP, or envelope while status!=true) => bounded retry then RateLimited (final-fail=false); timeout => Ambiguous with NO retry; status!=true (non-rate-limit) => ProviderFailed with NO retry; transport/parse failure => TransportError (NOT assumed retry-safe); and are AllowAutoRedirect=false + UseCookies=false set so 301/302 surface and no cookie state crosses tenants?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q4",
+      "question": "Do the fake-HttpMessageHandler tests deterministically cover Submitted, status=true-wins-over-301, ProviderFailed (622), RateLimited (HTTP-301 exhausted + envelope-301), 301-then-200 recovery, Ambiguous-timeout, TransportError, and per-request secret isolation (SEQUENTIAL and CONCURRENT) WITHOUT real sleeps (injected no-op delay / zero jitter), asserting the exact /chatoperation request body (instanceID/userID/chatPhoneNumber/messageType=1/messageText) and the per-request secret header while DefaultRequestHeaders stays empty?",
+      "category": "Process/Policy"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Outbound/Services/MessageSenderService.cs (routing/sender — PR-3)",
+      "src/Invekto.Outbound/Services/BroadcastOrchestrator.cs + BulkSendOrchestrator.cs (no route branch in PR-2)",
+      "src/Invekto.Outbound/Services/RateLimiter.cs (tenant+instance key wiring is PR-3; live bridge depends on it)",
+      "src/Invekto.ChatAnalysis/Services/WapCrmClient.cs (read-only sibling — pattern reference only, do NOT copy or modify)",
+      "arch/errors.md / arch/db/* / canonical .sql (no new codes, no schema change in PR-2)",
+      "Writing any secret/api_key to repo, code, appsettings or logs"
+    ],
+    "non_goals": [
+      "Any change to send behavior (PR-2 is a pure no-op: client registered, not routed)",
+      "Approved-template (HSM) sending + parameters[] resolve (PR-4)",
+      "ext_id tenant-scoped uniqueness/lookup + state machine + DMP hard-reject + metrics (PR-3)",
+      "bulk_send_jobs cxapi columns + projects table/UI (PR-4 / PKT-2)"
+    ],
+    "intentional_exclusions": [
+      "No prod caller for WapCrmSendClient — MessageSenderService/orchestrators keep the bridge path unchanged",
+      "No Outbound RateLimiter change — client only RETURNS RateLimited(RetryAfter, tenant, instance); PR-3 keys the limiter",
+      "No cxapi error codes in ErrorCodes/errors.md — client returns a typed WapCrmSendOutcome enum; INV codes land in PR-3",
+      "G12 (requestID == delivery-status webhook id?) and G13 (template format/lang/params) stay open — they gate PR-3/PR-4, not PR-2",
+      "No appsettings secret — WapCrmSendOptions carries only timeout/backoff/jitter tuning (defaults bake in; bound from 'WapCrmSend' section if present)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "WapCrmSendClient.SendPlainTextAsync: try around HttpClient.SendAsync — catch OperationCanceledException when ct.IsCancellationRequested -> rethrow (caller cancel/shutdown); catch OperationCanceledException/TaskCanceledException (linked-CTS timeout) -> Ambiguous; catch HttpRequestException -> TransportError",
+      "WapCrmSendClient: envelope JSON parse guarded (JsonException/null) -> TransportError (no throw to caller)"
+    ],
+    "user_facing_errors": [
+      "None in PR-2 (no endpoint/route). Client returns a typed WapCrmSendResult; user-facing error-code mapping is PR-3."
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Every branch returns an explicit typed outcome (Submitted/ProviderFailed/RateLimited/Ambiguous/TransportError) — nothing is swallowed. The only intentional 'do nothing further' paths are Ambiguous (no auto-retry to avoid duplicate sends — explicit, logged) and rate-limit-exhausted RateLimited (explicit, carries RetryAfter). The secret is deliberately omitted from logs (security, not a silent failure). No prod path consumes the result yet (PR-3), so there is no place a result could be silently dropped in production.",
+    "user_facing_errors_note": "n/a"
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Bridge gonderiminde WapCRM'in gercek cevabi (kabul/red/limit) gorunmez; bir gonderimin neden basarisiz oldugu sonradan bilinemiyor.",
+      "suggestion": "WapCrmSendResult provider statusCode/status/requestID/message + outcome'u acikca tasisin; alan adlari PR-1 kolonlariyla (provider_status_code/status/request_id/error_message/attempt_count) birebir hizali.",
+      "aha_moment": "PR-3 sonuc objesini DB'ye dogrudan yazar — operatör bir mesaja bakinca cxapi'nin tam cevabini ve kac denemede ne oldugunu gorur."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Toplu gonderimde rate-limit (301/302) tek bir hata gibi gorunup tum kampanyayi final-fail edebilir.",
+      "suggestion": "301/302'yi (HTTP veya envelope) rate-limit kabul edip Retry-After-saygili backoff+jitter ile sinirli yeniden dene; tukenirse final-fail DEGIL RateLimited dondur.",
+      "aha_moment": "Gecici limitler kendiliginden toparlanir; sadece gercekten gonderilemeyenler isaretlenir — kampanya limit yuzunden come degil."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Timeout'ta 'tekrar gonder' demek mukerrer WhatsApp mesajina yol acabilir (geri alinamaz).",
+      "suggestion": "Timeout'u Ambiguous olarak isaretle ve OTOMATIK retry etme; sadece provably-gonderilmedi (301/302) yeniden denenir.",
+      "aha_moment": "Musteri ayni mesaji iki kez almaz; belirsiz durumlar ops'a net 'ambiguous' olarak dusurulur."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Buyuk motor degisikligini tek hamlede yapmak review'da bogulur ve prod riski yuksek.",
+      "suggestion": "Client'i izole, tam test edilmis ama route'suz (no-op) gondersin; routing PR-3'te kucuk ve guvenli kalsin.",
+      "aha_moment": "PR-2 prod'a sifir davranis riskiyle gider; cxapi client'i canliya baglamadan once tamamen dogrulanmis olur."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Cok-tenantli ayni HttpClient havuzunda secret'in yanlis tenant'a sizmasi felaket olur.",
+      "suggestion": "Secret'i ASLA DefaultRequestHeaders'a koyma; her HttpRequestMessage'a TryAddWithoutValidation ile per-request ekle ve testle iki farkli secret'in karismadigini kanitla.",
+      "aha_moment": "Ayni pooled client'tan giden iki tenant gonderimi birbirinin secret'ini asla gormez — cross-tenant leak yapisal olarak imkansiz."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-06-06T22:45:00Z",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "Validates required request fields before send; classifies timeout/transport into explicit typed outcomes with actionable messages." },
+      "CQ2": { "result": "PASS", "evidence": "JSON parse failure -> TransportError (no silent continue); timeout/HttpRequestException/rate-limit all logged. No bare catch(Exception)." },
+      "CQ3": { "result": "PASS", "evidence": "Changed files match PR-2 scope; no schema/endpoint/hosted-service/RateLimiter/MessageSenderService/orchestrator changes." },
+      "CQ4": { "result": "PASS", "evidence": "Reuses existing WapCrmApiResponse<T> envelope (no duplicate DTO); only additive DI registration." },
+      "CQ5": { "result": "PASS", "evidence": "Files under existing Shared/Contracts/Inma namespace conventions; using-scoped IDisposables; no null-forgiving." },
+      "CQ6": { "result": "PASS", "evidence": "Bounded retry (MaxRateLimitRetries); per-attempt linked-CTS timeout; AllowAutoRedirect/UseCookies disabled. No N+1 / unbounded buffering / leak." },
+      "CQ7": { "result": "PASS", "evidence": "No new TODO/HACK/FIXME markers." },
+      "CQ8": { "result": "PASS", "evidence": "New DTOs/enums only; no modified existing Shared DTOs; no changed existing registrations or contracts." },
+      "CQ9": { "result": "PASS", "evidence": "External cxapi HTTP only, no cross-service DB; per-request tenant secret; correct outcome precedence." },
+      "CQ10": { "result": "PASS", "evidence": "No frontend/user-facing API shape change; typed internal result, not routed." },
+      "CQ11": { "result": "PASS", "evidence": "No DB queries/migrations/arch.db changes; result fields are in-memory DTO only (persisted in PR-3)." },
+      "CQ12": { "result": "PASS", "evidence": "Specific typed error outcomes (Ambiguous/TransportError/ProviderFailed) carrying provider status/message/request id; no endpoint envelope so no INV-* mapping needed in scope." }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "Fresh HttpRequestMessage per attempt + TryAddWithoutValidation (checked); no DefaultRequestHeaders; secret absent from all log lines." },
+      "Q2": { "result": "PASS", "reasoning": "Only Program.cs DI registration added; RateLimiter/MessageSenderService/orchestrators/ErrorCodes/arch.db untouched; client resolved by nobody at runtime." },
+      "Q3": { "result": "PASS", "reasoning": "status==true authoritative Submitted before envelope-301 branch; 301/302 bounded retry->RateLimited; timeout->Ambiguous (no retry); parse/transport->TransportError; AllowAutoRedirect=false + UseCookies=false." },
+      "Q4": { "result": "PASS", "reasoning": "Fake handler captures secret/body/method/url; injected no-op delay + zero jitter; full outcome + sequential/concurrent secret-isolation coverage; build PASS." }
+    },
+    "blocking_issues": [],
+    "iteration": 0,
+    "escalation_required": false,
+    "verdict_note": "CODEX PASS iter0 (12/12 CQ + 4/4 CoVe, 0 blocking). model gpt-5.5-2026-04-23. Advisory codex_consult (plan phase) surfaced 9 corrections (precedence fix, UseCookies=false, TryAddWithoutValidation check, input validation, TransportError-not-retry-safe, concurrent secret test, typed Retry-After, configurable retries, envelope DTO reuse) — all folded BEFORE implementation, yielding a clean iter0."
+  }
+}

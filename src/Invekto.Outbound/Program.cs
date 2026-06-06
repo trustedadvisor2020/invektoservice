@@ -5,6 +5,7 @@ using Invekto.Outbound.Services;
 using Invekto.Shared.Auth;
 using Invekto.Shared.Constants;
 using Invekto.Shared.Contracts.Inma;
+using Invekto.Shared.Contracts.Inma.Dtos;
 using Invekto.Shared.Data;
 using Invekto.Shared.DTOs;
 using Invekto.Shared.DTOs.Outbound;
@@ -176,6 +177,35 @@ else
 
 builder.Services.AddSingleton<InmaOptOutSyncJob>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<InmaOptOutSyncJob>());
+
+// ─── FEAT-PROJELER / cxapi send engine — PR-2: WapCrmSendClient ───
+// Typed cxapi /chatoperation plain-text client. Registered so it is wired and
+// testable, but NOTHING resolves it in PR-2 — the sender route lands in PR-3, so
+// this registration is a behavioural NO-OP. Per-request secret only (the secret
+// is supplied per call, never here). The primary handler disables auto-redirect
+// (cxapi uses HTTP 301/302 as RATE-LIMIT signals, not real redirects — auto-follow
+// would swallow them) and cookies (no cross-tenant state on the pooled handler).
+// The per-attempt timeout is enforced inside the client via a linked CTS, hence
+// the HttpClient timeout is Infinite.
+var wapCrmSendOptions = new WapCrmSendOptions();
+builder.Configuration.GetSection(WapCrmSendOptions.SectionName).Bind(wapCrmSendOptions);
+builder.Services.AddSingleton(wapCrmSendOptions);
+builder.Services.AddHttpClient<WapCrmSendClient>()
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        AllowAutoRedirect = false,
+        UseCookies = false
+    })
+    .ConfigureHttpClient((sp, http) =>
+    {
+        var opts = sp.GetRequiredService<WapCrmSendOptions>();
+        http.BaseAddress = new Uri(opts.BaseUrl.TrimEnd('/') + "/");
+        http.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
+    })
+    .AddTypedClient((http, sp) => new WapCrmSendClient(
+        http,
+        sp.GetRequiredService<WapCrmSendOptions>(),
+        sp.GetRequiredService<JsonLinesLogger>()));
 
 builder.Services.AddAuthorization();
 
