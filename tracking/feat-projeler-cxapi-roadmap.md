@@ -1,0 +1,66 @@
+# FEAT-PROJELER + cxapi Gönderim Motoru — Roadmap
+
+> **Durum:** PLANNING · **Oluşturma:** 2026-06-06 · **Sahip:** Q
+> **Master tablo linki:** `tracking/README.md`
+> **Codex consult:** 2026-06-06 (critique) — 4-PR split + P0 sertleştirme önerisi benimsendi.
+
+## Amaç
+
+INSE bulk WhatsApp gönderimini INMA Main App köprüsünden **doğrudan WapCRM External API**'ye (`cxapi.wapcrm.net/api/chatoperation`) taşımak + **WhatsApp onaylı şablon (HSM)** gönderimini açmak. Üstüne TONIVA mode4 benzeri **"Projeler"** yönetim katmanı (data list hedefle → "arama yerine template at").
+
+## Mimari katmanlar
+
+```
+Projeler sayfası (PKT-2)
+   └─ Proje (projects tablosu, project_id FK)
+        └─ Run = bulk_send_job
+             └─ Bulk motoru (preview→confirm→broadcast)  ← değişmez
+                  └─ Gönderim: cxapi /chatoperation (PKT-1)  ← text + approved-template
+```
+
+## Kilitlenen kararlar (interview 2026-06-06)
+
+- **Yol:** doğrudan cxapi `/chatoperation` (köprü değil). Sebep: approved-template köprüden gidemiyor + gerçek statusCode görünürlüğü + optout zaten direkt.
+- **Kapsam:** hem INSE-render düz metin hem cxapi approved-template.
+- **Dinamik içerik SADECE approved-template `parameters[]`** ile; düz metin statik. Mevcut DMP/dynamicMessage cxapi yolunda **devre dışı (HARD FAIL, sessiz fallback yok)**.
+- **Faz 1:** sadece bulk (`broadcast_id != null`) cxapi'ye; trigger/transactional köprüde kalır.
+- **instance_id + template** bilgisi bulk-send request'inden (PKT-2'de proje seviyesinden).
+- **Auth:** IP whitelist OK (Outbound IP), `secret_key` tenant settings'ten, `userID=WapCrmSettings.UserId`. Opt-out: cxapi server-side INMA + INSE OptOutManager (double-guard).
+- **Feature-flag (CxapiSend) + tenant allowlist** ile kademeli cutover.
+- **Proje↔Run modeli:** yeni `projects` parent + run = `bulk_send_job` (project_id FK). Bulk motoru değişmez.
+- **🔒 Secret repo'ya YAZILMAZ** — sadece `tenant_registry.settings_json->'wapcrm'.secret_key`.
+
+## Codex P0 sertleştirmeleri (tüm PR'lara işlenecek)
+
+1. **Per-request secret:** `HttpRequestMessage` + `TryAddWithoutValidation("X-CIB-SecretKey")` — ASLA `DefaultRequestHeaders` (cross-tenant leak). Tenant'ın `instance_id` yetkisi doğrulanır. Credentials batch'te distinct tenant için toplu yüklenir (N+1 yok). Secret loglanmaz.
+2. **Idempotency state machine:** `queued → leased → posting → submitted → provider_failed / ambiguous`. **`posting` crash'i otomatik requeue EDİLMEZ → `ambiguous` + manuel/ops.** Timeout = ambiguous (retry değil). Sadece 301/302'de güvenli delayed retry.
+3. **DMP HARD FAIL:** `CxapiSend + çözülmemiş {{}}` → reject; `useDynamic + param_mapping yok` → reject; eksik required param → reject. **Allowlist öncesi geçmiş DMP kullanımı taranır.**
+4. **Status split + structured provider alanları:** HTTP 200 + `status=false` = `provider_failed`. Alanlar: `provider_status_code/status/request_id/error_message, last_attempt_at, attempt_count`.
+5. **Immutable route:** `outbound_messages.send_route (mainapp_bridge|wapcrm_cxapi)` + `message_kind (plain_text|wapcrm_template)` — mesaj oluşturulurken karar; broadcast homojen (tek template/lang/instance).
+6. **RateLimiter key = `tenant_id + instance_id`**; 301/302 → cooldown + Retry-After + backoff/jitter, final-fail değil.
+7. **ext_id:** unique `(tenant_id, ext_id)` (global değil); validasyon preview/confirm'de. **→ PR-3'e taşındı (Codex CQ9/Q2 + Q kararı 2026-06-06):** tenant-scoped uniqueness'i tenant-blind lookup ile birlikte eklemek cross-tenant ambiguity'yi resmîleştirir; unique index + tenant-scoped `FindMessageByExternalIdAsync` PR-3'te G12 onayından sonra atomik gider. PR-1 ext_id'ye dokunmaz.
+8. **Reserved nullable kolonlar:** `template_header_media JSONB`, `template_language` — şimdi aç, implement etme.
+
+## Paket sırası (Q kararı: PKT-1 motor önce, 4 alt-PR)
+
+| Paket | Slug | Kapsam | Risk | Durum |
+|---|---|---|---|---|
+| **PR-1** | `20260606-cxapi-pr1-schema` | Migration 055: **outbound_messages** (send_route, message_kind, instance_id, template_*, provider_*, attempt_count) + **outbound_broadcasts** (send_route + template_*) nullable/defaulted kolonlar + 3 CHECK + DTO opsiyonel alanlar + OutboundRepository read projection + canonical outbound.sql sync + INV-SEED-055. **Davranış DEĞİŞMEZ (no-op).** ~~ext_id unique~~→PR-3 (CQ9/Q2+G12); ~~bulk_send_jobs cxapi kolonları~~→PR-4 (CQ11: canonical .sql'i yok). | MEDIUM | ✅ **DONE** · build PASS · **Codex PASS (iter3, 12/12 CQ)** |
+| **PR-2** | `20260606-cxapi-pr2-sendclient` | `WapCrmSendClient` (IHttpClientFactory, per-request secret, envelope parse, error-code map, 301/302 backoff) + fake integration test. **Prod routing YOK.** | MEDIUM | TODO |
+| **PR-3** | `20260606-cxapi-pr3-plaintext-cutover` | Düz-metin bulk cxapi (flag+allowlist arkası): sender route dalı, submitted/provider_failed/ambiguous state machine, requestID→ext_id, **ext_id composite UNIQUE (tenant_id, external_message_id) + tenant-scoped FindMessageByExternalIdAsync (PR-1'den taşındı, G12 onayıyla atomik)**, DMP hard-reject, RateLimiter instance key, metrics/log. | HIGH | TODO |
+| **PR-4** | `20260606-cxapi-pr4-approved-template` | **bulk_send_jobs cxapi kolonları (instance_id/template_kind/wa_template_id/param_mapping/template_language) migration + BulkSendRepository writer + canonical bulk_send_jobs .sql sync (PR-1'den taşındı, CQ11)**, `wa_template_id` + `param_mapping` + per-recipient parameters[] + preview/confirm validasyon (required param, language, ownership). | HIGH | TODO |
+| **PKT-2** | `2026xxxx-projeler-*` | `projects` tablosu (migration 056) + CRUD + Projeler sayfası/wizard (TONIVA mode4 benzeri) + cxapi template-list endpoint + Backend proxy + UI. | HIGH | TODO |
+
+## Açık sorular (INMA ekibine)
+
+- **G12:** cxapi `/chatoperation` response `requestID`, delivery-status webhook'taki id ile **birebir aynı mı**? (ext_id eşleşmesi buna bağlı — teyit alınmadan delivery-status migration yapılmaz.)
+- **G13:** cxapi approved-template: `templateId` formatı, language kaynağı, parametre positional mı named mi, required param count nereden bilinir, header media zorunlu şablonda davranış?
+- (G9 ✓ INMA server-side opt-out yapacak · G11 ✓ Outbound IP whitelist OK)
+
+## Referanslar
+
+- Plan JSON'lar: `arch/plans/20260606-cxapi-pr*.json`
+- Entegrasyon kılavuzu: `temp/wapcrm-api-integration-guide-for-agents.md` (INMA ekibinden)
+- Mevcut bulk: `src/Invekto.Outbound/Services/{BulkSend,Broadcast}Orchestrator.cs`, `MessageSenderService.cs`
+- cxapi okuma örneği: `src/Invekto.ChatAnalysis/Services/WapCrmClient.cs`
+- TONIVA referans: `c:\CRMs\TONIVA` mode4 `ivr_campaigns` (sadece yapı referansı — kod karıştırma yok)

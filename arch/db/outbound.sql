@@ -55,8 +55,20 @@ CREATE TABLE IF NOT EXISTS outbound_broadcasts (
     completed_at            TIMESTAMPTZ,
     created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
+    -- FEAT-PROJELER / cxapi (migration 055): homogeneous route + reserved template config.
+    -- send_route defaults to the bridge so existing creation is unchanged; template_* are
+    -- reserved (written in PR-4). A broadcast is homogeneous — one route/template/lang/instance.
+    send_route              VARCHAR(20) NOT NULL DEFAULT 'mainapp_bridge',
+    instance_id             INTEGER,
+    template_kind           VARCHAR(16),
+    wa_template_id          VARCHAR(128),
+    param_mapping           JSONB,
+    template_language       VARCHAR(8),
+
     -- status values: queued, processing, completed, failed
-    CONSTRAINT chk_broadcast_status CHECK (status IN ('queued', 'processing', 'completed', 'failed'))
+    CONSTRAINT chk_broadcast_status CHECK (status IN ('queued', 'processing', 'completed', 'failed')),
+    -- FEAT-PROJELER / cxapi (migration 055): send_route value domain
+    CONSTRAINT chk_outbound_broadcasts_send_route CHECK (send_route IN ('mainapp_bridge', 'wapcrm_cxapi'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_outbound_broadcasts_tenant_created
@@ -88,10 +100,30 @@ CREATE TABLE IF NOT EXISTS outbound_messages (
     dynamic_fields          TEXT[],
     created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
+    -- FEAT-PROJELER / cxapi (migration 055): per-message immutable route + reserved
+    -- approved-template snapshot + structured provider result. send_route/message_kind
+    -- default to the bridge/plain-text path (NO-OP); template_*/provider_* reserved (PR-3/PR-4).
+    send_route              VARCHAR(20) NOT NULL DEFAULT 'mainapp_bridge',
+    message_kind            VARCHAR(20) NOT NULL DEFAULT 'plain_text',
+    instance_id             INTEGER,
+    template_ref            VARCHAR(128),
+    template_params         JSONB,
+    template_language       VARCHAR(8),
+    template_header_media   JSONB,
+    provider_status_code    VARCHAR(8),
+    provider_status         BOOLEAN,
+    provider_request_id     VARCHAR(128),
+    provider_error_message  TEXT,
+    last_attempt_at         TIMESTAMPTZ,
+    attempt_count           INTEGER NOT NULL DEFAULT 0,
+
     -- status values: queued, sending, sent, delivered, read, failed, blocked
     -- broadcast_id is NULL for trigger-based single messages
     -- FEAT-J2 (migration 025): +'blocked' for INMA 906/907 marketing opt-out rejection
-    CONSTRAINT chk_message_status CHECK (status IN ('queued', 'sending', 'sent', 'delivered', 'read', 'failed', 'blocked'))
+    CONSTRAINT chk_message_status CHECK (status IN ('queued', 'sending', 'sent', 'delivered', 'read', 'failed', 'blocked')),
+    -- FEAT-PROJELER / cxapi (migration 055): route/kind value domains
+    CONSTRAINT chk_outbound_messages_send_route CHECK (send_route IN ('mainapp_bridge', 'wapcrm_cxapi')),
+    CONSTRAINT chk_outbound_messages_message_kind CHECK (message_kind IN ('plain_text', 'wapcrm_template'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_outbound_messages_tenant_created

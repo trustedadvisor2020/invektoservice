@@ -39,6 +39,48 @@ public sealed class BulkSendPreviewRequest
     /// </summary>
     [JsonPropertyName("variable_columns")]
     public List<string>? VariableColumns { get; set; }
+
+    // ---------------------------------------------------------
+    // FEAT-PROJELER / cxapi (PR-1, migration 055) — reserved, NO-OP.
+    // Accepted on the wire so the cxapi send path (PR-3/PR-4) can populate
+    // them, but the bulk orchestrator IGNORES them in PR-1. Existing requests
+    // omit these (all nullable) and remain valid.
+    // ---------------------------------------------------------
+
+    /// <summary>WapCRM instance the send targets. Reserved (PR-3); unused in PR-1.</summary>
+    [JsonPropertyName("instance_id")]
+    public int? InstanceId { get; set; }
+
+    /// <summary>Send kind: <c>plain_text</c> | <c>wapcrm_template</c>. Reserved (PR-4); unused in PR-1.</summary>
+    [JsonPropertyName("template_kind")]
+    public string? TemplateKind { get; set; }
+
+    /// <summary>WhatsApp approved-template (HSM) id. Reserved (PR-4); unused in PR-1.</summary>
+    [JsonPropertyName("wa_template_id")]
+    public string? WaTemplateId { get; set; }
+
+    /// <summary>Approved-template language (ISO 639-1). Reserved (PR-4); unused in PR-1.</summary>
+    [JsonPropertyName("template_language")]
+    public string? TemplateLanguage { get; set; }
+
+    /// <summary>Maps approved-template params to list/CSV columns. Reserved (PR-4); unused in PR-1.</summary>
+    [JsonPropertyName("param_mapping")]
+    public List<TemplateParamMapping>? ParamMapping { get; set; }
+}
+
+/// <summary>
+/// FEAT-PROJELER / cxapi (PR-1): one approved-template parameter → source-column
+/// binding. Reserved wire shape; resolved per-recipient in PR-4. Unused in PR-1.
+/// </summary>
+public sealed class TemplateParamMapping
+{
+    /// <summary>Approved-template parameter key (e.g. positional "1" or a named slot).</summary>
+    [JsonPropertyName("param_key")]
+    public string ParamKey { get; set; } = "";
+
+    /// <summary>Source list/CSV column whose value fills <see cref="ParamKey"/>.</summary>
+    [JsonPropertyName("list_column")]
+    public string ListColumn { get; set; } = "";
 }
 
 /// <summary>

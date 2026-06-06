@@ -1636,6 +1636,13 @@ errors:
     description: Migration 049 §3 K012 V2 marker postcondition FAIL — kanban_cards body_markdown'da 'FEAT-INMA-PIPELINE-V2 C1' marker yok (K012 = Lead pipeline INMA-otorite 3-way sync karar kartı). Aynı INV-SEED-040 root cause + tanı + fix-forward.
     user_message: Kanban K012 kartı V2 context'e güncellenememiş — manuel düzeltme gerekli.
 
+  # FEAT-PROJELER / cxapi PR-1 (migration 055 — 2026-06-06). Schema groundwork postcondition verifier.
+  # Konvansiyon: INV-SEED-{migration_no} (migration 054 → INV-SEED-054 ile aynı). INV-SEED-046..054
+  # slotları migration 046-054'e ait (bu dosyada henüz kayıtlı değil — registration drift, bu PR kapsamı dışı).
+  - code: INV-SEED-055
+    description: Migration 055 postcondition FAIL — outbound_messages (+13) / outbound_broadcasts (+6) cxapi groundwork kolonlarından biri eksik. Root cause: ADD COLUMN IF NOT EXISTS kısmen uygulandı veya migration yarıda kesildi. Tanı: information_schema.columns ile eksik kolonu bul (RAISE EXCEPTION mesajı hangi tablo/kaç kolon bulunduğunu söyler). Fix-forward: migration 055'i yeniden çalıştır (idempotent). NOT: ext_id composite unique PR-3'e, bulk_send_jobs cxapi kolonları PR-4'e ertelendi — bu verifier index DEĞİL yalnız outbound_messages+outbound_broadcasts kolon sayısını kontrol eder.
+    user_message: (deploy-only) Migration 055 şema doğrulaması başarısız — DBA migration'ı yeniden çalıştırsın.
+
   # FEAT-PILOT-KANBAN runtime (KanbanEndpoints + Repository — 2026-04-28)
   - code: INV-KB-001
     description: KanbanStatusExtensions.ToDbValue called with a value outside the declared enum range. Defensive guard — should be unreachable through normal API paths because PATCH endpoint TryParse rejects unknown strings with INV-KB-003. Indicates an internal serialization or refactor bug.

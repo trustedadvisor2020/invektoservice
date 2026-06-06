@@ -24,6 +24,33 @@ public sealed class BroadcastSendRequest
     /// </summary>
     [JsonPropertyName("lang")]
     public string? Lang { get; set; }
+
+    // ---------------------------------------------------------
+    // FEAT-PROJELER / cxapi (PR-1, migration 055) — reserved, NO-OP.
+    // Accepted on the wire for the upcoming cxapi route (PR-3/PR-4); the
+    // broadcast orchestrator IGNORES them in PR-1. All nullable, so existing
+    // /broadcast/send requests stay valid.
+    // ---------------------------------------------------------
+
+    /// <summary>WapCRM instance the broadcast targets. Reserved (PR-3); unused in PR-1.</summary>
+    [JsonPropertyName("instance_id")]
+    public int? InstanceId { get; set; }
+
+    /// <summary>Send kind: <c>plain_text</c> | <c>wapcrm_template</c>. Reserved (PR-4); unused in PR-1.</summary>
+    [JsonPropertyName("template_kind")]
+    public string? TemplateKind { get; set; }
+
+    /// <summary>WhatsApp approved-template (HSM) id. Reserved (PR-4); unused in PR-1.</summary>
+    [JsonPropertyName("wa_template_id")]
+    public string? WaTemplateId { get; set; }
+
+    /// <summary>Approved-template language (ISO 639-1). Reserved (PR-4); unused in PR-1.</summary>
+    [JsonPropertyName("template_language")]
+    public string? TemplateLanguage { get; set; }
+
+    /// <summary>Maps approved-template params to recipient variables. Reserved (PR-4); unused in PR-1.</summary>
+    [JsonPropertyName("param_mapping")]
+    public List<TemplateParamMapping>? ParamMapping { get; set; }
 }
 
 public sealed class BroadcastRecipient

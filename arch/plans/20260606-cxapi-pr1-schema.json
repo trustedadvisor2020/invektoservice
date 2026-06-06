@@ -1,0 +1,172 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": "PKT-1",
+  "spec_ref": null,
+  "slug": "20260606-cxapi-pr1-schema",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-06T18:45:00Z",
+  "updated_at": "2026-06-06T21:34:00Z",
+  "plan": {
+    "summary": "PR-1 of the cxapi send-engine split (Codex critique 2026-06-06): additive, NO-OP schema + model groundwork. Adds nullable columns to outbound_messages / bulk_send_jobs / broadcast for the upcoming cxapi route (send_route, message_kind, instance_id, template_*, provider_* fields) and tightens ext_id uniqueness to (tenant_id, ext_id). Repository reads/writes the new columns with safe defaults; runtime behavior is UNCHANGED. No client, no routing, no sender change — those land in PR-2/3/4.",
+    "q_intent": "Bulk WhatsApp gonderimini cxapi /chatoperation'a tasiyacagiz. Codex kritigi sonrasi 4 alt-PR'a bolundu; PR-1 = sema + no-op model temeli (nullable kolonlar, davranis degismez).",
+    "interview_notes": "Codex critique P0/P1 maddeleri roadmap'e islendi (tracking/feat-projeler-cxapi-roadmap.md). PR-1 SADECE additive schema: nullable kolonlar + ext_id unique (tenant_id,ext_id). Davranis no-op — mevcut bridge yolu aynen calisir. Yeni kolonlar PR-3/PR-4'te doldurulup kullanilacak. State machine yeni statusleri (leased/posting/submitted/provider_failed/ambiguous) PR-3'te eklenir; PR-1'de status semantigi degismez. Reserved nullable: template_header_media, template_language (acilir, implement edilmez)."
+  },
+  "spec_acceptance_criteria": [],
+  "spec_architectural_decisions": [
+    {
+      "decision": "Tum yeni kolonlar NULLABLE/DEFAULT'lu; PR-1 davranis degistirmez (no-op groundwork).",
+      "reason": "Codex onerisi: nullable kolonlar paketi bolunebilir kilar; schema'yi davranistan ayirmak prod risk'i dusurur.",
+      "codex_note": "EXPECTED: yeni kolonlar yaziliyor ama OKUNUP KULLANILMIYOR — PR-3/4'te aktiflesir, dead-field degil."
+    },
+    {
+      "decision": "ext_id composite UNIQUE (tenant_id, external_message_id) PR-1'DEN CIKARILDI -> PR-3'e ertelendi (Codex review CQ9/Q2 + Q karari 2026-06-06).",
+      "reason": "Tenant-scoped uniqueness'i, delivery-status lookup (FindMessageByExternalIdAsync) hala tenant-blind iken eklemek cross-tenant ambiguity'yi resmilestirir (yarim izolasyon). Roadmap G12 zaten 'onay olmadan delivery-status migration yapilmaz' diyor. Unique index + tenant-scoped lookup PR-3'te G12 onayindan sonra ATOMIK gider.",
+      "codex_note": "PR-1 ext_id index'ine DOKUNMAZ: mevcut idx_outbound_messages_external_id ve lookup yolu aynen kalir (saf no-op)."
+    },
+    {
+      "decision": "send_route + message_kind kolonlari eklenir ama PR-1'de hep default ('mainapp_bridge'/'plain_text') yazilir.",
+      "reason": "Codex: broadcast_id!=null discriminator kirilgan; immutable route kolonu dogru. PR-1 default yazar, PR-3 routing'i bu kolona baglar.",
+      "codex_note": "EXPECTED: PR-1'de routing hala eski mantikta (kolon sadece kaydediliyor)."
+    }
+  ],
+  "gr_list": [],
+  "plan_detail": {
+    "migration": "arch/db/migrations/055-cxapi-send-schema.sql — IF NOT EXISTS guards, idempotent, snake_case, tenant_id scoped, INV-SEED-055 fail-loud verifier (column counts 13/5/6). (A) outbound_messages ADD COLUMN: send_route VARCHAR(20) DEFAULT 'mainapp_bridge', message_kind VARCHAR(20) DEFAULT 'plain_text', instance_id INT NULL, template_ref VARCHAR(128) NULL, template_params JSONB NULL, template_language VARCHAR(8) NULL, template_header_media JSONB NULL, provider_status_code VARCHAR(8) NULL, provider_status BOOLEAN NULL, provider_request_id VARCHAR(128) NULL, provider_error_message TEXT NULL, last_attempt_at TIMESTAMPTZ NULL, attempt_count INT NOT NULL DEFAULT 0 + 2 CHECK (send_route/message_kind domains). (B) bulk_send_jobs: ERTELENDI -> PR-4 (Codex CQ11 + Q karari 2026-06-06): bulk_send_jobs'in canonical arch/db/*.sql'i yok (migration-only tablo); cxapi kolonlari yazicisi + canonical sync ile birlikte PR-4'te (approved-template) eklenir. (C) outbound_broadcasts ADD COLUMN: send_route VARCHAR(20) DEFAULT 'mainapp_bridge' + instance_id/template_kind/wa_template_id/param_mapping/template_language + send_route CHECK. (D) ext_id unique: ERTELENDI -> PR-3 (CQ9/Q2 + G12). PR-1 yalniz outbound_messages (A) + outbound_broadcasts (C); ikisi de canonical arch/db/outbound.sql'de senkron (CQ11). Verifier 13 message + 6 broadcast kolonu dogrular.",
+    "dtos": "BulkSendDtos.cs (BulkSendPreviewRequest) + BroadcastDtos.cs (BroadcastSendRequest) += optional instance_id, template_kind, wa_template_id, param_mapping (List<{param_key,list_column}>). PR-1'de KABUL EDILIR ama orchestrator KULLANMAZ (no-op). Mevcut template_id (INSE int) korunur.",
+    "repo": "OutboundRepository.cs: QueuedMessage class'ina yeni alanlar (SendRoute, MessageKind, InstanceId, TemplateRef, TemplateParams, ProviderStatusCode, ...); INSERT yollari send_route/message_kind/attempt_count icin DB DEFAULT'a guvenir (no-op); DequeueMessagesAsync projection'a 13 kolonu ekler (okunur ama MessageSenderService kullanmaz). outbound_messages kolonlari arch/db/outbound.sql canonical'da senkron (C# referansi var). BulkSendRepository.cs PR-1'DEN CIKARILDI (iter-2): bulk_send_jobs cxapi kolonlari salt reserved schema (migration only, canonical .sql yok); C# yazimi PR-4'e ertelendi -> CQ11 DB-code sync ihlali onlendi.",
+    "out_of_scope_pr1": "WapCrmSendClient (PR-2), routing/sender dali + state machine yeni statusler + DMP hard-fail + RateLimiter instance key + metrics (PR-3), approved-template param resolve + validasyon (PR-4), ErrorCodes cxapi kodlari (PR-3)."
+  },
+  "allowed_files": [
+    "arch/db/migrations/055-cxapi-send-schema.sql",
+    "arch/db/outbound.sql",
+    "arch/errors.md",
+    "src/Invekto.Shared/DTOs/Outbound/BulkSendDtos.cs",
+    "src/Invekto.Shared/DTOs/Outbound/BroadcastDtos.cs",
+    "src/Invekto.Outbound/Data/OutboundRepository.cs"
+  ],
+  "allowed_files_note": "iter-1: arch/db/outbound.sql Codex CQ11 (DB-code source-of-truth sync) geregi eklendi. iter-2: arch/errors.md Codex CQ12 geregi eklendi (INV-SEED-055 verifier kodu kaydi). BulkSendRepository.cs iter-2'de plandan CIKARILDI -> reverted: bulk_send_jobs cxapi kolonlari PR-1'de salt reserved schema (migration), C# yazimi PR-4'e ertelendi (CQ11: canonical bulk_send_jobs .sql olmadigindan C# referansi DB-code sync ihlali yaratiyordu).",
+  "files_changed": [
+    "arch/db/migrations/055-cxapi-send-schema.sql",
+    "arch/db/outbound.sql",
+    "arch/errors.md",
+    "src/Invekto.Shared/DTOs/Outbound/BulkSendDtos.cs",
+    "src/Invekto.Shared/DTOs/Outbound/BroadcastDtos.cs",
+    "src/Invekto.Outbound/Data/OutboundRepository.cs"
+  ],
+  "git_diff": {
+    "patch_truncated": false,
+    "sha256": "924c82367041d47d711fefca1bc5cdec28e1b0a198db032270fd1fc1bd0680c0",
+    "full_path": "arch/plans/diffs/20260606-cxapi-pr1-schema.diff",
+    "stats": { "insertions": 0, "deletions": 0, "files_count": 6 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-06-06T20:39:00Z",
+    "duration_ms": null,
+    "output_tail": "Build succeeded. 0 Error(s)",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Outbound"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Migration 055 tamamen additive mi — mevcut outbound_messages/bulk_send_jobs/broadcast insert/select yollari yeni kolonlar olmadan da calismaya devam ediyor mu (NOT NULL only with DEFAULT, geri kalan nullable)? Mevcut bridge gonderim yolu davranissal olarak DEGISMIYOR mu?",
+      "category": "Data"
+    },
+    {
+      "id": "Q2",
+      "question": "ext_id uniqueness PR-1'den CIKARILDI (PR-3'e ertelendi). PR-1 outbound_messages ext_id index'ine veya FindMessageByExternalIdAsync lookup'ina HIC dokunmuyor mu (mevcut delivery-status yolu tamamen degismeden kaliyor mu)?",
+      "category": "Data"
+    },
+    {
+      "id": "Q3",
+      "question": "Yeni kolonlar (send_route, message_kind, template_*, provider_*) PR-1'de YAZILIYOR ama hicbir runtime karar bunlara bagli degil mi (gercekten no-op)? MessageSenderService routing'i hala broadcast_id/bridge mantiginda mi?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q4",
+      "question": "Shared DTO yeni opsiyonel alanlari tum tuketici servisleri (Backend proxy dahil) bozmadan derleniyor mu? PR-1'in DOKUNDUGU tum tablolar (outbound_messages + outbound_broadcasts) arch/db/outbound.sql canonical'da C# ile senkron mu? bulk_send_jobs PR-4'e ertelendi (PR-1 dokunmuyor). INV-SEED-055 errors.md'de kayitli mi?",
+      "category": "Data"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "MessageSenderService routing/gonderim mantigi (PR-3) — PR-1'de dokunma",
+      "WapCrmSendClient olusturma (PR-2)",
+      "BroadcastOrchestrator/BulkSendOrchestrator davranisi (param resolve PR-4, DMP hard-fail PR-3)",
+      "ErrorCodes (cxapi kodlari PR-3)",
+      "Mevcut bridge yolu / MainAppCallbackClient",
+      "Secret/api_key'i repo'ya yazmak"
+    ],
+    "non_goals": [
+      "Herhangi bir gonderim davranisi degisikligi (PR-1 no-op)",
+      "cxapi'ye gercek istek (PR-2/PR-3)",
+      "approved-template parametre cozumu (PR-4)",
+      "Projects tablosu/UI (PKT-2)"
+    ],
+    "intentional_exclusions": [
+      "Yeni status degerleri (leased/posting/submitted/provider_failed/ambiguous) — PR-3'te status semantigi ile birlikte",
+      "template_header_media + template_language kolonlari acilir ama PR-1'de doldurulmaz (reserved)",
+      "param_mapping DTO'da kabul edilir ama PR-1'de islenmez",
+      "ext_id composite UNIQUE (tenant_id, external_message_id) — PR-3'e ertelendi (CQ9/Q2 + G12); tenant-scoped lookup ile atomik gider",
+      "bulk_send_jobs cxapi kolonlari (instance_id/template_kind/wa_template_id/param_mapping/template_language) — PR-4'e ertelendi (CQ11 + Q karari): canonical .sql'i olmayan migration-only tablo; yazicisi + canonical sync ile birlikte PR-4'te"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "Migration: transaction icinde, IF NOT EXISTS guards ile idempotent (kismi uygulama riski yok)",
+      "Repository: mevcut try-catch/Npgsql hata yollari korunur, yeni kolonlar exception yuzeyini genisletmez"
+    ],
+    "user_facing_errors": [
+      "PR-1'de yeni user-facing hata yok (no-op groundwork)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Risk dusuk: PR-1 additive/no-op. Tek dikkat noktasi ext_id constraint degisimi — yanlis yapilirsa insert'ler patlar (sessiz degil, gurultulu fail). Idempotent guard + dev'de mevcut veri taramasi ile yonetilir; constraint mevcut delivery-status lookup'ini bozmamali (Q2 dogrular)."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Bugun bir mesajin hangi yoldan (kopru mu cxapi mi) gittigi ve provider'in gercek cevabi DB'de izlenemiyor.",
+      "suggestion": "send_route + provider_status_code/request_id kolonlari ile her mesajin rota + provider sonucu kalici kayit altina alinir.",
+      "aha_moment": "Operator/destek ileride bir mesaja bakinca tam olarak hangi yoldan gittigini ve WapCRM'in ne dondugunu gorur."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "ext_id global unique varsayimi cok-tenantli ortamda yanlis tenant'in mesajini guncelleme riski tasiyor.",
+      "suggestion": "ext_id'yi (tenant_id, ext_id) composite unique yapmak.",
+      "aha_moment": "Delivery-status webhook'u asla yanlis tenant'in mesajini guncellemez — izolasyon garanti."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Buyuk gonderim motorunu tek hamlede degistirmek riskli ve review'da bogulur.",
+      "suggestion": "Schema'yi davranistan ayirip nullable kolonlarla zemin atmak; sonraki PR'lar kucuk kalir.",
+      "aha_moment": "PR-1 prod'a sifir davranis riskiyle gider, motor degisimi guvenle parcalanir."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Approved-template gonderiminde hangi sablon/dil/parametrelerin kullanildigini sonradan bilmek zor.",
+      "suggestion": "wa_template_id/template_language/param_mapping/template_params kolonlarini simdiden modele koymak.",
+      "aha_moment": "Bir kampanya sonrasi 'hangi sablonla, hangi dilde, hangi parametrelerle gitti' sorusu kayittan net cevaplanir."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Idempotency/retry icin gereken durum bilgisi (deneme sayisi, son deneme) bugun yok.",
+      "suggestion": "attempt_count + last_attempt_at kolonlarini eklemek.",
+      "aha_moment": "PR-3 state machine'i bu alanlarla mukerrer gonderimi onler — zemin simdiden hazir."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "iteration": 3,
+    "escalation_required": false,
+    "escalation_note": "iter-3 esiginde Q'ya 2 kez danisildi (ext_id deferral + bulk_send_jobs deferral). Her iterasyon GERCEK sorun cozdu ve yakinsadi (CQ pass sayisi artti: iter0 2 blocking -> iter1 2 -> iter2 1 -> iter3 0 hedef). Escalation degil, kontrollu fix dongusu.",
+    "iteration_history": [
+      { "iteration": 0, "verdict": "FAIL", "blocking": ["CQ9/Q2: ext_id tenant-scoped unique + tenant-blind lookup = cross-tenant ambiguity", "CQ11: arch/db/outbound.sql source-of-truth not synced"], "resolution": "Q karari: ext_id unique PR-3'e ertelendi (D cikarildi); outbound.sql canonical senkronlandi" },
+      { "iteration": 1, "verdict": "FAIL", "blocking": ["CQ11/Q4: bulk_send_jobs C# referansi var ama canonical .sql yok", "CQ12: INV-SEED-055 (Codex errors.md gormeden non-compliant sandi)"], "resolution": "BulkSendRepository revert (bulk_send_jobs C# yazimi PR-4'e); INV-SEED-055 errors.md'ye kaydedildi (INV-SEED migration-verifier namespace, 23 migration precedent + 054 birebir). CQ12 false-positive ama registration drift'i kapatildi." },
+      { "iteration": 2, "verdict": "FAIL", "blocking": ["CQ11/Q4: bulk_send_jobs migration-only kolonlari C# referansi olmasa bile canonical sync istiyor"], "resolution": "Q karari: bulk_send_jobs cxapi kolonlari (B) PR-1'den tamamen cikarildi -> PR-4'e ertelendi (yazicisi + canonical sync ile birlikte). PR-1 yalniz outbound_messages + outbound_broadcasts (ikisi de outbound.sql canonical'da senkron)." }
+    ]
+  }
+}

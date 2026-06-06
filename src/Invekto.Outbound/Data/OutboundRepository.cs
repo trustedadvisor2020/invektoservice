@@ -329,6 +329,10 @@ public class OutboundRepository
         string recipientPhone, string messageText,
         string? lang = null, CancellationToken ct = default, string[]? dynamicFields = null)
     {
+        // PR-1 (migration 055) NO-OP: send_route/message_kind/attempt_count are
+        // intentionally OMITTED here so they take their DB column DEFAULTs
+        // ('mainapp_bridge' / 'plain_text' / 0); the cxapi template/provider
+        // columns stay NULL. The bridge send path is unchanged.
         const string sql = @"
             INSERT INTO outbound_messages
                 (tenant_id, broadcast_id, template_id, recipient_phone, message_text, status, lang, dynamic_fields)
@@ -366,6 +370,13 @@ public class OutboundRepository
     public virtual async Task<List<QueuedMessage>> DequeueMessagesAsync(
         int batchSize, CancellationToken ct = default)
     {
+        // FEAT-PROJELER / cxapi (PR-1, migration 055): the projection now also reads
+        // the new route/template/provider columns into QueuedMessage. This is READ
+        // wiring ONLY — MessageSenderService keeps routing on the existing
+        // broadcast_id/bridge logic and does NOT consume these fields in PR-1. PR-3
+        // switches routing onto send_route/message_kind; the columns are surfaced now
+        // so that change stays a one-file edit (and to prove the schema is live, not
+        // a dead field). All new columns carry safe defaults / NULL today.
         const string sql = @"
             UPDATE outbound_messages
             SET status = 'sending'
@@ -377,7 +388,11 @@ public class OutboundRepository
                 FOR UPDATE SKIP LOCKED
             )
             RETURNING id, tenant_id, broadcast_id, template_id,
-                      recipient_phone, message_text, dynamic_fields";
+                      recipient_phone, message_text, dynamic_fields,
+                      send_route, message_kind, instance_id, template_ref,
+                      template_params, template_language, template_header_media,
+                      provider_status_code, provider_status, provider_request_id,
+                      provider_error_message, last_attempt_at, attempt_count";
 
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = new NpgsqlCommand(sql, conn);
@@ -395,7 +410,21 @@ public class OutboundRepository
                 TemplateId = reader.IsDBNull(3) ? null : reader.GetInt32(3),
                 RecipientPhone = reader.GetString(4),
                 MessageText = reader.GetString(5),
-                DynamicFields = reader.IsDBNull(6) ? null : (string[])reader.GetValue(6)
+                DynamicFields = reader.IsDBNull(6) ? null : (string[])reader.GetValue(6),
+                // PR-1 reserved columns (read-only groundwork; not consumed yet)
+                SendRoute = reader.GetString(7),
+                MessageKind = reader.GetString(8),
+                InstanceId = reader.IsDBNull(9) ? null : reader.GetInt32(9),
+                TemplateRef = reader.IsDBNull(10) ? null : reader.GetString(10),
+                TemplateParams = reader.IsDBNull(11) ? null : reader.GetString(11),
+                TemplateLanguage = reader.IsDBNull(12) ? null : reader.GetString(12),
+                TemplateHeaderMedia = reader.IsDBNull(13) ? null : reader.GetString(13),
+                ProviderStatusCode = reader.IsDBNull(14) ? null : reader.GetString(14),
+                ProviderStatus = reader.IsDBNull(15) ? null : reader.GetBoolean(15),
+                ProviderRequestId = reader.IsDBNull(16) ? null : reader.GetString(16),
+                ProviderErrorMessage = reader.IsDBNull(17) ? null : reader.GetString(17),
+                LastAttemptAt = reader.IsDBNull(18) ? null : reader.GetDateTime(18),
+                AttemptCount = reader.GetInt32(19)
             });
         }
         return messages;
@@ -601,6 +630,8 @@ public class OutboundRepository
         cmd.Parameters.AddWithValue("tmpl", templateId);
         cmd.Parameters.AddWithValue("lang", (object?)lang ?? DBNull.Value);
 
+        // PR-1 (migration 055) NO-OP: new cxapi columns omitted → DB DEFAULTs
+        // ('mainapp_bridge' / 'plain_text' / 0) + NULL. Bridge path unchanged.
         cmd.CommandText = $@"
             INSERT INTO outbound_messages
                 (tenant_id, broadcast_id, template_id, recipient_phone, message_text, status, lang, dynamic_fields)
@@ -1425,4 +1456,50 @@ public sealed class QueuedMessage
 
     /// <summary>FEAT-DMP: INMA placeholder keys (e.g. ["name","cf1"]). Null = INSE legacy path.</summary>
     public string[]? DynamicFields { get; set; }
+
+    // ---------------------------------------------------------
+    // FEAT-PROJELER / cxapi (PR-1, migration 055) — reserved, read-only.
+    // Surfaced from the dequeue projection so PR-3 can route on them; NOT
+    // consumed by MessageSenderService in PR-1. Defaults mirror the DB column
+    // defaults ('mainapp_bridge' / 'plain_text' / 0); the rest are NULL today.
+    // ---------------------------------------------------------
+
+    /// <summary>Immutable send route: <c>mainapp_bridge</c> | <c>wapcrm_cxapi</c>. PR-1: always the bridge.</summary>
+    public string SendRoute { get; set; } = "mainapp_bridge";
+
+    /// <summary>Send kind: <c>plain_text</c> | <c>wapcrm_template</c>. PR-1: always plain_text.</summary>
+    public string MessageKind { get; set; } = "plain_text";
+
+    /// <summary>Target WapCRM instance (PR-3). NULL in PR-1.</summary>
+    public int? InstanceId { get; set; }
+
+    /// <summary>Approved-template reference / HSM id (PR-4). NULL in PR-1.</summary>
+    public string? TemplateRef { get; set; }
+
+    /// <summary>Resolved approved-template params (raw JSONB text, PR-4). NULL in PR-1.</summary>
+    public string? TemplateParams { get; set; }
+
+    /// <summary>Approved-template language (PR-4). NULL in PR-1.</summary>
+    public string? TemplateLanguage { get; set; }
+
+    /// <summary>Approved-template header media (raw JSONB text, PR-4). NULL in PR-1.</summary>
+    public string? TemplateHeaderMedia { get; set; }
+
+    /// <summary>Provider (WapCRM) status code, e.g. 906/907/909 (PR-3). NULL in PR-1.</summary>
+    public string? ProviderStatusCode { get; set; }
+
+    /// <summary>Provider success flag from the cxapi envelope (PR-3). NULL in PR-1.</summary>
+    public bool? ProviderStatus { get; set; }
+
+    /// <summary>Provider requestID for ext_id correlation (PR-3). NULL in PR-1.</summary>
+    public string? ProviderRequestId { get; set; }
+
+    /// <summary>Provider error message (PR-3). NULL in PR-1.</summary>
+    public string? ProviderErrorMessage { get; set; }
+
+    /// <summary>Last send attempt timestamp (PR-3 state machine). NULL in PR-1.</summary>
+    public DateTime? LastAttemptAt { get; set; }
+
+    /// <summary>Send attempt counter (PR-3 idempotency). 0 in PR-1.</summary>
+    public int AttemptCount { get; set; }
 }
