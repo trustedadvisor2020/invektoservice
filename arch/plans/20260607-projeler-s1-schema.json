@@ -1,0 +1,134 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": "PKT-14",
+  "spec_ref": null,
+  "slug": "20260607-projeler-s1-schema",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-07T17:14:48Z",
+  "updated_at": "2026-06-07T17:20:37Z",
+  "plan": {
+    "summary": "FEAT-PROJELER slice S1: migration 057 adds the inert, schema-only 'Projeler' parent layer (projects table + project_targets junction + nullable bulk_send_jobs.project_id FK) above the unchanged bulk send engine, plus the canonical outbound.sql mirror. No runtime behaviour change.",
+    "q_intent": "Q chose PKT-2/PKT-14 (Projeler) as the next package, sliced into 4 (S1 schema, S2 CRUD, S3 cxapi template-list, S4 UI), with the 'full parent model' for the projects table and a fresh PKT number. S1 = the migration 057 schema slice.",
+    "interview_notes": "Decisions (AskUserQuestion 2026-06-07): (1) 4-slice split, plan S1 first; (2) full parent model mirroring TONIVA mode4 ivr_campaigns structure minus telephony — status state machine, instance_id, template config, denormalized counters, archived soft-delete, project_targets junction (1 project -> N data_lists), bulk_send_jobs.project_id FK; Run = bulk_send_job (per roadmap, bulk engine unchanged); (3) fresh packet id PKT-14 (existing PKT-2 = unrelated DONE 'Saglik Core'); add a distinct FEAT-PROJELER README row at wrap. S1 stays inert and independent of the P0-3 cxapi live-enablement gate, exactly like migrations 055/056.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "Migration 057-projeler-schema.sql creates a tenant-scoped 'projects' table (full parent model: lifecycle status, project-level cxapi config, denormalized roll-up counters, archived soft-delete) with composite UNIQUE(tenant_id,id), the normalized active-name partial-unique index, GRANT ALL to invekto, and an INV-SEED-057 fail-loud verifier.", "verified": true, "verification_note": "Implemented in 057-projeler-schema.sql; verifier asserts table, composite unique, status CHECK, name index." },
+      { "id": "AC2", "criterion": "A 'project_targets' junction (1 project -> N data_lists) and a nullable bulk_send_jobs.project_id composite FK are added so existing/project-less runs stay valid; cross-tenant child rows are structurally impossible (composite FKs to projects(tenant_id,id) and data_lists(tenant_id,id)).", "verified": true, "verification_note": "project_targets composite FKs + bulk_send_jobs.project_id nullable composite FK (MATCH SIMPLE) implemented; verifier asserts both." },
+      { "id": "AC3", "criterion": "The migration is additive, idempotent (IF NOT EXISTS + named DROP/ADD), and INERT (no .cs touched, no shipped code reads the new columns; independent of the P0-3 live-enablement gate), with the canonical arch/db/outbound.sql mirrored in the same change (CQ11).", "verified": true, "verification_note": "Both files updated; outbound.sql mirrors projects/project_targets + bulk_send_jobs.project_id column+FK; zero .cs changes -> build N/A." }
+    ]
+  },
+  "spec_architectural_decisions": [
+    {
+      "decision": "projects ships the 'full parent model' (lifecycle status, instance_id, template_kind/wa_template_id/template_language/param_mapping, run/sent/delivered/read/failed/ambiguous counters) even though shipped code reads none of them yet.",
+      "reason": "Q chose the full model in interview; the column set is the inert parent schema that S2 CRUD + S4 UI populate. Reserving the inert columns now avoids a churn of follow-up ALTERs and mirrors the PR-1 (migration 055) 'reserved nullable columns, open now / implement later' precedent.",
+      "codex_note": "EXPECTED inert/reserved columns — NOT dead schema. This is a deliberate schema-only slice (S1 of 4). No runtime reader is expected to exist yet; CRUD lands in S2, cxapi config use in PR-4. Do not flag as YAGNI/unused."
+    },
+    {
+      "decision": "bulk_send_jobs.project_id is a NULLABLE composite FK (tenant_id, project_id) -> projects(tenant_id, id) with ON DELETE RESTRICT.",
+      "reason": "Nullable + MATCH SIMPLE keeps every existing/project-less run valid (FK unchecked while project_id is NULL). Composite FK guarantees cross-tenant integrity. RESTRICT (not SET NULL/CASCADE) protects run history: projects are soft-deleted via archived_at, never hard-deleted once they have runs (TONIVA PiaBella incident: FK-cascade hard delete orphaned downstream billable records).",
+      "codex_note": "EXPECTED RESTRICT, not SET NULL/CASCADE. SET NULL is impossible on this composite FK anyway (tenant_id is NOT NULL). The soft-delete-as-archive policy makes hard delete a refused edge case. Not a bug."
+    },
+    {
+      "decision": "projects carries BOTH a status value 'archived' AND an archived_at timestamp.",
+      "reason": "archived_at is the soft-delete marker that drives the name-reuse partial-unique index (WHERE archived_at IS NULL) and records WHEN archived for reconciliation — directly mirroring the sibling data_lists.deleted_at convention. status='archived' is the lifecycle terminal value the two co-set. Same timestamp-predicate + lifecycle split data_lists already uses.",
+      "codex_note": "EXPECTED archived_at + status='archived' coexistence — consistent with data_lists (deleted_at + status). archived_at is the index predicate + audit timestamp, status is the lifecycle enum. Not redundant duplication."
+    },
+    {
+      "decision": "Canonical outbound.sql places the FEAT-PROJELER block AFTER data_lists and adds bulk_send_jobs.project_id as an inline column but its FK via a later ALTER.",
+      "reason": "Fresh top-to-bottom apply must resolve composite FKs: projects/project_targets reference data_lists(tenant_id,id) (defined earlier) and projects(tenant_id,id); bulk_send_jobs (defined earlier) gets its project_id FK via ALTER once projects exists. Matches the migration's apply order.",
+      "codex_note": "EXPECTED ordering: the inline column + deferred ALTER FK is intentional to keep a fresh canonical apply valid. Mirrors migration 057 exactly. Not an inconsistency between migration and canonical."
+    }
+  ],
+  "allowed_files": [
+    "arch/db/migrations/057-projeler-schema.sql",
+    "arch/db/outbound.sql"
+  ],
+  "files_changed": [
+    { "path": "arch/db/migrations/057-projeler-schema.sql", "change": "NEW migration 057: projects table (full parent model) + project_targets junction + bulk_send_jobs.project_id nullable composite FK + indexes + GRANTs + INV-SEED-057 fail-loud verifier. Additive, idempotent, inert.", "is_new": true, "deleted": false },
+    { "path": "arch/db/outbound.sql", "change": "Canonical mirror (CQ11): add bulk_send_jobs.project_id column inline; add FEAT-PROJELER section (projects + project_targets + bulk_send_jobs.project_id FK + indexes + GRANTs) after the data_lists block.", "is_new": false, "deleted": false }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "c2bb8caf2a572f314155aa6ec08f74c779a6b08247577eae0f5f07c59438f311",
+    "full_path": "arch/plans/diffs/20260607-projeler-s1-schema.diff",
+    "stats": { "insertions": 355, "deletions": 0, "files_count": 2 }
+  },
+  "build": {
+    "status": "N/A",
+    "command": null,
+    "timestamp": null,
+    "duration_ms": null,
+    "output_tail": null,
+    "error_summary": null,
+    "services": []
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "Do existing bulk_send_jobs rows and current project-less inserts remain valid after the nullable composite FK (tenant_id, project_id) -> projects is added, given tenant_id is NOT NULL and project_id is newly NULL?", "category": "Data", "codex_answer": null, "codex_result": null },
+    { "id": "Q2", "question": "Is cross-tenant contamination structurally impossible for project_targets and bulk_send_jobs.project_id — i.e. can a child row ever reference a project or data_list belonging to a different tenant?", "category": "Data", "codex_answer": null, "codex_result": null },
+    { "id": "Q3", "question": "Is migration 057 fully idempotent and safe to re-run, and does a fresh top-to-bottom apply of both the migration and the canonical outbound.sql resolve every composite FK in dependency order (data_lists, projects, project_targets, bulk_send_jobs ALTER)?", "category": "Lifecycle", "codex_answer": null, "codex_result": null },
+    { "id": "Q4", "question": "Is the change genuinely inert/no-op at runtime (no .cs touched, no shipped reader of the new columns) and independent of the P0-3 cxapi live-enablement gate, so it can merge without any tenant being allowlisted?", "category": "Process/Policy", "codex_answer": null, "codex_result": null }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/** (no .cs/.ts changes in S1 — schema only; CRUD is S2)",
+      "Any CxapiSend feature-flag / AllowedTenantIds config (P0-3 gate must not be touched)",
+      "bulk_send_jobs cxapi send columns (instance/template/param) — those are PR-4, not S1",
+      "outbound_messages / outbound_broadcasts (untouched; runs/sends are downstream slices)"
+    ],
+    "non_goals": [
+      "projects CRUD endpoints, repository, service, DTOs (S2)",
+      "cxapi template-list endpoint + WapCrmTemplateClient (S3)",
+      "Projeler React page + creation wizard (S4)",
+      "Populating/recomputing the denormalized counters (wired when runs attach in S2+)",
+      "Allowlisting any tenant for live cxapi sends"
+    ],
+    "intentional_exclusions": [
+      "INV-OB-066+ projects error codes — reserved for S2 (no runtime errors emitted in a schema-only slice; errors.md untouched)",
+      "No data backfill — all existing bulk_send_jobs rows keep project_id = NULL by design",
+      "No FK on projects.created_by (no local users table; tenant user ids live in INMA)",
+      "No daily auto-schedule columns (TONIVA scheduler is an optional later phase, out of v1 scope)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Pure DDL slice. The INV-SEED-057 DO $verify$ block RAISES EXCEPTION (fail-loud) if any object is missing post-apply, so a partial/failed migration cannot pass silently. No application code path, no try/catch, no user-facing surface in S1."
+  },
+  "aha_moments": [
+    { "category": "UX", "user_pain": "Operators re-build the same audience+template blast from scratch every campaign, with no way to group related sends.", "suggestion": "The projects parent lets a tenant define a reusable 'Proje' (instance + template + target lists) once and spawn many runs under it.", "aha_moment": "When the operator opens Projeler in S4 and sees their past runs grouped under one named project instead of a flat list of one-off blasts." },
+    { "category": "RELIABILITY", "user_pain": "A cross-tenant data leak in a multi-tenant blast tool is catastrophic and irreversible (wrong customers messaged).", "suggestion": "Composite (tenant_id, *_id) FKs to projects(tenant_id,id) and data_lists(tenant_id,id) make a cross-tenant child row impossible even with an app bug.", "aha_moment": "When a future app-layer bug tries to attach another tenant's list to a project and Postgres refuses the row outright — the leak never happens." },
+    { "category": "SUPPORT", "user_pain": "Deleting a finished campaign destroys the delivery history support/finance need for reconciliation (the TONIVA PiaBella incident).", "suggestion": "Soft-delete-as-archive (archived_at) + ON DELETE RESTRICT on runs means a project with history can be archived but never hard-deleted, preserving counters and run rows.", "aha_moment": "When support pulls an archived project months later and every run + counter is still intact for a billing dispute." },
+    { "category": "SPEED", "user_pain": "Listing a tenant's active projects shouldn't scan archived clutter or slow down as history grows.", "suggestion": "Partial indexes (uq_projects_tenant_name_active, idx_projects_tenant_created) scoped to WHERE archived_at IS NULL keep the active-project list fast and the name reusable after archive.", "aha_moment": "When the Projeler list loads instantly for a tenant with thousands of archived projects." },
+    { "category": "RELIABILITY", "user_pain": "A half-applied schema migration on production silently leaves the feature half-built and fails mysteriously later.", "suggestion": "The INV-SEED-057 fail-loud verifier asserts every table/constraint/column/index exists and RAISES EXCEPTION otherwise, so a bad apply aborts loudly at deploy time.", "aha_moment": "When a deploy that didn't fully apply the migration stops immediately with a precise INV-SEED-057 message instead of surfacing as a runtime 500 days later." },
+    { "category": "SALES", "user_pain": "Prospects ask 'can I run repeatable WhatsApp campaigns to my saved lists, not just one-off blasts?' and today the answer is no.", "suggestion": "The projects layer is the schema foundation that turns Invekto's bulk engine into a repeatable, list-targeted 'Projeler' campaign product (TONIVA mode4 parity for WhatsApp).", "aha_moment": "When sales can demo a named project that re-targets a saved list with one click instead of re-uploading a CSV each time." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": null,
+    "received_at": "2026-06-07T17:20:37Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-06-07T17:20:37Z",
+    "raw_text": "Codex (mcp__codex-review__codex_review, model gpt-5.5-2026-04-23) iteration 0: OVERALL PASS. Code Quality Gate 12/12 PASS (CQ1-CQ12), CoVe 4/4 PASS (Q1-Q4), 0 blocking issues. 12482 tokens. Summary: schema-only FEAT-PROJELER S1 migration is additive, tenant-scoped, mirrored in canonical outbound.sql, no runtime behaviour change; nullable composite FK preserves existing project-less bulk_send_jobs while enforcing tenant-safe references when project_id is present. (Plan schema v5.1 stores CQ1-CQ8 below; CQ9-CQ12 all PASS per raw Codex output.)",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "Fail-loud verifier with specific RAISE EXCEPTION per expected artifact; no runtime/user-facing path." },
+      "CQ2": { "result": "PASS", "evidence": "No swallowed exceptions; verifier raises instead of silently continuing." },
+      "CQ3": { "result": "PASS", "evidence": "Only the new migration + canonical outbound.sql changed; matches schema-only scope. No .cs/API/UI/auth." },
+      "CQ4": { "result": "PASS", "evidence": "Migration<->canonical duplication is required project policy, not reusable-code duplication." },
+      "CQ5": { "result": "PASS", "evidence": "snake_case throughout; tenant_id scoping, composite tenant constraints, indexes, GRANT ALL canon." },
+      "CQ6": { "result": "PASS", "evidence": "No runtime loops/N+1; partial indexes support tenant/project lookup paths." },
+      "CQ7": { "result": "PASS", "evidence": "No new TODO/HACK/FIXME; deferred-scope notes are explicit roadmap comments." },
+      "CQ8": { "result": "PASS", "evidence": "project_id added nullable; MATCH SIMPLE leaves FK unchecked while NULL, so existing rows/inserts stay valid; no contract change." }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "Nullable project_id + MATCH SIMPLE => FK not enforced when NULL; existing/project-less bulk_send_jobs remain valid." },
+      "Q2": { "result": "PASS", "reasoning": "Composite FKs (tenant_id, *_id) -> projects(tenant_id,id) and data_lists(tenant_id,id) make cross-tenant child rows impossible at the DB level." },
+      "Q3": { "result": "PASS", "reasoning": "IF NOT EXISTS + DROP/ADD CONSTRAINT idempotency; canonical places projects/project_targets after data_lists and adds the bulk_send_jobs FK via ALTER so fresh apply resolves in dependency order." },
+      "Q4": { "result": "PASS", "reasoning": "Only the 2 SQL files change; cxapi columns marked inert until PR-4; no allowlisting/send-path touched; gate-independent." }
+    },
+    "blocking_issues": [],
+    "iteration": 0,
+    "escalation_required": false
+  }
+}

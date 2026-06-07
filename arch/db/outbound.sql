@@ -257,6 +257,10 @@ CREATE TABLE IF NOT EXISTS bulk_send_jobs (
     created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     confirmed_at            TIMESTAMPTZ,
     completed_at            TIMESTAMPTZ,
+    -- Parent Projeler project (migration 057, PKT-14). Nullable: project-less
+    -- runs stay valid. Composite FK added in the FEAT-PROJELER section below
+    -- (after projects is defined, so fresh top-to-bottom apply resolves).
+    project_id              BIGINT,
     CONSTRAINT chk_bulk_job_status CHECK (status IN (
         'preview_ready','confirming','sending','completed',
         'completed_with_errors','failed','cancelled')),
@@ -360,6 +364,102 @@ GRANT ALL ON data_lists TO invekto;
 GRANT ALL ON list_records TO invekto;
 GRANT ALL ON SEQUENCE data_lists_id_seq TO invekto;
 GRANT ALL ON SEQUENCE list_records_id_seq TO invekto;
+
+-- =============================================================
+-- FEAT-PROJELER (Migration 057, PKT-14 slice S1): Projeler management layer
+-- Parent layer above the bulk engine: projects (parent) -> project_targets
+-- (junction: 1 project -> N data_lists) -> Run = bulk_send_jobs (project_id FK).
+-- INERT/schema-only; CRUD -> S2, cxapi template-list -> S3, UI -> S4. Structure
+-- ref TONIVA mode4 ivr_campaigns (no telephony). See migration 057 for full doc.
+-- NOTE: defined AFTER bulk_send_jobs + data_lists so the composite FKs resolve
+-- on a fresh top-to-bottom apply; bulk_send_jobs.project_id FK is added via
+-- ALTER here (the column itself is declared inline above).
+-- =============================================================
+
+CREATE TABLE IF NOT EXISTS projects (
+    id                      BIGSERIAL PRIMARY KEY,
+    tenant_id               INTEGER NOT NULL REFERENCES tenant_registry(tenant_id),
+    name                    VARCHAR(255) NOT NULL,
+    description             TEXT,
+    -- lifecycle: draft -> running -> paused -> completed | cancelled;
+    -- archived = soft-delete-as-archive (preserved for reconciliation, name freed)
+    status                  VARCHAR(16) NOT NULL DEFAULT 'draft',
+    -- cxapi send config at project level (inherited by runs); INERT until PR-4
+    instance_id             INTEGER,
+    template_kind           VARCHAR(16),       -- 'plain_text' | 'wapcrm_template'
+    wa_template_id          VARCHAR(128),
+    template_language       VARCHAR(8),
+    param_mapping           JSONB,
+    -- denormalized per-project roll-up counters (recomputed after each run); INERT 0
+    run_count               INTEGER NOT NULL DEFAULT 0,
+    total_targets           INTEGER NOT NULL DEFAULT 0,
+    sent_count              INTEGER NOT NULL DEFAULT 0,
+    delivered_count         INTEGER NOT NULL DEFAULT 0,
+    read_count              INTEGER NOT NULL DEFAULT 0,
+    failed_count            INTEGER NOT NULL DEFAULT 0,
+    ambiguous_count         INTEGER NOT NULL DEFAULT 0,
+    created_by              INTEGER,           -- tenant user id (no local users table -> no FK)
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    started_at              TIMESTAMPTZ,
+    completed_at            TIMESTAMPTZ,
+    archived_at             TIMESTAMPTZ,
+    CONSTRAINT chk_project_status CHECK (status IN (
+        'draft','running','paused','completed','cancelled','archived')),
+    CONSTRAINT chk_project_template_kind CHECK (
+        template_kind IS NULL OR template_kind IN ('plain_text','wapcrm_template')),
+    CONSTRAINT chk_project_counters_nonneg CHECK (
+        run_count >= 0 AND total_targets >= 0 AND sent_count >= 0
+        AND delivered_count >= 0 AND read_count >= 0 AND failed_count >= 0
+        AND ambiguous_count >= 0),
+    CONSTRAINT uq_projects_tenant_id UNIQUE (tenant_id, id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_projects_tenant_name_active
+    ON projects (tenant_id, lower(btrim(name)))
+    WHERE archived_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_projects_tenant_created
+    ON projects (tenant_id, created_at DESC)
+    WHERE archived_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS project_targets (
+    id                      BIGSERIAL PRIMARY KEY,
+    tenant_id               INTEGER NOT NULL,
+    project_id              BIGINT NOT NULL,
+    data_list_id            BIGINT NOT NULL,
+    sort_order              INTEGER NOT NULL DEFAULT 0,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_project_targets_project
+        FOREIGN KEY (tenant_id, project_id)
+        REFERENCES projects (tenant_id, id) ON DELETE CASCADE,
+    CONSTRAINT fk_project_targets_data_list
+        FOREIGN KEY (tenant_id, data_list_id)
+        REFERENCES data_lists (tenant_id, id) ON DELETE CASCADE,
+    CONSTRAINT uq_project_target_project_list UNIQUE (project_id, data_list_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_project_targets_project
+    ON project_targets (project_id);
+CREATE INDEX IF NOT EXISTS idx_project_targets_data_list
+    ON project_targets (tenant_id, data_list_id);
+
+-- Link existing bulk_send_jobs (the "Run") to its parent project. Nullable
+-- (project-less runs valid); ON DELETE RESTRICT protects run history (archive
+-- a project, never hard-delete it once it has runs).
+ALTER TABLE bulk_send_jobs DROP CONSTRAINT IF EXISTS fk_bulk_send_jobs_project;
+ALTER TABLE bulk_send_jobs ADD CONSTRAINT fk_bulk_send_jobs_project
+    FOREIGN KEY (tenant_id, project_id)
+    REFERENCES projects (tenant_id, id) ON DELETE RESTRICT;
+
+CREATE INDEX IF NOT EXISTS idx_bulk_send_jobs_project
+    ON bulk_send_jobs (tenant_id, project_id)
+    WHERE project_id IS NOT NULL;
+
+GRANT ALL ON projects TO invekto;
+GRANT ALL ON project_targets TO invekto;
+GRANT ALL ON SEQUENCE projects_id_seq TO invekto;
+GRANT ALL ON SEQUENCE project_targets_id_seq TO invekto;
 
 -- =============================================================
 -- FEAT-OBI Phase 1A Plan B (Migration 053): Export Manager (audit layer)
