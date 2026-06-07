@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Headers;
 using System.Security.Claims;
@@ -5,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Npgsql;
+using Invekto.Shared.Contracts.Inma;
 using Invekto.Shared.Middleware;
 using Hangfire;
 using Invekto.Backend.Data;
@@ -166,6 +168,27 @@ builder.Services.AddHttpClient<OutboundClient>(client =>
     client.BaseAddress = new Uri(outboundUrl);
     client.Timeout = TimeSpan.FromMilliseconds(outboundTimeoutMs);
 });
+
+// FEAT-PROJELER PKT-14 S3: cxapi WhatsApp approved-template list client (READ-ONLY).
+// Per-request X-CIB-SecretKey (never DefaultRequestHeaders); FIXED cxapi base URL from
+// WapCrmTemplateOptions (never the tenant ApiUrl — SSRF mitigation); AllowAutoRedirect=false
+// because cxapi 301/302 = rate-limit; per-attempt timeout enforced inside the client
+// (HttpClient timeout Infinite). Mirrors the Outbound WapCrmSendClient registration.
+var wapCrmTemplateOptions = new WapCrmTemplateOptions();
+builder.Configuration.GetSection(WapCrmTemplateOptions.SectionName).Bind(wapCrmTemplateOptions);
+builder.Services.AddSingleton(wapCrmTemplateOptions);
+builder.Services.AddHttpClient<WapCrmTemplateClient>()
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        AllowAutoRedirect = false,
+        UseCookies = false
+    })
+    .ConfigureHttpClient((sp, client) =>
+    {
+        var opts = sp.GetRequiredService<WapCrmTemplateOptions>();
+        client.BaseAddress = new Uri(opts.BaseUrl.TrimEnd('/') + "/");
+        client.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
+    });
 
 // Configure Knowledge HTTP client (30s timeout for PDF uploads)
 builder.Services.AddHttpClient<KnowledgeClient>(client =>
@@ -2954,6 +2977,106 @@ app.MapPost("/api/v1/settings/instances/refresh", async (HttpContext ctx, JsonLi
         jsonLog.StepWarn($"WapCRM instance refresh failed: {ex.Message}", requestId);
         return Results.Json(new { error = ErrorCodes.BackendInstanceFetchFailed, message = $"WapCRM baglanti hatasi: {ex.Message}" }, statusCode: 502);
     }
+});
+
+// GET /api/v1/settings/wa-templates — list this tenant's WhatsApp approved (HSM) templates from cxapi (READ-ONLY).
+// FEAT-PROJELER PKT-14 S3. Sibling of /api/v1/settings/instances: ExtractTenantFromBearer ->
+// GetWapCrmSettingsAsync -> resolve+own instanceId -> WapCrmTemplateClient (per-request secret) -> cxapi POST /api/templates.
+// Powers the S4 Projeler wizard template picker. NO send path; outside the P0-3 live-enablement gate.
+// Services are resolved via RequestServices (sibling-endpoint style) — sidesteps the .NET 8 RDF body-inference crash.
+app.MapGet("/api/v1/settings/wa-templates", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
+{
+    var (tenant, extractFailure) = await ExtractTenantFromBearer(ctx);
+    if (extractFailure != null) return extractFailure;
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"), statusCode: 401);
+
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N")[..8];
+    ctx.Response.Headers.CacheControl = "no-store"; // template names/content are tenant-sensitive
+
+    var tenantRepo = ctx.RequestServices.GetService<TenantRegistryRepository>();
+    var instanceRepo = ctx.RequestServices.GetService<InstanceRepository>();
+    var templateClient = ctx.RequestServices.GetService<WapCrmTemplateClient>();
+    if (tenantRepo == null || instanceRepo == null || templateClient == null)
+        return Results.Json(new { error = ErrorCodes.BackendInstanceFetchFailed, message = "PostgreSQL not configured" }, statusCode: 503);
+
+    // Optional ?instanceId= (positive int). A present-but-non-positive/non-numeric value -> 400.
+    int? requestedInstanceId = null;
+    if (ctx.Request.Query.TryGetValue("instanceId", out var rawInstanceId) && !string.IsNullOrWhiteSpace(rawInstanceId))
+    {
+        if (!int.TryParse(rawInstanceId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) || parsed <= 0)
+            return Results.Json(new { error = ErrorCodes.GeneralValidation, message = "instanceId pozitif bir tam sayı olmalı." }, statusCode: 400);
+        requestedInstanceId = parsed;
+    }
+
+    var wapcrm = await tenantRepo.GetWapCrmSettingsAsync(tenant.TenantId);
+    if (wapcrm == null || string.IsNullOrWhiteSpace(wapcrm.SecretKey))
+        return Results.Json(new { error = ErrorCodes.WapCrmTemplatesNotConfigured, message = "WapCRM API anahtarı yapılandırılmamış. Ayarlar > Entegrasyon bölümünden bağlantınızı tamamlayın." }, statusCode: 422);
+
+    // Resolve the effective instanceId: query value, else the tenant-default (must be > 0). Neither -> 422.
+    int? defaultInstanceId = wapcrm.InstanceId is > 0 ? wapcrm.InstanceId : null;
+    int effective = requestedInstanceId ?? defaultInstanceId ?? 0;
+    if (effective <= 0)
+        return Results.Json(new { error = ErrorCodes.WapCrmTemplatesInstanceUnresolved, message = "Geçerli bir WhatsApp instance seçilmedi. Bir instance seçip tekrar deneyin." }, statusCode: 422);
+
+    // Ownership (Codex P0): the effective instance must belong to this tenant.
+    var hasInstances = await instanceRepo.HasInstanceRecordsAsync(tenant.TenantId);
+    if (hasInstances)
+    {
+        var status = await instanceRepo.GetInstanceStatusAsync(tenant.TenantId, effective.ToString(CultureInfo.InvariantCulture));
+        if (status == null)
+            return Results.Json(new { error = ErrorCodes.WapCrmTemplatesInstanceUnresolved, message = "Seçilen WhatsApp instance bu hesaba ait değil. Bir instance seçip tekrar deneyin." }, statusCode: 404);
+    }
+    else if (requestedInstanceId.HasValue && requestedInstanceId.Value != (defaultInstanceId ?? 0))
+    {
+        // Empty cache: trust cxapi secret-scoping ONLY for the tenant-default; refuse arbitrary instance probing.
+        return Results.Json(new { error = ErrorCodes.WapCrmTemplatesInstanceUnresolved, message = "WhatsApp instance doğrulanamadı. Önce Ayarlar > Instance listesini yükleyip tekrar deneyin." }, statusCode: 404);
+    }
+
+    WapCrmTemplateListResult result;
+    try
+    {
+        result = await templateClient.ListTemplatesAsync(wapcrm.SecretKey, effective, tenant.TenantId, ctx.RequestAborted);
+    }
+    catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+    {
+        // Typed backstop (NOT a broad swallow — only contract-guard throws are caught here; a caller-cancel
+        // OperationCanceledException is NOT one of these and propagates). The endpoint already pre-validates a
+        // present secret + a positive instanceId, but the client also contract-guards a MALFORMED stored secret
+        // (control chars) / an unattachable X-CIB-SecretKey header. Map any such config-invalid throw to a coded
+        // 422 instead of letting it escape as an unhandled 500. The secret is never logged.
+        jsonLog.StepWarn($"wa-templates invalid WapCRM config: tenant={tenant.TenantId}, instance={effective}, error={ex.GetType().Name}", requestId);
+        return Results.Json(new { error = ErrorCodes.WapCrmTemplatesNotConfigured, message = "WapCRM API anahtarı geçersiz veya yapılandırılmamış. Ayarlar > Entegrasyon bölümünden bağlantınızı kontrol edin." }, statusCode: 422);
+    }
+
+    switch (result.Outcome)
+    {
+        case WapCrmTemplateListOutcome.Success:
+            return Results.Ok(new { instanceId = effective, templates = result.Templates });
+
+        case WapCrmTemplateListOutcome.RateLimited:
+            if (result.RetryAfter is { } ra)
+                ctx.Response.Headers.RetryAfter = ((int)Math.Ceiling(ra.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
+            jsonLog.StepWarn($"wa-templates rate-limited: tenant={tenant.TenantId}, instance={effective}, providerCode={result.ProviderStatusCode}", requestId);
+            return Results.Json(new { error = ErrorCodes.WapCrmTemplatesUpstreamFailed, message = "WhatsApp şablonları şu anda alınamıyor (hız sınırı); birkaç saniye sonra tekrar deneyin." }, statusCode: 429);
+
+        case WapCrmTemplateListOutcome.TimedOut:
+            jsonLog.StepWarn($"wa-templates timeout: tenant={tenant.TenantId}, instance={effective}", requestId);
+            return Results.Json(new { error = ErrorCodes.WapCrmTemplatesUpstreamFailed, message = "WhatsApp şablonları şu anda alınamıyor; birkaç saniye sonra tekrar deneyin." }, statusCode: 504);
+
+        case WapCrmTemplateListOutcome.ProviderRejected:
+            // Raw provider message is logged here (length-capped), NEVER returned to the SPA.
+            jsonLog.StepWarn($"wa-templates provider rejected: tenant={tenant.TenantId}, instance={effective}, providerCode={result.ProviderStatusCode}, reqId={result.ProviderRequestId}, msg={CapProviderMessage(result.ProviderMessage)}", requestId);
+            return Results.Json(new { error = ErrorCodes.WapCrmTemplatesProviderRejected, message = "WhatsApp şablonları alınamadı. Lütfen WapCRM bağlantınızı kontrol edin.", providerStatusCode = result.ProviderStatusCode, providerRequestId = result.ProviderRequestId }, statusCode: 502);
+
+        default: // TransportError
+            jsonLog.StepWarn($"wa-templates transport error: tenant={tenant.TenantId}, instance={effective}, http={result.HttpStatusCode}, msg={CapProviderMessage(result.ProviderMessage)}", requestId);
+            return Results.Json(new { error = ErrorCodes.WapCrmTemplatesUpstreamFailed, message = "WhatsApp şablonları şu anda alınamıyor; birkaç saniye sonra tekrar deneyin." }, statusCode: 502);
+    }
+
+    // Local: cap an internal-only provider message for logging (the secret is a header, so it can never appear here).
+    static string? CapProviderMessage(string? msg)
+        => string.IsNullOrEmpty(msg) ? msg : (msg.Length > 200 ? msg[..200] : msg);
 });
 
 // PUT /api/v1/settings/instances/{instanceId}/toggle — enable/disable instance

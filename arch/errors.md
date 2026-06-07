@@ -601,6 +601,22 @@ errors:
     description: voice_tenant_profile DB read transient failure (Npgsql exception during GET /api/ops/tenants/{id}/voice-profile). Distinct from INV-BE-001 + INV-BE-011 (tenant-list read) so dashboards isolate voice-profile storage outages. NOTE — a MISSING row is NOT this error: the endpoint synthesizes a 'generic' default (logs this code at WARN) so voice never breaks for a not-yet-provisioned tenant; only a real Npgsql failure returns 500. Also used as the 503 marker when the repository is not DI-registered (PostgreSQL not configured).
     user_message: Ses profili geçici olarak yüklenemiyor; birkaç saniye sonra tekrar deneyin.
 
+  # FEAT-PROJELER PKT-14 S3: cxapi WhatsApp approved-template list (INV-BE-127..130, 2026-06-07).
+  # Backend GET /api/v1/settings/wa-templates (READ-ONLY) -> WapCrmTemplateClient -> cxapi POST /api/templates.
+  # Sibling of GET /api/v1/settings/instances; powers the Projeler (PKT-14 S4) wizard template picker. Outside the P0-3 send gate.
+  - code: INV-BE-127
+    description: cxapi POST /api/templates upstream failure on the read-only template list — transport/connection error, unparseable body, or an unexpected non-2xx (502); a per-attempt linked-CTS TIMEOUT surfaces as 504; a provider-documented rate-limit (HTTP 301/302, cxapi guide §6 'Rate') surfaces as 429 with a sanitized Retry-After. Distinct from INV-BE-001 (microservice) + INV-BE-030 (instance fetch) so dashboards isolate template-fetch outages. Read-only: no send side-effect, safe to retry. The X-CIB-SecretKey is never logged or echoed.
+    user_message: WhatsApp şablonları şu anda alınamıyor; birkaç saniye sonra tekrar deneyin.
+  - code: INV-BE-128
+    description: The tenant has no WapCRM settings (tenant_registry.settings_json->'wapcrm'), an empty secret_key, OR a malformed secret (the WapCrmTemplateClient contract-guard rejects control chars / an unattachable X-CIB-SecretKey header — caught by the endpoint as a typed backstop, never an unhandled 500), so the approved-template list cannot be fetched (422). The tenant must complete/repair the WapCRM connection in Settings before the Projeler template picker works.
+    user_message: WapCRM API anahtarı geçersiz veya yapılandırılmamış. Ayarlar > Entegrasyon bölümünden bağlantınızı kontrol edin.
+  - code: INV-BE-129
+    description: cxapi returned its envelope with status=false for POST /api/templates (502) — e.g. 509 IP-whitelist, 621 template/instance missing, 400 apikey. Surfaced as an integration/provider failure (deliberately NOT a tenant 422); the response carries the provider statusCode + requestID for support, while the raw provider message is logged internally (length-capped; the secret is a header so it can never appear in the message) and is NEVER returned to the SPA.
+    user_message: WhatsApp şablonları alınamadı. Lütfen WapCRM bağlantınızı kontrol edin.
+  - code: INV-BE-130
+    description: The WhatsApp instance for the template list could not be resolved or verified — no ?instanceId= query AND no positive tenant-default WapCrmSettings.InstanceId (422); OR an explicit instanceId the tenant does not own when the instance cache is populated (404, InstanceRepository.GetInstanceStatusAsync); OR an explicit instanceId that differs from the tenant-default while the instance cache is empty (404, arbitrary-instance probing guard — empty cache trusts cxapi secret-scoping only for the configured default). The operator should pick a known instance (Settings > Instances) and retry.
+    user_message: Geçerli bir WhatsApp instance seçilmedi veya bu hesaba ait değil. Bir instance seçip tekrar deneyin.
+
   # ── AA — AgentAI ──
   - code: INV-AA-001
     description: Invalid request payload

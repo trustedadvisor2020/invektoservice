@@ -1,0 +1,170 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": "PKT-14",
+  "spec_ref": null,
+  "slug": "20260607-projeler-s3-templates",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-07T18:55:00Z",
+  "updated_at": "2026-06-07T19:20:00Z",
+  "plan": {
+    "summary": "FEAT-PROJELER slice S3: a read-only Backend endpoint GET /api/v1/settings/wa-templates that lists a tenant's WhatsApp approved (HSM) templates from cxapi POST /api/templates. Adds a new pooled, per-request-secret WapCrmTemplateClient + template DTOs in Invekto.Shared/Contracts/Inma (mirroring PR-2's WapCrmSendClient, NOT the inline FetchWapCrmInstances pattern), a WapCrmTemplateOptions config, the INV-BE-127..130 error block, and the Backend endpoint + DI. Read-only, idempotent, NO send path — fully outside the P0-3 live-enablement gate. Powers the S4 Projeler wizard's template picker.",
+    "q_intent": "Continue PKT-14 Projeler after S2 (CRUD). Proceed with S3 — cxapi template-list: Backend GET .../templates -> ExtractTenantFromBearer -> GetWapCrmSettingsAsync -> cxapi POST /api/templates; new WapCrmTemplateClient in Shared/Contracts/Inma (per-request X-CIB-SecretKey, never DefaultRequestHeaders). Read-only -> outside the P0-3 gate.",
+    "interview_notes": "Decisions (AskUserQuestion 2026-06-07): (1) Route = /api/v1/settings/wa-templates — sibling of /api/v1/settings/instances (both Backend-direct cxapi reads; the instanceId comes from settings/instances). The 'wa-' prefix disambiguates from /api/v1/templates (INSE message-template CRUD) and its /api/v1/outbound/templates proxy. (2) instanceId = OPTIONAL ?instanceId= query param; if absent, fall back to the tenant-default WapCrmSettings.InstanceId; if neither resolves, 422 (INV-BE-130). (3) Ownership: when the requested/effective instanceId is set, validate it against the tenant's known instances via InstanceRepository.GetInstanceStatusAsync (Codex P0 #1); if the instance cache is EMPTY (no fetch-on-miss here), trust cxapi secret-scoping and skip the local guard (do not block). The existing inline FetchWapCrmInstances stays UNTOUCHED (out of scope).",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "A read-only endpoint GET /api/v1/settings/wa-templates is reachable only with a valid bearer (401 otherwise via ExtractTenantFromBearer), is tenant-scoped, loads the tenant's WapCRM settings via TenantRegistryRepository.GetWapCrmSettingsAsync, and returns its WhatsApp approved templates from cxapi POST /api/templates as { instanceId, templates[] } where each template carries templateId, preview, fixedNote and requiredInputs[] (kind/location/paramKey/mediaType/note).", "verified": true, "verification_note": "Codex (gpt-5.5) iter1 PASS — CQ9/CQ10 + CoVe Q2." },
+      { "id": "AC2", "criterion": "The effective instanceId is resolved as: positive ?instanceId= query param if present, else WapCrmSettings.InstanceId (tenant default); a non-positive query value is a 400 and any non-positive/absent resolution is 422 (INV-BE-130). When the tenant has cached instance records, the effective instanceId is validated as owned via InstanceRepository.GetInstanceStatusAsync (404 INV-BE-130 if not owned). When the instance cache is EMPTY, the call proceeds on cxapi secret-scoping ONLY for the tenant's configured default; an explicit ?instanceId= that differs from the default is rejected (404 INV-BE-130) — this closes the arbitrary-instance probing oracle without a side-effecting fetch-on-miss.", "verified": true, "verification_note": "Codex (gpt-5.5) iter1 PASS — CoVe Q2 (ownership + empty-cache probe guard)." },
+      { "id": "AC3", "criterion": "WapCrmTemplateClient attaches the per-tenant secret PER REQUEST via HttpRequestMessage.Headers.TryAddWithoutValidation(\"X-CIB-SecretKey\", ...) — NEVER on DefaultRequestHeaders — so one pooled HttpClient serves many tenants with no cross-tenant secret leak; the secret is never logged and never stored on the instance; the handler is registered AllowAutoRedirect=false + UseCookies=false (cxapi uses 301/302 as a rate-limit signal) and a per-attempt linked-CTS timeout is enforced (HttpClient.Timeout = Infinite).", "verified": true, "verification_note": "Codex (gpt-5.5) iter1 PASS — CoVe Q1 (per-request secret, no DefaultRequestHeaders, CRLF guard, secret never logged) + Q5 (SSRF)." },
+      { "id": "AC4", "criterion": "Every failure is mapped to a distinct, honest outcome with a Turkish actionable message and no silent failure: no WapCRM settings/secret -> 422 INV-BE-128; cxapi transport/unparseable/unexpected non-2xx -> 502 INV-BE-127; per-attempt cxapi TIMEOUT -> 504 INV-BE-127; rate-limit 301/302 -> 429 INV-BE-127 (Retry-After if present); cxapi envelope status=false -> 502 INV-BE-129 carrying a STABLE message + the provider statusCode/requestID (the raw provider message is NEVER returned to the SPA — it is logged internally, length-capped + secret-redacted). The secret is never echoed in any error body or log, the success and error responses carry Cache-Control: no-store, and the endpoint adds NO send path and touches NO CxapiSend/BulkSend flag or allowlist (P0-3 gate untouched). Full solution builds (Shared touched).", "verified": true, "verification_note": "Codex (gpt-5.5) iter1 PASS — CQ1/CQ2/CQ12 + CoVe Q3/Q4. iter0 FAIL (one root cause: client contract-guard throws could escape as 500) fixed via the typed filtered backstop -> 422 INV-BE-128." }
+    ]
+  },
+  "spec_architectural_decisions": [
+    {
+      "decision": "The new WapCrmTemplateClient lives in Invekto.Shared/Contracts/Inma and uses the PR-2 WapCrmSendClient pattern (pooled IHttpClientFactory typed client + per-request X-CIB-SecretKey via HttpRequestMessage.TryAddWithoutValidation + AllowAutoRedirect=false + UseCookies=false + linked-CTS per-attempt timeout) — it does NOT copy the existing inline FetchWapCrmInstances helper (new HttpClient + DefaultRequestHeaders.Add(secret), Backend Program.cs:3348).",
+      "reason": "FetchWapCrmInstances puts the secret on DefaultRequestHeaders, which is a cross-tenant leak risk on a pooled client and is exactly the anti-pattern Codex P0 #1 forbids. Q's S3 brief explicitly asked for the per-request-secret client. Reusing the sanctioned PR-2 pattern keeps one secret-handling story across all cxapi egress.",
+      "codex_note": "EXPECTED: per-request secret on HttpRequestMessage, never DefaultRequestHeaders. FetchWapCrmInstances is intentionally left UNTOUCHED (out of scope; refactoring it would be scope creep). This is NOT a duplicate-client smell — it is a read sibling of the send client with different request/response shapes."
+    },
+    {
+      "decision": "The client's base URL is a FIXED server-side config value (WapCrmTemplateOptions.BaseUrl, default https://cxapi.wapcrm.net/) and the request path is the hardcoded relative literal 'api/templates'. The tenant-controlled WapCrmSettings.ApiUrl is NEVER used as the request target.",
+      "reason": "WapCrmSettings.ApiUrl comes from tenant_registry.settings_json (tenant-controlled). Using it as the HTTP base would let a malicious/misconfigured tenant row point the request — and thus the X-CIB-SecretKey header — at an attacker host (SSRF / secret exfiltration). A fixed server base URL + hardcoded relative path + AllowAutoRedirect=false makes the egress target provably non-tenant-controlled, exactly as WapCrmSendClient does (codex_consult P0).",
+      "codex_note": "EXPECTED: tenant ApiUrl is deliberately ignored for the request target. The egress host is fixed server config, the path is a compile-time constant, redirects are disabled — no caller/tenant-controlled URL. This is the SSRF mitigation, not a missing-feature."
+    },
+    {
+      "decision": "The endpoint lives in the BACKEND service and calls cxapi DIRECTLY (not via an Outbound proxy).",
+      "reason": "It is the exact read-sibling of the existing Backend GET /api/v1/settings/instances, which already does ExtractTenantFromBearer -> GetWapCrmSettingsAsync -> direct cxapi GET /api/Instances. GetWapCrmSettingsAsync (TenantRegistryRepository), ExtractTenantFromBearer and InstanceRepository are all already in Backend. An Outbound round-trip would add a hop for a stateless read that needs no Outbound state.",
+      "codex_note": "EXPECTED: Backend-direct cxapi egress, mirroring the sibling settings/instances endpoint. Backend already makes this exact class of call. This does NOT violate microservice isolation: cxapi is an EXTERNAL third-party API (WapCRM), not another Invekto microservice; no Invekto service is referenced cross-process."
+    },
+    {
+      "decision": "instanceId is an OPTIONAL ?instanceId= query param with a fallback to the tenant-default WapCrmSettings.InstanceId; when set it is validated for ownership against InstanceRepository.GetInstanceStatusAsync, but only when the tenant has cached instance records (empty cache -> trust cxapi secret-scoping, no fetch-on-miss, no block).",
+      "reason": "Q interview decision, hardened per codex_consult. cxapi templates are per-instance (body instanceID). The tenant-default exists in settings, so optional+fallback degrades gracefully; ownership validation satisfies Codex P0 #1 ('tenant's instance_id authorization is verified') cheaply by reusing the instance cache. The empty-cache path was tightened: rather than accepting ANY explicit instanceId on an empty cache (a probing oracle that amplifies blast radius if a secret is ever miscopied between tenant rows), an empty cache permits ONLY the tenant's configured default instance; an explicit instanceId != default is rejected. The real S4 wizard loads /settings/instances first (which populates the cache), so the normal flow always validates against the cache; the empty-cache branch is an edge.",
+      "codex_note": "EXPECTED: ownership check is cache-conditional by design AND empty-cache permits only the configured default (explicit-different instanceId rejected). It is NOT a missing-validation hole: the cxapi secret is the authoritative scope (a tenant's secret only ever returns that account's data) and the empty-cache branch refuses arbitrary instance probing. Defence-in-depth layered on top of secret-scoping, not the sole guard. No side-effecting fetch-on-miss from a read endpoint (deliberate)."
+    },
+    {
+      "decision": "New error block INV-BE-127 (UpstreamFailed -> 502, or 429 on rate-limit), INV-BE-128 (NotConfigured -> 422), INV-BE-129 (ProviderRejected -> 502 with provider statusCode), INV-BE-130 (InstanceUnresolved -> 422, or 404 when an explicit instanceId is not owned). The DI-null defensive guard reuses the existing INV-BE-030 BackendInstanceFetchFailed ('PostgreSQL not configured', 503) exactly as the 3 sibling settings/instances endpoints do.",
+      "reason": "Distinct codes per failure class let dashboards isolate cxapi outages from config gaps from provider rejections (same rationale as the INV-BE-125/126 'distinct from INV-BE-001' precedent). The DI-null 503 is a defensive infra guard identical to the sibling endpoints, so reusing their existing marker avoids inventing a redundant code.",
+      "codex_note": "EXPECTED: a few codes mapping to two HTTP statuses by context (INV-BE-127 -> 502/429, INV-BE-130 -> 422/404) — this matches the in-repo precedent INV-BE-001 -> 502/504 in OutboundClient. Reusing INV-BE-030 for the DI-null 503 is intentional consistency with settings/instances, not a wrong-domain code."
+    },
+    {
+      "decision": "The Shared additions (WapCrmTemplateClient + WapCrmTemplate DTOs + WapCrmTemplateOptions + INV-BE-127..130 constants) are ADDITIVE and consumed ONLY by Backend; risk is MEDIUM, not HIGH.",
+      "reason": "No existing Shared contract is changed/removed/renamed — all are new types with a single (Backend) consumer, exactly like PR-2 which added WapCrmSendClient to Shared.Contracts.Inma and was rated MEDIUM. There is no cross-service contract break and no schema change.",
+      "codex_note": "EXPECTED MEDIUM. Additive Shared types with one consumer != a multi-service Shared.Contracts CHANGE (that is the HIGH trigger). Matches the PR-2 precedent (same folder, additive, MEDIUM)."
+    }
+  ],
+  "allowed_files": [
+    "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmTemplateDtos.cs",
+    "src/Invekto.Shared/Contracts/Inma/WapCrmTemplateClient.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Backend/Program.cs",
+    "arch/errors.md",
+    "arch/plans/20260607-projeler-s3-templates.json",
+    "arch/plans/diffs/20260607-projeler-s3-templates.diff"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmTemplateDtos.cs", "change": "NEW: WapCrmTemplateDto + WapCrmRequiredInputDto (cxapi camelCase JsonPropertyName, also the SPA contract) + WapCrmTemplateListOutcome enum + WapCrmTemplateListResult + WapCrmTemplateOptions (BaseUrl/TimeoutMs/MaxRateLimitRetries defaults). Additive Shared contract, no existing consumer.", "is_new": true, "deleted": false },
+    { "path": "src/Invekto.Shared/Contracts/Inma/WapCrmTemplateClient.cs", "change": "NEW: pooled typed client. ListTemplatesAsync(secretKey, instanceId, tenantId, ct) -> POST api/templates {instanceID}; per-request X-CIB-SecretKey; linked-CTS per-attempt timeout; parses WapCrmApiResponse<List<WapCrmTemplateDto>>; returns typed WapCrmTemplateListResult (Success/ProviderRejected/RateLimited/TransportError). Secret never logged.", "is_new": true, "deleted": false },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "change": "Add INV-BE-127..130 (WapCrmTemplatesUpstreamFailed/NotConfigured/ProviderRejected/InstanceUnresolved) — additive constants.", "is_new": false, "deleted": false },
+    { "path": "src/Invekto.Backend/Program.cs", "change": "Register AddHttpClient<WapCrmTemplateClient> (AllowAutoRedirect=false + UseCookies=false handler, cxapi base URL, Infinite timeout) + WapCrmTemplateOptions DI; add GET /api/v1/settings/wa-templates endpoint (ExtractTenantFromBearer -> GetWapCrmSettingsAsync -> instanceId resolve+ownership -> WapCrmTemplateClient -> outcome map). FetchWapCrmInstances untouched.", "is_new": false, "deleted": false },
+    { "path": "arch/errors.md", "change": "Document INV-BE-127..130 with Turkish actionable user_messages.", "is_new": false, "deleted": false }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "0e58e7eec0387e7d3e13d0c4268c5ec2ef825f5ad8b78ed86342f9f0f42e244b",
+    "full_path": "arch/plans/diffs/20260607-projeler-s3-templates.diff",
+    "stats": { "insertions": 488, "deletions": 0, "files_count": 5 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-06-07T19:03:00Z",
+    "duration_ms": 26550,
+    "output_tail": "42 Warning(s) / 0 Error(s) — all warnings pre-existing (test-project MSB3277 version conflicts + xUnit1013 LogReaderTests.Dispose); none from the new template files.",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Backend"]
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "Is the per-tenant cxapi secret attached ONLY per-request (HttpRequestMessage.TryAddWithoutValidation, never DefaultRequestHeaders) so a pooled HttpClient cannot leak one tenant's X-CIB-SecretKey to another, and is the secret never written to any log line or error body?", "category": "Auth", "codex_answer": null, "codex_result": null },
+    { "id": "Q2", "question": "Is the endpoint tenant-scoped end-to-end — ExtractTenantFromBearer gates access (401 without a valid bearer), WapCRM settings + the effective instanceId belong to THAT tenant, and an explicitly requested instanceId that the tenant does not own is rejected (404) when the instance cache is populated — so one tenant can never list another tenant's templates or probe another tenant's instance ids?", "category": "Auth", "codex_answer": null, "codex_result": null },
+    { "id": "Q3", "question": "Are all failure paths honest and non-silent — no WapCRM secret -> 422 INV-BE-128, cxapi transport/timeout/unparseable -> 502 INV-BE-127, rate-limit 301/302 -> 429 INV-BE-127, envelope status=false -> 502 INV-BE-129 with the provider statusCode/message — with the success body being the typed templates and never the raw secret, and no catch(Exception) swallow?", "category": "Data", "codex_answer": null, "codex_result": null },
+    { "id": "Q4", "question": "Is S3 genuinely read-only and send-path-independent — it only LISTS approved templates, writes nothing, adds no CxapiSend/BulkSend flag or allowlist entry, allowlists no tenant, and leaves the P0-3 live-enablement gate, the bulk engine, and the existing inline FetchWapCrmInstances helper untouched?", "category": "Process/Policy", "codex_answer": null, "codex_result": null },
+    { "id": "Q5", "question": "Does the client correctly treat an idempotent read: AllowAutoRedirect=false so cxapi 301/302 surface as a rate-limit (not a followed redirect), a per-attempt linked-CTS timeout (HttpClient.Timeout=Infinite) so a slow cxapi cannot hang the request thread, and a timeout classified as a plain transport failure (not the 'ambiguous, do-not-retry' send semantics, because a GET has no duplicate-side-effect risk)?", "category": "Lifecycle", "codex_answer": null, "codex_result": null }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "The existing inline FetchWapCrmInstances helper (Backend Program.cs:3348) — must NOT be refactored to the new client in S3",
+      "Any CxapiSend / BulkSend feature-flag / AllowedTenantIds config (P0-3 gate must not be touched)",
+      "The bulk send engine (BulkSend/Broadcast orchestrators, MessageSenderService), WapCrmSendClient, and outbound_messages/outbound_broadcasts",
+      "The /api/v1/projects CRUD (S2, Outbound) and any Backend proxy routes for it (S4)",
+      "arch/db/** (S3 is code-only; no schema change)"
+    ],
+    "non_goals": [
+      "Sending an approved template (PR-4 + gate lift)",
+      "Persisting/caching the fetched templates in Postgres (read-through only; UI fetches live)",
+      "Backend proxy routes for /api/v1/projects + the Projeler React page/wizard (S4)",
+      "param_mapping / required-input validation on send (PR-4)",
+      "Refactoring settings/instances or its FetchWapCrmInstances to share the new client"
+    ],
+    "intentional_exclusions": [
+      "No internal retry loop on rate-limit in S3: 301/302 (provider-documented rate-limit in the cxapi integration guide §6 'Rate') -> 429 surfaced to the interactive caller (which retries), keeping the client free of time-based seams; reads are idempotent so this is safe and conservative",
+      "No instance fetch-on-miss in the ownership guard: when the instance cache is empty the call proceeds on cxapi secret-scoping for the configured default only (Q decision, hardened) rather than triggering a side-effecting upsert from a read endpoint",
+      "instanceId stays a 32-bit int (reject <= 0), matching the sanctioned WapCrmSettings.InstanceId (int?) and WapCrmSendRequest.InstanceId (int) contracts + the cxapi guide example (instanceID: 15) — NOT widened to long/string in S3 (would diverge from the shipped send-engine contract); revisit only if INMA documents a >2^31 instanceID",
+      "HasInstanceRecordsAsync is a blunt cache switch: a stale cache could false-reject a brand-new instance (the operator refreshes via the existing /settings/instances/refresh) — building cache-freshness logic is out of scope for a read picker",
+      "No new config section required at deploy: WapCrmTemplateOptions has a safe default BaseUrl (https://cxapi.wapcrm.net/) so the endpoint works without prod config changes; the tenant WapCrmSettings.ApiUrl is deliberately NOT used as the egress target (SSRF mitigation)",
+      "No automated tests added (project convention: tests only when requested) — WapCrmSendClient already has 13 fake-handler tests for the shared send pattern this mirrors"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "WapCrmTemplateClient.ListTemplatesAsync — catch (OperationCanceledException) when caller ct cancelled -> rethrow (not classified/logged as a provider failure); catch (OperationCanceledException) from the per-attempt linked-CTS -> TimedOut outcome; catch (HttpRequestException) -> TransportError; JsonException on envelope parse -> TransportError (unparseable); the raw provider envelope.message is captured into the result but the endpoint logs it internally (length-capped) and returns only a stable message",
+      "Backend GET /api/v1/settings/wa-templates — the client returns a typed outcome and the endpoint maps each WapCrmTemplateListOutcome 1:1 to an HTTP status + INV-BE code (Success 200 / ProviderRejected 502 INV-BE-129 / RateLimited 429 INV-BE-127 / TimedOut 504 INV-BE-127 / TransportError 502 INV-BE-127); GetWapCrmSettingsAsync already swallows its own JsonException -> null (mapped to 422 INV-BE-128). Codex iter0 fix: a typed filtered backstop `catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)` around the client call maps the client's contract-guard throws (malformed/control-char secret, unattachable header) to 422 INV-BE-128 (config invalid) + WARN log — so no client guard escapes as an unhandled 500. A caller-cancel OperationCanceledException is NOT in the filter and propagates."
+    ],
+    "user_facing_errors": [
+      "INV-BE-127 WhatsApp şablonları şu anda alınamıyor; birkaç saniye sonra tekrar deneyin. (502 transport / 504 timeout / 429 rate-limit — stable text, no provider internals)",
+      "INV-BE-128 WapCRM API anahtarı yapılandırılmamış. Ayarlar > Entegrasyon bölümünden bağlantınızı tamamlayın.",
+      "INV-BE-129 WhatsApp şablonları alınamadı (sağlayıcı kodu: {providerStatusCode}). Lütfen WapCRM bağlantınızı kontrol edin. — STABLE message; the raw provider message is NOT echoed (logged internally, secret-redacted + length-capped); response also carries providerRequestId for support.",
+      "INV-BE-130 Geçerli bir WhatsApp instance seçilmedi veya bu hesaba ait değil. Bir instance seçip tekrar deneyin."
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "The client never throws on provider/transport failure — it returns a typed WapCrmTemplateListResult whose outcome the endpoint maps 1:1 to a distinct INV-BE code + HTTP status; the only rethrow is genuine caller cancellation (NOT logged as a provider failure). There is no catch(Exception) swallow. A cxapi status=false is surfaced (502 INV-BE-129 with the provider code), never treated as an empty success. A per-attempt timeout is a distinct TimedOut -> 504 (not buried in generic 502 metrics). The secret is never included in any returned message or log, and the raw provider message is logged internally (capped + redacted) rather than returned to the SPA."
+  },
+  "aha_moments": [
+    { "category": "UX", "user_pain": "When building a WhatsApp campaign the operator has to remember the exact approved-template id and its required fields by hand, then guess whether they typed it right.", "suggestion": "The S4 Projeler wizard calls GET /api/v1/settings/wa-templates and shows the real approved templates with their preview text and the exact requiredInputs the operator must fill.", "aha_moment": "When the operator opens the template picker and sees their own WhatsApp-approved templates with a live preview, instead of typing a templateId blind." },
+    { "category": "RELIABILITY", "user_pain": "A pooled HTTP client that pins one tenant's API secret on DefaultRequestHeaders can silently send tenant A's secret on tenant B's request.", "suggestion": "Attach X-CIB-SecretKey per request on the HttpRequestMessage so a single pooled client safely serves every tenant with zero cross-tenant secret bleed.", "aha_moment": "When a security review confirms the secret only ever rides the one request it belongs to — the same guarantee the send client already makes." },
+    { "category": "SUPPORT", "user_pain": "When cxapi rejects a template fetch the operator just sees 'something went wrong' and support has nothing to act on.", "suggestion": "Surface the cxapi envelope statusCode + message verbatim (e.g. 621 template missing, 509 IP whitelist) as INV-BE-129 with a Turkish actionable message.", "aha_moment": "When support reads 'WapCRM şablonları reddetti (kod: 509)' and immediately knows it's an IP-whitelist issue, not an Invekto bug." },
+    { "category": "SPEED", "user_pain": "A slow or hung cxapi call could freeze the Settings page request thread until the default timeout.", "suggestion": "Enforce a short per-attempt linked-CTS timeout (HttpClient.Timeout=Infinite) and surface a clean 502/429 fast, so the UI can retry without a long spinner.", "aha_moment": "When cxapi is degraded and the template picker fails fast with 'tekrar deneyin' instead of hanging the page." },
+    { "category": "SALES", "user_pain": "Prospects ask whether Invekto can drive their official WhatsApp approved templates (HSM), not just free-text — and a blank text box doesn't prove it.", "suggestion": "This endpoint reads the tenant's real approved templates straight from WapCRM, the foundation the Projeler send flow (PR-4) will dispatch.", "aha_moment": "When a demo shows the prospect's own approved templates appearing in Invekto — proof the official-template path is real before send is even enabled." },
+    { "category": "RELIABILITY", "user_pain": "Reusing the inline FetchWapCrmInstances pattern (DefaultRequestHeaders + a fresh HttpClient per call) would re-introduce socket-exhaustion and secret-pinning risks.", "suggestion": "Use the pooled IHttpClientFactory typed-client pattern with AllowAutoRedirect=false so cxapi 301/302 rate-limit signals are not silently followed.", "aha_moment": "When the template fetch reuses warm pooled sockets and correctly reads a 301 as 'slow down' instead of chasing a redirect into a wrong response." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-06-07T19:18:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-06-07T19:20:00Z",
+    "raw_text": "Codex (mcp__codex-review__codex_review, model gpt-5.5-2026-04-23) iteration 1: OVERALL PASS. Code Quality Gate 12/12 PASS (CQ1-CQ12), CoVe 5/5 PASS (Q1-Q5), 0 blocking. iter0 FAIL had ONE root cause (CQ1/CQ5/CQ12/Q3): the client's contract-guard throws (ArgumentException for empty/control-char secret, ArgumentOutOfRangeException for instanceId<=0, InvalidOperationException for unattachable header) could escape the endpoint as an unhandled 500 — the reachable gap being a malformed stored secret. Fix: a typed filtered backstop `catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)` around ListTemplatesAsync maps any such config-invalid throw to 422 INV-BE-128 + WARN log (caller-cancel OperationCanceledException stays propagating); INV-BE-128 doc/message broadened to not-configured-OR-invalid. iter1 PASS confirms every failure path now maps to a documented INV-BE coded response; read-only/tenant-scoped/SSRF-closed all verified.",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "Endpoint maps 401/400/422/404/429/504/502 to coded responses incl. the typed backstop -> INV-BE-128; INV-BE-127..130 documented in arch/errors.md." },
+      "CQ2": { "result": "PASS", "evidence": "JSON parse fail -> TransportError result (logged+returned); timeout/transport logged; caller-cancel rethrown; typed backstop logs + returns INV-BE-128. No swallow." },
+      "CQ3": { "result": "PASS", "evidence": "Diff scope = declared S3 files only; no send-path/bulk-engine/P0-3-gate/unrelated-service changes." },
+      "CQ4": { "result": "PASS", "evidence": "Focused read-only client mirroring the sanctioned PR-2 WapCrmSendClient pattern; FetchWapCrmInstances untouched (no copy-paste refactor)." },
+      "CQ5": { "result": "PASS", "evidence": "Follows the sibling settings/instances endpoint pattern (ExtractTenantFromBearer, RequestServices, coded JSON, JsonLinesLogger); INV-BE constants documented; using-scoped IDisposables." },
+      "CQ6": { "result": "PASS", "evidence": "Pooled typed HttpClient; one request per call; linked-CTS timeout; request/response/CTS disposed; no N+1/unbounded buffering." },
+      "CQ7": { "result": "PASS", "evidence": "No TODO/HACK/FIXME added." },
+      "CQ8": { "result": "PASS", "evidence": "Additive only: new DTOs/result/options/client + INV-BE constants; no existing contract removed/renamed." },
+      "CQ9": { "result": "PASS", "evidence": "Tenant extracted before any data access; tenant.TenantId in all reads; ownership/probe guard; cxapi = third-party egress (not a microservice DB)." },
+      "CQ10": { "result": "PASS", "evidence": "Sibling-style { error, message } domain errors + { instanceId, templates } success; specific actionable Turkish messages; no UI change." },
+      "CQ11": { "result": "PASS", "evidence": "No DB schema/SQL change; existing repos only (GetWapCrmSettingsAsync/HasInstanceRecordsAsync/GetInstanceStatusAsync, tenant-scoped)." },
+      "CQ12": { "result": "PASS", "evidence": "INV-BE-127..130 added + documented; HTTP statuses align (400/401/404/422/429/502/504); every failure path coded." }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "Per-request X-CIB-SecretKey via TryAddWithoutValidation (never DefaultRequestHeaders); control chars rejected before attach; secret never in any log/error body." },
+      "Q2": { "result": "PASS", "reasoning": "401 without bearer; tenant.TenantId in settings + instance checks; unowned instance -> 404 (cache populated); empty-cache permits only the configured default (arbitrary probe blocked)." },
+      "Q3": { "result": "PASS", "reasoning": "Client contract-guard throws caught by the typed filtered backstop -> 422 INV-BE-128; caller-cancel rethrown; timeout/rate-limit/provider/transport coded; raw provider message capped + never returned." },
+      "Q4": { "result": "PASS", "reasoning": "Only new route is the read-only GET; client posts only to api/templates {instanceID}; no send endpoint/flag/allowlist/P0-3/FetchWapCrmInstances change." },
+      "Q5": { "result": "PASS", "reasoning": "BaseAddress from WapCrmTemplateOptions.BaseUrl + compile-time relative path api/templates + AllowAutoRedirect=false; tenant WapCrmSettings.ApiUrl never used as the target." }
+    },
+    "blocking_issues": [],
+    "iteration": 1,
+    "escalation_required": false
+  }
+}

@@ -123,6 +123,13 @@ public static class ErrorCodes
     // FEAT-VFB F-VR-B: voice_tenant_profile (INV-BE-126). Backend GET /api/ops/tenants/{id}/voice-profile consumer.
     public const string VoiceTenantProfileQueryFailed  = "INV-BE-126"; // voice_tenant_profile DB read transient (Npgsql). Distinct from INV-BE-001/011 so dashboards isolate voice-profile storage outages from the tenant-list read.
 
+    // FEAT-PROJELER PKT-14 S3: cxapi WhatsApp approved-template list (INV-BE-127..130).
+    // Backend GET /api/v1/settings/wa-templates (READ-ONLY) -> WapCrmTemplateClient -> cxapi POST /api/templates.
+    public const string WapCrmTemplatesUpstreamFailed     = "INV-BE-127"; // cxapi /api/templates transport/unparseable/unexpected non-2xx (502), per-attempt timeout (504), or provider-documented rate-limit 301/302 (429 + Retry-After). Distinct from INV-BE-001 + INV-BE-030 so dashboards isolate template-fetch outages. Read-only -> retry-safe.
+    public const string WapCrmTemplatesNotConfigured      = "INV-BE-128"; // No tenant WapCRM settings / empty secret_key in tenant_registry.settings_json->'wapcrm', OR a MALFORMED secret (control chars / unattachable X-CIB-SecretKey header) caught from the client contract-guard (422). Tenant must finish/repair the WapCRM connection.
+    public const string WapCrmTemplatesProviderRejected   = "INV-BE-129"; // cxapi envelope status=false (502). Response carries the provider statusCode/requestID; the raw provider message is logged internally (length-capped) and NEVER returned to the SPA.
+    public const string WapCrmTemplatesInstanceUnresolved = "INV-BE-130"; // No instanceId resolvable (no ?instanceId= + no positive tenant-default) -> 422; OR an explicit instanceId not owned by the tenant (cache populated) / differing from the default while the instance cache is empty -> 404 (arbitrary-probe guard).
+
     // ChatAnalysis errors (INV-CA-xxx)
     public const string ChatAnalysisInvalidPayload = "INV-CA-001";
     public const string ChatAnalysisProcessingFailed = "INV-CA-002";
