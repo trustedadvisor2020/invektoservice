@@ -49,6 +49,10 @@ CREATE TABLE IF NOT EXISTS outbound_broadcasts (
     delivered               INTEGER NOT NULL DEFAULT 0,
     read                    INTEGER NOT NULL DEFAULT 0,
     failed                  INTEGER NOT NULL DEFAULT 0,
+    -- FEAT-PROJELER / cxapi (migration 056): cxapi sends can end 'ambiguous'
+    -- (timeout/transport/stranded); this counter keeps the broadcast totals reconciled
+    -- (sent + failed + ambiguous + delivered + read + queued = total_recipients).
+    ambiguous               INTEGER NOT NULL DEFAULT 0,
     status                  VARCHAR(20) NOT NULL DEFAULT 'queued',
     scheduled_at            TIMESTAMPTZ,
     started_at              TIMESTAMPTZ,
@@ -68,7 +72,9 @@ CREATE TABLE IF NOT EXISTS outbound_broadcasts (
     -- status values: queued, processing, completed, failed
     CONSTRAINT chk_broadcast_status CHECK (status IN ('queued', 'processing', 'completed', 'failed')),
     -- FEAT-PROJELER / cxapi (migration 055): send_route value domain
-    CONSTRAINT chk_outbound_broadcasts_send_route CHECK (send_route IN ('mainapp_bridge', 'wapcrm_cxapi'))
+    CONSTRAINT chk_outbound_broadcasts_send_route CHECK (send_route IN ('mainapp_bridge', 'wapcrm_cxapi')),
+    -- FEAT-PROJELER / cxapi (migration 056): ambiguous counter is non-negative
+    CONSTRAINT chk_outbound_broadcasts_ambiguous_nonneg CHECK (ambiguous >= 0)
 );
 
 CREATE INDEX IF NOT EXISTS idx_outbound_broadcasts_tenant_created
@@ -120,7 +126,9 @@ CREATE TABLE IF NOT EXISTS outbound_messages (
     -- status values: queued, sending, sent, delivered, read, failed, blocked
     -- broadcast_id is NULL for trigger-based single messages
     -- FEAT-J2 (migration 025): +'blocked' for INMA 906/907 marketing opt-out rejection
-    CONSTRAINT chk_message_status CHECK (status IN ('queued', 'sending', 'sent', 'delivered', 'read', 'failed', 'blocked')),
+    -- FEAT-PROJELER / cxapi (migration 056): +'posting' (in-flight cxapi POST; never auto-requeued)
+    --   +'ambiguous' (cxapi timeout/transport/stranded; unknown delivery, manual/ops, never auto-retried)
+    CONSTRAINT chk_message_status CHECK (status IN ('queued', 'sending', 'sent', 'delivered', 'read', 'failed', 'blocked', 'posting', 'ambiguous')),
     -- FEAT-PROJELER / cxapi (migration 055): route/kind value domains
     CONSTRAINT chk_outbound_messages_send_route CHECK (send_route IN ('mainapp_bridge', 'wapcrm_cxapi')),
     CONSTRAINT chk_outbound_messages_message_kind CHECK (message_kind IN ('plain_text', 'wapcrm_template'))

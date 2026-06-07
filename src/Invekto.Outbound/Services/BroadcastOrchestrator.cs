@@ -18,6 +18,7 @@ public sealed class BroadcastOrchestrator
     private readonly OptOutManager _optOutManager;
     private readonly ConsentManager _consentManager;
     private readonly DynamicMessageValidator _dynamicValidator;
+    private readonly CxapiSendOptions _cxapiOptions;
     private readonly JsonLinesLogger _logger;
 
     public BroadcastOrchestrator(
@@ -26,6 +27,7 @@ public sealed class BroadcastOrchestrator
         OptOutManager optOutManager,
         ConsentManager consentManager,
         DynamicMessageValidator dynamicValidator,
+        CxapiSendOptions cxapiOptions,
         JsonLinesLogger logger)
     {
         _repository = repository;
@@ -33,6 +35,7 @@ public sealed class BroadcastOrchestrator
         _optOutManager = optOutManager;
         _consentManager = consentManager;
         _dynamicValidator = dynamicValidator;
+        _cxapiOptions = cxapiOptions;
         _logger = logger;
     }
 
@@ -77,6 +80,31 @@ public sealed class BroadcastOrchestrator
             _logger.SystemWarn(
                 $"[{ErrorCodes.DynamicFieldValidationFailed}] Broadcast template has non-INMA placeholders: " +
                 $"tenant={tenantId}, template={request.TemplateId}, unknown=[{string.Join(",", validation.UnknownPlaceholders)}]");
+        }
+
+        // FEAT-PROJELER / cxapi (PR-3a): immutable route decision at create. A cxapi-allowlisted tenant
+        // routes this PLAIN-TEXT broadcast to WapCRM cxapi instead of the Main App bridge. The instance is
+        // the tenant default (settings_json->'wapcrm'.instance_id); secret/userId are loaded per-batch at
+        // send time (never persisted). Decided once per broadcast (homogeneous route, Codex P0 #5).
+        var cxapiRoute = _cxapiOptions.IsTenantAllowed(tenantId);
+        var sendRoute = "mainapp_bridge";
+        int? instanceId = null;
+        if (cxapiRoute)
+        {
+            // DMP HARD FAIL (Codex P0 #3): cxapi plain-text has no DynamicMessage mechanism — reject,
+            // never silently fall back to the bridge.
+            if (useDynamic)
+                return (null, ErrorCodes.CxapiDynamicNotSupported,
+                    "Dynamic (DMP) content is not supported on the WapCRM cxapi route; use a static template or disable dynamic message for this tenant");
+
+            var wap = await _repository.GetWapCrmSettingsAsync(tenantId, ct);
+            if (wap == null || string.IsNullOrWhiteSpace(wap.SecretKey) || wap.UserId <= 0
+                || !wap.InstanceId.HasValue || wap.InstanceId.Value <= 0)
+                return (null, ErrorCodes.CxapiRouteMisconfigured,
+                    "WapCRM cxapi is enabled for this tenant but instance_id/secret_key/user_id are not configured in tenant settings");
+
+            sendRoute = "wapcrm_cxapi";
+            instanceId = wap.InstanceId.Value;
         }
 
         // Collect valid phones for batch opt-out check
@@ -145,6 +173,17 @@ public sealed class BroadcastOrchestrator
 
             // GR-2.6.1: Append KVKK health disclaimer if applicable
             var finalText = KvkkHelper.AppendDisclaimerIfHealth(messageText, isHealthTenant);
+
+            // cxapi defensive guard (Codex P0 #3): a plain-text cxapi message must not carry unresolved
+            // placeholders onto the wire. INSE substitution already resolved {{vars}}; a leftover '{{'
+            // means a DMP-style token slipped through — skip this recipient rather than send a broken message.
+            if (cxapiRoute && finalText.Contains("{{"))
+            {
+                _logger.SystemWarn(
+                    $"[{ErrorCodes.CxapiDynamicNotSupported}] cxapi skip {recipient.Phone}: unresolved placeholder in rendered text");
+                continue;
+            }
+
             messagesToInsert.Add((recipient.Phone, finalText, recipientDynamicFields));
         }
 
@@ -154,14 +193,14 @@ public sealed class BroadcastOrchestrator
                 "No valid recipients after opt-out filtering and variable validation");
         }
 
-        // Create broadcast record (GR-2.3: with language)
+        // Create broadcast record (GR-2.3: with language; PR-3a: immutable route + tenant-default instance)
         var broadcastId = await _repository.CreateBroadcastAsync(
             tenantId, request.TemplateId, request.Recipients.Count,
-            messagesToInsert.Count, request.ScheduledAt, lang, ct);
+            messagesToInsert.Count, request.ScheduledAt, lang, ct, sendRoute, instanceId);
 
-        // Batch insert all messages (single multi-row INSERT, GR-2.3: with language)
+        // Batch insert all messages (single multi-row INSERT, GR-2.3: with language; PR-3a: route + instance)
         await _repository.BatchInsertMessagesAsync(
-            tenantId, broadcastId, request.TemplateId, messagesToInsert, lang, ct);
+            tenantId, broadcastId, request.TemplateId, messagesToInsert, lang, ct, sendRoute, instanceId);
         var queuedCount = messagesToInsert.Count;
 
         // GR-3.29: Audit trail - batch insert for compliance (single multi-row INSERT).

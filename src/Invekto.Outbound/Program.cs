@@ -95,6 +95,13 @@ builder.Services.AddSingleton<Invekto.Shared.Contracts.TenantFieldMapping.ITenan
     Invekto.Shared.Contracts.TenantFieldMapping.DbTenantFieldMappingResolver>();
 builder.Services.AddSingleton<Invekto.Shared.Services.DynamicMessageValidator>();
 
+// ─── FEAT-PROJELER / cxapi PR-3a: plain-text bulk cutover (feature-flagged, allowlisted; default OFF) ───
+// BroadcastOrchestrator (route decision at create) + MessageSenderService (cxapi send path) consume this.
+// Default OFF + empty allowlist => no row is ever send_route='wapcrm_cxapi' (pure bridge no-op).
+var cxapiSendOptions = new CxapiSendOptions();
+builder.Configuration.GetSection(CxapiSendOptions.SectionName).Bind(cxapiSendOptions);
+builder.Services.AddSingleton(cxapiSendOptions);
+
 builder.Services.AddSingleton<BroadcastOrchestrator>();
 builder.Services.AddSingleton<TriggerProcessor>();
 builder.Services.AddSingleton<CampaignOrchestrator>();
@@ -146,6 +153,8 @@ builder.Services.AddSingleton<MessageSenderService>(sp =>
         sp.GetRequiredService<OutboundRepository>(),
         sp.GetRequiredService<RateLimiter>(),
         sp.GetRequiredService<MainAppCallbackClient>(),
+        sp.GetRequiredService<WapCrmSendClient>(),
+        sp.GetRequiredService<CxapiSendOptions>(),
         sp.GetRequiredService<JsonLinesLogger>(),
         senderIntervalMs));
 builder.Services.AddHostedService(sp => sp.GetRequiredService<MessageSenderService>());

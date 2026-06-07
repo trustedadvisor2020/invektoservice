@@ -116,6 +116,15 @@ public sealed class BroadcastStatusResponse
     [JsonPropertyName("failed")]
     public int Failed { get; set; }
 
+    /// <summary>
+    /// FEAT-PROJELER / cxapi (PR-3a): cxapi sends that ended with unknown delivery
+    /// (timeout/transport/stranded-posting). Counted separately from sent/failed so the
+    /// totals reconcile (sent + failed + ambiguous + delivered + read + queued = total).
+    /// Always 0 for bridge-only broadcasts.
+    /// </summary>
+    [JsonPropertyName("ambiguous")]
+    public int Ambiguous { get; set; }
+
     [JsonPropertyName("created_at")]
     public DateTime CreatedAt { get; set; }
 

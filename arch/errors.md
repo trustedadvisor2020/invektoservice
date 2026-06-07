@@ -1016,6 +1016,20 @@ errors:
     description: create-list-from-export — the active filter yields zero valid (sendable) unique phones, so no list can be created (422)
     user_message: Filtreye uyan gönderilebilir numara yok; liste oluşturulamadı.
 
+  # ── FEAT-PROJELER / cxapi send engine — PR-3a plain-text cutover (INV-OB-062+) ──
+  - code: INV-OB-062
+    description: cxapi route misconfigured — tenant is cxapi-allowlisted (CxapiSendOptions) but settings_json->'wapcrm' lacks instance_id/secret_key/user_id. Rejected at broadcast-create (no silent bridge fallback); also marks a send 'failed' if creds vanish between create and send. (422)
+    user_message: WapCRM cxapi bu tenant için açık ama instance/secret/userID ayarları eksik. Tenant ayarlarını tamamlayın.
+  - code: INV-OB-063
+    description: cxapi dynamic content not supported — a DMP/DynamicMessage broadcast (or a message with unresolved {{}} after rendering) was routed to the cxapi plain-text path. Rejected at create / recipient skipped; never silently falls back to the bridge. (422)
+    user_message: WapCRM cxapi yolunda dinamik (DMP) içerik desteklenmez. Statik şablon kullanın veya bu tenant için dinamik mesajı kapatın.
+  - code: INV-OB-064
+    description: cxapi provider rejected — cxapi returned status=false (HTTP 200) OR the rate-limit (301/302) retries were exhausted. Message marked 'failed' with the provider status code persisted. Internal/log + failed_reason.
+    user_message: Mesaj WapCRM tarafından kabul edilmedi. Provider durum kodunu kontrol edin.
+  - code: INV-OB-065
+    description: cxapi send ambiguous — timeout/transport failure or a stranded 'posting' row recovered on startup; delivery is unknown so the message is marked 'ambiguous' and is NEVER auto-retried (duplicate-send risk). Awaits manual/ops review. Internal/log.
+    user_message: Gönderim durumu belirsiz (zaman aşımı/bağlantı). Mükerrer gönderim riski nedeniyle otomatik tekrar yapılmaz; manuel kontrol gerekir.
+
   # ── IG — Integrations (GR-3.4/3.6) ──
   - code: INV-IG-001
     description: Invalid account payload
@@ -1642,6 +1656,11 @@ errors:
   - code: INV-SEED-055
     description: Migration 055 postcondition FAIL — outbound_messages (+13) / outbound_broadcasts (+6) cxapi groundwork kolonlarından biri eksik. Root cause: ADD COLUMN IF NOT EXISTS kısmen uygulandı veya migration yarıda kesildi. Tanı: information_schema.columns ile eksik kolonu bul (RAISE EXCEPTION mesajı hangi tablo/kaç kolon bulunduğunu söyler). Fix-forward: migration 055'i yeniden çalıştır (idempotent). NOT: ext_id composite unique PR-3'e, bulk_send_jobs cxapi kolonları PR-4'e ertelendi — bu verifier index DEĞİL yalnız outbound_messages+outbound_broadcasts kolon sayısını kontrol eder.
     user_message: (deploy-only) Migration 055 şema doğrulaması başarısız — DBA migration'ı yeniden çalıştırsın.
+
+  # FEAT-PROJELER / cxapi PR-3a (migration 056 — 2026-06-06). Message-status state machine postcondition verifier.
+  - code: INV-SEED-056
+    description: Migration 056 postcondition FAIL — chk_message_status does not allow 'posting'/'ambiguous' (DROP-then-ADD CHECK skipped) OR outbound_broadcasts.ambiguous counter column missing. Root cause: migration partially applied or aborted. Tanı: pg_get_constraintdef(chk_message_status) + information_schema.columns for outbound_broadcasts.ambiguous (RAISE EXCEPTION says which). Fix-forward: re-run migration 056 (idempotent). NOT: ext_id composite unique PR-3b'ye, bulk_send_jobs cxapi kolonları PR-4'e ertelendi.
+    user_message: (deploy-only) Migration 056 şema doğrulaması başarısız — DBA migration'ı yeniden çalıştırsın.
 
   # FEAT-PILOT-KANBAN runtime (KanbanEndpoints + Repository — 2026-04-28)
   - code: INV-KB-001

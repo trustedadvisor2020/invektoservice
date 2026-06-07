@@ -518,6 +518,12 @@ public static class ErrorCodes
     public const string ExportFilterInvalid = "INV-OB-060";                // Invalid filter — bad date range (from>to), unknown delivery status, or malformed filter. 400/422.
     public const string ExportListEmpty = "INV-OB-061";                    // create-list-from-export: filter yields zero valid (sendable) unique phones — nothing to create. 422.
 
+    // FEAT-PROJELER / cxapi send engine — PR-3a plain-text cutover (INV-OB-062+)
+    public const string CxapiRouteMisconfigured = "INV-OB-062";            // Tenant is cxapi-allowlisted but settings_json->'wapcrm' lacks instance_id/secret_key/user_id — broadcast rejected at create (no silent bridge fallback); also marks a send 'failed' if creds vanish before send. 422.
+    public const string CxapiDynamicNotSupported = "INV-OB-063";           // DMP/DynamicMessage (or unresolved {{}}) on the cxapi plain-text route — broadcast rejected at create, no silent bridge fallback. 422.
+    public const string CxapiProviderRejected = "INV-OB-064";              // cxapi returned status=false (HTTP 200) OR rate-limit retries exhausted — message marked 'failed' with the provider code. Internal/log + failed_reason.
+    public const string CxapiSendAmbiguous = "INV-OB-065";                 // cxapi timeout/transport/stranded-posting — delivery unknown, message marked 'ambiguous', awaits ops, NEVER auto-retried. Internal/log.
+
     // Lead Management errors (INV-LD-xxx) -- GR-3.13
     public const string LeadInvalidPayload = "INV-LD-001";
     public const string LeadNotFound = "INV-LD-002";

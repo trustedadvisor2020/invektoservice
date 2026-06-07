@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Invekto.Shared.Contracts.Inma.Dtos;
 using Invekto.Shared.Data;
 using Invekto.Shared.DTOs.Outbound;
 using Invekto.Shared.Logging;
@@ -201,14 +202,20 @@ public class OutboundRepository
     /// <summary>
     /// GR-2.3: Create broadcast with optional language tag.
     /// </summary>
+    /// <summary>
+    /// FEAT-PROJELER / cxapi (PR-3a): <paramref name="sendRoute"/> + <paramref name="instanceId"/> are
+    /// AFTER <paramref name="ct"/> so existing positional callers compile unchanged; they default to the
+    /// bridge / NULL (no-op). A cxapi-allowlisted tenant passes 'wapcrm_cxapi' + the tenant-default instance.
+    /// </summary>
     public virtual async Task<Guid> CreateBroadcastAsync(
         int tenantId, int templateId, int totalRecipients, int queued,
-        DateTime? scheduledAt, string? lang = null, CancellationToken ct = default)
+        DateTime? scheduledAt, string? lang = null, CancellationToken ct = default,
+        string sendRoute = "mainapp_bridge", int? instanceId = null)
     {
         const string sql = @"
             INSERT INTO outbound_broadcasts
-                (tenant_id, template_id, total_recipients, queued, status, scheduled_at, lang)
-            VALUES (@tid, @tmpl, @total, @queued, 'queued', @sched, @lang)
+                (tenant_id, template_id, total_recipients, queued, status, scheduled_at, lang, send_route, instance_id)
+            VALUES (@tid, @tmpl, @total, @queued, 'queued', @sched, @lang, @route, @inst)
             RETURNING id";
 
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -219,6 +226,8 @@ public class OutboundRepository
         cmd.Parameters.AddWithValue("queued", queued);
         cmd.Parameters.AddWithValue("sched", scheduledAt.HasValue ? (object)scheduledAt.Value : DBNull.Value);
         cmd.Parameters.AddWithValue("lang", (object?)lang ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("route", sendRoute);
+        cmd.Parameters.AddWithValue("inst", instanceId.HasValue ? (object)instanceId.Value : DBNull.Value);
 
         var id = await cmd.ExecuteScalarAsync(ct);
         return (Guid)id!;
@@ -297,13 +306,18 @@ public class OutboundRepository
         await cmd.ExecuteNonQueryAsync(ct);
     }
 
-    /// <summary>Check if all messages in a broadcast are processed (no more queued/sending).</summary>
+    /// <summary>
+    /// Check if all messages in a broadcast are processed (no more queued/sending/posting).
+    /// FEAT-PROJELER / cxapi (PR-3a): 'posting' is non-terminal (a cxapi POST may be in flight),
+    /// so a broadcast is NOT complete while any row is 'posting'. 'ambiguous' is terminal
+    /// (manual/ops) and does not block completion. Bridge rows never reach 'posting'.
+    /// </summary>
     public virtual async Task<bool> IsBroadcastCompleteAsync(
         Guid broadcastId, CancellationToken ct = default)
     {
         const string sql = @"
             SELECT COUNT(*) FROM outbound_messages
-            WHERE broadcast_id = @bid AND status IN ('queued', 'sending')";
+            WHERE broadcast_id = @bid AND status IN ('queued', 'sending', 'posting')";
 
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = new NpgsqlCommand(sql, conn);
@@ -606,7 +620,8 @@ public class OutboundRepository
     public virtual async Task BatchInsertMessagesAsync(
         int tenantId, Guid broadcastId, int templateId,
         List<(string phone, string text, string[]? dynamicFields)> messages,
-        string? lang = null, CancellationToken ct = default)
+        string? lang = null, CancellationToken ct = default,
+        string sendRoute = "mainapp_bridge", int? instanceId = null)
     {
         if (messages.Count == 0) return;
 
@@ -619,7 +634,7 @@ public class OutboundRepository
 
         for (var i = 0; i < messages.Count; i++)
         {
-            valueClauses.Add($"(@tid, @bid, @tmpl, @phone{i}, @msg{i}, 'queued', @lang, @df{i})");
+            valueClauses.Add($"(@tid, @bid, @tmpl, @phone{i}, @msg{i}, 'queued', @lang, @df{i}, @route, @inst)");
             cmd.Parameters.AddWithValue($"phone{i}", messages[i].phone);
             cmd.Parameters.AddWithValue($"msg{i}", messages[i].text);
             cmd.Parameters.AddWithValue($"df{i}", (object?)messages[i].dynamicFields ?? DBNull.Value);
@@ -629,12 +644,15 @@ public class OutboundRepository
         cmd.Parameters.AddWithValue("bid", broadcastId);
         cmd.Parameters.AddWithValue("tmpl", templateId);
         cmd.Parameters.AddWithValue("lang", (object?)lang ?? DBNull.Value);
+        // FEAT-PROJELER / cxapi (PR-3a): immutable per-message route + instance, written at create.
+        // Defaults ('mainapp_bridge' / NULL) keep the bridge path a no-op; message_kind/attempt_count
+        // still take their DB DEFAULTs ('plain_text' / 0).
+        cmd.Parameters.AddWithValue("route", sendRoute);
+        cmd.Parameters.AddWithValue("inst", instanceId.HasValue ? (object)instanceId.Value : DBNull.Value);
 
-        // PR-1 (migration 055) NO-OP: new cxapi columns omitted → DB DEFAULTs
-        // ('mainapp_bridge' / 'plain_text' / 0) + NULL. Bridge path unchanged.
         cmd.CommandText = $@"
             INSERT INTO outbound_messages
-                (tenant_id, broadcast_id, template_id, recipient_phone, message_text, status, lang, dynamic_fields)
+                (tenant_id, broadcast_id, template_id, recipient_phone, message_text, status, lang, dynamic_fields, send_route, instance_id)
             VALUES {string.Join(",\n                   ", valueClauses)}";
 
         await cmd.ExecuteNonQueryAsync(ct);
@@ -672,6 +690,249 @@ public class OutboundRepository
         var rows = await cmd.ExecuteNonQueryAsync(ct);
         if (rows > 0)
             _logger.SystemWarn($"Reset {rows} stale 'sending' messages back to 'queued' on shutdown");
+    }
+
+    // ================================================================
+    // FEAT-PROJELER / cxapi send engine (PR-3a) — credentials + state machine
+    // ================================================================
+
+    /// <summary>
+    /// Load WapCRM settings (settings_json->'wapcrm') for a single tenant. Same shape as
+    /// Backend's GetWapCrmSettingsAsync; Outbound reads the same shared Postgres.
+    /// Returns null if the tenant is missing/inactive or has no wapcrm settings.
+    /// </summary>
+    public virtual async Task<WapCrmSettings?> GetWapCrmSettingsAsync(int tenantId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT settings_json->'wapcrm' AS wapcrm
+            FROM tenant_registry
+            WHERE tenant_id = @tid AND is_active = true";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return ParseWapCrmSettings(result, tenantId);
+    }
+
+    /// <summary>
+    /// Batch-load WapCRM settings for the DISTINCT tenants in a dequeue cycle (Codex P0 #8: no N+1).
+    /// One query for all ids; tenants with missing/unparseable wapcrm settings are simply absent from
+    /// the dictionary (the sender treats them as misconfigured, INV-OB-062). The secret stays in memory
+    /// only for the send and is never logged or persisted.
+    /// </summary>
+    public virtual async Task<Dictionary<int, WapCrmSettings>> GetWapCrmSettingsBatchAsync(
+        IReadOnlyCollection<int> tenantIds, CancellationToken ct = default)
+    {
+        var result = new Dictionary<int, WapCrmSettings>();
+        if (tenantIds.Count == 0) return result;
+
+        const string sql = @"
+            SELECT tenant_id, settings_json->'wapcrm' AS wapcrm
+            FROM tenant_registry
+            WHERE tenant_id = ANY(@ids) AND is_active = true";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("ids", tenantIds.Distinct().ToArray());
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            var tenantId = reader.GetInt32(0);
+            var settings = ParseWapCrmSettings(reader.IsDBNull(1) ? null : reader.GetValue(1), tenantId);
+            if (settings != null)
+                result[tenantId] = settings;
+        }
+        return result;
+    }
+
+    private WapCrmSettings? ParseWapCrmSettings(object? raw, int tenantId)
+    {
+        if (raw is null or DBNull) return null;
+        var json = raw.ToString();
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            return JsonSerializer.Deserialize<WapCrmSettings>(json);
+        }
+        catch (JsonException ex)
+        {
+            // INV-OB-062: an unparseable wapcrm settings block makes the tenant cxapi-misconfigured
+            // (treated as missing creds downstream). Literal code (this repo file has no ErrorCodes import).
+            _logger.SystemWarn($"[INV-OB-062] WapCRM settings parse failed for tenant {tenantId}: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// cxapi state machine: compare-and-swap a leased message ('sending') into 'posting' immediately
+    /// BEFORE the cxapi POST (Codex P0 #1). Returns false (caller MUST NOT POST) when 0 rows change —
+    /// the row was reset to 'queued' by a concurrent shutdown or claimed elsewhere. Uses NOW() for
+    /// last_attempt_at so the stale-posting sweep keys on database time. tenant_id is included in the
+    /// predicate (defense-in-depth) even though the message id is a globally-unique PK.
+    /// </summary>
+    public virtual async Task<bool> SetMessagePostingAsync(long messageId, int tenantId, int attemptCount, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE outbound_messages
+            SET status = 'posting', attempt_count = @att, last_attempt_at = NOW()
+            WHERE id = @id AND tenant_id = @tid AND status = 'sending'";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", messageId);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("att", attemptCount);
+
+        return await cmd.ExecuteNonQueryAsync(ct) > 0;
+    }
+
+    /// <summary>
+    /// Persist a cxapi send outcome ATOMICALLY (Codex P0-1/P0-2/P1-2): a single statement updates the
+    /// message (compare-and-swap on <paramref name="fromStatus"/>, default 'posting') AND — when
+    /// <paramref name="counterColumn"/> is non-null (sent|failed|ambiguous) — increments that
+    /// outbound_broadcasts counter and decrements queued, so a mid-write crash can never leave a
+    /// terminal message with a non-terminal counter. The CAS prevents a late return from resurrecting a
+    /// row already swept to 'ambiguous' (returns applied=false). Returns the broadcast id (if any) so the
+    /// caller can attempt idempotent completion. On a requeue (RateLimited under cap) pass
+    /// counterColumn=null + status 'queued' — no counter changes, attempt_count persists.
+    /// </summary>
+    public virtual async Task<(bool applied, Guid? broadcastId)> MarkCxapiOutcomeAsync(
+        long messageId, int tenantId, string status, string? providerStatusCode, bool? providerStatus,
+        string? providerRequestId, string? providerErrorMessage, int attemptCount,
+        string? counterColumn, string fromStatus = "posting", CancellationToken ct = default)
+    {
+        // Identifier (column name) cannot be a SQL parameter — whitelist + interpolate, exactly like the
+        // established IncrementBroadcastCounterAsync. Values stay parameterized.
+        if (counterColumn != null && counterColumn is not ("sent" or "failed" or "ambiguous"))
+            throw new ArgumentException($"Invalid counter column: {counterColumn}");
+
+        // Data-modifying CTEs always execute (even if not referenced by the final SELECT), so the
+        // counter UPDATE runs atomically with the message UPDATE in one round-trip. The broadcast counter
+        // is tenant-scoped too (defense-in-depth; the broadcast_id already comes from this tenant's row).
+        var counterCte = counterColumn != null
+            ? $@", bc AS (
+                UPDATE outbound_broadcasts b
+                SET {counterColumn} = b.{counterColumn} + 1,
+                    queued = GREATEST(b.queued - 1, 0)
+                FROM upd WHERE b.id = upd.broadcast_id AND b.tenant_id = @tid
+                RETURNING b.id)"
+            : "";
+
+        var sql = $@"
+            WITH upd AS (
+                UPDATE outbound_messages
+                SET status = @status,
+                    provider_status_code = @psc,
+                    provider_status = @ps,
+                    provider_request_id = @prid,
+                    provider_error_message = @perr,
+                    attempt_count = @att,
+                    last_attempt_at = NOW(),
+                    sent_at = CASE WHEN @status = 'sent' THEN NOW() ELSE sent_at END,
+                    failed_reason = CASE WHEN @status IN ('failed', 'ambiguous') THEN @perr ELSE failed_reason END
+                WHERE id = @id AND tenant_id = @tid AND status = @from
+                RETURNING broadcast_id
+            ){counterCte}
+            SELECT (SELECT broadcast_id FROM upd) AS broadcast_id,
+                   EXISTS (SELECT 1 FROM upd) AS applied";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", messageId);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("status", status);
+        cmd.Parameters.AddWithValue("from", fromStatus);
+        cmd.Parameters.AddWithValue("psc", (object?)providerStatusCode ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("ps", providerStatus.HasValue ? (object)providerStatus.Value : DBNull.Value);
+        cmd.Parameters.AddWithValue("prid", (object?)providerRequestId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("perr", (object?)providerErrorMessage ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("att", attemptCount);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        if (!await reader.ReadAsync(ct))
+            return (false, null);
+
+        var broadcastId = reader.IsDBNull(0) ? (Guid?)null : reader.GetGuid(0);
+        var applied = reader.GetBoolean(1);
+        return (applied, broadcastId);
+    }
+
+    /// <summary>
+    /// Startup recovery for cxapi rows leased ('sending') but crashed BEFORE the posting CAS — they
+    /// were never POSTed (no external side effect), so it is safe to requeue them. Route-scoped to
+    /// 'wapcrm_cxapi' so bridge 'sending' rows (which have no pre-POST marker) are NOT touched. No
+    /// counter change (a 'sending' row never decremented queued).
+    /// <para>Intentionally tenant-BLIND, like the sibling <see cref="ResetSendingMessagesAsync"/>: this
+    /// is a SINGLETON worker startup sweep across the whole outbound queue — there is no tenant context
+    /// at boot, and each row carries its own tenant_id (same documented exception as DequeueMessagesAsync).</para>
+    /// </summary>
+    public virtual async Task<int> ResetStrandedCxapiSendingAsync(CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE outbound_messages SET status = 'queued'
+            WHERE send_route = 'wapcrm_cxapi' AND status = 'sending'";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        var rows = await cmd.ExecuteNonQueryAsync(ct);
+        if (rows > 0)
+            _logger.SystemWarn($"[cxapi-send] reset {rows} stranded cxapi 'sending' rows to 'queued' on startup");
+        return rows;
+    }
+
+    /// <summary>
+    /// Startup recovery for cxapi rows that crashed mid-POST ('posting'): a POST may have reached the
+    /// server, so they are resolved to 'ambiguous' (manual/ops, never auto-retried). Stale-TTL guarded
+    /// (last_attempt_at older than <paramref name="stalePostingMinutes"/>) so a genuinely in-flight POST
+    /// is never swept (Codex P0-2). ONE atomic CTE: messages -> 'ambiguous' + per-broadcast ambiguous++ /
+    /// queued-- so a mid-sweep crash cannot leave terminal messages with non-terminal counters
+    /// (Codex P1-2). Returns the distinct affected broadcast ids so the caller can complete them.
+    /// <para>Intentionally tenant-BLIND (singleton worker startup, no tenant context — same documented
+    /// exception as <see cref="ResetSendingMessagesAsync"/> / DequeueMessagesAsync); each row carries its
+    /// own tenant_id and the per-broadcast counter update is keyed by the message's own broadcast_id.</para>
+    /// </summary>
+    public virtual async Task<List<Guid>> SweepStrandedPostingAsync(int stalePostingMinutes, CancellationToken ct = default)
+    {
+        const string sql = @"
+            WITH swept AS (
+                UPDATE outbound_messages
+                SET status = 'ambiguous',
+                    provider_error_message = COALESCE(provider_error_message, '[INV-OB-065] stranded posting recovered to ambiguous on startup'),
+                    failed_reason = COALESCE(failed_reason, '[INV-OB-065] stranded posting recovered to ambiguous on startup'),
+                    last_attempt_at = NOW()
+                WHERE send_route = 'wapcrm_cxapi'
+                  AND status = 'posting'
+                  AND last_attempt_at < NOW() - make_interval(mins => @mins)
+                RETURNING id, broadcast_id, tenant_id
+            ), grp AS (
+                SELECT broadcast_id, tenant_id, COUNT(*) AS cnt
+                FROM swept
+                WHERE broadcast_id IS NOT NULL
+                GROUP BY broadcast_id, tenant_id
+            ), bc AS (
+                UPDATE outbound_broadcasts b
+                SET ambiguous = b.ambiguous + grp.cnt,
+                    queued = GREATEST(b.queued - grp.cnt, 0)
+                FROM grp WHERE b.id = grp.broadcast_id AND b.tenant_id = grp.tenant_id
+                RETURNING b.id
+            )
+            SELECT DISTINCT broadcast_id FROM swept WHERE broadcast_id IS NOT NULL";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("mins", stalePostingMinutes);
+
+        var ids = new List<Guid>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+            ids.Add(reader.GetGuid(0));
+
+        if (ids.Count > 0)
+            _logger.SystemWarn($"[cxapi-send] swept stranded 'posting' rows to 'ambiguous' across {ids.Count} broadcast(s) on startup");
+        return ids;
     }
 
     // ================================================================
