@@ -56,8 +56,10 @@ Projeler sayfası (PKT-2)
 
 ## Açık sorular (INMA ekibine)
 
-- **G12:** cxapi `/chatoperation` response `requestID`, delivery-status webhook'taki id ile **birebir aynı mı**? (ext_id eşleşmesi buna bağlı — teyit alınmadan delivery-status migration yapılmaz.)
-- **G13:** cxapi approved-template: `templateId` formatı, language kaynağı, parametre positional mı named mi, required param count nereden bilinir, header media zorunlu şablonda davranış?
+> **📄 INMA'ya iletilecek detaylı doküman:** [`inma-cxapi-acik-sorular-g12-g13.md`](inma-cxapi-acik-sorular-g12-g13.md) — mimari akış + G12 webhook şema taslağı (onaylasınlar) + G13 kılavuz cevapları + kalan `language` sorusu. Doğrudan paylaşılabilir.
+
+- **G12 (🔴 BLOCKER):** cxapi `/chatoperation` response `requestID`, delivery-status webhook'taki id ile **birebir aynı mı**? + webhook payload şeması + firma/instance kimliği var mı + callback **nereye** route'lanıyor (bizim webhook'a mı, köprüye mi)? (ext_id eşleşmesi + P0-3 gate buna bağlı — teyit alınmadan delivery-status migration yapılmaz.)
+- **G13 (🟡 büyük kısmı ÇÖZÜLDÜ):** `wapcrm-api-integration-guide-for-agents.md` (INMA'dan, 2026-06-06) şunları netleştirdi → `templateId`=slug, parametreler **named** (`parameters[{paramKey,value}]`), zorunlu alanlar `requiredInputs[]`'ten, headerMedia sadece dynamic-media şablonda, hatalar 621/622. **Kalan tek kritik açık = `language` kaynağı** (slug'a mı gömülü, ayrı alan mı, format `tr`/`tr_TR`?) + buton-location + idempotency teyitleri. PR-4 yalnızca G13.1 (language) ile bloklu.
 - (G9 ✓ INMA server-side opt-out yapacak · G11 ✓ Outbound IP whitelist OK)
 
 ## Referanslar
