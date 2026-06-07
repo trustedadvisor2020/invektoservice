@@ -1,0 +1,166 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": "PKT-14",
+  "spec_ref": null,
+  "slug": "20260607-projeler-s2-crud",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-07T20:45:00Z",
+  "updated_at": "2026-06-07T21:20:00Z",
+  "plan": {
+    "summary": "FEAT-PROJELER slice S2: projects CRUD in Invekto.Outbound over the inert S1 schema (projects + project_targets). Adds ProjectsRepository (raw Npgsql, tenant-scoped, transactional set-based targets, soft-delete-as-archive), ProjectsService (gating + validation, tuple returns), 5 minimal-API endpoints /api/v1/projects, ProjectDtos in Shared, ProjectsOptions feature gate, and the INV-OB-066..071 error block. Metadata only — no send path, no cxapi config write, no counter recompute (PR-4).",
+    "q_intent": "Continue PKT-14 Projeler after S1 (schema). Proceed with S2 — projects CRUD on the data_lists slice pattern (DataListRepository / Program.cs as template). 5 endpoints /api/v1/projects, ProjectsRepository + ProjectsService + ProjectDtos + INV-OB-066+; register endpoint DI services unconditionally + [FromServices] (RDF lesson). Send action stays inert until PR-4 + gate lift.",
+    "interview_notes": "Decisions (AskUserQuestion 2026-06-07): (1) project_targets handled set-based, EMBEDDED in create/update body (data_list_id[] replaced in the same tx) -> 5 endpoints, matches the S4 wizard flow; (2) gating = a NEW ProjectsOptions mirroring ContactListOptions (Enabled + AllowAllTenants + allowlist), default OFF in code, prod config decided by Q at deploy; (3) the cxapi config columns (instance_id/template_kind/wa_template_id/template_language/param_mapping) are DEFERRED to PR-4 — S2 writes only name/description/targets and archive. Backend proxy routes + React UI are S4 (data_lists GR4 precedent).",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "Five tenant-scoped minimal-API endpoints under /api/v1/projects exist (GET list, GET {id} detail-with-targets, POST create, PUT partial-update, DELETE archive), all gated by ProjectsOptions (INV-OB-066 when not allowed) and returning the ProjectDtos contract; each DI service param is unconditionally registered and carries explicit [FromServices] (RDF startup-crash guard).", "verified": true, "verification_note": "Verified by Codex (gpt-5.5) review iteration 4 PASS — 12/12 CQ + 5/5 CoVe, 0 blocking." },
+      { "id": "AC2", "criterion": "Create and Update are atomic (project row + its project_targets set commit/rollback in one transaction); the target set is a deduped, order-preserving set-based replace; target list ids that don't exist / aren't owned by the tenant / are soft-deleted are rejected BEFORE any write (INV-OB-070), name collisions surface INV-OB-069, and a missing project surfaces INV-OB-068.", "verified": true, "verification_note": "Verified by Codex (gpt-5.5) review iteration 4 PASS — 12/12 CQ + 5/5 CoVe, 0 blocking." },
+      { "id": "AC3", "criterion": "DELETE is soft-delete-as-archive (status='archived' + archived_at=NOW()) which frees the active name for reuse and never hard-deletes (bulk_send_jobs.project_id FK is ON DELETE RESTRICT); GET list/detail exclude archived rows; the project-level cxapi config columns and the denormalized run counters are NOT written by S2 (stay inert), and no send path / allowlist / P0-3 gate is touched.", "verified": true, "verification_note": "Verified by Codex (gpt-5.5) review iteration 4 PASS — 12/12 CQ + 5/5 CoVe, 0 blocking." },
+      { "id": "AC4", "criterion": "Every DB failure is a typed NpgsqlException catch mapped to a distinct INV-OB code/HTTP status (403/400/404/409/422/503) with an actionable Turkish user_message in arch/errors.md; there is no catch(Exception) and no silent failure; the full solution builds (Shared touched).", "verified": true, "verification_note": "Verified by Codex (gpt-5.5) review iteration 4 PASS — 12/12 CQ + 5/5 CoVe, 0 blocking." }
+    ]
+  },
+  "spec_architectural_decisions": [
+    {
+      "decision": "Projects CRUD is gated by a NEW ProjectsOptions (Enabled + AllowedTenantIds + AllowAllTenants), mirroring ContactListOptions, instead of reusing the ContactList gate or shipping ungated.",
+      "reason": "Q interview decision. Managing a project is metadata-only and never dispatches a message, so it warrants its own kill-switch; the same pilot-allowlist shape keeps one ops mental model. The SEND path stays independently gated (CxapiSend/BulkSend) + the P0-3 live-enablement gate, so opening Projects never enables a send.",
+      "codex_note": "EXPECTED separate options class, NOT duplicate gating. This mirrors the established ContactListOptions/BulkSendOptions/ExportOptions per-feature-flag precedent in the same Program.cs. Default OFF (Enabled=false) is production-safe. Not over-engineering."
+    },
+    {
+      "decision": "The project-level cxapi send config columns (instance_id/template_kind/wa_template_id/template_language/param_mapping) and the denormalized run counters (run/total_targets/sent/delivered/read/failed/ambiguous) are NOT written by S2 — they stay inert at their migration defaults.",
+      "reason": "S2 is metadata CRUD. PR-4 owns the approved-template send wiring + the authoritative counter recompute (recomputed after each run, never per-row), exactly as migration 057 reserved them and as PR-1 deferred the bulk_send_jobs cxapi columns to their owning PR (CQ11 precedent). Writing them now would create a half-built send config behind the P0-3 gate.",
+      "codex_note": "EXPECTED inert columns with no S2 writer. Counters are surfaced in the DTO (stable contract) but read as 0; cxapi config is intentionally absent from the DTOs/CRUD. Not a missing-write bug or dead schema — PR-4 is the writer."
+    },
+    {
+      "decision": "Target list ids are validated with an explicit in-transaction SELECT COUNT(DISTINCT id) ... WHERE deleted_at IS NULL pre-check (returns INV-OB-070) rather than relying on catching the project_targets -> data_lists FK violation.",
+      "reason": "A clean 422 with an actionable message beats a caught constraint error; more importantly, data_lists uses soft-delete (deleted_at), so the composite FK alone would still accept a soft-deleted list (its row persists). The pre-check excludes deleted lists; the composite (tenant_id, data_list_id) FK remains the structural cross-tenant backstop.",
+      "codex_note": "EXPECTED pre-check + FK backstop together. The pre-check is not redundant with the FK — it is the only thing that rejects soft-deleted lists and produces a clean code. Cross-tenant is still impossible at the DB level via the composite FK."
+    },
+    {
+      "decision": "The new /api/v1/projects endpoints carry explicit [FromServices] on their ProjectsService param, even though the sibling /api/v1/data-lists endpoints in the same file omit it.",
+      "reason": "Belt-and-suspenders for the 2026-05-27 .NET 8 RDF startup-crash incident (unregistered complex param on a GET/DELETE endpoint mis-inferred as a body -> startup crash). The services are ALSO registered unconditionally (the actual fix); [FromServices] is the secondary guard the lesson recommends. Not refactoring the existing data-lists endpoints is in-scope discipline.",
+      "codex_note": "EXPECTED [FromServices] on new endpoints; the data-lists divergence is intentional (defensive improvement, not a bug). Unconditional AddSingleton registration is the primary RDF guard; both are present."
+    },
+    {
+      "decision": "DELETE /api/v1/projects/{id} performs a soft-delete-as-archive (status='archived' + archived_at) and returns {id, archived:true}; GET excludes archived projects.",
+      "reason": "bulk_send_jobs.project_id is ON DELETE RESTRICT, so a project with runs cannot be hard-deleted; archive is the delete semantics. archived_at frees the active name (partial-unique index WHERE archived_at IS NULL) and preserves the row + counters for reconciliation, mirroring the sibling data_lists.deleted_at convention.",
+      "codex_note": "EXPECTED archive-on-DELETE, not a hard DELETE. Consistent with the S1 soft-delete-as-archive design and the data_lists soft-delete precedent. Returning archived:true (not deleted:true) is deliberate and honest."
+    }
+  ],
+  "allowed_files": [
+    "src/Invekto.Shared/DTOs/Outbound/ProjectDtos.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Outbound/Services/ProjectsOptions.cs",
+    "src/Invekto.Outbound/Data/ProjectsRepository.cs",
+    "src/Invekto.Outbound/Services/ProjectsService.cs",
+    "src/Invekto.Outbound/Program.cs",
+    "arch/errors.md",
+    "arch/plans/20260607-projeler-s2-crud.json",
+    "arch/plans/diffs/20260607-projeler-s2-crud.diff"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/DTOs/Outbound/ProjectDtos.cs", "change": "NEW: ProjectStatuses constants + ProjectSummary / ProjectTargetDto / ProjectDetail / CreateProjectRequest / UpdateProjectRequest (snake_case JSON). Additive Shared contract, no existing consumer -> no breaking change.", "is_new": true, "deleted": false },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "change": "Add INV-OB-066..071 (ProjectDisabled/InvalidPayload/NotFound/NameConflict/InvalidTarget/DbError) — additive constants.", "is_new": false, "deleted": false },
+    { "path": "src/Invekto.Outbound/Services/ProjectsOptions.cs", "change": "NEW: feature gate (Enabled + AllowedTenantIds + AllowAllTenants + bounds) mirroring ContactListOptions; default OFF.", "is_new": true, "deleted": false },
+    { "path": "src/Invekto.Outbound/Data/ProjectsRepository.cs", "change": "NEW: raw-Npgsql tenant-scoped CRUD — List/Get(detail+targets)/Create/Update(transactional set-based targets, COALESCE partial)/Archive; target pre-validation; ProjectWriteResult.", "is_new": true, "deleted": false },
+    { "path": "src/Invekto.Outbound/Services/ProjectsService.cs", "change": "NEW: gating + validation orchestration (tuple returns), typed NpgsqlException -> INV-OB-071, name/description/target bounds, dedup+cap normalization.", "is_new": true, "deleted": false },
+    { "path": "src/Invekto.Outbound/Program.cs", "change": "Add Microsoft.AspNetCore.Mvc using; unconditional DI registration of ProjectsOptions/Repository/Service; ProjectStatus mapper + 5 endpoints /api/v1/projects with [FromServices].", "is_new": false, "deleted": false },
+    { "path": "arch/errors.md", "change": "Document INV-OB-066..071 with Turkish actionable user_messages.", "is_new": false, "deleted": false }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "6fe1967394a8276c12565bf49196b060300601fa76b5ef51b66e93763664451c",
+    "full_path": "arch/plans/diffs/20260607-projeler-s2-crud.diff",
+    "stats": { "insertions": 830, "deletions": 0, "files_count": 7 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-06-07T20:48:00Z",
+    "duration_ms": 27470,
+    "output_tail": "42 Warning(s) / 0 Error(s) — all warnings pre-existing (test-project MSB3277 version conflicts + xUnit1013 LogReaderTests.Dispose); none from the new projects files.",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Outbound"]
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "Are Create and Update atomic so a project can never persist with a partial target set, and are target list ids that are missing, not owned by the tenant, or soft-deleted rejected BEFORE any project/target row is written (INV-OB-070), with the composite FK as the cross-tenant backstop?", "category": "Data", "codex_answer": "PASS (Codex gpt-5.5 iter4)", "codex_result": "PASS" },
+    { "id": "Q2", "question": "Is every endpoint tenant-scoped (TenantContext.TenantId in every query, TenantContext.UserId -> created_by) and gated by ProjectsOptions, so one tenant can never list, read, update, or archive another tenant's project or attach another tenant's data_list?", "category": "Auth", "codex_answer": "PASS (Codex gpt-5.5 iter4)", "codex_result": "PASS" },
+    { "id": "Q3", "question": "Does DELETE archive (soft-delete) instead of hard-deleting — respecting the bulk_send_jobs.project_id ON DELETE RESTRICT FK — and does archiving free the active name (partial-unique WHERE archived_at IS NULL) while GET list/detail exclude archived rows?", "category": "Lifecycle", "codex_answer": "PASS (Codex gpt-5.5 iter4)", "codex_result": "PASS" },
+    { "id": "Q4", "question": "Is S2 genuinely send-path-independent — no cxapi config column or run counter is written, no tenant is allowlisted, the P0-3 live-enablement gate and the bulk engine are untouched — with the cxapi columns deliberately deferred to PR-4?", "category": "Process/Policy", "codex_answer": "PASS (Codex gpt-5.5 iter4)", "codex_result": "PASS" },
+    { "id": "Q5", "question": "Are all DB failures typed NpgsqlException catches mapped to distinct INV-OB codes (no catch(Exception), no silent failure path), and is the COUNT(*) target_count cast to ::int so the int reader never hits a bigint cast error?", "category": "Data", "codex_answer": "PASS (Codex gpt-5.5 iter4)", "codex_result": "PASS" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Any CxapiSend / BulkSend feature-flag / AllowedTenantIds config (P0-3 gate must not be touched)",
+      "projects cxapi send columns (instance_id/template_kind/wa_template_id/template_language/param_mapping) — PR-4 owns the writer",
+      "The bulk send engine (BulkSend/Broadcast orchestrators, MessageSenderService) and outbound_messages/outbound_broadcasts",
+      "bulk_send_jobs.project_id population / run linking / counter recompute (wired when runs dispatch in PR-4)",
+      "arch/db/** (no schema change in S2; the migration was S1)"
+    ],
+    "non_goals": [
+      "Backend proxy routes for /api/v1/projects (S4, with the UI — data_lists GR4 precedent)",
+      "Projeler React page + creation wizard (S4)",
+      "cxapi template-list endpoint + WapCrmTemplateClient (S3)",
+      "Sending / dispatching from a project (PR-4 + gate lift)",
+      "Status transitions beyond draft (create) and archived (delete) — running/paused/completed/cancelled are run-driven (PR-4)"
+    ],
+    "intentional_exclusions": [
+      "No counter writes — run_count/total_targets/sent/delivered/read/failed/ambiguous stay 0 (run-driven, PR-4)",
+      "No status mutation endpoint (pause/cancel) — meaningless before runs exist",
+      "No FK on projects.created_by (no local users table; tenant user ids live in INMA)",
+      "Description COALESCE-partial update cannot set NULL (matches data_lists COALESCE convention); empty string clears the visible text",
+      "No automated tests added (project convention: tests only when requested)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "ProjectsService.ListAsync/GetAsync/CreateAsync/UpdateAsync/ArchiveAsync — catch (NpgsqlException) -> INV-OB-071 (503), logged via JsonLinesLogger",
+      "ProjectsRepository.CreateAsync/UpdateAsync — catch (PostgresException UniqueViolation) -> NameConflict (rollback); other NpgsqlException propagates and `await using` tx disposal rolls back"
+    ],
+    "user_facing_errors": [
+      "INV-OB-066 Projeler bu hesap için etkin değil.",
+      "INV-OB-067 Proje bilgisi geçersiz. Ad ve seçilen listeleri kontrol edin.",
+      "INV-OB-068 Proje bulunamadı.",
+      "INV-OB-069 Bu isimde bir proje zaten var. Farklı bir ad girin.",
+      "INV-OB-070 Seçilen listelerden biri bulunamadı. Liste seçimini güncelleyin.",
+      "INV-OB-071 Veritabanı hatası nedeniyle işlem tamamlanamadı. Lütfen tekrar deneyin."
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Every DB path is a typed NpgsqlException catch returning a distinct INV-OB code (no catch(Exception), no swallow). Create/Update are transactional: a unique-name collision or invalid target rolls back and returns a specific code; any other DB error propagates to the service catch and the `await using` transaction disposal rolls back (no half-built project). Validation failures return actionable codes before touching the DB."
+  },
+  "aha_moments": [
+    { "category": "UX", "user_pain": "Operators rebuild the same audience selection every campaign and have no way to save 'who + which lists' as a reusable unit.", "suggestion": "Create a named project once with its target lists; the GET detail returns each list with its live sendable_count so the operator sees the projected audience at a glance.", "aha_moment": "When the operator opens a saved project and instantly sees 'Yaz Kampanyası → 3 liste, 4.812 gönderilebilir' instead of re-picking lists from scratch." },
+    { "category": "RELIABILITY", "user_pain": "A blast tool that lets you attach the wrong tenant's list — or a deleted list — is a data-leak / dead-send waiting to happen.", "suggestion": "Targets are validated in-transaction against the tenant's active (non-deleted) lists before any write, with the composite (tenant_id, data_list_id) FK as a structural backstop.", "aha_moment": "When selecting a since-deleted list cleanly fails with 'Seçilen listelerden biri bulunamadı' instead of silently creating a project that can never send." },
+    { "category": "SUPPORT", "user_pain": "Deleting a finished project would destroy the run history finance/support need for reconciliation.", "suggestion": "DELETE archives (soft-delete) rather than hard-deleting; the ON DELETE RESTRICT FK guarantees a project with runs can never be erased, and the name is freed for reuse.", "aha_moment": "When support reuses an old project name for a new campaign while the archived original (and its counters) stays intact for an audit months later." },
+    { "category": "SPEED", "user_pain": "Editing a project's list selection one-add/one-remove-at-a-time is tedious and error-prone for the operator.", "suggestion": "PUT replaces the whole target set in a single atomic call (deduped, order-preserved); the wizard just sends the final list of ids.", "aha_moment": "When reordering/swapping lists in the S4 wizard saves in one click with the new order preserved, no partial state." },
+    { "category": "RELIABILITY", "user_pain": "A new feature that silently swallows DB errors leaves operators staring at a spinner with no idea whether their project saved.", "suggestion": "Distinct INV-OB-066..071 codes (403/400/404/409/422/503) map each failure class to an actionable Turkish message; transient DB errors are 503-retryable and never leave a half-built project.", "aha_moment": "When a momentary DB hiccup returns a clear 'tekrar deneyin' and the retry just works, with nothing half-saved." },
+    { "category": "SALES", "user_pain": "Prospects ask whether Invekto supports repeatable, list-targeted WhatsApp campaigns (TONIVA mode4 parity), and a one-off CSV blast doesn't demo well.", "suggestion": "The projects CRUD layer is the operator-facing foundation that turns saved lists into named, reusable campaigns — the API the S4 'Projeler' page drives.", "aha_moment": "When sales demos creating a 'Proje', attaching saved lists, and seeing the audience size — the repeatable-campaign story lands before send is even enabled." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-06-07T21:18:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-06-07T21:20:00Z",
+    "raw_text": "Codex (mcp__codex-review__codex_review, model gpt-5.5-2026-04-23) iteration 4: OVERALL PASS. Code Quality Gate 12/12 PASS (CQ1-CQ12), CoVe 5/5 PASS (Q1-Q5), 0 blocking. Grind: iter0 FAIL (5: validation-order, name! null-forgiving, generic disabled-msg) -> iter1 FAIL (4: post-commit-reload mislabels INV-OB-071, silent non-positive id drop, soft-delete race, schema-evidence) -> iter2 FAIL (1: race not fully closed) -> iter3 FAIL (1: INV-OB-071 commit-ambiguity overclaim) -> iter4 PASS. Final design: tenant-scoped raw-Npgsql CRUD; create/update transactional with FOR SHARE target row-lock (closes soft-delete TOCTOU) + validating INSERT + count check; in-tx LoadDetailAsync (no post-commit reload); typed NpgsqlException -> INV-OB-071 (commit-ambiguity documented, retry-safe via unique-name guard + idempotency); soft-delete-as-archive; ProjectsOptions gate default-OFF; cxapi columns/run counters deferred to PR-4.",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "Typed NpgsqlException catches -> specific INV-OB codes; Program.cs ProjectStatus/ProjectMessage map to HTTP + Turkish messages; arch/errors.md documents INV-OB-066..071." },
+      "CQ2": { "result": "PASS", "evidence": "No bare catch(Exception); non-positive target ids rejected (not dropped); explicit failure-flag results." },
+      "CQ3": { "result": "PASS", "evidence": "Diff scope = declared S2 CRUD files only; no send-engine/cxapi/allowlist changes." },
+      "CQ4": { "result": "PASS", "evidence": "Service-local repository pattern; intentional per-feature gate mirrors ContactListOptions." },
+      "CQ5": { "result": "PASS", "evidence": "snake_case SQL, parameterized NpgsqlCommand, await using disposal, no null-forgiving operator, unconditional DI registration." },
+      "CQ6": { "result": "PASS", "evidence": "Set-based validation (FOR SHARE) + unnest insert; no N+1; bounded by MaxTargetsPerProject." },
+      "CQ7": { "result": "PASS", "evidence": "No new TODO/HACK/FIXME." },
+      "CQ8": { "result": "PASS", "evidence": "Shared changes additive only (new DTOs + INV-OB constants); no existing contract removed/renamed." }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "Transactional create/update; FOR SHARE row-lock on data_lists before writes blocks a concurrent soft-delete until commit; validating INSERT JOIN deleted_at IS NULL + count check; rollback on mismatch; composite FK cross-tenant backstop." },
+      "Q2": { "result": "PASS", "reasoning": "TenantContext.TenantId in every query + UserId->created_by; ProjectsOptions.Allowed gate; all repo queries tenant_id-filtered." },
+      "Q3": { "result": "PASS", "reasoning": "DELETE -> ArchiveAsync soft-delete (status='archived'+archived_at); list/detail exclude archived; active-name partial-unique frees name." },
+      "Q4": { "result": "PASS", "reasoning": "No cxapi config/run-counter writes, no allowlist, P0-3 gate + bulk engine untouched; cxapi columns deferred to PR-4." },
+      "Q5": { "result": "PASS", "reasoning": "Typed NpgsqlException only; INV-OB-071 doc now states commit-ambiguity + retry-safe-via-idempotency (consistent with code); COUNT(*) cast to ::int." }
+    },
+    "blocking_issues": [],
+    "iteration": 4,
+    "escalation_required": false
+  }
+}

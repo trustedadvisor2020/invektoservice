@@ -11,6 +11,7 @@ using Invekto.Shared.DTOs;
 using Invekto.Shared.DTOs.Outbound;
 using Invekto.Shared.Integration;
 using Invekto.Shared.Logging;
+using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -121,6 +122,17 @@ builder.Configuration.GetSection(ContactListOptions.SectionName).Bind(contactLis
 builder.Services.AddSingleton(contactListOptions);
 builder.Services.AddSingleton<DataListRepository>();
 builder.Services.AddSingleton<ContactListImportService>();
+
+// ─── FEAT-PROJELER (PKT-14) slice S2: Projects CRUD (feature-flagged, allowlisted) ───
+// Unconditional registration (never inside an if-block) — .NET 8 RDF startup inspects every
+// endpoint param via IServiceProviderIsService; an unregistered complex param on a GET/DELETE
+// endpoint crashes startup ("Body was inferred ...") (2026-05-27 RDF incident). Endpoints also
+// carry explicit [FromServices] as a belt-and-suspenders guard.
+var projectsOptions = new ProjectsOptions();
+builder.Configuration.GetSection(ProjectsOptions.SectionName).Bind(projectsOptions);
+builder.Services.AddSingleton(projectsOptions);
+builder.Services.AddSingleton<ProjectsRepository>();
+builder.Services.AddSingleton<ProjectsService>();
 
 // ─── FEAT-OBI Phase 1A Plan B: Export Manager (dedicated flag, default OFF) ───
 var exportOptions = new ExportOptions();
@@ -551,6 +563,104 @@ app.MapPost("/api/v1/data-lists/import", async (HttpContext ctx, ContactListImpo
     if (response == null)
         return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "Import could not complete; the list was not modified. Please retry.", requestId), statusCode: ContactListStatus(errorCode));
     return Results.Ok(response);
+});
+
+// ============================================================
+// FEAT-PROJELER (PKT-14) slice S2 — Projects CRUD (metadata only; send is PR-4)
+// ============================================================
+
+// Map a projects error code to an HTTP status (shared by the endpoints below).
+static int ProjectStatus(string? code) => code switch
+{
+    ErrorCodes.ProjectDisabled => 403,
+    ErrorCodes.ProjectNotFound => 404,
+    ErrorCodes.ProjectNameConflict => 409,
+    ErrorCodes.ProjectInvalidTarget => 422,
+    ErrorCodes.ProjectDbError => 503,   // transient DB failure — change rolled back, safe to retry
+    _ => 400                            // ProjectInvalidPayload + fallback
+};
+
+// Code-specific operator-facing message so each projects INV-OB error states the real cause +
+// next action (e.g. a disabled-feature 403 must NOT say "retry"). Used where no service message exists.
+static string ProjectMessage(string? code) => code switch
+{
+    ErrorCodes.ProjectDisabled => "Projeler bu hesap için etkin değil.",
+    ErrorCodes.ProjectInvalidPayload => "Proje bilgisi geçersiz. Ad ve seçilen listeleri kontrol edin.",
+    ErrorCodes.ProjectNotFound => "Proje bulunamadı.",
+    ErrorCodes.ProjectNameConflict => "Bu isimde bir proje zaten var. Farklı bir ad girin.",
+    ErrorCodes.ProjectInvalidTarget => "Seçilen listelerden biri bulunamadı. Liste seçimini güncelleyin.",
+    ErrorCodes.ProjectDbError => "Veritabanı hatası nedeniyle işlem tamamlanamadı. Lütfen tekrar deneyin.",
+    _ => "İşlem tamamlanamadı."
+};
+
+app.MapGet("/api/v1/projects", async (HttpContext ctx, [FromServices] ProjectsService svc) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (projects, errorCode) = await svc.ListAsync(tenantContext.TenantId, ctx.RequestAborted);
+    if (projects == null)
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, ProjectMessage(errorCode), requestId), statusCode: ProjectStatus(errorCode));
+    return Results.Ok(projects);
+});
+
+app.MapGet("/api/v1/projects/{id:long}", async (HttpContext ctx, [FromServices] ProjectsService svc, long id) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (project, errorCode, message) = await svc.GetAsync(tenantContext.TenantId, id, ctx.RequestAborted);
+    if (project == null)
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? $"Project {id} not found", requestId), statusCode: ProjectStatus(errorCode));
+    return Results.Ok(project);
+});
+
+app.MapPost("/api/v1/projects", async (HttpContext ctx, [FromServices] ProjectsService svc, CreateProjectRequest? request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (request == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.ProjectInvalidPayload, "Request body is required", requestId), statusCode: 400);
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (project, errorCode, message) = await svc.CreateAsync(tenantContext.TenantId, tenantContext.UserId, request, ctx.RequestAborted);
+    if (project == null)
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "Project could not be created; check the name and retry.", requestId), statusCode: ProjectStatus(errorCode));
+    return Results.Json(project, statusCode: 201);
+});
+
+app.MapPut("/api/v1/projects/{id:long}", async (HttpContext ctx, [FromServices] ProjectsService svc, long id, UpdateProjectRequest? request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (request == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.ProjectInvalidPayload, "Request body is required", requestId), statusCode: 400);
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (project, errorCode, message) = await svc.UpdateAsync(tenantContext.TenantId, id, request, ctx.RequestAborted);
+    if (project == null)
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "Project could not be updated; verify it exists and retry.", requestId), statusCode: ProjectStatus(errorCode));
+    return Results.Ok(project);
+});
+
+app.MapDelete("/api/v1/projects/{id:long}", async (HttpContext ctx, [FromServices] ProjectsService svc, long id) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    // Soft-delete = archive (ON DELETE RESTRICT on runs forbids hard delete; archiving frees the name).
+    var (ok, errorCode) = await svc.ArchiveAsync(tenantContext.TenantId, id, ctx.RequestAborted);
+    if (!ok)
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.ProjectNotFound, ProjectMessage(errorCode ?? ErrorCodes.ProjectNotFound), requestId), statusCode: ProjectStatus(errorCode));
+    return Results.Ok(new { id, archived = true });
 });
 
 // ============================================================

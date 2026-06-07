@@ -524,6 +524,14 @@ public static class ErrorCodes
     public const string CxapiProviderRejected = "INV-OB-064";              // cxapi returned status=false (HTTP 200) OR rate-limit retries exhausted — message marked 'failed' with the provider code. Internal/log + failed_reason.
     public const string CxapiSendAmbiguous = "INV-OB-065";                 // cxapi timeout/transport/stranded-posting — delivery unknown, message marked 'ambiguous', awaits ops, NEVER auto-retried. Internal/log.
 
+    // FEAT-PROJELER (PKT-14) slice S2 — Projects CRUD (INV-OB-066+)
+    public const string ProjectDisabled = "INV-OB-066";                    // Projects feature flag off OR tenant not in allowlist (ProjectsOptions). Metadata-only feature; independent of any send gate. 403.
+    public const string ProjectInvalidPayload = "INV-OB-067";              // Missing/blank name, name/description over the length cap, too many target lists, or an update with no changed fields. 400.
+    public const string ProjectNotFound = "INV-OB-068";                    // No active (non-archived) project with this id for the tenant. 404.
+    public const string ProjectNameConflict = "INV-OB-069";               // Active project name already exists for this tenant (normalized partial-unique). 409.
+    public const string ProjectInvalidTarget = "INV-OB-070";              // One or more target data_list ids don't exist / not owned / deleted — rejected before any write (atomic). 422.
+    public const string ProjectDbError = "INV-OB-071";                     // Projects CRUD DB transport failure (Npgsql). Normally rolled back (no partial write); a COMMIT-phase failure is ambiguous but retry-safe (create name-guarded -> INV-OB-069 not a silent dup; update/archive idempotent). 503.
+
     // Lead Management errors (INV-LD-xxx) -- GR-3.13
     public const string LeadInvalidPayload = "INV-LD-001";
     public const string LeadNotFound = "INV-LD-002";

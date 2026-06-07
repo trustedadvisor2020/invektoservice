@@ -1030,6 +1030,26 @@ errors:
     description: cxapi send ambiguous — timeout/transport failure or a stranded 'posting' row recovered on startup; delivery is unknown so the message is marked 'ambiguous' and is NEVER auto-retried (duplicate-send risk). Awaits manual/ops review. Internal/log.
     user_message: Gönderim durumu belirsiz (zaman aşımı/bağlantı). Mükerrer gönderim riski nedeniyle otomatik tekrar yapılmaz; manuel kontrol gerekir.
 
+  # ── FEAT-PROJELER (PKT-14) slice S2 — Projects CRUD (INV-OB-066+) ──
+  - code: INV-OB-066
+    description: Projects feature disabled — the Projects feature flag is off or the tenant is not in the allowlist (ProjectsOptions). Metadata-only feature; independent of any send gate. (403)
+    user_message: Projeler bu hesap için etkin değil.
+  - code: INV-OB-067
+    description: Project payload invalid — missing/blank name, name or description over the length cap, too many target lists, or an update request with no changed fields. (400)
+    user_message: Proje bilgisi geçersiz. Ad ve seçilen listeleri kontrol edin.
+  - code: INV-OB-068
+    description: Project not found — no active (non-archived) project with this id exists for the tenant. (404)
+    user_message: Proje bulunamadı.
+  - code: INV-OB-069
+    description: Project name conflict — an active project with the same (normalized) name already exists for this tenant. (409)
+    user_message: Bu isimde bir proje zaten var. Farklı bir ad girin.
+  - code: INV-OB-070
+    description: Project target invalid — one or more selected data_list ids do not exist, are not owned by the tenant, or were deleted. Rejected before the project/targets are written (atomic). (422)
+    user_message: Seçilen listelerden biri bulunamadı. Liste seçimini güncelleyin.
+  - code: INV-OB-071
+    description: Projects DB error — a database transport failure (Npgsql) during a projects CRUD operation. The transaction normally rolls back with no partial write; if the failure occurs at COMMIT the commit outcome is ambiguous, but a RETRY is still safe — create is guarded by the unique active name (a retry after a hidden commit surfaces INV-OB-069, never a silent duplicate) and update/archive are idempotent. (503)
+    user_message: Veritabanı hatası nedeniyle işlem tamamlanamadı. Lütfen tekrar deneyin.
+
   # ── IG — Integrations (GR-3.4/3.6) ──
   - code: INV-IG-001
     description: Invalid account payload
