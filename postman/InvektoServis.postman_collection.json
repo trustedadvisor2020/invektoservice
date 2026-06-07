@@ -211,6 +211,18 @@
       ]
     },
     {
+      "name": "Backend - Projeler (Projects) & Templates",
+      "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{jwt_token}}" }] },
+      "item": [
+        { "name": "WA Approved Templates (cxapi)", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/v1/settings/wa-templates", "host": ["{{base_url}}"], "path": ["api","v1","settings","wa-templates"] }, "description": "List this tenant's WhatsApp approved (HSM) templates from cxapi (read-only). Optional ?instanceId= (defaults to tenant default)." } },
+        { "name": "List Projects", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/v1/outbound/projects", "host": ["{{base_url}}"], "path": ["api","v1","outbound","projects"] }, "description": "List Projeler projects (proxy -> Outbound). Gated by ProjectsOptions (default-OFF)." } },
+        { "name": "Get Project (+targets)", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/v1/outbound/projects/1", "host": ["{{base_url}}"], "path": ["api","v1","outbound","projects","1"] }, "description": "Get one project detail including its ordered target data_lists." } },
+        { "name": "Create Project", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Yaz Kampanyasi\",\n  \"description\": \"Sac ekimi yaz kampanyasi\",\n  \"target_list_ids\": [1, 2]\n}" }, "url": { "raw": "{{base_url}}/api/v1/outbound/projects", "host": ["{{base_url}}"], "path": ["api","v1","outbound","projects"] }, "description": "Create a project with its initial target set (target_list_ids deduped + order-preserved, may be empty)." } },
+        { "name": "Update Project (partial)", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Yaz Kampanyasi 2026\",\n  \"target_list_ids\": [1, 2, 3]\n}" }, "url": { "raw": "{{base_url}}/api/v1/outbound/projects/1", "host": ["{{base_url}}"], "path": ["api","v1","outbound","projects","1"] }, "description": "Partial update: name/description COALESCE (null=unchanged); target_list_ids null=leave set, non-null (incl empty)=REPLACE whole set." } },
+        { "name": "Archive Project", "request": { "method": "DELETE", "url": { "raw": "{{base_url}}/api/v1/outbound/projects/1", "host": ["{{base_url}}"], "path": ["api","v1","outbound","projects","1"] }, "description": "Soft-delete-as-archive (status=archived, name freed, run history preserved)." } }
+      ]
+    },
+    {
       "name": "ChatAnalysis - Direct (Internal)",
       "description": "Direct access to ChatAnalysis (port 7101). Localhost only.",
       "item": [

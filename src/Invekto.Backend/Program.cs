@@ -2452,6 +2452,14 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
             new() { Method = "DELETE", Path = "/api/v1/outbound/optout/{phone}", Description = "Remove opt-out proxy", Auth = "Bearer", Category = "API" },
             new() { Method = "GET", Path = "/api/v1/outbound/optout/check/{phone}", Description = "Check opt-out proxy", Auth = "Bearer", Category = "API" },
 
+            // FEAT-PROJELER (PKT-14): cxapi WhatsApp approved-template list + Projeler project CRUD proxies
+            new() { Method = "GET", Path = "/api/v1/settings/wa-templates", Description = "List tenant WhatsApp approved (HSM) templates from cxapi (read-only)", Auth = "Bearer", Category = "API" },
+            new() { Method = "GET", Path = "/api/v1/outbound/projects", Description = "List Projeler projects proxy (Backend -> Outbound)", Auth = "Bearer", Category = "API" },
+            new() { Method = "GET", Path = "/api/v1/outbound/projects/{id}", Description = "Get project detail (+targets) proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "POST", Path = "/api/v1/outbound/projects", Description = "Create project (+targets) proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "PUT", Path = "/api/v1/outbound/projects/{id}", Description = "Update project (partial +targets replace) proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "DELETE", Path = "/api/v1/outbound/projects/{id}", Description = "Archive (soft-delete) project proxy", Auth = "Bearer", Category = "API" },
+
             // FEAT-TFM MVP: tenant-scoped semantic field-mapping CRUD
             new() { Method = "GET", Path = "/api/v1/tenant-settings/field-mapping", Description = "Read tenant semantic→INMA field mapping", Auth = "Bearer", Category = "API" },
             new() { Method = "PUT", Path = "/api/v1/tenant-settings/field-mapping", Description = "Upsert tenant semantic→INMA field mapping (validate + cache invalidate)", Auth = "Bearer", Category = "API" },

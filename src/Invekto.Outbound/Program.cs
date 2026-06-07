@@ -1603,6 +1603,12 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "POST", Path = "/api/v1/consent", Description = "Upsert consent record (GR-3.26)", Auth = "Bearer JWT", Category = "Consent" },
         new() { Method = "GET", Path = "/api/v1/consent/check/{phone}", Description = "Check consent status", Auth = "Bearer JWT", Category = "Consent" },
         new() { Method = "POST", Path = "/api/v1/data-deletion", Description = "KVKK data deletion request (GR-3.29)", Auth = "Bearer JWT", Category = "Compliance" },
+        // FEAT-PROJELER (PKT-14 S2): Projeler project CRUD (gated by ProjectsOptions, default-OFF)
+        new() { Method = "GET", Path = "/api/v1/projects", Description = "List projects (Projeler)", Auth = "Bearer JWT", Category = "Projects" },
+        new() { Method = "GET", Path = "/api/v1/projects/{id}", Description = "Get project detail (+targets)", Auth = "Bearer JWT", Category = "Projects" },
+        new() { Method = "POST", Path = "/api/v1/projects", Description = "Create project (+targets)", Auth = "Bearer JWT", Category = "Projects" },
+        new() { Method = "PUT", Path = "/api/v1/projects/{id}", Description = "Update project (partial +targets replace)", Auth = "Bearer JWT", Category = "Projects" },
+        new() { Method = "DELETE", Path = "/api/v1/projects/{id}", Description = "Archive (soft-delete) project", Auth = "Bearer JWT", Category = "Projects" },
         new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },
         new() { Method = "GET", Path = "/ready", Description = "Readiness probe (DB check)", Auth = "none", Category = "Health" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery (this)", Auth = "none", Category = "Ops" },
