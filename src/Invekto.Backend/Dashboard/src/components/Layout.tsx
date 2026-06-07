@@ -26,6 +26,7 @@ import {
   Kanban,
   Mic,
   Database,
+  Briefcase,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { InvektoLogo } from './ui/InvektoLogo';
@@ -55,6 +56,10 @@ const ALL_NAV_ITEMS: NavItem[] = [
   // FEAT-OBI: Veri Yönetimi — İçe Aktarma (Listeler) + Dışa Aktarma (Export) tek sayfada
   // iki sekme (tenant-visible; "Outbound" plan + ExportOptions gate'leri server-side enforce).
   { path: '/data-management', label: 'Veri Yönetimi',     icon: Database },
+  // FEAT-PROJELER PKT-14 S4: Projeler — kayıtlı listeleri hedefleyen kampanya projeleri
+  // (tenant-visible; ProjectsOptions gate'i server-side enforce, in-page 403 calm state).
+  // NOTE: /api/v1/inma/nav workspace section ile senkron tutulur (dual-source nav).
+  { path: '/projects',        label: 'Projeler',         tenantLabel: 'Projeler', icon: Briefcase },
   // — Tenant: Analiz —
   { path: '/flow-monitor',    label: 'Flow Monitor',     tenantLabel: 'Flow Izleme', icon: Activity, feature: 'FlowBuilder', section: 'Analiz' },
   // — Ops: Yönetim —

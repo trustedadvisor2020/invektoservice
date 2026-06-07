@@ -1,0 +1,160 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": "PKT-14",
+  "spec_ref": null,
+  "slug": "20260607-projeler-s4-ui",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-07T19:30:00Z",
+  "updated_at": "2026-06-07T19:55:00Z",
+  "plan": {
+    "summary": "FEAT-PROJELER slice S4: the operator-facing Projeler page. Adds 5 Backend proxy routes /api/v1/outbound/projects/* (data_lists GR4 precedent) over the S2 Outbound CRUD, a typed api.ts client + types, a new ProjectsPage.tsx (list + single X-close create/edit modal: name + description + multi-select target data-lists with live sendable counts + archive), the /projects App.tsx route, and the Layout.tsx + Backend /api/v1/inma/nav 'Projeler' nav entry (dual-source synced). METADATA-ONLY (Q decision): the WhatsApp template picker + instance + send land in PR-4 (S2 CRUD has no cxapi-config columns yet). No send path; the S3 wa-templates endpoint is NOT consumed in S4.",
+    "q_intent": "Continue PKT-14 after S3 (cxapi template-list). Proceed with S4 — Projeler React page + wizard (DataImportPage pattern, X-only modal) + Backend proxy routes for /api/v1/projects (data_lists GR4 precedent) + api.ts + App.tsx route + Layout nav. Send action stays hidden until PR-4 + gate lift. Do S3+S4 back-to-back.",
+    "interview_notes": "Decisions (AskUserQuestion 2026-06-07): (1) Template picker DEFERRED to PR-4 — S4 is metadata-only (name + description + target data-lists); S2 CRUD has no cxapi-config columns (inert until PR-4), so a template selection has nowhere to persist; the S3 /api/v1/settings/wa-templates endpoint stays ready but is NOT consumed in S4 (no unused api.ts method either — added in PR-4 with its picker). (2) Single X-close modal create/edit form (NOT a 3-step wizard) — name + description + a multi-select of the tenant's data-lists showing live sendable_count; matches Q's modal-X-close UX rule. Defaults (not separately asked): nav item lives in 'Çalışma Alanı' after 'Veri Yönetimi', always-visible (no feature flag, mirrors Veri Yönetimi) with the calm 403 'not enabled' state when ProjectsOptions denies (INV-OB-066); DELETE surfaces as 'Arşivle' (S2 is soft-delete-as-archive). The nav is dual-source (Layout.tsx ALL_NAV_ITEMS + Backend /api/v1/inma/nav) and BOTH are updated in lockstep (2026-06-04 lesson).",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "Five Backend proxy routes under /api/v1/outbound/projects (GET list, GET {id:long}, POST, PUT {id:long}, DELETE {id:long}) forward Authorization straight through to the Outbound /api/v1/projects/* endpoints via the existing OutboundProxy{Get,Post,Put,Delete} helpers — exactly mirroring the data-lists GR4 proxy block; no Backend-side tenant logic is added (Outbound does ExtractTenant + ProjectsOptions gating).", "verified": true, "verification_note": "Codex (gpt-5.5) iter0 PASS — CQ9 + CoVe Q1." },
+      { "id": "AC2", "criterion": "A new tenant-facing ProjectsPage at the /projects route (under ProtectedRoute + Layout) lists the tenant's projects (name, status, target_count, sent/delivered/failed counters, created_at) and offers a single X-close modal to CREATE and EDIT a project (name + description + a multi-select of the tenant's data-lists showing each list's sendable_count) and an Archive action; the modal uses the X-icon-top-right close (no 'İptal' text button) per the project UX rule.", "verified": true, "verification_note": "Codex (gpt-5.5) iter0 PASS — CQ10 + CoVe Q3; SPA build (tsc+vite) clean." },
+      { "id": "AC3", "criterion": "The api.ts client gains typed Project types (ProjectSummary/ProjectTargetDto/ProjectDetail/CreateProjectRequest/UpdateProjectRequest matching the Shared ProjectDtos JSON contract) + methods listProjects/getProject/createProject/updateProject/archiveProject hitting /api/v1/outbound/projects*, reusing the existing listDataLists for the target multi-select; a 403 renders the calm 'hesabınızda etkin değil' state (ApiClientError status===403) and 404/409/422 surface their actionable INV-OB messages — no raw error dumps.", "verified": true, "verification_note": "Codex (gpt-5.5) iter0 PASS — CQ1/CQ12 + CoVe Q4." },
+      { "id": "AC4", "criterion": "The 'Projeler' nav entry is added in BOTH nav sources in lockstep — Layout.tsx ALL_NAV_ITEMS ('Çalışma Alanı' section, after 'Veri Yönetimi', always-visible, no feature flag) AND the Backend GET /api/v1/inma/nav workspace section (Id 'projects', Path '/projects', same icon) — per the 2026-06-04 dual-source nav lesson; S4 is metadata-only with NO send path, NO cxapi/template consumption, NO CxapiSend/BulkSend allowlist change, and the P0-3 gate untouched; the .NET solution AND the SPA (tsc && vite build) both build clean.", "verified": true, "verification_note": "Codex (gpt-5.5) iter0 PASS — CQ3/CQ5/CQ8 + CoVe Q2/Q3; dual-source nav verified in both Layout.tsx + /api/v1/inma/nav; SPA tsc+vite + .NET both clean." }
+    ]
+  },
+  "spec_architectural_decisions": [
+    {
+      "decision": "The /api/v1/projects endpoints live in Outbound (S2); S4 adds Backend proxy routes /api/v1/outbound/projects/* that forward the bearer straight through, exactly like the data-lists GR4 proxy block — no Backend-side tenant/gating logic.",
+      "reason": "Established GR4 precedent (Program.cs ~3666): the Backend is a thin proxy over Outbound for tenant-scoped Outbound-plan features; Outbound owns ExtractTenant + ProjectsOptions gating. Re-implementing tenant logic at the Backend would duplicate + risk drift.",
+      "codex_note": "EXPECTED: thin pass-through proxy mirroring data-lists; the /api/v1/outbound/ prefix carries the JWT + Outbound FeatureGuard, Outbound does the tenant scoping + ProjectsOptions gate. Not a missing-auth hole."
+    },
+    {
+      "decision": "S4 is METADATA-ONLY: the create/edit form collects only name + description + target_list_ids. The WhatsApp template picker, instance selection, and any send action are DEFERRED to PR-4; the S3 /api/v1/settings/wa-templates endpoint is NOT consumed in S4 and no unused api.ts method is added for it.",
+      "reason": "Q interview decision. The S2 projects CRUD intentionally has no cxapi-config columns (instance_id/template_kind/wa_template_id/param_mapping are inert until PR-4), so a template selection has nowhere to persist. Shipping a picker now would be an un-saveable, misleading control. Adding an unused getWaTemplates() client method now would be dead frontend code.",
+      "codex_note": "EXPECTED: no template/send UI and no wa-templates client call in S4 — this is intentional scope, not a missing feature. The S3 endpoint exists for PR-4's picker. Keeps S4 honest + free of dead code."
+    },
+    {
+      "decision": "DELETE is surfaced to the operator as 'Arşivle' (Archive), not 'Sil' (hard delete); the list excludes archived projects.",
+      "reason": "S2 DELETE is soft-delete-as-archive (bulk_send_jobs.project_id is ON DELETE RESTRICT); a project with runs can never be hard-deleted. The UI label must be honest about the semantics.",
+      "codex_note": "EXPECTED 'Arşivle' wording + archived rows excluded from the list. Matches the S2 soft-delete-as-archive contract; not a delete bug."
+    },
+    {
+      "decision": "The 'Projeler' nav entry is added to BOTH Layout.tsx ALL_NAV_ITEMS AND the Backend GET /api/v1/inma/nav response (workspace section) in the same commit.",
+      "reason": "The tenant nav has two sources (Dashboard's own Layout when standalone; the Backend /api/v1/inma/nav when embedded in the INMA Angular shell). The 2026-06-04 incident was caused by updating only one. Both must stay in sync.",
+      "codex_note": "EXPECTED dual-source nav edit (Layout.tsx + /api/v1/inma/nav). Updating only one is the known 2026-06-04 stale-nav bug; updating both is correct, not scope creep."
+    },
+    {
+      "decision": "The Projeler nav item + page are always-visible (no InseFeatures flag) and rely on the in-page calm 403 state when ProjectsOptions denies (INV-OB-066), mirroring 'Veri Yönetimi'.",
+      "reason": "ProjectsOptions is a server-side allowlist gate, not an InseFeatures flag; the sibling Veri Yönetimi has no feature flag and renders a calm 'not enabled' state on 403 (DataImportPage precedent). Consistent UX + one mental model.",
+      "codex_note": "EXPECTED no feature-flag gate on the nav item; the 403 calm state is the gate surface, same as data-lists/DataImportPage. Not an authorization gap (Outbound enforces the gate server-side)."
+    }
+  ],
+  "allowed_files": [
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/Layout.tsx",
+    "arch/plans/20260607-projeler-s4-ui.json",
+    "arch/plans/diffs/20260607-projeler-s4-ui.diff"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Backend/Program.cs", "change": "Add 5 proxy routes /api/v1/outbound/projects* (Get/Get{id}/Post/Put{id}/Delete{id}) -> Outbound /api/v1/projects*; add the 'Projeler' item to the GET /api/v1/inma/nav workspace section (dual-source sync).", "is_new": false, "deleted": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "change": "Add Project TS types + listProjects/getProject/createProject/updateProject/archiveProject client methods (/api/v1/outbound/projects*).", "is_new": false, "deleted": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx", "change": "NEW: Projeler list + single X-close create/edit modal (name + description + data-list multi-select with sendable_count) + Archive; calm 403 state.", "is_new": true, "deleted": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/App.tsx", "change": "Add the lazy /projects route under ProtectedRoute.", "is_new": false, "deleted": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/components/Layout.tsx", "change": "Add the 'Projeler' nav item to ALL_NAV_ITEMS (Çalışma Alanı, after Veri Yönetimi).", "is_new": false, "deleted": false }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "21952e625df25b1fb9555e81c9a5af731664e86ebbfee69c631ddab9d61a29bf",
+    "full_path": "arch/plans/diffs/20260607-projeler-s4-ui.diff",
+    "stats": { "insertions": 461, "deletions": 0, "files_count": 5 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "(cd src/Invekto.Backend/Dashboard && npm run build) [tsc && vite build] + dotnet build src/Invekto.Backend/Invekto.Backend.csproj",
+    "timestamp": "2026-06-07T19:43:00Z",
+    "duration_ms": null,
+    "output_tail": "SPA: tsc clean (no TS errors), vite built in 6.25s -> ProjectsPage-BTaF7s2k.js chunk + new index-CeE-Anp2.js. .NET Backend: 0 Error(s), 17 pre-existing CA1416 warnings (unrelated). The committed wwwroot/app bundle is refreshed (38 old hashed chunks replaced + ProjectsPage chunk + index.html) — generated output, committed per repo convention, NOT part of this review diff.",
+    "error_summary": null,
+    "services": ["Invekto.Backend", "Dashboard SPA"]
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "Are the 5 Backend project routes a thin pass-through proxy (bearer forwarded straight to Outbound /api/v1/projects* via OutboundProxy{Get,Post,Put,Delete}, no Backend-side tenant logic) so tenant scoping + ProjectsOptions gating stay solely in Outbound, and can one tenant never see/edit another tenant's project through this layer?", "category": "Auth" },
+    { "id": "Q2", "question": "Is S4 genuinely metadata-only and send-path independent — the create/edit form posts only name/description/target_list_ids, no cxapi config or template is collected or sent, the S3 wa-templates endpoint is not consumed, no CxapiSend/BulkSend allowlist or the P0-3 gate is touched, and any send/dispatch UI is absent (deferred to PR-4)?", "category": "Process/Policy" },
+    { "id": "Q3", "question": "Is the routing/nav change complete and consistent — the new /projects route is registered under ProtectedRoute+Layout, AND the 'Projeler' entry is added to BOTH Layout.tsx ALL_NAV_ITEMS and the Backend /api/v1/inma/nav workspace section (the 2026-06-04 dual-source rule) — and does DELETE surface as 'Arşivle' with archived projects excluded from the list (S2 soft-delete-as-archive)?", "category": "Lifecycle" },
+    { "id": "Q4", "question": "Does the page handle every S2 response honestly — a 403 renders the calm 'hesabınızda etkin değil' state (ApiClientError status===403, not a red error), and 404 (INV-OB-068)/409 name-conflict (INV-OB-069)/422 invalid-target (INV-OB-070) surface their actionable Turkish messages — with no raw error dump and no silent failure, and does the target multi-select reuse the existing listDataLists (showing sendable_count) rather than inventing a new endpoint?", "category": "Data" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Any CxapiSend/BulkSend feature-flag or AllowedTenantIds config (P0-3 gate untouched)",
+      "The S3 /api/v1/settings/wa-templates endpoint + WapCrmTemplateClient (not consumed in S4; PR-4 wires the picker)",
+      "The Outbound projects CRUD (S2) + ProjectDtos contract (S4 only consumes them)",
+      "The bulk send engine / MessageSenderService / any dispatch path",
+      "arch/db/** (S4 is UI + proxy only; no schema change)"
+    ],
+    "non_goals": [
+      "WhatsApp template picker / instance selection / param mapping (PR-4)",
+      "Sending or dispatching from a project (PR-4 + gate lift)",
+      "Run history / counters UI beyond surfacing the read-only ProjectSummary counters",
+      "Status transition controls (pause/cancel/complete) — run-driven, PR-4",
+      "A getWaTemplates() api.ts method (added in PR-4 with its picker — avoids dead code now)"
+    ],
+    "intentional_exclusions": [
+      "No new Backend tenant/gating logic on the proxy routes — Outbound owns it (GR4 precedent)",
+      "No InseFeatures flag on the nav item — calm 403 state is the gate surface (Veri Yönetimi precedent)",
+      "No 3-step wizard — a single X-close modal suffices for metadata (Q decision)",
+      "No automated tests (project convention: tests only when requested)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "ProjectsPage load/create/update/archive — try/catch around api calls: ApiClientError status===403 -> calm featureDisabled state; other statuses -> actionable message via the INV-OB code/message (errText helper), never a raw dump",
+      "Backend proxy routes — no new try/catch; OutboundClient.ProxyRequestAsync already maps transport/timeout to 502/504 (INV-BE-001/002), and Outbound returns the INV-OB coded bodies which pass through verbatim"
+    ],
+    "user_facing_errors": [
+      "Calm: 'Bu özellik hesabınızda henüz etkin değil.' (403 INV-OB-066)",
+      "INV-OB-068 'Proje bulunamadı.' / INV-OB-069 'Bu isimde bir proje zaten var...' / INV-OB-070 'Seçilen listelerden biri bulunamadı...' surfaced on create/edit",
+      "Generic load failure: 'Projeler yüklenemedi' with a retry affordance"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Every api call is awaited in a try/catch; a 403 maps to the calm not-enabled panel, all other errors surface the server's INV-OB code + actionable message (no swallow, no raw JSON). The Backend proxy is a pass-through that does not mask Outbound's coded responses. No write happens client-side without a server round-trip whose outcome is shown."
+  },
+  "aha_moments": [
+    { "category": "UX", "user_pain": "Operators rebuild the same audience every campaign and can't save 'who + which lists' as a reusable, named unit.", "suggestion": "A Projeler page where you create a named project once, attach saved lists, and see each list's live sendable_count + the projected audience total at a glance.", "aha_moment": "When the operator opens 'Yaz Kampanyası' and instantly sees '3 liste · 4.812 gönderilebilir' instead of re-picking lists from scratch." },
+    { "category": "SALES", "user_pain": "Prospects ask if Invekto supports repeatable, list-targeted WhatsApp campaigns (TONIVA mode4 parity) and a one-off CSV blast doesn't demo well.", "suggestion": "The Projeler page is the visible, operator-facing 'campaigns' surface — create a project, attach lists, see the audience — even before send is enabled.", "aha_moment": "When a demo creates a 'Proje' live and the prospect sees the repeatable-campaign story land before send is even on." },
+    { "category": "RELIABILITY", "user_pain": "A management UI that lets you attach the wrong/deleted list silently is a dead-send waiting to happen.", "suggestion": "The multi-select shows only the tenant's active lists (with sendable_count); a since-deleted list cleanly fails server-side with 'Seçilen listelerden biri bulunamadı' instead of saving a broken project.", "aha_moment": "When picking a stale list fails with a clear message rather than creating a project that can never run." },
+    { "category": "SUPPORT", "user_pain": "Deleting a finished project would destroy the run history finance/support need.", "suggestion": "The destructive action is 'Arşivle' (soft-delete): the ON DELETE RESTRICT FK guarantees a project with runs can never be erased, and the name is freed for reuse.", "aha_moment": "When support archives an old project, reuses its name for a new one, and the archived original (with counters) is still there months later." },
+    { "category": "SPEED", "user_pain": "Editing a project's list selection one add/remove at a time is tedious and error-prone.", "suggestion": "The edit modal replaces the whole target set in one save (the PUT sends the final id list, atomic set-replace server-side).", "aha_moment": "When swapping the lists on a project saves in one click with no partial state." },
+    { "category": "RELIABILITY", "user_pain": "A tenant nav that's edited in only one place goes stale in the other shell (the 2026-06-04 INMA stale-nav incident).", "suggestion": "Add 'Projeler' to BOTH Layout.tsx and the Backend /api/v1/inma/nav in the same commit so the standalone Dashboard and the embedded INMA shell agree.", "aha_moment": "When the Projeler item appears identically whether the tenant opens Invekto standalone or inside the INMA Angular shell." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-06-07T19:53:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-06-07T19:55:00Z",
+    "raw_text": "Codex (mcp__codex-review__codex_review, model gpt-5.5-2026-04-23) iteration 0: OVERALL PASS. Code Quality Gate 12/12 PASS (CQ1-CQ12), CoVe 4/4 PASS (Q1-Q4), 0 blocking. Clean iter0. Findings: thin pass-through proxy (no Backend tenant logic, isolation preserved — cxapi/Outbound boundary respected); metadata-only (only name/description/target_list_ids posted; no getWaTemplates / template picker / send UI); dual-source nav verified (Layout.tsx + /api/v1/inma/nav); DELETE surfaced as Arşivle (soft-delete-as-archive); 403 calm state + errText INV-OB surfacing, only the data-lists-load fallback is a deliberate silent-to-empty; no schema/breaking-contract change. The committed wwwroot/app bundle is generated output (not in the reviewed source diff).",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "errText() preserves ApiClientError code/message; load/create/update/get/archive surface errors; 403 -> calm feature-disabled state." },
+      "CQ2": { "result": "PASS", "evidence": "Only silent catch is the intentional listDataLists fallback-to-empty (must not block the projects view); project-level ops all surface errors." },
+      "CQ3": { "result": "PASS", "evidence": "Diff limited to the 5 declared source files; changes match plan scope (5 proxy routes + nav + route + client/types + page)." },
+      "CQ4": { "result": "PASS", "evidence": "Proxy routes intentionally mirror the data-lists pass-through; page uses shared Button/Input; no harmful duplication." },
+      "CQ5": { "result": "PASS", "evidence": "Backend uses existing OutboundProxy* helpers; route lazy under ProtectedRoute/Layout; nav updated in both sources (dual-source convention)." },
+      "CQ6": { "result": "PASS", "evidence": "One projects load + one data-lists load on mount; reload after mutations; in-memory id filtering; no N+1/polling/unclosed resource." },
+      "CQ7": { "result": "PASS", "evidence": "No TODO/HACK/FIXME added." },
+      "CQ8": { "result": "PASS", "evidence": "Additive only: new Project types/methods, new /projects route, new proxy routes; nothing removed/renamed." },
+      "CQ9": { "result": "PASS", "evidence": "Thin proxies to Outbound /api/v1/projects* (no direct DB access); tenant scoping + ProjectsOptions gate stay in Outbound; UI sends only metadata." },
+      "CQ10": { "result": "PASS", "evidence": "navy/brand Tailwind + shared Button/Input; 403 calm message (not red); Archive label + confirm = soft-delete-as-archive semantics." },
+      "CQ11": { "result": "PASS", "evidence": "No new DB query/table/migration/column; Backend only proxies; frontend DTOs snake_case match the API contract." },
+      "CQ12": { "result": "PASS", "evidence": "Server INV-OB code+message preserved via errText; 403 specifically handled; actionable Turkish messages; no new bare catch." }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "Exactly 5 routes delegating to OutboundProxy{Get,Post,Put,Delete} with /api/v1/projects paths; no Backend DB/tenant/authz logic — proxy boundary preserved." },
+      "Q2": { "result": "PASS", "reasoning": "Create/update post only name/description/target_list_ids; no getWaTemplates, template picker, cxapi field, or send/dispatch UI added." },
+      "Q3": { "result": "PASS", "reasoning": "/projects lazy route under ProtectedRoute+Layout; nav in BOTH Layout.tsx + /api/v1/inma/nav; DELETE exposed as Arşivle (soft-delete-as-archive) + reload." },
+      "Q4": { "result": "PASS", "reasoning": "403 -> calm 'etkin değil'; other errors via errText (INV-OB surfaced); only listDataLists fallback swallowed; target multi-select reuses listDataLists + sendable_count." }
+    },
+    "blocking_issues": [],
+    "iteration": 0,
+    "escalation_required": false
+  }
+}

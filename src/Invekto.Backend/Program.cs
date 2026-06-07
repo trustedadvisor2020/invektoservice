@@ -3727,6 +3727,24 @@ app.MapPost("/api/v1/outbound/bulk-send/confirm", async (HttpContext ctx, Outbou
 app.MapGet("/api/v1/outbound/bulk-send/{campaignId}/status", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, string campaignId) =>
     await OutboundProxyGet(ctx, obClient, jsonLog, $"/api/v1/bulk-send/{campaignId}/status"));
 
+// FEAT-PROJELER PKT-14 S4 — Projeler CRUD proxy (thin pass-through over the Outbound /api/v1/projects
+// endpoints from S2; mirrors the data-lists GR4 block). The bearer is forwarded straight through;
+// Outbound does ExtractTenant + the ProjectsOptions gate. DELETE is soft-delete-as-archive in Outbound.
+app.MapGet("/api/v1/outbound/projects", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyGet(ctx, obClient, jsonLog, "/api/v1/projects"));
+
+app.MapGet("/api/v1/outbound/projects/{id:long}", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
+    await OutboundProxyGet(ctx, obClient, jsonLog, $"/api/v1/projects/{id}"));
+
+app.MapPost("/api/v1/outbound/projects", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, "/api/v1/projects"));
+
+app.MapPut("/api/v1/outbound/projects/{id:long}", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
+    await OutboundProxyPut(ctx, obClient, jsonLog, $"/api/v1/projects/{id}"));
+
+app.MapDelete("/api/v1/outbound/projects/{id:long}", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
+    await OutboundProxyDelete(ctx, obClient, jsonLog, $"/api/v1/projects/{id}"));
+
 // ============================================
 // FLOW BUILDER PROXY ENDPOINTS
 // ============================================
@@ -8283,6 +8301,7 @@ app.MapGet("/api/v1/inma/nav", async (HttpContext ctx) =>
                     new InmaNavItem { Id = "flow-templates",  Label = "Şablon Galerisi", Path = "/flow-templates",  Icon = "layout-template" },
                     new InmaNavItem { Id = "knowledge",       Label = "Bilgi Bankası",   Path = "/knowledge",       Icon = "book-open" },
                     new InmaNavItem { Id = "data-management", Label = "Veri Yönetimi",   Path = "/data-management", Icon = "database" },
+                    new InmaNavItem { Id = "projects",        Label = "Projeler",        Path = "/projects",        Icon = "briefcase" },
                 ]
             },
             new InmaNavSection

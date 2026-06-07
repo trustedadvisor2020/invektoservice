@@ -71,6 +71,9 @@ const LeadDetailPage = lazy(() => import('./pages/leads/LeadDetailPage').then(m 
 // their tab is active); /data-import + /data-export redirect here for back-compat.
 const DataManagementPage = lazy(() => import('./pages/DataManagementPage').then(m => ({ default: m.DataManagementPage })));
 
+// FEAT-PROJELER PKT-14 S4: Projeler (projects) management page (lazy, default export).
+const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
+
 function ProtectedRoute() {
   const { isAuthenticated } = useAuth();
 
@@ -164,6 +167,8 @@ export default function App() {
         <Route path="/data-management/:tab" element={<Suspense><DataManagementPage /></Suspense>} />
         <Route path="/data-import" element={<Navigate to="/data-management/import" replace />} />
         <Route path="/data-export" element={<Navigate to="/data-management/export" replace />} />
+        {/* FEAT-PROJELER PKT-14 S4: Projeler (projects) management. */}
+        <Route path="/projects" element={<Suspense><ProjectsPage /></Suspense>} />
         <Route path="/messages" element={<MessagesPage />} />
         <Route path="/webchat" element={<WebChatPage />} />
         {/* FEAT-VFB: Voice Test embedded in-dashboard (was Layout.tsx external new-tab). */}

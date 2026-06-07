@@ -2294,6 +2294,39 @@ class OpsApiClient {
     return this.request<BulkSendStatusResponse>(`/api/v1/outbound/bulk-send/${encodeURIComponent(campaignId)}/status`);
   }
 
+  // --- FEAT-PROJELER PKT-14 S4: Projeler (projects) CRUD ---
+  // Metadata only (name + description + target data-lists). Template/instance/send land in PR-4.
+  async listProjects(): Promise<ProjectSummary[]> {
+    return this.request<ProjectSummary[]>('/api/v1/outbound/projects');
+  }
+
+  async getProject(id: number): Promise<ProjectDetail> {
+    return this.request<ProjectDetail>(`/api/v1/outbound/projects/${id}`);
+  }
+
+  async createProject(req: CreateProjectRequest): Promise<ProjectSummary> {
+    return this.request<ProjectSummary>('/api/v1/outbound/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req),
+    });
+  }
+
+  async updateProject(id: number, req: UpdateProjectRequest): Promise<ProjectSummary> {
+    return this.request<ProjectSummary>(`/api/v1/outbound/projects/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req),
+    });
+  }
+
+  // Soft-delete-as-archive (Outbound returns { id, archived:true }).
+  async archiveProject(id: number): Promise<{ id: number; archived: boolean }> {
+    return this.request<{ id: number; archived: boolean }>(`/api/v1/outbound/projects/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   // --- FEAT-OBI Phase 1A Plan B: Export Manager ---
   async listSendJobs(): Promise<SendJobSummary[]> {
     return this.request<SendJobSummary[]>('/api/v1/outbound/exports/send-jobs');
@@ -2389,6 +2422,56 @@ export interface DataListSummary {
   sendable_count: number;
   created_at: string;
   updated_at: string;
+}
+
+// --- FEAT-PROJELER PKT-14 S4: Projeler (projects) ---
+// Mirrors Invekto.Shared/DTOs/Outbound/ProjectDtos.cs (snake_case JSON). The counters +
+// lifecycle timestamps are read-only (run-driven, populated in PR-4); S4 writes only
+// name/description/target_list_ids.
+export type ProjectStatus = 'draft' | 'running' | 'paused' | 'completed' | 'cancelled' | 'archived';
+
+export interface ProjectSummary {
+  id: number;
+  name: string;
+  description: string | null;
+  status: ProjectStatus;
+  target_count: number;
+  run_count: number;
+  total_targets: number;
+  sent_count: number;
+  delivered_count: number;
+  read_count: number;
+  failed_count: number;
+  ambiguous_count: number;
+  created_at: string;
+  updated_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
+export interface ProjectTargetDto {
+  data_list_id: number;
+  list_name: string;
+  total_records: number;
+  sendable_count: number;
+  sort_order: number;
+}
+
+export interface ProjectDetail {
+  project: ProjectSummary;
+  targets: ProjectTargetDto[];
+}
+
+export interface CreateProjectRequest {
+  name: string;
+  description?: string | null;
+  target_list_ids: number[];
+}
+
+export interface UpdateProjectRequest {
+  name?: string | null;
+  description?: string | null;
+  target_list_ids?: number[] | null;
 }
 
 export interface ImportCustomFlags {
