@@ -1,0 +1,262 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": "PKT-1",
+  "spec_ref": null,
+  "slug": "20260606-cxapi-pr3-plaintext-cutover",
+  "risk": "HIGH",
+  "status": "DONE",
+  "created_at": "2026-06-06T22:55:00Z",
+  "updated_at": "2026-06-06T23:55:00Z",
+  "plan": {
+    "summary": "PR-3a of the cxapi send-engine split: wire the (already built+tested, no-op) WapCrmSendClient into the live send path for PLAIN-TEXT bulk, behind a default-OFF feature flag + tenant allowlist. Adds an immutable route decision written at broadcast-create (send_route='wapcrm_cxapi' + tenant-default instance_id), an idempotent compare-and-swap send state machine (new 'posting'/'ambiguous' statuses; submitted->'sent', provider_failed/rate-exhausted->'failed'), structured provider-result persistence, a DMP hard-reject on the cxapi route, a (tenant_id,instance_id)-keyed RateLimiter with cooldown, per-batch tenant-credential loading (no N+1), and metrics/log. ext_id is intentionally NOT here (G12 still open -> PR-3b).",
+    "q_intent": "PR-3 cxapi paketine basla — duz-metin bulk cutover + state machine + ext_id (dev asamasi). HIGH risk. G12 acik ise iki-alt-adim: (3a) routing + state machine + DMP hard-reject + RateLimiter (tenant,instance) + metrics SIMDI; (3b) ext_id composite UNIQUE + tenant-scoped FindMessageByExternalIdAsync G12 onayi sonrasi. KARARI Q versin.",
+    "interview_notes": "Interview (AskUserQuestion, 4/4 gri nokta, 2026-06-06 — Q hepsinde onerilen secenegi sececti): (1) G12 = ACIK (INMA sert teyit YOK) -> 3a/3b SPLIT. ext_id (composite UNIQUE (tenant_id, external_message_id) + tenant-scoped FindMessageByExternalIdAsync + delivery-status webhook'a tenant_id wiring) PR-3b'ye ertelendi; bu PR ext_id index'ine / lookup'a / webhook'a DOKUNMAZ. (2) INSTANCE = TENANT DEFAULT settings_json->'wapcrm'.instance_id (WapCrmSettings'e instance_id eklenir; broadcast-create'te cozulup outbound_broadcasts + her outbound_messages satirina IMMUTABLE damgalanir; secret+userId send aninda BATCH yuklenir, asla persist edilmez). (3) CUTOVER SCOPE = TUM bulk (broadcast_id != null) CSV/liste + direct; trigger/transactional KOPRUDE kalir. (4) STATE MACHINE = MINIMAL-BLAST: yeni DISTINCT status 'posting'+'ambiguous'; submitted='sent', provider_failed/rate-exhausted='failed'. DB BULGULARI: (a) chk_message_status CHECK VAR -> 056 ZORUNLU; (b) WapCrmSettings'te instance_id YOK; (c) IsBroadcastCompleteAsync 'queued','sending' -> 'posting' eklenmeli; (d) delivery-status webhook (Program.cs ~790) tenant-BLIND + fallback YOK (sadece external_message_id ile UPDATE); (e) 055 son -> 056 PR-3a, PKT-2 057. PLAN-REVIEW (codex_consult critique x2, 2026-06-06, gpt-5.5) -> 6 bulgu (3 P0 + 3 P1) implementasyon ONCESI folded: P0-1 SetMessagePosting CAS (WHERE status='sending', 0 row -> POST ETME); P0-2 stranded-posting sweep stale-TTL (last_attempt_at < NOW()-interval) + TUM outcome write'lari CAS (WHERE status='posting') + sweep TEK atomik CTE (mesaj + broadcast counter ayni statement); P0-3 ext_id deferral dark-code'da guvenli AMA live-enablement GATE (PR-3b inmeden veya cxapi delivery-callback'in webhook'a gitmedigi KANITLANMADAN tenant allowlist EDILMEZ); P1-1 startup'ta route-scoped cxapi 'sending'->'queued' reset (pre-POST guvenli, bridge'e DOKUNMA); P1-2 sweep counter+completion atomik; P1-3 outbound_broadcasts'a 'ambiguous' counter kolonu + IsBroadcastComplete +'posting'. Terminal=sent/delivered/read/failed/ambiguous; non-terminal=queued/sending/posting. AggregateBroadcastStatusAsync broadcast.status-bazli (completed/failed) -> message-status degisiminden ETKILENMEZ (dogrulandi). PROD DMP SCAN (read-only): enable_dynamic_message=TRUE 1 tenant ama dynamic_fields'li mesaj 0/alltime -> DMP hard-fail dogru + pratik risk dusuk; o tek tenant allowlist'ten ONCE sablon placeholder kontrolu."
+    ,
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "Default-OFF no-op: with CxapiSend disabled OR the tenant not allowlisted, NO row is ever stamped send_route='wapcrm_cxapi' and the ENTIRE send path (RateLimiter tenant-only key, MainAppCallbackClient bridge, ResetSendingMessages, broadcast counters/completion) behaves byte-for-byte as before. The RateLimiter int->(tenant,instance) key change maps the bridge to (tenant,0) which is semantically identical; the additive IsBroadcastComplete +'posting' and IncrementBroadcastCounter +'ambiguous' edits never match bridge rows.", "verified": false },
+      { "id": "AC2", "criterion": "Immutable route at create: for a cxapi-allowlisted tenant, BroadcastOrchestrator stamps send_route='wapcrm_cxapi' + message_kind='plain_text' + the tenant-default instance_id (settings_json->'wapcrm'.instance_id) onto outbound_broadcasts AND every outbound_messages row at create time. If the tenant is allowlisted but lacks instance_id/secret_key/user_id, the broadcast is REJECTED at create (INV-OB-062) with NO silent bridge fallback.", "verified": false },
+      { "id": "AC3", "criterion": "Sender route branch: MessageSenderService routes send_route='wapcrm_cxapi' rows through WapCrmSendClient.SendPlainTextAsync (instance_id from the row; secret+userId batch-loaded once per dequeue cycle for the distinct cxapi tenants via a single GetWapCrmSettingsBatchAsync query — no N+1, secret never logged/persisted); send_route='mainapp_bridge' rows keep the existing MainAppCallbackClient path unchanged. The cxapi rate-limit gate uses TryAcquire(tenant,instance); the bridge keeps TryAcquire(tenant).", "verified": false },
+      { "id": "AC4", "criterion": "Idempotent CAS state machine (no duplicate sends): SetMessagePostingAsync is a compare-and-swap UPDATE ... SET status='posting',attempt_count=@n,last_attempt_at=NOW() WHERE id=@id AND status='sending' (CancellationToken.None); the caller ABORTS the POST when 0 rows change. A message is NEVER POSTed while merely 'sending' (mandatory contract). A crash mid-'posting' leaves 'posting' (ResetSendingMessagesAsync only touches 'sending'); a startup stale-TTL sweep (last_attempt_at < NOW()-interval) resolves 'posting'->'ambiguous'. MarkCxapiOutcomeAsync is also a CAS (WHERE status='posting'), so a late POST return cannot resurrect a swept row. Outcome map (CxapiOutcomeMapper): Submitted->'sent'; ProviderFailed->'failed'; RateLimited && attempt<MaxSendAttempts -> 'queued' + (tenant,instance) cooldown; RateLimited && attempt>=max -> 'failed'; Ambiguous(timeout)/TransportError -> 'ambiguous' (NEVER auto-retried). Only RateLimited (provably not sent) is ever retried.", "verified": false },
+      { "id": "AC5", "criterion": "Structured provider persistence: every cxapi outcome writes provider_status_code / provider_status / provider_request_id / provider_error_message / last_attempt_at / attempt_count to the message row (WapCrmSendResult fields map 1:1 to the PR-1 columns). HTTP 200 + status=false is persisted as 'failed' with the provider code, never 'sent'. provider_request_id is audit-only (no lookup/matching until PR-3b).", "verified": false },
+      { "id": "AC6", "criterion": "DMP HARD FAIL on cxapi: a cxapi-routed broadcast whose template would use INMA DynamicMessage (useDynamic) is REJECTED at create (INV-OB-063) with NO silent bridge fallback; a per-message guard skips+warns any cxapi-bound text still containing '{{' after rendering. INSE static substitution (TemplateEngine.Substitute -> fully rendered static text) remains allowed. Historical DMP usage scanned read-only before allowlisting (prod scan 2026-06-06: 1 tenant enable_dynamic_message=TRUE, 0 DMP messages ever).", "verified": false },
+      { "id": "AC7", "criterion": "Counter + completion consistency: outbound_broadcasts gains an 'ambiguous' counter column; IncrementBroadcastCounterAsync whitelist+queued-decrement include 'ambiguous' so sent+failed+ambiguous+delivered+read+queued = total_recipients and queued reaches 0. IsBroadcastCompleteAsync adds 'posting' to the not-complete set (status IN ('queued','sending','posting')) so a broadcast is NEVER marked complete mid-POST; 'ambiguous' is terminal (does not block completion). The bulk-job AggregateBroadcastStatusAsync is broadcast.status-based (completed/failed) and is unaffected; the agg's display sum optionally adds ambiguous. A broadcast never strands in 'processing' nor completes prematurely.", "verified": false },
+      { "id": "AC8", "criterion": "Migration 056 additive + idempotent: (a) widens chk_message_status to add 'posting'+'ambiguous' (DROP-then-ADD); (b) ADD COLUMN IF NOT EXISTS outbound_broadcasts.ambiguous INTEGER NOT NULL DEFAULT 0 + CHECK (ambiguous >= 0); (c) DO $verify$ INV-SEED-056 fails loud if the new status values or column are absent; (d) syncs canonical arch/db/outbound.sql. No ext_id index, no bulk_send_jobs columns, no approved-template. INV-OB-062..065 registered in ErrorCodes.cs + errors.md. Full solution builds clean; CxapiSendStateMachineTests (mapper branches + RateLimiter cooldown) pass.", "verified": false },
+      { "id": "AC9", "criterion": "Atomic stranded-posting sweep: SweepStrandedPostingAsync is a SINGLE transactional CTE (UPDATE outbound_messages SET status='ambiguous' WHERE status='posting' AND send_route='wapcrm_cxapi' AND last_attempt_at < NOW()-interval RETURNING id,broadcast_id; then UPDATE outbound_broadcasts SET ambiguous=ambiguous+cnt, queued=GREATEST(queued-cnt,0) FROM the grouped returned rows) so a mid-sweep crash can never leave terminal messages with non-terminal counters; completion is attempted for the returned broadcast_ids and is idempotent. A route-scoped startup reset (cxapi 'sending'->'queued', pre-POST safe) runs before arming the timer; the bridge 'sending' rows are NOT touched.", "verified": false }
+    ]
+  },
+  "spec_acceptance_criteria": [],
+  "spec_architectural_decisions": [
+    {
+      "decision": "PR-3a ONLY — ext_id (composite UNIQUE (tenant_id, external_message_id) + tenant-scoped FindMessageByExternalIdAsync + delivery-status webhook tenant_id wiring) is deferred to PR-3b. This PR touches NONE of: idx_outbound_messages_external_id, FindMessageByExternalIdAsync, /api/v1/webhook/delivery-status. provider_request_id is persisted for audit only.",
+      "reason": "G12 (cxapi requestID == delivery-status webhook id?) is OPEN (Q interview). The delivery-status webhook is tenant-blind AND carries no tenant_id; tightening ext_id while the lookup stays tenant-blind formalizes a cross-tenant ambiguity (Codex CQ9/Q2, the same finding that deferred it from PR-1). PR-3a writes NO external_message_id for cxapi rows, so it adds ZERO entries to the tenant-blind match space and cannot worsen the pre-existing posture; the webhook has NO fallback match (verified: it only UPDATEs by an existing external_message_id, never inserts). The residual risk is purely an ID-namespace collision between a cxapi callback and a bridge external_message_id.",
+      "codex_note": "EXPECTED: NO ext_id / FindMessageByExternalIdAsync / delivery-status-webhook change here. LIVE-ENABLEMENT GATE (operational, NOT code): no tenant is allowlisted for live cxapi sends until PR-3b lands OR cxapi/WapCRM delivery callbacks are proven NOT routed to /api/v1/webhook/delivery-status. Dark/default-OFF code is safe to ship now; codex_consult confirmed this split is correct."
+    },
+    {
+      "decision": "Instance from the TENANT DEFAULT settings_json->'wapcrm'.instance_id (new nullable field on WapCrmSettings), resolved at broadcast-create and stamped IMMUTABLY onto outbound_broadcasts + every outbound_messages row. Secret + userId are batch-loaded at SEND (one query per dequeue cycle for the distinct cxapi tenants) and never persisted.",
+      "reason": "bulk_send_jobs.instance_id is PR-4, so a job-carried instance can't survive preview->confirm in PR-3. A tenant-default instance needs no job column, covers CSV/list bulk-send-jobs AND direct broadcasts uniformly, and is immutable/auditable on the row. instance_id is taken from the SAME tenant's own settings, so instance ownership holds by construction (no GET /api/Instances probe).",
+      "codex_note": "EXPECTED: cross-tenant instance use impossible by construction (row instance_id = that tenant's own settings default). Secret/userId loaded per-batch at send, never written to any row/log/appsettings. WapCrmSettings += instance_id is a Shared change -> full solution build is intentional; the DTO is reused (no duplicate)."
+    },
+    {
+      "decision": "State machine MINIMAL-BLAST: only NEW status strings are 'posting' (in-flight, external side effect may have happened) and 'ambiguous' (delivery unknown). Submitted->existing 'sent'; ProviderFailed + rate-limit-exhausted->existing 'failed'. cxapi detail lives in provider_* columns. outbound_broadcasts gains an 'ambiguous' counter so totals reconcile (sent+failed+ambiguous+delivered+read+queued = total_recipients).",
+      "reason": "Q interview (minimal-blast) + Codex P1-3. Reusing 'sent'/'failed' keeps the delivery-status webhook and broadcast completion working; the ambiguous counter prevents the 'missing messages' totals gap the minimal model would otherwise create. Status contract: queued/sending/posting = non-terminal; sent/delivered/read/failed/ambiguous = terminal.",
+      "codex_note": "EXPECTED: 'submitted'/'provider_failed'/'leased' are deliberately NOT separate status strings. IsBroadcastCompleteAsync MUST gain 'posting' (else premature completion mid-POST); 'ambiguous' is terminal there. AggregateBroadcastStatusAsync is broadcast.status-based (completed/failed) -> unaffected by the new message statuses (verified). ExportRepository status CASEs degrade gracefully (out of scope)."
+    },
+    {
+      "decision": "Idempotency via COMPARE-AND-SWAP + ATOMIC sweep (Codex P0-1/P0-2/P1-1/P1-2). SetMessagePostingAsync = UPDATE ... SET status='posting' WHERE id=@id AND status='sending' (CancellationToken.None); caller ABORTS the POST on 0 rows. MarkCxapiOutcomeAsync = UPDATE ... WHERE id=@id AND status='posting' (0 rows -> swept/raced, skip counter). NEVER POST from 'sending'. ResetSendingMessagesAsync unchanged (only 'sending'). Startup: (1) route-scoped cxapi 'sending'->'queued' (pre-POST safe), (2) stale-TTL 'posting'->'ambiguous' sweep as a SINGLE atomic CTE updating messages + broadcast counters together. Only RateLimited (301/302, provably not sent) is requeued (to 'queued' + (tenant,instance) cooldown) up to MaxSendAttempts then 'failed'; Timeout->Ambiguous and TransportError both -> 'ambiguous' (NEVER auto-retried).",
+      "reason": "A timeout/transport failure may have reached the server, so auto-retry risks an irreversible duplicate WhatsApp message; only 301/302 is provably not sent. CAS closes the StopAsync-reset race (a reset 'sending'->'queued' makes the posting CAS fail -> no POST) and prevents resurrection of swept rows. The atomic CTE sweep prevents a mid-sweep crash from leaving terminal messages with non-terminal counters. NSSM enforces single-instance; TTL+CAS is belt-and-suspenders.",
+      "codex_note": "EXPECTED: every cxapi POST is preceded by the posting CAS; there is NO fast path that POSTs from 'sending'. Crash-after-posting-before-POST yields a false-'ambiguous' (lost send, not a duplicate) — accepted (duplicates are the irreversible failure). 'ambiguous' rows are manual/ops, never auto-retried."
+    },
+    {
+      "decision": "RateLimiter gains a (tenant_id, instance_id) key + ApplyCooldown(tenant, instance, RetryAfter); the bridge keeps TryAcquire(tenantId) unchanged (mapped to instance 0). cxapi calls TryAcquire(tenant, instance); a RateLimited result applies a cooldown so subsequent dequeues for that instance back off (requeue-and-move-on, matching the existing bridge requeue pattern).",
+      "reason": "Codex P0 #6: rate limits are per WapCRM instance. The live tenant-only limiter must not change behavior (no-op guarantee). Cooldown-driven requeue reuses the exact existing 'TryAcquire fail -> requeue to queued -> retry next cycle' flow.",
+      "codex_note": "EXPECTED: TryAcquire(int) overload preserved (bridge -> (tenant,0)); composite key + cooldown additive. Pilot-scale head-of-line note: a cooled-down instance's rows are requeued and the loop moves on within the batch; sustained cooldown could delay rows behind them, acceptable at pilot scale with short Retry-After cooldowns (a future instance-aware dequeue is out of scope)."
+    },
+    {
+      "decision": "DMP HARD-FAILED on the cxapi route: a cxapi-routed broadcast whose template would use INMA DynamicMessage (useDynamic) is rejected at create (INV-OB-063, no silent bridge fallback); a defensive per-message check skips any cxapi text still containing '{{'. INSE static substitution is still permitted (it renders to static text).",
+      "reason": "Codex P0 #3: cxapi plain-text has no DMP mechanism; silently routing a DMP broadcast to the bridge would surprise the operator. Historical DMP usage scanned read-only before allowlisting.",
+      "codex_note": "EXPECTED: the reject targets the INMA DynamicMessage path (useDynamic). Recipient-level INSE substitution that renders to static text is allowed; a leftover '{{' on a cxapi message is a guard, not normal flow. Prod scan: the 1 DMP-enabled tenant has 0 DMP messages ever."
+    },
+    {
+      "decision": "Per-request secret reuse of the PR-2 WapCrmSendClient (TryAddWithoutValidation('X-CIB-SecretKey'), never DefaultRequestHeaders). Outbound adds a BATCH credential loader: SELECT settings_json->'wapcrm' FROM tenant_registry WHERE tenant_id = ANY(@ids) — one query for all distinct cxapi tenants in a dequeue batch.",
+      "reason": "Codex P0 #1/#8: a pooled HttpClient serving many tenants must attach the secret per request; per-message cred loads are an N+1. The opt-out client's DefaultRequestHeaders pattern is intentionally NOT reused.",
+      "codex_note": "EXPECTED: WapCrmSettings DTO reused (no duplicate); the batch loader queries tenant_registry (same shared Postgres). Secret never logged/persisted/in-appsettings."
+    },
+    {
+      "decision": "Migration 056 claims the next sequential number (055 was PR-1). PKT-2's projects migration shifts 056->057 (roadmap updated). 056 = chk_message_status widen + outbound_broadcasts.ambiguous column + INV-SEED-056 + canonical outbound.sql sync.",
+      "reason": "outbound_messages.status has chk_message_status CHECK; the new 'posting'/'ambiguous' values would violate it, so a migration is required even though G12 deferred ext_id. The ambiguous counter is required for totals reconciliation (Codex P1-3).",
+      "codex_note": "EXPECTED: CHECK-widen + one additive counter column only; no ext_id unique index, no bulk_send_jobs columns. Both edits (056 + outbound.sql) stay in sync (CQ11)."
+    },
+    {
+      "decision": "Feature flag CxapiSendOptions (Enabled default false + AllowedTenantIds + MaxSendAttempts + DefaultCooldownMs + StalePostingMinutes + IsTenantAllowed) mirrors BulkSendOptions; default OFF + empty allowlist => zero behavioral change in production.",
+      "reason": "HIGH-risk live send-path change needs a gradual, reversible cutover (BulkSend precedent) + the P0-3 live-enablement gate.",
+      "codex_note": "EXPECTED: with the flag off / no tenant allowlisted, no row is ever send_route='wapcrm_cxapi', so the whole PR is inert in prod until Q opts a tenant in (subject to the P0-3 gate)."
+    }
+  ],
+  "gr_list": [],
+  "plan_detail": {
+    "migration": "arch/db/migrations/056-cxapi-message-states.sql — idempotent, snake_case. (a) ALTER TABLE outbound_messages DROP CONSTRAINT IF EXISTS chk_message_status; ADD CONSTRAINT chk_message_status CHECK (status IN ('queued','sending','sent','delivered','read','failed','blocked','posting','ambiguous')). (b) ALTER TABLE outbound_broadcasts ADD COLUMN IF NOT EXISTS ambiguous INTEGER NOT NULL DEFAULT 0; ADD CONSTRAINT chk_outbound_broadcasts_ambiguous_nonneg CHECK (ambiguous >= 0) [DROP IF EXISTS first]. (c) DO $verify$ INV-SEED-056: pg_get_constraintdef(chk_message_status) contains 'posting' AND 'ambiguous' AND information_schema has outbound_broadcasts.ambiguous, else RAISE EXCEPTION. Canonical arch/db/outbound.sql updated: chk_message_status (line ~123) + outbound_broadcasts ambiguous column (CQ11). NO ext_id, NO bulk_send_jobs, NO approved-template.",
+    "shared": "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmSettings.cs: add [JsonPropertyName(\"instance_id\")] public int? InstanceId { get; init; } (additive, nullable). src/Invekto.Shared/DTOs/Outbound/BroadcastDtos.cs: BroadcastStatusResponse += int Ambiguous (additive). src/Invekto.Shared/Constants/ErrorCodes.cs: INV-OB-062 CxapiRouteMisconfigured / 063 CxapiDynamicNotSupported / 064 CxapiProviderRejected / 065 CxapiSendAmbiguous.",
+    "options": "src/Invekto.Outbound/Services/CxapiSendOptions.cs (NEW): SectionName 'CxapiSend'; Enabled (bool,false); AllowedTenantIds (List<int>); MaxSendAttempts (int,5); DefaultCooldownMs (int,30000); StalePostingMinutes (int,5 — sweep TTL, > max post timeout 10s); IsTenantAllowed(tenantId).",
+    "mapper": "src/Invekto.Outbound/Services/CxapiOutcomeMapper.cs (NEW, pure/static): Map(WapCrmSendOutcome, int attemptCount, int maxSendAttempts) -> CxapiSendDecision { string Status; string? CounterColumn (sent|failed|ambiguous|null); bool Requeue; bool ApplyCooldown }. Submitted->sent/'sent'; ProviderFailed->failed/'failed'; RateLimited&&attempt<max->'queued'/Requeue+ApplyCooldown/no-counter; RateLimited&&attempt>=max->failed/'failed'; Ambiguous/TransportError->ambiguous/'ambiguous'. Single source of the idempotency doctrine; fully unit-tested.",
+    "ratelimiter": "src/Invekto.Outbound/Services/RateLimiter.cs: internal dictionary key int->(int tenantId,int instanceId) struct/tuple; keep public TryAcquire(int tenantId) (=instance 0) for the bridge; add TryAcquire(int tenantId,int instanceId); add ApplyCooldown(int tenantId,int instanceId,TimeSpan) recording cooldownUntil on the window so TryAcquire returns false until it passes. Sliding-window logic unchanged otherwise.",
+    "broadcast_orchestrator": "src/Invekto.Outbound/Services/BroadcastOrchestrator.cs: inject CxapiSendOptions. In CreateBroadcastAsync after template/lang/useDynamic resolve: cxapiRoute = _cxapiOptions.IsTenantAllowed(tenantId). If cxapiRoute: load tenant settings_json->'wapcrm' (repo GetWapCrmSettingsAsync single); if instance_id/secret_key/user_id missing -> return (null, INV-OB-062, ...) [reject]; if useDynamic -> return (null, INV-OB-063, ...) [reject]. Pass sendRoute + instanceId into CreateBroadcastAsync + BatchInsertMessagesAsync. Per-message: if cxapiRoute && finalText.Contains('{{') -> skip+warn (defensive).",
+    "repo": "src/Invekto.Outbound/Data/OutboundRepository.cs: (1) CreateBroadcastAsync += optional sendRoute/instanceId (default bridge/null) -> writes outbound_broadcasts.send_route/instance_id. (2) BatchInsertMessagesAsync += optional sendRoute/instanceId (default bridge/null) -> per-row send_route/instance_id; existing callers unchanged. (3) GetWapCrmSettingsAsync(tenantId) + GetWapCrmSettingsBatchAsync(ids)->Dictionary via settings_json->'wapcrm' WHERE tenant_id = ANY(@ids). (4) SetMessagePostingAsync(id,attempt,lastAttempt) CAS WHERE status='sending' -> returns bool (rows>0). (5) MarkCxapiOutcomeAsync(id,status,provider_*,attempt,lastAttempt, counterColumn) ATOMIC CTE: UPDATE message WHERE id=@id AND status='posting' RETURNING broadcast_id; if counterColumn!=null increment outbound_broadcasts.{counter} (+queued GREATEST decrement for sent/failed/ambiguous) in the same statement; returns (applied, broadcastId). (6) SweepStrandedPostingAsync() ATOMIC CTE (status='posting' AND send_route='wapcrm_cxapi' AND last_attempt_at < NOW()-make_interval) -> messages 'ambiguous' + per-broadcast ambiguous++/queued-- RETURNING distinct broadcast_id. (7) ResetStrandedCxapiSendingAsync() UPDATE status='queued' WHERE send_route='wapcrm_cxapi' AND status='sending'. (8) IsBroadcastCompleteAsync -> status IN ('queued','sending','posting'). (9) IncrementBroadcastCounterAsync whitelist += 'ambiguous'; queued-decrement branch += 'ambiguous'.",
+    "bulk_repo": "src/Invekto.Outbound/Data/BulkSendRepository.cs: AggregateBroadcastStatusAsync is broadcast.status-based (AllTerminal = all child broadcasts completed/failed) -> the new MESSAGE statuses do NOT affect AllTerminal (verified, no terminality bug). Optional additive: include outbound_broadcasts.ambiguous in the SUM so the job display reconciles. (Reader-only; NOT the deferred PR-4 cxapi columns.)",
+    "sender": "src/Invekto.Outbound/Services/MessageSenderService.cs: inject WapCrmSendClient + CxapiSendOptions. StartAsync: ResetStrandedCxapiSendingAsync() then SweepStrandedPostingAsync() BEFORE arming the timer. ProcessQueue: after dequeue, GetWapCrmSettingsBatchAsync for the distinct cxapi-route tenants in the batch. Per message: route-aware rate-limit (cxapi -> TryAcquire(tenant,instance); else TryAcquire(tenant)); branch on msg.SendRoute. SendViaCxapiAsync: if creds missing -> MarkCxapiOutcomeAsync 'failed' INV-OB-062; if !SetMessagePostingAsync(id, msg.AttemptCount+1) -> ABORT (raced/reset, no POST); call WapCrmSendClient.SendPlainTextAsync (rethrows on caller-cancel); map via CxapiOutcomeMapper; MarkCxapiOutcomeAsync (atomic status+counter); on Requeue ApplyCooldown(RetryAfter ?? DefaultCooldown) + status 'queued' (no counter); on terminal with broadcast_id -> TryCompleteBroadcast. Structured [cxapi-send] logs (route+outcome+attempt+tenant+instance+ids; NO secret/text). Bridge SendMessageAsync untouched.",
+    "program": "src/Invekto.Outbound/Program.cs: bind+register CxapiSendOptions (GetSection('CxapiSend')); inject WapCrmSendClient + CxapiSendOptions into MessageSenderService (already registered for PR-2). No new endpoints.",
+    "tests": "tests/InvektoServis.Tests/Outbound/CxapiSendStateMachineTests.cs (NEW): CxapiOutcomeMapper all branches (Submitted/ProviderFailed/RateLimited-under-cap/RateLimited-at-cap/Ambiguous/TransportError) + RateLimiter (tenant,instance) isolation, bridge TryAcquire(tenant) unaffected, ApplyCooldown blocks then releases. Pure/deterministic; no DB, no real sleep.",
+    "out_of_scope_pr3a": "ext_id composite UNIQUE + tenant-scoped FindMessageByExternalIdAsync + delivery-status webhook tenant_id (PR-3b, G12). bulk_send_jobs cxapi columns + BulkSendRepository WRITER (PR-4). approved-template/HSM (PR-4). projects table/UI (PKT-2). messageType=2 image / template field. No change to MainAppCallbackClient bridge behavior. No instance-aware dequeue (pilot-scale cooldown requeue is sufficient)."
+  },
+  "allowed_files": [
+    "arch/db/migrations/056-cxapi-message-states.sql",
+    "arch/db/outbound.sql",
+    "arch/errors.md",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmSettings.cs",
+    "src/Invekto.Shared/DTOs/Outbound/BroadcastDtos.cs",
+    "src/Invekto.Outbound/Services/CxapiSendOptions.cs",
+    "src/Invekto.Outbound/Services/CxapiOutcomeMapper.cs",
+    "src/Invekto.Outbound/Services/RateLimiter.cs",
+    "src/Invekto.Outbound/Services/BroadcastOrchestrator.cs",
+    "src/Invekto.Outbound/Services/MessageSenderService.cs",
+    "src/Invekto.Outbound/Data/OutboundRepository.cs",
+    "src/Invekto.Outbound/Data/BulkSendRepository.cs",
+    "src/Invekto.Outbound/Program.cs",
+    "tests/InvektoServis.Tests/Outbound/CxapiSendStateMachineTests.cs",
+    "tracking/feat-projeler-cxapi-roadmap.md",
+    "arch/plans/20260606-cxapi-pr3-plaintext-cutover.json"
+  ],
+  "allowed_files_note": "NEW: CxapiSendOptions.cs, CxapiOutcomeMapper.cs, 056-cxapi-message-states.sql, CxapiSendStateMachineTests.cs. EDIT: WapCrmSettings.cs (+instance_id), BroadcastDtos.cs (BroadcastStatusResponse +Ambiguous), ErrorCodes.cs (+INV-OB-062..065), errors.md (+codes +INV-SEED-056), outbound.sql (chk_message_status + ambiguous col sync), RateLimiter.cs ((tenant,instance)+cooldown), BroadcastOrchestrator.cs (route decision+DMP reject+instance stamp), MessageSenderService.cs (route branch+CAS state machine+batch creds+startup reset/sweep), OutboundRepository.cs (route-aware insert + batch creds + CAS posting/outcome + atomic sweep + completion guard + ambiguous counter), BulkSendRepository.cs (AggregateBroadcastStatus reader: confirm broadcast-status terminality + optional ambiguous sum), Program.cs (CxapiSendOptions + sender wiring). FORBIDDEN: ext_id index / FindMessageByExternalIdAsync / delivery-status webhook (PR-3b), bulk_send_jobs cxapi columns + BulkSendRepository writer (PR-4), MainAppCallbackClient (bridge).",
+  "files_changed": [
+    { "path": "arch/db/migrations/056-cxapi-message-states.sql", "change": "NEW: widen chk_message_status (+'posting','ambiguous') + outbound_broadcasts.ambiguous counter (+CHECK >=0) + DO $verify$ INV-SEED-056.", "is_new": true },
+    { "path": "arch/db/outbound.sql", "change": "Canonical sync: chk_message_status + outbound_broadcasts.ambiguous.", "is_new": false },
+    { "path": "arch/errors.md", "change": "Add INV-OB-062..065 + register INV-SEED-056.", "is_new": false },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "change": "Add INV-OB-062..065 constants.", "is_new": false },
+    { "path": "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmSettings.cs", "change": "Add nullable instance_id (additive).", "is_new": false },
+    { "path": "src/Invekto.Shared/DTOs/Outbound/BroadcastDtos.cs", "change": "BroadcastStatusResponse += Ambiguous (additive).", "is_new": false },
+    { "path": "src/Invekto.Outbound/Services/CxapiSendOptions.cs", "change": "NEW flag/allowlist/tuning.", "is_new": true },
+    { "path": "src/Invekto.Outbound/Services/CxapiOutcomeMapper.cs", "change": "NEW pure outcome->decision mapper.", "is_new": true },
+    { "path": "src/Invekto.Outbound/Services/RateLimiter.cs", "change": "(tenant,instance) key + ApplyCooldown; bridge TryAcquire(tenant) preserved.", "is_new": false },
+    { "path": "src/Invekto.Outbound/Services/BroadcastOrchestrator.cs", "change": "Route decision + instance stamp + INV-OB-062 misconfig reject + INV-OB-063 DMP hard-fail + '{{' guard.", "is_new": false },
+    { "path": "src/Invekto.Outbound/Services/MessageSenderService.cs", "change": "Route branch + batch creds + CAS cxapi state machine + provider persistence + startup reset/sweep.", "is_new": false },
+    { "path": "src/Invekto.Outbound/Data/OutboundRepository.cs", "change": "Route-aware insert + batch creds + SetMessagePosting/MarkCxapiOutcome CAS + atomic SweepStrandedPosting + ResetStrandedCxapiSending + IsBroadcastComplete +'posting' + Increment +'ambiguous'.", "is_new": false },
+    { "path": "src/Invekto.Outbound/Data/BulkSendRepository.cs", "change": "Confirm AllTerminal is broadcast-status-based (no message-status bug); optional ambiguous in agg sum.", "is_new": false },
+    { "path": "src/Invekto.Outbound/Program.cs", "change": "Bind/register CxapiSendOptions + inject WapCrmSendClient/CxapiSendOptions into MessageSenderService.", "is_new": false },
+    { "path": "tests/InvektoServis.Tests/Outbound/CxapiSendStateMachineTests.cs", "change": "NEW mapper branches + RateLimiter (tenant,instance)+cooldown.", "is_new": true },
+    { "path": "tracking/feat-projeler-cxapi-roadmap.md", "change": "PR-3 split into 3a (IN_PROGRESS)/3b (BLOCKED G12); PKT-2 migration 056->057.", "is_new": false },
+    { "path": "arch/plans/20260606-cxapi-pr3-plaintext-cutover.json", "change": "This plan (codex_consult plan-review folded).", "is_new": true }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "580F96344C5C2C3D24F2845AE84E6729D070B2DBCBC48F145F081DBE16D2110A",
+    "full_path": "arch/plans/diffs/20260606-cxapi-pr3-plaintext-cutover.diff",
+    "stats": { "insertions": 939, "deletions": 46, "files_count": 14 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-06-06T23:50:00Z",
+    "duration_ms": null,
+    "output_tail": "Build succeeded. 0 Error(s) (42 pre-existing MSB3277/xUnit1013 warnings, none in PR-3a files). Tests: CxapiSendStateMachineTests 10/10 PASS.",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Outbound", "InvektoServis.Tests"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does the CAS state machine guarantee NO duplicate WhatsApp sends: SetMessagePostingAsync is WHERE status='sending' and the caller aborts the POST on 0 rows (closing the StopAsync reset race); a message is never POSTed while 'sending'; a crash mid-'posting' is never auto-requeued (ResetSendingMessages touches only 'sending') and is swept stale-TTL to 'ambiguous'; MarkCxapiOutcomeAsync is WHERE status='posting' so a late return cannot resurrect a swept row; Timeout/Transport -> 'ambiguous' (no retry); and ONLY RateLimited (301/302, provably not sent) is requeued up to MaxSendAttempts then 'failed'?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q2",
+      "question": "Is tenant isolation airtight: the secret is attached per-request only (WapCrmSendClient TryAddWithoutValidation, never DefaultRequestHeaders), the distinct tenant credentials are batch-loaded in ONE query (no N+1), the secret is never logged/persisted/in-appsettings, and each cxapi row's instance_id is sourced from THAT tenant's own settings_json->'wapcrm' so cross-tenant instance use is impossible by construction?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q3",
+      "question": "Is production a true no-op until Q allowlists a tenant: with CxapiSend disabled/empty allowlist no row is ever send_route='wapcrm_cxapi', the bridge path (RateLimiter tenant-only TryAcquire mapped to (tenant,0), MainAppCallbackClient, ResetSendingMessages, the additive IsBroadcastComplete +'posting' / Increment +'ambiguous' edits that never match bridge rows) is byte-for-byte unchanged, migration 056 is additive (CHECK widen + one counter column) with canonical outbound.sql synced + INV-SEED-056, and there is NO ext_id / bulk_send_jobs / approved-template / delivery-status-webhook change?",
+      "category": "Data"
+    },
+    {
+      "id": "Q4",
+      "question": "Do counters + completion stay consistent: 'posting' is in IsBroadcastCompleteAsync's not-complete set so a broadcast never marks complete mid-post; 'ambiguous' is terminal AND increments the new outbound_broadcasts.ambiguous counter (with queued decrement) so sent+failed+ambiguous+delivered+read+queued = total_recipients; the stranded-posting sweep updates messages + broadcast counters in ONE atomic CTE (no half-state on crash); and the bulk-job AggregateBroadcastStatusAsync (broadcast.status-based) still rolls up correctly?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q5",
+      "question": "Is DMP hard-failed on cxapi (a useDynamic broadcast rejected at create with INV-OB-063, no silent bridge fallback; a leftover '{{' on a cxapi message skipped) while INSE static substitution still renders+sends, was historical DMP usage scanned (prod: 1 tenant enabled, 0 messages ever), and is the ext_id deferral free of half-state (PR-3a writes NO external_message_id, the webhook has no fallback match, and live allowlisting is gated on PR-3b or proven-blocked cxapi callbacks)?",
+      "category": "Process/Policy"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "ext_id: idx_outbound_messages_external_id, FindMessageByExternalIdAsync, /api/v1/webhook/delivery-status (PR-3b, gated on G12)",
+      "bulk_send_jobs cxapi columns + BulkSendRepository WRITER (PR-4) — only the AggregateBroadcastStatus READER may be touched (terminality confirm + optional ambiguous sum)",
+      "approved-template/HSM: template field on /chatoperation, parameters[], param_mapping, wa_template_id, header media (PR-4)",
+      "src/Invekto.Outbound/Services/MainAppCallbackClient.cs + the bridge branch of the sender (behaviour must not change)",
+      "ResetSendingMessagesAsync semantics (must keep touching ONLY 'sending')",
+      "Writing any secret/api_key to repo, code, appsettings or logs",
+      "projects table / Projeler UI (PKT-2); ExportRepository status CASEs (out of scope, degrade gracefully)"
+    ],
+    "non_goals": [
+      "ext_id correlation / matching (provider_request_id persisted for audit only)",
+      "Approved-template sending + per-recipient parameters (PR-4)",
+      "Image (messageType=2) / media sends",
+      "A new ops endpoint for 'ambiguous'/'posting' rows (visible via status + ambiguous counter + structured logs)",
+      "Changing trigger/transactional sends (Faz 1 keeps them on the bridge)",
+      "Instance-aware dequeue (pilot-scale cooldown-requeue is sufficient)"
+    ],
+    "intentional_exclusions": [
+      "No new status strings beyond 'posting'/'ambiguous' (minimal-blast)",
+      "No DTO change for instance_id on the bulk/broadcast REQUEST — instance comes from tenant settings",
+      "No GET /api/Instances probe — instance ownership holds by construction",
+      "No auto-retry on Ambiguous/TransportError (safety over convenience; duplicates are irreversible)",
+      "Crash-after-posting-before-POST is accepted as a false-'ambiguous' (lost send, not duplicate)",
+      "ext_id tenant-scoped uniqueness + lookup + webhook tenant_id -> PR-3b after G12; live allowlisting gated on it"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "MessageSenderService.SendViaCxapiAsync: WapCrmSendClient throws only on caller-cancel (rethrow on shutdown); all provider/transport failures are TYPED outcomes mapped by CxapiOutcomeMapper; creds-missing pre-validated -> INV-OB-062 'failed' (no throw)",
+      "MessageSenderService.ProcessQueue: existing outer try/catch retained; per-message cxapi failures persisted, not thrown",
+      "OutboundRepository new methods: CAS UPDATEs check rows-affected; sweep is a single atomic CTE; standard Npgsql surface",
+      "Migration 056: idempotent DROP-then-ADD + ADD COLUMN IF NOT EXISTS + DO $verify$ fail-loud (INV-SEED-056)"
+    ],
+    "user_facing_errors": [
+      "INV-OB-062 CxapiRouteMisconfigured (422): cxapi-allowlisted tenant lacks instance_id/secret_key/user_id -> broadcast rejected at create (also marks a send 'failed' if creds vanish before send)",
+      "INV-OB-063 CxapiDynamicNotSupported (422): DMP/dynamic content on the cxapi plain-text route -> broadcast rejected at create (no silent fallback)",
+      "INV-OB-064 CxapiProviderRejected (internal/log + failed_reason): provider status=false or rate-limit retries exhausted",
+      "INV-OB-065 CxapiSendAmbiguous (internal/log): timeout/transport -> delivery unknown, awaits ops, not auto-retried"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Every cxapi outcome resolves to an explicit persisted status + provider_* columns via a CAS write (Submitted->sent, ProviderFailed->failed, RateLimited->queued+cooldown or failed, Ambiguous/TransportError->ambiguous) and a structured [cxapi-send] log line; the stranded-posting sweep is an atomic CTE so no half-state survives a crash. The deliberate 'do-nothing-further' states are RateLimited-requeue (explicit cooldown, retried) and 'ambiguous' (explicit, manual/ops, NOT auto-retried to avoid duplicate sends) — both loud, not swallowed. A CAS that affects 0 rows aborts the POST or skips the counter (logged), preventing duplicate sends/double counters rather than silently proceeding. DMP/misconfig are hard rejects with codes, never silent bridge fallback. Secret intentionally absent from logs. Default-OFF -> none of this runs in prod until Q allowlists a tenant.",
+    "user_facing_errors_note": "062/063 operator-facing at broadcast create; 064/065 background-worker outcomes visible via message status + provider columns + ambiguous counter + logs."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Bugun bir bulk gonderimin WapCRM tarafindan gercekten kabul edilip edilmedigi gorunmuyor; kopruden gidince sadece 'Main App'e verildi' biliniyor.",
+      "suggestion": "cxapi route'unda her mesaja provider_status_code/status/request_id/error_message + attempt_count yazilsin; submitted/failed/ambiguous net status'a otursun.",
+      "aha_moment": "Operator bir mesaja bakinca WapCRM'in tam cevabini, kac denemede ne oldugunu ve hangi instance'tan gittigini gorur."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Timeout/crash'ta 'tekrar dene' demek geri alinamayan mukerrer WhatsApp mesajina yol acabilir.",
+      "suggestion": "POST oncesi CAS ile 'posting' isaretle, crash/timeout/transport'u 'ambiguous' yap, OTOMATIK requeue etme; sadece 301/302 (kesinlikle gonderilmedi) yeniden denensin.",
+      "aha_moment": "Musteri ayni mesaji iki kez almaz; belirsiz durumlar ops'a net 'ambiguous' olarak dusuyor, kor retry yok."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Toplu gonderimde instance limiti (301/302) tum kampanyayi 'failed' gibi gosterip durdurabilir.",
+      "suggestion": "RateLimiter'i (tenant,instance) anahtarla; 301/302'de Retry-After'a saygili cooldown uygula, mesaji 'queued'a geri koy (final-fail degil).",
+      "aha_moment": "Gecici limit kendiliginden toparlanir; sadece gercekten gonderilemeyenler 'failed' olur, kampanya limit yuzunden comez."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "cxapi'ye gecince DMP/dynamic sablon sessizce kopruye dusup operatorun beklemedigi davranisi yapabilir; bir de 'ambiguous' mesajlar sayima girmeyince toplamlar tutmaz.",
+      "suggestion": "cxapi'da DMP'yi HARD FAIL (INV-OB-063) + outbound_broadcasts'a 'ambiguous' sayaci ekle (sent+failed+ambiguous+delivered+read+queued = toplam).",
+      "aha_moment": "Operator 'neden bazilari cxapi bazilari kopru / neden mesajlar eksik' belirsizligini yasamaz; kural net, sayilar tam tutuyor."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "HIGH-risk bir motor degisimini tek hamlede tum tenant'lara acmak prod riskini patlatir.",
+      "suggestion": "CxapiSend feature-flag + tenant allowlist (default OFF) ile tek tenant'tan kademeli cutover; ext_id/webhook hazir olmadan canli allowlist yapilmaz (P0-3 gate).",
+      "aha_moment": "Q tek tenant'i allowlist'e alir, canliyi izler, sorun olursa flag'i kapatir — geri donus aninda ve risksiz."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "Q FORCE PASS override (2026-06-07) on documented precedent; codex_review iter3 = FAIL only on CQ9/CQ11/Q2 DECISION_CONFLICT",
+    "updated_by": "Q",
+    "updated_at": "2026-06-07T19:45:00Z",
+    "blocking_issues": [
+      "CQ9/CQ11/Q2 (IRREDUCIBLE / DECISION_CONFLICT): Outbound directly reads the SHARED tenant_registry table + tenant-blind singleton-worker startup sweeps. Codex overrules pre-existing precedent (GetTenantHealthInfoAsync:1414 reads tenant_registry; ResetSendingMessagesAsync:686 / DequeueMessagesAsync are tenant-blind) on a literal reading of the isolation + tenant_id-filter rules. Not fixable without WRONG architecture (no cross-service API for tenant_registry exists; boot sweeps have no tenant context). Q-owned decision.",
+      "CQ12 residual (minor / precedent): two diagnostic SystemWarn logs lack an INV code (ParseWapCrmSettings parse-failure; startup-recovery NpgsqlException). Codebase precedent reserves INV codes for terminal/user-facing errors (pre-existing ResetSendingMessagesAsync log:692 also has none); the registered cxapi codes INV-OB-062..065 ARE wired on terminal paths (CQ1 PASS). The startup-recovery tag would require a NEW error code (agent_must_ask)."
+    ],
+    "iteration": 3,
+    "escalation_required": false,
+    "escalation_reason": "RESOLVED 2026-06-07 by Q FORCE PASS. DECISION_CONFLICT: codex_review (literal rule reading, stateless — sees only the diff) held that Outbound reading the shared tenant_registry table + tenant-blind worker-startup sweeps violate the microservice-isolation + every-query-filters-tenant_id rules, EXPLICITLY overruling the established codebase precedent that already ships these exact patterns in the same file (GetTenantHealthInfoAsync:1414 reads tenant_registry inside this same flow; ResetSendingMessagesAsync:686 + DequeueMessagesAsync are tenant-blind boot sweeps). No cross-service API for tenant_registry exists; boot sweeps have no tenant context. Q decided FORCE PASS on the documented precedent (consistent with the prior codex_consult stand-in PASS + shipped patterns).",
+    "verdict_note": "iter0 codex_review = FAIL (6 blocking: CQ5 null-forgiving, CQ1/CQ2/CQ5 bare catch, CQ9 tenant_id on new mutations, CQ5 SQL identifier interpolation, CQ12 ArgumentException no-INV, Q1 timeout/transport guarantee). iter1 folded all: REAL fixes — (a) removed wap.SecretKey! -> validated local (NotNullWhen(false)); (b) StartAsync catch(Exception)->catch(NpgsqlException); (c) tenant_id added to SetMessagePostingAsync + MarkCxapiOutcomeAsync (message WHERE + broadcast-counter CTE) + sweep broadcast-counter join now AND b.tenant_id=grp.tenant_id (codex_consult hardening). REFUTED w/ codebase precedent — startup sweeps tenant-blind like ResetSendingMessagesAsync/DequeueMessagesAsync; whitelisted-column interpolation + defensive ArgumentException byte-identical to IncrementBroadcastCounterAsync; WapCrmSendClient (PR-2) returns typed TransportError/Ambiguous, never throws transport/timeout (+ stale-posting sweep backstop => no duplicate). FORMAL GATE BLOCKED: BOTH gated reviewers down with the SAME server-side bug 'Cannot read properties of undefined (reading map)' — codex_review (6 consecutive iter1 calls, every git_diff form: full unified / prose / empty) AND kimi_review (1 call, provider=kimi). Same error across providers => the bug is in the shared MCP gated-review code path, NOT provider/input specific (iter0 codex_review succeeded earlier; codex_consult on the same server still works). STAND-IN VERDICT: codex_consult (mode=verdict, gpt-5.5, same model as codex_review) reviewed all 6 iter0 blockers vs the iter1 fixes => OVERALL PASS, 0 residual blockers, all 6 RESOLVED/VALID-REFUTATION (+ applied its one hardening note: sweep broadcast-counter join now AND b.tenant_id=grp.tenant_id). Build PASS, 10/10 tests PASS, service-isolation-checker PASS, secret scan clean, 14 files staged. Q DECISION 2026-06-06: HOLD until codex_review MCP recovers. ===== 2026-06-07 RESUME (MCP recovered) ===== Formal /rev re-run produced 3 real codex_review iterations (all gpt-5.5-2026-04-23): iter1 FAIL (6 blockers: CQ9 tenant_registry+tenant-blind, CQ11, CQ12 INV-064/065 not emitted, Q2, Q4 '{{' counter, Q5 operational). iter2 FAIL but Q4+Q5 -> PASS (precedent for '{{' skip + operational gate accepted), CQ12 main path fixed; NEW real finding: instance-consistency (stamped instance_id vs current settings) + CQ12 misconfig/sweep paths. iter3 FAIL but Q1/Q3/Q4/Q5 PASS + CQ1-8/CQ10 PASS. REAL FIXES APPLIED across iters (build PASS, 10/10 tests each): (a) MessageSenderService emits INV-OB-064 (failed/rate-exhausted) + INV-OB-065 (ambiguous) in failed_reason + structured [cxapi-send] SystemWarn log; (b) instance-consistency guard — SendViaCxapiAsync FAILS (INV-OB-062, no POST) when stamped msg.InstanceId != current WapCrmSettings.InstanceId (settings changed post-create), never pairs a stamped instance with a different instance's live creds; (c) misconfig failed_reason prefixed [INV-OB-062]; (d) SweepStrandedPostingAsync writes [INV-OB-065] in provider_error_message + failed_reason. IRREDUCIBLE REMAINING (CQ9/CQ11/Q2): Codex EXPLICITLY overrules pre-existing precedent ('even if similar precedent exists' / 'pre-existing precedent does not waive the rule') on (1) Outbound reading the SHARED tenant_registry table — but GetTenantHealthInfoAsync:1414 already does so PRE-EXISTING inside this same broadcast-create flow (BroadcastOrchestrator:120) and tenant_registry is the platform's shared table (no cross-service API exists); (2) tenant-blind boot sweeps — but ResetSendingMessagesAsync:686 + DequeueMessagesAsync are PRE-EXISTING tenant-blind singleton-worker sweeps (no tenant context at startup by necessity). Plus CQ12 residual: 2 diagnostic SystemWarn logs (parse-failure, startup-recovery) without INV codes — precedent (ResetSendingMessagesAsync log:692) reserves codes for terminal errors; startup-recovery tag would need a NEW code (agent_must_ask). ESCALATION -> Q DECISION_CONFLICT: FORCE PASS on documented precedent (matches prior codex_consult stand-in PASS + shipped patterns) OR mandate refactor. No self-FORCE-PASS; Q owns the gate. Staged diff (937+/46-, 14 files), this plan, and roadmap are current."
+  }
+}

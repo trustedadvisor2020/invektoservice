@@ -45,6 +45,7 @@
         "delivered": "integer",
         "read": "integer",
         "failed": "integer",
+        "ambiguous": "integer",
         "created_at": "ISO8601",
         "started_at": "ISO8601|null",
         "completed_at": "ISO8601|null"
