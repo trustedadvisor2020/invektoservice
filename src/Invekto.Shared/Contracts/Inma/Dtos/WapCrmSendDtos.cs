@@ -82,8 +82,16 @@ public sealed class WapCrmSendResult
     /// <summary>Envelope <c>status</c> boolean.</summary>
     public bool ProviderStatus { get; init; }
 
-    /// <summary>Envelope <c>requestID</c> — provider correlation id (maps to provider_request_id; ext_id matching is gated on G12, PR-3).</summary>
+    /// <summary>Envelope <c>requestID</c> — INMA-internal request/log GUID. Audit only; it is NOT the correlation key (INMA C1, 2026-06-08).</summary>
     public string? ProviderRequestId { get; init; }
+
+    /// <summary>
+    /// Envelope <c>data</c> on a Submitted send — the sent message's WhatsApp <c>wamid</c> (PR-3b-1).
+    /// Per INMA C1 (2026-06-08) this equals the later ack's <c>InstanceMessageID</c>, so PR-3 persists it
+    /// as <c>external_message_id</c> for tenant-scoped delivery-status correlation. Null when the provider
+    /// returned no string <c>data</c> (or for any non-Submitted outcome).
+    /// </summary>
+    public string? ProviderMessageId { get; init; }
 
     /// <summary>Envelope <c>message</c> or a short transport diagnostic. NEVER contains the secret.</summary>
     public string? ProviderErrorMessage { get; init; }

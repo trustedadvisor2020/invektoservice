@@ -1,0 +1,114 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "slug": "20260608-cxapi-pr3b1-wamid-capture",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-08T11:35:00Z",
+  "updated_at": "2026-06-08T11:56:00Z",
+  "plan": {
+    "summary": "PR-3b-1 (cxapi delivery-correlation foundation): capture the WhatsApp wamid that cxapi /api/chatoperation returns in the response 'data' field and persist it as outbound_messages.external_message_id at send time, plus a partial composite-UNIQUE (tenant_id, external_message_id) index — so a later ack (whose InstanceMessageID == that wamid) can be matched tenant-scoped. Inert/no-op until the gate opens.",
+    "q_intent": "cevaplar geldi — INMA confirmed C1 (send response data = wamid = ack InstanceMessageID) + C2 (ack reaches our WebhookUrl) + InstanceID globally-unique; devam (proceed to PR-3b). Split agreed: 3b-1 = send-side wamid capture + ext_id unique (dependency-free foundation); 3b-2 = ack ingress endpoint.",
+    "interview_notes": "Design decided 2026-06-08 via AskUserQuestion: (1) ack ingress = CustomHeader per-tenant token (auth + tenant identity), dedicated Backend endpoint, shape-discriminate, wamid+InstanceID cross-check -> PR-3b-2. (2) inbound-on-same-URL = robust forward + parallel INMA clarification -> PR-3b-2. THIS plan (3b-1) is the dependency-free foundation only. Correlation key per INMA C1 is the response 'data' field (a STRING wamid), NOT requestID; our send client currently deserializes env.Data but never reads it. external_message_id is presently NULL on every row (sole writer passes null), so the partial unique index builds against an empty set. FindMessageByExternalIdAsync stays tenant-blind in 3b-1 (its only caller is the bridge-format delivery-status endpoint which has no tenant_id); it becomes tenant-scoped atomically with the new tenant-aware ack endpoint in 3b-2. Gate (P0-3) stays CLOSED: no tenant allowlisted, so no cxapi row is ever created and this PR is a byte-for-byte runtime no-op.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "WapCrmSendClient.SendPlainTextAsync, on the Submitted branch (HTTP 2xx + status==true), extracts the wamid from the envelope 'data' field when it is a JSON string and sets WapCrmSendResult.ProviderMessageId; a non-string, null, or empty 'data' yields ProviderMessageId=null with no exception.", "verified": true, "verification_note": "Build PASS (full solution) + 15/15 WapCrmSendClient tests + Codex PASS iter0 (2026-06-08)." },
+      { "id": "AC2", "criterion": "MessageSenderService passes result.ProviderMessageId to MarkCxapiOutcomeAsync as externalMessageId on the send-outcome path; the pre-send misconfig failure path (no send happened) passes externalMessageId=null.", "verified": true, "verification_note": "Build PASS (full solution) + 15/15 WapCrmSendClient tests + Codex PASS iter0 (2026-06-08)." },
+      { "id": "AC3", "criterion": "MarkCxapiOutcomeAsync writes external_message_id = @eid inside its existing tenant-scoped CAS UPDATE only when externalMessageId is non-null; when null the column is left unchanged. The atomic counter CTE and CAS (id + tenant_id + from-status) semantics are unchanged.", "verified": true, "verification_note": "Build PASS (full solution) + 15/15 WapCrmSendClient tests + Codex PASS iter0 (2026-06-08)." },
+      { "id": "AC4", "criterion": "Migration 058 adds an idempotent PARTIAL composite UNIQUE index on outbound_messages (tenant_id, external_message_id) WHERE external_message_id IS NOT NULL, with a fail-loud postcondition verifier (INV-SEED-058); the canonical arch/db/outbound.sql is synced to match.", "verified": true, "verification_note": "Build PASS (full solution) + 15/15 WapCrmSendClient tests + Codex PASS iter0 (2026-06-08)." },
+      { "id": "AC5", "criterion": "Runtime behaviour is unchanged while the gate is closed (no tenant allowlisted -> no wapcrm_cxapi row created -> ProviderMessageId never persisted). Full solution build PASS; WapCrmSendClient tests updated to assert ProviderMessageId capture (string data) and null on non-string/empty data; existing tests still pass.", "verified": true, "verification_note": "Build PASS (full solution) + 15/15 WapCrmSendClient tests + Codex PASS iter0 (2026-06-08)." }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmSendDtos.cs",
+    "src/Invekto.Shared/Contracts/Inma/WapCrmSendClient.cs",
+    "src/Invekto.Outbound/Data/OutboundRepository.cs",
+    "src/Invekto.Outbound/Services/MessageSenderService.cs",
+    "arch/db/migrations/058-cxapi-extid-unique.sql",
+    "arch/db/outbound.sql",
+    "tests/InvektoServis.Tests/Shared/Inma/WapCrmSendClientTests.cs"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmSendDtos.cs", "change": "Added WapCrmSendResult.ProviderMessageId (nullable, init-only) — the Submitted send's wamid from envelope 'data'. Additive, non-breaking.", "is_new": false },
+    { "path": "src/Invekto.Shared/Contracts/Inma/WapCrmSendClient.cs", "change": "Submitted branch now sets ProviderMessageId = ExtractWamid(env.Data); added defensive ExtractWamid helper (string JsonElement only, else null).", "is_new": false },
+    { "path": "src/Invekto.Outbound/Data/OutboundRepository.cs", "change": "MarkCxapiOutcomeAsync gained optional externalMessageId param; writes external_message_id = COALESCE(@eid, external_message_id) inside the existing tenant-scoped CAS UPDATE.", "is_new": false },
+    { "path": "src/Invekto.Outbound/Services/MessageSenderService.cs", "change": "Threads result.ProviderMessageId into MarkCxapiOutcomeAsync as externalMessageId on the send-outcome path.", "is_new": false },
+    { "path": "arch/db/migrations/058-cxapi-extid-unique.sql", "change": "New migration: partial composite UNIQUE (tenant_id, external_message_id) WHERE external_message_id IS NOT NULL + INV-SEED-058 verifier.", "is_new": true },
+    { "path": "arch/db/outbound.sql", "change": "Canonical sync: added the uq_outbound_messages_tenant_external_id partial unique index next to the existing non-unique idx.", "is_new": false },
+    { "path": "tests/InvektoServis.Tests/Shared/Inma/WapCrmSendClientTests.cs", "change": "Envelope helper gained a 'data' param; +2 tests (wamid captured from string data; null on absent/empty/non-string data) + null assertion on the existing Submitted test.", "is_new": false }
+  ],
+  "git_diff": { "patch_truncated": null, "sha256": "5d7ec1c2f1c5abe105f205dfe6f775df12fe4025727f789614e1a60f09ca3adb", "full_path": "arch/plans/diffs/20260608-cxapi-pr3b1-wamid-capture.diff", "stats": { "insertions": 139, "deletions": 4, "files_count": 7 } },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-06-08T11:50:00Z",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Outbound", "InvektoServis.Tests (full solution)"]
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "Does the wamid capture read env.Data defensively so a cxapi response whose 'data' is null, empty, or a non-string JSON shape (object/array/number) never throws and simply yields ProviderMessageId=null instead of corrupting external_message_id?", "category": "Data" },
+    { "id": "Q2", "question": "Is external_message_id written ONLY on a genuinely Submitted (provider-accepted) send, so that ProviderFailed/RateLimited/Ambiguous/TransportError outcomes never persist a wamid (which would create an unmatchable or misleading correlation row)?", "category": "Lifecycle" },
+    { "id": "Q3", "question": "Is the partial composite UNIQUE (tenant_id, external_message_id) safe to deploy given external_message_id is currently NULL on every existing row (so the index builds against zero non-null rows), and does the migration stay idempotent + fail-loud on re-run?", "category": "Process/Policy" },
+    { "id": "Q4", "question": "Does this PR keep the P0-3 live-enablement gate intact (no tenant allowlist change, no FindMessageByExternalIdAsync tenant-scoping yet, no ack endpoint), so it remains a runtime no-op until PR-3b-2 + tenant WapCRM config land?", "category": "Process/Policy" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "CxapiSendOptions.cs / appsettings CxapiSend allowlist (gate MUST stay closed)",
+      "src/Invekto.Outbound/Program.cs delivery-status endpoint (bridge format — untouched until 3b-2)",
+      "FindMessageByExternalIdAsync tenant-scoping (atomic with the 3b-2 ack endpoint that supplies tenant_id)",
+      "Backend webhook/event ingress + any new ack endpoint (PR-3b-2)",
+      "UpdateMessageStatusAsync downgrade-guard / idempotency (PR-3b-2)"
+    ],
+    "non_goals": [
+      "Ack/delivery-status ingestion of the WapCRM SubscribedWebhook shape",
+      "Tenant routing via CustomHeader token",
+      "Approved-template (PR-4) and language handling",
+      "Lifting the P0-3 gate or allowlisting any tenant"
+    ],
+    "intentional_exclusions": [
+      "No status-downgrade guard or idempotency here (no ack path in 3b-1)",
+      "No tenant-scoped lookup change (kept tenant-blind; bridge caller unchanged)",
+      "No new error codes (ProviderMessageId capture is on the existing Submitted path)"
+    ]
+  },
+  "error_handling": {
+    "silent_failure_risk": true,
+    "silent_failure_explanation": "A non-string/empty 'data' yields ProviderMessageId=null BY DESIGN (defensive) — this is an intentional soft path, not a silent failure, because in 3b-1 the column is unused at runtime (no ack lookup, gate closed). If INMA ever returns a non-string data for a Submitted send, the send still succeeds and is logged via existing provider_* fields; the only effect is a null external_message_id, which 3b-2 will surface (an ack with no matchable row is logged, never mis-attributed). No exception path is introduced."
+  },
+  "aha_moments": [
+    { "category": "RELIABILITY", "user_pain": "Bulk WhatsApp sends via cxapi today have no per-message delivery truth — the operator cannot tell delivered from read from failed.", "suggestion": "Capturing the wamid at send time is the keystone that later lets each recipient row show sent/delivered/read/failed.", "aha_moment": "The operator opens a broadcast and sees real per-recipient delivery states instead of a single 'sent' blob." },
+    { "category": "SUPPORT", "user_pain": "When a customer says 'I never got the message', support has no provider-side evidence to check.", "suggestion": "The stored wamid links our row to the WhatsApp provider id, so a failed/NotSent ack with ReasonDetailForNotSent becomes traceable.", "aha_moment": "Support pastes the customer's number and immediately sees 'failed (131026)' with the provider reason." },
+    { "category": "RELIABILITY", "user_pain": "Cross-tenant delivery mis-attribution is the exact risk that froze cxapi go-live.", "suggestion": "The (tenant_id, external_message_id) unique index guarantees a wamid resolves to exactly one tenant's message.", "aha_moment": "The team can finally open the gate knowing an ack can never write to the wrong tenant." },
+    { "category": "SPEED", "user_pain": "Re-enabling delivery tracking later would mean a risky retrofit if the correlation key were missing.", "suggestion": "Storing the wamid now (inert) means 3b-2 only wires the ack endpoint — no data backfill.", "aha_moment": "3b-2 ships in days, not weeks, because the correlation column is already populated for new sends." },
+    { "category": "UX", "user_pain": "Dashboards that show 'sent' but never advance erode trust in the product.", "suggestion": "A populated wamid is the precondition for live status transitions on the Projeler/broadcast UI.", "aha_moment": "Users watch the read counter tick up in near real-time once 3b-2 lands on this foundation." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-06-08T11:55:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-06-08T11:56:00Z",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "Defensive ExtractWamid (null on non-string) + INV-SEED-058 fail-loud verifier." },
+      "CQ2": { "result": "PASS", "evidence": "No new catch; null return is explicit, COALESCE avoids blanking." },
+      "CQ3": { "result": "PASS", "evidence": "Files match plan scope; no allowlist/ack-endpoint/unrelated files." },
+      "CQ4": { "result": "PASS", "evidence": "Small local helper; no duplication." },
+      "CQ5": { "result": "PASS", "evidence": "snake_case DDL; @eid parameterized; additive nullable DTO." },
+      "CQ6": { "result": "PASS", "evidence": "Partial index (WHERE NOT NULL); no loops/N+1." },
+      "CQ7": { "result": "PASS", "evidence": "No new TODO/HACK/FIXME." },
+      "CQ8": { "result": "PASS", "evidence": "Additive nullable property + optional param (named-arg caller); non-breaking." },
+      "CQ9": { "result": "PASS", "evidence": "wamid only on Submitted; persistence tenant-scoped; tenant-composite unique." },
+      "CQ10": { "result": "PASS", "evidence": "No UX/envelope changes." },
+      "CQ11": { "result": "PASS", "evidence": "Migration 058 + canonical outbound.sql synced." },
+      "CQ12": { "result": "PASS", "evidence": "Fail-loud verifier; deterministic null handling." }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "ValueKind String guard + whitespace check; tests cover string/null/empty/object." },
+      "Q2": { "result": "PASS", "reasoning": "ProviderMessageId set only on Submitted; non-Submitted pass null; COALESCE no-op." },
+      "Q3": { "result": "PASS", "reasoning": "Partial unique excludes NULL rows; IF NOT EXISTS idempotent; fails loud on real dups." },
+      "Q4": { "result": "PASS", "reasoning": "No allowlist/ack-endpoint/lookup-scoping change; runtime no-op while gate closed." }
+    },
+    "blocking_issues": [],
+    "iteration": 0
+  }
+}

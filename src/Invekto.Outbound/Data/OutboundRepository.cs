@@ -802,7 +802,7 @@ public class OutboundRepository
     public virtual async Task<(bool applied, Guid? broadcastId)> MarkCxapiOutcomeAsync(
         long messageId, int tenantId, string status, string? providerStatusCode, bool? providerStatus,
         string? providerRequestId, string? providerErrorMessage, int attemptCount,
-        string? counterColumn, string fromStatus = "posting", CancellationToken ct = default)
+        string? counterColumn, string? externalMessageId = null, string fromStatus = "posting", CancellationToken ct = default)
     {
         // Identifier (column name) cannot be a SQL parameter — whitelist + interpolate, exactly like the
         // established IncrementBroadcastCounterAsync. Values stay parameterized.
@@ -830,6 +830,7 @@ public class OutboundRepository
                     provider_request_id = @prid,
                     provider_error_message = @perr,
                     attempt_count = @att,
+                    external_message_id = COALESCE(@eid, external_message_id),
                     last_attempt_at = NOW(),
                     sent_at = CASE WHEN @status = 'sent' THEN NOW() ELSE sent_at END,
                     failed_reason = CASE WHEN @status IN ('failed', 'ambiguous') THEN @perr ELSE failed_reason END
@@ -850,6 +851,9 @@ public class OutboundRepository
         cmd.Parameters.AddWithValue("prid", (object?)providerRequestId ?? DBNull.Value);
         cmd.Parameters.AddWithValue("perr", (object?)providerErrorMessage ?? DBNull.Value);
         cmd.Parameters.AddWithValue("att", attemptCount);
+        // PR-3b-1: wamid (envelope 'data') captured at send time -> external_message_id. COALESCE keeps any
+        // existing value when null (non-Submitted outcomes / non-string data) so a row is never blanked.
+        cmd.Parameters.AddWithValue("eid", (object?)externalMessageId ?? DBNull.Value);
 
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         if (!await reader.ReadAsync(ct))

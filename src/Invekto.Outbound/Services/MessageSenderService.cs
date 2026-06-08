@@ -338,6 +338,9 @@ public sealed class MessageSenderService : IHostedService, IDisposable
             providerErrorMessage: persistedError,
             attemptCount: attempt,
             counterColumn: decision.CounterColumn,
+            // PR-3b-1: persist the captured wamid (Submitted only; null otherwise -> COALESCE no-op) so a
+            // later ack (InstanceMessageID == this wamid) resolves to this exact tenant-scoped row.
+            externalMessageId: result.ProviderMessageId,
             fromStatus: "posting",
             ct: CancellationToken.None);
 

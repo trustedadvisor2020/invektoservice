@@ -152,6 +152,7 @@ public sealed class WapCrmSendClient
                             ProviderStatus = true,
                             ProviderStatusCode = env.StatusCode,
                             ProviderRequestId = env.RequestId,
+                            ProviderMessageId = ExtractWamid(env.Data),
                             ProviderErrorMessage = env.Message,
                             AttemptCount = attempt,
                             TenantId = request.TenantId,
@@ -233,6 +234,21 @@ public sealed class WapCrmSendClient
     private static bool IsRedirectRateLimit(int httpStatus) => httpStatus is 301 or 302;
 
     private static bool IsEnvelopeRateLimit(string? statusCode) => statusCode is "301" or "302";
+
+    /// <summary>
+    /// PR-3b-1: extract the sent message's wamid from the cxapi envelope <c>data</c> on a Submitted send.
+    /// Per INMA C1 (2026-06-08) <c>data</c> is the WhatsApp message id (a plain JSON string) and equals
+    /// the later ack's <c>InstanceMessageID</c>, so PR-3 persists it as <c>external_message_id</c> for
+    /// tenant-scoped delivery correlation. Defensive: a null/empty/non-string <c>data</c> yields null —
+    /// the send still succeeded; only the correlation id is absent (an ack for it just won't match).
+    /// </summary>
+    private static string? ExtractWamid(JsonElement? data)
+    {
+        if (data is not { ValueKind: JsonValueKind.String } el)
+            return null;
+        var wamid = el.GetString();
+        return string.IsNullOrWhiteSpace(wamid) ? null : wamid;
+    }
 
     private static TimeSpan? ParseRetryAfter(HttpResponseMessage response)
     {

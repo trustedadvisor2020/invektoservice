@@ -83,14 +83,14 @@ public sealed class WapCrmSendClientTests
 
     private static HttpResponseMessage Envelope(
         bool status, string? statusCode = null, string? requestId = null, string? message = null,
-        HttpStatusCode http = HttpStatusCode.OK)
+        HttpStatusCode http = HttpStatusCode.OK, object? data = null)
         => Json(http, JsonSerializer.Serialize(new
         {
             status,
             message,
             statusCode,
             requestID = requestId,
-            data = (object?)null
+            data
         }));
 
     private static HttpResponseMessage Redirect(int code, int? retryAfterSeconds = null)
@@ -115,6 +115,7 @@ public sealed class WapCrmSendClientTests
         result.HttpStatusCode.Should().Be(200);
         result.ProviderStatus.Should().BeTrue();
         result.ProviderRequestId.Should().Be("req-123");
+        result.ProviderMessageId.Should().BeNull(); // no 'data' in this envelope -> no wamid captured
         result.ProviderStatusCode.Should().Be("200");
         result.AttemptCount.Should().Be(1);
         result.TenantId.Should().Be(42);
@@ -135,6 +136,37 @@ public sealed class WapCrmSendClientTests
         root.GetProperty("messageText").GetString().Should().Be("Merhaba");
 
         http.DefaultRequestHeaders.Contains("X-CIB-SecretKey").Should().BeFalse();
+    }
+
+    // ── PR-3b-1: wamid (envelope 'data') captured into ProviderMessageId on Submitted ──
+
+    [Fact]
+    public async Task Submitted_captures_wamid_from_string_data_into_ProviderMessageId()
+    {
+        var (client, _, _) = Build((_, _) => Envelope(true, "200", "req-123", "ok", data: "wamid.HBgMOTA1XXXX"));
+
+        var result = await client.SendPlainTextAsync(Req());
+
+        result.Outcome.Should().Be(WapCrmSendOutcome.Submitted);
+        result.ProviderMessageId.Should().Be("wamid.HBgMOTA1XXXX");
+        // requestID stays the (audit-only) GUID — it is NOT the correlation key (INMA C1, 2026-06-08).
+        result.ProviderRequestId.Should().Be("req-123");
+    }
+
+    [Fact]
+    public async Task Submitted_yields_null_ProviderMessageId_when_data_absent_empty_or_non_string()
+    {
+        // data = null (omitted)
+        var (c1, _, _) = Build((_, _) => Envelope(true, "200", "r"));
+        (await c1.SendPlainTextAsync(Req())).ProviderMessageId.Should().BeNull();
+
+        // data = empty string
+        var (c2, _, _) = Build((_, _) => Envelope(true, "200", "r", data: ""));
+        (await c2.SendPlainTextAsync(Req())).ProviderMessageId.Should().BeNull();
+
+        // data = non-string JSON (object) — defensive: never throws, just yields null
+        var (c3, _, _) = Build((_, _) => Envelope(true, "200", "r", data: new { id = "x" }));
+        (await c3.SendPlainTextAsync(Req())).ProviderMessageId.Should().BeNull();
     }
 
     // ── AC3: ProviderFailed (no retry) ────────────────────────────────

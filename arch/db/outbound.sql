@@ -146,6 +146,12 @@ CREATE INDEX IF NOT EXISTS idx_outbound_messages_queued
 CREATE INDEX IF NOT EXISTS idx_outbound_messages_external_id
     ON outbound_messages (external_message_id) WHERE external_message_id IS NOT NULL;
 
+-- PR-3b-1 (migration 058): per-tenant uniqueness of the WhatsApp wamid (cxapi send response 'data'
+-- = ack InstanceMessageID, INMA G12 2026-06-08) so a delivery-status ack resolves to exactly one
+-- tenant's message. The tenant-scoped lookup that consumes it lands in PR-3b-2.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_outbound_messages_tenant_external_id
+    ON outbound_messages (tenant_id, external_message_id) WHERE external_message_id IS NOT NULL;
+
 -- =============================================================
 -- outbound_optouts: Opt-out registry per tenant+phone
 -- =============================================================
