@@ -1963,7 +1963,7 @@ app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAn
 
 // Webhook event receiver (INMA -> InvektoServis)
 // Auth: JWT or IP whitelist with ?companyId= query param
-app.MapPost("/api/v1/webhook/event", async (HttpContext ctx, JsonLinesLogger jsonLogger, IncomingWebhookEvent? webhookEvent) =>
+app.MapPost("/api/v1/webhook/event", async (HttpContext ctx, JsonLinesLogger jsonLogger) =>
 {
     var sw = System.Diagnostics.Stopwatch.StartNew();
     var requestId = ctx.Request.Headers[HeaderNames.RequestId].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
@@ -1976,6 +1976,47 @@ app.MapPost("/api/v1/webhook/event", async (HttpContext ctx, JsonLinesLogger jso
         return Results.Json(
             ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context missing", requestId),
             statusCode: 401);
+    }
+
+    // PR-3b-2: WapCRM posts BOTH inbound messages AND cxapi delivery acks to this ONE webhook. Read the
+    // body raw and shape-discriminate: a root non-empty messages[] => inbound (the unchanged path below);
+    // a root Status/InstanceMessageID with NO messages[] => delivery ack. The typed framework binder is
+    // dropped on purpose — the ack's InstanceID is an INT while the inbound envelope's is a STRING, so the
+    // two shapes can never bind into one model; discrimination must happen BEFORE typed deserialization.
+    IncomingWebhookEvent? webhookEvent;
+    using (var bodyDoc = await TryParseWebhookBodyAsync())
+    {
+        if (bodyDoc == null)
+        {
+            sw.Stop();
+            var reqCtx = RequestContext.Create(tenantContext.TenantId.ToString(), "-");
+            jsonLogger.RequestError("Webhook: malformed or empty JSON body", reqCtx, "/api/v1/webhook/event", sw.ElapsedMilliseconds, ErrorCodes.IntegrationWebhookInvalidPayload);
+            return Results.Json(
+                ErrorResponse.Create(ErrorCodes.IntegrationWebhookInvalidPayload, "request body must be valid JSON", requestId),
+                statusCode: 400);
+        }
+
+        var root = bodyDoc.RootElement;
+        // Discriminate strictly by the INMA shape contract (tested in WapCrmAckMappingTests): an inbound
+        // message ALWAYS carries a root "messages" property; a delivery ack NEVER does. An ambiguous body
+        // that has BOTH (e.g. {"messages":[],"Status":1}) is NOT a clean ack — it falls through to the
+        // inbound path and is rejected by the existing messages-required 400 below, exactly as before.
+        if (WapCrmAckMapping.IsDeliveryAckShape(root))
+        {
+            sw.Stop();
+            return await HandleDeliveryAckAsync(root);
+        }
+
+        // Inbound message path: deserialize to the typed model with cached Web options (mirrors the
+        // previous framework model-binding). The Automation forward below re-serializes this exact object.
+        try
+        {
+            webhookEvent = root.Deserialize<IncomingWebhookEvent>(BackendWebhookJson.Options);
+        }
+        catch (JsonException)
+        {
+            webhookEvent = null;
+        }
     }
 
     // Validate payload
@@ -2228,6 +2269,106 @@ app.MapPost("/api/v1/webhook/event", async (HttpContext ctx, JsonLinesLogger jso
         instance_id = webhookEvent.InstanceId,
         message = "Event accepted for processing"
     }, statusCode: 202);
+
+    // PR-3b-2 local helpers (hoisted) -------------------------------------------------------------
+    // Parse the request body once; return null on malformed/empty JSON so the caller maps it to the
+    // same 400 as before. OperationCanceledException (client abort) intentionally propagates.
+    async Task<JsonDocument?> TryParseWebhookBodyAsync()
+    {
+        try
+        {
+            return await JsonDocument.ParseAsync(ctx.Request.Body, default, ctx.RequestAborted);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    // cxapi delivery ack: map the PascalCase WapCRM ack -> snake_case DeliveryStatusRequest and forward
+    // to Outbound (the correlation owner). Tenant comes from companyId/TenantContext, never the payload.
+    // ALWAYS returns 202 to WapCRM — a 404 (wamid not correlated: gate closed / bridge / non-cxapi send),
+    // a transport failure, or an unsupported status are logged but never propagated (fire-and-forget ack;
+    // WapCRM redelivery is safe because the Outbound apply is idempotent).
+    async Task<IResult> HandleDeliveryAckAsync(JsonElement ackRoot)
+    {
+        WapCRMCloudAPIAckWebHookModel? ack;
+        try
+        {
+            ack = ackRoot.Deserialize<WapCRMCloudAPIAckWebHookModel>(BackendWebhookJson.Options);
+        }
+        catch (JsonException)
+        {
+            ack = null;
+        }
+
+        var mappedStatus = ack == null ? null : WapCrmAckMapping.MapStatus(ack.Status);
+        if (ack == null || string.IsNullOrWhiteSpace(ack.InstanceMessageID) || mappedStatus == null)
+        {
+            jsonLogger.StepInfo(
+                $"[{ErrorCodes.CxapiDeliveryAckForwardFailed}] cxapi ack ignored (no-op): " +
+                $"status_int={ack?.Status}, has_wamid={!string.IsNullOrWhiteSpace(ack?.InstanceMessageID)}, " +
+                $"tenant={tenantContext.TenantId}", requestId);
+            return Results.Json(new { status = "accepted", request_id = requestId, message = "ack ignored (unsupported)" }, statusCode: 202);
+        }
+
+        var deliveryReq = new DeliveryStatusRequest
+        {
+            ExternalMessageId = ack.InstanceMessageID,
+            Status = mappedStatus,
+            FailedReason = mappedStatus == "failed" ? WapCrmAckMapping.TruncateFailedReason(ack.ReasonDetailForNotSent) : null,
+            InstanceId = ack.InstanceID
+        };
+
+        var outboundClient = ctx.RequestServices.GetService<OutboundClient>();
+        if (outboundClient == null)
+        {
+            jsonLogger.SystemWarn(
+                $"[{ErrorCodes.CxapiDeliveryAckForwardFailed}] OutboundClient DI not configured — delivery ack dropped " +
+                $"tenant={tenantContext.TenantId} external_id={deliveryReq.ExternalMessageId}");
+            return Results.Json(new { status = "accepted", request_id = requestId, message = "Delivery ack accepted" }, statusCode: 202);
+        }
+
+        // Tenant flows to Outbound via a short-lived service JWT (tenant=companyId) when the inbound was
+        // IP-whitelisted (no bearer) — identical to the Automation forward pattern above. The whole forward
+        // is wrapped so the public webhook ALWAYS returns 202: OutboundClient.ProxyPostAsync already maps
+        // transport failures to 502/504 tuples (logged below), and this typed catch is the belt-and-
+        // suspenders backstop for any other transport-layer throw (JWT mint / serialize / request abort) —
+        // never a 5xx to WapCRM, whose at-least-once redelivery is safe against the idempotent apply.
+        try
+        {
+            var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+            if (string.IsNullOrEmpty(authHeader) && jwtGenerator != null)
+            {
+                var tempToken = jwtGenerator.GenerateToken(
+                    tenantContext.TenantId, "system", "webhook_proxy",
+                    TimeSpan.FromMinutes(5), tenantContext.UserId.ToString());
+                authHeader = $"Bearer {tempToken}";
+            }
+
+            var (statusCode, _) = await outboundClient.ProxyPostAsync(
+                "/api/v1/webhook/delivery-status",
+                JsonSerializer.Serialize(deliveryReq),
+                authHeader, requestId, ctx.RequestAborted);
+
+            if (statusCode is < 200 or >= 300)
+            {
+                jsonLogger.StepInfo(
+                    $"[{ErrorCodes.CxapiDeliveryAckForwardFailed}] delivery ack forward -> Outbound returned {statusCode}: " +
+                    $"external_id={deliveryReq.ExternalMessageId}, status={deliveryReq.Status}, tenant={tenantContext.TenantId} " +
+                    $"(swallowed; WapCRM redelivery is idempotent)", requestId);
+            }
+        }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+        {
+            jsonLogger.SystemWarn(
+                $"[{ErrorCodes.CxapiDeliveryAckForwardFailed}] delivery ack forward threw {ex.GetType().Name}: " +
+                $"external_id={deliveryReq.ExternalMessageId} tenant={tenantContext.TenantId} " +
+                $"(swallowed; WapCRM redelivery is idempotent)");
+        }
+
+        return Results.Json(new { status = "accepted", request_id = requestId, message = "Delivery ack accepted" }, statusCode: 202);
+    }
 });
 
 // Tenant verify endpoint (quick integration health check)
@@ -9449,3 +9590,12 @@ public sealed class WarmupRequest
 
 // Required for integration tests
 namespace Invekto.Backend { public partial class Program { } }
+
+// PR-3b-2: cached options for re-deserializing the inbound webhook body (and the cxapi ack) after
+// raw-JSON shape discrimination. STJ caches metadata per options instance, so this MUST NOT be
+// allocated per request. Web defaults mirror the previous framework model-binding (case-insensitive
+// matching). Declared in the global namespace so the top-level statements reference it by simple name.
+internal static class BackendWebhookJson
+{
+    internal static readonly System.Text.Json.JsonSerializerOptions Options = new(System.Text.Json.JsonSerializerDefaults.Web);
+}

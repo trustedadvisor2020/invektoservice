@@ -130,6 +130,9 @@ public static class ErrorCodes
     public const string WapCrmTemplatesProviderRejected   = "INV-BE-129"; // cxapi envelope status=false (502). Response carries the provider statusCode/requestID; the raw provider message is logged internally (length-capped) and NEVER returned to the SPA.
     public const string WapCrmTemplatesInstanceUnresolved = "INV-BE-130"; // No instanceId resolvable (no ?instanceId= + no positive tenant-default) -> 422; OR an explicit instanceId not owned by the tenant (cache populated) / differing from the default while the instance cache is empty -> 404 (arbitrary-probe guard).
 
+    // FEAT-PROJELER / cxapi PR-3b-2: delivery-ack ingress on /webhook/event (INV-BE-131).
+    public const string CxapiDeliveryAckForwardFailed = "INV-BE-131"; // A discriminated cxapi delivery ack could not be forwarded to Outbound's /webhook/delivery-status (timeout/5xx/non-2xx) OR mapped to a no-op (unsupported Status 0/5, blank InstanceMessageID). Logged; the public /webhook/event still returns 202 to WapCRM (at-least-once redelivery re-drives; apply is idempotent). Never propagated to the provider.
+
     // ChatAnalysis errors (INV-CA-xxx)
     public const string ChatAnalysisInvalidPayload = "INV-CA-001";
     public const string ChatAnalysisProcessingFailed = "INV-CA-002";
@@ -538,6 +541,9 @@ public static class ErrorCodes
     public const string ProjectNameConflict = "INV-OB-069";               // Active project name already exists for this tenant (normalized partial-unique). 409.
     public const string ProjectInvalidTarget = "INV-OB-070";              // One or more target data_list ids don't exist / not owned / deleted — rejected before any write (atomic). 422.
     public const string ProjectDbError = "INV-OB-071";                     // Projects CRUD DB transport failure (Npgsql). Normally rolled back (no partial write); a COMMIT-phase failure is ambiguous but retry-safe (create name-guarded -> INV-OB-069 not a silent dup; update/archive idempotent). 503.
+
+    // FEAT-PROJELER / cxapi PR-3b-2: delivery-ack apply cross-check (INV-OB-072).
+    public const string CxapiDeliveryAckInstanceMismatch = "INV-OB-072";   // SOFT defense-in-depth: a delivery ack's InstanceID differs from the matched outbound_messages.instance_id. Logged (warn) and the status is applied ANYWAY — wamid + the tenant-scoped UNIQUE already guarantee a single-row match. Not user-facing.
 
     // Lead Management errors (INV-LD-xxx) -- GR-3.13
     public const string LeadInvalidPayload = "INV-LD-001";

@@ -914,6 +914,17 @@ app.MapPost("/api/v1/webhook/delivery-status", async (
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
 
+    // PR-3b-2: tenant identity comes from the JWT (Backend mints a service JWT with tenant=companyId
+    // when relaying a cxapi ack; the legacy bridge presents its own per-tenant JWT). The lookup is now
+    // tenant-scoped, so the handler MUST have a tenant context.
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context missing", requestId),
+            statusCode: 401);
+    }
+
     if (request == null || string.IsNullOrWhiteSpace(request.ExternalMessageId))
     {
         return Results.Json(
@@ -929,8 +940,14 @@ app.MapPost("/api/v1/webhook/delivery-status", async (
             statusCode: 400);
     }
 
-    var found = await repository.FindMessageByExternalIdAsync(request.ExternalMessageId);
-    if (found == null)
+    // PR-3b-2: ONE atomic, tenant-scoped, idempotent, partition-correct apply (monotonic downgrade guard
+    // + transition-gated broadcast counter). Replaces the old tenant-blind Find+Update+Increment trio so
+    // a duplicate / out-of-order WapCRM ack is a safe no-op and a wamid can only touch its own tenant.
+    var result = await repository.ApplyDeliveryStatusAsync(
+        tenantContext.TenantId, request.ExternalMessageId, request.Status,
+        failedReason: request.FailedReason, ct: ctx.RequestAborted);
+
+    if (!result.Matched)
     {
         return Results.Json(
             ErrorResponse.Create(ErrorCodes.OutboundDeliveryStatusFailed,
@@ -938,21 +955,23 @@ app.MapPost("/api/v1/webhook/delivery-status", async (
             statusCode: 404);
     }
 
-    var (messageId, broadcastId, tenantId) = found.Value;
-
-    await repository.UpdateMessageStatusAsync(
-        messageId, request.Status, failedReason: request.FailedReason);
-
-    // Update broadcast counters if applicable
-    if (broadcastId.HasValue && request.Status is "delivered" or "read" or "failed")
+    // SOFT defense-in-depth: correlation is already single-row-safe via (tenant_id, wamid). An InstanceID
+    // mismatch is logged and the status applied anyway (Q decision 2026-06-08) — instance_id is nullable
+    // at send time, so a strict reject would risk dropping valid acks.
+    if (request.InstanceId.HasValue && result.RowInstanceId.HasValue
+        && request.InstanceId.Value != result.RowInstanceId.Value)
     {
-        await repository.IncrementBroadcastCounterAsync(broadcastId.Value, request.Status);
+        jsonLogger.SystemWarn(
+            $"[{ErrorCodes.CxapiDeliveryAckInstanceMismatch}] delivery ack InstanceID mismatch: " +
+            $"ack={request.InstanceId} row={result.RowInstanceId} tenant={tenantContext.TenantId} " +
+            $"external_id={request.ExternalMessageId} — applying anyway (soft cross-check)");
     }
 
     jsonLogger.StepInfo(
-        $"Delivery status updated: external_id={request.ExternalMessageId}, status={request.Status}", requestId);
+        $"Delivery status applied: external_id={request.ExternalMessageId}, status={request.Status}, " +
+        $"prev={result.PreviousStatus ?? "-"}, applied={result.Applied}, tenant={tenantContext.TenantId}", requestId);
 
-    return Results.Ok(new { updated = true });
+    return Results.Ok(new { updated = result.Applied, matched = true });
 });
 
 app.MapPost("/api/v1/webhook/message", async (

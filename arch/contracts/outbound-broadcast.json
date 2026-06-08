@@ -82,10 +82,13 @@
         "external_message_id": { "type": "string", "required": true },
         "status": { "type": "string", "required": true, "desc": "sent|delivered|read|failed" },
         "failed_reason": { "type": "string", "required": false },
-        "timestamp": { "type": "string", "format": "ISO8601", "required": false }
+        "timestamp": { "type": "string", "format": "ISO8601", "required": false },
+        "instance_id": { "type": "integer|null", "required": false, "note": "PR-3b-2: WapCRM ack InstanceID, for the SOFT defense-in-depth cross-check against outbound_messages.instance_id (mismatch -> INV-OB-072 warn, applied anyway). Null on the legacy bridge path." }
       },
+      "auth_note": "PR-3b-2: handler now reads TenantContext (tenant-scoped apply); 401 if missing, 404 when (tenant_id, external_message_id) has no match, 200 on applied OR idempotent no-op.",
       "response_200": {
-        "updated": "boolean"
+        "updated": "boolean",
+        "matched": "boolean"
       }
     },
 

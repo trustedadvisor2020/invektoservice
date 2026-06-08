@@ -143,12 +143,16 @@ CREATE INDEX IF NOT EXISTS idx_outbound_messages_broadcast_status
 CREATE INDEX IF NOT EXISTS idx_outbound_messages_queued
     ON outbound_messages (status, created_at) WHERE status = 'queued';
 
+-- Single-column ext-id index (legacy). PR-3b-2 made the delivery-status lookup tenant-scoped
+-- (ApplyDeliveryStatusAsync queries WHERE tenant_id = $ AND external_message_id = $), which is served by
+-- the composite UNIQUE below; this single-column partial index is now redundant for that path but is
+-- left in place (harmless — partial, NULL-excluded, ~zero rows) to avoid an index-drop migration.
 CREATE INDEX IF NOT EXISTS idx_outbound_messages_external_id
     ON outbound_messages (external_message_id) WHERE external_message_id IS NOT NULL;
 
 -- PR-3b-1 (migration 058): per-tenant uniqueness of the WhatsApp wamid (cxapi send response 'data'
 -- = ack InstanceMessageID, INMA G12 2026-06-08) so a delivery-status ack resolves to exactly one
--- tenant's message. The tenant-scoped lookup that consumes it lands in PR-3b-2.
+-- tenant's message. PR-3b-2's tenant-scoped lookup (ApplyDeliveryStatusAsync) consumes this index.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_outbound_messages_tenant_external_id
     ON outbound_messages (tenant_id, external_message_id) WHERE external_message_id IS NOT NULL;
 

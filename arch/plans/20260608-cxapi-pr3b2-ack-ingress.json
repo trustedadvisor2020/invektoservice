@@ -1,0 +1,115 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "slug": "20260608-cxapi-pr3b2-ack-ingress",
+  "risk": "HIGH",
+  "status": "DONE",
+  "created_at": "2026-06-08T12:45:00Z",
+  "updated_at": "2026-06-08T13:35:00Z",
+  "plan": {
+    "summary": "PR-3b-2 (cxapi delivery-ack ingress): the existing Backend /api/v1/webhook/event handler now shape-discriminates the WapCRM SubscribedWebhook payload — inbound messages[] path is unchanged; an ack payload (root Status/InstanceMessageID, no messages[]) is mapped (PascalCase ack -> snake_case DeliveryStatusRequest, Status int 1-4 -> sent/delivered/read/failed) and forwarded to Outbound's existing /api/v1/webhook/delivery-status with a minted service JWT (tenant=companyId). Outbound's delivery-status path is hardened into ONE atomic, tenant-scoped, idempotent, partition-correct apply (downgrade guard + transition-gated broadcast counter). Prod-inert until the P0-3 gate opens.",
+    "q_intent": "PR-3b-2 — mevcut Backend /api/v1/webhook/event handler'ina ack kod blogu: shape-discriminate (messages[] -> mevcut inbound / Status -> ack), tenant=companyId/TenantContext, ack-shim (PascalCase Status int 1-4 -> string), tenant-scoped FindMessageByExternalIdAsync(tenant_id, wamid) + status-downgrade guard (Viewed>Delivered>Sent) + idempotency (tenant_id+ext_id+status) + broadcast-counter yalniz transition'da + InstanceID cross-check. devam.",
+    "interview_notes": "AskUserQuestion (2026-06-08, all 3 = recommended): (1) SERVICE SPLIT = 'Reuse delivery-status' — Backend discriminates+maps+forwards to Outbound's EXISTING /webhook/delivery-status (one correlation path; hardening benefits the legacy bridge too). Forced by microservice isolation: outbound_messages is owned EXCLUSIVELY by Invekto.Outbound (grep: zero refs in Backend); /webhook/event is in Backend. Memory project_cxapi_ack_ingress_design describes the LOGICAL flow ('ack block in /webhook/event'); the PHYSICAL impl is Backend-discriminate -> Outbound-correlate. (2) UNKNOWN WAMID = '202 swallow + log' (public /webhook/event returns 202 to WapCRM even when the ack matches no row; WapCRM retries on non-2xx and most acks legitimately won't match: bridge/non-cxapi sends + all prod rows have NULL ext_id while the gate is closed). (3) INSTANCEID CROSS-CHECK = 'Soft: log on mismatch' (apply anyway; wamid + tenant-scoped UNIQUE already guarantee single-row correctness; instance_id is nullable at send time). FINDING (counter): the existing IncrementBroadcastCounterAsync is funnel-style (+1 only) and works today ONLY because delivery acks never correlate in prod (external_message_id NULL on every row, migration 058). Once acks land it breaks the documented partition invariant (sent+delivered+read+failed+ambiguous+queued=total_recipients). PR-3b-2 therefore makes the counter MOVE BUCKETS (increment new, decrement old) atomically — required for correctness, not scope creep. Pattern mirrors the shipped MarkCxapiOutcomeAsync single-CTE (OutboundRepository.cs:802). FOR UPDATE in the CTE serializes out-of-order/concurrent acks so the bucket-move reads the LIVE prior status (prevents a snapshot-stale double-count). NO DB migration needed: schema (056 states + 058 unique) already supports everything; DeliveryStatusRequest.instance_id is DTO-only (instance_id column already exists). Gate (P0-3) stays CLOSED.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "Backend /api/v1/webhook/event shape-discriminates by payload: root-level non-empty messages[] -> existing inbound path (byte-identical behavior, same message_log/photo/instance-filter/Automation-forward + 202); root-level Status or InstanceMessageID with NO messages[] -> ack branch. Malformed/empty body -> 400 IntegrationWebhookInvalidPayload (unchanged). The inbound path's Automation forward output is unchanged (deserialize to IncomingWebhookEvent with Web options, then JsonSerializer.Serialize as today).", "verified": true, "verification_note": "Build PASS (full solution) + 27/27 focused tests + Codex PASS iter2 (2026-06-08)." },
+      { "id": "AC2", "criterion": "The ack branch maps WapCRMCloudAPIAckWebHookModel (PascalCase: InstanceID int, InstanceMessageID, Status int, StatusText, ReasonDetailForNotSent) to DeliveryStatusRequest: status = MapAckStatus(1->sent,2->delivered,3->read,4->failed); external_message_id = InstanceMessageID; failed_reason = ReasonDetailForNotSent (only for Status=4, truncated to 500); instance_id = InstanceID. Unsupported/absent status (0 Pending, 5 Deleted, other) or blank InstanceMessageID -> no-op, logged, 202 (no forward). Forward uses OutboundClient.ProxyPostAsync to /api/v1/webhook/delivery-status with a minted 5-min service JWT (tenant=companyId, role=system, purpose=webhook_proxy) when the inbound was IP-whitelisted. Public endpoint ALWAYS returns 202 to WapCRM (forward failure / 404 / non-2xx is logged INV-BE-131, never propagated).", "verified": true, "verification_note": "Build PASS (full solution) + 27/27 focused tests + Codex PASS iter2 (2026-06-08)." },
+      { "id": "AC3", "criterion": "Outbound /api/v1/webhook/delivery-status reads ctx.Items[TenantContext] and calls a single atomic OutboundRepository.ApplyDeliveryStatusAsync(tenantId, externalMessageId, status, failedReason, ct) instead of the old Find+Update+Increment trio. Returns 400 (missing ext_id / status not in sent|delivered|read|failed), 404 (no matching (tenant_id, external_message_id) row), 200 otherwise (applied OR idempotent no-op). Soft InstanceID cross-check: if DeliveryStatusRequest.instance_id and the matched row's instance_id are both present and differ, log INV-OB-072 (warn) and apply anyway.", "verified": true, "verification_note": "Build PASS (full solution) + 27/27 focused tests + Codex PASS iter2 (2026-06-08)." },
+      { "id": "AC4", "criterion": "ApplyDeliveryStatusAsync is atomic (single CTE, mirrors MarkCxapiOutcomeAsync), tenant-scoped (WHERE tenant_id=@tid AND external_message_id=@eid, backed by uq_outbound_messages_tenant_external_id), with a monotonic downgrade guard (rank sent=1<delivered=2<read=3 forward-only; failed applies only over queued/sending/posting/sent; never regress read->delivered or override a delivered/read with failed) and a partition-correct, transition-gated broadcast counter (on a real transition with broadcast_id: increment the new bucket, GREATEST-decrement the old bucket; queued covers queued/sending/posting). FOR UPDATE serializes concurrent acks so the counter uses the live prior status. A duplicate/out-of-order ack is a no-op (applied=false) and never re-counts. The now-dead tenant-blind FindMessageByExternalIdAsync is removed; UpdateMessageStatusAsync/IncrementBroadcastCounterAsync are untouched (still used by the send path).", "verified": true, "verification_note": "Build PASS (full solution) + 27/27 focused tests + Codex PASS iter2 (2026-06-08)." },
+      { "id": "AC5", "criterion": "Runtime behavior for the LIVE inbound path is preserved (no regression for any tenant) and the ack path is prod-inert while the gate is closed (no tenant allowlisted -> no wapcrm_cxapi row -> no row has external_message_id -> every ack 404-then-202-swallowed; no broadcast counter ever moves). No DB migration. Full-solution build PASS; DeliveryStatusTests rewritten to the new atomic method + ack-specific cases (downgrade no-op, idempotency, unknown->404, status-string validation, failed+reason); WapCrmAckMapping status-map unit tests added.", "verified": true, "verification_note": "Build PASS (full solution) + 27/27 focused tests + Codex PASS iter2 (2026-06-08)." }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/DTOs/Outbound/WebhookDtos.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Outbound/Program.cs",
+    "src/Invekto.Outbound/Data/OutboundRepository.cs",
+    "arch/errors.md",
+    "arch/db/outbound.sql",
+    "tests/InvektoServis.Tests/Outbound/DeliveryStatusTests.cs",
+    "tests/InvektoServis.Tests/Shared/Outbound/WapCrmAckMappingTests.cs"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/DTOs/Outbound/WebhookDtos.cs", "change": "Added instance_id (int?) to DeliveryStatusRequest (additive); added WapCRMCloudAPIAckWebHookModel (PascalCase ack DTO) + WapCrmAckMapping static (MapStatus int->string, TruncateFailedReason to 500).", "is_new": false },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "change": "Added CxapiDeliveryAckForwardFailed=INV-BE-131 + CxapiDeliveryAckInstanceMismatch=INV-OB-072 (additive).", "is_new": false },
+    { "path": "src/Invekto.Backend/Program.cs", "change": "/webhook/event: dropped the typed body bind; read raw JSON once, shape-discriminate (messages[] inbound vs Status/InstanceMessageID ack); inbound deserializes to IncomingWebhookEvent (cached BackendWebhookJson.Options) and runs the UNCHANGED downstream path; ack branch (local fn) maps -> DeliveryStatusRequest + forwards to Outbound via OutboundClient with a minted service JWT, always 202. Added global BackendWebhookJson cached options.", "is_new": false },
+    { "path": "src/Invekto.Outbound/Program.cs", "change": "/webhook/delivery-status: now reads TenantContext (401 if missing) and calls the single atomic ApplyDeliveryStatusAsync instead of Find+Update+Increment; 404 on no match, 200 otherwise; SOFT InstanceID cross-check log (INV-OB-072).", "is_new": false },
+    { "path": "src/Invekto.Outbound/Data/OutboundRepository.cs", "change": "Replaced the dead tenant-blind FindMessageByExternalIdAsync with ApplyDeliveryStatusAsync (single CTE, FOR UPDATE: tenant-scoped lookup + monotonic downgrade guard + partition-correct transition-gated counter) + DeliveryStatusApplyResult record. UpdateMessageStatusAsync/IncrementBroadcastCounterAsync untouched (send path).", "is_new": false },
+    { "path": "arch/errors.md", "change": "Documented INV-BE-131 + INV-OB-072 (canonical registry sync).", "is_new": false },
+    { "path": "arch/db/outbound.sql", "change": "Comment-only: noted the single-column ext-id index is now legacy (tenant-scoped lookup uses the composite UNIQUE); no schema change.", "is_new": false },
+    { "path": "tests/InvektoServis.Tests/Outbound/DeliveryStatusTests.cs", "change": "Rewired to stub ApplyDeliveryStatusAsync; 7 cases incl. idempotent no-op (Applied=false->200) and SOFT InstanceID mismatch (->200).", "is_new": false },
+    { "path": "tests/InvektoServis.Tests/Shared/Outbound/WapCrmAckMappingTests.cs", "change": "New: 11 unit tests for WapCrmAckMapping.MapStatus (1-4 + 0/5/unknown->null) and TruncateFailedReason.", "is_new": true }
+  ],
+  "git_diff": { "patch_truncated": null, "sha256": "094eb3dbe2275e7bbdc3c5bf820a20ead99925a2f7d88910e815ba5d920cafa6", "full_path": "arch/plans/diffs/20260608-cxapi-pr3b2-ack-ingress.diff", "stats": { "insertions": 512, "deletions": 80, "files_count": 9 } },
+  "build": { "status": "PASS", "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"", "timestamp": "2026-06-08T13:05:00Z", "error_summary": null, "services": ["Invekto.Shared", "Invekto.Backend", "Invekto.Outbound", "InvektoServis.Tests (full solution)"] },
+  "verification_questions": [
+    { "id": "Q1", "question": "Does the rewritten Backend /webhook/event preserve the LIVE inbound path byte-for-byte — same message_log inserts, photo media hop, instance filtering, Automation forward (JsonSerializer.Serialize of the deserialized IncomingWebhookEvent), and 202 shape — so no current tenant's inbound message processing regresses?", "category": "Lifecycle" },
+    { "id": "Q2", "question": "Is the shape discrimination robust against the InstanceID type trap (string in inbound, int in ack) and against ambiguous/empty payloads, so an inbound message is NEVER misrouted to the ack branch and vice versa, and a malformed body still yields the same 400 as before?", "category": "Data" },
+    { "id": "Q3", "question": "Is ApplyDeliveryStatusAsync correct AND safe under duplicate/out-of-order acks: tenant-scoped single-row lookup, monotonic downgrade guard (no read->delivered regress, no failed over delivered/read), and a partition-correct counter that increments the new bucket + decrements the live old bucket exactly once per real transition (no double-count, no negative), with FOR UPDATE serializing concurrent acks?", "category": "Data" },
+    { "id": "Q4", "question": "Does the cross-service forward keep tenant isolation: tenant is derived from companyId/TenantContext (not the payload), a fresh service JWT carries that tenant to Outbound, and a wamid can only ever resolve to its own tenant's message (uq_outbound_messages_tenant_external_id), so no ack can be mis-attributed across tenants?", "category": "Auth" },
+    { "id": "Q5", "question": "Does PR-3b-2 keep the P0-3 gate intact and stay prod-inert (no allowlist change; every ack 404s while external_message_id is NULL on all prod rows, swallowed to 202; no counter movement), and is it correctly a no-migration code-only change over the existing 056/058 schema?", "category": "Process/Policy" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "CxapiSendOptions.cs / appsettings CxapiSend allowlist (gate MUST stay closed)",
+      "MessageSenderService send-side status/counter calls (UpdateMessageStatusAsync/IncrementBroadcastCounterAsync untouched)",
+      "MarkCxapiOutcomeAsync / cxapi send state machine (send side, unchanged)",
+      "arch/db/migrations/058-cxapi-extid-unique.sql (shipped; immutable) — and NO new migration (schema already sufficient)",
+      "projects.delivered_count/read_count roll-up (PR-4 recompute scope; INERT)"
+    ],
+    "non_goals": [
+      "Approved-template (PR-4) send + language/dynamic-button handling",
+      "Lifting the P0-3 gate or allowlisting any tenant",
+      "Pilot tenant WapCRM config verification (operational precondition, external to code)",
+      "Reworking send-side (queued->sent) counter semantics"
+    ],
+    "intentional_exclusions": [
+      "No new DB migration (DeliveryStatusRequest.instance_id is DTO-only; instance_id column already exists; counter columns already exist)",
+      "Single-column idx_outbound_messages_external_id left in place (harmless, all-NULL partial index); only its outbound.sql comment is updated to note the lookup is now tenant-scoped via the composite UNIQUE",
+      "Strict InstanceID rejection (Q chose SOFT log-and-apply)",
+      "404 surfaced to WapCRM (Q chose 202-swallow on the public webhook)"
+    ]
+  },
+  "error_handling": {
+    "silent_failure_risk": true,
+    "silent_failure_explanation": "Two intentional soft paths, both BY DESIGN and logged, not silent: (1) an ack with no matching (tenant,wamid) row returns 404 from Outbound which Backend swallows to 202 + logs (Q answer #2) — correct because WapCRM retries on non-2xx and most acks legitimately won't match while the gate is closed (all prod rows have NULL ext_id). (2) an InstanceID cross-check mismatch logs INV-OB-072 (warn) and applies anyway (Q answer #3, SOFT) — correct because wamid + tenant-scoped UNIQUE already guarantee single-row correctness and instance_id is nullable at send time. The Backend->Outbound forward failure (timeout/5xx) is logged INV-BE-131 and the public endpoint still returns 202; WapCRM's at-least-once redelivery re-drives it (idempotent apply makes redelivery safe). No exception escapes to the caller; the LIVE inbound path's existing typed error handling is unchanged."
+  },
+  "aha_moments": [
+    { "category": "RELIABILITY", "user_pain": "Operators send cxapi broadcasts but the per-recipient state is frozen at 'sent' — they can't tell delivered from read from failed.", "suggestion": "The ack ingress flips each recipient row through sent->delivered->read (or failed) as WhatsApp reports back, with a downgrade guard so a late ack never regresses the truth.", "aha_moment": "The operator refreshes a broadcast and watches read counts climb in near real-time instead of a static 'sent'." },
+    { "category": "RELIABILITY", "user_pain": "Duplicate or out-of-order delivery webhooks (WapCRM gives no ordering guarantee and may resend) silently corrupt broadcast counters past 100%.", "suggestion": "The atomic transition-gated counter moves a message between buckets exactly once; replays are no-ops.", "aha_moment": "The team trusts the broadcast dashboard because delivered+read+failed+queued always equals the recipient count, even after retries." },
+    { "category": "SUPPORT", "user_pain": "When a customer says 'I never got it', support has no provider-side reason to show.", "suggestion": "A NotSent ack stores ReasonDetailForNotSent against the matched row, surfaced on the recipient detail.", "aha_moment": "Support pastes the number and immediately reads 'failed (131026) Message Undeliverable'." },
+    { "category": "SPEED", "user_pain": "Cross-tenant mis-attribution is the exact risk that froze cxapi go-live, and re-checking it per release is slow.", "suggestion": "Tenant comes from companyId and the wamid lookup is tenant-scoped via the composite UNIQUE, so an ack can only ever touch its own tenant's row.", "aha_moment": "The team opens the gate confident an ack can never write to the wrong tenant." },
+    { "category": "UX", "user_pain": "A single shared webhook URL receiving both inbound chats and delivery acks looks like it would need a second integration/endpoint to configure.", "suggestion": "Shape discrimination on the one existing /webhook/event means WapCRM config is unchanged — no new URL, token, or endpoint to set up per tenant.", "aha_moment": "Go-live needs only flipping the allowlist, not re-touching every tenant's WapCRM webhook settings." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-06-08T13:33:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-06-08T13:35:00Z",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "Structured 400 for malformed JSON; INV-BE-131 logged on non-2xx/transport ack-forward failure with 202 preserved; Outbound 401/404 structured." },
+      "CQ2": { "result": "PASS", "evidence": "No-op acks + transport catch log INV-BE-131 (not silent); JsonException -> webhookEvent null -> existing 400." },
+      "CQ3": { "result": "PASS", "evidence": "Diff limited to declared PR-3b-2 ack-ingress scope; no unrelated files." },
+      "CQ4": { "result": "PASS", "evidence": "Mapping + discrimination centralized in WapCrmAckMapping; no duplication." },
+      "CQ5": { "result": "PASS", "evidence": "snake_case parameterized SQL; codes in ErrorCodes.cs + errors.md; IDisposable via using (JsonDocument, Npgsql)." },
+      "CQ6": { "result": "PASS", "evidence": "Single tenant-scoped CTE (no N+1); cached static JsonSerializerOptions; test JsonDocument disposed + Clone()." },
+      "CQ7": { "result": "PASS", "evidence": "No new TODO/HACK/FIXME." },
+      "CQ8": { "result": "PASS", "evidence": "DeliveryStatusRequest.instance_id additive; removed repo method replaced by ApplyDeliveryStatusAsync; tests updated." },
+      "CQ9": { "result": "PASS", "evidence": "Tenant from TenantContext/companyId (not payload); service JWT; tenant-scoped WHERE + composite UNIQUE; cross-service via OutboundClient (isolation kept)." },
+      "CQ10": { "result": "PASS", "evidence": "No UI changes; 202/ErrorResponse envelopes consistent." },
+      "CQ11": { "result": "PASS", "evidence": "Existing snake_case columns/indexes referenced; outbound.sql change comment-only; no migration." },
+      "CQ12": { "result": "PASS", "evidence": "INV-BE-131 + INV-OB-072 documented; HTTP statuses aligned (400/401/404/202/200)." }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "Inbound path preserved: raw parse + discriminate, non-ack deserializes to IncomingWebhookEvent (cached Web opts), unchanged downstream + same 202." },
+      "Q2": { "result": "PASS", "reasoning": "IsDeliveryAckShape false for non-object and for any root with a messages property; ambiguous {messages:[],Status:1} -> inbound 400; tested." },
+      "Q3": { "result": "PASS", "reasoning": "Tenant-scoped FOR UPDATE lookup; monotonic guard; transition-gated GREATEST counter; duplicate/out-of-order -> matched/applied=false, no counter move." },
+      "Q4": { "result": "PASS", "reasoning": "Service JWT from tenantContext.TenantId; Outbound requires TenantContext; tenant-scoped SQL + composite UNIQUE; no cross-tenant mis-attribution." },
+      "Q5": { "result": "PASS", "reasoning": "Always-202 guaranteed: no-op/missing-client/non-2xx/typed-transport-catch all return 202 + log INV-BE-131; ProxyPostAsync returns 502/504 tuples; comment-only schema, no migration." }
+    },
+    "blocking_issues": [],
+    "iteration": 2
+  }
+}

@@ -474,30 +474,90 @@ public class OutboundRepository
         await cmd.ExecuteNonQueryAsync(ct);
     }
 
-    /// <summary>Find message by external_message_id (from WapCRM/WhatsApp).</summary>
-    public virtual async Task<(long messageId, Guid? broadcastId, int tenantId)?> FindMessageByExternalIdAsync(
-        string externalMessageId, CancellationToken ct = default)
+    /// <summary>
+    /// Outcome of <see cref="ApplyDeliveryStatusAsync"/>. <see cref="Matched"/>=false -> no row for
+    /// (tenant_id, external_message_id) (caller returns 404). <see cref="Applied"/>=false on a matched
+    /// row whose status did not advance (idempotent / out-of-order no-op; caller returns 200).
+    /// <see cref="PreviousStatus"/>/<see cref="RowInstanceId"/> are the matched row's pre-apply values
+    /// (always populated when Matched) so the caller can run the soft InstanceID cross-check log.
+    /// </summary>
+    public readonly record struct DeliveryStatusApplyResult(
+        bool Matched, bool Applied, string? PreviousStatus, int? RowInstanceId);
+
+    /// <summary>
+    /// PR-3b-2: apply a delivery-status ack to exactly one tenant-scoped message ATOMICALLY (single CTE,
+    /// mirrors <see cref="MarkCxapiOutcomeAsync"/>). The lookup is tenant-scoped on
+    /// (tenant_id, external_message_id) — backed by the partial UNIQUE uq_outbound_messages_tenant_external_id
+    /// (migration 058) — so a wamid resolves to exactly ONE tenant's row (no cross-tenant mis-attribution).
+    /// Enforces a monotonic downgrade guard (sent&lt;delivered&lt;read, forward-only; 'failed' applies only
+    /// over queued/sending/posting/sent; never regress read-&gt;delivered, never override a delivered/read with
+    /// failed) and keeps outbound_broadcasts counters PARTITION-correct: on a REAL transition (and only then)
+    /// with a broadcast_id, the new bucket is incremented and the LIVE old bucket decremented, so a duplicate
+    /// or out-of-order ack is a no-op that never double-counts (the invariant
+    /// sent+delivered+read+failed+ambiguous+queued = total_recipients holds). FOR UPDATE serializes
+    /// concurrent acks for the same row so the bucket-move reads the committed prior status, not a stale
+    /// snapshot. All values are parameterized and the SQL is fully static (no dynamic column names).
+    /// </summary>
+    public virtual async Task<DeliveryStatusApplyResult> ApplyDeliveryStatusAsync(
+        int tenantId, string externalMessageId, string status, string? failedReason = null, CancellationToken ct = default)
     {
         const string sql = @"
-            SELECT id, broadcast_id, tenant_id
-            FROM outbound_messages
-            WHERE external_message_id = @eid
-            LIMIT 1";
+            WITH cur AS (
+                SELECT id, status AS old_status, broadcast_id, instance_id
+                FROM outbound_messages
+                WHERE tenant_id = @tid AND external_message_id = @eid
+                FOR UPDATE
+            ),
+            upd AS (
+                UPDATE outbound_messages m
+                SET status = @new,
+                    sent_at       = CASE WHEN @new = 'sent'      AND m.sent_at      IS NULL THEN NOW() ELSE m.sent_at END,
+                    delivered_at  = CASE WHEN @new = 'delivered' AND m.delivered_at IS NULL THEN NOW() ELSE m.delivered_at END,
+                    read_at       = CASE WHEN @new = 'read'      AND m.read_at      IS NULL THEN NOW() ELSE m.read_at END,
+                    failed_reason = CASE WHEN @new = 'failed' THEN @fail ELSE m.failed_reason END
+                FROM cur
+                WHERE m.id = cur.id
+                  AND (
+                        (@new IN ('sent','delivered','read')
+                           AND cur.old_status IN ('queued','sending','posting','sent','delivered')
+                           AND (CASE cur.old_status WHEN 'sent' THEN 1 WHEN 'delivered' THEN 2 WHEN 'read' THEN 3 ELSE 0 END)
+                               < (CASE @new WHEN 'sent' THEN 1 WHEN 'delivered' THEN 2 WHEN 'read' THEN 3 END))
+                     OR (@new = 'failed' AND cur.old_status IN ('queued','sending','posting','sent'))
+                      )
+                RETURNING cur.old_status AS old_status, m.broadcast_id
+            ),
+            cnt AS (
+                UPDATE outbound_broadcasts b
+                SET sent      = GREATEST(b.sent      + (CASE WHEN @new = 'sent'      THEN 1 ELSE 0 END) - (CASE WHEN u.old_status = 'sent'      THEN 1 ELSE 0 END), 0),
+                    delivered = GREATEST(b.delivered + (CASE WHEN @new = 'delivered' THEN 1 ELSE 0 END) - (CASE WHEN u.old_status = 'delivered' THEN 1 ELSE 0 END), 0),
+                    read      = GREATEST(b.read      + (CASE WHEN @new = 'read'      THEN 1 ELSE 0 END) - (CASE WHEN u.old_status = 'read'      THEN 1 ELSE 0 END), 0),
+                    failed    = b.failed + (CASE WHEN @new = 'failed' THEN 1 ELSE 0 END),
+                    queued    = GREATEST(b.queued - (CASE WHEN u.old_status IN ('queued','sending','posting') THEN 1 ELSE 0 END), 0)
+                FROM upd u
+                WHERE b.id = u.broadcast_id AND b.tenant_id = @tid
+                RETURNING b.id
+            )
+            SELECT (SELECT old_status  FROM cur) AS prev_status,
+                   (SELECT instance_id FROM cur) AS row_instance_id,
+                   EXISTS (SELECT 1 FROM cur) AS matched,
+                   EXISTS (SELECT 1 FROM upd) AS applied";
 
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
         cmd.Parameters.AddWithValue("eid", externalMessageId);
+        cmd.Parameters.AddWithValue("new", status);
+        cmd.Parameters.AddWithValue("fail", (object?)failedReason ?? DBNull.Value);
 
         await using var reader = await cmd.ExecuteReaderAsync(ct);
-        if (await reader.ReadAsync(ct))
-        {
-            return (
-                reader.GetInt64(0),
-                reader.IsDBNull(1) ? null : reader.GetGuid(1),
-                reader.GetInt32(2)
-            );
-        }
-        return null;
+        if (!await reader.ReadAsync(ct))
+            return new DeliveryStatusApplyResult(false, false, null, null);
+
+        var prevStatus = reader.IsDBNull(0) ? null : reader.GetString(0);
+        var rowInstanceId = reader.IsDBNull(1) ? (int?)null : reader.GetInt32(1);
+        var matched = reader.GetBoolean(2);
+        var applied = reader.GetBoolean(3);
+        return new DeliveryStatusApplyResult(matched, applied, prevStatus, rowInstanceId);
     }
 
     // ================================================================

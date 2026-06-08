@@ -616,6 +616,9 @@ errors:
   - code: INV-BE-130
     description: The WhatsApp instance for the template list could not be resolved or verified — no ?instanceId= query AND no positive tenant-default WapCrmSettings.InstanceId (422); OR an explicit instanceId the tenant does not own when the instance cache is populated (404, InstanceRepository.GetInstanceStatusAsync); OR an explicit instanceId that differs from the tenant-default while the instance cache is empty (404, arbitrary-instance probing guard — empty cache trusts cxapi secret-scoping only for the configured default). The operator should pick a known instance (Settings > Instances) and retry.
     user_message: Geçerli bir WhatsApp instance seçilmedi veya bu hesaba ait değil. Bir instance seçip tekrar deneyin.
+  - code: INV-BE-131
+    description: "FEAT-PROJELER / cxapi PR-3b-2 — a cxapi delivery ack discriminated at Backend /webhook/event could not be forwarded to Outbound's /webhook/delivery-status (timeout/5xx/non-2xx, incl. 404 when the wamid is not yet/never correlated: gate closed, bridge, or non-cxapi send) OR mapped to a no-op (unsupported Status 0/5, blank InstanceMessageID). Internal/log only. The public /webhook/event ALWAYS returns 202 to WapCRM so the provider does not retry-storm the shared webhook; WapCRM at-least-once redelivery re-drives it and the Outbound apply is idempotent. Never propagated to the provider."
+    user_message: null
 
   # ── AA — AgentAI ──
   - code: INV-AA-001
@@ -1065,6 +1068,9 @@ errors:
   - code: INV-OB-071
     description: Projects DB error — a database transport failure (Npgsql) during a projects CRUD operation. The transaction normally rolls back with no partial write; if the failure occurs at COMMIT the commit outcome is ambiguous, but a RETRY is still safe — create is guarded by the unique active name (a retry after a hidden commit surfaces INV-OB-069, never a silent duplicate) and update/archive are idempotent. (503)
     user_message: Veritabanı hatası nedeniyle işlem tamamlanamadı. Lütfen tekrar deneyin.
+  - code: INV-OB-072
+    description: "FEAT-PROJELER / cxapi PR-3b-2 — SOFT defense-in-depth cross-check in ApplyDeliveryStatusAsync: a delivery ack's InstanceID differs from the matched outbound_messages.instance_id. Logged (warn) and the status is applied ANYWAY — correlation is already single-row-safe via the (tenant_id, external_message_id) UNIQUE, and instance_id is nullable at send time so a strict reject would risk dropping valid acks. Internal/log only."
+    user_message: null
 
   # ── IG — Integrations (GR-3.4/3.6) ──
   - code: INV-IG-001

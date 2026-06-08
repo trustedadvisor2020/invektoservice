@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Invekto.Shared.DTOs.Outbound;
@@ -47,7 +48,8 @@ public sealed class TriggerWebhookResponse
 }
 
 /// <summary>
-/// POST /api/v1/webhook/delivery-status - delivery status from Main App.
+/// POST /api/v1/webhook/delivery-status - delivery status from Main App (bridge) OR a cxapi
+/// WapCRM ack relayed by Backend's /webhook/event (PR-3b-2). snake_case body.
 /// </summary>
 public sealed class DeliveryStatusRequest
 {
@@ -62,6 +64,92 @@ public sealed class DeliveryStatusRequest
 
     [JsonPropertyName("timestamp")]
     public DateTime? Timestamp { get; set; }
+
+    /// <summary>
+    /// PR-3b-2: the WapCRM channel/InstanceID that produced the cxapi ack, carried for a SOFT
+    /// defense-in-depth cross-check against the matched outbound_messages.instance_id (mismatch is
+    /// logged, the status is still applied — wamid + the tenant-scoped UNIQUE already guarantee a
+    /// single-row match). Null on the legacy Main App bridge path (no instance context).
+    /// </summary>
+    [JsonPropertyName("instance_id")]
+    public int? InstanceId { get; set; }
+}
+
+/// <summary>
+/// PR-3b-2: the raw WapCRM cxapi delivery-ack webhook payload (PascalCase) as posted to each tenant's
+/// existing /api/v1/webhook/event?companyId=X. Distinguished from an inbound message by the ABSENCE of
+/// a root <c>messages[]</c> array and the PRESENCE of <c>Status</c>/<c>InstanceMessageID</c> (INMA spec,
+/// temp/WEBHOOK_OUTBOUND_PAYLOADS.md). <c>InstanceID</c> is an INT here (it is a STRING in the inbound
+/// message envelope — that type trap is why the two shapes are deserialized into separate models after
+/// shape discrimination, never into one). Backend maps this onto <see cref="DeliveryStatusRequest"/>.
+/// </summary>
+public sealed class WapCRMCloudAPIAckWebHookModel
+{
+    /// <summary>Globally-unique WapCRM channel id (one company). Soft cross-check only — correlation is by wamid.</summary>
+    [JsonPropertyName("InstanceID")]
+    public int InstanceID { get; set; }
+
+    /// <summary>The sent message's WhatsApp wamid — equals outbound_messages.external_message_id captured at send (INMA C1, 2026-06-08).</summary>
+    [JsonPropertyName("InstanceMessageID")]
+    public string? InstanceMessageID { get; set; }
+
+    /// <summary>1=Sent, 2=Delivered, 3=Viewed(read), 4=NotSent(failed). 0=Pending/5=Deleted are ignored.</summary>
+    [JsonPropertyName("Status")]
+    public int Status { get; set; }
+
+    [JsonPropertyName("StatusText")]
+    public string? StatusText { get; set; }
+
+    /// <summary>Provider failure detail — populated only for Status=4 (NotSent).</summary>
+    [JsonPropertyName("ReasonDetailForNotSent")]
+    public string? ReasonDetailForNotSent { get; set; }
+}
+
+/// <summary>
+/// PR-3b-2: pure mapping from the WapCRM ack <c>Status</c> int to our delivery-status string.
+/// Extracted as a tested static so the shape-discrimination handler stays thin and the mapping
+/// (the one piece of real logic in the ack branch) is unit-covered without a Backend test host.
+/// </summary>
+public static class WapCrmAckMapping
+{
+    /// <summary>Max length of outbound_messages.failed_reason (VARCHAR(500)).</summary>
+    public const int FailedReasonMaxLength = 500;
+
+    /// <summary>
+    /// Maps a WapCRM ack Status int to a delivery-status string, or null for statuses we intentionally
+    /// ignore (0=Pending, 5=Deleted, or any unknown value) so the ack branch can no-op them.
+    /// </summary>
+    public static string? MapStatus(int ackStatus) => ackStatus switch
+    {
+        1 => "sent",
+        2 => "delivered",
+        3 => "read",     // WapCRM "Viewed"
+        4 => "failed",   // WapCRM "NotSent"
+        _ => null
+    };
+
+    /// <summary>Truncates the provider failure detail to the failed_reason column width; null-safe.</summary>
+    public static string? TruncateFailedReason(string? reason)
+    {
+        if (string.IsNullOrEmpty(reason)) return reason;
+        return reason.Length <= FailedReasonMaxLength ? reason : reason[..FailedReasonMaxLength];
+    }
+
+    /// <summary>
+    /// True when a /webhook/event body is a cxapi delivery ack (NOT an inbound message). Per the INMA
+    /// shape contract an inbound message ALWAYS carries a root <c>messages</c> property and an ack NEVER
+    /// does (it carries <c>Status</c>/<c>InstanceMessageID</c>). A body that has BOTH (e.g.
+    /// <c>{"messages":[],"Status":1}</c>) or NEITHER is NOT a clean ack — it returns false so the caller
+    /// falls through to the inbound path (and is rejected by the messages-required validation). Requiring
+    /// the <c>messages</c> property to be ABSENT — not merely empty — is what keeps an ambiguous payload
+    /// from being silently accepted as an ack.
+    /// </summary>
+    public static bool IsDeliveryAckShape(JsonElement root)
+    {
+        if (root.ValueKind != JsonValueKind.Object) return false;
+        if (root.TryGetProperty("messages", out _)) return false;
+        return root.TryGetProperty("Status", out _) || root.TryGetProperty("InstanceMessageID", out _);
+    }
 }
 
 /// <summary>
