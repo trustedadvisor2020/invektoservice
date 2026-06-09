@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Briefcase, X, Plus, Pencil, Archive, Loader2, Info, ListChecks, Radio, FileText, Send, Users, CheckCircle2,
+  ExternalLink, Phone, Reply, Image as ImageIcon,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -45,6 +46,71 @@ function StatusBadge({ status }: { status: ProjectStatus }) {
 const MAX_NAME = 120;
 const MAX_DESC = 500;
 
+// Selectable list columns for per-recipient template params (mirrors list_records' fixed schema:
+// migration 052 — name/surname/email/field1..5/tags/note). Same set across every data-list.
+const LIST_COLUMNS: { v: string; label: string }[] = [
+  { v: 'name', label: 'Ad' },
+  { v: 'surname', label: 'Soyad' },
+  { v: 'email', label: 'E-posta' },
+  { v: 'field1', label: 'Alan 1' },
+  { v: 'field2', label: 'Alan 2' },
+  { v: 'field3', label: 'Alan 3' },
+  { v: 'field4', label: 'Alan 4' },
+  { v: 'field5', label: 'Alan 5' },
+  { v: 'tags', label: 'Etiketler' },
+  { v: 'note', label: 'Not' },
+];
+
+type Placeholder = { key: string; location: string };
+
+// Pull every {{key}} placeholder out of a template's preview (header text + body + footer), first-seen
+// order, de-duplicated. cxapi's requiredInputs can omit header placeholders, so we read the rendered
+// preview directly — the operator must be able to map a column to EVERY visible {{...}} (e.g. hname + name).
+function extractPlaceholders(t: WaTemplate | null): Placeholder[] {
+  if (!t?.preview) return [];
+  const re = /\{\{\s*([^}\s]+)\s*\}\}/g;
+  const seen = new Set<string>();
+  const out: Placeholder[] = [];
+  const scan = (text: string | null | undefined, location: string) => {
+    if (!text) return;
+    for (const m of text.matchAll(re)) {
+      const key = m[1];
+      if (!seen.has(key)) { seen.add(key); out.push({ key, location }); }
+    }
+  };
+  scan(t.preview.header?.text, 'HEADER');
+  scan(t.preview.body, 'BODY');
+  scan(t.preview.footer, 'FOOTER');
+  return out;
+}
+
+// Render template text with {{...}} placeholders highlighted (so the operator sees the variables).
+function renderTemplateText(text: string) {
+  return text.split(/(\{\{\s*[^}\s]+\s*\}\})/g).map((part, i) =>
+    /^\{\{\s*[^}\s]+\s*\}\}$/.test(part)
+      ? <span key={i} className="bg-brand-100 text-brand-700 rounded px-1">{part}</span>
+      : <span key={i}>{part}</span>,
+  );
+}
+
+// Icon for a template button by cxapi type.
+function buttonIcon(type: string | null) {
+  if (type === 'URL') return <ExternalLink className="w-3.5 h-3.5" />;
+  if (type === 'PHONE_NUMBER') return <Phone className="w-3.5 h-3.5" />;
+  return <Reply className="w-3.5 h-3.5" />; // QUICK_REPLY / default
+}
+
+// Icon + label for a non-text (media) template header.
+function mediaHeaderIcon(type: string | null) {
+  return type === 'DOCUMENT' ? <FileText className="w-4 h-4" /> : <ImageIcon className="w-4 h-4" />;
+}
+function mediaHeaderLabel(type: string | null) {
+  if (type === 'IMAGE') return 'Görsel başlık';
+  if (type === 'VIDEO') return 'Video başlık';
+  if (type === 'DOCUMENT') return 'Belge başlık';
+  return 'Medya başlık';
+}
+
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,7 +137,11 @@ export default function ProjectsPage() {
   const [templates, setTemplates] = useState<WaTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [templatesError, setTemplatesError] = useState<string | null>(null);
-  const [paramValues, setParamValues] = useState<string[]>([]); // index-aligned with the selected template's requiredInputs
+  // Text placeholders ({{key}}) map to a data-list COLUMN (per-recipient personalization at send time, PR-4):
+  // placeholder key -> list column key (name/surname/email/field1..5/tags/note).
+  const [paramColumns, setParamColumns] = useState<Record<string, string>>({});
+  // Media inputs (cxapi requiredInput kind='media') take a public URL literal: media key -> URL.
+  const [mediaValues, setMediaValues] = useState<Record<string, string>>({});
 
   // ---- plain_text content (migration 059): the content a plain_text run sends, chosen in settings ----
   const [contentMode, setContentMode] = useState<ProjectContentMode | ''>(''); // '' until a content source is chosen
@@ -95,6 +165,13 @@ export default function ProjectsPage() {
   const selectedTemplate = useMemo(
     () => templates.find(t => t.templateId === waTemplateId) ?? null, [templates, waTemplateId]);
   const requiredInputs = selectedTemplate?.requiredInputs ?? [];
+  // Text placeholders ({{...}}) read from the rendered preview (covers header params cxapi omits from requiredInputs).
+  const placeholders = useMemo(() => extractPlaceholders(selectedTemplate), [selectedTemplate]);
+  // Media inputs come from cxapi requiredInputs (preview text has no {{...}} for media).
+  const mediaInputs = useMemo(() => requiredInputs.filter(ri => ri.kind === 'media'), [requiredInputs]);
+  // Stable key (location+mediaType, not index) so edit re-populate doesn't depend on async template load order.
+  const mediaKey = (ri: { location: string | null; mediaType: string | null }) =>
+    `${ri.location ?? ''}:${ri.mediaType ?? ''}`;
   // Gallery templates are tenant-scoped (not per-channel); the picker resolves the selected one for a preview.
   const selectedGalleryTemplate = useMemo(
     () => galleryTemplates.find(t => String(t.id) === outboundTemplateId) ?? null, [galleryTemplates, outboundTemplateId]);
@@ -167,7 +244,8 @@ export default function ProjectsPage() {
     // Switching away from template clears the template selection; switching to it (re)loads templates.
     setWaTemplateId('');
     setTemplates([]);
-    setParamValues([]);
+    setParamColumns({});
+    setMediaValues({});
     setTemplatesError(null);
     // plain_text needs a content choice; default to gallery template (operator can switch to free text).
     // Any other kind clears the plain_text content carriers.
@@ -186,25 +264,17 @@ export default function ProjectsPage() {
     // Templates are per-channel; reset the template selection and reload for the new channel.
     setWaTemplateId('');
     setTemplates([]);
-    setParamValues([]);
+    setParamColumns({});
+    setMediaValues({});
     setTemplatesError(null);
     if (templateKind === 'wapcrm_template' && value) void fetchTemplatesFor(Number(value));
   }
 
   function onTemplateChange(value: string) {
     setWaTemplateId(value);
-    // Reset the operator-filled params to one empty slot per requiredInput of the newly chosen template.
-    const tmpl = templates.find(t => t.templateId === value);
-    setParamValues(new Array(tmpl?.requiredInputs?.length ?? 0).fill(''));
-  }
-
-  function setParamAt(index: number, value: string) {
-    setParamValues(prev => {
-      const next = prev.slice();
-      while (next.length <= index) next.push('');
-      next[index] = value;
-      return next;
-    });
+    // A new template has a different placeholder/media set; clear the operator's column/media choices.
+    setParamColumns({});
+    setMediaValues({});
   }
 
   useEffect(() => {
@@ -215,11 +285,14 @@ export default function ProjectsPage() {
   }, []);
 
   function resetSendConfig() {
-    setTemplateKind('');
+    // New projects default to the approved-template (HSM) flow (Q 2026-06-10); plain_text is disabled in the UI.
+    // A template is optional to save — leaving it unselected stores no send config (metadata-only project).
+    setTemplateKind('wapcrm_template');
     setInstanceId('');
     setWaTemplateId('');
     setTemplates([]);
-    setParamValues([]);
+    setParamColumns({});
+    setMediaValues({});
     setTemplatesError(null);
     setContentMode('');
     setOutboundTemplateId('');
@@ -245,11 +318,23 @@ export default function ProjectsPage() {
     setModalOpen(true);
 
     // Re-populate the send config from the project (the summary now carries it).
-    setTemplateKind(p.template_kind ?? '');
+    // Default an unconfigured project to the HSM flow (matches create); an existing plain_text project keeps its kind.
+    setTemplateKind(p.template_kind ?? 'wapcrm_template');
     setInstanceId(p.instance_id != null ? String(p.instance_id) : '');
     setWaTemplateId(p.wa_template_id ?? '');
-    // param values are index-aligned with the stored param_mapping (same order the template requiredInputs had).
-    setParamValues((p.param_mapping ?? []).map(x => x.value ?? ''));
+    // Re-populate column mapping (text placeholders) + media URLs from the stored param_mapping.
+    const cols: Record<string, string> = {};
+    const media: Record<string, string> = {};
+    for (const x of p.param_mapping ?? []) {
+      if (x.kind === 'media') {
+        if (x.value) media[`${x.location ?? ''}:${x.mediaType ?? ''}`] = x.value;
+      } else if (x.paramKey) {
+        // column-mapped (new) or legacy literal value — prefer the column reference.
+        if (x.column) cols[x.paramKey] = x.column;
+      }
+    }
+    setParamColumns(cols);
+    setMediaValues(media);
     setTemplates([]);
     setTemplatesError(null);
     // plain_text content (migration 059): re-populate the operator's content choice.
@@ -285,46 +370,65 @@ export default function ProjectsPage() {
     const trimmed = name.trim();
     if (!trimmed) { setFormError('Proje adı gerekli.'); return; }
 
-    // Validate the send config when a message kind is chosen (both kinds need a channel).
+    // Validate the send config. New projects default to the HSM (wapcrm_template) flow, but a template is
+    // OPTIONAL (Q 2026-06-10): leaving it unpicked stores no send config (metadata-only project). plain_text
+    // stays supported for EDITING existing projects (the UI disables choosing it for new ones).
     let paramMapping: ProjectTemplateParam[] | undefined;
-    if (templateKind !== '') {
+    let buildConfig = false;
+
+    if (templateKind === 'plain_text') {
       if (!instanceId || Number.isNaN(Number(instanceId))) {
         setFormError('Gönderim için bir WhatsApp kanalı seçin.'); return;
       }
-      if (templateKind === 'plain_text') {
-        // Content is chosen in settings: gallery template OR free text (Q decision 2026-06-09).
-        if (contentMode === '') { setFormError('Düz metin için içerik türü seçin: galeri şablonu veya serbest metin.'); return; }
-        if (contentMode === 'gallery_template' && (!outboundTemplateId || Number.isNaN(Number(outboundTemplateId)))) {
-          setFormError('Galeri şablonu için bir şablon seçin.'); return;
-        }
-        if (contentMode === 'free_text') {
-          if (!plainTextBody.trim()) { setFormError('Serbest metin için bir mesaj yazın.'); return; }
-          if (plainTextBody.trim().length > PLAIN_TEXT_BODY_MAX) {
-            setFormError(`Mesaj metni ${PLAIN_TEXT_BODY_MAX} karakteri aşıyor.`); return;
-          }
+      // Content is chosen in settings: gallery template OR free text (Q decision 2026-06-09).
+      if (contentMode === '') { setFormError('Düz metin için içerik türü seçin: galeri şablonu veya serbest metin.'); return; }
+      if (contentMode === 'gallery_template' && (!outboundTemplateId || Number.isNaN(Number(outboundTemplateId)))) {
+        setFormError('Galeri şablonu için bir şablon seçin.'); return;
+      }
+      if (contentMode === 'free_text') {
+        if (!plainTextBody.trim()) { setFormError('Serbest metin için bir mesaj yazın.'); return; }
+        if (plainTextBody.trim().length > PLAIN_TEXT_BODY_MAX) {
+          setFormError(`Mesaj metni ${PLAIN_TEXT_BODY_MAX} karakteri aşıyor.`); return;
         }
       }
-      if (templateKind === 'wapcrm_template') {
-        if (!waTemplateId) { setFormError('Bir onaylı şablon seçin.'); return; }
-        // Guard: never rebuild param_mapping from an unloaded template (would wipe stored params).
-        if (!selectedTemplate) { setFormError('Şablon bilgisi yüklenemedi. Lütfen tekrar deneyin.'); return; }
-        for (let i = 0; i < requiredInputs.length; i++) {
-          if (!(paramValues[i] ?? '').trim()) { setFormError('Tüm şablon parametrelerini doldurun.'); return; }
-        }
-        paramMapping = requiredInputs.map((ri, i) => ({
-          kind: ri.kind, location: ri.location, paramKey: ri.paramKey, mediaType: ri.mediaType,
-          value: (paramValues[i] ?? '').trim(),
-        }));
+      buildConfig = true;
+    } else if (templateKind === 'wapcrm_template' && waTemplateId) {
+      // A template was picked → full HSM config (no template = metadata-only, omitted below).
+      if (!instanceId || Number.isNaN(Number(instanceId))) {
+        setFormError('Gönderim için bir WhatsApp kanalı seçin.'); return;
       }
+      // Guard: never rebuild param_mapping from an unloaded template (would wipe stored params).
+      if (!selectedTemplate) { setFormError('Şablon bilgisi yüklenemedi. Lütfen tekrar deneyin.'); return; }
+      // Each {{...}} placeholder must be mapped to a list column; each media input needs a public URL.
+      for (const ph of placeholders) {
+        if (!paramColumns[ph.key]) { setFormError('Her şablon parametresi için bir liste kolonu seçin.'); return; }
+      }
+      for (const ri of mediaInputs) {
+        if (!(mediaValues[mediaKey(ri)] ?? '').trim()) { setFormError('Şablon medyası için bir URL girin.'); return; }
+      }
+      paramMapping = [
+        ...placeholders.map(ph => ({
+          kind: 'text', location: ph.location, paramKey: ph.key, mediaType: null,
+          source: 'column' as const, column: paramColumns[ph.key],
+        })),
+        ...mediaInputs.map(ri => ({
+          kind: 'media', location: ri.location, paramKey: ri.paramKey, mediaType: ri.mediaType,
+          source: 'literal' as const, value: (mediaValues[mediaKey(ri)] ?? '').trim(),
+        })),
+      ];
+      buildConfig = true;
     }
+    // else: templateKind === '' OR wapcrm_template with no template picked → metadata-only (omit config block).
 
-    // template_kind is the driver: '' => omit the config block (leave unchanged); set => send the full block.
-    // For plain_text the content carriers are mutually exclusive per content_mode (gallery vs free text);
-    // the server (BuildSendConfig) re-validates + enforces the same exclusivity authoritatively.
-    const sendConfig = templateKind === ''
+    // When no config is built the block is omitted (server leaves the project's existing config unchanged).
+    // For plain_text the content carriers are mutually exclusive per content_mode; the server (BuildSendConfig)
+    // re-validates + enforces the same exclusivity authoritatively.
+    const sendConfig = !buildConfig
       ? {}
       : {
-          template_kind: templateKind,
+          // buildConfig is only true when templateKind is 'plain_text' | 'wapcrm_template' (never ''), but the
+          // boolean flag doesn't narrow the union — coalesce the impossible '' to null to satisfy the type.
+          template_kind: templateKind || null,
           instance_id: Number(instanceId),
           wa_template_id: templateKind === 'wapcrm_template' ? waTemplateId : null,
           param_mapping: templateKind === 'wapcrm_template' ? (paramMapping ?? []) : null,
@@ -547,7 +651,7 @@ export default function ProjectsPage() {
       {/* ---- Create / Edit modal (X-close, no İptal text button) ---- */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/40 p-4">
-          <div className="bg-white border border-navy-100 rounded-xl shadow-soft relative w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="bg-white border border-navy-100 rounded-xl shadow-soft relative w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <button
               onClick={closeModal}
               className="absolute right-3 top-3 text-navy-300 hover:text-navy-600"
@@ -562,7 +666,10 @@ export default function ProjectsPage() {
               <p className="text-xs text-navy-400 mt-0.5">Ad, hedef listeler, gönderim kanalı ve şablonu seçin. Gönderim bu projeden yapılır.</p>
             </div>
 
-            <div className="px-5 py-3 space-y-4">
+            <div className="px-5 py-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Left column: identity + target lists */}
+                <div className="space-y-4">
               <Input
                 label="Proje Adı"
                 value={name}
@@ -617,9 +724,11 @@ export default function ProjectsPage() {
                   </div>
                 )}
               </div>
+                </div>{/* /left column */}
 
-              {/* ---- Send config: WhatsApp channel + message kind + template ---- */}
-              <div className="w-full border-t border-navy-50 pt-3 space-y-3">
+                {/* Right column: send config (WhatsApp channel + message kind + template) */}
+                <div className="space-y-4 md:border-l md:border-navy-50 md:pl-5">
+              <div className="w-full space-y-3">
                 <div className="flex items-center gap-1.5">
                   <Radio className="w-4 h-4 text-navy-400" />
                   <label className="text-sm font-medium text-navy-700">Gönderim Ayarları</label>
@@ -637,7 +746,7 @@ export default function ProjectsPage() {
                     <option value="">— Kanal seçilmedi —</option>
                     {whatsappInstances.map(i => (
                       <option key={i.id} value={i.instanceId}>
-                        {i.instanceName}{i.account ? ` (${i.account})` : ''}
+                        {i.instanceName}
                       </option>
                     ))}
                   </select>
@@ -651,24 +760,30 @@ export default function ProjectsPage() {
                   <label className="block text-xs font-medium text-navy-600 mb-1">Mesaj Türü</label>
                   <div className="flex gap-2">
                     {([
-                      { v: '', label: 'Yok' },
-                      { v: 'plain_text', label: 'Düz Metin' },
-                      { v: 'wapcrm_template', label: 'Onaylı Şablon' },
-                    ] as { v: ProjectTemplateKind | ''; label: string }[]).map(opt => (
-                      <button
-                        key={opt.v || 'none'}
-                        type="button"
-                        onClick={() => onKindChange(opt.v)}
-                        className={cn(
-                          'px-3 py-1.5 rounded-lg text-sm border transition-colors',
-                          templateKind === opt.v
-                            ? 'border-brand-500 bg-brand-50 text-brand-700 font-medium'
-                            : 'border-navy-100 text-navy-600 hover:border-navy-200',
-                        )}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
+                      { v: 'wapcrm_template', label: 'Onaylı Şablon', disabled: false },
+                      { v: 'plain_text', label: 'Düz Metin', disabled: true },
+                    ] as { v: ProjectTemplateKind; label: string; disabled: boolean }[]).map(opt => {
+                      const selected = templateKind === opt.v;
+                      return (
+                        <button
+                          key={opt.v}
+                          type="button"
+                          disabled={opt.disabled && !selected}
+                          onClick={() => { if (!opt.disabled) onKindChange(opt.v); }}
+                          title={opt.disabled ? 'Düz metin gönderimi şu an kapalı — Onaylı Şablon kullanın.' : undefined}
+                          className={cn(
+                            'px-3 py-1.5 rounded-lg text-sm border transition-colors',
+                            selected
+                              ? 'border-brand-500 bg-brand-50 text-brand-700 font-medium'
+                              : opt.disabled
+                                ? 'border-navy-50 bg-navy-50/40 text-navy-300 cursor-not-allowed'
+                                : 'border-navy-100 text-navy-600 hover:border-navy-200',
+                          )}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -707,48 +822,97 @@ export default function ProjectsPage() {
                     )}
 
                     {selectedTemplate && (
-                      <div className="space-y-2 border border-navy-50 rounded-lg p-3 bg-navy-50/30">
+                      <div className="space-y-3">
+                        {/* WhatsApp-style preview */}
                         {selectedTemplate.preview && (
-                          <div className="text-xs text-navy-500 space-y-1">
-                            {selectedTemplate.preview.header?.text && (
-                              <p className="font-medium text-navy-600 whitespace-pre-wrap">{selectedTemplate.preview.header.text}</p>
-                            )}
-                            {selectedTemplate.preview.body && (
-                              <p className="whitespace-pre-wrap">{selectedTemplate.preview.body}</p>
-                            )}
-                            {selectedTemplate.preview.footer && (
-                              <p className="text-navy-400 whitespace-pre-wrap">{selectedTemplate.preview.footer}</p>
-                            )}
-                            {(selectedTemplate.preview.buttons?.length ?? 0) > 0 && (
-                              <div className="flex flex-wrap gap-1 pt-1">
-                                {selectedTemplate.preview.buttons?.map((b, bi) => (
-                                  <span key={`${b.text ?? b.type ?? 'btn'}-${bi}`} className="px-2 py-0.5 rounded border border-navy-100 text-navy-500 text-[11px]">
-                                    {b.text ?? b.type}
-                                  </span>
-                                ))}
+                          <div>
+                            <label className="block text-xs font-medium text-navy-600 mb-1">Önizleme</label>
+                            <div className="rounded-lg p-3 bg-[#e5ddd5]">
+                              <div className="bg-white rounded-lg rounded-tl-none shadow-sm px-3 py-2 max-w-[90%] text-sm">
+                                {selectedTemplate.preview.header && (
+                                  selectedTemplate.preview.header.type === 'TEXT'
+                                    ? selectedTemplate.preview.header.text && (
+                                        <div className="font-semibold text-navy-900 mb-1 whitespace-pre-wrap break-words">
+                                          {renderTemplateText(selectedTemplate.preview.header.text)}
+                                        </div>
+                                      )
+                                    : (
+                                      <div className="mb-2 flex items-center justify-center gap-1.5 rounded-md bg-navy-50 text-navy-400 text-xs py-5">
+                                        {mediaHeaderIcon(selectedTemplate.preview.header.type)}
+                                        {mediaHeaderLabel(selectedTemplate.preview.header.type)}
+                                      </div>
+                                    )
+                                )}
+                                {selectedTemplate.preview.body && (
+                                  <div className="text-navy-800 whitespace-pre-wrap break-words">{renderTemplateText(selectedTemplate.preview.body)}</div>
+                                )}
+                                {selectedTemplate.preview.footer && (
+                                  <div className="text-navy-400 text-xs mt-1 whitespace-pre-wrap break-words">{selectedTemplate.preview.footer}</div>
+                                )}
+                                <div className="text-[10px] text-navy-300 text-right mt-1">şimdi</div>
                               </div>
-                            )}
+                              {(selectedTemplate.preview.buttons?.length ?? 0) > 0 && (
+                                <div className="mt-1 space-y-1">
+                                  {selectedTemplate.preview.buttons?.map((b, bi) => (
+                                    <div
+                                      key={`${b.text ?? b.type ?? 'btn'}-${bi}`}
+                                      className="bg-white rounded-lg shadow-sm py-1.5 flex items-center justify-center gap-1.5 text-[#00a5f4] text-sm font-medium"
+                                    >
+                                      {buttonIcon(b.type)}{b.text ?? b.type}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         )}
-                        {requiredInputs.length === 0 ? (
+
+                        {/* Per-parameter mapping: each {{...}} placeholder -> a list column (per-recipient at send time) */}
+                        {placeholders.length === 0 && mediaInputs.length === 0 ? (
                           <p className="text-xs text-navy-400">Bu şablon parametre gerektirmiyor.</p>
                         ) : (
-                          requiredInputs.map((ri, i) => (
-                            <div key={`${ri.paramKey ?? ri.location ?? 'p'}-${i}`}>
-                              <label className="block text-xs font-medium text-navy-600 mb-1">
-                                {ri.kind === 'media'
-                                  ? `Medya (${ri.mediaType ?? 'dosya'})${ri.location ? ` — ${ri.location}` : ''}`
-                                  : `Parametre ${ri.paramKey ?? i + 1}${ri.location ? ` — ${ri.location}` : ''}`}
-                              </label>
-                              <input
-                                className="w-full px-3 py-2 bg-white border border-navy-100 rounded-lg text-navy-900 text-sm placeholder:text-navy-300 focus:outline-none focus:border-brand-500 focus:shadow-focus"
-                                value={paramValues[i] ?? ''}
-                                placeholder={ri.kind === 'media' ? 'Medya URL' : (ri.note ?? 'Değer')}
-                                onChange={e => setParamAt(i, e.target.value)}
-                              />
-                              {ri.note && <p className="text-[11px] text-navy-400 mt-0.5">{ri.note}</p>}
-                            </div>
-                          ))
+                          <div className="space-y-2">
+                            {placeholders.length > 0 && (
+                              <p className="text-[11px] text-navy-400">
+                                Her parametreyi seçili listedeki bir kolona eşleyin — gönderimde her kişiye kendi değeri yazılır.
+                              </p>
+                            )}
+                            {placeholders.map(ph => (
+                              <div key={ph.key} className="flex items-center gap-2">
+                                <span
+                                  className="shrink-0 w-2/5 text-xs font-medium text-navy-600 truncate"
+                                  title={`{{${ph.key}}} — ${ph.location}`}
+                                >
+                                  {`{{${ph.key}}}`}
+                                  <span className="text-navy-300 font-normal"> — {ph.location}</span>
+                                </span>
+                                <select
+                                  className="flex-1 px-3 py-2 bg-white border border-navy-100 rounded-lg text-navy-900 text-sm focus:outline-none focus:border-brand-500 focus:shadow-focus"
+                                  value={paramColumns[ph.key] ?? ''}
+                                  onChange={e => setParamColumns(prev => ({ ...prev, [ph.key]: e.target.value }))}
+                                >
+                                  <option value="">— Kolon seç —</option>
+                                  {LIST_COLUMNS.map(c => (
+                                    <option key={c.v} value={c.v}>{c.label}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            ))}
+                            {mediaInputs.map(ri => (
+                              <div key={mediaKey(ri)}>
+                                <label className="block text-xs font-medium text-navy-600 mb-1">
+                                  Medya ({ri.mediaType ?? 'dosya'}){ri.location ? ` — ${ri.location}` : ''}
+                                </label>
+                                <input
+                                  className="w-full px-3 py-2 bg-white border border-navy-100 rounded-lg text-navy-900 text-sm placeholder:text-navy-300 focus:outline-none focus:border-brand-500 focus:shadow-focus"
+                                  value={mediaValues[mediaKey(ri)] ?? ''}
+                                  placeholder="Herkese açık medya URL'i"
+                                  onChange={e => setMediaValues(prev => ({ ...prev, [mediaKey(ri)]: e.target.value }))}
+                                />
+                                {ri.note && <p className="text-[11px] text-navy-400 mt-0.5">{ri.note}</p>}
+                              </div>
+                            ))}
+                          </div>
                         )}
                       </div>
                     )}
@@ -827,6 +991,8 @@ export default function ProjectsPage() {
                   </div>
                 )}
               </div>
+                </div>{/* /right column */}
+              </div>{/* /two-column grid */}
 
               {formError && <div className="text-sm text-red-600">{formError}</div>}
             </div>

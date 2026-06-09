@@ -2467,14 +2467,20 @@ export type ProjectTemplateKind = 'plain_text' | 'wapcrm_template';
 // template_kind === 'plain_text': the content is chosen in project settings (Q decision 2026-06-09).
 export type ProjectContentMode = 'gallery_template' | 'free_text';
 
-// One operator-filled template parameter, stored in projects.param_mapping (JSONB array).
-// Mirrors a cxapi template requiredInput plus the entered value; the send slice consumes it.
+// One configured template parameter, stored in projects.param_mapping (JSONB array; opaque to the
+// server — it only validates object/array + size). The send slice (PR-4) consumes it.
+//   - text placeholders ({{key}} in header/body): source='column' → `column` is a list column key
+//     (name/surname/email/field1..5/tags/note); PR-4 substitutes each recipient's column value.
+//   - media (cxapi requiredInput kind='media'): source='literal' → `value` is a public media URL.
+// `value` is optional (legacy literal-text rows + media URLs still use it).
 export interface ProjectTemplateParam {
   kind: string | null;       // 'text' | 'media'
   location: string | null;   // 'BODY' | 'HEADER' | 'BUTTON'
   paramKey: string | null;
   mediaType: string | null;  // 'image' | 'video' | 'document'
-  value: string;
+  source?: 'column' | 'literal';
+  column?: string | null;    // list column key when source='column'
+  value?: string;            // literal value (media URL, or legacy literal text)
 }
 
 export interface ProjectSummary {

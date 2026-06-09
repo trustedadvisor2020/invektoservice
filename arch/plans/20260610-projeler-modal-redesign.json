@@ -1,0 +1,111 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": "PKT-14",
+  "spec_ref": null,
+  "slug": "20260610-projeler-modal-redesign",
+  "risk": "MEDIUM",
+  "status": "REVIEW",
+  "created_at": "2026-06-10T08:00:00Z",
+  "updated_at": "2026-06-10T08:00:00Z",
+  "plan": {
+    "summary": "Redesign the Projeler create/edit modal (client-only; param_mapping is opaque JSON server-side so no backend change): (1) two-column layout — left = name/description/target lists, right = send config; (2) WhatsApp channel dropdown drops the (account) code; (3) message-type buttons = Onaylı Şablon leftmost + default-selected, Düz Metin disabled, Yok removed; (4) selected template renders as a WhatsApp-style preview bubble (header/body/footer/buttons, {{...}} highlighted) instead of flat text; (5) every {{...}} placeholder (header + body, incl. ones cxapi omits from requiredInputs like hname) gets its own row with a list-COLUMN dropdown — the operator maps each param to a data-list column (name/surname/email/field1..5/tags/note) for per-recipient personalization at send (PR-4).",
+    "q_intent": "Q (with two screenshots) asked: split popup into two columns (left: name/desc/list; right: rest); drop the code in parens next to channel name; Onaylı Şablon leftmost+default, Düz Metin disabled, remove Yok; show the selected template as the WhatsApp-style preview image; one field per parameter (hname AND name) with a dropdown to choose which list column fills it.",
+    "interview_notes": "2 forks resolved with Q (2026-06-10): (1) template OPTIONAL to save — leaving it unpicked stores no send config (metadata-only project preserved); columns required only when a template is picked. (2) param value = list-column dropdown only (per-recipient); placeholders extracted from ALL header+body {{...}} (cxapi requiredInputs omits header params). FLAGGED + accepted: Onaylı Şablon SEND is PR-4 (not built) → this config is stored but inert until PR-4; disabling Düz Metin closes the only currently-working send path (deliberate forward-config). list_records has a FIXED column schema (migration 052) shared across all lists → no multi-list reconciliation. BuildSendConfig validates param_mapping as opaque JSON (object/array + <=16KB), not entry shape, so the column-mapping shape is free to define here.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "The modal is two columns: left = Proje Adı + Açıklama + Hedef Listeler; right = Gönderim Ayarları (channel + message type + template + preview + params). Channel options show only the instance name (no (account) code).",
+        "verified": true,
+        "verification_note": "Modal max-w-3xl + grid md:grid-cols-2; left/right columns; channel option renders {i.instanceName} only. tsc+vite build PASS."
+      },
+      {
+        "id": "AC2",
+        "criterion": "Message-type buttons: Onaylı Şablon is leftmost and the default selection (new projects), Düz Metin is disabled, Yok is removed. Düz Metin stays selectable-as-selected only when editing an existing plain_text project.",
+        "verified": true,
+        "verification_note": "Button array [wapcrm_template, plain_text(disabled)]; resetSendConfig/openEdit default templateKind='wapcrm_template'; disabled only when not selected."
+      },
+      {
+        "id": "AC3",
+        "criterion": "Selected template renders as a WhatsApp-style bubble (header/body/footer/buttons; {{...}} highlighted). Each {{...}} placeholder (header + body) has its own row with a list-column dropdown; saving requires a column per placeholder when a template is picked, but a project can still be saved with no template (metadata-only).",
+        "verified": true,
+        "verification_note": "extractPlaceholders reads header.text+body+footer; per-placeholder <select> over LIST_COLUMNS; save() requires a column per placeholder only in the wapcrm_template+waTemplateId branch; metadata-only path omits the config block. No null-forgiving operators (grep clean)."
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx",
+    "src/Invekto.Backend/wwwroot/app/**"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "change": "ProjectTemplateParam += source/column (column-mapping); value now optional", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx", "change": "two-column modal; channel label w/o code; button reorder/disable/remove + default kind; WhatsApp preview bubble + {{}} highlight; per-placeholder column dropdown + media URL; paramValues->paramColumns/mediaValues; save template-optional + column-mapping build; openEdit re-populate", "is_new": false },
+    { "path": "src/Invekto.Backend/wwwroot/app/**", "change": "regenerated committed SPA bundle (vite hash refresh); GENERATED artifact", "is_new": false }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": null,
+    "full_path": "arch/plans/diffs/20260610-projeler-modal-redesign.diff",
+    "stats": { "insertions": 283, "deletions": 111, "files_count": 2 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "npm run build (Dashboard tsc + vite)",
+    "timestamp": "2026-06-10T08:00:00Z",
+    "duration_ms": 7000,
+    "output_tail": "built in 7.00s; bundles ProjectsPage-SaH4cWcB.js + index-Bag-9o6R.js. No tsc errors.",
+    "error_summary": null,
+    "services": ["Invekto.Backend (Dashboard SPA)"]
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "Is this change client-only and safe server-side — i.e., the new param_mapping entry shape ({paramKey,location,source:'column',column} for text, {kind:'media',...,value:url} for media) is accepted because BuildSendConfig validates param_mapping as opaque JSON (object/array + <=16KB), not entry fields?", "category": "Data" },
+    { "id": "Q2", "question": "Does the save path correctly make the template OPTIONAL — templateKind defaults to 'wapcrm_template' but with no waTemplateId the send-config block is omitted (metadata-only project, server leaves config unchanged), while a picked template requires a column for every {{...}} placeholder and a URL for every media input?", "category": "Lifecycle" },
+    { "id": "Q3", "question": "Are placeholders derived from the rendered preview (header.text + body + footer {{...}}) so header params cxapi omits from requiredInputs (e.g. hname) still get a field, and is the JSX free of null-forgiving operators and runtime-throw risks (optional chaining + guards on preview/buttons)?", "category": "Process/Policy" },
+    { "id": "Q4", "question": "On edit re-populate, are stored param_mapping rows mapped back correctly (text rows -> paramColumns by paramKey via `column`; media rows -> mediaValues by location:mediaType via `value`) without depending on async template-load order?", "category": "Data" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Outbound ProjectsService / BuildSendConfig (server unchanged — param_mapping stays opaque JSON)",
+      "Shared DTOs / migrations (none touched)",
+      "send execution / PR-4 HSM send (not built; this only configures)",
+      "P0-3 gate / allowlists"
+    ],
+    "non_goals": [
+      "Building the HSM template send (PR-4) that consumes the column mapping",
+      "Per-list dynamic columns (list_records schema is fixed; same columns for all lists)",
+      "Literal-constant param values (Q chose column-only)"
+    ],
+    "intentional_exclusions": [
+      "wwwroot/app minified bundle is a generated artifact (committed for pre-built-SPA deploy); reviewed source is the .ts/.tsx (SS-C review-diff lesson)",
+      "plain_text branch kept intact (disabled in UI for new projects) so existing plain_text projects still edit/display"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "save() try/catch (existing) -> setFormError on failure",
+      "fetchTemplatesFor/loadInstances/loadLists catch -> empty + non-blocking (existing)"
+    ],
+    "user_facing_errors": [
+      "Her şablon parametresi için bir liste kolonu seçin. / Şablon medyası için bir URL girin. (validation)",
+      "Düz metin gönderimi şu an kapalı — Onaylı Şablon kullanın. (disabled button tooltip)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "No swallowed errors. The metadata-only path (no template) intentionally omits the config block — this is explicit Q-approved behavior, surfaced by the buttons/labels, not a silent default. Preview/param rendering is guarded (optional chaining) so a missing sub-field renders nothing rather than throwing."
+  },
+  "aha_moments": [
+    { "category": "UX", "user_pain": "Operators saw a flat-text template preview and a single generic 'Değer' box — no sense of what the message looks like or which placeholders exist.", "suggestion": "Render an actual WhatsApp-style bubble with the variables highlighted + one labelled row per placeholder.", "aha_moment": "Operator sees the message exactly as the recipient will, and immediately knows which variables to fill." },
+    { "category": "RELIABILITY", "user_pain": "cxapi's requiredInputs omitted the header placeholder (hname), so a key variable had no input — it would never be personalized.", "suggestion": "Extract placeholders from the rendered preview, not just requiredInputs.", "aha_moment": "Every visible {{...}} is mappable — no silently-unfilled header variable." },
+    { "category": "SPEED", "user_pain": "Typing a literal value per parameter is wrong for a bulk list (everyone would get the same text).", "suggestion": "Map each placeholder to a list column once; the send fills each recipient's own value.", "aha_moment": "Configure personalization in seconds, for the whole list, instead of per-contact." },
+    { "category": "SUPPORT", "user_pain": "The channel dropdown showed a long phone/account code that means nothing to the operator.", "suggestion": "Show just the channel name.", "aha_moment": "Operator picks the channel by its human name, no code-noise." },
+    { "category": "UX", "user_pain": "A single tall column made the modal long and the send-config felt bolted on under the identity fields.", "suggestion": "Two columns: identity+targets left, send-config right.", "aha_moment": "The whole project setup is visible at once without scrolling past unrelated fields." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "updated_by": "DevAgent",
+    "iteration": 1,
+    "blocking_issues": [],
+    "raw_text": "gpt-5.5: iter0 FAIL = CQ12 false-positive (client setFormError plain strings vs server INV codes) + Q1 evidence-gap (server BuildSendConfig not in client-only diff). iter1 PASS (12/12 CQ + 4/4 CoVe) via corrected-premise attestation — code UNCHANGED, not FORCE PASS."
+  }
+}
