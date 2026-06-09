@@ -1,0 +1,112 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": "PKT-14",
+  "spec_ref": null,
+  "slug": "20260609-cxapi-templates-preview-shape",
+  "risk": "MEDIUM",
+  "status": "REVIEW",
+  "created_at": "2026-06-09T18:00:00Z",
+  "updated_at": "2026-06-09T18:00:00Z",
+  "plan": {
+    "summary": "Fix prod 502 on GET /api/v1/settings/wa-templates: the live cxapi /api/templates `preview` field is a structured OBJECT (header/body/footer/buttons), not a string, so deserializing into WapCrmTemplateDto.Preview (string?) threw JsonException -> TransportError -> 502. Model preview faithfully + add the real top-level fields (name/language/category/paramFormat); update the SPA contract + Projeler template picker; add a parse regression test pinned to the verified live wire shape.",
+    "q_intent": "Q pasted a prod console log showing ai.invekto.com/api/v1/settings/wa-templates?instanceId=6570 -> 502. Diagnose and fix. Q chose: full structured model for preview + deploy immediately after Codex PASS.",
+    "interview_notes": "Root cause confirmed by reproducing the cxapi call from the whitelisted prod server (tenant 5050 / instance 6570): HTTP 200 with valid JSON but `preview` is an object -> JsonException -> env=null -> TransportError -> endpoint 502. Envelope (status bool / statusCode string) parses fine; extra fields name/language/category/paramFormat were silently ignored. First-ever live cxapi template parse in prod (send client gated/inert, instances cached) so the integration-guide-driven `preview: string` assumption was latent until now. Q decision: full structured model + immediate Backend+SPA deploy.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "A real cxapi /api/templates 200 response (object preview, name/language/category/paramFormat, media + null-header + button variants) deserializes to WapCrmTemplateListOutcome.Success; an object preview no longer collapses to TransportError/502.",
+        "verified": true,
+        "verification_note": "New WapCrmTemplateClientTests.RealCxapiShape_Parses_To_Success_With_StructuredPreview uses a verbatim subset of the live body (instance 6570) and asserts Success + structured preview. 39/39 WapCrm tests PASS."
+      },
+      {
+        "id": "AC2",
+        "criterion": "The Projeler 'Onaylı Şablon' picker renders without runtime error under the new object contract: dropdown label uses name (language) (no preview.slice on an object), preview box renders header/body/footer/buttons with null-guards.",
+        "verified": true,
+        "verification_note": "Dashboard tsc + vite build PASS (new bundles index-BCI7tICS.js / ProjectsPage-oA2rf6qu.js). All preview sub-field accesses are optional-chained / length-guarded."
+      },
+      {
+        "id": "AC3",
+        "criterion": "No other consumer breaks from the Shared DTO type change (preview string? -> object).",
+        "verified": true,
+        "verification_note": "Grep confirms WapCrmTemplateDto is referenced only at the deserialize site (WapCrmTemplateClient) + result holder; no C# reads .Preview. Full-solution build PASS (0 errors)."
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmTemplateDtos.cs",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx",
+    "tests/InvektoServis.Tests/Shared/Inma/WapCrmTemplateClientTests.cs",
+    "src/Invekto.Backend/wwwroot/app/**"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmTemplateDtos.cs", "change": "preview string? -> WapCrmTemplatePreviewDto? (header/body/footer/buttons) + new WapCrmTemplatePreviewHeaderDto/WapCrmTemplateButtonDto + name/language/category/paramFormat fields", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "change": "WaTemplate.preview string -> WaTemplatePreview object + nested WaTemplatePreviewHeader/WaTemplateButton + name/language/category/paramFormat", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx", "change": "dropdown label name (language) instead of preview.slice; preview box renders structured header/body/footer/buttons with null-guards", "is_new": false },
+    { "path": "tests/InvektoServis.Tests/Shared/Inma/WapCrmTemplateClientTests.cs", "change": "new parse-contract regression tests pinned to the live cxapi wire shape (Success/empty/ProviderRejected/non-JSON)", "is_new": true },
+    { "path": "src/Invekto.Backend/wwwroot/app/**", "change": "regenerated committed SPA bundle (vite content-hash refresh); GENERATED artifact, not hand-edited", "is_new": false }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "39944EDADD923EC83BD4BFCDD8D6D7F5886A7682E04998DF3A5C0728A9B7AF3A",
+    "full_path": "arch/plans/diffs/20260609-cxapi-templates-preview-shape.diff",
+    "stats": { "insertions": 233, "deletions": 5, "files_count": 4 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q ; npm run build (Dashboard)",
+    "timestamp": "2026-06-09T18:00:00Z",
+    "duration_ms": 32000,
+    "output_tail": "0 Error(s), 42 pre-existing Warning(s) (MSB3277 version-unification + xUnit1013). Dashboard: built in 10.97s. WapCrm tests 39/39 PASS.",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Backend", "InvektoServis.Tests"]
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "Does WapCrmTemplateDto now deserialize the verified live cxapi /api/templates wire shape (preview as an object {header,body,footer,buttons}) without throwing JsonException, so an object preview no longer collapses to TransportError -> 502?", "category": "Data" },
+    { "id": "Q2", "question": "The Shared DTO type of preview changed from string? to WapCrmTemplatePreviewDto? — is this safe across all consumers (no other microservice reads .Preview; only the deserialize site + SPA consume it, and both the SPA render and dropdown label were updated)?", "category": "Lifecycle" },
+    { "id": "Q3", "question": "Does the SPA picker avoid runtime errors under the new contract — specifically that the dropdown no longer calls preview.slice() (which would throw on an object) and the preview box null-guards header/body/footer/buttons?", "category": "Process/Policy" },
+    { "id": "Q4", "question": "Are null/empty sub-fields tolerated end-to-end (header:null, header.text:null for media, buttons:[], footer:null) so media-header / no-header / no-button templates neither break deserialization nor crash the render?", "category": "Data" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "WapCrmTemplateClient.cs control flow (timeout/redirect/error mapping unchanged)",
+      "wa-templates endpoint handler (ownership/instance-resolution/error mapping unchanged)",
+      "send-side WapCrmSendClient / PR-4 template send (out of scope)",
+      "P0-3 live-enablement gate / any allowlist"
+    ],
+    "non_goals": [
+      "Changing how templates are selected or sent (send path is gated/inert)",
+      "Modelling fields cxapi returns that the picker does not need beyond name/language/category/paramFormat"
+    ],
+    "intentional_exclusions": [
+      "temp/wapcrm-api-integration-guide-for-agents.md is gitignored and was the source of the wrong `preview: string` assumption — not edited; the durable correction is the test fixture pinned to the real shape",
+      "wwwroot/app minified bundle is a generated artifact (committed for the pre-built-SPA deploy model); reviewed source is the .ts/.tsx, not the bundle (SS-C review-diff lesson)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "WapCrmTemplateClient.cs:98 (JsonException -> env=null; unchanged) — now succeeds because the DTO matches the wire shape"
+    ],
+    "user_facing_errors": [
+      "Unchanged endpoint error mapping (422 not-configured / 404 instance / 429 rate-limit / 504 timeout / 502 provider-reject|transport)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "No new catch/swallow. The change makes a previously-failing deserialize succeed. Unknown cxapi fields are still ignored by System.Text.Json (default), which is intentional and non-silent (the picker only consumes known fields). SPA renders are null-guarded so missing sub-fields render nothing rather than throwing."
+  },
+  "aha_moments": [
+    { "category": "RELIABILITY", "user_pain": "The template picker silently 502'd with a generic 'şu anda alınamıyor' message, masking that the real response was a 200 with an unmodeled shape.", "suggestion": "Pin a parse regression test to the verified live wire shape so a future cxapi field/shape drift fails a test, not prod.", "aha_moment": "Operator opens Projeler -> templates load instead of an opaque error, and any future provider drift is caught in CI." },
+    { "category": "UX", "user_pain": "The old dropdown showed a raw numeric templateId (e.g. 1664033448202974) — meaningless to the operator.", "suggestion": "Label options by human name + language, e.g. 'siparis_bilgi (tr)'.", "aha_moment": "Operator recognizes the template by its name and language at a glance instead of decoding an id." },
+    { "category": "UX", "user_pain": "The preview was a flat string; operators couldn't see header/footer/buttons before sending.", "suggestion": "Render the structured preview (header text, body, footer, button chips).", "aha_moment": "Operator sees a faithful render of the approved template — including buttons — before committing to a send." },
+    { "category": "SUPPORT", "user_pain": "Support couldn't tell whether 502 was an outage or a content issue.", "suggestion": "The DTO doc + test now record the exact wire shape and the 2026-06-09 incident so support/devs have a single source of truth.", "aha_moment": "Next time a template error appears, the cause is documented in code, not rediscovered." },
+    { "category": "SPEED", "user_pain": "Each language is a separate cxapi template slug, but the UI gave no language signal, so operators could pick the wrong-language template.", "suggestion": "Surface language in the option label so the right-language slug is one glance away.", "aha_moment": "Operator picks the correct-language approved template the first time, no trial-and-error." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "updated_by": "DevAgent",
+    "iteration": 1,
+    "blocking_issues": [],
+    "raw_text": "gpt-5.5 codex_review: iter0 FAIL (CQ5 null-forgiving: buttons!.map + Preview!/Header! in test) -> iter1 PASS (12/12 CQ + 4/4 CoVe, 0 blocking). Fix: buttons?.map + BeEquivalentTo/ContainSingle().Which (no null-forgiving)."
+  }
+}

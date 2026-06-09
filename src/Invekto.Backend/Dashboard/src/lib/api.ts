@@ -2557,9 +2557,29 @@ export interface WaTemplateRequiredInput {
   mediaType: string | null;  // 'image' | 'video' | 'document'
   note: string | null;
 }
+// cxapi `preview` is a STRUCTURED OBJECT (verified against the live wire 2026-06-09),
+// not a string — header/body/footer/buttons. Each sub-field may be null.
+export interface WaTemplateButton {
+  type: string | null;   // 'QUICK_REPLY' | 'URL' | 'PHONE_NUMBER'
+  text: string | null;
+}
+export interface WaTemplatePreviewHeader {
+  type: string | null;   // 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT'
+  text: string | null;   // null for a media header
+}
+export interface WaTemplatePreview {
+  header: WaTemplatePreviewHeader | null;
+  body: string | null;
+  footer: string | null;
+  buttons: WaTemplateButton[] | null;
+}
 export interface WaTemplate {
   templateId: string | null;
-  preview: string | null;
+  name: string | null;       // template slug (one per language)
+  language: string | null;   // 'tr' | 'en' | 'en_US' ...
+  category: string | null;   // 'MARKETING' | 'UTILITY' | 'AUTHENTICATION'
+  paramFormat: string | null;// 'named' | 'positional'
+  preview: WaTemplatePreview | null;
   fixedNote: string | null;
   requiredInputs: WaTemplateRequiredInput[] | null;
 }

@@ -17,20 +17,75 @@ namespace Invekto.Shared.Contracts.Inma.Dtos;
 /// camelCase wire shape and double as the SPA-facing contract (Backend serializes
 /// camelCase), so the same property serves deserialize-from-cxapi and
 /// serialize-to-SPA.
+///
+/// IMPORTANT (2026-06-09): the live cxapi wire shape was verified against
+/// instance 6570 — it differs from the integration guide. <c>preview</c> is a
+/// STRUCTURED OBJECT (header/body/footer/buttons), NOT a string; modelling it as a
+/// string threw a JsonException → the whole list parse failed → the endpoint
+/// returned 502. cxapi also returns <c>name</c>/<c>language</c>/<c>category</c>/
+/// <c>paramFormat</c> per template (each language is a separate template slug).
 /// </summary>
 public sealed class WapCrmTemplateDto
 {
     /// <summary>cxapi template identifier (used later as the send <c>template.templateId</c>).</summary>
     [JsonPropertyName("templateId")] public string? TemplateId { get; init; }
 
-    /// <summary>Human-readable preview text of the rendered template.</summary>
-    [JsonPropertyName("preview")] public string? Preview { get; init; }
+    /// <summary>Template name slug (e.g. <c>siparis_bilgi</c>). One slug per language.</summary>
+    [JsonPropertyName("name")] public string? Name { get; init; }
+
+    /// <summary>Template language tag (e.g. <c>tr</c>, <c>en</c>, <c>en_US</c>). A separate template exists per language.</summary>
+    [JsonPropertyName("language")] public string? Language { get; init; }
+
+    /// <summary>Meta category (e.g. <c>MARKETING</c> | <c>UTILITY</c> | <c>AUTHENTICATION</c>).</summary>
+    [JsonPropertyName("category")] public string? Category { get; init; }
+
+    /// <summary>Parameter style of the template body (<c>named</c> | <c>positional</c>).</summary>
+    [JsonPropertyName("paramFormat")] public string? ParamFormat { get; init; }
+
+    /// <summary>Structured preview of the rendered template (header/body/footer/buttons). Object, not text.</summary>
+    [JsonPropertyName("preview")] public WapCrmTemplatePreviewDto? Preview { get; init; }
 
     /// <summary>A fixed note cxapi attaches automatically (e.g. for static media), if any.</summary>
     [JsonPropertyName("fixedNote")] public string? FixedNote { get; init; }
 
     /// <summary>The inputs the operator must fill at send time (text params + dynamic media).</summary>
     [JsonPropertyName("requiredInputs")] public List<WapCrmRequiredInputDto>? RequiredInputs { get; init; }
+}
+
+/// <summary>Structured rendered-template preview (cxapi <c>preview</c> object). Any sub-field may be null/empty.</summary>
+public sealed class WapCrmTemplatePreviewDto
+{
+    /// <summary>Header preview, or null when the template has no header.</summary>
+    [JsonPropertyName("header")] public WapCrmTemplatePreviewHeaderDto? Header { get; init; }
+
+    /// <summary>Rendered body text (placeholders shown as <c>{{key}}</c>).</summary>
+    [JsonPropertyName("body")] public string? Body { get; init; }
+
+    /// <summary>Footer text, if any.</summary>
+    [JsonPropertyName("footer")] public string? Footer { get; init; }
+
+    /// <summary>Buttons attached to the template (possibly empty).</summary>
+    [JsonPropertyName("buttons")] public List<WapCrmTemplateButtonDto>? Buttons { get; init; }
+}
+
+/// <summary>Header sub-object of a template preview.</summary>
+public sealed class WapCrmTemplatePreviewHeaderDto
+{
+    /// <summary><c>TEXT</c> | <c>IMAGE</c> | <c>VIDEO</c> | <c>DOCUMENT</c>.</summary>
+    [JsonPropertyName("type")] public string? Type { get; init; }
+
+    /// <summary>Header text for a <c>TEXT</c> header; null for a media header.</summary>
+    [JsonPropertyName("text")] public string? Text { get; init; }
+}
+
+/// <summary>One template button (cxapi <c>preview.buttons[]</c>).</summary>
+public sealed class WapCrmTemplateButtonDto
+{
+    /// <summary><c>QUICK_REPLY</c> | <c>URL</c> | <c>PHONE_NUMBER</c>.</summary>
+    [JsonPropertyName("type")] public string? Type { get; init; }
+
+    /// <summary>Button label shown to the recipient.</summary>
+    [JsonPropertyName("text")] public string? Text { get; init; }
 }
 
 /// <summary>One operator-fillable input of a template (cxapi <c>requiredInputs[]</c>).</summary>

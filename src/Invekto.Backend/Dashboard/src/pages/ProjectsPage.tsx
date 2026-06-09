@@ -696,7 +696,7 @@ export default function ProjectsPage() {
                           <option value="">— Şablon seçilmedi —</option>
                           {templates.map(t => (
                             <option key={t.templateId ?? ''} value={t.templateId ?? ''}>
-                              {t.templateId}{t.preview ? ` — ${t.preview.slice(0, 40)}` : ''}
+                              {t.name ?? t.templateId}{t.language ? ` (${t.language})` : ''}
                             </option>
                           ))}
                         </select>
@@ -709,7 +709,26 @@ export default function ProjectsPage() {
                     {selectedTemplate && (
                       <div className="space-y-2 border border-navy-50 rounded-lg p-3 bg-navy-50/30">
                         {selectedTemplate.preview && (
-                          <p className="text-xs text-navy-500 whitespace-pre-wrap">{selectedTemplate.preview}</p>
+                          <div className="text-xs text-navy-500 space-y-1">
+                            {selectedTemplate.preview.header?.text && (
+                              <p className="font-medium text-navy-600 whitespace-pre-wrap">{selectedTemplate.preview.header.text}</p>
+                            )}
+                            {selectedTemplate.preview.body && (
+                              <p className="whitespace-pre-wrap">{selectedTemplate.preview.body}</p>
+                            )}
+                            {selectedTemplate.preview.footer && (
+                              <p className="text-navy-400 whitespace-pre-wrap">{selectedTemplate.preview.footer}</p>
+                            )}
+                            {(selectedTemplate.preview.buttons?.length ?? 0) > 0 && (
+                              <div className="flex flex-wrap gap-1 pt-1">
+                                {selectedTemplate.preview.buttons?.map((b, bi) => (
+                                  <span key={`${b.text ?? b.type ?? 'btn'}-${bi}`} className="px-2 py-0.5 rounded border border-navy-100 text-navy-500 text-[11px]">
+                                    {b.text ?? b.type}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         )}
                         {requiredInputs.length === 0 ? (
                           <p className="text-xs text-navy-400">Bu şablon parametre gerektirmiyor.</p>
