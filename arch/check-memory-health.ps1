@@ -2,7 +2,7 @@
 # Exit 0 saglikli / 1 hard-check FAIL (cap-asti veya marker okuma penceresinde yok). READ-ONLY, ASCII-only.
 $ErrorActionPreference='Stop'; $root=Split-Path -Parent $PSScriptRoot; $rw=320
 $hard=@(
- @{File='arch/session-memory.md';Cap=300;Marker='END_CURRENT_STATE'},
+ @{File='arch/session-memory.md';Cap=300;Marker='<!-- END_CURRENT_STATE'},
  @{File='arch/hot-lessons.md';   Cap=80; Marker=$null})
 $fail=$false
 "{0,-26} {1,7} {2,6}  {3}" -f 'DOSYA (auto-load)','satir','cap','DURUM'; "-"*64
