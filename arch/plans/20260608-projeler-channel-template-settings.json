@@ -1,0 +1,107 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": "PKT-14",
+  "spec_ref": null,
+  "slug": "20260608-projeler-channel-template-settings",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-08T15:55:00Z",
+  "updated_at": "2026-06-09T09:05:00Z",
+  "plan": {
+    "summary": "Move the bulk-send configuration into the Proje (Project) as its own settings: add a CHANNEL (WhatsApp Cloud API instance) selector, a TEMPLATE selector with operator-filled parameters, and a message-kind toggle (wapcrm_template | plain_text) to project create/edit; persist them into the existing INERT projects cxapi columns; and REMOVE the per-list 'Gönder' send flow from the data-list (Listeler) page. Send EXECUTION stays unbuilt this slice (prod-inert, gate P0-3 untouched).",
+    "q_intent": "projenin ayarlarına kanal seçimi de ekle. o kanaldan gönderilecek. yalnız whatsapp api hatlarını göster listede. + şablon da proje ayarlarında seçilecek. + gönder özelliği data listesinde değil, projenin içinde olacak. data listesinden çıkart.",
+    "interview_notes": "AskUserQuestion 4/4 (2026-06-08): (1) Scope = UI-first — settings + persistence + remove list-send THIS slice; actual send-from-project execution = NEXT slice. (2) Channel filter = Cloud API only (instance_type = 1); types 2/5/6 hidden. (3) Message kind = template OR plain_text (kind toggle in project). (4) Template params = SUPPORTED — operator fills the template's requiredInputs (text/media) into param_mapping JSONB. Send execution, counters, and run dispatch remain deferred; gate stays closed.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "Project create/edit modal has a channel selector listing ONLY WhatsApp Cloud API instances (instance_type === 1); selecting one persists projects.instance_id (the cxapi int instanceID).", "verified": false },
+      { "id": "AC2", "criterion": "Project create/edit has a message-kind toggle: 'wapcrm_template' shows a template picker (templates fetched per selected channel via GET /api/v1/settings/wa-templates?instanceId=) and renders inputs for the template's requiredInputs; 'plain_text' hides the template picker. Persists template_kind.", "verified": false },
+      { "id": "AC3", "criterion": "For wapcrm_template, the selected template persists to projects.wa_template_id and the operator-entered requiredInputs persist to projects.param_mapping (JSONB); GET detail returns them so edit re-populates.", "verified": false },
+      { "id": "AC4", "criterion": "Backend/Outbound CRUD persists & returns the cxapi config columns (instance_id, template_kind, wa_template_id, template_language, param_mapping) with server-side validation (kind in {plain_text,wapcrm_template}; wapcrm_template requires positive instance_id + non-empty wa_template_id; instance_id positive when present); invalid input returns a typed INV-OB code, never silent.", "verified": false },
+      { "id": "AC5", "criterion": "The per-list 'Gönder' button and the 'Listeye Gönder' send modal are removed from DataImportPage (Listeler); data-list import/list management otherwise unchanged; no dead imports/handlers left.", "verified": false },
+      { "id": "AC6", "criterion": "Send EXECUTION is NOT wired this slice: no code reads projects.instance_id/wa_template_id to dispatch a send; gate P0-3 (CxapiSend default-OFF) and allowlist are untouched; full solution build PASS.", "verified": false }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/DTOs/Outbound/ProjectDtos.cs",
+    "src/Invekto.Outbound/Data/ProjectsRepository.cs",
+    "src/Invekto.Outbound/Services/ProjectsService.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "arch/errors.md",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/DataImportPage.tsx"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/DTOs/Outbound/ProjectDtos.cs", "change": "Added ProjectTemplateKinds constant; added send-config fields (instance_id/template_kind/wa_template_id/template_language/param_mapping) to ProjectSummary + Create/UpdateProjectRequest", "is_new": false },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "change": "Added ProjectInvalidSendConfig INV-OB-073", "is_new": false },
+    { "path": "src/Invekto.Outbound/Data/ProjectsRepository.cs", "change": "SELECT/INSERT/UPDATE handle cxapi config columns; ProjectSendConfigInput carrier; AddSendConfigParams typed-param helper; MapSummary reads cols 16-20 (param_mapping jsonb->JsonElement)", "is_new": false },
+    { "path": "src/Invekto.Outbound/Services/ProjectsService.cs", "change": "BuildSendConfig validator (kind-driver, channel required, plain_text clears template fields, param_mapping JSON object/array + size cap); wired into Create/Update + no-change guard", "is_new": false },
+    { "path": "src/Invekto.Outbound/Program.cs", "change": "ProjectStatus + ProjectMessage switch arms for INV-OB-073", "is_new": false },
+    { "path": "arch/errors.md", "change": "Registered INV-OB-073", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "change": "ProjectTemplateKind/ProjectTemplateParam/WaTemplate types; config fields on Project types + requests; getWaTemplates()", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx", "change": "Modal: channel selector (Cloud API only, instance_type===1) + kind toggle + template picker (per channel) + requiredInputs params; persist + edit re-populate; save validation incl. unloaded-template guard", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/DataImportPage.tsx", "change": "Removed per-list 'Gönder' button + SendModal component + sendList state + dead imports (Send/OutboundTemplateDto/BulkSendStatusResponse)", "is_new": false }
+  ],
+  "git_diff": {
+    "sha256": "fefba485369288fba00de61e4d9f785fa1d4e6a36f8f7ae69ce1c8180d86690e",
+    "full_path": "arch/plans/diffs/20260608-projeler-channel-template-settings.diff",
+    "stats": { "insertions": 558, "deletions": 190, "files_count": 9 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "npm run build (tsc+vite) [Dashboard SPA] + dotnet build InvektoServis.sln -c Release",
+    "timestamp": "2026-06-09T08:30:00Z",
+    "services": ["Invekto.Shared", "Invekto.Outbound", "Invekto.Backend"]
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "Does the channel selector restrict to WhatsApp Cloud API (instance_type === 1) and store the cxapi integer instanceID into projects.instance_id, and is the value validated positive server-side before persistence?", "category": "Data" },
+    { "id": "Q2", "question": "Is the project CRUD that writes the new cxapi config columns still tenant-scoped (tenant_id in every WHERE/INSERT) so one tenant cannot set or read another tenant's channel/template config?", "category": "Auth" },
+    { "id": "Q3", "question": "When template_kind='wapcrm_template' but wa_template_id is empty or instance_id is missing/non-positive, does the service reject with a typed INV-OB error code (not a silent default or a 500), and does plain_text correctly skip the template requirement?", "category": "Process/Policy" },
+    { "id": "Q4", "question": "After removing the data-list send flow, are all now-unused imports/state/handlers/api calls (confirmBulkSend, BulkSendStatusResponse, Send icon, preview-from-list) cleaned up so DataImportPage still compiles and the list/import lifecycle is intact?", "category": "Lifecycle" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Outbound/Services/MessageSenderService.cs",
+      "src/Invekto.Outbound/Services/BroadcastOrchestrator.cs",
+      "CxapiSend allowlist / appsettings.Production.json (gate P0-3)",
+      "arch/db/migrations/* (no schema change — 057 columns already exist)"
+    ],
+    "non_goals": [
+      "Actual send-from-project execution (project -> broadcast -> cxapi send) — next slice",
+      "Run dispatch / bulk_send_jobs.project_id population — next slice",
+      "Counter recompute from runs — stays INERT",
+      "Opening the live-enablement gate / allowlisting any tenant"
+    ],
+    "intentional_exclusions": [
+      "plain_text message body field — text is entered at send time (next slice); plain_text project stores only kind + channel now",
+      "template_language — WapCrmTemplateDto has no language field (language is embedded in templateId slug per INMA G13); stored null/unused this slice",
+      "dynamic-button URL params — deferred per prior PR-4 decision"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [
+      "INV-OB project channel/template validation errors surfaced via errText in ProjectsPage modal"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All new validation paths return typed INV-OB codes mapped to HTTP status; the frontend surfaces them via errText. Template fetch failure shows an inline error and disables template selection rather than silently saving an empty template."
+  },
+  "aha_moments": [
+    { "category": "UX", "user_pain": "Operatör hangi WhatsApp hattından gönderileceğini bilemiyor, yanlış hattan gönderim riski var.", "suggestion": "Kanal dropdown'unda hat adı + numarayı göster, sadece Cloud API hatları; tek hat varsa otomatik seç.", "aha_moment": "Operatör projeyi açtığında doğru WhatsApp hattının zaten seçili/net olduğunu görür." },
+    { "category": "RELIABILITY", "user_pain": "Şablon parametreleri eksik gönderilirse WhatsApp reddeder, operatör nedenini anlamaz.", "suggestion": "requiredInputs için zorunlu alan validasyonu + her input'un note/hint'ini göster; eksikse kaydetmeyi engelle.", "aha_moment": "Operatör kaydetmeden önce hangi parametrenin eksik olduğunu tam görür." },
+    { "category": "UX", "user_pain": "Gönderim data listesinde olunca 'liste = kampanya' karışıyordu; aynı liste birden çok kampanyada kullanılınca kafa karışıyor.", "suggestion": "Gönderimi projeye taşı; liste sadece veri, proje = kampanya birimi.", "aha_moment": "Operatör 'liste veri, proje gönderim' ayrımını ilk projede net kavrar." },
+    { "category": "SPEED", "user_pain": "Şablon listesi her seferinde cxapi'den çekilince yavaş.", "suggestion": "Kanal seçilince şablonları bir kez çek + modal içinde cache'le; kanal değişince yeniden çek.", "aha_moment": "Operatör kanal seçer seçmez şablonların anında listelendiğini görür." },
+    { "category": "SUPPORT", "user_pain": "Yanlış kanal/şablon kaydı sonradan fark edilince destek gerekiyor.", "suggestion": "Proje detayında seçili kanal + şablon adını özet kartta göster (edit'e girmeden).", "aha_moment": "Operatör proje listesinde/özetinde kanal+şablonu görüp yanlışı anında yakalar." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-06-09T09:04:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-06-09T09:05:00Z",
+    "blocking_issues": [],
+    "iteration": 2,
+    "escalation_required": false,
+    "escalation_reason": "iter0 FAIL = REAL (channel restriction client-side only) -> fixed with authoritative server-side ValidateChannelOwnershipAsync (tenant-scoped + instance_type=1). iter1 FAIL = FALSE-POSITIVE (Codex stateless/diff-only flagged the sanctioned shared-Postgres tenant_instances read as cross-service isolation violation + missing schema evidence). iter2 PASS after corrected-premise re-review (single shared Postgres per arch/tenant-isolation.md; Outbound already reads tenant_registry via GetWapCrmSettingsAsync; schema attested tenant-instances.sql + migration 057). 12/12 CQ + 4/4 CoVe PASS, 0 blockers. NOT a FORCE PASS."
+  }
+}

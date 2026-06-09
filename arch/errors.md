@@ -1071,6 +1071,9 @@ errors:
   - code: INV-OB-072
     description: "FEAT-PROJELER / cxapi PR-3b-2 — SOFT defense-in-depth cross-check in ApplyDeliveryStatusAsync: a delivery ack's InstanceID differs from the matched outbound_messages.instance_id. Logged (warn) and the status is applied ANYWAY — correlation is already single-row-safe via the (tenant_id, external_message_id) UNIQUE, and instance_id is nullable at send time so a strict reject would risk dropping valid acks. Internal/log only."
     user_message: null
+  - code: INV-OB-073
+    description: "FEAT-PROJELER (PKT-14) — invalid project send config (channel + template). Raised by ProjectsService.BuildSendConfig when template_kind is set but the block is inconsistent: unknown kind (not plain_text|wapcrm_template), missing channel (instance_id <= 0, required for both kinds), wapcrm_template without a non-empty wa_template_id, wa_template_id over 128 chars / template_language over 8 chars, or a param_mapping that is not a JSON object/array or exceeds the size cap. Validation-only; nothing is written. (400)"
+    user_message: Kanal/şablon ayarları geçersiz. Seçimlerinizi kontrol edin.
 
   # ── IG — Integrations (GR-3.4/3.6) ──
   - code: INV-IG-001

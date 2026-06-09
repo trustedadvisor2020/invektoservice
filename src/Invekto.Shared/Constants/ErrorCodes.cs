@@ -545,6 +545,9 @@ public static class ErrorCodes
     // FEAT-PROJELER / cxapi PR-3b-2: delivery-ack apply cross-check (INV-OB-072).
     public const string CxapiDeliveryAckInstanceMismatch = "INV-OB-072";   // SOFT defense-in-depth: a delivery ack's InstanceID differs from the matched outbound_messages.instance_id. Logged (warn) and the status is applied ANYWAY — wamid + the tenant-scoped UNIQUE already guarantee a single-row match. Not user-facing.
 
+    // FEAT-PROJELER (PKT-14): project send config (channel + template) validation (INV-OB-073).
+    public const string ProjectInvalidSendConfig = "INV-OB-073";           // Invalid project send config: bad template_kind, missing channel (instance_id<=0), wapcrm_template without wa_template_id, over-length template id/language, or a malformed/oversized param_mapping (must be JSON object/array). 400.
+
     // Lead Management errors (INV-LD-xxx) -- GR-3.13
     public const string LeadInvalidPayload = "INV-LD-001";
     public const string LeadNotFound = "INV-LD-002";

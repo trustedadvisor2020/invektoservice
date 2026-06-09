@@ -1,6 +1,9 @@
+using System.Globalization;
+using System.Text.Json;
 using Invekto.Shared.Data;
 using Invekto.Shared.DTOs.Outbound;
 using Npgsql;
+using NpgsqlTypes;
 
 namespace Invekto.Outbound.Data;
 
@@ -32,6 +35,23 @@ public class ProjectsRepository
         _db = db;
     }
 
+    /// <summary>
+    /// Validated + normalized send config to persist. The SERVICE owns validation/normalization
+    /// (kind consistency, plain_text clears template fields, param_mapping serialized to JSON text);
+    /// the repository just writes these values verbatim. param_mapping is pre-serialized so the repo
+    /// stays free of JSON concerns. Used by Create (always applied) and Update (applied only when the
+    /// caller sets setSendConfig=true).
+    /// </summary>
+    public sealed class ProjectSendConfigInput
+    {
+        public int? InstanceId { get; init; }
+        public string? TemplateKind { get; init; }
+        public string? WaTemplateId { get; init; }
+        public string? TemplateLanguage { get; init; }
+        /// <summary>Serialized JSONB text (object/array) or null. null => stored param_mapping is SQL NULL.</summary>
+        public string? ParamMappingJson { get; init; }
+    }
+
     /// <summary>Outcome of a Create/Update write (exactly one of the failure flags, else success+Detail).</summary>
     public sealed class ProjectWriteResult
     {
@@ -53,7 +73,8 @@ public class ProjectsRepository
                       WHERE pt.tenant_id = p.tenant_id AND pt.project_id = p.id)::int AS target_count,
                    p.run_count, p.total_targets, p.sent_count, p.delivered_count,
                    p.read_count, p.failed_count, p.ambiguous_count,
-                   p.created_at, p.updated_at, p.started_at, p.completed_at
+                   p.created_at, p.updated_at, p.started_at, p.completed_at,
+                   p.instance_id, p.template_kind, p.wa_template_id, p.template_language, p.param_mapping
             FROM projects p
             WHERE p.tenant_id = @tid AND p.archived_at IS NULL
             ORDER BY p.created_at DESC";
@@ -93,7 +114,8 @@ public class ProjectsRepository
                       WHERE pt.tenant_id = p.tenant_id AND pt.project_id = p.id)::int AS target_count,
                    p.run_count, p.total_targets, p.sent_count, p.delivered_count,
                    p.read_count, p.failed_count, p.ambiguous_count,
-                   p.created_at, p.updated_at, p.started_at, p.completed_at
+                   p.created_at, p.updated_at, p.started_at, p.completed_at,
+                   p.instance_id, p.template_kind, p.wa_template_id, p.template_language, p.param_mapping
             FROM projects p
             WHERE p.tenant_id = @tid AND p.id = @pid AND p.archived_at IS NULL", conn, tx))
         {
@@ -141,7 +163,7 @@ public class ProjectsRepository
     /// </summary>
     public virtual async Task<ProjectWriteResult> CreateAsync(
         int tenantId, int createdBy, string name, string? description, long[] targetListIds,
-        CancellationToken ct = default)
+        ProjectSendConfigInput? config, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var tx = await conn.BeginTransactionAsync(ct);
@@ -156,14 +178,17 @@ public class ProjectsRepository
 
         long projectId;
         await using (var ins = new NpgsqlCommand(@"
-            INSERT INTO projects (tenant_id, name, description, status, created_by)
-            VALUES (@tid, @name, @desc, 'draft', @by)
+            INSERT INTO projects (tenant_id, name, description, status, created_by,
+                                  instance_id, template_kind, wa_template_id, template_language, param_mapping)
+            VALUES (@tid, @name, @desc, 'draft', @by,
+                    @inst, @kind, @tmpl, @lang, @pm)
             RETURNING id", conn, tx))
         {
             ins.Parameters.AddWithValue("tid", tenantId);
             ins.Parameters.AddWithValue("name", name);
             ins.Parameters.AddWithValue("desc", (object?)description ?? DBNull.Value);
             ins.Parameters.AddWithValue("by", createdBy);
+            AddSendConfigParams(ins, config);
             try
             {
                 projectId = Convert.ToInt64(await ins.ExecuteScalarAsync(ct));
@@ -201,7 +226,7 @@ public class ProjectsRepository
     /// </summary>
     public virtual async Task<ProjectWriteResult> UpdateAsync(
         int tenantId, long projectId, string? name, string? description, long[]? targetListIds,
-        CancellationToken ct = default)
+        ProjectSendConfigInput? config, bool setSendConfig, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var tx = await conn.BeginTransactionAsync(ct);
@@ -219,6 +244,11 @@ public class ProjectsRepository
             UPDATE projects SET
                 name = COALESCE(@name, name),
                 description = COALESCE(@desc, description),
+                instance_id       = CASE WHEN @setcfg THEN @inst ELSE instance_id END,
+                template_kind     = CASE WHEN @setcfg THEN @kind ELSE template_kind END,
+                wa_template_id    = CASE WHEN @setcfg THEN @tmpl ELSE wa_template_id END,
+                template_language = CASE WHEN @setcfg THEN @lang ELSE template_language END,
+                param_mapping     = CASE WHEN @setcfg THEN @pm   ELSE param_mapping END,
                 updated_at = NOW()
             WHERE tenant_id = @tid AND id = @pid AND archived_at IS NULL", conn, tx))
         {
@@ -226,6 +256,10 @@ public class ProjectsRepository
             upd.Parameters.AddWithValue("pid", projectId);
             upd.Parameters.AddWithValue("name", (object?)name ?? DBNull.Value);
             upd.Parameters.AddWithValue("desc", (object?)description ?? DBNull.Value);
+            upd.Parameters.Add(new NpgsqlParameter("setcfg", NpgsqlDbType.Boolean) { Value = setSendConfig });
+            // When setSendConfig is false the CASE selects the existing column, so the bound values are
+            // unused; pass null then. When true the (service-normalized) config is written verbatim.
+            AddSendConfigParams(upd, setSendConfig ? config : null);
             try
             {
                 rc = await upd.ExecuteNonQueryAsync(ct);
@@ -288,6 +322,31 @@ public class ProjectsRepository
     }
 
     // ------------------------------------------------------------------
+    // Send-config authorization
+    // ------------------------------------------------------------------
+    /// <summary>
+    /// Authoritative server-side guard for a project's send channel: true ONLY if <paramref name="instanceId"/>
+    /// is a WhatsApp Cloud API line (instance_type = 1) owned by THIS tenant, per the shared
+    /// <c>tenant_instances</c> cache (populated by Backend's /settings/instances; the same shared Postgres
+    /// Outbound already reads for wapcrm settings — sanctioned shared-read, not a cross-service call).
+    /// Closes the gap where the SPA filters Cloud-API channels client-side only: a direct API caller could
+    /// otherwise persist a foreign-tenant or non-Cloud instance_id into projects.instance_id (Codex CQ5/CQ9).
+    /// tenant_instances stores the WapCRM instanceID as its string form, so the int is compared as text.
+    /// </summary>
+    public virtual async Task<bool> IsCloudApiInstanceOwnedAsync(int tenantId, int instanceId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT EXISTS(
+                SELECT 1 FROM tenant_instances
+                WHERE tenant_id = @tid AND instance_id = @inst AND instance_type = 1)";
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("inst", instanceId.ToString(CultureInfo.InvariantCulture));
+        return await cmd.ExecuteScalarAsync(ct) is true;
+    }
+
+    // ------------------------------------------------------------------
     // Target helpers (set-based)
     // ------------------------------------------------------------------
     /// <summary>Validate AND row-lock the targets: true only if EVERY id is an active (non-deleted)
@@ -335,6 +394,21 @@ public class ProjectsRepository
         return await cmd.ExecuteNonQueryAsync(ct);
     }
 
+    /// <summary>
+    /// Bind the 5 send-config parameters with EXPLICIT Npgsql types so a NULL value still has a known
+    /// type — required because they appear in CASE branches (Postgres cannot infer the type of an
+    /// untyped NULL parameter there). config == null => every parameter is SQL NULL. param_mapping is
+    /// bound as jsonb (its pre-serialized JSON text, or NULL).
+    /// </summary>
+    private static void AddSendConfigParams(NpgsqlCommand cmd, ProjectSendConfigInput? config)
+    {
+        cmd.Parameters.Add(new NpgsqlParameter("inst", NpgsqlDbType.Integer) { Value = (object?)config?.InstanceId ?? DBNull.Value });
+        cmd.Parameters.Add(new NpgsqlParameter("kind", NpgsqlDbType.Text) { Value = (object?)config?.TemplateKind ?? DBNull.Value });
+        cmd.Parameters.Add(new NpgsqlParameter("tmpl", NpgsqlDbType.Text) { Value = (object?)config?.WaTemplateId ?? DBNull.Value });
+        cmd.Parameters.Add(new NpgsqlParameter("lang", NpgsqlDbType.Text) { Value = (object?)config?.TemplateLanguage ?? DBNull.Value });
+        cmd.Parameters.Add(new NpgsqlParameter("pm", NpgsqlDbType.Jsonb) { Value = (object?)config?.ParamMappingJson ?? DBNull.Value });
+    }
+
     private static ProjectSummary MapSummary(NpgsqlDataReader reader) => new()
     {
         Id = reader.GetInt64(0),
@@ -352,6 +426,13 @@ public class ProjectsRepository
         CreatedAt = reader.GetDateTime(12),
         UpdatedAt = reader.GetDateTime(13),
         StartedAt = reader.IsDBNull(14) ? null : reader.GetDateTime(14),
-        CompletedAt = reader.IsDBNull(15) ? null : reader.GetDateTime(15)
+        CompletedAt = reader.IsDBNull(15) ? null : reader.GetDateTime(15),
+        InstanceId = reader.IsDBNull(16) ? null : reader.GetInt32(16),
+        TemplateKind = reader.IsDBNull(17) ? null : reader.GetString(17),
+        WaTemplateId = reader.IsDBNull(18) ? null : reader.GetString(18),
+        TemplateLanguage = reader.IsDBNull(19) ? null : reader.GetString(19),
+        // param_mapping is jsonb (Npgsql returns it as text); re-parse to a JsonElement so the API
+        // re-emits it as a JSON object, not a JSON-encoded string. Safe to deserialize as JsonElement.
+        ParamMapping = reader.IsDBNull(20) ? null : JsonSerializer.Deserialize<JsonElement>(reader.GetString(20))
     };
 }

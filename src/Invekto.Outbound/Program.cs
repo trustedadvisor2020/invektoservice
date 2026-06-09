@@ -577,6 +577,7 @@ static int ProjectStatus(string? code) => code switch
     ErrorCodes.ProjectNameConflict => 409,
     ErrorCodes.ProjectInvalidTarget => 422,
     ErrorCodes.ProjectDbError => 503,   // transient DB failure — change rolled back, safe to retry
+    ErrorCodes.ProjectInvalidSendConfig => 400,
     _ => 400                            // ProjectInvalidPayload + fallback
 };
 
@@ -590,6 +591,7 @@ static string ProjectMessage(string? code) => code switch
     ErrorCodes.ProjectNameConflict => "Bu isimde bir proje zaten var. Farklı bir ad girin.",
     ErrorCodes.ProjectInvalidTarget => "Seçilen listelerden biri bulunamadı. Liste seçimini güncelleyin.",
     ErrorCodes.ProjectDbError => "Veritabanı hatası nedeniyle işlem tamamlanamadı. Lütfen tekrar deneyin.",
+    ErrorCodes.ProjectInvalidSendConfig => "Kanal/şablon ayarları geçersiz. Seçimlerinizi kontrol edin.",
     _ => "İşlem tamamlanamadı."
 };
 

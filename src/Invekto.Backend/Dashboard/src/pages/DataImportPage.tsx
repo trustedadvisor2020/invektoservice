@@ -2,14 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import {
   Upload, FileSpreadsheet, X, AlertTriangle, CheckCircle2, Loader2,
-  Trash2, Send, Download, ChevronDown, Info, List as ListIcon,
+  Trash2, Download, ChevronDown, Info, List as ListIcon,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { cn } from '../lib/utils';
 import {
   api, ApiClientError,
   type DataListSummary, type ImportScenario, type ImportRowDto,
-  type ImportBatchRequest, type OutboundTemplateDto, type BulkSendStatusResponse,
+  type ImportBatchRequest,
 } from '../lib/api';
 
 // =============================================================
@@ -211,8 +211,6 @@ export function DataImportPage() {
     }
   });
 
-  // ---- Send flow ----
-  const [sendList, setSendList] = useState<DataListSummary | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadLists = async () => {
@@ -569,14 +567,7 @@ export function DataImportPage() {
                     <td className="px-4 py-2.5 text-right tabular-nums">{l.sendable_count.toLocaleString('tr-TR')}</td>
                     <td className="px-4 py-2.5">
                       <div className="flex items-center justify-end gap-1.5">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          disabled={l.status !== 'ready' || l.sendable_count === 0}
-                          onClick={() => setSendList(l)}
-                        >
-                          <Send className="w-3.5 h-3.5" /> Gönder
-                        </Button>
+                        {/* Bulk send moved into Projeler (a project sends from its channel); lists are data-only now. */}
                         <Button size="sm" variant="ghost" onClick={() => deleteList(l)} title="Sil">
                           <Trash2 className="w-3.5 h-3.5 text-red-500" />
                         </Button>
@@ -867,159 +858,11 @@ export function DataImportPage() {
         </div>
       )}
 
-      {sendList && <SendModal list={sendList} onClose={() => setSendList(null)} />}
     </div>
   );
 }
 
-// ---------------------------------------------------------------
-// Send modal: list -> preview-from-list -> confirm -> status.
-// campaign_id is generated once per open (idempotency key for the backend).
-// ---------------------------------------------------------------
-function SendModal({ list, onClose }: { list: DataListSummary; onClose: () => void }) {
-  const [templates, setTemplates] = useState<OutboundTemplateDto[]>([]);
-  const [templateId, setTemplateId] = useState<number | ''>('');
-  const [loading, setLoading] = useState(true);
-  const [campaignId] = useState(() => `list-${list.id}-${Date.now()}`);
-  const [phase, setPhase] = useState<'pick' | 'preview' | 'sent'>('pick');
-  const [previewing, setPreviewing] = useState(false);
-  const [confirming, setConfirming] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  const [preview, setPreview] = useState<{ total: number; cap: number; sample: string[] } | null>(null);
-  const [status, setStatus] = useState<BulkSendStatusResponse | null>(null);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await api.listOutboundTemplates();
-        const active = res.templates.filter(t => t.is_active);
-        setTemplates(active);
-        if (active.length === 1) setTemplateId(active[0].id);
-      } catch (e) {
-        setErr(errText(e, 'Şablonlar yüklenemedi'));
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
-
-  async function runPreview() {
-    if (typeof templateId !== 'number') return;
-    setPreviewing(true);
-    setErr(null);
-    try {
-      const res = await api.previewFromList({ campaign_id: campaignId, list_id: list.id, template_id: templateId });
-      setPreview({ total: res.total_valid, cap: res.hard_cap, sample: res.sample });
-      setPhase('preview');
-    } catch (e) {
-      setErr(errText(e, 'Önizleme oluşturulamadı'));
-    } finally {
-      setPreviewing(false);
-    }
-  }
-
-  async function confirmSend() {
-    setConfirming(true);
-    setErr(null);
-    try {
-      const res = await api.confirmBulkSend(campaignId);
-      setStatus(res);
-      setPhase('sent');
-    } catch (e) {
-      setErr(errText(e, 'Gönderim başlatılamadı'));
-    } finally {
-      setConfirming(false);
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/40 z-50 grid place-items-center p-4">
-      <div className="bg-white rounded-xl shadow-soft border border-navy-100 w-[460px] max-w-full overflow-hidden">
-        <div className="px-5 pt-5 pb-3 flex items-start justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-navy-900">Listeye Gönder</h2>
-            <p className="text-sm text-navy-500 mt-0.5">{list.name} · {list.sendable_count.toLocaleString('tr-TR')} gönderilebilir</p>
-          </div>
-          <button onClick={onClose} className="text-navy-300 hover:text-navy-600" aria-label="Kapat"><X className="w-5 h-5" /></button>
-        </div>
-
-        <div className="px-5 pb-5 space-y-4">
-          {err && (
-            <div className="flex items-start gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-              <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" /> <span>{err}</span>
-            </div>
-          )}
-
-          {phase === 'pick' && (
-            <>
-              {loading ? (
-                <div className="flex items-center gap-2 text-sm text-navy-500 py-4"><Loader2 className="w-4 h-4 animate-spin" /> Şablonlar yükleniyor…</div>
-              ) : templates.length === 0 ? (
-                <p className="text-sm text-navy-500">Aktif şablon yok. Önce bir mesaj şablonu oluşturun.</p>
-              ) : (
-                <label className="block text-sm">
-                  <span className="block text-xs text-navy-500 mb-1">Mesaj Şablonu</span>
-                  <select
-                    value={templateId === '' ? '' : String(templateId)}
-                    onChange={e => setTemplateId(e.target.value ? Number(e.target.value) : '')}
-                    className="w-full h-9 px-2 bg-white border border-navy-100 rounded-lg text-sm text-navy-900 focus:outline-none focus:border-brand-500"
-                  >
-                    <option value="">— Şablon seç —</option>
-                    {templates.map(t => <option key={t.id} value={t.id}>{t.name} ({t.lang})</option>)}
-                  </select>
-                </label>
-              )}
-              <div className="flex justify-end gap-2">
-                <Button variant="secondary" onClick={onClose}>Vazgeç</Button>
-                <Button disabled={typeof templateId !== 'number' || previewing} onClick={runPreview}>
-                  {previewing && <Loader2 className="w-4 h-4 animate-spin" />} Önizle
-                </Button>
-              </div>
-            </>
-          )}
-
-          {phase === 'preview' && preview && (
-            <>
-              <div className="bg-navy-50/60 border border-navy-100 rounded-lg p-3 space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-navy-500">Gönderilecek</span><span className="font-semibold tabular-nums">{preview.total.toLocaleString('tr-TR')}</span></div>
-                <div className="flex justify-between"><span className="text-navy-500">Üst sınır</span><span className="tabular-nums">{preview.cap.toLocaleString('tr-TR')}</span></div>
-              </div>
-              {preview.sample.length > 0 && (
-                <div className="text-xs text-navy-500">
-                  <div className="mb-1">Örnek alıcılar</div>
-                  <div className="bg-navy-50 border border-navy-100 rounded-lg p-2 font-mono">{preview.sample.join(', ')}</div>
-                </div>
-              )}
-              <p className="text-xs text-navy-400">
-                Anlık görüntü alındı. Liste sonradan değişse de yalnızca burada görünen alıcılara gönderilir. Onay/şikayet ve KVKK kontrolleri gönderim anında uygulanır.
-              </p>
-              <div className="flex justify-end gap-2">
-                <Button variant="secondary" disabled={confirming} onClick={() => setPhase('pick')}>Geri</Button>
-                <Button disabled={confirming} onClick={confirmSend}>
-                  {confirming && <Loader2 className="w-4 h-4 animate-spin" />} <Send className="w-4 h-4" /> Gönder
-                </Button>
-              </div>
-            </>
-          )}
-
-          {phase === 'sent' && status && (
-            <>
-              <div className="flex items-center gap-2 text-emerald-700">
-                <CheckCircle2 className="w-5 h-5" />
-                <span className="text-sm font-medium">Gönderim başlatıldı (durum: {status.status})</span>
-              </div>
-              <div className="bg-navy-50/60 border border-navy-100 rounded-lg p-3 space-y-1.5 text-sm">
-                <div className="flex justify-between"><span className="text-navy-500">Kuyruğa alınan</span><span className="tabular-nums">{status.total_queued.toLocaleString('tr-TR')}</span></div>
-                <div className="flex justify-between"><span className="text-navy-500">Opt-out atlanan</span><span className="tabular-nums">{status.total_skipped_optout.toLocaleString('tr-TR')}</span></div>
-                <div className="flex justify-between"><span className="text-navy-500">İzin yok atlanan</span><span className="tabular-nums">{status.total_skipped_consent.toLocaleString('tr-TR')}</span></div>
-              </div>
-              <div className="flex justify-end">
-                <Button onClick={onClose}>Tamam</Button>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+// NOTE: the per-list "Listeye Gönder" bulk-send modal was removed — sending now lives
+// inside a Proje (a project sends from its configured WhatsApp channel + template).
+// Data lists are data-only here. The Outbound bulk-send API (previewFromList /
+// confirmBulkSend) is retained server-side for the project send slice.

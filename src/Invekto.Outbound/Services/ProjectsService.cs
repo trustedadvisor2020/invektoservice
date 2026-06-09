@@ -1,3 +1,5 @@
+using System.Text;
+using System.Text.Json;
 using Invekto.Outbound.Data;
 using Invekto.Shared.Constants;
 using Invekto.Shared.DTOs.Outbound;
@@ -80,9 +82,16 @@ public sealed class ProjectsService
         var (targetIds, targetErr, targetMsg) = NormalizeTargets(request.TargetListIds ?? new List<long>());
         if (targetErr != null) return (null, targetErr, targetMsg);
 
+        var (sendConfig, _, cfgErr, cfgMsg) = BuildSendConfig(
+            request.TemplateKind, request.InstanceId, request.WaTemplateId, request.TemplateLanguage, request.ParamMapping);
+        if (cfgErr != null) return (null, cfgErr, cfgMsg);
+
         try
         {
-            var result = await _repo.CreateAsync(tenantId, createdBy, name, desc, targetIds, ct);
+            var (chErr, chMsg) = await ValidateChannelOwnershipAsync(tenantId, sendConfig, ct);
+            if (chErr != null) return (null, chErr, chMsg);
+
+            var result = await _repo.CreateAsync(tenantId, createdBy, name, desc, targetIds, sendConfig, ct);
             if (result.NameConflict) return (null, ErrorCodes.ProjectNameConflict, $"A project named '{name}' already exists");
             if (result.InvalidTargets) return (null, ErrorCodes.ProjectInvalidTarget, "One or more selected lists do not exist for this account");
             // Detail is read in-tx and is non-null on success; a null here means the write did not commit.
@@ -130,12 +139,19 @@ public sealed class ProjectsService
             targetIds = ids;
         }
 
-        if (name == null && desc == null && targetIds == null)
+        var (sendConfig, setConfig, cfgErr, cfgMsg) = BuildSendConfig(
+            request.TemplateKind, request.InstanceId, request.WaTemplateId, request.TemplateLanguage, request.ParamMapping);
+        if (cfgErr != null) return (null, cfgErr, cfgMsg);
+
+        if (name == null && desc == null && targetIds == null && !setConfig)
             return (null, ErrorCodes.ProjectInvalidPayload, "No changes supplied");
 
         try
         {
-            var result = await _repo.UpdateAsync(tenantId, projectId, name, desc, targetIds, ct);
+            var (chErr, chMsg) = await ValidateChannelOwnershipAsync(tenantId, sendConfig, ct);
+            if (chErr != null) return (null, chErr, chMsg);
+
+            var result = await _repo.UpdateAsync(tenantId, projectId, name, desc, targetIds, sendConfig, setConfig, ct);
             if (result.NameConflict) return (null, ErrorCodes.ProjectNameConflict, "Another project already uses that name");
             if (!result.Found) return (null, ErrorCodes.ProjectNotFound, $"Project {projectId} not found");
             if (result.InvalidTargets) return (null, ErrorCodes.ProjectInvalidTarget, "One or more selected lists do not exist for this account");
@@ -195,5 +211,92 @@ public sealed class ProjectsService
             return (Array.Empty<long>(), ErrorCodes.ProjectInvalidPayload,
                 $"A project can target at most {_options.MaxTargetsPerProject} lists ({ordered.Count} given)");
         return (ordered.ToArray(), null, null);
+    }
+
+    // Schema-driven caps (migration 057: wa_template_id VARCHAR(128), template_language VARCHAR(8)).
+    private const int WaTemplateIdMaxLength = 128;
+    private const int TemplateLanguageMaxLength = 8;
+    private const int ParamMappingMaxBytes = 16 * 1024; // defensive cap on stored JSONB size
+
+    /// <summary>
+    /// Validate + normalize the optional send-config block (channel + template). <c>template_kind</c> is the
+    /// DRIVER: null => leave config untouched (setConfig=false). When set, the WHOLE block is validated and
+    /// returned for an authoritative write (setConfig=true): both kinds require a channel (instance_id&gt;0);
+    /// 'wapcrm_template' requires a non-empty wa_template_id (+ optional language/param_mapping); 'plain_text'
+    /// CLEARS the template fields (text is supplied at send time, a later slice). Any inconsistency returns a
+    /// typed INV-OB-073 with a user-facing message — never a silent default. param_mapping must be a JSON
+    /// object/array within the size cap. Send EXECUTION that consumes this config is a later slice.
+    /// </summary>
+    private (ProjectsRepository.ProjectSendConfigInput? config, bool setConfig, string? errorCode, string? message)
+        BuildSendConfig(string? kind, int? instanceId, string? waTemplateId, string? templateLanguage, JsonElement? paramMapping)
+    {
+        if (kind == null)
+            return (null, false, null, null); // config block omitted -> leave existing config untouched
+
+        if (!ProjectTemplateKinds.IsValid(kind))
+            return (null, false, ErrorCodes.ProjectInvalidSendConfig, "Geçersiz mesaj türü (plain_text veya wapcrm_template).");
+
+        if (instanceId is not > 0)
+            return (null, false, ErrorCodes.ProjectInvalidSendConfig, "Gönderim için bir WhatsApp kanalı (hat) seçin.");
+
+        if (kind == ProjectTemplateKinds.PlainText)
+        {
+            // plain_text: channel only; template fields are cleared (message text is entered at send time).
+            return (new ProjectsRepository.ProjectSendConfigInput
+            {
+                InstanceId = instanceId,
+                TemplateKind = ProjectTemplateKinds.PlainText,
+                WaTemplateId = null,
+                TemplateLanguage = null,
+                ParamMappingJson = null
+            }, true, null, null);
+        }
+
+        // wapcrm_template
+        var tmpl = waTemplateId?.Trim();
+        if (string.IsNullOrEmpty(tmpl))
+            return (null, false, ErrorCodes.ProjectInvalidSendConfig, "Şablon türü için bir onaylı şablon seçin.");
+        if (tmpl.Length > WaTemplateIdMaxLength)
+            return (null, false, ErrorCodes.ProjectInvalidSendConfig, $"Şablon kimliği {WaTemplateIdMaxLength} karakteri aşıyor.");
+
+        var lang = templateLanguage?.Trim();
+        if (lang != null && lang.Length > TemplateLanguageMaxLength)
+            return (null, false, ErrorCodes.ProjectInvalidSendConfig, $"Şablon dili {TemplateLanguageMaxLength} karakteri aşıyor.");
+        if (string.IsNullOrEmpty(lang)) lang = null;
+
+        string? pmJson = null;
+        if (paramMapping is { } pm && pm.ValueKind is not (JsonValueKind.Null or JsonValueKind.Undefined))
+        {
+            if (pm.ValueKind is not (JsonValueKind.Object or JsonValueKind.Array))
+                return (null, false, ErrorCodes.ProjectInvalidSendConfig, "Şablon parametreleri bir JSON nesnesi/dizisi olmalı.");
+            pmJson = JsonSerializer.Serialize(pm);
+            if (Encoding.UTF8.GetByteCount(pmJson) > ParamMappingMaxBytes)
+                return (null, false, ErrorCodes.ProjectInvalidSendConfig, "Şablon parametreleri çok büyük.");
+        }
+
+        return (new ProjectsRepository.ProjectSendConfigInput
+        {
+            InstanceId = instanceId,
+            TemplateKind = ProjectTemplateKinds.WapcrmTemplate,
+            WaTemplateId = tmpl,
+            TemplateLanguage = lang,
+            ParamMappingJson = pmJson
+        }, true, null, null);
+    }
+
+    /// <summary>
+    /// Server-side authorization of the chosen send channel: the instance_id MUST be a Cloud API line
+    /// (instance_type = 1) owned by this tenant. The SPA filters channels client-side, but a direct API
+    /// caller could submit any positive id, so this is enforced authoritatively here (Codex CQ5/CQ9 —
+    /// closes the cross-tenant / non-Cloud channel persistence gap). No channel set => nothing to authorize.
+    /// </summary>
+    private async Task<(string? errorCode, string? message)> ValidateChannelOwnershipAsync(
+        int tenantId, ProjectsRepository.ProjectSendConfigInput? config, CancellationToken ct)
+    {
+        if (config?.InstanceId is not int inst) return (null, null);
+        var ok = await _repo.IsCloudApiInstanceOwnedAsync(tenantId, inst, ct);
+        return ok
+            ? (null, null)
+            : (ErrorCodes.ProjectInvalidSendConfig, "Seçilen WhatsApp kanalı bu hesaba ait değil veya bir Cloud API hattı değil.");
     }
 }

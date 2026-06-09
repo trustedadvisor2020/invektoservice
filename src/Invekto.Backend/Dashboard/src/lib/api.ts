@@ -1577,6 +1577,13 @@ class OpsApiClient {
     });
   }
 
+  // List a tenant's WhatsApp approved (HSM) templates for a specific channel (cxapi instanceID).
+  // Read-only; powers the Projeler project template picker. 422 if WapCRM/instance not configured.
+  async getWaTemplates(instanceId: number): Promise<{ instanceId: number; templates: WaTemplate[] }> {
+    return this.request<{ instanceId: number; templates: WaTemplate[] }>(
+      `/api/v1/settings/wa-templates?instanceId=${encodeURIComponent(instanceId)}`);
+  }
+
   // Working Hours settings
   async getWorkingHours(): Promise<WorkingHoursDto> {
     return this.request<WorkingHoursDto>('/api/v1/settings/working-hours');
@@ -2430,6 +2437,19 @@ export interface DataListSummary {
 // name/description/target_list_ids.
 export type ProjectStatus = 'draft' | 'running' | 'paused' | 'completed' | 'cancelled' | 'archived';
 
+// Project send message kind (mirrors ProjectTemplateKinds in ProjectDtos.cs).
+export type ProjectTemplateKind = 'plain_text' | 'wapcrm_template';
+
+// One operator-filled template parameter, stored in projects.param_mapping (JSONB array).
+// Mirrors a cxapi template requiredInput plus the entered value; the send slice consumes it.
+export interface ProjectTemplateParam {
+  kind: string | null;       // 'text' | 'media'
+  location: string | null;   // 'BODY' | 'HEADER' | 'BUTTON'
+  paramKey: string | null;
+  mediaType: string | null;  // 'image' | 'video' | 'document'
+  value: string;
+}
+
 export interface ProjectSummary {
   id: number;
   name: string;
@@ -2447,6 +2467,12 @@ export interface ProjectSummary {
   updated_at: string;
   started_at: string | null;
   completed_at: string | null;
+  // Send config (channel + template). Persisted now so edit re-populates; send execution is a later slice.
+  instance_id: number | null;
+  template_kind: ProjectTemplateKind | null;
+  wa_template_id: string | null;
+  template_language: string | null;
+  param_mapping: ProjectTemplateParam[] | null;
 }
 
 export interface ProjectTargetDto {
@@ -2462,16 +2488,43 @@ export interface ProjectDetail {
   targets: ProjectTargetDto[];
 }
 
+// Send-config fields are OPTIONAL. template_kind is the DRIVER: when set, the whole config block
+// is validated + persisted (create) / replaced (update); when omitted, config is left untouched.
 export interface CreateProjectRequest {
   name: string;
   description?: string | null;
   target_list_ids: number[];
+  instance_id?: number | null;
+  template_kind?: ProjectTemplateKind | null;
+  wa_template_id?: string | null;
+  template_language?: string | null;
+  param_mapping?: ProjectTemplateParam[] | null;
 }
 
 export interface UpdateProjectRequest {
   name?: string | null;
   description?: string | null;
   target_list_ids?: number[] | null;
+  instance_id?: number | null;
+  template_kind?: ProjectTemplateKind | null;
+  wa_template_id?: string | null;
+  template_language?: string | null;
+  param_mapping?: ProjectTemplateParam[] | null;
+}
+
+// cxapi approved (HSM) template, as returned by GET /api/v1/settings/wa-templates (camelCase wire shape).
+export interface WaTemplateRequiredInput {
+  kind: string | null;       // 'text' | 'media'
+  location: string | null;   // 'BODY' | 'HEADER' | 'BUTTON'
+  paramKey: string | null;
+  mediaType: string | null;  // 'image' | 'video' | 'document'
+  note: string | null;
+}
+export interface WaTemplate {
+  templateId: string | null;
+  preview: string | null;
+  fixedNote: string | null;
+  requiredInputs: WaTemplateRequiredInput[] | null;
 }
 
 export interface ImportCustomFlags {

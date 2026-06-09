@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Invekto.Shared.DTOs.Outbound;
@@ -28,6 +29,18 @@ public static class ProjectStatuses
         s is Draft or Running or Paused or Completed or Cancelled or Archived;
 }
 
+/// <summary>
+/// Project send message kind (mirrors chk_project_template_kind / projects.template_kind, migration 057).
+/// Set when the operator configures the project's send channel + content (slice: channel+template settings).
+/// </summary>
+public static class ProjectTemplateKinds
+{
+    public const string PlainText = "plain_text";          // plain free-text bulk (PR-3a send path; text supplied at send time)
+    public const string WapcrmTemplate = "wapcrm_template"; // approved WapCRM HSM template (wa_template_id + param_mapping)
+
+    public static bool IsValid(string? s) => s is PlainText or WapcrmTemplate;
+}
+
 /// <summary>GET /api/v1/projects item (list view).</summary>
 public sealed class ProjectSummary
 {
@@ -53,6 +66,21 @@ public sealed class ProjectSummary
     [JsonPropertyName("updated_at")] public DateTime UpdatedAt { get; set; }
     [JsonPropertyName("started_at")] public DateTime? StartedAt { get; set; }
     [JsonPropertyName("completed_at")] public DateTime? CompletedAt { get; set; }
+
+    // ---- Send config (channel + template), persisted into the migration-057 cxapi columns.
+    // Surfaced so the edit modal can re-populate the operator's channel/template choices.
+    // Send EXECUTION that consumes these is a later slice; they are persisted now, not dispatched.
+
+    /// <summary>WapCRM Cloud API instance (cxapi integer instanceID) this project sends from. Null until configured.</summary>
+    [JsonPropertyName("instance_id")] public int? InstanceId { get; set; }
+    /// <summary>Message kind: 'plain_text' | 'wapcrm_template' (see <see cref="ProjectTemplateKinds"/>). Null until configured.</summary>
+    [JsonPropertyName("template_kind")] public string? TemplateKind { get; set; }
+    /// <summary>Selected approved-template id (cxapi templateId) when TemplateKind == wapcrm_template.</summary>
+    [JsonPropertyName("wa_template_id")] public string? WaTemplateId { get; set; }
+    /// <summary>Template language code (reserved; language is embedded in the templateId slug today). Usually null.</summary>
+    [JsonPropertyName("template_language")] public string? TemplateLanguage { get; set; }
+    /// <summary>Operator-filled template parameters (requiredInputs) as stored JSONB; null for plain_text / zero-param templates.</summary>
+    [JsonPropertyName("param_mapping")] public JsonElement? ParamMapping { get; set; }
 }
 
 /// <summary>One targeted data_list inside a project (GET detail view).</summary>
@@ -80,6 +108,14 @@ public sealed class CreateProjectRequest
 
     /// <summary>data_list ids targeted by this project (deduped + order-preserved). May be empty.</summary>
     [JsonPropertyName("target_list_ids")] public List<long> TargetListIds { get; set; } = new();
+
+    // ---- Optional send config on create. When template_kind is supplied the whole block is
+    // validated + persisted; when null the project is created without send config (draft).
+    [JsonPropertyName("instance_id")] public int? InstanceId { get; set; }
+    [JsonPropertyName("template_kind")] public string? TemplateKind { get; set; }
+    [JsonPropertyName("wa_template_id")] public string? WaTemplateId { get; set; }
+    [JsonPropertyName("template_language")] public string? TemplateLanguage { get; set; }
+    [JsonPropertyName("param_mapping")] public JsonElement? ParamMapping { get; set; }
 }
 
 /// <summary>
@@ -92,4 +128,14 @@ public sealed class UpdateProjectRequest
     [JsonPropertyName("name")] public string? Name { get; set; }
     [JsonPropertyName("description")] public string? Description { get; set; }
     [JsonPropertyName("target_list_ids")] public List<long>? TargetListIds { get; set; }
+
+    // ---- Send config. template_kind is the DRIVER: when non-null, the WHOLE config block
+    // (instance_id/template_kind/wa_template_id/template_language/param_mapping) is validated and
+    // REPLACED authoritatively (the edit modal always sends the full current config). When
+    // template_kind is null the config block is left untouched (metadata-only update).
+    [JsonPropertyName("instance_id")] public int? InstanceId { get; set; }
+    [JsonPropertyName("template_kind")] public string? TemplateKind { get; set; }
+    [JsonPropertyName("wa_template_id")] public string? WaTemplateId { get; set; }
+    [JsonPropertyName("template_language")] public string? TemplateLanguage { get; set; }
+    [JsonPropertyName("param_mapping")] public JsonElement? ParamMapping { get; set; }
 }
