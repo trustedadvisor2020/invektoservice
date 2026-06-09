@@ -9,6 +9,7 @@ import {
   api, ApiClientError,
   type ProjectSummary, type ProjectStatus, type DataListSummary,
   type InstanceDto, type WaTemplate, type ProjectTemplateKind, type ProjectTemplateParam,
+  type ProjectContentMode, type OutboundTemplateDto,
 } from '../lib/api';
 
 // =============================================================
@@ -71,6 +72,13 @@ export default function ProjectsPage() {
   const [templatesError, setTemplatesError] = useState<string | null>(null);
   const [paramValues, setParamValues] = useState<string[]>([]); // index-aligned with the selected template's requiredInputs
 
+  // ---- plain_text content (migration 059): the content a plain_text run sends, chosen in settings ----
+  const [contentMode, setContentMode] = useState<ProjectContentMode | ''>(''); // '' until a content source is chosen
+  const [outboundTemplateId, setOutboundTemplateId] = useState<string>('');    // gallery template id (string form); '' = none
+  const [plainTextBody, setPlainTextBody] = useState<string>('');              // free text
+  const [galleryTemplates, setGalleryTemplates] = useState<OutboundTemplateDto[]>([]);
+  const [galleryError, setGalleryError] = useState<string | null>(null);
+
   const [archivingId, setArchivingId] = useState<number | null>(null);
 
   // Only WhatsApp Cloud API lines are valid send channels (instance_type === 1; excludes SMS/web/channel).
@@ -78,6 +86,11 @@ export default function ProjectsPage() {
   const selectedTemplate = useMemo(
     () => templates.find(t => t.templateId === waTemplateId) ?? null, [templates, waTemplateId]);
   const requiredInputs = selectedTemplate?.requiredInputs ?? [];
+  // Gallery templates are tenant-scoped (not per-channel); the picker resolves the selected one for a preview.
+  const selectedGalleryTemplate = useMemo(
+    () => galleryTemplates.find(t => String(t.id) === outboundTemplateId) ?? null, [galleryTemplates, outboundTemplateId]);
+
+  const PLAIN_TEXT_BODY_MAX = 4096; // mirrors PlainTextBodyMaxLength in ProjectsService.cs
 
   async function loadProjects() {
     setLoading(true);
@@ -112,6 +125,19 @@ export default function ProjectsPage() {
     }
   }
 
+  // Şablon Galerisi (outbound_templates) for the plain_text gallery-template content picker.
+  // Tenant-scoped + channel-independent, so it loads once with the page; only active templates are selectable.
+  async function loadGalleryTemplates() {
+    setGalleryError(null);
+    try {
+      const res = await api.listOutboundTemplates();
+      setGalleryTemplates((res.templates ?? []).filter(t => t.is_active));
+    } catch (e) {
+      setGalleryTemplates([]);
+      setGalleryError(errText(e, 'Şablon galerisi yüklenemedi'));
+    }
+  }
+
   // Fetch the approved templates for a channel. Used on channel change and on edit re-populate.
   async function fetchTemplatesFor(instId: number) {
     setLoadingTemplates(true);
@@ -134,6 +160,15 @@ export default function ProjectsPage() {
     setTemplates([]);
     setParamValues([]);
     setTemplatesError(null);
+    // plain_text needs a content choice; default to gallery template (operator can switch to free text).
+    // Any other kind clears the plain_text content carriers.
+    if (kind === 'plain_text') {
+      setContentMode('gallery_template');
+    } else {
+      setContentMode('');
+      setOutboundTemplateId('');
+      setPlainTextBody('');
+    }
     if (kind === 'wapcrm_template' && instanceId) void fetchTemplatesFor(Number(instanceId));
   }
 
@@ -167,6 +202,7 @@ export default function ProjectsPage() {
     void loadProjects();
     void loadLists();
     void loadInstances();
+    void loadGalleryTemplates();
   }, []);
 
   function resetSendConfig() {
@@ -176,6 +212,9 @@ export default function ProjectsPage() {
     setTemplates([]);
     setParamValues([]);
     setTemplatesError(null);
+    setContentMode('');
+    setOutboundTemplateId('');
+    setPlainTextBody('');
   }
 
   function openCreate() {
@@ -204,6 +243,10 @@ export default function ProjectsPage() {
     setParamValues((p.param_mapping ?? []).map(x => x.value ?? ''));
     setTemplates([]);
     setTemplatesError(null);
+    // plain_text content (migration 059): re-populate the operator's content choice.
+    setContentMode(p.content_mode ?? '');
+    setOutboundTemplateId(p.outbound_template_id != null ? String(p.outbound_template_id) : '');
+    setPlainTextBody(p.plain_text_body ?? '');
     // Load the template list so the picker + param labels render (values are already set above).
     if (p.template_kind === 'wapcrm_template' && p.instance_id != null) void fetchTemplatesFor(p.instance_id);
 
@@ -239,6 +282,19 @@ export default function ProjectsPage() {
       if (!instanceId || Number.isNaN(Number(instanceId))) {
         setFormError('Gönderim için bir WhatsApp kanalı seçin.'); return;
       }
+      if (templateKind === 'plain_text') {
+        // Content is chosen in settings: gallery template OR free text (Q decision 2026-06-09).
+        if (contentMode === '') { setFormError('Düz metin için içerik türü seçin: galeri şablonu veya serbest metin.'); return; }
+        if (contentMode === 'gallery_template' && (!outboundTemplateId || Number.isNaN(Number(outboundTemplateId)))) {
+          setFormError('Galeri şablonu için bir şablon seçin.'); return;
+        }
+        if (contentMode === 'free_text') {
+          if (!plainTextBody.trim()) { setFormError('Serbest metin için bir mesaj yazın.'); return; }
+          if (plainTextBody.trim().length > PLAIN_TEXT_BODY_MAX) {
+            setFormError(`Mesaj metni ${PLAIN_TEXT_BODY_MAX} karakteri aşıyor.`); return;
+          }
+        }
+      }
       if (templateKind === 'wapcrm_template') {
         if (!waTemplateId) { setFormError('Bir onaylı şablon seçin.'); return; }
         // Guard: never rebuild param_mapping from an unloaded template (would wipe stored params).
@@ -254,6 +310,8 @@ export default function ProjectsPage() {
     }
 
     // template_kind is the driver: '' => omit the config block (leave unchanged); set => send the full block.
+    // For plain_text the content carriers are mutually exclusive per content_mode (gallery vs free text);
+    // the server (BuildSendConfig) re-validates + enforces the same exclusivity authoritatively.
     const sendConfig = templateKind === ''
       ? {}
       : {
@@ -261,6 +319,11 @@ export default function ProjectsPage() {
           instance_id: Number(instanceId),
           wa_template_id: templateKind === 'wapcrm_template' ? waTemplateId : null,
           param_mapping: templateKind === 'wapcrm_template' ? (paramMapping ?? []) : null,
+          content_mode: templateKind === 'plain_text' ? (contentMode as ProjectContentMode) : null,
+          outbound_template_id:
+            templateKind === 'plain_text' && contentMode === 'gallery_template' ? Number(outboundTemplateId) : null,
+          plain_text_body:
+            templateKind === 'plain_text' && contentMode === 'free_text' ? plainTextBody.trim() : null,
         };
 
     setSaving(true);
@@ -579,8 +642,76 @@ export default function ProjectsPage() {
                   </div>
                 )}
 
+                {/* Plain-text content: gallery template OR free text, chosen in settings */}
                 {templateKind === 'plain_text' && (
-                  <p className="text-xs text-navy-400">Düz metin gönderimi: mesaj metni gönderim adımında girilecek.</p>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-navy-600 mb-1">İçerik</label>
+                      <div className="flex gap-2">
+                        {([
+                          { v: 'gallery_template', label: 'Galeri Şablonu' },
+                          { v: 'free_text', label: 'Serbest Metin' },
+                        ] as { v: ProjectContentMode; label: string }[]).map(opt => (
+                          <button
+                            key={opt.v}
+                            type="button"
+                            onClick={() => setContentMode(opt.v)}
+                            className={cn(
+                              'px-3 py-1.5 rounded-lg text-sm border transition-colors',
+                              contentMode === opt.v
+                                ? 'border-brand-500 bg-brand-50 text-brand-700 font-medium'
+                                : 'border-navy-100 text-navy-600 hover:border-navy-200',
+                            )}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {contentMode === 'gallery_template' && (
+                      <div>
+                        <label className="text-xs font-medium text-navy-600 mb-1 flex items-center gap-1">
+                          <FileText className="w-3.5 h-3.5 text-navy-400" /> Galeri Şablonu
+                        </label>
+                        <select
+                          className="w-full px-3 py-2 bg-white border border-navy-100 rounded-lg text-navy-900 text-sm focus:outline-none focus:border-brand-500 focus:shadow-focus"
+                          value={outboundTemplateId}
+                          onChange={e => setOutboundTemplateId(e.target.value)}
+                        >
+                          <option value="">— Şablon seçilmedi —</option>
+                          {galleryTemplates.map(t => (
+                            <option key={t.id} value={t.id}>{t.name}</option>
+                          ))}
+                        </select>
+                        {galleryError ? (
+                          <p className="text-xs text-red-600 mt-1">{galleryError}</p>
+                        ) : galleryTemplates.length === 0 ? (
+                          <p className="text-xs text-navy-400 mt-1">Etkin şablon yok. “Şablon Galerisi”nden bir şablon oluşturun veya serbest metin kullanın.</p>
+                        ) : null}
+                        {selectedGalleryTemplate && (
+                          <p className="text-xs text-navy-500 whitespace-pre-wrap border border-navy-50 rounded-lg p-2 mt-2 bg-navy-50/30">
+                            {selectedGalleryTemplate.message_template}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {contentMode === 'free_text' && (
+                      <div>
+                        <label className="block text-xs font-medium text-navy-600 mb-1">Mesaj Metni</label>
+                        <textarea
+                          className="w-full px-3 py-2 bg-white border border-navy-100 rounded-lg text-navy-900 text-sm placeholder:text-navy-300 focus:outline-none focus:border-brand-500 focus:shadow-focus resize-none"
+                          rows={4}
+                          maxLength={PLAIN_TEXT_BODY_MAX}
+                          placeholder="Gönderilecek düz metin mesajı"
+                          value={plainTextBody}
+                          onChange={e => setPlainTextBody(e.target.value)}
+                        />
+                        <p className="text-[11px] text-navy-400 mt-0.5">{plainTextBody.length}/{PLAIN_TEXT_BODY_MAX}</p>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 

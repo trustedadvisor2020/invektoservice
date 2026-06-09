@@ -400,6 +400,13 @@ CREATE TABLE IF NOT EXISTS projects (
     wa_template_id          VARCHAR(128),
     template_language       VARCHAR(8),
     param_mapping           JSONB,
+    -- plain_text content config (migration 059): the content a plain_text run sends,
+    -- chosen IN project settings. content_mode applies ONLY to template_kind='plain_text':
+    --   gallery_template -> outbound_template_id (a Şablon Galerisi row), plain_text_body NULL
+    --   free_text        -> plain_text_body (dispatched via the inline-text bulk path), outbound_template_id NULL
+    content_mode            VARCHAR(16),       -- 'gallery_template' | 'free_text' (NULL until configured)
+    outbound_template_id    INTEGER REFERENCES outbound_templates(id),
+    plain_text_body         TEXT,
     -- denormalized per-project roll-up counters (recomputed after each run); INERT 0
     run_count               INTEGER NOT NULL DEFAULT 0,
     total_targets           INTEGER NOT NULL DEFAULT 0,
@@ -418,6 +425,17 @@ CREATE TABLE IF NOT EXISTS projects (
         'draft','running','paused','completed','cancelled','archived')),
     CONSTRAINT chk_project_template_kind CHECK (
         template_kind IS NULL OR template_kind IN ('plain_text','wapcrm_template')),
+    -- migration 059: content_mode value domain + content-internal consistency
+    CONSTRAINT chk_project_content_mode CHECK (
+        content_mode IS NULL OR content_mode IN ('gallery_template','free_text')),
+    CONSTRAINT chk_project_content_consistency CHECK (
+        CASE
+            WHEN content_mode = 'gallery_template'
+                THEN outbound_template_id IS NOT NULL AND plain_text_body IS NULL
+            WHEN content_mode = 'free_text'
+                THEN plain_text_body IS NOT NULL AND outbound_template_id IS NULL
+            ELSE outbound_template_id IS NULL AND plain_text_body IS NULL
+        END),
     CONSTRAINT chk_project_counters_nonneg CHECK (
         run_count >= 0 AND total_targets >= 0 AND sent_count >= 0
         AND delivered_count >= 0 AND read_count >= 0 AND failed_count >= 0

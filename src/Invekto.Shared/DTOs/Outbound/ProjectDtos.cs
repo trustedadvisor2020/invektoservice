@@ -41,6 +41,19 @@ public static class ProjectTemplateKinds
     public static bool IsValid(string? s) => s is PlainText or WapcrmTemplate;
 }
 
+/// <summary>
+/// plain_text content source (mirrors chk_project_content_mode / projects.content_mode, migration 059).
+/// Applies ONLY when <see cref="ProjectTemplateKinds.PlainText"/>: the operator picks WHAT a plain_text
+/// run sends in the project settings — either a Şablon Galerisi template, or free text typed in-place.
+/// </summary>
+public static class ProjectContentModes
+{
+    public const string GalleryTemplate = "gallery_template"; // outbound_template_id -> a saved Şablon Galerisi template
+    public const string FreeText = "free_text";               // plain_text_body -> free text, dispatched via the inline-text bulk path
+
+    public static bool IsValid(string? s) => s is GalleryTemplate or FreeText;
+}
+
 /// <summary>GET /api/v1/projects item (list view).</summary>
 public sealed class ProjectSummary
 {
@@ -81,6 +94,16 @@ public sealed class ProjectSummary
     [JsonPropertyName("template_language")] public string? TemplateLanguage { get; set; }
     /// <summary>Operator-filled template parameters (requiredInputs) as stored JSONB; null for plain_text / zero-param templates.</summary>
     [JsonPropertyName("param_mapping")] public JsonElement? ParamMapping { get; set; }
+
+    // ---- plain_text content config (migration 059). Applies only to TemplateKind == plain_text.
+    // Surfaced so the edit modal can re-populate the operator's content choice (template vs free text).
+
+    /// <summary>plain_text content source: 'gallery_template' | 'free_text' (see <see cref="ProjectContentModes"/>). Null until a plain_text content is configured.</summary>
+    [JsonPropertyName("content_mode")] public string? ContentMode { get; set; }
+    /// <summary>Selected Şablon Galerisi (outbound_templates) id when ContentMode == gallery_template; null otherwise.</summary>
+    [JsonPropertyName("outbound_template_id")] public int? OutboundTemplateId { get; set; }
+    /// <summary>Free text the run sends (via the inline-text bulk path) when ContentMode == free_text; null otherwise.</summary>
+    [JsonPropertyName("plain_text_body")] public string? PlainTextBody { get; set; }
 }
 
 /// <summary>One targeted data_list inside a project (GET detail view).</summary>
@@ -116,6 +139,12 @@ public sealed class CreateProjectRequest
     [JsonPropertyName("wa_template_id")] public string? WaTemplateId { get; set; }
     [JsonPropertyName("template_language")] public string? TemplateLanguage { get; set; }
     [JsonPropertyName("param_mapping")] public JsonElement? ParamMapping { get; set; }
+
+    // ---- plain_text content (migration 059). Validated only when TemplateKind == plain_text;
+    // content_mode drives which of outbound_template_id / plain_text_body is required.
+    [JsonPropertyName("content_mode")] public string? ContentMode { get; set; }
+    [JsonPropertyName("outbound_template_id")] public int? OutboundTemplateId { get; set; }
+    [JsonPropertyName("plain_text_body")] public string? PlainTextBody { get; set; }
 }
 
 /// <summary>
@@ -138,4 +167,11 @@ public sealed class UpdateProjectRequest
     [JsonPropertyName("wa_template_id")] public string? WaTemplateId { get; set; }
     [JsonPropertyName("template_language")] public string? TemplateLanguage { get; set; }
     [JsonPropertyName("param_mapping")] public JsonElement? ParamMapping { get; set; }
+
+    // ---- plain_text content (migration 059). Part of the send-config block: when template_kind is
+    // non-null the whole block (incl. content) is validated + replaced authoritatively; when null it
+    // is left untouched. content_mode drives which content carrier is required for plain_text.
+    [JsonPropertyName("content_mode")] public string? ContentMode { get; set; }
+    [JsonPropertyName("outbound_template_id")] public int? OutboundTemplateId { get; set; }
+    [JsonPropertyName("plain_text_body")] public string? PlainTextBody { get; set; }
 }

@@ -1,0 +1,80 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": "PKT-14",
+  "slug": "20260609-projeler-content-config",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-09T17:10:00Z",
+  "updated_at": "2026-06-09T17:40:00Z",
+  "plan": {
+    "summary": "FEAT-PROJELER PKT-14 send-execution slice SS-B: persist a project's plain_text CONTENT choice in PROJECT SETTINGS (gallery template OR free text). Migration 059 + Shared DTOs + Outbound repo/service validation + Dashboard settings content picker. Prod-inert (no send dispatch; run consuming these columns lands in SS-A/SS-C).",
+    "q_intent": "Send-EXECUTION slice: proje config'i gerçek cxapi gönderimine bağla. Q (2026-06-09): içerik proje ayarlarında seçilmeli (şablon VEYA serbest metin); inline send (projede metin kolonu).",
+    "interview_notes": "Q1=plain_text spine first. Q2=bulk_send_job(project_id) preview→confirm reuse. Q3(custom)=content chosen in project settings, not at send time. Q3-followup=both (gallery template OR free text). Free-text mechanism=project column + inline send (bulk_send_jobs.template_id nullable in SS-A). SS-B = the content-config persistence half.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "A plain_text project persists EITHER a gallery template (content_mode=gallery_template + outbound_template_id) OR free text (content_mode=free_text + plain_text_body); exactly one carrier, enforced by DB CHECK + service normalization.", "verified": true, "verification_note": "Codex CoVe Q1 PASS: chk_project_content_consistency + BuildSendConfig normalization." },
+      { "id": "AC2", "criterion": "The chosen gallery template is authorized server-side (tenant-owned + is_active) on both create and update before the write; a direct API caller cannot persist a foreign/inactive template id.", "verified": true, "verification_note": "Codex CoVe Q2 PASS: IsOutboundTemplateOwnedActiveAsync invoked via ValidateSendConfigOwnershipAsync before create/update." },
+      { "id": "AC3", "criterion": "Switching template_kind clears the non-applicable carriers (wapcrm_template => content carriers NULL; plain_text => wa fields NULL) so the DB consistency CHECK can never be violated by an UPDATE.", "verified": true, "verification_note": "Codex CoVe Q3 PASS." },
+      { "id": "AC4", "criterion": "The slice is prod-inert and P0-3 gate-preserving: only persists config, no send dispatch, no allowlist change; existing pre-059 rows validate clean.", "verified": true, "verification_note": "Codex CoVe Q4 PASS; existing rows content_mode NULL => ELSE branch (both carriers NULL)." },
+      { "id": "AC5", "criterion": "Dashboard settings modal lets the operator pick gallery template OR free text for plain_text, re-populates on edit, and mirrors server validation.", "verified": true, "verification_note": "Codex CQ10 PASS; SPA build PASS (ProjectsPage-3N85xX2G.js)." }
+    ]
+  },
+  "allowed_files": [
+    "arch/db/migrations/059-projeler-content-config.sql",
+    "arch/db/outbound.sql",
+    "src/Invekto.Shared/DTOs/Outbound/ProjectDtos.cs",
+    "src/Invekto.Outbound/Data/ProjectsRepository.cs",
+    "src/Invekto.Outbound/Services/ProjectsService.cs",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx"
+  ],
+  "files_changed": [
+    { "path": "arch/db/migrations/059-projeler-content-config.sql", "is_new": true, "change": "projects +content_mode/+outbound_template_id/+plain_text_body + 2 CHECK + FK + INV-SEED-059" },
+    { "path": "arch/db/outbound.sql", "is_new": false, "change": "canonical projects table sync (3 cols + 2 CHECK)" },
+    { "path": "src/Invekto.Shared/DTOs/Outbound/ProjectDtos.cs", "is_new": false, "change": "ProjectContentModes constants + 3 additive nullable fields on Summary/Create/Update" },
+    { "path": "src/Invekto.Outbound/Data/ProjectsRepository.cs", "is_new": false, "change": "ProjectSendConfigInput 3 fields + typed params + INSERT/UPDATE/SELECT/MapSummary + IsOutboundTemplateOwnedActiveAsync" },
+    { "path": "src/Invekto.Outbound/Services/ProjectsService.cs", "is_new": false, "change": "BuildSendConfig content validation/normalization + ValidateSendConfigOwnershipAsync" },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "is_new": false, "change": "ProjectContentMode type + 3 fields on ProjectSummary/Create/Update" },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx", "is_new": false, "change": "settings content picker (gallery/free-text toggle, dropdown/textarea, validation, edit re-populate)" }
+  ],
+  "git_diff": {
+    "full_path": "arch/plans/diffs/20260609-projeler-content-config.diff",
+    "stats": { "insertions": 230, "deletions": 19, "files_count": 7 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln (full solution, Shared touched) + npm run build (Dashboard SPA)",
+    "services": ["Invekto.Shared", "Invekto.Outbound", "Invekto.Backend", "Dashboard SPA"]
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "Does the DB CHECK + BuildSendConfig normalization guarantee exactly one content carrier per content_mode and do pre-059 rows validate clean?", "category": "Data", "codex_result": "PASS" },
+    { "id": "Q2", "question": "Is the gallery template authorized server-side (tenant-owned + active) on create and update before the write?", "category": "Auth", "codex_result": "PASS" },
+    { "id": "Q3", "question": "Does switching template_kind always clear the non-applicable carriers so the consistency CHECK can never be violated?", "category": "Lifecycle", "codex_result": "PASS" },
+    { "id": "Q4", "question": "Is the slice prod-inert and P0-3 gate-preserving (persist-only, no dispatch, no allowlist change)?", "category": "Process/Policy", "codex_result": "PASS" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["ui-mocks/*", "chat-design-expert-v4.html", "BroadcastOrchestrator/MessageSenderService send path (SS-A/SS-C)", "CxapiSend allowlist / P0-3 gate"],
+    "non_goals": ["send dispatch / run execution", "inline-text bulk path (SS-A)", "project run + counters (SS-C)", "HSM/template send (PR-4)"],
+    "intentional_exclusions": ["No outbound_templates schema change (Q chose project-column inline send for free text)", "No bulk_send_jobs change in this slice (SS-A)"]
+  },
+  "error_handling": {
+    "try_catch_locations": ["ProjectsService.CreateAsync/UpdateAsync NpgsqlException -> INV-OB-071", "ProjectsPage.loadGalleryTemplates -> galleryError surfaced"],
+    "user_facing_errors": ["INV-OB-073 content_mode/gallery/free-text/oversize validation", "INV-OB-073 gallery template ownership/active"],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Every validation path returns a typed INV-OB-073 with a user-facing message; the only catch (gallery list load) surfaces galleryError, never silent."
+  },
+  "aha_moments": [
+    { "category": "UX", "user_pain": "Operatör gönderim anında ne göndereceğini hatırlamak/yazmak zorunda kalıyordu.", "suggestion": "İçerik proje ayarında sabitlenir; 'Gönder' tek tık olur.", "aha_moment": "Operatör projeyi bir kez kurar, sonra her gönderimde içeriği yeniden düşünmez." },
+    { "category": "RELIABILITY", "user_pain": "Tutarsız içerik config (mode var ama içerik yok) sessizce kaydedilebilir.", "suggestion": "DB CHECK + server normalization ile mode<->carrier tutarlılığı zorunlu.", "aha_moment": "Geçersiz bir içerik config'i hiçbir zaman DB'ye yazılamaz." },
+    { "category": "SUPPORT", "user_pain": "Yabancı/pasif şablon id'si API'den enjekte edilebilir.", "suggestion": "Galeri şablonu sunucu tarafında tenant-owned + is_active doğrulanır.", "aha_moment": "Destek, cross-tenant içerik sızıntısı vakalarıyla hiç uğraşmaz." },
+    { "category": "UX", "user_pain": "Düz metin yazmak için ayrı bir şablon oluşturmak zorunda kalmak.", "suggestion": "Serbest metin doğrudan projede yazılır (galeri zorunlu değil).", "aha_moment": "Hızlı bir kampanya için galeri adımı tamamen atlanır." },
+    { "category": "SPEED", "user_pain": "Şablon galerisi her kanal değişiminde yeniden yükleniyordu.", "suggestion": "Galeri tenant-scoped olduğu için sayfa açılışında bir kez yüklenir.", "aha_moment": "İçerik seçici anında açılır, bekleme yok." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "iteration": 0,
+    "updated_by": "DevAgent",
+    "blocking_issues": []
+  }
+}

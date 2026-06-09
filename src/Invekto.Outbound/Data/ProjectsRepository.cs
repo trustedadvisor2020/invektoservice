@@ -50,6 +50,12 @@ public class ProjectsRepository
         public string? TemplateLanguage { get; init; }
         /// <summary>Serialized JSONB text (object/array) or null. null => stored param_mapping is SQL NULL.</summary>
         public string? ParamMappingJson { get; init; }
+        // plain_text content (migration 059). The service normalizes these so exactly one carrier is set
+        // for the chosen content_mode (gallery_template => OutboundTemplateId; free_text => PlainTextBody);
+        // the repo writes them verbatim. content_mode NULL => both carriers NULL.
+        public string? ContentMode { get; init; }
+        public int? OutboundTemplateId { get; init; }
+        public string? PlainTextBody { get; init; }
     }
 
     /// <summary>Outcome of a Create/Update write (exactly one of the failure flags, else success+Detail).</summary>
@@ -74,7 +80,8 @@ public class ProjectsRepository
                    p.run_count, p.total_targets, p.sent_count, p.delivered_count,
                    p.read_count, p.failed_count, p.ambiguous_count,
                    p.created_at, p.updated_at, p.started_at, p.completed_at,
-                   p.instance_id, p.template_kind, p.wa_template_id, p.template_language, p.param_mapping
+                   p.instance_id, p.template_kind, p.wa_template_id, p.template_language, p.param_mapping,
+                   p.content_mode, p.outbound_template_id, p.plain_text_body
             FROM projects p
             WHERE p.tenant_id = @tid AND p.archived_at IS NULL
             ORDER BY p.created_at DESC";
@@ -115,7 +122,8 @@ public class ProjectsRepository
                    p.run_count, p.total_targets, p.sent_count, p.delivered_count,
                    p.read_count, p.failed_count, p.ambiguous_count,
                    p.created_at, p.updated_at, p.started_at, p.completed_at,
-                   p.instance_id, p.template_kind, p.wa_template_id, p.template_language, p.param_mapping
+                   p.instance_id, p.template_kind, p.wa_template_id, p.template_language, p.param_mapping,
+                   p.content_mode, p.outbound_template_id, p.plain_text_body
             FROM projects p
             WHERE p.tenant_id = @tid AND p.id = @pid AND p.archived_at IS NULL", conn, tx))
         {
@@ -179,9 +187,11 @@ public class ProjectsRepository
         long projectId;
         await using (var ins = new NpgsqlCommand(@"
             INSERT INTO projects (tenant_id, name, description, status, created_by,
-                                  instance_id, template_kind, wa_template_id, template_language, param_mapping)
+                                  instance_id, template_kind, wa_template_id, template_language, param_mapping,
+                                  content_mode, outbound_template_id, plain_text_body)
             VALUES (@tid, @name, @desc, 'draft', @by,
-                    @inst, @kind, @tmpl, @lang, @pm)
+                    @inst, @kind, @tmpl, @lang, @pm,
+                    @cmode, @otid, @body)
             RETURNING id", conn, tx))
         {
             ins.Parameters.AddWithValue("tid", tenantId);
@@ -249,6 +259,9 @@ public class ProjectsRepository
                 wa_template_id    = CASE WHEN @setcfg THEN @tmpl ELSE wa_template_id END,
                 template_language = CASE WHEN @setcfg THEN @lang ELSE template_language END,
                 param_mapping     = CASE WHEN @setcfg THEN @pm   ELSE param_mapping END,
+                content_mode         = CASE WHEN @setcfg THEN @cmode ELSE content_mode END,
+                outbound_template_id = CASE WHEN @setcfg THEN @otid  ELSE outbound_template_id END,
+                plain_text_body      = CASE WHEN @setcfg THEN @body  ELSE plain_text_body END,
                 updated_at = NOW()
             WHERE tenant_id = @tid AND id = @pid AND archived_at IS NULL", conn, tx))
         {
@@ -346,6 +359,27 @@ public class ProjectsRepository
         return await cmd.ExecuteScalarAsync(ct) is true;
     }
 
+    /// <summary>
+    /// Authoritative server-side guard for a project's gallery-template content (migration 059): true ONLY
+    /// if <paramref name="templateId"/> is an ACTIVE Şablon Galerisi template owned by THIS tenant. Mirrors
+    /// the bulk-send template gate (BroadcastOrchestrator.GetTemplateByIdAsync only accepts is_active rows)
+    /// so a project can never persist a foreign-tenant or deactivated template id as its content (the SPA
+    /// filters the picker client-side; a direct API caller could otherwise submit any id). outbound_templates
+    /// is the same shared Postgres Outbound already owns — not a cross-service call.
+    /// </summary>
+    public virtual async Task<bool> IsOutboundTemplateOwnedActiveAsync(int tenantId, int templateId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT EXISTS(
+                SELECT 1 FROM outbound_templates
+                WHERE tenant_id = @tid AND id = @oid AND is_active = TRUE)";
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("oid", templateId);
+        return await cmd.ExecuteScalarAsync(ct) is true;
+    }
+
     // ------------------------------------------------------------------
     // Target helpers (set-based)
     // ------------------------------------------------------------------
@@ -407,6 +441,9 @@ public class ProjectsRepository
         cmd.Parameters.Add(new NpgsqlParameter("tmpl", NpgsqlDbType.Text) { Value = (object?)config?.WaTemplateId ?? DBNull.Value });
         cmd.Parameters.Add(new NpgsqlParameter("lang", NpgsqlDbType.Text) { Value = (object?)config?.TemplateLanguage ?? DBNull.Value });
         cmd.Parameters.Add(new NpgsqlParameter("pm", NpgsqlDbType.Jsonb) { Value = (object?)config?.ParamMappingJson ?? DBNull.Value });
+        cmd.Parameters.Add(new NpgsqlParameter("cmode", NpgsqlDbType.Text) { Value = (object?)config?.ContentMode ?? DBNull.Value });
+        cmd.Parameters.Add(new NpgsqlParameter("otid", NpgsqlDbType.Integer) { Value = (object?)config?.OutboundTemplateId ?? DBNull.Value });
+        cmd.Parameters.Add(new NpgsqlParameter("body", NpgsqlDbType.Text) { Value = (object?)config?.PlainTextBody ?? DBNull.Value });
     }
 
     private static ProjectSummary MapSummary(NpgsqlDataReader reader) => new()
@@ -433,6 +470,9 @@ public class ProjectsRepository
         TemplateLanguage = reader.IsDBNull(19) ? null : reader.GetString(19),
         // param_mapping is jsonb (Npgsql returns it as text); re-parse to a JsonElement so the API
         // re-emits it as a JSON object, not a JSON-encoded string. Safe to deserialize as JsonElement.
-        ParamMapping = reader.IsDBNull(20) ? null : JsonSerializer.Deserialize<JsonElement>(reader.GetString(20))
+        ParamMapping = reader.IsDBNull(20) ? null : JsonSerializer.Deserialize<JsonElement>(reader.GetString(20)),
+        ContentMode = reader.IsDBNull(21) ? null : reader.GetString(21),
+        OutboundTemplateId = reader.IsDBNull(22) ? null : reader.GetInt32(22),
+        PlainTextBody = reader.IsDBNull(23) ? null : reader.GetString(23)
     };
 }

@@ -83,12 +83,13 @@ public sealed class ProjectsService
         if (targetErr != null) return (null, targetErr, targetMsg);
 
         var (sendConfig, _, cfgErr, cfgMsg) = BuildSendConfig(
-            request.TemplateKind, request.InstanceId, request.WaTemplateId, request.TemplateLanguage, request.ParamMapping);
+            request.TemplateKind, request.InstanceId, request.WaTemplateId, request.TemplateLanguage, request.ParamMapping,
+            request.ContentMode, request.OutboundTemplateId, request.PlainTextBody);
         if (cfgErr != null) return (null, cfgErr, cfgMsg);
 
         try
         {
-            var (chErr, chMsg) = await ValidateChannelOwnershipAsync(tenantId, sendConfig, ct);
+            var (chErr, chMsg) = await ValidateSendConfigOwnershipAsync(tenantId, sendConfig, ct);
             if (chErr != null) return (null, chErr, chMsg);
 
             var result = await _repo.CreateAsync(tenantId, createdBy, name, desc, targetIds, sendConfig, ct);
@@ -140,7 +141,8 @@ public sealed class ProjectsService
         }
 
         var (sendConfig, setConfig, cfgErr, cfgMsg) = BuildSendConfig(
-            request.TemplateKind, request.InstanceId, request.WaTemplateId, request.TemplateLanguage, request.ParamMapping);
+            request.TemplateKind, request.InstanceId, request.WaTemplateId, request.TemplateLanguage, request.ParamMapping,
+            request.ContentMode, request.OutboundTemplateId, request.PlainTextBody);
         if (cfgErr != null) return (null, cfgErr, cfgMsg);
 
         if (name == null && desc == null && targetIds == null && !setConfig)
@@ -148,7 +150,7 @@ public sealed class ProjectsService
 
         try
         {
-            var (chErr, chMsg) = await ValidateChannelOwnershipAsync(tenantId, sendConfig, ct);
+            var (chErr, chMsg) = await ValidateSendConfigOwnershipAsync(tenantId, sendConfig, ct);
             if (chErr != null) return (null, chErr, chMsg);
 
             var result = await _repo.UpdateAsync(tenantId, projectId, name, desc, targetIds, sendConfig, setConfig, ct);
@@ -217,18 +219,24 @@ public sealed class ProjectsService
     private const int WaTemplateIdMaxLength = 128;
     private const int TemplateLanguageMaxLength = 8;
     private const int ParamMappingMaxBytes = 16 * 1024; // defensive cap on stored JSONB size
+    // plain_text_body is TEXT (migration 059); cap defensively at the WhatsApp text body limit (~4096).
+    private const int PlainTextBodyMaxLength = 4096;
 
     /// <summary>
-    /// Validate + normalize the optional send-config block (channel + template). <c>template_kind</c> is the
-    /// DRIVER: null => leave config untouched (setConfig=false). When set, the WHOLE block is validated and
-    /// returned for an authoritative write (setConfig=true): both kinds require a channel (instance_id&gt;0);
-    /// 'wapcrm_template' requires a non-empty wa_template_id (+ optional language/param_mapping); 'plain_text'
-    /// CLEARS the template fields (text is supplied at send time, a later slice). Any inconsistency returns a
-    /// typed INV-OB-073 with a user-facing message — never a silent default. param_mapping must be a JSON
-    /// object/array within the size cap. Send EXECUTION that consumes this config is a later slice.
+    /// Validate + normalize the optional send-config block (channel + content/template). <c>template_kind</c>
+    /// is the DRIVER: null => leave config untouched (setConfig=false). When set, the WHOLE block is validated
+    /// and returned for an authoritative write (setConfig=true): both kinds require a channel (instance_id&gt;0).
+    /// 'plain_text' additionally requires a CONTENT choice picked in settings (Q decision 2026-06-09):
+    /// content_mode='gallery_template' => a non-zero outbound_template_id (a Şablon Galerisi row), OR
+    /// content_mode='free_text' => a non-empty plain_text_body (≤4096) — exactly one carrier; the other and
+    /// all wa_template fields are CLEARED. 'wapcrm_template' (HSM, PR-4) requires a non-empty wa_template_id
+    /// (+ optional language/param_mapping) and CLEARS the plain_text content fields. Any inconsistency returns
+    /// a typed INV-OB-073 with a user-facing message — never a silent default. Ownership of the chosen channel
+    /// AND gallery template is checked async in <see cref="ValidateSendConfigOwnershipAsync"/>.
     /// </summary>
     private (ProjectsRepository.ProjectSendConfigInput? config, bool setConfig, string? errorCode, string? message)
-        BuildSendConfig(string? kind, int? instanceId, string? waTemplateId, string? templateLanguage, JsonElement? paramMapping)
+        BuildSendConfig(string? kind, int? instanceId, string? waTemplateId, string? templateLanguage, JsonElement? paramMapping,
+            string? contentMode, int? outboundTemplateId, string? plainTextBody)
     {
         if (kind == null)
             return (null, false, null, null); // config block omitted -> leave existing config untouched
@@ -241,14 +249,46 @@ public sealed class ProjectsService
 
         if (kind == ProjectTemplateKinds.PlainText)
         {
-            // plain_text: channel only; template fields are cleared (message text is entered at send time).
+            // plain_text: channel + a content choice (gallery template OR free text), made in settings.
+            // wa_template fields are cleared (those belong to the HSM kind).
+            var cmode = contentMode?.Trim();
+            if (!ProjectContentModes.IsValid(cmode))
+                return (null, false, ErrorCodes.ProjectInvalidSendConfig,
+                    "Düz metin için içerik türü seçin: galeri şablonu veya serbest metin.");
+
+            if (cmode == ProjectContentModes.GalleryTemplate)
+            {
+                if (outboundTemplateId is not > 0)
+                    return (null, false, ErrorCodes.ProjectInvalidSendConfig, "Galeri şablonu için bir şablon seçin.");
+                return (new ProjectsRepository.ProjectSendConfigInput
+                {
+                    InstanceId = instanceId,
+                    TemplateKind = ProjectTemplateKinds.PlainText,
+                    WaTemplateId = null,
+                    TemplateLanguage = null,
+                    ParamMappingJson = null,
+                    ContentMode = ProjectContentModes.GalleryTemplate,
+                    OutboundTemplateId = outboundTemplateId,
+                    PlainTextBody = null
+                }, true, null, null);
+            }
+
+            // free_text
+            var body = plainTextBody?.Trim();
+            if (string.IsNullOrEmpty(body))
+                return (null, false, ErrorCodes.ProjectInvalidSendConfig, "Serbest metin için bir mesaj yazın.");
+            if (body.Length > PlainTextBodyMaxLength)
+                return (null, false, ErrorCodes.ProjectInvalidSendConfig, $"Mesaj metni {PlainTextBodyMaxLength} karakteri aşıyor.");
             return (new ProjectsRepository.ProjectSendConfigInput
             {
                 InstanceId = instanceId,
                 TemplateKind = ProjectTemplateKinds.PlainText,
                 WaTemplateId = null,
                 TemplateLanguage = null,
-                ParamMappingJson = null
+                ParamMappingJson = null,
+                ContentMode = ProjectContentModes.FreeText,
+                OutboundTemplateId = null,
+                PlainTextBody = body
             }, true, null, null);
         }
 
@@ -280,23 +320,36 @@ public sealed class ProjectsService
             TemplateKind = ProjectTemplateKinds.WapcrmTemplate,
             WaTemplateId = tmpl,
             TemplateLanguage = lang,
-            ParamMappingJson = pmJson
+            ParamMappingJson = pmJson,
+            // HSM kind has no plain_text content: clear the content carriers (the consistency CHECK requires
+            // content_mode NULL => both carriers NULL).
+            ContentMode = null,
+            OutboundTemplateId = null,
+            PlainTextBody = null
         }, true, null, null);
     }
 
     /// <summary>
-    /// Server-side authorization of the chosen send channel: the instance_id MUST be a Cloud API line
-    /// (instance_type = 1) owned by this tenant. The SPA filters channels client-side, but a direct API
-    /// caller could submit any positive id, so this is enforced authoritatively here (Codex CQ5/CQ9 —
-    /// closes the cross-tenant / non-Cloud channel persistence gap). No channel set => nothing to authorize.
+    /// Server-side authorization of the chosen send config: the channel instance_id MUST be a Cloud API line
+    /// (instance_type = 1) owned by this tenant, AND — when content_mode='gallery_template' — the
+    /// outbound_template_id MUST be an active template owned by this tenant. The SPA filters both client-side,
+    /// but a direct API caller could submit any positive id, so this is enforced authoritatively here (Codex
+    /// CQ5/CQ9 — closes the cross-tenant / non-Cloud channel + foreign-template persistence gap). No config
+    /// set => nothing to authorize.
     /// </summary>
-    private async Task<(string? errorCode, string? message)> ValidateChannelOwnershipAsync(
+    private async Task<(string? errorCode, string? message)> ValidateSendConfigOwnershipAsync(
         int tenantId, ProjectsRepository.ProjectSendConfigInput? config, CancellationToken ct)
     {
-        if (config?.InstanceId is not int inst) return (null, null);
-        var ok = await _repo.IsCloudApiInstanceOwnedAsync(tenantId, inst, ct);
-        return ok
-            ? (null, null)
-            : (ErrorCodes.ProjectInvalidSendConfig, "Seçilen WhatsApp kanalı bu hesaba ait değil veya bir Cloud API hattı değil.");
+        if (config?.InstanceId is int inst)
+        {
+            if (!await _repo.IsCloudApiInstanceOwnedAsync(tenantId, inst, ct))
+                return (ErrorCodes.ProjectInvalidSendConfig, "Seçilen WhatsApp kanalı bu hesaba ait değil veya bir Cloud API hattı değil.");
+        }
+        if (config?.OutboundTemplateId is int tid)
+        {
+            if (!await _repo.IsOutboundTemplateOwnedActiveAsync(tenantId, tid, ct))
+                return (ErrorCodes.ProjectInvalidSendConfig, "Seçilen galeri şablonu bu hesaba ait değil veya artık etkin değil.");
+        }
+        return (null, null);
     }
 }

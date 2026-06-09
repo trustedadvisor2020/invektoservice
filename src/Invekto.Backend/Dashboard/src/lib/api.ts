@@ -2440,6 +2440,10 @@ export type ProjectStatus = 'draft' | 'running' | 'paused' | 'completed' | 'canc
 // Project send message kind (mirrors ProjectTemplateKinds in ProjectDtos.cs).
 export type ProjectTemplateKind = 'plain_text' | 'wapcrm_template';
 
+// plain_text content source (mirrors ProjectContentModes in ProjectDtos.cs). Applies only to
+// template_kind === 'plain_text': the content is chosen in project settings (Q decision 2026-06-09).
+export type ProjectContentMode = 'gallery_template' | 'free_text';
+
 // One operator-filled template parameter, stored in projects.param_mapping (JSONB array).
 // Mirrors a cxapi template requiredInput plus the entered value; the send slice consumes it.
 export interface ProjectTemplateParam {
@@ -2473,6 +2477,10 @@ export interface ProjectSummary {
   wa_template_id: string | null;
   template_language: string | null;
   param_mapping: ProjectTemplateParam[] | null;
+  // plain_text content config (migration 059); re-populated in the edit modal.
+  content_mode: ProjectContentMode | null;
+  outbound_template_id: number | null;
+  plain_text_body: string | null;
 }
 
 export interface ProjectTargetDto {
@@ -2499,6 +2507,9 @@ export interface CreateProjectRequest {
   wa_template_id?: string | null;
   template_language?: string | null;
   param_mapping?: ProjectTemplateParam[] | null;
+  content_mode?: ProjectContentMode | null;
+  outbound_template_id?: number | null;
+  plain_text_body?: string | null;
 }
 
 export interface UpdateProjectRequest {
@@ -2510,6 +2521,9 @@ export interface UpdateProjectRequest {
   wa_template_id?: string | null;
   template_language?: string | null;
   param_mapping?: ProjectTemplateParam[] | null;
+  content_mode?: ProjectContentMode | null;
+  outbound_template_id?: number | null;
+  plain_text_body?: string | null;
 }
 
 // cxapi approved (HSM) template, as returned by GET /api/v1/settings/wa-templates (camelCase wire shape).
