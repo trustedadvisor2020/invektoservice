@@ -5,9 +5,9 @@
   "spec_ref": null,
   "slug": "20260609-import-phone-scientific-fix",
   "risk": "MEDIUM",
-  "status": "REVIEW",
+  "status": "DONE",
   "created_at": "2026-06-09T23:45:00Z",
-  "updated_at": "2026-06-10T00:35:00Z",
+  "updated_at": "2026-06-10T00:45:00Z",
   "plan": {
     "summary": "Veri İçe Aktarma sihirbazında Excel'de SAYI olarak girilen telefon hücreleri SheetJS raw:false ile Excel'in görüntü metnini ('9.05332E+11') döndürüyor; bu string hem önizlemede bozuk görünüyor hem import payload'una giriyor ve PhoneNormalizer rakam-ayıklamasından '+90533211' (8 hane, Guard 8..15 GEÇER) diye yanlış-ama-geçerli bir numara üretip SESSİZCE sendable kaydedebiliyordu. Fix: (1) parse anında bilimsel gösterime düşen sayısal hücrelerin görüntü metnini ham değerden (cell.v tam hassasiyetle dosyada duruyor) yeniden üret; (2) PhoneNormalizer'a scientific-notation reject ekle (import + bulk-send CSV yolunu korur, defense-in-depth); (3) client preview normalizer'a aynı reject'i aynala (önizleme sayıları sunucuyla tutarlı kalsın); (4) geçersiz örnekler scientific pattern içeriyorsa operatöre 'kolonu Metin yapın' ipucu satırı göster.",
     "q_intent": "Q: 'veri içe aktarma sihirbazında telefon bilgisi neden bu şekilde gösteriyor. full açık göster.' (ekran görüntüsü: template_send_test.xlsx, telefon kolonu '9.05332E+11')",
@@ -103,5 +103,32 @@
     { "category": "RELIABILITY", "user_pain": "Bulk-send CSV alıcı yolu da aynı normalizer'ı kullanıyor; oradan da bozuk numara sızabilirdi.", "suggestion": "Reject'i normalizer'ın kendisine koy (çağıran her yol otomatik korunur).", "aha_moment": "Tek satırlık merkez fix ile import VE bulk-send aynı anda korunur." },
     { "category": "SPEED", "user_pain": "Yanlış import fark edilince listeyi silip yeniden yükleme turu dönüyordu.", "suggestion": "Bozulmayı kayıt yazılmadan ÖNCE (parse + normalize katmanında) yakala.", "aha_moment": "Hatalı veri DB'ye hiç girmediği için temizlik turu diye bir şey kalmaz." }
   ],
-  "verdict": { "status": null, "iteration": 0 }
+  "verdict": {
+    "status": "PASS",
+    "source": null,
+    "received_at": "2026-06-10T00:45:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-06-10T00:45:00Z",
+    "raw_text": "MCP codex_review (gpt-5.5-2026-04-23), iteration 0: OVERALL_VERDICT PASS. CQ1-CQ12 ALL PASS. CoVe Q1-Q4 ALL PASS. BLOCKING_ISSUES: NONE. Summary: diff consistently prevents Excel scientific-notation phone artifacts from being silently accepted — repairs safe XLS/XLSX numeric display text, rejects unrecoverable scientific strings in both preview and server normalization; no tenant/DB/isolation/contract regressions. Token usage: 11516.",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "Amber operator hint (DataImportPage 934-940) actionable; PhoneNormalizer reject feeds existing invalid-phone flow." },
+      "CQ2": { "result": "PASS", "evidence": "Scientific detection BEFORE digit-strip on both layers; invalid rows surfaced via existing count/samples path." },
+      "CQ3": { "result": "PASS", "evidence": "Changed files match plan scope; wwwroot bundle declared generated artifact." },
+      "CQ4": { "result": "PASS", "evidence": "TS/C# regex mirror is cross-language by necessity, documented as mechanically identical." },
+      "CQ5": { "result": "PASS", "evidence": "Existing React state + alert patterns; Normalize(string?) contract preserved; compiled static Regex." },
+      "CQ6": { "result": "PASS", "evidence": "Single O(cells) pass pre-parse; compiled regex; no N+1/resource leaks." },
+      "CQ7": { "result": "PASS", "evidence": "No TODO/HACK/FIXME in added lines." },
+      "CQ8": { "result": "PASS", "evidence": "No breaking changes; only previously-corrupting inputs now reject." }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "Repair only non-CSV, t==='n', finite v, scientific w, positive integer, ^\\d{8,15}$; ≤15 digits < 2^53 exact." },
+      "Q2": { "result": "PASS", "reasoning": "Identical pattern + trim-first ordering on both layers; spaces/dashes/parens/+/00/ev-iş suffixes cannot match digit-E-digit." },
+      "Q3": { "result": "PASS", "reasoning": "Non-scientific inputs flow unchanged; isCsv guard prevents fabrication; rejects ride the existing invalid path." },
+      "Q4": { "result": "PASS", "reasoning": "Hint tied to tracked flag + sample regex; CSV download logic untouched." }
+    },
+    "blocking_issues": [],
+    "iteration": 0,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
 }
