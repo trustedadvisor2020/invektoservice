@@ -54,12 +54,12 @@ public class BroadcastTests : IClassFixture<OutboundTestFactory>
             .Returns(new HashSet<string>());
 
         _factory.FakeRepo.CreateBroadcastAsync(
-            Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(),
+            Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<int>(), Arg.Any<int>(),
             Arg.Any<DateTime?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(broadcastId);
 
         _factory.FakeRepo.BatchInsertMessagesAsync(
-            Arg.Any<int>(), Arg.Any<Guid>(), Arg.Any<int>(),
+            Arg.Any<int>(), Arg.Any<Guid>(), Arg.Any<int?>(),
             Arg.Any<List<(string phone, string text, string[]? dynamicFields)>>(),
             Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
@@ -78,6 +78,79 @@ public class BroadcastTests : IClassFixture<OutboundTestFactory>
         var response = await _client.PostAsJsonAsync("/api/v1/broadcast/send", request);
 
         response.StatusCode.Should().BeOneOf(HttpStatusCode.Accepted, HttpStatusCode.OK);
+    }
+
+    // ---- FEAT-PROJELER send-exec (SS-A): inline free-text broadcast (message_text, no template) ----
+
+    [Fact]
+    public async Task SendBroadcast_InlineMessageText_Returns202_AndPersistsNullTemplateId()
+    {
+        var broadcastId = Guid.NewGuid();
+
+        _factory.FakeRepo.BatchCheckOptOutsAsync(
+            Arg.Any<int>(), Arg.Any<List<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new HashSet<string>());
+        _factory.FakeRepo.BatchCheckMarketingConsentAsync(
+            Arg.Any<int>(), Arg.Any<List<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new HashSet<string>());
+        _factory.FakeRepo.CreateBroadcastAsync(
+            Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<int>(), Arg.Any<int>(),
+            Arg.Any<DateTime?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(broadcastId);
+        _factory.FakeRepo.BatchInsertMessagesAsync(
+            Arg.Any<int>(), Arg.Any<Guid>(), Arg.Any<int?>(),
+            Arg.Any<List<(string phone, string text, string[]? dynamicFields)>>(),
+            Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        _factory.FakeRepo.ClearReceivedCalls();
+
+        var phones = TurkishCustomerGenerator.GeneratePhoneList(3);
+        var request = new
+        {
+            // No template_id; a finished literal body for every recipient.
+            message_text = "Merhaba! Yaz kampanyamız başladı.",
+            recipients = phones.Select(p => new { phone = p }).ToArray()
+        };
+
+        var response = await _client.PostAsJsonAsync("/api/v1/broadcast/send", request);
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Accepted, HttpStatusCode.OK);
+        // Inline broadcasts persist NO template_id (nullable column), and never load an INSE template.
+        await _factory.FakeRepo.Received().CreateBroadcastAsync(
+            Arg.Any<int>(), null, Arg.Any<int>(), Arg.Any<int>(),
+            Arg.Any<DateTime?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await _factory.FakeRepo.DidNotReceive().GetTemplateByIdAsync(
+            Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SendBroadcast_TemplateAndInline_Returns400()
+    {
+        var request = new
+        {
+            template_id = 1,
+            message_text = "ikisi birden",
+            recipients = new[] { new { phone = "905001112233" } }
+        };
+
+        var response = await _client.PostAsJsonAsync("/api/v1/broadcast/send", request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task SendBroadcast_NeitherTemplateNorInline_Returns400()
+    {
+        var request = new
+        {
+            // no template_id, no message_text
+            recipients = new[] { new { phone = "905001112233" } }
+        };
+
+        var response = await _client.PostAsJsonAsync("/api/v1/broadcast/send", request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]

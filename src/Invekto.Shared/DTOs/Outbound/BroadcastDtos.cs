@@ -11,6 +11,16 @@ public sealed class BroadcastSendRequest
     [JsonPropertyName("template_id")]
     public int TemplateId { get; set; }
 
+    /// <summary>
+    /// FEAT-PROJELER send-exec (SS-A): inline free-text body. When set (and <see cref="TemplateId"/>
+    /// is 0/unset) the broadcast sends this literal text to EVERY recipient — no INSE template lookup,
+    /// no DMP/dynamic substitution. EXACTLY ONE of template_id / message_text must be supplied; the
+    /// orchestrator rejects both-or-neither. Used by the Projeler free_text run path (SS-C). Null for
+    /// the legacy template-based broadcast/bulk path (fully backward-compatible).
+    /// </summary>
+    [JsonPropertyName("message_text")]
+    public string? MessageText { get; set; }
+
     [JsonPropertyName("recipients")]
     public List<BroadcastRecipient> Recipients { get; set; } = new();
 

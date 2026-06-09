@@ -54,32 +54,55 @@ public sealed class BroadcastOrchestrator
         if (request.Recipients.Count > 1000)
             return (null, ErrorCodes.OutboundTooManyRecipients, $"Max 1000 recipients per broadcast, got {request.Recipients.Count}");
 
-        // Validate template exists
-        var template = await _repository.GetTemplateByIdAsync(tenantId, request.TemplateId, ct);
-        if (template == null)
-            return (null, ErrorCodes.OutboundTemplateNotFound, $"Template {request.TemplateId} not found or inactive");
+        // FEAT-PROJELER send-exec (SS-A): the content source is EITHER an INSE template (template_id) OR
+        // inline free text (message_text). EXACTLY ONE — reject both-or-neither so the caller's intent is
+        // never silently coerced. Inline is a literal body sent to every recipient (no INSE template lookup,
+        // no DMP/dynamic substitution); it backs the Projeler free_text run (SS-C).
+        // inlineText is non-null (empty when no body) so the inline render path never needs a null-forgiving (!).
+        var inlineText = request.MessageText?.Trim() ?? string.Empty;
+        var useInline = inlineText.Length > 0;
+        if (useInline && request.TemplateId > 0)
+            return (null, ErrorCodes.OutboundInvalidBroadcastPayload, "Provide either template_id or message_text, not both");
+        if (!useInline && request.TemplateId <= 0)
+            return (null, ErrorCodes.OutboundInvalidBroadcastPayload, "template_id or message_text is required");
 
-        // GR-2.3: Resolve broadcast language (request override > template lang)
-        var lang = request.Lang ?? template.Lang;
+        // Template mode loads + validates the INSE template and runs the DMP gate; inline mode skips ALL of
+        // that (literal text, no placeholders). lang: request override > template lang (template mode) / the
+        // request value only (inline mode).
+        TemplateDto? template = null;
+        string? lang = request.Lang;
+        var useDynamic = false;
+        string[]? broadcastDynamicFields = null;
 
-        // FEAT-DMP: per-broadcast DynamicMessage activation gate (interview Q5).
-        // enable_dynamic_message=FALSE forces legacy INSE substitution regardless of placeholder shape.
-        // Placeholder scan runs once per broadcast (template is shared across recipients).
-        var dynamicEnabled = await _repository.GetEnableDynamicMessageAsync(tenantId, ct);
-        var validation = await _dynamicValidator.ValidateAsync(tenantId, template.MessageTemplate, ct);
-        var useDynamic = dynamicEnabled && validation.HasPlaceholders && validation.IsValid;
-        string[]? broadcastDynamicFields = useDynamic ? validation.InmaFieldKeys.ToArray() : null;
-
-        if (dynamicEnabled && validation.HasPlaceholders && !validation.IsValid)
+        if (!useInline)
         {
-            // Unknown placeholders + flag TRUE = template references a key outside the INMA
-            // allowlist AND TFM doesn't map it. Fall through to legacy TemplateEngine.Substitute
-            // which will consume recipient.Variables — if the token is a user-variable the
-            // broadcast succeeds; if not, recipient is skipped per its own missingVars path.
-            // Logged once per broadcast so the tenant can spot stale placeholders in their template.
-            _logger.SystemWarn(
-                $"[{ErrorCodes.DynamicFieldValidationFailed}] Broadcast template has non-INMA placeholders: " +
-                $"tenant={tenantId}, template={request.TemplateId}, unknown=[{string.Join(",", validation.UnknownPlaceholders)}]");
+            // Validate template exists
+            template = await _repository.GetTemplateByIdAsync(tenantId, request.TemplateId, ct);
+            if (template == null)
+                return (null, ErrorCodes.OutboundTemplateNotFound, $"Template {request.TemplateId} not found or inactive");
+
+            // GR-2.3: Resolve broadcast language (request override > template lang)
+            lang = request.Lang ?? template.Lang;
+
+            // FEAT-DMP: per-broadcast DynamicMessage activation gate (interview Q5).
+            // enable_dynamic_message=FALSE forces legacy INSE substitution regardless of placeholder shape.
+            // Placeholder scan runs once per broadcast (template is shared across recipients).
+            var dynamicEnabled = await _repository.GetEnableDynamicMessageAsync(tenantId, ct);
+            var validation = await _dynamicValidator.ValidateAsync(tenantId, template.MessageTemplate, ct);
+            useDynamic = dynamicEnabled && validation.HasPlaceholders && validation.IsValid;
+            broadcastDynamicFields = useDynamic ? validation.InmaFieldKeys.ToArray() : null;
+
+            if (dynamicEnabled && validation.HasPlaceholders && !validation.IsValid)
+            {
+                // Unknown placeholders + flag TRUE = template references a key outside the INMA
+                // allowlist AND TFM doesn't map it. Fall through to legacy TemplateEngine.Substitute
+                // which will consume recipient.Variables — if the token is a user-variable the
+                // broadcast succeeds; if not, recipient is skipped per its own missingVars path.
+                // Logged once per broadcast so the tenant can spot stale placeholders in their template.
+                _logger.SystemWarn(
+                    $"[{ErrorCodes.DynamicFieldValidationFailed}] Broadcast template has non-INMA placeholders: " +
+                    $"tenant={tenantId}, template={request.TemplateId}, unknown=[{string.Join(",", validation.UnknownPlaceholders)}]");
+            }
         }
 
         // FEAT-PROJELER / cxapi (PR-3a): immutable route decision at create. A cxapi-allowlisted tenant
@@ -149,26 +172,42 @@ public sealed class BroadcastOrchestrator
 
             string messageText;
             string[]? recipientDynamicFields = null;
-            if (useDynamic)
+            if (useInline)
             {
-                // FEAT-DMP: raw template text ships to INMA which resolves placeholders
-                // from Customer DB. TemplateEngine.Substitute is bypassed entirely —
-                // recipient.Variables is ignored in dynamic mode (INMA doesn't use it).
-                messageText = template.MessageTemplate;
-                recipientDynamicFields = broadcastDynamicFields;
+                // SS-A inline free text: the SAME literal body for every recipient. No INSE substitution
+                // (recipient.Variables is ignored) and no DMP — the operator typed a finished message.
+                messageText = inlineText;
+            }
+            // Pattern-bind the (guaranteed non-null when !useInline) template to a non-nullable local so the
+            // render branches need no null-forgiving operator. The final else is unreachable (a non-inline
+            // broadcast always validated a template above) — kept as a defensive skip, never an NRE.
+            else if (template is { } tmpl)
+            {
+                if (useDynamic)
+                {
+                    // FEAT-DMP: raw template text ships to INMA which resolves placeholders
+                    // from Customer DB. TemplateEngine.Substitute is bypassed entirely —
+                    // recipient.Variables is ignored in dynamic mode (INMA doesn't use it).
+                    messageText = tmpl.MessageTemplate;
+                    recipientDynamicFields = broadcastDynamicFields;
+                }
+                else
+                {
+                    var (substituted, missingVars) = _templateEngine.Substitute(
+                        tmpl.MessageTemplate, recipient.Variables);
+
+                    if (missingVars.Count > 0)
+                    {
+                        _logger.SystemWarn(
+                            $"Broadcast skipping {recipient.Phone}: missing variables [{string.Join(", ", missingVars)}]");
+                        continue;
+                    }
+                    messageText = substituted;
+                }
             }
             else
             {
-                var (substituted, missingVars) = _templateEngine.Substitute(
-                    template.MessageTemplate, recipient.Variables);
-
-                if (missingVars.Count > 0)
-                {
-                    _logger.SystemWarn(
-                        $"Broadcast skipping {recipient.Phone}: missing variables [{string.Join(", ", missingVars)}]");
-                    continue;
-                }
-                messageText = substituted;
+                continue; // defensive: no content source resolved (unreachable after the exactly-one guard)
             }
 
             // GR-2.6.1: Append KVKK health disclaimer if applicable
@@ -193,14 +232,18 @@ public sealed class BroadcastOrchestrator
                 "No valid recipients after opt-out filtering and variable validation");
         }
 
+        // SS-A: inline broadcasts carry NO template_id (outbound_broadcasts/outbound_messages.template_id
+        // are nullable); template broadcasts keep their id. Used for the broadcast, messages AND audit rows.
+        int? broadcastTemplateId = useInline ? null : request.TemplateId;
+
         // Create broadcast record (GR-2.3: with language; PR-3a: immutable route + tenant-default instance)
         var broadcastId = await _repository.CreateBroadcastAsync(
-            tenantId, request.TemplateId, request.Recipients.Count,
+            tenantId, broadcastTemplateId, request.Recipients.Count,
             messagesToInsert.Count, request.ScheduledAt, lang, ct, sendRoute, instanceId);
 
         // Batch insert all messages (single multi-row INSERT, GR-2.3: with language; PR-3a: route + instance)
         await _repository.BatchInsertMessagesAsync(
-            tenantId, broadcastId, request.TemplateId, messagesToInsert, lang, ct, sendRoute, instanceId);
+            tenantId, broadcastId, broadcastTemplateId, messagesToInsert, lang, ct, sendRoute, instanceId);
         var queuedCount = messagesToInsert.Count;
 
         // GR-3.29: Audit trail - batch insert for compliance (single multi-row INSERT).
@@ -210,7 +253,7 @@ public sealed class BroadcastOrchestrator
             .Select(m => (phone: m.phone, content: m.text))
             .ToList();
         await _repository.BatchInsertAuditTrailAsync(
-            tenantId, request.TemplateId, null, auditRecords, ct);
+            tenantId, broadcastTemplateId, null, auditRecords, ct);
 
         _logger.SystemInfo(
             $"Broadcast created: id={broadcastId}, tenant={tenantId}, " +

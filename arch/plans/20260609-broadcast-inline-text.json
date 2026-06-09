@@ -1,0 +1,74 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": "PKT-14",
+  "slug": "20260609-broadcast-inline-text",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-09T18:10:00Z",
+  "updated_at": "2026-06-09T18:50:00Z",
+  "plan": {
+    "summary": "FEAT-PROJELER PKT-14 send-exec SS-A: add an INLINE FREE-TEXT path to BroadcastOrchestrator (message_text instead of an INSE template_id). Reusable foundation for the Projeler free_text run (SS-C). No migration (broadcast/message template_id already nullable). Prod-inert (cxapi route gate unchanged).",
+    "q_intent": "Send-EXECUTION slice; SS-A = inline-text send foundation so the Projeler free_text content (projects.plain_text_body) can dispatch via the existing bulk/broadcast engine without a gallery template.",
+    "interview_notes": "Free-text mechanism = project column + inline send (Q 2026-06-09). SS-A delivers the broadcast-layer inline capability; bulk_send_jobs schema + project run wiring are SS-C. broadcast/message template_id already nullable -> SS-A needs no migration (bulk_send_jobs.template_id NOT NULL is SS-C).",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "A broadcast can send a literal message_text body to every recipient with NO INSE template (template_id null on broadcast, messages and audit).", "verified": true, "verification_note": "Codex CoVe Q1 PASS; test SendBroadcast_InlineMessageText asserts CreateBroadcastAsync received null template_id." },
+      { "id": "AC2", "criterion": "EXACTLY ONE of template_id / message_text is enforced (both -> 400, neither -> 400); empty/whitespace message_text falls back to requiring a template.", "verified": true, "verification_note": "Codex CoVe Q3 PASS; tests _TemplateAndInline_Returns400 + _NeitherTemplateNorInline_Returns400." },
+      { "id": "AC3", "criterion": "The existing template path is fully backward-compatible (fetch, DMP, substitution, missing-vars skip, lang) — only moved into the !useInline branch.", "verified": true, "verification_note": "Codex CoVe Q2 PASS." },
+      { "id": "AC4", "criterion": "Inline path keeps opt-out/consent/KVKK filtering + the PR-3a cxapi route gate (CxapiSendOptions allowlist) so it stays prod-inert until a tenant is allowlisted.", "verified": true, "verification_note": "Codex CoVe Q4 PASS; only messageText derivation changed, surrounding flow unchanged." },
+      { "id": "AC5", "criterion": "No null-forgiving operators; code follows project patterns; build PASS + new inline tests PASS.", "verified": true, "verification_note": "Codex CQ5 PASS iter1 (3 `!` removed via non-null inlineText + pattern-bind template); 3/3 inline tests PASS." }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/DTOs/Outbound/BroadcastDtos.cs",
+    "src/Invekto.Outbound/Services/BroadcastOrchestrator.cs",
+    "src/Invekto.Outbound/Data/OutboundRepository.cs",
+    "tests/InvektoServis.Tests/Outbound/BroadcastTests.cs"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/DTOs/Outbound/BroadcastDtos.cs", "is_new": false, "change": "BroadcastSendRequest += additive nullable message_text" },
+    { "path": "src/Invekto.Outbound/Services/BroadcastOrchestrator.cs", "is_new": false, "change": "inline vs template branch, exactly-one enforcement, NULL template_id on inline, pattern-match render (no null-forgiving)" },
+    { "path": "src/Invekto.Outbound/Data/OutboundRepository.cs", "is_new": false, "change": "CreateBroadcastAsync + 2 BatchInsertMessagesAsync overloads int templateId -> int? + DBNull bind" },
+    { "path": "tests/InvektoServis.Tests/Outbound/BroadcastTests.cs", "is_new": false, "change": "matchers int->int? + 3 inline tests" }
+  ],
+  "git_diff": {
+    "full_path": "arch/plans/diffs/20260609-broadcast-inline-text.diff",
+    "stats": { "insertions": 110, "deletions": 26, "files_count": 4 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln (full solution, Shared touched)",
+    "services": ["Invekto.Shared", "Invekto.Outbound", "InvektoServis.Tests"]
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "Inline persists NULL template_id on broadcast/messages/audit against already-nullable columns?", "category": "Data", "codex_result": "PASS" },
+    { "id": "Q2", "question": "Template path behaviour-preserved / backward-compatible?", "category": "Lifecycle", "codex_result": "PASS" },
+    { "id": "Q3", "question": "Exactly-one of template_id/message_text enforced with explicit 400s; no null-forgiving operators?", "category": "Process/Policy", "codex_result": "PASS" },
+    { "id": "Q4", "question": "Opt-out/consent/KVKK + cxapi route gate unchanged so inline stays prod-inert?", "category": "Auth", "codex_result": "PASS" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["bulk_send_jobs schema (SS-C)", "project run dispatch (SS-C)", "CxapiSend allowlist / P0-3 gate", "ui-mocks/*"],
+    "non_goals": ["project run + counters (SS-C)", "Gonder UI (SS-C)", "HSM/template send (PR-4)"],
+    "intentional_exclusions": ["No migration (outbound_broadcasts/outbound_messages.template_id already nullable)", "Inline caller (project free_text run) wired in SS-C; SS-A is the reusable capability + tests"]
+  },
+  "error_handling": {
+    "try_catch_locations": ["BroadcastOrchestrator existing try/catch unchanged"],
+    "user_facing_errors": ["INV-OB invalid-payload: 'Provide either template_id or message_text, not both' / 'template_id or message_text is required'"],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Both/neither content sources rejected with explicit 400s; the only new skip is a defensive unreachable branch (post exactly-one guard) commented as such."
+  },
+  "aha_moments": [
+    { "category": "UX", "user_pain": "Düz metin göndermek için galeride şablon oluşturmak zorunda kalmak.", "suggestion": "Broadcast motoru artık serbest metni doğrudan kabul ediyor.", "aha_moment": "Operatör mesajı yazıp gönderir; ara şablon adımı yok." },
+    { "category": "RELIABILITY", "user_pain": "İçerik kaynağı belirsizliği (hem şablon hem metin) sessiz davranışa yol açabilir.", "suggestion": "Exactly-one (template_id XOR message_text) sunucu tarafında zorunlu.", "aha_moment": "Belirsiz bir gönderim isteği asla sessizce yorumlanmaz." },
+    { "category": "SPEED", "user_pain": "Düz metin gönderiminde gereksiz şablon/DMP doğrulaması.", "suggestion": "Inline yol template fetch + DMP'yi tamamen atlar.", "aha_moment": "Serbest metin gönderimi daha az DB/iş yükü ile akar." },
+    { "category": "RELIABILITY", "user_pain": "Inline mesajda kişiye özel değişken beklentisi karışıklık yaratabilir.", "suggestion": "Inline = aynı literal gövde; recipient.Variables yok sayılır.", "aha_moment": "Yazdığın mesaj herkese aynen gider, sürpriz yok." },
+    { "category": "SUPPORT", "user_pain": "Opt-out/KVKK kurallarının yeni yolda atlanma riski.", "suggestion": "Inline yalnızca içerik türetmesini değiştirir; opt-out/consent/KVKK ve route gate korunur.", "aha_moment": "Destek, yeni yolda uyum regresyonuyla uğraşmaz." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "iteration": 1,
+    "updated_by": "DevAgent",
+    "blocking_issues": []
+  }
+}

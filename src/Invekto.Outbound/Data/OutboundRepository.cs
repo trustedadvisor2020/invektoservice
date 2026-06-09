@@ -208,7 +208,7 @@ public class OutboundRepository
     /// bridge / NULL (no-op). A cxapi-allowlisted tenant passes 'wapcrm_cxapi' + the tenant-default instance.
     /// </summary>
     public virtual async Task<Guid> CreateBroadcastAsync(
-        int tenantId, int templateId, int totalRecipients, int queued,
+        int tenantId, int? templateId, int totalRecipients, int queued,
         DateTime? scheduledAt, string? lang = null, CancellationToken ct = default,
         string sendRoute = "mainapp_bridge", int? instanceId = null)
     {
@@ -221,7 +221,8 @@ public class OutboundRepository
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("tid", tenantId);
-        cmd.Parameters.AddWithValue("tmpl", templateId);
+        // template_id is nullable (outbound_broadcasts.template_id): NULL for the SS-A inline free-text path.
+        cmd.Parameters.AddWithValue("tmpl", templateId.HasValue ? (object)templateId.Value : DBNull.Value);
         cmd.Parameters.AddWithValue("total", totalRecipients);
         cmd.Parameters.AddWithValue("queued", queued);
         cmd.Parameters.AddWithValue("sched", scheduledAt.HasValue ? (object)scheduledAt.Value : DBNull.Value);
@@ -663,7 +664,7 @@ public class OutboundRepository
     /// original <c>(phone, text)</c> tuple shape stay source-compatible (iter 3 CQ8 fix).
     /// </summary>
     public virtual Task BatchInsertMessagesAsync(
-        int tenantId, Guid broadcastId, int templateId,
+        int tenantId, Guid broadcastId, int? templateId,
         List<(string phone, string text)> messages,
         string? lang = null, CancellationToken ct = default)
         => BatchInsertMessagesAsync(
@@ -678,7 +679,7 @@ public class OutboundRepository
     /// legacy INSE-substituted text (backward-compat).
     /// </summary>
     public virtual async Task BatchInsertMessagesAsync(
-        int tenantId, Guid broadcastId, int templateId,
+        int tenantId, Guid broadcastId, int? templateId,
         List<(string phone, string text, string[]? dynamicFields)> messages,
         string? lang = null, CancellationToken ct = default,
         string sendRoute = "mainapp_bridge", int? instanceId = null)
@@ -702,7 +703,8 @@ public class OutboundRepository
 
         cmd.Parameters.AddWithValue("tid", tenantId);
         cmd.Parameters.AddWithValue("bid", broadcastId);
-        cmd.Parameters.AddWithValue("tmpl", templateId);
+        // template_id is nullable (outbound_messages.template_id): NULL for the SS-A inline free-text path.
+        cmd.Parameters.AddWithValue("tmpl", templateId.HasValue ? (object)templateId.Value : DBNull.Value);
         cmd.Parameters.AddWithValue("lang", (object?)lang ?? DBNull.Value);
         // FEAT-PROJELER / cxapi (PR-3a): immutable per-message route + instance, written at create.
         // Defaults ('mainapp_bridge' / NULL) keep the bridge path a no-op; message_kind/attempt_count
