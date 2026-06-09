@@ -84,8 +84,8 @@
       {
         "id": "AC7",
         "criterion": "Deploy: ONCE migration 062 prod'da (INV-SEED-062 exception'siz + read-back), SONRA Outbound + Backend + SPA; 10/10 servis HEALTHY + gate snapshot DEGISMEDI (Projects=[5050] ∩ BulkSend=[18173130]=∅, CxapiSend yok) + canli SPA bundle hash dogrulanir",
-        "verified": false,
-        "verification_note": null
+        "verified": true,
+        "verification_note": "2026-06-10 ~03:57 UTC+3: pre-flight (0/6 kolon, 2-yol XOR, 0 satir) -> migration 062 execute (INV-SEED-062 exception'siz) -> read-back 6/6 kolon + 3-yol XOR def + 2 CHECK -> Outbound deploy HEALTHY -> Backend deploy HEALTHY -> server-health all 10/10 OK -> gate snapshot: Projects.Allowed=5050, BulkSend.Allowed=18173130, CxapiSend section YOK (P0-3 korundu) -> send/preview + wa-templates no-auth INV-AUTH-003 (registered+JWT-gated) -> canli assets'te TEK index bundle: index-C9I5croP.js"
       }
     ]
   },
