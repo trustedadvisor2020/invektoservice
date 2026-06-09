@@ -11,18 +11,19 @@
       "path": "/api/v1/broadcast/send",
       "auth": "JWT",
       "request": {
-        "template_id": { "type": "integer", "required": true, "desc": "Template ID to use" },
+        "template_id": { "type": "integer", "required": false, "desc": "INSE template ID to render per recipient. EXACTLY ONE of template_id / message_text (PKT-14 SS-A): supply this for the template path." },
+        "message_text": { "type": "string", "required": false, "desc": "PKT-14 SS-A: inline free-text body sent literally to EVERY recipient (no template lookup, no DMP/variable substitution). EXACTLY ONE of template_id / message_text — both or neither -> 400 INV-OB invalid-payload." },
         "recipients": {
           "type": "array",
           "required": true,
           "max_items": 1000,
           "item": {
             "phone": { "type": "string", "required": true, "desc": "E.164 format phone" },
-            "variables": { "type": "object", "required": false, "desc": "Template variables per recipient" }
+            "variables": { "type": "object", "required": false, "desc": "Template variables per recipient (ignored on the inline message_text path)" }
           }
         },
         "scheduled_at": { "type": "string", "format": "ISO8601", "required": false, "desc": "One-time scheduled send" },
-        "lang": { "type": "string", "required": false, "desc": "GR-2.3: Override broadcast language (ISO 639-1). Falls back to template lang." }
+        "lang": { "type": "string", "required": false, "desc": "GR-2.3: Override broadcast language (ISO 639-1). Falls back to template lang (template path); request-only on the inline path." }
       },
       "response_202": {
         "broadcast_id": "uuid",
