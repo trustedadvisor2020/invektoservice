@@ -1083,6 +1083,18 @@ errors:
   - code: INV-OB-076
     description: "FEAT-PROJELER (PKT-14) send-exec SS-C — the project is configured for an approved HSM template (template_kind=wapcrm_template); HSM send is not yet available (PR-4, blocked on INMA G12). The run is rejected here — never silently downgraded to a plain-text send. (422)"
     user_message: Onaylı şablon (HSM) gönderimi henüz aktif değil. Bu özellik yakında gelecek.
+  - code: INV-OB-077
+    description: "FEAT-PROJELER (PKT-14) send-exec SS-D — pause rejected: the project is not 'running'. The atomic status claim (UPDATE projects SET status='paused' WHERE status='running' RETURNING) affected 0 rows; the service returns the actual current status (not a silent no-op). One active run per project. (409)"
+    user_message: Bu proje çalışmıyor; duraklatılamaz.
+  - code: INV-OB-078
+    description: "FEAT-PROJELER (PKT-14) send-exec SS-D — resume rejected: the project is not 'paused'. (409)"
+    user_message: Bu proje duraklatılmış değil; sürdürülemez.
+  - code: INV-OB-079
+    description: "FEAT-PROJELER (PKT-14) send-exec SS-D — cancel rejected: the project is not 'running' or 'paused', so there is no in-flight run to cancel. (409)"
+    user_message: Bu proje çalışmıyor veya duraklatılmış değil; iptal edilemez.
+  - code: INV-OB-080
+    description: "FEAT-PROJELER (PKT-14) send-exec SS-D — new run rejected: the project already has an active run ('running' or 'paused'). Raised by PreviewSendAsync/ConfirmSendAsync to enforce one active run per project; the operator must complete, resume or cancel the current run first. (409)"
+    user_message: Bu projede aktif bir gönderim var. Önce onu tamamlayın, sürdürün veya iptal edin.
 
   # ── IG — Integrations (GR-3.4/3.6) ──
   - code: INV-IG-001

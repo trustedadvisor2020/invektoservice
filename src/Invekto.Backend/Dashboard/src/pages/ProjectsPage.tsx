@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Briefcase, X, Plus, Pencil, Archive, Loader2, Info, ListChecks, Radio, FileText, Send, Users, CheckCircle2,
-  ExternalLink, Phone, Reply, Image as ImageIcon,
+  ExternalLink, Phone, Reply, Image as ImageIcon, Pause, Play, Ban, AlertTriangle,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -159,6 +159,10 @@ export default function ProjectsPage() {
   const [sendPreview, setSendPreview] = useState<BulkSendPreviewResponse | null>(null);
   const [sendStatus, setSendStatus] = useState<BulkSendStatusResponse | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
+
+  // ---- Run lifecycle (SS-D): pause / resume / cancel ----
+  const [lifecycleBusyId, setLifecycleBusyId] = useState<number | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<ProjectSummary | null>(null);
 
   // Only WhatsApp Cloud API lines are valid send channels (instance_type === 1; excludes SMS/web/channel).
   const whatsappInstances = useMemo(() => instances.filter(i => i.instanceType === 1), [instances]);
@@ -475,10 +479,37 @@ export default function ProjectsPage() {
     }
   }
 
+  // ---- Run lifecycle (SS-D): pause / resume / cancel ----
+  // Each is a project-level POST that returns the fresh detail; we just reload the table after.
+  async function runLifecycle(p: ProjectSummary, action: 'pause' | 'resume' | 'cancel', failMsg: string) {
+    setLifecycleBusyId(p.id);
+    try {
+      if (action === 'pause') await api.projectSendPause(p.id);
+      else if (action === 'resume') await api.projectSendResume(p.id);
+      else await api.projectSendCancel(p.id);
+      await loadProjects();
+    } catch (e) {
+      setLoadError(errText(e, failMsg));
+    } finally {
+      setLifecycleBusyId(null);
+    }
+  }
+
+  // İptal is the one irreversible action (sent messages are not recalled) -> confirm modal first.
+  // Keep the modal open (busy spinner) during the call, then close it.
+  async function confirmCancelRun() {
+    if (!cancelTarget) return;
+    await runLifecycle(cancelTarget, 'cancel', 'Gönderim iptal edilemedi');
+    setCancelTarget(null);
+  }
+
   // ---- Run dispatch (Gönder) ----
   // Client mirror of the server eligibility (ProjectsService.ResolveSendContent + target check): a run
   // dispatches plain_text content only. Returns a disable reason, or null when the project can be sent.
   function sendDisabledReason(p: ProjectSummary): string | null {
+    // One active run per project (mirrors INV-OB-080): no new send while a run is in flight or paused.
+    if (p.status === 'running' || p.status === 'paused')
+      return 'Bu projede aktif bir gönderim var. Önce duraklatın, sürdürün veya iptal edin.';
     if (p.template_kind === 'wapcrm_template')
       return 'Onaylı şablon (HSM) gönderimi henüz aktif değil. Bu özellik yakında gelecek.';
     if (p.template_kind !== 'plain_text')
@@ -604,13 +635,56 @@ export default function ProjectsPage() {
                     <div className="text-navy-900">{p.name}</div>
                     {p.description && <div className="text-xs text-navy-400 truncate max-w-xs">{p.description}</div>}
                   </td>
-                  <td className="px-4 py-2.5"><StatusBadge status={p.status} /></td>
+                  <td className="px-4 py-2.5">
+                    <StatusBadge status={p.status} />
+                    {p.cancelled_count > 0 && (
+                      <div className="text-[11px] text-navy-400 mt-0.5 tabular-nums">{p.cancelled_count.toLocaleString('tr-TR')} iptal</div>
+                    )}
+                  </td>
                   <td className="px-4 py-2.5 text-right tabular-nums">{p.target_count.toLocaleString('tr-TR')}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums">{p.sent_count.toLocaleString('tr-TR')}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums">{p.delivered_count.toLocaleString('tr-TR')}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums">{p.failed_count.toLocaleString('tr-TR')}</td>
                   <td className="px-4 py-2.5">
                     <div className="flex items-center justify-end gap-1.5">
+                      {/* SS-D status-aware run controls: running -> Duraklat; paused -> Devam Et; either -> İptal */}
+                      {p.status === 'running' && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={lifecycleBusyId === p.id}
+                          title="Gönderimi duraklat"
+                          onClick={() => runLifecycle(p, 'pause', 'Gönderim duraklatılamadı')}
+                        >
+                          {lifecycleBusyId === p.id
+                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            : <Pause className="w-3.5 h-3.5" />} Duraklat
+                        </Button>
+                      )}
+                      {p.status === 'paused' && (
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          disabled={lifecycleBusyId === p.id}
+                          title="Gönderimi sürdür"
+                          onClick={() => runLifecycle(p, 'resume', 'Gönderim sürdürülemedi')}
+                        >
+                          {lifecycleBusyId === p.id
+                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            : <Play className="w-3.5 h-3.5" />} Devam Et
+                        </Button>
+                      )}
+                      {(p.status === 'running' || p.status === 'paused') && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={lifecycleBusyId === p.id}
+                          title="Gönderimi iptal et"
+                          onClick={() => setCancelTarget(p)}
+                        >
+                          <Ban className="w-3.5 h-3.5 text-red-500" /> İptal
+                        </Button>
+                      )}
                       {(() => {
                         const reason = sendDisabledReason(p);
                         return (
@@ -1092,6 +1166,42 @@ export default function ProjectsPage() {
               {(sendPhase === 'sent' || sendPhase === 'error') && (
                 <Button variant="secondary" onClick={closeSend}>Kapat</Button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---- İptal (cancel) confirm modal (X-close; irreversible — sent messages are not recalled) ---- */}
+      {cancelTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/40 p-4">
+          <div className="bg-white border border-navy-100 rounded-xl shadow-soft relative w-full max-w-md">
+            <button
+              onClick={() => setCancelTarget(null)}
+              className="absolute right-3 top-3 text-navy-300 hover:text-navy-600"
+              aria-label="Kapat"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="px-5 py-4 border-b border-navy-50">
+              <h3 className="text-base font-semibold text-navy-900 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-500" /> Gönderimi iptal et
+              </h3>
+              <p className="text-sm text-navy-500 mt-0.5 truncate">{cancelTarget.name}</p>
+            </div>
+            <div className="px-5 py-4 space-y-2 text-sm text-navy-700">
+              <p>Kuyruktaki ve duraklatılmış mesajlar iptal edilecek.</p>
+              <p className="text-[12px] text-red-600 font-medium">Zaten gönderilmiş mesajlar geri alınamaz.</p>
+            </div>
+            <div className="px-5 py-4 border-t border-navy-50 flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                disabled={lifecycleBusyId === cancelTarget.id}
+                onClick={confirmCancelRun}
+              >
+                {lifecycleBusyId === cancelTarget.id
+                  ? <><Loader2 className="w-4 h-4 animate-spin" /> İptal ediliyor…</>
+                  : <><Ban className="w-4 h-4 text-red-500" /> Gönderimi iptal et</>}
+              </Button>
             </div>
           </div>
         </div>

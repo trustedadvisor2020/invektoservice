@@ -1,0 +1,144 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": "PKT-14",
+  "spec_ref": null,
+  "spec_architectural_decisions": [
+    {
+      "decision": "OutboundRepository.IsBroadcastCompleteAsync stays tenant-blind (keyed only on broadcast_id), NOT filtered by tenant_id.",
+      "reason": "It is PRE-EXISTING worker code (PR-3a). broadcast_id is a globally-unique UUID PK (gen_random_uuid()) that already identifies exactly one tenant's broadcast, and it is called from the singleton MessageSenderService worker + its startup sweep, which have no per-row tenant context — the same sanctioned tenant-blind-worker exception as DequeueMessagesAsync / ResetSendingMessagesAsync (accepted in PR-3a). SS-D only widened its non-terminal status set with 'paused' (a correctness fix); it did not introduce the tenant-blindness. Adding tenant_id would force a signature change rippling into the startup sweep (out of SS-D scope, no tenant id available there).",
+      "codex_note": "EXPECTED: CQ9/Q3 tenant_id-filter finding on IsBroadcastCompleteAsync is a FALSE POSITIVE — pre-existing worker method, UUID PK, sanctioned exception (DequeueMessagesAsync precedent). The NEW SS-D queries (pause/resume/cancel flips, cancel CTE + completion NOT EXISTS) ARE all tenant_id-scoped."
+    },
+    {
+      "decision": "ConfirmSendAsync enforces one-active-run by rejecting only a preview_ready (NEW dispatch) job while the project is running/paused (INV-OB-080), NOT every confirm while running.",
+      "reason": "A confirm of an already-dispatched job (job.Status != preview_ready) is the IDEMPOTENT re-confirm path and MUST keep returning the run's live status; rejecting it would break idempotency. PreviewSendAsync rejects running/paused outright (no idempotency concern there).",
+      "codex_note": "EXPECTED: confirm guards on (job.Status=='preview_ready' AND project running/paused), preview guards on (project running/paused). This is the correct one-active-run enforcement, not a missing guard."
+    }
+  ],
+  "slug": "20260610-projeler-ssd-pause-cancel",
+  "risk": "HIGH",
+  "status": "DONE",
+  "created_at": "2026-06-10T00:00:00Z",
+  "updated_at": "2026-06-10T02:00:00Z",
+  "plan": {
+    "summary": "FEAT-PROJELER PKT-14 SS-D: add project-run pause / resume / cancel lifecycle. Migration 061 widens chk_message_status (+'paused' pre-terminal, +'cancelled' terminal), adds 'paused' to chk_bulk_job_status, an outbound_broadcasts.cancelled counter and a projects.cancelled_count rollup column. Pause flips a project's 'queued' messages -> 'paused' (the dequeue worker only claims 'queued', so they halt; in-flight 'sending'/'posting' are NOT recallable); Resume flips 'paused' -> 'queued'; Cancel terminalizes remaining 'queued'+'paused' -> 'cancelled' (counter cancelled++/queued--) and sets the run + project 'cancelled'. One active run per project is enforced: PreviewSendAsync rejects running/paused outright, and ConfirmSendAsync rejects a preview_ready (NEW) dispatch while running/paused (INV-OB-080) — idempotent re-confirm of an already-dispatched job is exempt. Status-aware controls land on the Projeler row. Ships gated/inert (P0-3) like SS-A/B/C.",
+    "q_intent": "NEXT — SS-D (pause/resume/cancel): 1. Migration 061: add 'paused' to chk_message_status (outbound_messages) + canonical sync. 2. Pause(project) = run-broadcast 'queued'->'paused' (dequeue drains only 'queued' -> halts; in-flight/sent NOT recallable). Resume = paused->queued. Cancel = remaining->terminal + status='cancelled'. 3. RecomputeRollupAsync already forward-compat for paused/cancelled — verify. 4. ProjectsPage pause/resume/cancel controls.",
+    "interview_notes": "Q decisions 2026-06-10 (all recommended options): (1) Cancel terminal = NEW 'cancelled' message status + outbound_broadcasts.cancelled counter + projects.cancelled_count (clean semantics; cancel != failed; keeps migration-056 reconciliation invariant sent+failed+ambiguous+delivered+read+queued+cancelled = total_recipients). (2) ONE active run per project: reject new preview/confirm while project status running/paused (new INV-OB-080). (3) Inline status-aware row controls (running -> Duraklat+Iptal; paused -> Devam Et+Iptal) + Iptal X-close confirm modal ('gonderilmis mesajlar geri alinamaz'). (4) Commit + gated prod deploy like SS-A/B/C (P0-3 gate stays closed -> inert). Verified RecomputeRollupAsync forward-compat: its status CASE preserves p.status when NOT IN (draft,running,completed), so an explicit 'paused'/'cancelled' survives rollup; counters are open SUMs of broadcast columns. Verified dequeue strictly filters WHERE status='queued'. Verified IsBroadcastCompleteAsync counts (queued,sending,posting) as non-terminal -> must add 'paused' so a paused broadcast is not prematurely 'completed'. CTE-snapshot rule (SweepStrandedPostingAsync precedent): a data-modifying CTE's effect is invisible to a sibling re-scan, so cancel's broadcast-completion runs as a separate command in the same tx.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "Migration 061 is additive+idempotent: chk_message_status accepts 'paused' and 'cancelled', chk_bulk_job_status accepts 'paused', outbound_broadcasts.cancelled and projects.cancelled_count exist (NOT NULL DEFAULT 0, nonneg). DO $verify$ INV-SEED-061 asserts all four and raises on any miss. arch/db/outbound.sql canonical mirror updated to match.", "verified": false, "verification_note": null },
+      { "id": "AC2", "criterion": "POST /api/v1/projects/{id}/send/pause flips that project's 'queued' outbound_messages to 'paused' and sets project+run status 'paused'; the dequeue worker leaves 'paused' rows untouched (only claims 'queued'); in-flight 'sending'/'posting' continue. Resume flips 'paused'->'queued' and project+run back to 'running'/'sending'. Returns the fresh ProjectDetail.", "verified": false, "verification_note": null },
+      { "id": "AC3", "criterion": "POST .../send/cancel atomically terminalizes remaining 'queued'+'paused' -> 'cancelled' with per-broadcast cancelled++/queued-- (mirrors SweepStrandedPostingAsync), sets run+project status 'cancelled' + completed_at, and completes any now-drained broadcast. projects.cancelled_count is populated by RecomputeRollupAsync. Cancel is irreversible (already-sent messages NOT recalled).", "verified": false, "verification_note": null },
+      { "id": "AC4", "criterion": "Lifecycle state guards are typed (no silent no-op): pause requires status 'running' (else INV-OB-077), resume requires 'paused' (else INV-OB-078), cancel requires 'running'|'paused' (else INV-OB-079); a NEW run is rejected while running/paused (INV-OB-080) — preview rejects running/paused outright, confirm rejects a preview_ready (new) dispatch while running/paused (idempotent re-confirm of an already-dispatched job is exempt). project-not-found stays INV-OB-068. All claims are atomic (UPDATE ... WHERE status=<expected> RETURNING) so they are race-safe vs the worker and concurrent calls.", "verified": false, "verification_note": null },
+      { "id": "AC5", "criterion": "ProjectsPage shows status-aware row controls: running -> Duraklat + Iptal; paused -> Devam Et + Iptal; Iptal opens an X-close confirm modal warning that sent messages cannot be recalled. After each action the table refreshes. Build PASS (full solution, Shared changed). Ships gated/inert: ProjectsOptions default-OFF + CxapiSend empty -> P0-3 gate preserved; pause/resume/cancel endpoints registered + JWT-gated (401 unauth).", "verified": false, "verification_note": null }
+    ]
+  },
+  "allowed_files": [
+    "arch/db/migrations/061-projeler-pause-cancel.sql",
+    "arch/db/outbound.sql",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Shared/DTOs/Outbound/ProjectDtos.cs",
+    "src/Invekto.Outbound/Data/OutboundRepository.cs",
+    "src/Invekto.Outbound/Data/ProjectsRepository.cs",
+    "src/Invekto.Outbound/Services/ProjectsService.cs",
+    "src/Invekto.Outbound/Program.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx",
+    "arch/errors.md",
+    "arch/plans/20260610-projeler-ssd-pause-cancel.json"
+  ],
+  "files_changed": [
+    { "path": "arch/db/migrations/061-projeler-pause-cancel.sql", "change": "NEW: widen chk_message_status (+paused,+cancelled), chk_bulk_job_status (+paused), add outbound_broadcasts.cancelled (NOT NULL DEFAULT 0 + nonneg), projects.cancelled_count (NOT NULL DEFAULT 0) + chk_project_counters_nonneg widened; DO $verify$ INV-SEED-061.", "is_new": true },
+    { "path": "arch/db/outbound.sql", "change": "Canonical mirror: chk_message_status +paused/+cancelled, chk_bulk_job_status +paused, outbound_broadcasts.cancelled column+nonneg, projects.cancelled_count + nonneg widen, status comments.", "is_new": false },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "change": "Add ProjectRunNotPausable INV-OB-077, ProjectRunNotResumable INV-OB-078, ProjectRunNotCancellable INV-OB-079, ProjectRunInProgress INV-OB-080.", "is_new": false },
+    { "path": "src/Invekto.Shared/DTOs/Outbound/ProjectDtos.cs", "change": "ProjectSummary.CancelledCount (cancelled_count) so the new rollup counter is surfaced (not a dead field).", "is_new": false },
+    { "path": "src/Invekto.Outbound/Data/OutboundRepository.cs", "change": "IsBroadcastCompleteAsync: add 'paused' to the non-terminal status set + doc.", "is_new": false },
+    { "path": "src/Invekto.Outbound/Data/ProjectsRepository.cs", "change": "PauseRunAsync/ResumeRunAsync/CancelRunAsync (single-tx atomic claim + message flip + run status + cancel counter/completion); RecomputeRollupAsync +cancelled aggregate -> cancelled_count; ListAsync+LoadDetailAsync SELECT +cancelled_count; MapSummary +CancelledCount.", "is_new": false },
+    { "path": "src/Invekto.Outbound/Services/ProjectsService.cs", "change": "PauseSendAsync/ResumeSendAsync/CancelSendAsync (Projects gate + map RunLifecycleResult to INV-OB-077/078/079/068 + recompute+return detail); one-active-run guard (INV-OB-080) in PreviewSendAsync (running/paused) + ConfirmSendAsync (paused).", "is_new": false },
+    { "path": "src/Invekto.Outbound/Program.cs", "change": "3 endpoints POST /api/v1/projects/{id}/send/{pause|resume|cancel}; ProjectSendStatus()+ProjectMessage() map INV-OB-077/078/079/080 -> 409.", "is_new": false },
+    { "path": "src/Invekto.Backend/Program.cs", "change": "3 POST proxy routes /api/v1/outbound/projects/{id}/send/{pause|resume|cancel} (OutboundProxyPost) + route-registry entries.", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "change": "projectSendPause/Resume/Cancel(projectId) POST -> ProjectDetail; ProjectSummary.cancelled_count type.", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx", "change": "Status-aware row controls (Duraklat/Devam Et/Iptal) + X-close cancel-confirm modal + handlers + cancelled_count display.", "is_new": false }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "e99e520d683138ad1cd1910ef41b4ef9f2e750ce6d7ce378e406b14bf1e0b46f",
+    "full_path": "arch/plans/diffs/20260610-projeler-ssd-pause-cancel.diff",
+    "stats": { "insertions": 787, "deletions": 14, "files_count": 13 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-06-10T01:00:00Z",
+    "duration_ms": null,
+    "output_tail": "0 Error(s), 22 Warning(s) (pre-existing MSB3277 version-conflict noise in test project, unrelated). SPA: tsc --noEmit exit 0.",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Outbound", "Invekto.Backend"]
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "Data integrity: after pause (queued->paused, no broadcast counter change) does the outbound_broadcasts reconciliation invariant still hold, and does cancel (queued+paused -> cancelled, cancelled++/queued--) keep sent+failed+ambiguous+delivered+read+queued+cancelled = total_recipients without double counting?", "category": "Data", "codex_answer": null, "codex_result": null },
+    { "id": "Q2", "question": "Lifecycle/race: are pause/resume/cancel atomic vs the singleton dequeue worker and concurrent operator calls — i.e. does each use an atomic status claim (UPDATE WHERE status=<expected> RETURNING) so a row the worker just moved to 'sending' is never resurrected, in-flight 'sending'/'posting' are left to finish, and a double-pause/double-cancel is a typed no-op not a silent one?", "category": "Lifecycle", "codex_answer": null, "codex_result": null },
+    { "id": "Q3", "question": "Auth/tenant-isolation: are the pause/resume/cancel message + counter updates tenant-scoped (m.tenant_id, b.tenant_id, project ownership) so a caller cannot pause/cancel another tenant's broadcasts, and are the endpoints behind the Projects gate + JWT (401 unauth) while the BulkSend/CxapiSend gates keep prod inert?", "category": "Auth", "codex_answer": null, "codex_result": null },
+    { "id": "Q4", "question": "Lifecycle/completion: does adding 'paused' to IsBroadcastCompleteAsync correctly prevent a paused broadcast from being marked 'completed' by the worker, and does cancel mark a now-drained broadcast 'completed' in a SEPARATE command (not a sibling CTE that would see the pre-cancel snapshot)?", "category": "Lifecycle", "codex_answer": null, "codex_result": null },
+    { "id": "Q5", "question": "Process/policy: is the one-active-run guard (reject preview/confirm while running/paused, INV-OB-080) consistent with idempotent re-preview/re-confirm of the SAME campaign, and does RecomputeRollupAsync preserve an explicit 'paused'/'cancelled' project status (CASE first branch) while populating cancelled_count?", "category": "Process/Policy", "codex_answer": null, "codex_result": null }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Any allowlist file / ProjectsOptions / BulkSendOptions / CxapiSendOptions values (P0-3 gate must stay closed; no tenant added)",
+      "MessageSenderService send/dispatch logic (only IsBroadcastCompleteAsync predicate touched in OutboundRepository)",
+      "BulkSendOrchestrator / BroadcastOrchestrator dispatch paths",
+      "cxapi send client / delivery-ack ingress (PR-3b)",
+      "PR-4 approved-template (HSM) send wiring"
+    ],
+    "non_goals": [
+      "Actually sending anything in prod (gated/inert)",
+      "Per-run (vs project-level) pause UI — operations are project-level over the active run",
+      "HSM/approved-template send (PR-4)",
+      "Pausing/recalling already in-flight 'sending'/'posting' messages (explicitly not recallable)",
+      "A stale-'paused' auto-sweep/timeout (manual/ops resume or cancel, mirrors 'ambiguous' policy)"
+    ],
+    "intentional_exclusions": [
+      "No 'paused' broadcast counter column: 'paused' stays inside broadcast.queued (pre-terminal) so pause/resume need zero counter math; only cancel moves to a terminal bucket",
+      "No broadcast.status 'paused' value (chk_broadcast_status unchanged): pause is reflected at message + run(bulk_send_jobs) + project level; broadcast.status stays the worker's processing flag",
+      "No new migration for indexes: idx_outbound_messages_broadcast_status (broadcast_id,status) already serves the pause/resume/cancel WHERE"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "ProjectsService.PauseSendAsync/ResumeSendAsync/CancelSendAsync: typed catch (NpgsqlException) -> INV-OB-071 (503), same pattern as GetSendStatusAsync",
+      "ProjectsRepository.Pause/Resume/CancelRunAsync: single transaction; any NpgsqlException bubbles to the service catch after rollback (no partial write)"
+    ],
+    "user_facing_errors": [
+      "INV-OB-077 'Bu proje çalışmıyor; duraklatılamaz.'",
+      "INV-OB-078 'Bu proje duraklatılmış değil; sürdürülemez.'",
+      "INV-OB-079 'Bu proje çalışmıyor veya duraklatılmış değil; iptal edilemez.'",
+      "INV-OB-080 'Bu projede aktif bir gönderim var (çalışıyor/duraklatıldı). Önce onu tamamlayın, sürdürün veya iptal edin.'",
+      "INV-OB-068 'Proje bulunamadı.' (not-found path of a lifecycle claim)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Every lifecycle op uses an atomic status-claim UPDATE ... RETURNING; on 0 rows the method runs a follow-up existence SELECT and returns a TYPED result (Found=false -> 404 INV-OB-068, or StateConflict -> 409 INV-OB-077/078/079 with the current status in the message) — never a silent no-op. The dequeue worker halting on 'paused' is the intended effect, not a failure. Counter updates use GREATEST(...,0) (no negative drift) and are atomic with the message update in one CTE (cancel) so a mid-write crash cannot leave a terminal message with a stale counter (same guarantee as MarkCxapiOutcomeAsync/SweepStrandedPostingAsync)."
+  },
+  "aha_moments": [
+    { "category": "RELIABILITY", "user_pain": "An operator fires a big send to the wrong list and watches it go out with no stop button.", "suggestion": "A real Duraklat that halts the queue in-place by flipping only 'queued' rows to 'paused' (the worker claims only 'queued'), leaving sent ones honest.", "aha_moment": "They click Duraklat and the queued count freezes within a second — the bleeding stops without faking that already-sent messages were recalled." },
+    { "category": "UX", "user_pain": "Pause/cancel buttons that are always visible but throw errors when the project isn't in the right state.", "suggestion": "Status-aware controls: running shows Duraklat+İptal, paused shows Devam Et+İptal, finished shows neither — the UI never offers an illegal action.", "aha_moment": "The button that's showing is always the one that will work — no guessing, no error toast." },
+    { "category": "SUPPORT", "user_pain": "After a cancel, reports still show messages 'pending' forever and support can't tell cancelled from failed.", "suggestion": "A distinct 'cancelled' message status + cancelled_count rollup so cancelled is its own bucket, never混 into failed_count.", "aha_moment": "The project card reads 'İptal: 412' cleanly — support sees exactly what the operator stopped, separate from real failures." },
+    { "category": "RELIABILITY", "user_pain": "Cancelling mid-flight could double-send or strand counters if the worker and the cancel race.", "suggestion": "Atomic status claims + one-CTE counter math (mirroring the shipped SweepStrandedPostingAsync) so in-flight messages finish and queued ones terminalize exactly once.", "aha_moment": "Cancel during an active drain just works — no orphaned 'queued' counters, no resurrected rows." },
+    { "category": "UX", "user_pain": "Hitting İptal by accident wipes the rest of a campaign with no warning.", "suggestion": "An X-close confirm modal that states plainly 'gönderilmiş mesajlar geri alınamaz' before terminalizing.", "aha_moment": "The one irreversible action asks once, in plain Turkish, so a misclick never nukes a send." },
+    { "category": "SPEED", "user_pain": "Resuming a paused send means rebuilding the whole campaign.", "suggestion": "Resume just flips 'paused'->'queued' so the original recipients, order and dedup snapshot are reused untouched.", "aha_moment": "Devam Et picks up exactly where it stopped — no re-upload, no re-preview." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "iteration": 1,
+    "updated_by": "DevAgent",
+    "raw_text": "Codex gpt-5.5 iter0 FAIL (4 blockers) -> iter1: 11/12 CQ + 4/5 CoVe PASS. Sole remaining CQ9/Q3 = IsBroadcastCompleteAsync tenant-blind -> Q FORCE PASS 2026-06-10 (sanctioned tenant-blind worker class, broadcast_id globally-unique UUID PK, PR-3a precedent; SS-D only widened its non-terminal status set with 'paused'). All NEW SS-D queries tenant_id-scoped.",
+    "blocking_issues": [],
+    "escalation_required": false,
+    "notes": [
+      "iter0->iter1 RESOLVED: CQ5 SQL interpolation -> SetRunStatusAsync fully parameterized (CASE WHEN @stamp)",
+      "iter0->iter1 RESOLVED: CQ9/Q3 cancel completion NOT EXISTS -> +m.tenant_id = @tid",
+      "iter0->iter1 RESOLVED: Q5 ConfirmSendAsync -> precise guard (preview_ready job + running/paused), idempotent re-confirm exempt",
+      "iter1 FORCE PASS (Q, 2026-06-10): CQ9/Q3 IsBroadcastCompleteAsync tenant-blind worker (UUID PK, pre-existing, PR-3a sanctioned class) — spec_architectural_decisions[0]"
+    ]
+  }
+}

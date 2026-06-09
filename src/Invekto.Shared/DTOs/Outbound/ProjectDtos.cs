@@ -74,6 +74,8 @@ public sealed class ProjectSummary
     [JsonPropertyName("read_count")] public int ReadCount { get; set; }
     [JsonPropertyName("failed_count")] public int FailedCount { get; set; }
     [JsonPropertyName("ambiguous_count")] public int AmbiguousCount { get; set; }
+    /// <summary>Operator-cancelled messages across this project's runs (SS-D, migration 061). 0 until a run is cancelled.</summary>
+    [JsonPropertyName("cancelled_count")] public int CancelledCount { get; set; }
 
     [JsonPropertyName("created_at")] public DateTime CreatedAt { get; set; }
     [JsonPropertyName("updated_at")] public DateTime UpdatedAt { get; set; }

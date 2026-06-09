@@ -81,7 +81,8 @@ public class ProjectsRepository
                    p.read_count, p.failed_count, p.ambiguous_count,
                    p.created_at, p.updated_at, p.started_at, p.completed_at,
                    p.instance_id, p.template_kind, p.wa_template_id, p.template_language, p.param_mapping,
-                   p.content_mode, p.outbound_template_id, p.plain_text_body
+                   p.content_mode, p.outbound_template_id, p.plain_text_body,
+                   p.cancelled_count
             FROM projects p
             WHERE p.tenant_id = @tid AND p.archived_at IS NULL
             ORDER BY p.created_at DESC";
@@ -123,7 +124,8 @@ public class ProjectsRepository
                    p.read_count, p.failed_count, p.ambiguous_count,
                    p.created_at, p.updated_at, p.started_at, p.completed_at,
                    p.instance_id, p.template_kind, p.wa_template_id, p.template_language, p.param_mapping,
-                   p.content_mode, p.outbound_template_id, p.plain_text_body
+                   p.content_mode, p.outbound_template_id, p.plain_text_body,
+                   p.cancelled_count
             FROM projects p
             WHERE p.tenant_id = @tid AND p.id = @pid AND p.archived_at IS NULL", conn, tx))
         {
@@ -374,7 +376,7 @@ public class ProjectsRepository
     {
         const string sql = @"
             WITH bcasts AS (
-                SELECT DISTINCT b.id, b.sent, b.delivered, b.read, b.failed, b.ambiguous, b.queued, b.total_recipients
+                SELECT DISTINCT b.id, b.sent, b.delivered, b.read, b.failed, b.ambiguous, b.cancelled, b.queued, b.total_recipients
                 FROM bulk_send_jobs j
                 JOIN outbound_broadcasts b
                   ON b.tenant_id = j.tenant_id AND b.id = ANY(j.broadcast_ids)
@@ -386,6 +388,7 @@ public class ProjectsRepository
                        COALESCE(SUM(read),0)::int             AS read,
                        COALESCE(SUM(failed),0)::int           AS failed,
                        COALESCE(SUM(ambiguous),0)::int        AS ambiguous,
+                       COALESCE(SUM(cancelled),0)::int        AS cancelled,
                        COALESCE(SUM(queued),0)::int           AS queued,
                        COALESCE(SUM(total_recipients),0)::int AS total_targets
                 FROM bcasts
@@ -403,6 +406,7 @@ public class ProjectsRepository
                 read_count      = agg.read,
                 failed_count    = agg.failed,
                 ambiguous_count = agg.ambiguous,
+                cancelled_count = agg.cancelled,
                 status = CASE
                     WHEN p.status NOT IN ('draft','running','completed') THEN p.status
                     WHEN runs.run_count = 0 THEN p.status
@@ -410,6 +414,9 @@ public class ProjectsRepository
                     ELSE 'completed'
                 END,
                 completed_at = CASE
+                    -- paused/cancelled/archived own their own completed_at (set by the SS-D lifecycle op);
+                    -- do NOT let queue depth clear it (in-flight 'sending'/'posting' still sit in queued).
+                    WHEN p.status NOT IN ('draft','running','completed') THEN p.completed_at
                     WHEN runs.run_count > 0 AND agg.queued = 0
                          AND p.status IN ('running','completed') AND p.completed_at IS NULL THEN NOW()
                     WHEN agg.queued > 0 THEN NULL
@@ -423,6 +430,239 @@ public class ProjectsRepository
         cmd.Parameters.AddWithValue("tid", tenantId);
         cmd.Parameters.AddWithValue("pid", projectId);
         await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    // ------------------------------------------------------------------
+    // Run lifecycle — pause / resume / cancel (FEAT-PROJELER send-exec SS-D)
+    // ------------------------------------------------------------------
+    /// <summary>
+    /// Outcome of a pause/resume/cancel lifecycle op. The status transition is an ATOMIC claim
+    /// (UPDATE ... WHERE status=&lt;expected&gt; RETURNING) so a 0-row result is never a silent no-op:
+    /// <see cref="Found"/>=false -&gt; no active project for this tenant (404); <see cref="StateConflict"/>=true
+    /// -&gt; the project exists but was not in the required state (<see cref="CurrentStatus"/> tells the
+    /// operator why, 409). On success <see cref="AffectedMessages"/> is the number of messages flipped.
+    /// </summary>
+    public readonly record struct RunLifecycleResult(bool Found, bool StateConflict, string? CurrentStatus, int AffectedMessages);
+
+    // Flip a project's messages from one PRE-TERMINAL status to another, scoped to the project's runs'
+    // broadcasts. Used by pause (queued->paused) and resume (paused->queued): both source+target are
+    // pre-terminal so the broadcast.queued counter is unchanged (no counter math). Tenant-scoped on the
+    // message row too (defense-in-depth; the broadcast set already comes from this tenant's jobs).
+    private const string FlipProjectMessagesSql = @"
+        UPDATE outbound_messages m
+        SET status = @to
+        WHERE m.tenant_id = @tid AND m.status = @from
+          AND m.broadcast_id IN (
+              SELECT bid
+              FROM bulk_send_jobs j
+              CROSS JOIN LATERAL unnest(j.broadcast_ids) AS bid
+              WHERE j.tenant_id = @tid AND j.project_id = @pid
+          )";
+
+    /// <summary>
+    /// PAUSE a running project: atomically claim status 'running'->'paused', flip the project's still-'queued'
+    /// messages to 'paused' (the dequeue worker only claims 'queued', so they halt; in-flight 'sending'/'posting'
+    /// rows are left to finish — already handed off, not recallable), and mark the active run 'paused'. All in
+    /// one transaction. Returns a typed result (never a silent no-op): not-found, wrong-state, or success+count.
+    /// </summary>
+    public virtual async Task<RunLifecycleResult> PauseRunAsync(int tenantId, long projectId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
+
+        var claimed = await ClaimProjectStatusAsync(conn, tx, tenantId, projectId,
+            "UPDATE projects SET status = 'paused', updated_at = NOW() WHERE tenant_id = @tid AND id = @pid AND archived_at IS NULL AND status = 'running'", ct);
+        if (claimed == 0)
+        {
+            var miss = await ClassifyClaimMissAsync(conn, tx, tenantId, projectId, ct);
+            await tx.RollbackAsync(ct);
+            return miss;
+        }
+
+        var paused = await FlipMessagesAsync(conn, tx, tenantId, projectId, from: "queued", to: "paused", ct);
+        // Reflect on the active run row. Reachable non-terminal states when project='running' are 'sending'
+        // (normal) and 'confirming' (the sub-second window of an in-flight confirm). Best-effort: a confirm
+        // still mid-dispatch may finalize the job AFTER this — project status (claimed above) is authoritative.
+        await SetRunStatusAsync(conn, tx, tenantId, projectId, from: new[] { "confirming", "sending" }, to: "paused", stampCompleted: false, ct);
+
+        await tx.CommitAsync(ct);
+        return new RunLifecycleResult(Found: true, StateConflict: false, CurrentStatus: "paused", AffectedMessages: paused);
+    }
+
+    /// <summary>
+    /// RESUME a paused project: atomically claim status 'paused'->'running' (clear completed_at), flip the
+    /// project's 'paused' messages back to 'queued' (the worker picks them up again, in created_at order, reusing
+    /// the original snapshot), and mark the run 'sending'. One transaction; typed result.
+    /// </summary>
+    public virtual async Task<RunLifecycleResult> ResumeRunAsync(int tenantId, long projectId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
+
+        var claimed = await ClaimProjectStatusAsync(conn, tx, tenantId, projectId,
+            "UPDATE projects SET status = 'running', completed_at = NULL, updated_at = NOW() WHERE tenant_id = @tid AND id = @pid AND archived_at IS NULL AND status = 'paused'", ct);
+        if (claimed == 0)
+        {
+            var miss = await ClassifyClaimMissAsync(conn, tx, tenantId, projectId, ct);
+            await tx.RollbackAsync(ct);
+            return miss;
+        }
+
+        var resumed = await FlipMessagesAsync(conn, tx, tenantId, projectId, from: "paused", to: "queued", ct);
+        await SetRunStatusAsync(conn, tx, tenantId, projectId, from: new[] { "paused" }, to: "sending", stampCompleted: false, ct);
+
+        await tx.CommitAsync(ct);
+        return new RunLifecycleResult(Found: true, StateConflict: false, CurrentStatus: "running", AffectedMessages: resumed);
+    }
+
+    /// <summary>
+    /// CANCEL a running/paused project: atomically claim status -> 'cancelled' (stamp completed_at), terminalize
+    /// every remaining 'queued'+'paused' message to 'cancelled' with a per-broadcast cancelled++/queued-- (ONE
+    /// atomic CTE, the SweepStrandedPostingAsync pattern, so a mid-write crash can't leave a terminal message
+    /// with a stale counter), mark the run 'cancelled', and complete any now-drained broadcast (a SEPARATE
+    /// command — a sibling data-modifying CTE would still see the pre-cancel snapshot). In-flight 'sending'/
+    /// 'posting' rows are NOT recalled (already at the provider); they complete naturally. One transaction.
+    /// </summary>
+    public virtual async Task<RunLifecycleResult> CancelRunAsync(int tenantId, long projectId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
+
+        var claimed = await ClaimProjectStatusAsync(conn, tx, tenantId, projectId,
+            "UPDATE projects SET status = 'cancelled', completed_at = NOW(), updated_at = NOW() WHERE tenant_id = @tid AND id = @pid AND archived_at IS NULL AND status IN ('running','paused')", ct);
+        if (claimed == 0)
+        {
+            var miss = await ClassifyClaimMissAsync(conn, tx, tenantId, projectId, ct);
+            await tx.RollbackAsync(ct);
+            return miss;
+        }
+
+        int cancelledCount;
+        Guid[] affected;
+        await using (var term = new NpgsqlCommand(@"
+            WITH proj_bcasts AS (
+                SELECT DISTINCT bid
+                FROM bulk_send_jobs j
+                CROSS JOIN LATERAL unnest(j.broadcast_ids) AS bid
+                WHERE j.tenant_id = @tid AND j.project_id = @pid
+            ),
+            cancelled AS (
+                UPDATE outbound_messages m
+                SET status = 'cancelled',
+                    failed_reason = COALESCE(m.failed_reason, '[INV-OB-079] run cancelled by operator')
+                WHERE m.tenant_id = @tid AND m.status IN ('queued','paused')
+                  AND m.broadcast_id IN (SELECT bid FROM proj_bcasts)
+                RETURNING m.broadcast_id
+            ),
+            grp AS (
+                SELECT broadcast_id, COUNT(*) AS cnt
+                FROM cancelled WHERE broadcast_id IS NOT NULL
+                GROUP BY broadcast_id
+            ),
+            bc AS (
+                UPDATE outbound_broadcasts b
+                SET cancelled = b.cancelled + grp.cnt,
+                    queued = GREATEST(b.queued - grp.cnt, 0)
+                FROM grp WHERE b.id = grp.broadcast_id AND b.tenant_id = @tid
+                RETURNING b.id
+            )
+            SELECT (SELECT COUNT(*) FROM cancelled)::int AS cnt,
+                   ARRAY(SELECT id FROM bc) AS bids", conn, tx))
+        {
+            term.Parameters.AddWithValue("tid", tenantId);
+            term.Parameters.AddWithValue("pid", projectId);
+            await using var reader = await term.ExecuteReaderAsync(ct);
+            await reader.ReadAsync(ct);
+            cancelledCount = reader.GetInt32(0);
+            // ARRAY(SELECT ...) yields an empty array (never NULL) for 0 rows; the IsDBNull guard is
+            // belt-and-braces so a no-op cancel (nothing queued/paused) reads a clean empty list.
+            affected = reader.IsDBNull(1) ? Array.Empty<Guid>() : (Guid[])reader.GetValue(1);
+        }
+
+        // Reflect on the active run row. Reachable non-terminal states when project is running/paused are
+        // 'sending', 'confirming' (in-flight confirm window) and 'paused'. Best-effort (see PauseRunAsync note).
+        await SetRunStatusAsync(conn, tx, tenantId, projectId, from: new[] { "confirming", "sending", "paused" }, to: "cancelled", stampCompleted: true, ct);
+
+        // Complete any broadcast the cancel just drained (no remaining non-terminal rows). Separate command so
+        // it observes the CTE's committed-to-tx changes; broadcasts with in-flight rows stay as-is and complete
+        // naturally when the worker finishes them.
+        if (affected.Length > 0)
+        {
+            await using var complete = new NpgsqlCommand(@"
+                UPDATE outbound_broadcasts b
+                SET status = 'completed', completed_at = NOW()
+                WHERE b.id = ANY(@bids) AND b.tenant_id = @tid AND b.status NOT IN ('completed','failed')
+                  AND NOT EXISTS (
+                      SELECT 1 FROM outbound_messages m
+                      WHERE m.broadcast_id = b.id AND m.tenant_id = @tid
+                        AND m.status IN ('queued','sending','posting','paused'))", conn, tx);
+            complete.Parameters.AddWithValue("tid", tenantId);
+            complete.Parameters.AddWithValue("bids", affected);
+            await complete.ExecuteNonQueryAsync(ct);
+        }
+
+        await tx.CommitAsync(ct);
+        return new RunLifecycleResult(Found: true, StateConflict: false, CurrentStatus: "cancelled", AffectedMessages: cancelledCount);
+    }
+
+    /// <summary>Run the atomic project-status claim UPDATE on the tx; returns rows affected (0 or 1).</summary>
+    private static async Task<int> ClaimProjectStatusAsync(
+        NpgsqlConnection conn, NpgsqlTransaction tx, int tenantId, long projectId, string sql, CancellationToken ct)
+    {
+        await using var cmd = new NpgsqlCommand(sql, conn, tx);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("pid", projectId);
+        return await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    /// <summary>Flip the project's messages from -&gt; to (both pre-terminal) and return the count flipped.</summary>
+    private static async Task<int> FlipMessagesAsync(
+        NpgsqlConnection conn, NpgsqlTransaction tx, int tenantId, long projectId, string from, string to, CancellationToken ct)
+    {
+        await using var cmd = new NpgsqlCommand(FlipProjectMessagesSql, conn, tx);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("pid", projectId);
+        cmd.Parameters.AddWithValue("from", from);
+        cmd.Parameters.AddWithValue("to", to);
+        return await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    /// <summary>Reflect the lifecycle change on the active run row(s) (bulk_send_jobs), tenant + project scoped.</summary>
+    private static async Task SetRunStatusAsync(
+        NpgsqlConnection conn, NpgsqlTransaction tx, int tenantId, long projectId, string[] from, string to, bool stampCompleted, CancellationToken ct)
+    {
+        // Fully parameterized (no SQL string interpolation): completed_at is stamped via a CASE on the
+        // @stamp flag rather than concatenating a fragment into the statement.
+        const string sql = @"
+            UPDATE bulk_send_jobs
+            SET status = @to,
+                completed_at = CASE WHEN @stamp THEN NOW() ELSE completed_at END
+            WHERE tenant_id = @tid AND project_id = @pid AND status = ANY(@from)";
+        await using var cmd = new NpgsqlCommand(sql, conn, tx);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("pid", projectId);
+        cmd.Parameters.AddWithValue("to", to);
+        cmd.Parameters.AddWithValue("from", from);
+        cmd.Parameters.AddWithValue("stamp", stampCompleted);
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    /// <summary>
+    /// Classify a 0-row status claim: a follow-up tenant-scoped existence read distinguishes "no active project"
+    /// (Found=false -&gt; 404) from "wrong state" (StateConflict + the current status -&gt; 409). Runs inside the
+    /// caller's tx (before rollback) so it reads a consistent view.
+    /// </summary>
+    private static async Task<RunLifecycleResult> ClassifyClaimMissAsync(
+        NpgsqlConnection conn, NpgsqlTransaction tx, int tenantId, long projectId, CancellationToken ct)
+    {
+        await using var cmd = new NpgsqlCommand(
+            "SELECT status FROM projects WHERE tenant_id = @tid AND id = @pid AND archived_at IS NULL", conn, tx);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("pid", projectId);
+        var status = await cmd.ExecuteScalarAsync(ct) as string;
+        return status == null
+            ? new RunLifecycleResult(Found: false, StateConflict: false, CurrentStatus: null, AffectedMessages: 0)
+            : new RunLifecycleResult(Found: true, StateConflict: true, CurrentStatus: status, AffectedMessages: 0);
     }
 
     // ------------------------------------------------------------------
@@ -564,6 +804,7 @@ public class ProjectsRepository
         ParamMapping = reader.IsDBNull(20) ? null : JsonSerializer.Deserialize<JsonElement>(reader.GetString(20)),
         ContentMode = reader.IsDBNull(21) ? null : reader.GetString(21),
         OutboundTemplateId = reader.IsDBNull(22) ? null : reader.GetInt32(22),
-        PlainTextBody = reader.IsDBNull(23) ? null : reader.GetString(23)
+        PlainTextBody = reader.IsDBNull(23) ? null : reader.GetString(23),
+        CancelledCount = reader.GetInt32(24)
     };
 }

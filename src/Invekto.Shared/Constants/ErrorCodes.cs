@@ -553,6 +553,12 @@ public static class ErrorCodes
     public const string ProjectNoTargets = "INV-OB-075";                   // Project send: the project targets no data_lists, so there is no audience to snapshot. 422.
     public const string ProjectHsmSendNotSupported = "INV-OB-076";         // Project send: the project is configured for an approved HSM template (template_kind=wapcrm_template); HSM send is not yet available (PR-4, INMA G12). Rejected — never silently sent as plain text. 422.
 
+    // FEAT-PROJELER (PKT-14) send-exec SS-D — project run pause/resume/cancel lifecycle (INV-OB-077+)
+    public const string ProjectRunNotPausable = "INV-OB-077";              // Pause rejected: the project is not 'running' (atomic status claim affected 0 rows; current status returned to the operator). One active run per project. 409.
+    public const string ProjectRunNotResumable = "INV-OB-078";             // Resume rejected: the project is not 'paused'. 409.
+    public const string ProjectRunNotCancellable = "INV-OB-079";           // Cancel rejected: the project is not 'running' or 'paused' (nothing in flight to cancel). 409.
+    public const string ProjectRunInProgress = "INV-OB-080";               // New run rejected: the project already has an active run ('running' or 'paused'). Complete, resume or cancel it first (one active run per project). 409.
+
     // Lead Management errors (INV-LD-xxx) -- GR-3.13
     public const string LeadInvalidPayload = "INV-LD-001";
     public const string LeadNotFound = "INV-LD-002";

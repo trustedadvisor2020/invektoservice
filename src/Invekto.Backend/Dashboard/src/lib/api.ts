@@ -2357,6 +2357,19 @@ class OpsApiClient {
     return this.request<ProjectDetail>(`/api/v1/outbound/projects/${projectId}/send/status`);
   }
 
+  // SS-D run lifecycle: pause / resume / cancel. No body (project id in route); each returns the fresh detail.
+  async projectSendPause(projectId: number): Promise<ProjectDetail> {
+    return this.request<ProjectDetail>(`/api/v1/outbound/projects/${projectId}/send/pause`, { method: 'POST' });
+  }
+
+  async projectSendResume(projectId: number): Promise<ProjectDetail> {
+    return this.request<ProjectDetail>(`/api/v1/outbound/projects/${projectId}/send/resume`, { method: 'POST' });
+  }
+
+  async projectSendCancel(projectId: number): Promise<ProjectDetail> {
+    return this.request<ProjectDetail>(`/api/v1/outbound/projects/${projectId}/send/cancel`, { method: 'POST' });
+  }
+
   // --- FEAT-OBI Phase 1A Plan B: Export Manager ---
   async listSendJobs(): Promise<SendJobSummary[]> {
     return this.request<SendJobSummary[]>('/api/v1/outbound/exports/send-jobs');
@@ -2496,6 +2509,7 @@ export interface ProjectSummary {
   read_count: number;
   failed_count: number;
   ambiguous_count: number;
+  cancelled_count: number;
   created_at: string;
   updated_at: string;
   started_at: string | null;

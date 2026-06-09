@@ -308,17 +308,26 @@ public class OutboundRepository
     }
 
     /// <summary>
-    /// Check if all messages in a broadcast are processed (no more queued/sending/posting).
+    /// Check if all messages in a broadcast are processed (no more queued/sending/posting/paused).
     /// FEAT-PROJELER / cxapi (PR-3a): 'posting' is non-terminal (a cxapi POST may be in flight),
     /// so a broadcast is NOT complete while any row is 'posting'. 'ambiguous' is terminal
     /// (manual/ops) and does not block completion. Bridge rows never reach 'posting'.
+    /// FEAT-PROJELER SS-D (migration 061): 'paused' is also non-terminal (an operator-paused row
+    /// will resume), so a broadcast with paused rows is NOT complete — otherwise the worker would
+    /// prematurely mark a paused broadcast 'completed'. 'cancelled' is terminal (does not block).
+    /// <para><b>Tenant-scope note (pre-existing, unchanged by SS-D):</b> keyed on <c>broadcast_id</c>, a
+    /// globally-unique UUID PK (<c>gen_random_uuid()</c>) that already identifies exactly one tenant's
+    /// broadcast, so no <c>tenant_id</c> filter is needed (and none is available — this is called from the
+    /// singleton <see cref="MessageSenderService"/> worker + its startup sweep, which have no per-row tenant
+    /// context, the same sanctioned worker exception as <see cref="DequeueMessagesAsync"/> /
+    /// <see cref="ResetSendingMessagesAsync"/>). SS-D only widened the non-terminal status set (+'paused').</para>
     /// </summary>
     public virtual async Task<bool> IsBroadcastCompleteAsync(
         Guid broadcastId, CancellationToken ct = default)
     {
         const string sql = @"
             SELECT COUNT(*) FROM outbound_messages
-            WHERE broadcast_id = @bid AND status IN ('queued', 'sending', 'posting')";
+            WHERE broadcast_id = @bid AND status IN ('queued', 'sending', 'posting', 'paused')";
 
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = new NpgsqlCommand(sql, conn);

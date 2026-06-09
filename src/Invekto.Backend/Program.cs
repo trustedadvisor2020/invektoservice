@@ -2600,6 +2600,9 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
             new() { Method = "POST", Path = "/api/v1/outbound/projects", Description = "Create project (+targets) proxy", Auth = "Bearer", Category = "API" },
             new() { Method = "PUT", Path = "/api/v1/outbound/projects/{id}", Description = "Update project (partial +targets replace) proxy", Auth = "Bearer", Category = "API" },
             new() { Method = "DELETE", Path = "/api/v1/outbound/projects/{id}", Description = "Archive (soft-delete) project proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "POST", Path = "/api/v1/outbound/projects/{id}/send/pause", Description = "Pause a project run (queued->paused) proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "POST", Path = "/api/v1/outbound/projects/{id}/send/resume", Description = "Resume a paused project run (paused->queued) proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "POST", Path = "/api/v1/outbound/projects/{id}/send/cancel", Description = "Cancel a project run (remaining->cancelled) proxy", Auth = "Bearer", Category = "API" },
 
             // FEAT-TFM MVP: tenant-scoped semantic field-mapping CRUD
             new() { Method = "GET", Path = "/api/v1/tenant-settings/field-mapping", Description = "Read tenant semantic→INMA field mapping", Auth = "Bearer", Category = "API" },
@@ -3905,6 +3908,16 @@ app.MapPost("/api/v1/outbound/projects/{id:long}/send/confirm", async (HttpConte
 
 app.MapGet("/api/v1/outbound/projects/{id:long}/send/status", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
     await OutboundProxyGet(ctx, obClient, jsonLog, $"/api/v1/projects/{id}/send/status"));
+
+// FEAT-PROJELER send-exec SS-D — project run pause / resume / cancel proxy (no body; project id in route).
+app.MapPost("/api/v1/outbound/projects/{id:long}/send/pause", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, $"/api/v1/projects/{id}/send/pause"));
+
+app.MapPost("/api/v1/outbound/projects/{id:long}/send/resume", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, $"/api/v1/projects/{id}/send/resume"));
+
+app.MapPost("/api/v1/outbound/projects/{id:long}/send/cancel", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, $"/api/v1/projects/{id}/send/cancel"));
 
 // ============================================
 // FLOW BUILDER PROXY ENDPOINTS

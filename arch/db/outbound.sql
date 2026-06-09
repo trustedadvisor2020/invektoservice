@@ -50,9 +50,12 @@ CREATE TABLE IF NOT EXISTS outbound_broadcasts (
     read                    INTEGER NOT NULL DEFAULT 0,
     failed                  INTEGER NOT NULL DEFAULT 0,
     -- FEAT-PROJELER / cxapi (migration 056): cxapi sends can end 'ambiguous'
-    -- (timeout/transport/stranded); this counter keeps the broadcast totals reconciled
-    -- (sent + failed + ambiguous + delivered + read + queued = total_recipients).
+    -- (timeout/transport/stranded); this counter keeps the broadcast totals reconciled.
     ambiguous               INTEGER NOT NULL DEFAULT 0,
+    -- FEAT-PROJELER SS-D (migration 061): operator-cancelled messages land here so a
+    -- cancelled message stays in the totals, separate from 'failed'. Invariant:
+    -- sent + failed + ambiguous + delivered + read + queued + cancelled = total_recipients.
+    cancelled               INTEGER NOT NULL DEFAULT 0,
     status                  VARCHAR(20) NOT NULL DEFAULT 'queued',
     scheduled_at            TIMESTAMPTZ,
     started_at              TIMESTAMPTZ,
@@ -74,7 +77,9 @@ CREATE TABLE IF NOT EXISTS outbound_broadcasts (
     -- FEAT-PROJELER / cxapi (migration 055): send_route value domain
     CONSTRAINT chk_outbound_broadcasts_send_route CHECK (send_route IN ('mainapp_bridge', 'wapcrm_cxapi')),
     -- FEAT-PROJELER / cxapi (migration 056): ambiguous counter is non-negative
-    CONSTRAINT chk_outbound_broadcasts_ambiguous_nonneg CHECK (ambiguous >= 0)
+    CONSTRAINT chk_outbound_broadcasts_ambiguous_nonneg CHECK (ambiguous >= 0),
+    -- FEAT-PROJELER SS-D (migration 061): cancelled counter is non-negative
+    CONSTRAINT chk_outbound_broadcasts_cancelled_nonneg CHECK (cancelled >= 0)
 );
 
 CREATE INDEX IF NOT EXISTS idx_outbound_broadcasts_tenant_created
@@ -128,7 +133,9 @@ CREATE TABLE IF NOT EXISTS outbound_messages (
     -- FEAT-J2 (migration 025): +'blocked' for INMA 906/907 marketing opt-out rejection
     -- FEAT-PROJELER / cxapi (migration 056): +'posting' (in-flight cxapi POST; never auto-requeued)
     --   +'ambiguous' (cxapi timeout/transport/stranded; unknown delivery, manual/ops, never auto-retried)
-    CONSTRAINT chk_message_status CHECK (status IN ('queued', 'sending', 'sent', 'delivered', 'read', 'failed', 'blocked', 'posting', 'ambiguous')),
+    -- FEAT-PROJELER SS-D (migration 061): +'paused' (pre-terminal; pause halts a project's queued rows,
+    --   the dequeue worker only claims 'queued', resume flips back) +'cancelled' (terminal; operator cancel)
+    CONSTRAINT chk_message_status CHECK (status IN ('queued', 'sending', 'sent', 'delivered', 'read', 'failed', 'blocked', 'posting', 'ambiguous', 'paused', 'cancelled')),
     -- FEAT-PROJELER / cxapi (migration 055): route/kind value domains
     CONSTRAINT chk_outbound_messages_send_route CHECK (send_route IN ('mainapp_bridge', 'wapcrm_cxapi')),
     CONSTRAINT chk_outbound_messages_message_kind CHECK (message_kind IN ('plain_text', 'wapcrm_template'))
@@ -275,9 +282,10 @@ CREATE TABLE IF NOT EXISTS bulk_send_jobs (
     -- runs stay valid. Composite FK added in the FEAT-PROJELER section below
     -- (after projects is defined, so fresh top-to-bottom apply resolves).
     project_id              BIGINT,
+    -- Migration 061 (SS-D): +'paused' so the run row reflects an operator-paused send.
     CONSTRAINT chk_bulk_job_status CHECK (status IN (
         'preview_ready','confirming','sending','completed',
-        'completed_with_errors','failed','cancelled')),
+        'completed_with_errors','failed','cancelled','paused')),
     -- Migration 060: exactly one content source (template XOR inline free text).
     CONSTRAINT chk_bulk_message_source CHECK (num_nonnulls(template_id, inline_message_text) = 1),
     CONSTRAINT uq_bulk_job_tenant_campaign UNIQUE (tenant_id, campaign_id)
@@ -421,6 +429,8 @@ CREATE TABLE IF NOT EXISTS projects (
     read_count              INTEGER NOT NULL DEFAULT 0,
     failed_count            INTEGER NOT NULL DEFAULT 0,
     ambiguous_count         INTEGER NOT NULL DEFAULT 0,
+    -- SS-D (migration 061): operator-cancelled message rollup (from broadcast.cancelled)
+    cancelled_count         INTEGER NOT NULL DEFAULT 0,
     created_by              INTEGER,           -- tenant user id (no local users table -> no FK)
     created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -445,7 +455,7 @@ CREATE TABLE IF NOT EXISTS projects (
     CONSTRAINT chk_project_counters_nonneg CHECK (
         run_count >= 0 AND total_targets >= 0 AND sent_count >= 0
         AND delivered_count >= 0 AND read_count >= 0 AND failed_count >= 0
-        AND ambiguous_count >= 0),
+        AND ambiguous_count >= 0 AND cancelled_count >= 0),
     CONSTRAINT uq_projects_tenant_id UNIQUE (tenant_id, id)
 );
 

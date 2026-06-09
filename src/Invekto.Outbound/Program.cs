@@ -606,6 +606,10 @@ static int ProjectSendStatus(string? code) => code switch
     ErrorCodes.ContactListNotFound => 404,
     ErrorCodes.BulkSendAlreadyConfirmed => 409,
     ErrorCodes.ContactListNotReady => 409,
+    ErrorCodes.ProjectRunNotPausable => 409,    // SS-D lifecycle state conflicts
+    ErrorCodes.ProjectRunNotResumable => 409,
+    ErrorCodes.ProjectRunNotCancellable => 409,
+    ErrorCodes.ProjectRunInProgress => 409,
     ErrorCodes.ProjectNoContent => 422,
     ErrorCodes.ProjectNoTargets => 422,
     ErrorCodes.ProjectHsmSendNotSupported => 422,
@@ -733,6 +737,50 @@ app.MapGet("/api/v1/projects/{id:long}/send/status", async (HttpContext ctx, [Fr
     var (detail, errorCode, message) = await svc.GetSendStatusAsync(tenantContext.TenantId, id, ctx.RequestAborted);
     if (detail == null)
         return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "Durum okunamadı.", requestId), statusCode: ProjectSendStatus(errorCode));
+    return Results.Ok(detail);
+});
+
+// ─── FEAT-PROJELER send-exec SS-D: project run pause / resume / cancel ───
+// Project-level lifecycle over the active run. No body (the project id is the route). Gated on Projects
+// (stopping/resuming an already-authorized run); the lifecycle state guard is the real gate. Each returns
+// the fresh ProjectDetail (recomputed rollup). Prod-inert until a tenant is allowlisted for sending.
+
+app.MapPost("/api/v1/projects/{id:long}/send/pause", async (HttpContext ctx, [FromServices] ProjectsService svc, long id) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (detail, errorCode, message) = await svc.PauseSendAsync(tenantContext.TenantId, id, ctx.RequestAborted);
+    if (detail == null)
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "Gönderim duraklatılamadı.", requestId), statusCode: ProjectSendStatus(errorCode));
+    return Results.Ok(detail);
+});
+
+app.MapPost("/api/v1/projects/{id:long}/send/resume", async (HttpContext ctx, [FromServices] ProjectsService svc, long id) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (detail, errorCode, message) = await svc.ResumeSendAsync(tenantContext.TenantId, id, ctx.RequestAborted);
+    if (detail == null)
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "Gönderim sürdürülemedi.", requestId), statusCode: ProjectSendStatus(errorCode));
+    return Results.Ok(detail);
+});
+
+app.MapPost("/api/v1/projects/{id:long}/send/cancel", async (HttpContext ctx, [FromServices] ProjectsService svc, long id) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (detail, errorCode, message) = await svc.CancelSendAsync(tenantContext.TenantId, id, ctx.RequestAborted);
+    if (detail == null)
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "Gönderim iptal edilemedi.", requestId), statusCode: ProjectSendStatus(errorCode));
     return Results.Ok(detail);
 });
 

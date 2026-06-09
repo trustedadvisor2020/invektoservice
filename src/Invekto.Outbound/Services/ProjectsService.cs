@@ -222,6 +222,14 @@ public sealed class ProjectsService
             var detail = await _repo.GetAsync(tenantId, projectId, ct);
             if (detail == null) return (null, ErrorCodes.ProjectNotFound, $"Proje {projectId} bulunamadı.");
 
+            // One active run per project (SS-D): refuse a NEW send while a run is in flight or paused — the
+            // operator must complete, resume or cancel it first. (Re-previewing the SAME campaign stays
+            // idempotent: a draft/completed/cancelled project passes here, and the campaign-already-confirmed
+            // guard below returns the existing preview.)
+            if (detail.Project.Status is ProjectStatuses.Running or ProjectStatuses.Paused)
+                return (null, ErrorCodes.ProjectRunInProgress,
+                    "Bu projede aktif bir gönderim var. Önce onu tamamlayın, sürdürün veya iptal edin.");
+
             // Eligibility: a run dispatches plain_text content only. HSM send is PR-4.
             var (templateId, inlineText, eligErr, eligMsg) = ResolveSendContent(detail.Project);
             if (eligErr != null) return (null, eligErr, eligMsg);
@@ -297,6 +305,7 @@ public sealed class ProjectsService
             // content-less project is rejected by ResolveSendContent -> never silently dispatched.
             var detail = await _repo.GetAsync(tenantId, projectId, ct);
             if (detail == null) return (null, ErrorCodes.ProjectNotFound, $"Proje {projectId} bulunamadı veya arşivlenmiş.");
+
             var (_, _, eligErr, eligMsg) = ResolveSendContent(detail.Project);
             if (eligErr != null) return (null, eligErr, eligMsg);
 
@@ -304,6 +313,15 @@ public sealed class ProjectsService
             if (job == null) return (null, ErrorCodes.BulkSendJobNotFound, $"'{campaignId}' için önizleme bulunamadı.");
             if (job.ProjectId != projectId)
                 return (null, ErrorCodes.ProjectInvalidPayload, "Kampanya bu projeye ait değil.");
+
+            // One active run per project (SS-D): a preview_ready job is a NEW dispatch — reject it while a run
+            // is already in flight or paused (INV-OB-080); the operator must complete, resume or cancel that
+            // run first. This targets a SECOND dispatch precisely and does NOT block the idempotent re-confirm
+            // of an already-dispatched (sending/completed) job (job.Status != preview_ready), which must keep
+            // returning its live status.
+            if (job.Status == "preview_ready" && detail.Project.Status is ProjectStatuses.Running or ProjectStatuses.Paused)
+                return (null, ErrorCodes.ProjectRunInProgress,
+                    "Bu projede aktif bir gönderim var. Önce onu tamamlayın, sürdürün veya iptal edin.");
 
             // Lifecycle + ATOMIC archive gate for a FRESH dispatch: a preview_ready job is the only one that
             // will actually dispatch. Claim the project 'running' FIRST, gated on archived_at IS NULL — if it
@@ -346,6 +364,57 @@ public sealed class ProjectsService
         {
             _logger.SystemError($"project status failed (tenant={tenantId}, project={projectId}): {ex.Message}");
             return (null, ErrorCodes.ProjectDbError, "Veritabanı hatası nedeniyle durum okunamadı. Lütfen tekrar deneyin.");
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Run lifecycle — pause / resume / cancel (SS-D). Each is gated (Projects) + atomic in the repo;
+    // on success the rollup is recomputed so the returned ProjectDetail reflects the new status/counters.
+    // ------------------------------------------------------------------
+    /// <summary>Pause a running project's send (queued -> paused; in-flight not recalled). INV-OB-077 if not running.</summary>
+    public Task<(ProjectDetail? detail, string? errorCode, string? message)> PauseSendAsync(int tenantId, long projectId, CancellationToken ct)
+        => RunLifecycleAsync(tenantId, projectId, _repo.PauseRunAsync,
+            ErrorCodes.ProjectRunNotPausable, "Bu proje çalışmıyor; duraklatılamaz.", "pause", ct);
+
+    /// <summary>Resume a paused project's send (paused -> queued). INV-OB-078 if not paused.</summary>
+    public Task<(ProjectDetail? detail, string? errorCode, string? message)> ResumeSendAsync(int tenantId, long projectId, CancellationToken ct)
+        => RunLifecycleAsync(tenantId, projectId, _repo.ResumeRunAsync,
+            ErrorCodes.ProjectRunNotResumable, "Bu proje duraklatılmış değil; sürdürülemez.", "resume", ct);
+
+    /// <summary>Cancel a running/paused project's send (remaining queued+paused -> cancelled). INV-OB-079 if neither.</summary>
+    public Task<(ProjectDetail? detail, string? errorCode, string? message)> CancelSendAsync(int tenantId, long projectId, CancellationToken ct)
+        => RunLifecycleAsync(tenantId, projectId, _repo.CancelRunAsync,
+            ErrorCodes.ProjectRunNotCancellable, "Bu proje çalışmıyor veya duraklatılmış değil; iptal edilemez.", "cancel", ct);
+
+    /// <summary>
+    /// Shared pause/resume/cancel flow: gate -> run the atomic repo op -> map its typed result (not-found ->
+    /// INV-OB-068, wrong-state -> the op's conflict code, both never a silent no-op) -> on success recompute
+    /// the rollup and return the fresh ProjectDetail (the same shape GetSendStatusAsync returns). Any DB
+    /// transport error is a typed INV-OB-071 (503, retry-safe; the repo op is a single rolled-back transaction).
+    /// </summary>
+    private async Task<(ProjectDetail? detail, string? errorCode, string? message)> RunLifecycleAsync(
+        int tenantId, long projectId,
+        Func<int, long, CancellationToken, Task<ProjectsRepository.RunLifecycleResult>> op,
+        string stateConflictCode, string stateConflictMessage, string opLabel, CancellationToken ct)
+    {
+        if (!Allowed(tenantId)) return (null, ErrorCodes.ProjectDisabled, "Projeler bu hesap için etkin değil.");
+        try
+        {
+            var result = await op(tenantId, projectId, ct);
+            if (!result.Found) return (null, ErrorCodes.ProjectNotFound, $"Proje {projectId} bulunamadı.");
+            if (result.StateConflict) return (null, stateConflictCode, stateConflictMessage);
+
+            await _repo.RecomputeRollupAsync(tenantId, projectId, ct);
+            var detail = await _repo.GetAsync(tenantId, projectId, ct);
+            if (detail == null) return (null, ErrorCodes.ProjectNotFound, $"Proje {projectId} bulunamadı.");
+
+            _logger.SystemInfo($"project {opLabel}: tenant={tenantId}, project={projectId}, affected={result.AffectedMessages}");
+            return (detail, null, null);
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"project {opLabel} failed (tenant={tenantId}, project={projectId}): {ex.Message}");
+            return (null, ErrorCodes.ProjectDbError, "Veritabanı hatası nedeniyle işlem tamamlanamadı. Lütfen tekrar deneyin.");
         }
     }
 
