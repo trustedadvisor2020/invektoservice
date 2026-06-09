@@ -2334,6 +2334,29 @@ class OpsApiClient {
     });
   }
 
+  // --- FEAT-PROJELER PKT-14 SS-C: project RUN dispatch (Gönder) ---
+  // A run reuses the bulk preview->confirm->status machinery. The caller generates ONE campaign_id
+  // per Gönder flow and passes it to both preview and confirm (idempotency key).
+  async projectSendPreview(projectId: number, campaignId: string): Promise<BulkSendPreviewResponse> {
+    return this.request<BulkSendPreviewResponse>(`/api/v1/outbound/projects/${projectId}/send/preview`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ campaign_id: campaignId }),
+    });
+  }
+
+  async projectSendConfirm(projectId: number, campaignId: string): Promise<BulkSendStatusResponse> {
+    return this.request<BulkSendStatusResponse>(`/api/v1/outbound/projects/${projectId}/send/confirm`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ campaign_id: campaignId }),
+    });
+  }
+
+  async projectSendStatus(projectId: number): Promise<ProjectDetail> {
+    return this.request<ProjectDetail>(`/api/v1/outbound/projects/${projectId}/send/status`);
+  }
+
   // --- FEAT-OBI Phase 1A Plan B: Export Manager ---
   async listSendJobs(): Promise<SendJobSummary[]> {
     return this.request<SendJobSummary[]>('/api/v1/outbound/exports/send-jobs');

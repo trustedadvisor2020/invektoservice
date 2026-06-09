@@ -3894,6 +3894,18 @@ app.MapPut("/api/v1/outbound/projects/{id:long}", async (HttpContext ctx, Outbou
 app.MapDelete("/api/v1/outbound/projects/{id:long}", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
     await OutboundProxyDelete(ctx, obClient, jsonLog, $"/api/v1/projects/{id}"));
 
+// FEAT-PROJELER send-exec SS-C — project RUN dispatch proxy (preview -> confirm -> status).
+// Thin pass-through over the Outbound /api/v1/projects/{id}/send/* endpoints; Outbound enforces the
+// Projects + BulkSend gates + eligibility. The run is a bulk_send_job(project_id) under the hood.
+app.MapPost("/api/v1/outbound/projects/{id:long}/send/preview", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, $"/api/v1/projects/{id}/send/preview"));
+
+app.MapPost("/api/v1/outbound/projects/{id:long}/send/confirm", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, $"/api/v1/projects/{id}/send/confirm"));
+
+app.MapGet("/api/v1/outbound/projects/{id:long}/send/status", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
+    await OutboundProxyGet(ctx, obClient, jsonLog, $"/api/v1/projects/{id}/send/status"));
+
 // ============================================
 // FLOW BUILDER PROXY ENDPOINTS
 // ============================================

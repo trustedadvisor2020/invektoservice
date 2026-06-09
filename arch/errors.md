@@ -1074,6 +1074,15 @@ errors:
   - code: INV-OB-073
     description: "FEAT-PROJELER (PKT-14) — invalid project send config (channel + template). Raised by ProjectsService.BuildSendConfig when template_kind is set but the block is inconsistent: unknown kind (not plain_text|wapcrm_template), missing channel (instance_id <= 0, required for both kinds), wapcrm_template without a non-empty wa_template_id, wa_template_id over 128 chars / template_language over 8 chars, or a param_mapping that is not a JSON object/array or exceeds the size cap. Validation-only; nothing is written. (400)"
     user_message: Kanal/şablon ayarları geçersiz. Seçimlerinizi kontrol edin.
+  - code: INV-OB-074
+    description: "FEAT-PROJELER (PKT-14) send-exec SS-C — project has no dispatchable content. Raised by ProjectsService.PreviewSendAsync when the project's template_kind is not plain_text or its content carrier is missing: content_mode unset, gallery_template chosen without an outbound_template_id, or free_text with an empty plain_text_body. Nothing is snapshotted/sent. (422)"
+    user_message: Projede gönderilecek içerik tanımlı değil (galeri şablonu veya serbest metin seçin).
+  - code: INV-OB-075
+    description: "FEAT-PROJELER (PKT-14) send-exec SS-C — project targets no data_lists, so there is no audience to snapshot for the run. (422)"
+    user_message: Projenin hedef listesi yok. Önce en az bir liste ekleyin.
+  - code: INV-OB-076
+    description: "FEAT-PROJELER (PKT-14) send-exec SS-C — the project is configured for an approved HSM template (template_kind=wapcrm_template); HSM send is not yet available (PR-4, blocked on INMA G12). The run is rejected here — never silently downgraded to a plain-text send. (422)"
+    user_message: Onaylı şablon (HSM) gönderimi henüz aktif değil. Bu özellik yakında gelecek.
 
   # ── IG — Integrations (GR-3.4/3.6) ──
   - code: INV-IG-001

@@ -335,6 +335,97 @@ public class ProjectsRepository
     }
 
     // ------------------------------------------------------------------
+    // Run lifecycle + roll-up counters (FEAT-PROJELER send-exec SS-C)
+    // ------------------------------------------------------------------
+    /// <summary>
+    /// Mark a project 'running' when a run is dispatched: sets status='running', started_at=NOW(), clears
+    /// completed_at (a fresh run reopens the lifecycle) and bumps updated_at. Idempotent (a second confirm
+    /// re-marks running harmlessly). Only an active (non-archived) project is touched. Returns true when
+    /// exactly one (active) row was updated; false means the project was archived/removed mid-confirm — the
+    /// caller logs that rather than silently dropping it. The denormalized counters are NOT written here —
+    /// <see cref="RecomputeRollupAsync"/> refreshes them live on status read.
+    /// </summary>
+    public virtual async Task<bool> SetRunningAsync(int tenantId, long projectId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE projects
+            SET status = 'running', started_at = NOW(), completed_at = NULL, updated_at = NOW()
+            WHERE tenant_id = @tid AND id = @pid AND archived_at IS NULL";
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("pid", projectId);
+        return await cmd.ExecuteNonQueryAsync(ct) == 1;
+    }
+
+    /// <summary>
+    /// Recompute a project's denormalized roll-up counters + lifecycle status LIVE from its runs, and
+    /// persist them (idempotent UPDATE). Aggregates the project's bulk_send_jobs -> broadcast_ids ->
+    /// outbound_broadcasts (tenant-scoped via project ownership; no cross-tenant read):
+    ///   run_count       = number of the project's bulk_send_jobs
+    ///   total_targets   = SUM(broadcast.total_recipients)
+    ///   sent/delivered/read/failed/ambiguous = SUM of the matching broadcast counters
+    /// Status derives from the live queue: 'running' while any of the project's broadcasts still has
+    /// queued > 0, else 'completed' (run_count > 0) — completed_at is stamped once when it first drains and
+    /// cleared again if a new run re-queues. Only an active project in a run-managed state (draft/running/
+    /// completed) is transitioned; archived/paused/cancelled are left as-is (forward-compatible with SS-D).
+    /// </summary>
+    public virtual async Task RecomputeRollupAsync(int tenantId, long projectId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            WITH bcasts AS (
+                SELECT DISTINCT b.id, b.sent, b.delivered, b.read, b.failed, b.ambiguous, b.queued, b.total_recipients
+                FROM bulk_send_jobs j
+                JOIN outbound_broadcasts b
+                  ON b.tenant_id = j.tenant_id AND b.id = ANY(j.broadcast_ids)
+                WHERE j.tenant_id = @tid AND j.project_id = @pid
+            ),
+            agg AS (
+                SELECT COALESCE(SUM(sent),0)::int             AS sent,
+                       COALESCE(SUM(delivered),0)::int        AS delivered,
+                       COALESCE(SUM(read),0)::int             AS read,
+                       COALESCE(SUM(failed),0)::int           AS failed,
+                       COALESCE(SUM(ambiguous),0)::int        AS ambiguous,
+                       COALESCE(SUM(queued),0)::int           AS queued,
+                       COALESCE(SUM(total_recipients),0)::int AS total_targets
+                FROM bcasts
+            ),
+            runs AS (
+                SELECT COUNT(*)::int AS run_count
+                FROM bulk_send_jobs
+                WHERE tenant_id = @tid AND project_id = @pid
+            )
+            UPDATE projects p SET
+                run_count       = runs.run_count,
+                total_targets   = agg.total_targets,
+                sent_count      = agg.sent,
+                delivered_count = agg.delivered,
+                read_count      = agg.read,
+                failed_count    = agg.failed,
+                ambiguous_count = agg.ambiguous,
+                status = CASE
+                    WHEN p.status NOT IN ('draft','running','completed') THEN p.status
+                    WHEN runs.run_count = 0 THEN p.status
+                    WHEN agg.queued > 0 THEN 'running'
+                    ELSE 'completed'
+                END,
+                completed_at = CASE
+                    WHEN runs.run_count > 0 AND agg.queued = 0
+                         AND p.status IN ('running','completed') AND p.completed_at IS NULL THEN NOW()
+                    WHEN agg.queued > 0 THEN NULL
+                    ELSE p.completed_at
+                END,
+                updated_at = NOW()
+            FROM agg, runs
+            WHERE p.tenant_id = @tid AND p.id = @pid AND p.archived_at IS NULL";
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("pid", projectId);
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    // ------------------------------------------------------------------
     // Send-config authorization
     // ------------------------------------------------------------------
     /// <summary>

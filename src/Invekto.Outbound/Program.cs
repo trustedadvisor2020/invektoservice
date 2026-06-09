@@ -595,6 +595,29 @@ static string ProjectMessage(string? code) => code switch
     _ => "İşlem tamamlanamadı."
 };
 
+// FEAT-PROJELER send-exec SS-C — HTTP status for the project RUN-DISPATCH endpoints. A run reuses
+// the bulk machinery, so these surface Project*, BulkSend* AND ContactList* codes; map them all here.
+static int ProjectSendStatus(string? code) => code switch
+{
+    ErrorCodes.ProjectDisabled => 403,
+    ErrorCodes.BulkSendDisabled => 403,
+    ErrorCodes.ProjectNotFound => 404,
+    ErrorCodes.BulkSendJobNotFound => 404,
+    ErrorCodes.ContactListNotFound => 404,
+    ErrorCodes.BulkSendAlreadyConfirmed => 409,
+    ErrorCodes.ContactListNotReady => 409,
+    ErrorCodes.ProjectNoContent => 422,
+    ErrorCodes.ProjectNoTargets => 422,
+    ErrorCodes.ProjectHsmSendNotSupported => 422,
+    ErrorCodes.ContactListNoSendable => 422,
+    ErrorCodes.BulkSendCapExceeded => 422,
+    ErrorCodes.BulkSendNoValidRecipients => 422,
+    ErrorCodes.BulkSendDispatchFailed => 502,
+    ErrorCodes.ContactListDbError => 503,
+    ErrorCodes.ProjectDbError => 503,
+    _ => 400   // ProjectInvalidPayload + fallback
+};
+
 app.MapGet("/api/v1/projects", async (HttpContext ctx, [FromServices] ProjectsService svc) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
@@ -663,6 +686,54 @@ app.MapDelete("/api/v1/projects/{id:long}", async (HttpContext ctx, [FromService
     if (!ok)
         return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.ProjectNotFound, ProjectMessage(errorCode ?? ErrorCodes.ProjectNotFound), requestId), statusCode: ProjectStatus(errorCode));
     return Results.Ok(new { id, archived = true });
+});
+
+// ─── FEAT-PROJELER send-exec SS-C: project RUN dispatch (preview -> confirm -> status) ───
+// A run is a bulk_send_job(project_id): the audience/content/instance are read from the project,
+// dispatched via the shared bulk machinery. Dual-gated (Projects + BulkSend); prod-inert until a
+// tenant is allowlisted for sending. The frontend supplies one campaign_id per Gönder flow.
+
+app.MapPost("/api/v1/projects/{id:long}/send/preview", async (HttpContext ctx, [FromServices] ProjectsService svc, long id, ProjectSendRequest? request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (request == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.ProjectInvalidPayload, "Request body is required", requestId), statusCode: 400);
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (preview, errorCode, message) = await svc.PreviewSendAsync(tenantContext.TenantId, id, request.CampaignId, ctx.RequestAborted);
+    if (preview == null)
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "Önizleme oluşturulamadı.", requestId), statusCode: ProjectSendStatus(errorCode));
+    return Results.Ok(preview);
+});
+
+app.MapPost("/api/v1/projects/{id:long}/send/confirm", async (HttpContext ctx, [FromServices] ProjectsService svc, long id, ProjectSendRequest? request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (request == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.ProjectInvalidPayload, "Request body is required", requestId), statusCode: 400);
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (status, errorCode, message) = await svc.ConfirmSendAsync(tenantContext.TenantId, id, request.CampaignId, ctx.RequestAborted);
+    if (status == null)
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "Gönderim onaylanamadı.", requestId), statusCode: ProjectSendStatus(errorCode));
+    return Results.Json(status, statusCode: 202);
+});
+
+app.MapGet("/api/v1/projects/{id:long}/send/status", async (HttpContext ctx, [FromServices] ProjectsService svc, long id) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (detail, errorCode, message) = await svc.GetSendStatusAsync(tenantContext.TenantId, id, ctx.RequestAborted);
+    if (detail == null)
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "Durum okunamadı.", requestId), statusCode: ProjectSendStatus(errorCode));
+    return Results.Ok(detail);
 });
 
 // ============================================================

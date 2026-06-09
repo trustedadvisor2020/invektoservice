@@ -251,7 +251,11 @@ CREATE TABLE IF NOT EXISTS bulk_send_jobs (
     tenant_id               INTEGER NOT NULL REFERENCES tenant_registry(tenant_id),
     campaign_id             VARCHAR(80) NOT NULL,
     source                  VARCHAR(16) NOT NULL DEFAULT 'csv',
-    template_id             INTEGER NOT NULL REFERENCES outbound_templates(id),
+    -- Content source (migration 060): EXACTLY ONE of template_id / inline_message_text per job.
+    -- template_id = CSV/list runs + a project's gallery_template content (existing template path).
+    -- inline_message_text = a project's free_text content (SS-A inline broadcast path, no template row).
+    template_id             INTEGER REFERENCES outbound_templates(id),
+    inline_message_text     TEXT,
     lang                    VARCHAR(8),
     hard_cap                INTEGER NOT NULL,
     total_input             INTEGER NOT NULL DEFAULT 0,
@@ -274,6 +278,8 @@ CREATE TABLE IF NOT EXISTS bulk_send_jobs (
     CONSTRAINT chk_bulk_job_status CHECK (status IN (
         'preview_ready','confirming','sending','completed',
         'completed_with_errors','failed','cancelled')),
+    -- Migration 060: exactly one content source (template XOR inline free text).
+    CONSTRAINT chk_bulk_message_source CHECK (num_nonnulls(template_id, inline_message_text) = 1),
     CONSTRAINT uq_bulk_job_tenant_campaign UNIQUE (tenant_id, campaign_id)
 );
 

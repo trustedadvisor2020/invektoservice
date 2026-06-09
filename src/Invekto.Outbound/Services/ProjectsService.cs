@@ -19,12 +19,24 @@ public sealed class ProjectsService
 {
     private readonly ProjectsRepository _repo;
     private readonly ProjectsOptions _options;
+    // FEAT-PROJELER send-exec SS-C: a project run IS a bulk_send_job(project_id). Reuse the bulk machinery —
+    // _bulkRepo for the project snapshot + job lookup, _bulkOrch.ConfirmAsync for the (shared) dispatch,
+    // _bulkOptions for the send gate + cap. The project domain (gate/eligibility/lifecycle) stays here.
+    private readonly BulkSendRepository _bulkRepo;
+    private readonly BulkSendOrchestrator _bulkOrch;
+    private readonly BulkSendOptions _bulkOptions;
     private readonly JsonLinesLogger _logger;
 
-    public ProjectsService(ProjectsRepository repo, ProjectsOptions options, JsonLinesLogger logger)
+    public ProjectsService(
+        ProjectsRepository repo, ProjectsOptions options,
+        BulkSendRepository bulkRepo, BulkSendOrchestrator bulkOrch, BulkSendOptions bulkOptions,
+        JsonLinesLogger logger)
     {
         _repo = repo;
         _options = options;
+        _bulkRepo = bulkRepo;
+        _bulkOrch = bulkOrch;
+        _bulkOptions = bulkOptions;
         _logger = logger;
     }
 
@@ -184,6 +196,185 @@ public sealed class ProjectsService
             _logger.SystemError($"project archive failed (tenant={tenantId}, project={projectId}): {ex.Message}");
             return (false, ErrorCodes.ProjectDbError);
         }
+    }
+
+    // ------------------------------------------------------------------
+    // Run dispatch (FEAT-PROJELER send-exec SS-C) — a run is a bulk_send_job(project_id),
+    // reusing the bulk preview -> confirm -> status machinery.
+    // ------------------------------------------------------------------
+    /// <summary>
+    /// Preview a project run: snapshot the DISTINCT sendable audience across the project's target lists and
+    /// return the count + a sample. Dual-gated (Projects feature + BulkSend send capability) so it stays
+    /// inert until a tenant is allowlisted for sending. Dispatches PLAIN-TEXT content only (SS-C): an HSM
+    /// (wapcrm_template) project is REJECTED (INV-OB-076, PR-4), a content-less project is rejected
+    /// (INV-OB-074), a target-less project is rejected (INV-OB-075). The frontend supplies one campaign_id
+    /// per Gönder flow (idempotency key); a campaign already confirmed cannot be re-previewed.
+    /// </summary>
+    public async Task<(BulkSendPreviewResponse? response, string? errorCode, string? message)> PreviewSendAsync(
+        int tenantId, long projectId, string campaignId, CancellationToken ct)
+    {
+        if (!Allowed(tenantId)) return (null, ErrorCodes.ProjectDisabled, "Projeler bu hesap için etkin değil.");
+        if (!_bulkOptions.IsTenantAllowed(tenantId)) return (null, ErrorCodes.BulkSendDisabled, "Gönderim bu hesap için etkin değil.");
+        if (string.IsNullOrWhiteSpace(campaignId)) return (null, ErrorCodes.ProjectInvalidPayload, "campaign_id zorunlu.");
+
+        try
+        {
+            var detail = await _repo.GetAsync(tenantId, projectId, ct);
+            if (detail == null) return (null, ErrorCodes.ProjectNotFound, $"Proje {projectId} bulunamadı.");
+
+            // Eligibility: a run dispatches plain_text content only. HSM send is PR-4.
+            var (templateId, inlineText, eligErr, eligMsg) = ResolveSendContent(detail.Project);
+            if (eligErr != null) return (null, eligErr, eligMsg);
+
+            var listIds = detail.Targets.Select(t => t.DataListId).Distinct().ToArray();
+            if (listIds.Length == 0) return (null, ErrorCodes.ProjectNoTargets, "Projenin hedef listesi yok. Önce en az bir liste ekleyin.");
+
+            // Idempotency guard (same as the bulk paths): a confirmed campaign cannot be re-previewed.
+            var existing = await _bulkRepo.GetJobAsync(tenantId, campaignId, ct);
+            if (existing != null && existing.Status != "preview_ready")
+                return (null, ErrorCodes.BulkSendAlreadyConfirmed, $"'{campaignId}' kampanyası zaten {existing.Status}; yeni bir gönderim başlatın.");
+
+            var (jobId, snapshotted, snapErr) = await _bulkRepo.CreatePreviewJobFromProjectAsync(
+                tenantId, campaignId, projectId, templateId, inlineText, listIds, _bulkOptions.MaxRecipientsPerCampaign, ct);
+            if (snapErr != null)
+            {
+                var msg = snapErr switch
+                {
+                    ErrorCodes.ProjectNoTargets => "Projenin hedef listesi yok. Önce en az bir liste ekleyin.",
+                    ErrorCodes.ContactListNotFound => "Bir hedef liste bulunamadı (silinmiş olabilir). Liste seçimini güncelleyin.",
+                    ErrorCodes.ContactListNotReady => "Bir hedef liste henüz hazır değil. İçe aktarımın bitmesini bekleyin.",
+                    ErrorCodes.ContactListNoSendable => $"Hedef listelerde gönderilebilir alıcı yok veya üst sınır ({_bulkOptions.MaxRecipientsPerCampaign}) aşıldı.",
+                    ErrorCodes.ContactListDbError => "Önizleme oluşturulurken veritabanı hatası; hiçbir şey gönderilmedi. Lütfen tekrar deneyin.",
+                    _ => "Önizleme oluşturulamadı."
+                };
+                return (null, snapErr, msg);
+            }
+            if (snapshotted == 0)
+                return (null, ErrorCodes.ContactListNoSendable, "Gönderilebilir alıcı yok.");
+
+            var sample = await _bulkRepo.GetRecipientPhonesSampleAsync(tenantId, jobId, _bulkOptions.PreviewSampleSize, ct);
+            _logger.SystemInfo($"project preview: tenant={tenantId}, project={projectId}, campaign={campaignId}, job={jobId}, snapshotted={snapshotted}");
+
+            return (new BulkSendPreviewResponse
+            {
+                CampaignId = campaignId,
+                Status = "preview_ready",
+                HardCap = _bulkOptions.MaxRecipientsPerCampaign,
+                TotalInput = snapshotted,
+                TotalValid = snapshotted,
+                TotalDuplicate = 0,
+                TotalInvalid = 0,
+                Sample = sample,
+                InvalidSamples = new List<string>()
+            }, null, null);
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"project preview failed (tenant={tenantId}, project={projectId}): {ex.Message}");
+            return (null, ErrorCodes.ProjectDbError, "Veritabanı hatası nedeniyle önizleme oluşturulamadı. Lütfen tekrar deneyin.");
+        }
+    }
+
+    /// <summary>
+    /// Confirm a previewed project run: dispatch via the shared bulk ConfirmAsync (idempotent, atomic claim),
+    /// then mark the project 'running' when a dispatch actually happened. The campaign's job must belong to
+    /// THIS project (defense: campaign_id is client-supplied). Re-confirming an already-finished run returns
+    /// its status without re-marking running.
+    /// </summary>
+    public async Task<(BulkSendStatusResponse? response, string? errorCode, string? message)> ConfirmSendAsync(
+        int tenantId, long projectId, string campaignId, CancellationToken ct)
+    {
+        if (!Allowed(tenantId)) return (null, ErrorCodes.ProjectDisabled, "Projeler bu hesap için etkin değil.");
+        // Same dual gate as preview — explicit here too so a preview_ready job cannot be confirmed after the
+        // BulkSend allowlist is pulled (prod-inert invariant; BulkSendOrchestrator.ConfirmAsync also enforces it).
+        if (!_bulkOptions.IsTenantAllowed(tenantId)) return (null, ErrorCodes.BulkSendDisabled, "Gönderim bu hesap için etkin değil.");
+        if (string.IsNullOrWhiteSpace(campaignId)) return (null, ErrorCodes.ProjectInvalidPayload, "campaign_id zorunlu.");
+
+        try
+        {
+            // RE-VALIDATE at confirm time (TOCTOU: the project may have been archived or switched to HSM since
+            // preview). An archived/removed project loads as null -> reject BEFORE any dispatch; an HSM /
+            // content-less project is rejected by ResolveSendContent -> never silently dispatched.
+            var detail = await _repo.GetAsync(tenantId, projectId, ct);
+            if (detail == null) return (null, ErrorCodes.ProjectNotFound, $"Proje {projectId} bulunamadı veya arşivlenmiş.");
+            var (_, _, eligErr, eligMsg) = ResolveSendContent(detail.Project);
+            if (eligErr != null) return (null, eligErr, eligMsg);
+
+            var job = await _bulkRepo.GetJobAsync(tenantId, campaignId, ct);
+            if (job == null) return (null, ErrorCodes.BulkSendJobNotFound, $"'{campaignId}' için önizleme bulunamadı.");
+            if (job.ProjectId != projectId)
+                return (null, ErrorCodes.ProjectInvalidPayload, "Kampanya bu projeye ait değil.");
+
+            // Lifecycle + ATOMIC archive gate for a FRESH dispatch: a preview_ready job is the only one that
+            // will actually dispatch. Claim the project 'running' FIRST, gated on archived_at IS NULL — if it
+            // affects 0 rows the project was archived since the reload above, so abort BEFORE _bulkOrch
+            // dispatches (closes the reload->dispatch TOCTOU; nothing is sent for an archived project). An
+            // already-confirmed/sending/completed job is an idempotent re-confirm: do NOT touch the project
+            // status (must not reopen a finished run) and let ConfirmAsync return the live status.
+            if (job.Status == "preview_ready" && !await _repo.SetRunningAsync(tenantId, projectId, ct))
+                return (null, ErrorCodes.ProjectNotFound, "Proje arşivlenmiş; gönderim iptal edildi.");
+
+            var (status, errCode, errMsg) = await _bulkOrch.ConfirmAsync(tenantId, campaignId, ct);
+            if (errCode != null) return (null, errCode, errMsg);
+
+            _logger.SystemInfo($"project confirm: tenant={tenantId}, project={projectId}, campaign={campaignId}, status={status?.Status}");
+            return (status, null, null);
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"project confirm failed (tenant={tenantId}, project={projectId}): {ex.Message}");
+            return (null, ErrorCodes.ProjectDbError, "Veritabanı hatası nedeniyle gönderim onaylanamadı. Lütfen tekrar deneyin.");
+        }
+    }
+
+    /// <summary>
+    /// Project run status: recompute the roll-up counters + lifecycle live from the project's runs
+    /// (idempotent), then return the fresh project detail (counters + status the UI renders).
+    /// </summary>
+    public async Task<(ProjectDetail? detail, string? errorCode, string? message)> GetSendStatusAsync(
+        int tenantId, long projectId, CancellationToken ct)
+    {
+        if (!Allowed(tenantId)) return (null, ErrorCodes.ProjectDisabled, "Projeler bu hesap için etkin değil.");
+        try
+        {
+            await _repo.RecomputeRollupAsync(tenantId, projectId, ct);
+            var detail = await _repo.GetAsync(tenantId, projectId, ct);
+            if (detail == null) return (null, ErrorCodes.ProjectNotFound, $"Proje {projectId} bulunamadı.");
+            return (detail, null, null);
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"project status failed (tenant={tenantId}, project={projectId}): {ex.Message}");
+            return (null, ErrorCodes.ProjectDbError, "Veritabanı hatası nedeniyle durum okunamadı. Lütfen tekrar deneyin.");
+        }
+    }
+
+    /// <summary>
+    /// Resolve a project's dispatchable plain_text content into a bulk job's content carrier — EXACTLY ONE of
+    /// (templateId for gallery_template, inlineText for free_text). An HSM (wapcrm_template) project is
+    /// rejected (PR-4); a non-plain_text or content-less project is rejected. Never silently defaults.
+    /// </summary>
+    private static (int? templateId, string? inlineText, string? errorCode, string? message) ResolveSendContent(ProjectSummary p)
+    {
+        if (p.TemplateKind == ProjectTemplateKinds.WapcrmTemplate)
+            return (null, null, ErrorCodes.ProjectHsmSendNotSupported, "Onaylı şablon (HSM) gönderimi henüz aktif değil. Bu özellik yakında gelecek.");
+        if (p.TemplateKind != ProjectTemplateKinds.PlainText)
+            return (null, null, ErrorCodes.ProjectNoContent, "Projede gönderilecek içerik tanımlı değil (galeri şablonu veya serbest metin seçin).");
+
+        if (p.ContentMode == ProjectContentModes.GalleryTemplate)
+        {
+            if (p.OutboundTemplateId is int tid && tid > 0)
+                return (tid, null, null, null);
+            return (null, null, ErrorCodes.ProjectNoContent, "Galeri şablonu seçilmemiş.");
+        }
+        if (p.ContentMode == ProjectContentModes.FreeText)
+        {
+            var body = p.PlainTextBody?.Trim();
+            if (!string.IsNullOrEmpty(body))
+                return (null, body, null, null);
+            return (null, null, ErrorCodes.ProjectNoContent, "Serbest metin boş.");
+        }
+        return (null, null, ErrorCodes.ProjectNoContent, "Projede gönderilecek içerik tanımlı değil (galeri şablonu veya serbest metin seçin).");
     }
 
     // ------------------------------------------------------------------

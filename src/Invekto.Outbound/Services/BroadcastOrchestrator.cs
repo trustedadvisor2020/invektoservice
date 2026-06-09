@@ -42,10 +42,14 @@ public sealed class BroadcastOrchestrator
     /// <summary>
     /// Create a broadcast: validate template, filter opt-outs, insert messages.
     /// Returns the broadcast response or an error tuple.
+    /// <para><paramref name="overrideInstanceId"/> (FEAT-PROJELER SS-C): a project run's own Cloud API
+    /// instance. When supplied (and the cxapi route is active) the broadcast sends from THAT instance
+    /// instead of the tenant default; CSV/list/single broadcasts pass null and keep the tenant default
+    /// (byte-identical). Consumed ONLY on the cxapi route — the route gate is unchanged.</para>
     /// </summary>
     public async Task<(BroadcastSendResponse? response, string? errorCode, string? errorMessage)>
         CreateBroadcastAsync(
-            int tenantId, BroadcastSendRequest request, CancellationToken ct = default)
+            int tenantId, BroadcastSendRequest request, CancellationToken ct = default, int? overrideInstanceId = null)
     {
         // Validate recipients count
         if (request.Recipients == null || request.Recipients.Count == 0)
@@ -121,13 +125,19 @@ public sealed class BroadcastOrchestrator
                     "Dynamic (DMP) content is not supported on the WapCRM cxapi route; use a static template or disable dynamic message for this tenant");
 
             var wap = await _repository.GetWapCrmSettingsAsync(tenantId, ct);
-            if (wap == null || string.IsNullOrWhiteSpace(wap.SecretKey) || wap.UserId <= 0
-                || !wap.InstanceId.HasValue || wap.InstanceId.Value <= 0)
+            // FEAT-PROJELER SS-C: a project run carries its OWN Cloud API instance (overrideInstanceId,
+            // validated owned + Cloud API at project save in SS-B). Use it when supplied; otherwise the
+            // tenant-default instance (settings_json->'wapcrm'.instance_id). The tenant secret/userId are
+            // always required. csv/list/single broadcasts pass null -> tenant-default (byte-identical).
+            var resolvedInstance = (overrideInstanceId is int oi && oi > 0)
+                ? oi
+                : (wap?.InstanceId is int di && di > 0 ? di : 0);
+            if (wap == null || string.IsNullOrWhiteSpace(wap.SecretKey) || wap.UserId <= 0 || resolvedInstance <= 0)
                 return (null, ErrorCodes.CxapiRouteMisconfigured,
                     "WapCRM cxapi is enabled for this tenant but instance_id/secret_key/user_id are not configured in tenant settings");
 
             sendRoute = "wapcrm_cxapi";
-            instanceId = wap.InstanceId.Value;
+            instanceId = resolvedInstance;
         }
 
         // Collect valid phones for batch opt-out check

@@ -1,0 +1,163 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": "PKT-14",
+  "spec_ref": null,
+  "spec_architectural_decisions": [
+    {
+      "decision": "bulk_send_jobs.template_id NOT NULL -> nullable + new inline_message_text TEXT + CHECK chk_bulk_message_source = num_nonnulls(template_id, inline_message_text) = 1 (exactly one content source).",
+      "reason": "A project free_text run dispatches literal text inline (no backing outbound_templates row, Q decision SS-A/SS-B). A gallery_template run keeps using template_id. Each bulk job must carry EXACTLY ONE content source.",
+      "codex_note": "EXPECTED: making template_id nullable is data-safe. ALL existing bulk_send_jobs rows have template_id set and inline_message_text NULL, so num_nonnulls(...)=1 holds for them with ZERO backfill. Migration is idempotent (ADD COLUMN IF NOT EXISTS, named DROP/ADD CHECK, ALTER COLUMN DROP NOT NULL is no-op if already nullable). Do NOT flag 'existing rows violate the new CHECK' — they do not."
+    },
+    {
+      "decision": "source='project' is written as a free string into bulk_send_jobs.source; NO constraint change.",
+      "reason": "bulk_send_jobs.source is VARCHAR(16) DEFAULT 'csv' with NO CHECK constraint (only data_lists.source has chk_data_list_source). Existing code already writes 'csv'/'list' as free strings.",
+      "codex_note": "EXPECTED: verified outbound.sql:253 + migration 051:27 — bulk_send_jobs has no source CHECK. 'project' needs no ALTER. Do NOT flag a missing/violated source CHECK."
+    },
+    {
+      "decision": "CreateBroadcastAsync gains an optional `int? overrideInstanceId = null`; used ONLY when the cxapi route is active (CxapiSendOptions.IsTenantAllowed). Route gate CxapiSendOptions is UNCHANGED.",
+      "reason": "A project carries its own Cloud API instance_id (validated owned+CloudAPI at save in SS-B). The run must send from that instance once cxapi is live. csv/list jobs pass null -> tenant-default (behaviour byte-identical).",
+      "codex_note": "EXPECTED + PROD-INERT: in prod NO tenant is in the cxapi allowlist, so cxapiRoute=false and overrideInstanceId is never consumed (bridge route ignores instance_id). P0-3 gate preserved. Do NOT flag the instance override as 'activating cxapi' — it does not change the route gate."
+    },
+    {
+      "decision": "Project send (preview/confirm/status) gated by BulkSendOptions (send capability) AND ProjectsOptions (project feature read). No new send gate.",
+      "reason": "A project run IS a bulk send. Reusing the BulkSend allowlist keeps the whole send path inert until Q allowlists a tenant — identical inertness mechanism to CSV/list send (PreviewFromListAsync dual-gate precedent).",
+      "codex_note": "EXPECTED: dual-gate mirrors PreviewFromListAsync (BulkSend + ContactList). Project send = BulkSend + Projects. The Gonder button can be visible (Projects enabled) yet preview calm-403s if BulkSend is not allowlisted — consistent with existing per-list Gonder UX. Do NOT treat metadata-enable (Projects for tenant 5050) as send-enable."
+    },
+    {
+      "decision": "Project roll-up counters (run_count, total_targets, sent, delivered, read, failed, ambiguous) are RECOMPUTED live on status read and WRITTEN to the denormalized projects.* columns; status='running' while SUM(broadcast.queued)>0, 'completed' when all drained.",
+      "reason": "delivered/read arrive asynchronously (and the ack path is prod-gated). Live recompute keeps counters fresh without an async writer; the denormalized columns (057 roll-up intent) are persisted snapshots, idempotently overwritten.",
+      "codex_note": "EXPECTED: recompute aggregates the project's OWN bulk_send_jobs -> broadcast_ids -> outbound_broadcasts (tenant-scoped via project ownership; no cross-tenant read). run_count=COUNT(jobs), counters=SUM(broadcasts), total_targets=SUM(total_recipients). Idempotent read-then-write. Do NOT flag the denormalized columns as 'stale duplicate state' — they are intentionally recomputed."
+    },
+    {
+      "decision": "ConfirmAsync stays the SINGLE confirm path for csv/list/project. Inline branch (job.TemplateId null -> BroadcastSendRequest.MessageText=job.InlineMessageText) and project-instance threading are taken ONLY for the new shapes; template/csv/list path is byte-identical.",
+      "reason": "Avoids duplicating the guarded atomic-claim/dispatch/finalize/recovery lifecycle. The job columns (project_id, template_id, inline_message_text) drive the branch.",
+      "codex_note": "EXPECTED: for csv/list jobs template_id is set + project_id is null -> existing template build + tenant-default instance, unchanged. Verify the branch is gated on job columns, not a global flag."
+    },
+    {
+      "decision": "Pause / resume / cancel are DEFERRED to SS-D (Q decision 2026-06-09). SS-C lifecycle = draft -> running -> completed only.",
+      "reason": "Pause/resume touches the send-drain path (new 'paused' message status + dequeue interaction + UI controls); splitting keeps SS-C at Codex iteration=0 reach.",
+      "codex_note": "EXPECTED scope boundary: this slice does NOT add the 'paused'/'cancelled' message/project transitions, no MessageSenderService change, no dequeue change. Do NOT flag missing pause/resume as incomplete."
+    },
+    {
+      "decision": "HSM send (template_kind='wapcrm_template') is REJECTED server-side (INV-OB-076) and the Gonder button is disabled with a PR-4 note. Only plain_text content dispatches (gallery_template -> outbound_template_id template path; free_text -> inline).",
+      "reason": "Approved-template (HSM) send is PR-4 and blocked on INMA G12 + language; out of scope for SS-C.",
+      "codex_note": "EXPECTED: HSM-configured projects must NOT silently fall through to a plain-text send. Verify the reject is explicit + button disabled, not a no-op."
+    }
+  ],
+  "gr_list": [],
+  "slug": "20260609-projeler-run-dispatch",
+  "risk": "HIGH",
+  "status": "DONE",
+  "created_at": "2026-06-09T19:02:51+03:00",
+  "updated_at": "2026-06-09T20:05:00+03:00",
+  "plan": {
+    "summary": "FEAT-PROJELER PKT-14 SS-C: dispatch a project as a bulk run (multi-list DISTINCT snapshot, plain_text content from project settings, instance from project), with a Gonder preview->confirm UI, draft->running->completed lifecycle, and live roll-up counter recompute. Prod-inert (gates unchanged); HSM send + pause/resume deferred.",
+    "q_intent": "SS-C (proje run dispatch + Gonder UI): migration 060 (bulk_send_jobs.template_id nullable + inline_message_text + exactly-one CHECK); CreatePreviewJobFromProjectAsync (project_targets->data_lists DISTINCT multi-list snapshot, content+instance from project) + ConfirmAsync inline; instance-from-project plumbing (CxapiSendOptions route gate unchanged -> prod-inert); proje send endpoints (preview->confirm reuse) + Backend proxy; proje roll-up counters recompute; ProjectsPage Gonder + onizleme (sayi+ornek) + run status. Q interview: split SS-C (run+lifecycle) / SS-D (pause/resume); counters live-recompute; HSM reject + button disabled.",
+    "interview_notes": "Q 2026-06-09 interview (round 2 of SS-C): (1) Run model = lifecycle (draft->running->completed) + pause/resume, but SPLIT: SS-C ships run+lifecycle, SS-D ships pause/resume/cancel. (2) Counter strategy = live recompute on read, written to denormalized projects.* columns. (3) HSM (wapcrm_template) projects = reject server-side + Gonder button disabled + PR-4 note. (4) Pause mechanism (for SS-D) = halt remaining queue via new 'paused' message status + cancel; in-flight/sent cannot be recalled. Mechanism map confirmed: ConfirmAsync is the single confirm path; bulk_send_jobs.source has no CHECK; instance threaded via new CreateBroadcastAsync param used only on cxapi route.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "Migration 060 makes bulk_send_jobs.template_id nullable, adds inline_message_text TEXT, adds CHECK chk_bulk_message_source enforcing num_nonnulls(template_id, inline_message_text)=1, with an INV-SEED-060 fail-loud verifier; idempotent and re-runnable; canonical arch/db/outbound.sql synced; all existing rows validate clean with no backfill.", "verified": false },
+      { "id": "AC2", "criterion": "BulkSendRepository.CreatePreviewJobFromProjectAsync snapshots DISTINCT sendable recipients (sendable=TRUE AND normalized_phone IS NOT NULL) across ALL of the project's target data_lists, deduping the same phone across overlapping lists to a single recipient, under list locking, writing a bulk_send_job(project_id, source='project') whose content is the project's outbound_template_id (gallery_template) OR inline_message_text (free_text), cap-enforced.", "verified": false },
+      { "id": "AC3", "criterion": "ConfirmAsync dispatches inline jobs (template_id NULL -> BroadcastSendRequest.MessageText=job.InlineMessageText) and template jobs (template_id set) identically to today; for project jobs the project's instance_id is threaded into CreateBroadcastAsync; csv/list jobs are byte-identical (null project instance -> tenant-default, template path unchanged).", "verified": false },
+      { "id": "AC4", "criterion": "Outbound project send endpoints (POST .../send/preview, POST .../send/confirm, GET .../send/status) are gated by BulkSendOptions + ProjectsOptions; projects that are HSM-configured (INV-OB-076), have no plain_text content (INV-OB-074), or have no target with sendable recipients (INV-OB-075) are rejected with actionable INV-OB codes; preview returns distinct recipient count + sample phones + a content summary.", "verified": false },
+      { "id": "AC5", "criterion": "Project lifecycle: confirm sets projects.status='running' (started_at); GET .../send/status recomputes the roll-up counters live (run_count=COUNT of the project's jobs, total_targets/sent/delivered/read/failed/ambiguous=SUM over the jobs' broadcasts) and writes them to projects.*; status becomes 'completed' (completed_at) when all of the project's broadcast queues are drained.", "verified": false },
+      { "id": "AC6", "criterion": "ProjectsPage Gonder action: button is disabled with an explanatory tooltip for ineligible projects (HSM / no content / no targets); the send modal shows the preview (count + sample + content snippet) then a confirm step then run status; calm-403 reused when the send feature is not enabled.", "verified": false },
+      { "id": "AC7", "criterion": "Backend proxy routes /api/v1/outbound/projects/{id:long}/send/{preview|confirm|status} forward the Bearer token + X-Request-Id as thin pass-throughs (OutboundProxyPost/Get precedent).", "verified": false },
+      { "id": "AC8", "criterion": "Prod-inert: the cxapi P0-3 gate is untouched (no allowlist change, CxapiSendOptions route logic unchanged); pause/resume/cancel and HSM send are NOT implemented (SS-D / PR-4); no MessageSenderService dequeue change.", "verified": false },
+      { "id": "AC9", "criterion": "Full-solution Release build PASS (Shared touched) + Dashboard tsc+vite build PASS; focused tests PASS: multi-list dedup snapshot, inline confirm builds an inline broadcast (no template fetch), HSM reject, counter recompute aggregation, instance threading.", "verified": false }
+    ]
+  },
+  "allowed_files": [
+    "arch/db/migrations/060-projeler-run-dispatch.sql",
+    "arch/db/outbound.sql",
+    "src/Invekto.Shared/DTOs/Outbound/ProjectDtos.cs",
+    "src/Invekto.Shared/DTOs/Outbound/BulkSendDtos.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "arch/errors.md",
+    "src/Invekto.Outbound/Data/BulkSendRepository.cs",
+    "src/Invekto.Outbound/Data/ProjectsRepository.cs",
+    "src/Invekto.Outbound/Services/BulkSendOrchestrator.cs",
+    "src/Invekto.Outbound/Services/BroadcastOrchestrator.cs",
+    "src/Invekto.Outbound/Services/ProjectsService.cs",
+    "src/Invekto.Outbound/Program.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx",
+    "src/Invekto.Backend/wwwroot/app/index.html",
+    "src/Invekto.Backend/wwwroot/app/assets",
+    "tests/InvektoServis.Tests/Outbound/ProjectSendTests.cs",
+    "tests/InvektoServis.Tests/_Shared/Factories/OutboundProjectsSendTestFactory.cs"
+  ],
+  "files_changed": [],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": null,
+    "full_path": "arch/plans/diffs/20260609-projeler-run-dispatch.diff",
+    "stats": { "insertions": 0, "deletions": 0, "files_count": 0 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\" + Dashboard: npm run build",
+    "timestamp": "2026-06-09T19:38:00+03:00",
+    "duration_ms": null,
+    "output_tail": "Full-solution Release build: 0 errors (pre-existing NU1603/MSB3277 warnings only). Dashboard tsc+vite: built in 15.24s -> new bundle index-L_L4TiDm.js. Focused tests: Passed! Failed: 0, Passed: 6 (ProjectSendTests: 401 + HSM/no-content/no-targets reject + free_text inline routing + gallery template routing).",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Outbound", "Invekto.Backend", "Dashboard"]
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "Does CreatePreviewJobFromProjectAsync dedup recipients across the project's overlapping target data_lists so a phone present in two target lists is snapshotted (and therefore messaged) exactly once?", "category": "Data" },
+    { "id": "Q2", "question": "After migration 060, do ALL existing bulk_send_jobs rows (template_id set, inline_message_text NULL) satisfy the new num_nonnulls(template_id, inline_message_text)=1 CHECK with no backfill, and is the migration idempotent and re-runnable?", "category": "Data" },
+    { "id": "Q3", "question": "Does ConfirmAsync preserve byte-identical behaviour for csv/list jobs (template path, tenant-default instance) while taking the inline + project-instance branch only when job.TemplateId is null / job.ProjectId is set?", "category": "Lifecycle" },
+    { "id": "Q4", "question": "Is project send inert in prod: gated by the BulkSendOptions allowlist and the unchanged CxapiSendOptions route gate, so no real send fires until Q allowlists a tenant, and is the project instance_id consumed only on the cxapi route?", "category": "Auth" },
+    { "id": "Q5", "question": "Are pause/resume/cancel and HSM send correctly excluded — HSM-configured projects rejected server-side and the Gonder button disabled (never silently sent as plain text), with no MessageSenderService/dequeue change?", "category": "Process/Policy" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "ui-mocks/* and chat-design*.html / expert-v4-styles.css (Q's unrelated WIP in working tree)",
+      "MessageSenderService dequeue query and send loop (unchanged in SS-C)",
+      "CxapiSendOptions route-gate logic and any allowlist / appsettings change (P0-3 gate preserved)",
+      "outbound_messages 'paused' status / chk_message_status (SS-D)",
+      "outbound_templates (free_text uses inline, never a backing template row)"
+    ],
+    "non_goals": [
+      "pause / resume / cancel controls (SS-D)",
+      "HSM (wapcrm_template) approved-template send (PR-4, INMA G12 blocked)",
+      "scheduled / delayed send",
+      "production deploy"
+    ],
+    "intentional_exclusions": [
+      "per-list breakdown in the preview (distinct count + sample only)",
+      "real-time push of run status (client polls GET .../send/status)",
+      "message 'paused' status column (SS-D)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "ProjectsService.PreviewSendAsync/ConfirmSendAsync/GetSendStatusAsync: NpgsqlException -> INV-OB-071 (ProjectDbError) 503",
+      "BulkSendRepository.CreatePreviewJobFromProjectAsync: transactional snapshot; NpgsqlException surfaced as typed error code",
+      "BulkSendOrchestrator.ConfirmAsync: existing guarded region (typed OperationCanceledException / NpgsqlException + finalized backstop) reused unchanged"
+    ],
+    "user_facing_errors": [
+      "INV-OB-074 ProjectNoContent: 'Projede gonderilecek icerik tanimli degil (galeri sablonu veya serbest metin secin)'",
+      "INV-OB-075 ProjectNoSendable: 'Projenin hedef listelerinde gonderilebilir alici yok'",
+      "INV-OB-076 ProjectHsmSendNotSupported: 'Onayli sablon (HSM) gonderimi henuz aktif degil (PR-4)'",
+      "BulkSendDisabled / ProjectDisabled calm-403 reused"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Every reject path returns a typed INV-OB code (no opaque 500 / no-op). HSM projects are explicitly rejected, not silently plain-text sent. Counter recompute is read-then-idempotent-write (no partial state). Null-forgiving '!' is banned project-wide; nullable job content is read via explicit null checks. ConfirmAsync's existing finalized backstop guarantees a job never strands in 'confirming'."
+  },
+  "aha_moments": [
+    { "category": "RELIABILITY", "user_pain": "Ayni numara birden fazla hedef listede olabilir; naif gonderim ayni kisiye birden cok mesaj atar (spam + maliyet).", "suggestion": "Multi-list snapshot'ta normalized_phone uzerinden cross-list dedup (ON CONFLICT (job_id, normalized_phone) DO NOTHING).", "aha_moment": "Operator iki listeyi ayni projeye eklese bile her kisi tek mesaj alir — onizlemedeki sayi gercek tekil alici sayisidir." },
+    { "category": "UX", "user_pain": "Operator 'Gonder'e basmadan once tam olarak kac kisiye ve hangi mesajin gidecegini bilmiyor.", "suggestion": "Onizleme adimi: tekil alici sayisi + ornek numaralar + icerik ozeti (galeri sablon adi veya serbest metin snippet'i) goster, sonra Onayla.", "aha_moment": "Onayla'dan once 'su mesaj, su kadar kisiye' diye gorunce operator guvenle gonderir." },
+    { "category": "SPEED", "user_pain": "Ayni kitleye tekrar gonderim her seferinde listeyi yeniden hazirlamayi gerektiriyordu.", "suggestion": "Proje yeniden kullanilabilir: her 'Gonder' yeni bir run; run_count artar, ayni hedef+icerik tek tikla tekrar gonderilir.", "aha_moment": "Kampanyayi tekrarlamak = projeyi acip Gonder demek." },
+    { "category": "SUPPORT", "user_pain": "Gonderim baslayinca operator ilerlemeyi goremiyor, destek soruyor.", "suggestion": "Run status: gonderildi/iletildi/okundu/basarisiz sayaclarini canli recompute ile goster.", "aha_moment": "Operator gonderim ilerlemesini kendi ekraninda gorur, destek cagirmaz." },
+    { "category": "SALES", "user_pain": "Serbest metinli hizli kampanya icin once sablon olusturup onaylatmak yavaslatiyordu.", "suggestion": "free_text icerik projede inline saklanir ve sablonsuz gonderilir (SS-A/SS-B); SS-C bunu calistirilabilir hale getirir.", "aha_moment": "Sablon onayi beklemeden serbest metin kampanyasi baslatiyorum." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "iteration": 3,
+    "blocking_issues": [],
+    "raw_text": "Codex gpt-5.5 iter3 PASS — 12/12 CQ + 5/5 CoVe, 0 blockers. Arc: iter0 FAIL (6 real fixes: CQ2 silent SetRunning, CQ3 index.html scope, CQ5 test null-forgiving, CQ9/Q4/Q5 confirm gate+eligibility) -> iter1 FAIL (CQ9/Q5 archived-dispatch TOCTOU) -> iter2 FAIL (CQ8/CQ10 SPA-asset review-diff false positive) -> iter3 PASS. NOT FORCE PASS: every real finding fixed; the final FAIL was a corrected-premise (the minified bundle assets are git-staged, excluded from the review diff only as generated artifacts)."
+  }
+}

@@ -175,3 +175,16 @@ public sealed class UpdateProjectRequest
     [JsonPropertyName("outbound_template_id")] public int? OutboundTemplateId { get; set; }
     [JsonPropertyName("plain_text_body")] public string? PlainTextBody { get; set; }
 }
+
+/// <summary>
+/// FEAT-PROJELER (PKT-14) send-exec SS-C — body for the project run preview/confirm endpoints
+/// (POST /api/v1/projects/{id}/send/preview and .../send/confirm). The project id comes from the
+/// route; the audience + content + instance are read from the project (not supplied here). A run
+/// is a bulk_send_job(project_id) so it reuses the bulk preview->confirm machinery: the frontend
+/// generates one campaign_id per Gönder flow (idempotency key) and passes it to BOTH calls.
+/// </summary>
+public sealed class ProjectSendRequest
+{
+    /// <summary>Client-supplied idempotency key, unique per tenant. One per Gönder flow (a run).</summary>
+    [JsonPropertyName("campaign_id")] public string CampaignId { get; set; } = "";
+}

@@ -548,6 +548,11 @@ public static class ErrorCodes
     // FEAT-PROJELER (PKT-14): project send config (channel + template) validation (INV-OB-073).
     public const string ProjectInvalidSendConfig = "INV-OB-073";           // Invalid project send config: bad template_kind, missing channel (instance_id<=0), wapcrm_template without wa_template_id, over-length template id/language, or a malformed/oversized param_mapping (must be JSON object/array). 400.
 
+    // FEAT-PROJELER (PKT-14) send-exec SS-C — project run dispatch (INV-OB-074+)
+    public const string ProjectNoContent = "INV-OB-074";                   // Project send: template_kind is not plain_text, or its content carrier is missing (content_mode unset / gallery template not chosen / free text empty) — nothing to dispatch. 422.
+    public const string ProjectNoTargets = "INV-OB-075";                   // Project send: the project targets no data_lists, so there is no audience to snapshot. 422.
+    public const string ProjectHsmSendNotSupported = "INV-OB-076";         // Project send: the project is configured for an approved HSM template (template_kind=wapcrm_template); HSM send is not yet available (PR-4, INMA G12). Rejected — never silently sent as plain text. 422.
+
     // Lead Management errors (INV-LD-xxx) -- GR-3.13
     public const string LeadInvalidPayload = "INV-LD-001";
     public const string LeadNotFound = "INV-LD-002";

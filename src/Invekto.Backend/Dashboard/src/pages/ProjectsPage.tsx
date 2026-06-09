@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Briefcase, X, Plus, Pencil, Archive, Loader2, Info, ListChecks, Radio, FileText,
+  Briefcase, X, Plus, Pencil, Archive, Loader2, Info, ListChecks, Radio, FileText, Send, Users, CheckCircle2,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -10,6 +10,7 @@ import {
   type ProjectSummary, type ProjectStatus, type DataListSummary,
   type InstanceDto, type WaTemplate, type ProjectTemplateKind, type ProjectTemplateParam,
   type ProjectContentMode, type OutboundTemplateDto,
+  type BulkSendPreviewResponse, type BulkSendStatusResponse,
 } from '../lib/api';
 
 // =============================================================
@@ -80,6 +81,14 @@ export default function ProjectsPage() {
   const [galleryError, setGalleryError] = useState<string | null>(null);
 
   const [archivingId, setArchivingId] = useState<number | null>(null);
+
+  // ---- Run dispatch (Gönder): preview -> confirm -> status ----
+  const [sendProject, setSendProject] = useState<ProjectSummary | null>(null);
+  const [sendCampaignId, setSendCampaignId] = useState<string>('');
+  const [sendPhase, setSendPhase] = useState<'previewing' | 'preview' | 'confirming' | 'sent' | 'error'>('previewing');
+  const [sendPreview, setSendPreview] = useState<BulkSendPreviewResponse | null>(null);
+  const [sendStatus, setSendStatus] = useState<BulkSendStatusResponse | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
 
   // Only WhatsApp Cloud API lines are valid send channels (instance_type === 1; excludes SMS/web/channel).
   const whatsappInstances = useMemo(() => instances.filter(i => i.instanceType === 1), [instances]);
@@ -362,6 +371,77 @@ export default function ProjectsPage() {
     }
   }
 
+  // ---- Run dispatch (Gönder) ----
+  // Client mirror of the server eligibility (ProjectsService.ResolveSendContent + target check): a run
+  // dispatches plain_text content only. Returns a disable reason, or null when the project can be sent.
+  function sendDisabledReason(p: ProjectSummary): string | null {
+    if (p.template_kind === 'wapcrm_template')
+      return 'Onaylı şablon (HSM) gönderimi henüz aktif değil. Bu özellik yakında gelecek.';
+    if (p.template_kind !== 'plain_text')
+      return 'Önce proje ayarlarından gönderim içeriği (galeri şablonu veya serbest metin) ekleyin.';
+    if (p.content_mode === 'gallery_template' && !(p.outbound_template_id && p.outbound_template_id > 0))
+      return 'Galeri şablonu seçilmemiş. Proje ayarlarından bir şablon seçin.';
+    if (p.content_mode === 'free_text' && !(p.plain_text_body && p.plain_text_body.trim()))
+      return 'Serbest metin boş. Proje ayarlarından bir mesaj yazın.';
+    if (p.content_mode !== 'gallery_template' && p.content_mode !== 'free_text')
+      return 'Önce proje ayarlarından gönderim içeriği (galeri şablonu veya serbest metin) ekleyin.';
+    if (p.target_count <= 0)
+      return 'Projenin hedef listesi yok. Düzenle’den en az bir liste ekleyin.';
+    return null;
+  }
+
+  function sendContentSummary(p: ProjectSummary): string {
+    if (p.template_kind === 'plain_text' && p.content_mode === 'free_text')
+      return p.plain_text_body?.trim() || '(boş)';
+    if (p.template_kind === 'plain_text' && p.content_mode === 'gallery_template') {
+      const t = galleryTemplates.find(g => g.id === p.outbound_template_id);
+      return t ? `Galeri şablonu: ${t.name}` : `Galeri şablonu #${p.outbound_template_id ?? '?'}`;
+    }
+    return '—';
+  }
+
+  async function openSend(p: ProjectSummary) {
+    const cid = crypto.randomUUID?.() ?? `proj-${p.id}-${Date.now()}`;
+    setSendProject(p);
+    setSendCampaignId(cid);
+    setSendPreview(null);
+    setSendStatus(null);
+    setSendError(null);
+    setSendPhase('previewing');
+    // Load gallery names lazily so the content summary can show a name (not just an id).
+    if (p.template_kind === 'plain_text' && p.content_mode === 'gallery_template') void loadGalleryTemplates();
+    try {
+      const preview = await api.projectSendPreview(p.id, cid);
+      setSendPreview(preview);
+      setSendPhase('preview');
+    } catch (e) {
+      setSendError(errText(e, 'Önizleme oluşturulamadı'));
+      setSendPhase('error');
+    }
+  }
+
+  async function confirmSend() {
+    if (!sendProject) return;
+    setSendPhase('confirming');
+    setSendError(null);
+    try {
+      const status = await api.projectSendConfirm(sendProject.id, sendCampaignId);
+      setSendStatus(status);
+      setSendPhase('sent');
+      await loadProjects(); // refresh table counters/status after dispatch
+    } catch (e) {
+      setSendError(errText(e, 'Gönderim başlatılamadı'));
+      setSendPhase('error');
+    }
+  }
+
+  function closeSend() {
+    setSendProject(null);
+    setSendError(null);
+    setSendPreview(null);
+    setSendStatus(null);
+  }
+
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
@@ -427,6 +507,20 @@ export default function ProjectsPage() {
                   <td className="px-4 py-2.5 text-right tabular-nums">{p.failed_count.toLocaleString('tr-TR')}</td>
                   <td className="px-4 py-2.5">
                     <div className="flex items-center justify-end gap-1.5">
+                      {(() => {
+                        const reason = sendDisabledReason(p);
+                        return (
+                          <Button
+                            size="sm"
+                            variant="primary"
+                            disabled={reason !== null}
+                            title={reason ?? 'Bu projeyi gönder'}
+                            onClick={() => openSend(p)}
+                          >
+                            <Send className="w-3.5 h-3.5" /> Gönder
+                          </Button>
+                        );
+                      })()}
                       <Button size="sm" variant="secondary" onClick={() => openEdit(p)}>
                         <Pencil className="w-3.5 h-3.5" /> Düzenle
                       </Button>
@@ -723,6 +817,96 @@ export default function ProjectsPage() {
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                 {editing ? 'Kaydet' : 'Oluştur'}
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---- Gönder (run dispatch) modal: preview -> confirm -> status (X-close) ---- */}
+      {sendProject && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/40 p-4">
+          <div className="bg-white border border-navy-100 rounded-xl shadow-soft relative w-full max-w-md">
+            <button
+              onClick={closeSend}
+              className="absolute right-3 top-3 text-navy-300 hover:text-navy-600"
+              aria-label="Kapat"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="px-5 py-4 border-b border-navy-50">
+              <h3 className="text-base font-semibold text-navy-900 flex items-center gap-2">
+                <Send className="w-4 h-4 text-brand-500" /> Gönder
+              </h3>
+              <p className="text-sm text-navy-500 mt-0.5 truncate">{sendProject.name}</p>
+            </div>
+
+            <div className="px-5 py-4 space-y-4">
+              {/* Content summary — what will be sent */}
+              <div className="rounded-lg bg-navy-50/60 border border-navy-100 px-3 py-2">
+                <div className="text-[11px] font-medium text-navy-400 mb-0.5">Gönderilecek içerik</div>
+                <div className="text-sm text-navy-700 whitespace-pre-wrap break-words line-clamp-4">
+                  {sendContentSummary(sendProject)}
+                </div>
+              </div>
+
+              {sendPhase === 'previewing' && (
+                <div className="py-4 text-center text-navy-400 text-sm flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Önizleme hazırlanıyor…
+                </div>
+              )}
+
+              {(sendPhase === 'preview' || sendPhase === 'confirming') && sendPreview && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm text-navy-700">
+                    <Users className="w-4 h-4 text-navy-400" />
+                    <span><span className="font-semibold tabular-nums">{sendPreview.total_valid.toLocaleString('tr-TR')}</span> alıcıya gönderilecek</span>
+                  </div>
+                  {sendPreview.sample.length > 0 && (
+                    <div>
+                      <div className="text-[11px] font-medium text-navy-400 mb-1">Örnek numaralar</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {sendPreview.sample.map(s => (
+                          <span key={s} className="px-2 py-0.5 rounded bg-navy-50 text-navy-600 text-xs tabular-nums">{s}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-[11px] text-navy-400">
+                    Aynı numara birden fazla listede olsa bile tek mesaj alır. Onayladıktan sonra gönderim başlar.
+                  </p>
+                </div>
+              )}
+
+              {sendPhase === 'sent' && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-green-600">
+                    <CheckCircle2 className="w-4 h-4" /> Gönderim başlatıldı.
+                  </div>
+                  {sendStatus && (
+                    <div className="text-sm text-navy-600">
+                      <span className="font-semibold tabular-nums">{sendStatus.total_queued.toLocaleString('tr-TR')}</span> mesaj kuyruğa alındı.
+                    </div>
+                  )}
+                  <p className="text-[11px] text-navy-400">İletim/okundu durumu zaman içinde güncellenir; durumu proje listesinden takip edebilirsiniz.</p>
+                </div>
+              )}
+
+              {sendError && <div className="text-sm text-red-600">{sendError}</div>}
+            </div>
+
+            <div className="px-5 py-4 border-t border-navy-50 flex justify-end gap-2">
+              {sendPhase === 'preview' && (
+                <Button onClick={confirmSend} disabled={(sendPreview?.total_valid ?? 0) <= 0}>
+                  <Send className="w-4 h-4" /> Onayla ve Gönder
+                </Button>
+              )}
+              {sendPhase === 'confirming' && (
+                <Button disabled><Loader2 className="w-4 h-4 animate-spin" /> Gönderiliyor…</Button>
+              )}
+              {(sendPhase === 'sent' || sendPhase === 'error') && (
+                <Button variant="secondary" onClick={closeSend}>Kapat</Button>
+              )}
             </div>
           </div>
         </div>

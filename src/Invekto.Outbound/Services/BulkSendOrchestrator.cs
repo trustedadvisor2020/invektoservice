@@ -272,14 +272,31 @@ public sealed class BulkSendOrchestrator
 
             foreach (var chunk in Chunk(recipients, EffectiveChunkSize))
             {
-                var req = new BroadcastSendRequest
+                // Content source per job (chk_bulk_message_source guarantees EXACTLY ONE):
+                //   TemplateId set -> template path (CSV/list + a project's gallery_template)
+                //   InlineMessageText set -> inline free text (a project's free_text run, SS-A path)
+                // Both are pattern-bound to non-nullable locals so neither branch needs a null-forgiving (!).
+                BroadcastSendRequest req;
+                if (job.TemplateId is int templateId)
                 {
-                    TemplateId = job.TemplateId,
-                    Lang = job.Lang,
-                    Recipients = chunk
-                };
+                    req = new BroadcastSendRequest { TemplateId = templateId, Lang = job.Lang, Recipients = chunk };
+                }
+                else if (!string.IsNullOrEmpty(job.InlineMessageText))
+                {
+                    req = new BroadcastSendRequest { MessageText = job.InlineMessageText, Lang = job.Lang, Recipients = chunk };
+                }
+                else
+                {
+                    // Unreachable under the DB CHECK; never dispatch empty content — treat as a chunk failure.
+                    anyDispatchFailure = true;
+                    _logger.SystemError(
+                        $"[{ErrorCodes.BulkSendDispatchFailed}] Bulk job {job.Id} has neither template_id nor inline_message_text");
+                    continue;
+                }
 
-                var (resp, errCode, errMsg) = await _broadcast.CreateBroadcastAsync(tenantId, req, ct);
+                // A project run sends from the project's own Cloud API instance (ProjectInstanceId, null for
+                // CSV/list jobs -> tenant default). Consumed only on the cxapi route (gated off in prod).
+                var (resp, errCode, errMsg) = await _broadcast.CreateBroadcastAsync(tenantId, req, ct, job.ProjectInstanceId);
                 if (resp == null)
                 {
                     // A chunk with zero sendable recipients (all opt-out/consent-filtered) is not
