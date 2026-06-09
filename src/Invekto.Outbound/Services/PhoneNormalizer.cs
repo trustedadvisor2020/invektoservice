@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Invekto.Outbound.Services;
 
@@ -7,6 +8,8 @@ namespace Invekto.Outbound.Services;
 ///
 /// INTL-SAFE by design: dent/hair pilot clinics message foreign patients, so we
 /// must NOT hard-drop non-TR numbers (Codex §4B). Strategy:
+///   * scientific-notation artifact ("9.05332E+11") -> rejected (Excel display
+///     text whose digits are already lost; never a real phone)
 ///   * strip all non-digits (keep a leading '+')
 ///   * 00-prefix  -> international, drop the 00
 ///   * 0XXXXXXXXXX (11 digits, TR domestic) -> +90 + last 10
@@ -19,11 +22,20 @@ namespace Invekto.Outbound.Services;
 /// </summary>
 public sealed class PhoneNormalizer
 {
+    // Excel renders 12+ digit numbers as scientific notation; if such display text
+    // reaches us as the "phone", digit-stripping would turn "9.05332E+11" into a
+    // wrong-but-plausible 8-digit number that PASSES the 8..15 guard and gets stored
+    // as sendable. Reject before stripping so the row surfaces as invalid instead.
+    // Must stay mechanically identical to the SPA's SCI_NOTATION_RE (DataImportPage).
+    private static readonly Regex ScientificNotationRegex =
+        new(@"\d[eE][+-]?\d", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
     public string? Normalize(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw)) return null;
 
         raw = raw.Trim();
+        if (ScientificNotationRegex.IsMatch(raw)) return null;
         var hadPlus = raw.StartsWith('+');
 
         // Keep digits only

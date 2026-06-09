@@ -82,10 +82,19 @@ interface ImportJob {
 // ---- Phone normalizer (PREVIEW ONLY) ----
 // Mirrors Invekto.Outbound PhoneNormalizer (intl-safe). The server re-normalizes
 // authoritatively on import; this only drives the operator-facing preview counts.
+
+// Scientific-notation artifact ("9.05332E+11"): Excel DISPLAY text whose digits
+// are already lost — never a real phone. Without this reject, digit-stripping
+// would turn it into a wrong-but-plausible 8-digit number that passes the E.164
+// guard. Mirrors the server-side PhoneNormalizer reject; both test the trimmed
+// input so preview invalid-counts match the import result.
+const SCI_NOTATION_RE = /\d[eE][+-]?\d/;
+
 function normalizePhonePreview(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const trimmed = String(raw).trim();
   if (!trimmed) return null;
+  if (SCI_NOTATION_RE.test(trimmed)) return null;
   const hadPlus = trimmed.startsWith('+');
   let digits = trimmed.replace(/\D+/g, '');
   if (!digits) return null;
@@ -221,6 +230,10 @@ export function DataImportPage() {
   const [resultMsg, setResultMsg] = useState<string | null>(null);
   const [importErr, setImportErr] = useState<string | null>(null);
   const [invalidSamples, setInvalidSamples] = useState<string[]>([]);
+  // True when ANY row's phone looks like a scientific-notation artifact — tracked over
+  // the full file during summary computation (not inferred from the capped invalid
+  // samples), so the operator hint cannot be missed on large files.
+  const [sciNotationInFile, setSciNotationInFile] = useState(false);
 
   const [jobs, setJobs] = useState<ImportJob[]>(() => {
     try { return JSON.parse(localStorage.getItem(IMPORT_JOBS_KEY) || '[]'); }
@@ -322,6 +335,7 @@ export function DataImportPage() {
     setResultMsg(null);
     setImportErr(null);
     setInvalidSamples([]);
+    setSciNotationInFile(false);
   }
 
   function openWizard() {
@@ -336,6 +350,7 @@ export function DataImportPage() {
   async function handleFile(file: File) {
     setUploadErr(null);
     setMultiSheetNote(false);
+    setSciNotationInFile(false);
     const lower = file.name.toLowerCase();
     if (!/\.(xlsx|xls|csv)$/.test(lower)) {
       setUploadErr('Yalnızca .xlsx, .xls veya .csv dosyaları desteklenir.');
@@ -359,6 +374,26 @@ export function DataImportPage() {
       if (!wb.SheetNames.length) { setUploadErr('Dosyada sayfa bulunamadı.'); return; }
       if (wb.SheetNames.length > 1) setMultiSheetNote(true); // single-sheet only: use the first.
       const sheet = wb.Sheets[wb.SheetNames[0]];
+      // Excel "General" renders 12+ digit NUMBERS as scientific ("9.05332E+11") and
+      // raw:false below returns that display text — a phone typed as a number would be
+      // silently truncated. The raw cell value keeps full precision inside .xlsx/.xls,
+      // so re-render the display text from it. Repaired ONLY when the value is a
+      // positive integer in the 8..15-digit E.164 range; everything else stays
+      // scientific and falls through to the invalid-phone reject on purpose.
+      // NOT applied to CSV: there the scientific TEXT is all the file has (digits were
+      // lost when Excel saved it) and SheetJS still parses it into a numeric cell —
+      // "repairing" it would fabricate a wrong-but-plausible number.
+      if (!isCsv) {
+        for (const addr of Object.keys(sheet)) {
+          if (addr[0] === '!') continue;
+          const cell = sheet[addr] as XLSX.CellObject;
+          if (cell.t !== 'n' || typeof cell.v !== 'number' || !Number.isFinite(cell.v)) continue;
+          if (typeof cell.w !== 'string' || !SCI_NOTATION_RE.test(cell.w)) continue;
+          if (!Number.isInteger(cell.v) || cell.v <= 0) continue;
+          const full = cell.v.toFixed(0);
+          if (/^\d{8,15}$/.test(full)) cell.w = full;
+        }
+      }
       const aoa = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1, blankrows: false, raw: false, defval: '' });
       if (!aoa.length) { setUploadErr('Dosya boş görünüyor.'); return; }
 
@@ -434,14 +469,21 @@ export function DataImportPage() {
       const seen = new Set<string>();
       let invalid = 0;
       let fileDup = 0;
+      let sciDetected = false;
       const uniquePhones: string[] = [];
       for (const row of rows) {
-        const n = normalizePhonePreview(row[phoneCol]);
-        if (!n) { invalid++; continue; }
+        const rawPhone = row[phoneCol];
+        const n = normalizePhonePreview(rawPhone);
+        if (!n) {
+          invalid++;
+          if (!sciDetected && rawPhone && SCI_NOTATION_RE.test(rawPhone.trim())) sciDetected = true;
+          continue;
+        }
         if (seen.has(n)) { fileDup++; continue; }
         seen.add(n);
         uniquePhones.push(n);
       }
+      setSciNotationInFile(sciDetected);
 
       // dedup against the TARGET list only (server dedup key is (list_id, phone)).
       let dbExists = 0;
@@ -890,6 +932,12 @@ export function DataImportPage() {
                 <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                   <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                   <span>“Listede Var” kontrolü yapılamadı; bu sayı eksik olabilir. Sunucu içe aktarmada mükerrerleri yine de ayıklar.</span>
+                </div>
+              )}
+              {(sciNotationInFile || invalidSamples.some(s => SCI_NOTATION_RE.test(s))) && (
+                <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <span>Telefon değerleri bilimsel gösterimle gelmiş görünüyor (Excel’de sayı formatı). Kaynak Excel’de telefon kolonunu “Metin” formatına çevirip dosyayı yeniden oluşturun.</span>
                 </div>
               )}
 

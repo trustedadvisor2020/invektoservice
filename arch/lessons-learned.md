@@ -174,6 +174,7 @@
 
 | Date | Mistake | Solution | Prevention |
 |------|---------|----------|------------|
+| 2026-06-10 | Veri-import: Excel'de SAYI-formatlı telefon, SheetJS `raw:false` ile Excel'in GÖRÜNTÜ metnini döndürdü (`9.05332E+11`) → önizleme bozuk + sunucu digit-strip `90533211` (8 hane) üretti, Guard 8..15'ten GEÇTİ → sessiz-bozuk-sendable numara riski | İki katman: (1) parse-anı `cell.w` repair — ham `cell.v`'den tam sayı (SADECE xlsx/xls + pozitif tamsayı + onarım `^\d{8,15}$`); CSV'de ASLA (SheetJS CSV'deki scientific METNİ de sayı hücresine çevirir ama `v` kayıplı — repair sahte numara uydurur, repro kanıtlı); (2) PhoneNormalizer + client preview'a scientific reject (digit-strip ÖNCESİ) + operatöre amber ipucu | **SheetJS `raw:false` = Excel görüntü metni, ham değer DEĞİL — sayısal telefon/ID kolonları 11+ hanede scientific'e düşer. xlsx'te ham `cell.v`'den kurtar; CSV'de kurtarma YOK (reject + 'kolonu Metin yap' ipucu). Lenient digit-strip normalizer'a bilinen-artifact reject'ini strip ÖNCESİ koy — garbage, plausible-valid'e dönüşmesin** |
 
 ### Deploy & Config
 
@@ -209,6 +210,7 @@
 
 | Date | Mistake | Solution | Prevention |
 |------|---------|----------|------------|
+| 2026-06-10 | Türkçe içerikli plan JSON'u PS 5.1 `Get-Content \| ConvertFrom-Json` → `ConvertTo-Json \| Out-File` round-trip'i mojibake yaptı (`İçe` → `Ä°Ã§e`) — Get-Content encoding parametresiz BOM'suz UTF-8'i ANSI okur | Dosya Write tool ile temiz UTF-8 olarak yeniden yazıldı | **BOM'suz UTF-8 + Türkçe içerikli dosyayı PowerShell 5.1 ile round-trip ETME. JSON alan güncellemesi için Edit/Write tool kullan; PS şartsa `Get-Content -Encoding UTF8` zorunlu** |
 
 ### Logging
 

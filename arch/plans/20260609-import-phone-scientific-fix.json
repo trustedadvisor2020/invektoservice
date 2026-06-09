@@ -1,0 +1,107 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260609-import-phone-scientific-fix",
+  "risk": "MEDIUM",
+  "status": "REVIEW",
+  "created_at": "2026-06-09T23:45:00Z",
+  "updated_at": "2026-06-10T00:35:00Z",
+  "plan": {
+    "summary": "Veri İçe Aktarma sihirbazında Excel'de SAYI olarak girilen telefon hücreleri SheetJS raw:false ile Excel'in görüntü metnini ('9.05332E+11') döndürüyor; bu string hem önizlemede bozuk görünüyor hem import payload'una giriyor ve PhoneNormalizer rakam-ayıklamasından '+90533211' (8 hane, Guard 8..15 GEÇER) diye yanlış-ama-geçerli bir numara üretip SESSİZCE sendable kaydedebiliyordu. Fix: (1) parse anında bilimsel gösterime düşen sayısal hücrelerin görüntü metnini ham değerden (cell.v tam hassasiyetle dosyada duruyor) yeniden üret; (2) PhoneNormalizer'a scientific-notation reject ekle (import + bulk-send CSV yolunu korur, defense-in-depth); (3) client preview normalizer'a aynı reject'i aynala (önizleme sayıları sunucuyla tutarlı kalsın); (4) geçersiz örnekler scientific pattern içeriyorsa operatöre 'kolonu Metin yapın' ipucu satırı göster.",
+    "q_intent": "Q: 'veri içe aktarma sihirbazında telefon bilgisi neden bu şekilde gösteriyor. full açık göster.' (ekran görüntüsü: template_send_test.xlsx, telefon kolonu '9.05332E+11')",
+    "interview_notes": "Q kararları (AskUserQuestion): kapsam = Frontend + Server (PhoneNormalizer reject dahil); UX ipucu = evet (koşullu 1 satır); AC seti = 4 madde onaylı; doğrulama = node repro script + build PASS + Q manuel UI testi (Playwright yok). Ampirik repro yapıldı (c:/tmp/xlsx-phone-repro.js): B2 cell {t:'n', v:905332112233, w:'9.05332E+11'} — ham değer dosyada TAM, sadece görüntü metni bozuk; fix w'yi v'den yeniden üretince '905332112233' dönüyor. Prod DB tarandı (read-only): bozuk kayıt YOK (tek liste, 10 kayıt, hepsi 12+ hane). PLAN-REVIEW (codex_consult, verdict=Modify) UYGULANDI: (1) GR-1 guard sıkılaştı — SADECE pozitif tamsayı + onarılmış metin ^\\d{8,15}$ ise w onarılır; non-integer/negatif/aşırı scientific değerler onarılmaz, reject yoluna düşer (örn. 5321234567.89 onarılsaydı server digit-strip ile 12 haneli yanlış numara üretirdi). (2) Hücre yürüyüşü Object.keys(sheet) ile, rectangular range taraması YASAK. (3) AC4'e global-repair notu eklendi (telefon-dışı 8-15 haneli tamsayı scientific hücreler de düzelir — dokümante). (4) C# regex named+Compiled+CultureInvariant, trim sonrası / digit-strip öncesi; client ile mekanik eşdeğer. (5) İpucu tüm satırlar üzerinden tracked boolean ile (görüntülenen sample'lardan değil). (6) İpucu metni CSV'yi yanıltmayacak şekilde 'dosyayı yeniden oluşturun' der. (7) Negatif test seti repro'ya eklendi. REJECTED (1): 'server'ın decimal string'i digit-strip ile kabulü' pre-existing normalizer toleransı — kapsam dışı (non_goals), GR-1 guard'ı bunu kötüleştirmiyor. EK BULGU (implement sırasında, Codex'in de kaçırdığı): CSV yolunda repair UYGULANMAZ (isCsv guard) — SheetJS CSV'deki literal '9.05332E+11' metnini de SAYI hücresine çevirir ama v=905332000000 (gerçek haneler dosyada YOK); repair CSV'de çalışsaydı sahte-tam numara uydururdu. Repro ile kanıtlandı.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Sayı-formatlı telefon içeren xlsx yüklenince adım-1 önizleme tablosunda numara TAM görünür (905332112233), bilimsel gösterim asla görünmez.",
+        "verified": true,
+        "verification_note": "Repro 16/16 PASS: xlsx numeric 905332112233 -> parsed row '905332112233' (önizleme tablosu parsed rows render eder). Q manuel UI doğrulaması deploy sonrası."
+      },
+      {
+        "id": "AC2",
+        "criterion": "Import payload'u tam numarayı taşır → import sonrası DB normalized_phone = +905332112233 (truncation yok).",
+        "verified": true,
+        "verification_note": "buildPayloadRows aynı parsed row değerini POST eder; PhoneNormalizer('905332112233') -> +905332112233 (12-hane 90-prefix yolu). DB yazımı Q manuel testinde görülecek."
+      },
+      {
+        "id": "AC3",
+        "criterion": "Scientific-notation string (örn. Excel'den bozuk kaydedilmiş CSV'deki literal '9.05332E+11') PhoneNormalizer VE client preview normalizer tarafından reddedilir → 'geçersiz' sayılır, asla bozuk numara olarak kaydedilmez; geçersiz örneklerde scientific pattern varsa operatöre 'kolonu Metin formatına çevirin' ipucu görünür.",
+        "verified": true,
+        "verification_note": "Repro: SCI regex tüm scientific girişleri yakalar, hiçbir meşru telefonu yakalamaz; preview mirror null döner; CSV path sahte numara üretmez (isCsv guard kanıtı v=905332000000); ipucu tracked-boolean + invalidSamples ile render."
+      },
+      {
+        "id": "AC4",
+        "criterion": "Solution build + Dashboard build PASS; metin-formatlı telefonlar, tarihler ve bilimsel-olmayan sayısal hücrelerin davranışı değişmez. Bilinçli istisna (dokümante): herhangi bir kolondaki 8-15 haneli POZİTİF TAMSAYI scientific hücreler de tam sayıya onarılır (global w-patch — ID benzeri alanlar için de faydalı); non-integer/negatif/aşırı (>15 hane) scientific değerler ONARILMAZ ve geçersiz yoluna düşer.",
+        "verified": true,
+        "verification_note": "Solution 0 Error + Dashboard 15.45s PASS. Negatif matris: metin telefon değişmedi, tarih hücresi etkilenmedi, non-integer/negatif/1e21 onarılmadı."
+      }
+    ]
+  },
+  "gr_list": [
+    { "id": "GR-1", "description": "DataImportPage.handleFile: sheet_to_json öncesi Object.keys(sheet) yürüyüşü (rectangular range YASAK) — cell.t==='n' && Number.isFinite(v) && w bilimsel gösterimse (\\d[eE][+-]?\\d) VE v pozitif tamsayı VE v.toFixed(0) ^\\d{8,15}$ ise cell.w = v.toFixed(0). Non-integer/negatif/aşırı scientific onarılmaz → reject yoluna düşer (Codex plan-review guard). SADECE xlsx/xls — CSV'de isCsv guard (v zaten kayıplı, repair sahte numara uydururdu).", "services_affected": ["Backend/Dashboard"] },
+    { "id": "GR-2", "description": "normalizePhonePreview: scientific-notation input'u null döndür (sunucu reject'inin aynası — önizleme geçersiz sayıları sunucuyla tutarlı)", "services_affected": ["Backend/Dashboard"] },
+    { "id": "GR-3", "description": "PhoneNormalizer.Normalize: raw input \\d[eE][+-]?\\d kalıbı içeriyorsa null (scientific artifact asla telefon değildir; rakam-ayıklama truncation'ını engeller). Import + bulk-send CSV (CsvRecipientParser) yollarını birden korur.", "services_affected": ["Outbound"] },
+    { "id": "GR-4", "description": "Özet adımı geçersiz-örnek bloğu: TÜM satırlar üzerinden computeSummary sırasında tracked boolean (görüntülenen sample'lardan ÇIKARSAMA YOK, server sample cap'ine takılmaz) + server invalid_samples kontrolü; scientific tespit edilirse koşullu ipucu: 'Telefon değerleri bilimsel gösterimle gelmiş görünüyor (Excel sayı formatı). Kaynak Excel'de telefon kolonunu Metin formatına çevirip dosyayı yeniden oluşturun.'", "services_affected": ["Backend/Dashboard"] },
+    { "id": "GR-5", "description": "Dashboard SPA bundle regen (npm run build → wwwroot/app, committed-artifact deploy modeli)", "services_affected": ["Backend"] }
+  ],
+  "allowed_files": [
+    "src/Invekto.Backend/Dashboard/src/pages/DataImportPage.tsx",
+    "src/Invekto.Outbound/Services/PhoneNormalizer.cs",
+    "src/Invekto.Backend/wwwroot/app/**"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/DataImportPage.tsx", "change": "GR-1 scientific-cell w-repair (xlsx/xls only, isCsv guard — CSV'de v zaten kayıplı, repair sahte numara uydururdu; repro ile kanıtlandı) + GR-2 SCI_NOTATION_RE reject in normalizePhonePreview + GR-4 sciNotationInFile tracked-boolean (tüm satırlar) + koşullu amber ipucu (step 3)", "is_new": false },
+    { "path": "src/Invekto.Outbound/Services/PhoneNormalizer.cs", "change": "GR-3: ScientificNotationRegex (Compiled|CultureInvariant) reject — trim sonrası, digit-strip ÖNCESİ; import + bulk-send CSV yollarını merkezi korur; XML doc güncellendi", "is_new": false },
+    { "path": "src/Invekto.Backend/wwwroot/app/**", "change": "GR-5: regenerated committed SPA bundle (pre-built-SPA deploy model)", "is_new": false }
+  ],
+  "git_diff": { "patch_truncated": null, "sha256": "E954A5B2B25230C00D2DDEE9FAC50C78411D9107C4F093178965C536FDA14684", "full_path": "arch/plans/diffs/20260609-import-phone-scientific-fix.diff", "stats": { "insertions": 62, "deletions": 2, "files_count": 2 } },
+  "build": { "status": "PASS", "command": "dotnet build InvektoServis.sln --no-restore -v q ; npm run build (Dashboard)", "timestamp": "2026-06-10T00:25:00Z", "duration_ms": 76000, "output_tail": "0 Error(s), 42 pre-existing warnings, Time Elapsed 00:01:00.54. Dashboard: tsc clean + vite built in 15.45s (DataImportPage-BxDoWQMp.js, index-D1Lkc41z.js).", "error_summary": null, "services": ["Invekto.Outbound", "Invekto.Backend"] },
+  "verification_questions": [
+    { "id": "Q1", "question": "Does the parse-time w-rebuild touch ONLY numeric cells whose display text is scientific notation — leaving text cells, date-formatted numeric cells, and plain numeric cells byte-identical — and is full precision guaranteed for all E.164-range integers (≤15 digits < 2^53)?", "category": "Data" },
+    { "id": "Q2", "question": "Can the scientific-reject regex (digit[eE][+-]?digit) ever reject a legitimately formatted phone input (spaces, dashes, parentheses, leading +, 00-prefix, Turkish text suffixes like 'ev'/'iş'), and is it applied identically on server (PhoneNormalizer) and client (normalizePhonePreview)?", "category": "Data" },
+    { "id": "Q3", "question": "After the change, do previously-valid import and bulk-send CSV flows behave identically (no regression for text-formatted phones), with scientific rows surfacing through the EXISTING invalid-count + invalid-samples path rather than new errors or silent drops?", "category": "Lifecycle" },
+    { "id": "Q4", "question": "Is the operator hint rendered only when at least one invalid sample matches the scientific pattern, and does it not interfere with the existing CSV download of invalid rows?", "category": "Process/Policy" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "ContactListImportService.cs (PKT-14 aha paketi yeni landed — dokunulmaz; normalizer çağrısı değişmiyor)",
+      "Send/dispatch yolları (bulk-send execute, broadcast, cxapi) — sadece normalize katmanı",
+      "P0-3 gate / allowlist / Options sınıfları",
+      "DB şema / migrations (kolon değişikliği yok)",
+      "WhatsAppAnalytics TextNormalizer (farklı sınıf, kapsam dışı)"
+    ],
+    "non_goals": [
+      "CSV'ye Excel tarafından zaten bozuk yazılmış değerlerin kurtarılması (rakamlar dosya kaydında kaybolmuş — kurtarılamaz; reject + ipucu ile görünür kılınır)",
+      ">15 anlamlı haneli sayıların kurtarılması (Excel kendisi 15 haneye yuvarlar; E.164 max 15 — telefon değildir)",
+      "Başında 0 olan sayı hücresinin 0'ının geri getirilmesi (Excel sayı hücresinde 0 zaten yok; 10-haneli 5xx TR heuristic'i mevcut normalizer'da zaten kurtarıyor)",
+      "Server'ın decimal METIN telefonu ('5321234567.89') digit-strip ile kabul etmesi — pre-existing lenient-normalizer toleransı, bu paket kötüleştirmiyor (GR-1 guard'ı non-integer scientific'i onarmayarak bunu beslemez); ayrı paket konusu"
+    ],
+    "intentional_exclusions": [
+      "Yeni INV error kodu YOK — mevcut invalid-count + invalid_samples mekanizması kullanılıyor",
+      "Test yok (CLAUDE.md: no tests unless requested); kanıt = node repro script + Q manuel UI test",
+      "raw:true'ya geçiş YOK — tüm hücre tiplerinin davranışını değiştirirdi (tarih serileri vb.); cerrahi w-rebuild tercih edildi"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "DataImportPage.handleFile mevcut try/catch korunuyor (parse hatası → uploadErr)",
+      "PhoneNormalizer.Normalize exception fırlatmaz — null döner, caller invalid sayar (mevcut sözleşme)"
+    ],
+    "user_facing_errors": [
+      "Geçersiz telefonlar: mevcut '{n} geçersiz numara örneği' bloğu + CSV indir",
+      "Yeni koşullu ipucu: 'Telefon değerleri bilimsel gösterimle gelmiş görünüyor (Excel'de sayı formatı). Kaynak Excel'de telefon kolonunu Metin formatına çevirip dosyayı yeniden oluşturun.'"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Bu paket tam tersini yapıyor: mevcut SESSİZ veri bozulmasını (scientific → +90533211 sendable) ortadan kaldırıyor. Reject edilen satırlar mevcut görünür invalid-count + samples yoluna düşer; hiçbir yeni sessiz yol eklenmiyor."
+  },
+  "aha_moments": [
+    { "category": "RELIABILITY", "user_pain": "Excel'de telefon kolonu sayı formatındaysa numara sessizce bozuk kaydediliyor, gönderim yanlış numaraya gidiyordu.", "suggestion": "Parse anında ham hücre değerinden tam numarayı kurtar + normalizer'da scientific reject.", "aha_moment": "Aynı dosya yüklenince önizlemede '905332112233' tam görünür — operatör hiçbir şey yapmadan doğru import." },
+    { "category": "SUPPORT", "user_pain": "Operatör '9.05332E+11 neden geçersiz?' diye destek açıyor, kök nedeni kimse bilmiyordu.", "suggestion": "Geçersiz örnekler scientific pattern içerince 'kolonu Metin yapın' ipucu satırı.", "aha_moment": "Operatör destek beklemeden kendi Excel'ini düzeltip 1 dakikada yeniden yükler." },
+    { "category": "UX", "user_pain": "Önizleme geçersiz sayıları sunucu sonucundan sapabiliyordu (client normalizer sunucuyla %100 aynı değilse).", "suggestion": "Client preview normalizer'a sunucu reject'inin birebir aynasını ekle.", "aha_moment": "Özet adımındaki 'X geçersiz' sayısı import sonucuyla birebir tutar — sürpriz yok." },
+    { "category": "RELIABILITY", "user_pain": "Bulk-send CSV alıcı yolu da aynı normalizer'ı kullanıyor; oradan da bozuk numara sızabilirdi.", "suggestion": "Reject'i normalizer'ın kendisine koy (çağıran her yol otomatik korunur).", "aha_moment": "Tek satırlık merkez fix ile import VE bulk-send aynı anda korunur." },
+    { "category": "SPEED", "user_pain": "Yanlış import fark edilince listeyi silip yeniden yükleme turu dönüyordu.", "suggestion": "Bozulmayı kayıt yazılmadan ÖNCE (parse + normalize katmanında) yakala.", "aha_moment": "Hatalı veri DB'ye hiç girmediği için temizlik turu diye bir şey kalmaz." }
+  ],
+  "verdict": { "status": null, "iteration": 0 }
+}
