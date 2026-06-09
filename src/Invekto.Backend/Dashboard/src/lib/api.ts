@@ -2281,6 +2281,24 @@ class OpsApiClient {
     });
   }
 
+  // FEAT-PROJELER PKT-14 — read-only list insights.
+  // Projeler modal: sample recipient + deduplicated reach + per-column fill stats in ONE call.
+  async getDataListPreviewSample(listIds: number[]): Promise<DataListPreviewSample> {
+    return this.request<DataListPreviewSample>(
+      `/api/v1/outbound/data-lists/preview-sample?listIds=${encodeURIComponent(listIds.join(','))}`);
+  }
+
+  // Veri Yönetimi viewer popup: one server-paged, searchable records page of a list.
+  async getDataListRecords(
+    listId: number, opts: { search?: string; page?: number; pageSize?: number } = {},
+  ): Promise<ListRecordsPage> {
+    const p = new URLSearchParams();
+    if (opts.search) p.set('search', opts.search);
+    p.set('page', String(opts.page ?? 1));
+    p.set('pageSize', String(opts.pageSize ?? 50));
+    return this.request<ListRecordsPage>(`/api/v1/outbound/data-lists/${listId}/records?${p.toString()}`);
+  }
+
   async previewFromList(req: PreviewFromListRequest): Promise<BulkSendPreviewResponse> {
     return this.request<BulkSendPreviewResponse>('/api/v1/outbound/bulk-send/preview-from-list', {
       method: 'POST',
@@ -2453,6 +2471,34 @@ export interface OutboundTemplateDto {
   lang: string;
   created_at: string;
   updated_at: string;
+}
+
+// FEAT-PROJELER PKT-14 — read-only list insights (preview-sample + viewer records).
+export interface ListRecord {
+  phone: string | null;     // normalized E.164; null = invalid row
+  name: string | null;
+  surname: string | null;
+  email: string | null;
+  field1: string | null;
+  field2: string | null;
+  field3: string | null;
+  field4: string | null;
+  field5: string | null;
+  tags: string | null;
+  note: string | null;
+  sendable: boolean;
+}
+export interface ListColumnStat { filled: number; total: number; }
+export interface DataListPreviewSample {
+  sample: ListRecord | null;                       // first sendable record of the FIRST selected list
+  reach: number;                                   // COUNT(DISTINCT phone) across selected lists (sendable)
+  column_stats: Record<string, ListColumnStat>;    // keyed by column (name/surname/email/field1..5/tags/note)
+}
+export interface ListRecordsPage {
+  records: ListRecord[];
+  total: number;
+  page: number;       // 1-based
+  page_size: number;
 }
 
 export interface DataListSummary {

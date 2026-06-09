@@ -138,3 +138,59 @@ public sealed class PreviewFromListRequest
     [JsonPropertyName("template_id")] public int TemplateId { get; set; }
     [JsonPropertyName("lang")] public string? Lang { get; set; }
 }
+
+// =============================================================
+// FEAT-PROJELER PKT-14 — read-only list insight endpoints (aha pack + list viewer).
+// Both are tenant-scoped + ContactList-gated; NO send path.
+// =============================================================
+
+/// <summary>One list_records row as shown to the operator (viewer table + preview sample).</summary>
+public sealed class ListRecordDto
+{
+    [JsonPropertyName("phone")] public string? Phone { get; set; }            // normalized_phone (null = invalid row)
+    [JsonPropertyName("name")] public string? Name { get; set; }
+    [JsonPropertyName("surname")] public string? Surname { get; set; }
+    [JsonPropertyName("email")] public string? Email { get; set; }
+    [JsonPropertyName("field1")] public string? Field1 { get; set; }
+    [JsonPropertyName("field2")] public string? Field2 { get; set; }
+    [JsonPropertyName("field3")] public string? Field3 { get; set; }
+    [JsonPropertyName("field4")] public string? Field4 { get; set; }
+    [JsonPropertyName("field5")] public string? Field5 { get; set; }
+    [JsonPropertyName("tags")] public string? Tags { get; set; }
+    [JsonPropertyName("note")] public string? Note { get; set; }
+    [JsonPropertyName("sendable")] public bool Sendable { get; set; }
+}
+
+/// <summary>Filled/total counts for one column across the selected lists (sendable rows).</summary>
+public sealed class ListColumnStatDto
+{
+    [JsonPropertyName("filled")] public int Filled { get; set; }
+    [JsonPropertyName("total")] public int Total { get; set; }
+}
+
+/// <summary>
+/// GET /api/v1/data-lists/preview-sample?listIds=1,2 — one round-trip feeding the Projeler
+/// modal: a real sample recipient (first sendable record of the FIRST id), the precise
+/// deduplicated reach, and per-column fill stats. All computed over SENDABLE rows only
+/// (matches who a send would actually target).
+/// </summary>
+public sealed class DataListPreviewSampleResponse
+{
+    /// <summary>First sendable record of the first selected list; null when none.</summary>
+    [JsonPropertyName("sample")] public ListRecordDto? Sample { get; set; }
+
+    /// <summary>COUNT(DISTINCT normalized_phone) across the selected lists (sendable rows).</summary>
+    [JsonPropertyName("reach")] public int Reach { get; set; }
+
+    /// <summary>Keyed by column (name/surname/email/field1..5/tags/note).</summary>
+    [JsonPropertyName("column_stats")] public Dictionary<string, ListColumnStatDto> ColumnStats { get; set; } = new();
+}
+
+/// <summary>GET /api/v1/data-lists/{id}/records — server-paged, searchable records page.</summary>
+public sealed class ListRecordsPageResponse
+{
+    [JsonPropertyName("records")] public List<ListRecordDto> Records { get; set; } = new();
+    [JsonPropertyName("total")] public int Total { get; set; }                // rows matching the search
+    [JsonPropertyName("page")] public int Page { get; set; }                  // 1-based
+    [JsonPropertyName("page_size")] public int PageSize { get; set; }
+}

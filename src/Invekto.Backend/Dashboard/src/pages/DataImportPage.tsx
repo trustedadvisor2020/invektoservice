@@ -3,13 +3,14 @@ import * as XLSX from 'xlsx';
 import {
   Upload, FileSpreadsheet, X, AlertTriangle, CheckCircle2, Loader2,
   Trash2, Download, ChevronDown, Info, List as ListIcon,
+  Eye, Search, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { cn } from '../lib/utils';
 import {
   api, ApiClientError,
   type DataListSummary, type ImportScenario, type ImportRowDto,
-  type ImportBatchRequest,
+  type ImportBatchRequest, type ListRecord, type ListRecordsPage,
 } from '../lib/api';
 
 // =============================================================
@@ -172,6 +173,24 @@ function StatusBadge({ status }: { status: DataListSummary['status'] }) {
   );
 }
 
+// ---- List viewer popup (FEAT-PROJELER PKT-14) ----
+// All string-valued record columns; phone is always shown, the rest hide when the loaded
+// page has no value in them (fixed list_records schema, so this is the full universe).
+const VIEWER_COLUMNS: { key: Exclude<keyof ListRecord, 'sendable'>; label: string }[] = [
+  { key: 'phone', label: 'Telefon' },
+  { key: 'name', label: 'Ad' },
+  { key: 'surname', label: 'Soyad' },
+  { key: 'email', label: 'E-posta' },
+  { key: 'field1', label: 'Alan 1' },
+  { key: 'field2', label: 'Alan 2' },
+  { key: 'field3', label: 'Alan 3' },
+  { key: 'field4', label: 'Alan 4' },
+  { key: 'field5', label: 'Alan 5' },
+  { key: 'tags', label: 'Etiketler' },
+  { key: 'note', label: 'Not' },
+];
+const VIEWER_PAGE_SIZE = 50;
+
 export function DataImportPage() {
   // ---- Lists overview ----
   const [lists, setLists] = useState<DataListSummary[]>([]);
@@ -212,6 +231,56 @@ export function DataImportPage() {
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ---- List viewer popup (double-click / eye icon on a list row) ----
+  const [viewerList, setViewerList] = useState<DataListSummary | null>(null);
+  const [viewerPage, setViewerPage] = useState<ListRecordsPage | null>(null);
+  const [viewerLoading, setViewerLoading] = useState(false);
+  const [viewerError, setViewerError] = useState<string | null>(null);
+  const [viewerSearch, setViewerSearch] = useState('');
+  const [viewerPageNum, setViewerPageNum] = useState(1);
+  const viewerSeqRef = useRef(0); // drops stale responses (rapid typing/paging)
+
+  function openViewer(l: DataListSummary) {
+    setViewerList(l);
+    setViewerSearch('');
+    setViewerPageNum(1);
+    setViewerPage(null);
+    setViewerError(null);
+  }
+
+  // Debounced server-paged fetch; search resets to page 1 at the input's onChange.
+  useEffect(() => {
+    if (!viewerList) return;
+    setViewerLoading(true);
+    setViewerError(null);
+    const seq = ++viewerSeqRef.current;
+    const listId = viewerList.id;
+    const search = viewerSearch.trim();
+    const page = viewerPageNum;
+    const t = window.setTimeout(async () => {
+      try {
+        const result = await api.getDataListRecords(listId, {
+          search: search || undefined, page, pageSize: VIEWER_PAGE_SIZE,
+        });
+        if (seq === viewerSeqRef.current) setViewerPage(result);
+      } catch (e) {
+        if (seq === viewerSeqRef.current) {
+          setViewerPage(null);
+          setViewerError(errText(e, 'Kayıtlar yüklenemedi'));
+        }
+      } finally {
+        if (seq === viewerSeqRef.current) setViewerLoading(false);
+      }
+    }, 300);
+    return () => window.clearTimeout(t);
+  }, [viewerList, viewerSearch, viewerPageNum]);
+
+  // Hide columns that are entirely empty in the loaded page (phone always visible).
+  const viewerVisibleCols = useMemo(() => {
+    const recs = viewerPage?.records ?? [];
+    return VIEWER_COLUMNS.filter(c => c.key === 'phone' || recs.some(r => r[c.key]));
+  }, [viewerPage]);
 
   const loadLists = async () => {
     setLoadingLists(true);
@@ -560,7 +629,12 @@ export function DataImportPage() {
               </thead>
               <tbody>
                 {lists.map(l => (
-                  <tr key={l.id} className="border-t border-navy-50">
+                  <tr
+                    key={l.id}
+                    className="border-t border-navy-50 cursor-pointer hover:bg-navy-50/40"
+                    onDoubleClick={() => openViewer(l)}
+                    title="İçeriği görüntülemek için çift tıklayın"
+                  >
                     <td className="px-4 py-2.5 text-navy-900">{l.name}</td>
                     <td className="px-4 py-2.5"><StatusBadge status={l.status} /></td>
                     <td className="px-4 py-2.5 text-right tabular-nums">{l.total_records.toLocaleString('tr-TR')}</td>
@@ -568,6 +642,9 @@ export function DataImportPage() {
                     <td className="px-4 py-2.5">
                       <div className="flex items-center justify-end gap-1.5">
                         {/* Bulk send moved into Projeler (a project sends from its channel); lists are data-only now. */}
+                        <Button size="sm" variant="ghost" onClick={() => openViewer(l)} title="İçeriği görüntüle">
+                          <Eye className="w-3.5 h-3.5 text-navy-500" />
+                        </Button>
                         <Button size="sm" variant="ghost" onClick={() => deleteList(l)} title="Sil">
                           <Trash2 className="w-3.5 h-3.5 text-red-500" />
                         </Button>
@@ -855,6 +932,111 @@ export function DataImportPage() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ---- List viewer popup (X-close): records table + search + server paging ---- */}
+      {viewerList && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/40 p-4">
+          <div className="bg-white border border-navy-100 rounded-xl shadow-soft relative w-full max-w-4xl max-h-[88vh] flex flex-col">
+            <button
+              onClick={() => setViewerList(null)}
+              className="absolute right-3 top-3 text-navy-300 hover:text-navy-600"
+              title="Kapat"
+              aria-label="Kapat"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="px-5 pt-5 pb-3">
+              <h2 className="text-base font-semibold text-navy-900 flex items-center gap-2">
+                <ListIcon className="w-4 h-4 text-navy-400" /> {viewerList.name}
+              </h2>
+              <p className="text-xs text-navy-400 mt-0.5">
+                {viewerList.total_records.toLocaleString('tr-TR')} kayıt · {viewerList.sendable_count.toLocaleString('tr-TR')} gönderilebilir
+              </p>
+            </div>
+
+            <div className="px-5 pb-3">
+              <div className="relative">
+                <Search className="w-4 h-4 text-navy-300 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  className="w-full pl-9 pr-3 py-2 bg-white border border-navy-100 rounded-lg text-navy-900 text-sm placeholder:text-navy-300 focus:outline-none focus:border-brand-500 focus:shadow-focus"
+                  placeholder="Telefon, ad, e-posta veya herhangi bir alanda ara…"
+                  value={viewerSearch}
+                  onChange={e => { setViewerSearch(e.target.value); setViewerPageNum(1); }}
+                />
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-auto border-t border-navy-50">
+              {viewerError ? (
+                <div className="px-5 py-8 text-center text-sm text-red-600">{viewerError}</div>
+              ) : viewerLoading && !viewerPage ? (
+                <div className="px-5 py-10 text-center text-navy-400 text-sm flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Kayıtlar yükleniyor…
+                </div>
+              ) : !viewerPage || viewerPage.records.length === 0 ? (
+                <div className="px-5 py-10 text-center text-navy-400 text-sm">
+                  {viewerSearch.trim() ? 'Aramayla eşleşen kayıt yok.' : 'Bu listede kayıt yok.'}
+                </div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="bg-navy-50/50 text-navy-500 text-xs sticky top-0">
+                    <tr>
+                      {viewerVisibleCols.map(c => (
+                        <th key={c.key} className="text-left font-medium px-4 py-2 whitespace-nowrap">{c.label}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className={cn(viewerLoading && 'opacity-50')}>
+                    {viewerPage.records.map((r, i) => (
+                      <tr key={`${r.phone ?? 'x'}-${i}`} className={cn('border-t border-navy-50', !r.sendable && 'opacity-60')}>
+                        {viewerVisibleCols.map(c => (
+                          <td key={c.key} className="px-4 py-2 text-navy-800 max-w-[220px] truncate" title={r[c.key] ?? ''}>
+                            {c.key === 'phone'
+                              ? (
+                                <span className="tabular-nums flex items-center gap-1.5">
+                                  {r.phone ?? '—'}
+                                  {!r.sendable && (
+                                    <span className="px-1.5 py-0.5 rounded bg-navy-50 text-navy-400 text-[10px]">gönderilemez</span>
+                                  )}
+                                </span>
+                              )
+                              : (r[c.key] ?? '')}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div className="px-5 py-3 border-t border-navy-50 flex items-center justify-between text-xs text-navy-500">
+              <span className="tabular-nums">
+                {viewerPage && viewerPage.total > 0
+                  ? `${((viewerPage.page - 1) * viewerPage.page_size + 1).toLocaleString('tr-TR')}–${Math.min(viewerPage.page * viewerPage.page_size, viewerPage.total).toLocaleString('tr-TR')} / ${viewerPage.total.toLocaleString('tr-TR')} kayıt`
+                  : '—'}
+              </span>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  size="sm" variant="ghost"
+                  disabled={viewerLoading || viewerPageNum <= 1}
+                  onClick={() => setViewerPageNum(p => Math.max(1, p - 1))}
+                >
+                  <ChevronLeft className="w-4 h-4" /> Önceki
+                </Button>
+                <Button
+                  size="sm" variant="ghost"
+                  disabled={viewerLoading || !viewerPage || viewerPage.page * viewerPage.page_size >= viewerPage.total}
+                  onClick={() => setViewerPageNum(p => p + 1)}
+                >
+                  Sonraki <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

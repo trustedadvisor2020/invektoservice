@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Briefcase, X, Plus, Pencil, Archive, Loader2, Info, ListChecks, Radio, FileText, Send, Users, CheckCircle2,
   ExternalLink, Phone, Reply, Image as ImageIcon, Pause, Play, Ban, AlertTriangle,
@@ -12,6 +12,7 @@ import {
   type InstanceDto, type WaTemplate, type ProjectTemplateKind, type ProjectTemplateParam,
   type ProjectContentMode, type OutboundTemplateDto,
   type BulkSendPreviewResponse, type BulkSendStatusResponse,
+  type DataListPreviewSample, type ListRecord,
 } from '../lib/api';
 
 // =============================================================
@@ -84,13 +85,56 @@ function extractPlaceholders(t: WaTemplate | null): Placeholder[] {
   return out;
 }
 
-// Render template text with {{...}} placeholders highlighted (so the operator sees the variables).
-function renderTemplateText(text: string) {
-  return text.split(/(\{\{\s*[^}\s]+\s*\}\})/g).map((part, i) =>
-    /^\{\{\s*[^}\s]+\s*\}\}$/.test(part)
-      ? <span key={i} className="bg-brand-100 text-brand-700 rounded px-1">{part}</span>
-      : <span key={i}>{part}</span>,
-  );
+// aha #1 — placeholder key -> column auto-match aliases (case-insensitive). Template authors
+// commonly name params after the data they expect; matching ones pre-fill the column dropdown.
+const COLUMN_ALIASES: Record<string, string[]> = {
+  name: ['name', 'ad', 'adi', 'isim', 'firstname', 'first_name'],
+  surname: ['surname', 'soyad', 'soyadi', 'lastname', 'last_name'],
+  email: ['email', 'eposta', 'e-posta', 'e_posta', 'mail'],
+  field1: ['field1', 'alan1'],
+  field2: ['field2', 'alan2'],
+  field3: ['field3', 'alan3'],
+  field4: ['field4', 'alan4'],
+  field5: ['field5', 'alan5'],
+  tags: ['tags', 'tag', 'etiket', 'etiketler'],
+  note: ['note', 'not', 'notlar'],
+};
+function autoMatchColumn(placeholderKey: string): string | null {
+  const k = placeholderKey.trim().toLowerCase();
+  for (const [col, aliases] of Object.entries(COLUMN_ALIASES))
+    if (aliases.includes(k)) return col;
+  return null;
+}
+
+// Typed column access on a sample record (no index-signature casts).
+function recordValue(rec: ListRecord, col: string): string | null {
+  switch (col) {
+    case 'name': return rec.name;
+    case 'surname': return rec.surname;
+    case 'email': return rec.email;
+    case 'field1': return rec.field1;
+    case 'field2': return rec.field2;
+    case 'field3': return rec.field3;
+    case 'field4': return rec.field4;
+    case 'field5': return rec.field5;
+    case 'tags': return rec.tags;
+    case 'note': return rec.note;
+    default: return null;
+  }
+}
+
+// Render template text with {{...}} placeholders highlighted. When a resolver returns a sample
+// value for a placeholder (aha #2: sample-recipient preview), the REAL value renders (green);
+// unresolved placeholders keep the raw {{key}} highlight (brand).
+function renderTemplateText(text: string, resolve?: (key: string) => string | null) {
+  return text.split(/(\{\{\s*[^}\s]+\s*\}\})/g).map((part, i) => {
+    const m = /^\{\{\s*([^}\s]+)\s*\}\}$/.exec(part);
+    if (!m) return <span key={i}>{part}</span>;
+    const v = resolve?.(m[1]);
+    return v
+      ? <span key={i} className="bg-green-100 text-green-700 rounded px-1">{v}</span>
+      : <span key={i} className="bg-brand-100 text-brand-700 rounded px-1">{part}</span>;
+  });
 }
 
 // Icon for a template button by cxapi type.
@@ -142,6 +186,16 @@ export default function ProjectsPage() {
   const [paramColumns, setParamColumns] = useState<Record<string, string>>({});
   // Media inputs (cxapi requiredInput kind='media') take a public URL literal: media key -> URL.
   const [mediaValues, setMediaValues] = useState<Record<string, string>>({});
+
+  // ---- List insight (aha #2/#3/#4): ONE debounced round-trip per target-list change ----
+  // sample = first sendable record of the first selected list; reach = deduplicated recipient
+  // count; column_stats = per-column fill. FAIL-SILENT: the modal works fully without it.
+  const [listInsight, setListInsight] = useState<DataListPreviewSample | null>(null);
+  const [insightLoading, setInsightLoading] = useState(false);
+  const [showSample, setShowSample] = useState(true); // aha #2 toggle: sample values vs raw {{...}}
+  const insightSeqRef = useRef(0);                    // drops stale responses on rapid list toggling
+  // aha #5 dirty guard: pristine form fingerprint, captured AFTER the async edit re-populate.
+  const baselineRef = useRef<string | null>(null);
 
   // ---- plain_text content (migration 059): the content a plain_text run sends, chosen in settings ----
   const [contentMode, setContentMode] = useState<ProjectContentMode | ''>(''); // '' until a content source is chosen
@@ -276,8 +330,15 @@ export default function ProjectsPage() {
 
   function onTemplateChange(value: string) {
     setWaTemplateId(value);
-    // A new template has a different placeholder/media set; clear the operator's column/media choices.
-    setParamColumns({});
+    // aha #1: a new template has a different placeholder set — pre-fill the column for every
+    // placeholder whose key matches a column alias (ad→name, email→email...); rest stay manual.
+    const tmpl = templates.find(t => t.templateId === value) ?? null;
+    const auto: Record<string, string> = {};
+    for (const ph of extractPlaceholders(tmpl)) {
+      const col = autoMatchColumn(ph.key);
+      if (col) auto[ph.key] = col;
+    }
+    setParamColumns(auto);
     setMediaValues({});
   }
 
@@ -287,6 +348,71 @@ export default function ProjectsPage() {
     void loadInstances();
     void loadGalleryTemplates();
   }, []);
+
+  // ---- aha #5: dirty-form fingerprint (stable key order so map insertion order can't fake a diff) ----
+  const stableMap = (o: Record<string, string>) => Object.keys(o).sort().map(k => `${k}=${o[k]}`).join('|');
+  const formFingerprint = () => JSON.stringify({
+    name, description,
+    lists: [...selectedListIds].sort((a, b) => a - b),
+    templateKind, instanceId, waTemplateId,
+    cols: stableMap(paramColumns), media: stableMap(mediaValues),
+    contentMode, outboundTemplateId, plainTextBody,
+  });
+
+  // Capture the pristine snapshot once the modal is open AND the async edit target-load settled
+  // (loadingTargets only flips during openEdit; create captures on first committed render).
+  useEffect(() => {
+    if (modalOpen && !loadingTargets) {
+      if (baselineRef.current === null) baselineRef.current = formFingerprint();
+    }
+    if (!modalOpen) baselineRef.current = null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modalOpen, loadingTargets]);
+
+  // ---- aha #2/#3/#4: debounced list-insight fetch on target change. Stale responses dropped. ----
+  useEffect(() => {
+    if (!modalOpen || selectedListIds.length === 0) {
+      setListInsight(null);
+      setInsightLoading(false);
+      return;
+    }
+    setInsightLoading(true);
+    const seq = ++insightSeqRef.current;
+    const ids = selectedListIds.slice();
+    const t = window.setTimeout(async () => {
+      try {
+        const insight = await api.getDataListPreviewSample(ids);
+        if (seq === insightSeqRef.current) setListInsight(insight);
+      } catch {
+        // Fail-silent by design: the aha extras must never block the core create/edit flow.
+        if (seq === insightSeqRef.current) setListInsight(null);
+      } finally {
+        if (seq === insightSeqRef.current) setInsightLoading(false);
+      }
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, [modalOpen, selectedListIds]);
+
+  // aha #2: resolves a placeholder to the sample recipient's mapped-column value (preview only).
+  const sampleResolver = (key: string): string | null => {
+    if (!showSample || !listInsight?.sample) return null;
+    const col = paramColumns[key];
+    return col ? recordValue(listInsight.sample, col) : null;
+  };
+  const sampleDisplayName = listInsight?.sample
+    ? [listInsight.sample.name, listInsight.sample.surname].filter(Boolean).join(' ')
+    : '';
+
+  // aha #3: column option label enriched with the sample value + fill % from the insight.
+  const columnOptionLabel = (c: { v: string; label: string }): string => {
+    let label = c.label;
+    const sampleVal = listInsight?.sample ? recordValue(listInsight.sample, c.v) : null;
+    if (sampleVal) label += ` — "${sampleVal.length > 18 ? `${sampleVal.slice(0, 18)}…` : sampleVal}"`;
+    const stat = listInsight?.column_stats?.[c.v];
+    if (stat && stat.total > 0)
+      label += stat.filled === 0 ? ' · boş' : ` · %${Math.round((stat.filled / stat.total) * 100)} dolu`;
+    return label;
+  };
 
   function resetSendConfig() {
     // New projects default to the approved-template (HSM) flow (Q 2026-06-10); plain_text is disabled in the UI.
@@ -309,6 +435,7 @@ export default function ProjectsPage() {
     setDescription('');
     setSelectedListIds([]);
     resetSendConfig();
+    setShowSample(true);
     setFormError(null);
     setModalOpen(true);
   }
@@ -318,6 +445,7 @@ export default function ProjectsPage() {
     setName(p.name);
     setDescription(p.description ?? '');
     setSelectedListIds([]);
+    setShowSample(true);
     setFormError(null);
     setModalOpen(true);
 
@@ -362,6 +490,12 @@ export default function ProjectsPage() {
 
   function closeModal() {
     if (saving) return; // don't drop the modal mid-save
+    // aha #5: a dirty form must not be lost by an accidental X-click. The successful-save path
+    // closes via setModalOpen(false) directly and never hits this guard.
+    const baseline = baselineRef.current;
+    if (baseline !== null && baseline !== formFingerprint()
+        && !window.confirm('Kaydedilmemiş değişiklikler var. Kapatılsın mı?'))
+      return;
     setModalOpen(false);
     setEditing(null);
   }
@@ -768,7 +902,12 @@ export default function ProjectsPage() {
                 <div className="flex items-center gap-1.5 mb-1.5">
                   <ListChecks className="w-4 h-4 text-navy-400" />
                   <label className="text-sm font-medium text-navy-700">Hedef Listeler</label>
-                  <span className="text-xs text-navy-400">({selectedListIds.length} seçili)</span>
+                  <span className="text-xs text-navy-400">
+                    ({selectedListIds.length} seçili
+                    {selectedListIds.length > 0 && (insightLoading
+                      ? ' · sayılıyor…'
+                      : listInsight ? ` · ${listInsight.reach.toLocaleString('tr-TR')} benzersiz alıcı` : '')})
+                  </span>
                 </div>
                 {loadingTargets ? (
                   <div className="px-3 py-6 text-center text-navy-400 text-sm flex items-center justify-center gap-2 border border-navy-50 rounded-lg">
@@ -900,14 +1039,28 @@ export default function ProjectsPage() {
                         {/* WhatsApp-style preview */}
                         {selectedTemplate.preview && (
                           <div>
-                            <label className="block text-xs font-medium text-navy-600 mb-1">Önizleme</label>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="block text-xs font-medium text-navy-600">Önizleme</label>
+                              {/* aha #2: flip between raw {{...}} and the sample recipient's real values */}
+                              {listInsight?.sample && (
+                                <button
+                                  type="button"
+                                  onClick={() => setShowSample(s => !s)}
+                                  className="text-[11px] text-brand-600 hover:text-brand-700 underline decoration-dotted"
+                                >
+                                  {showSample
+                                    ? 'Değişkenleri göster'
+                                    : `Örnekle göster${sampleDisplayName ? ` (${sampleDisplayName})` : ''}`}
+                                </button>
+                              )}
+                            </div>
                             <div className="rounded-lg p-3 bg-[#e5ddd5]">
                               <div className="bg-white rounded-lg rounded-tl-none shadow-sm px-3 py-2 max-w-[90%] text-sm">
                                 {selectedTemplate.preview.header && (
                                   selectedTemplate.preview.header.type === 'TEXT'
                                     ? selectedTemplate.preview.header.text && (
                                         <div className="font-semibold text-navy-900 mb-1 whitespace-pre-wrap break-words">
-                                          {renderTemplateText(selectedTemplate.preview.header.text)}
+                                          {renderTemplateText(selectedTemplate.preview.header.text, sampleResolver)}
                                         </div>
                                       )
                                     : (
@@ -918,7 +1071,7 @@ export default function ProjectsPage() {
                                     )
                                 )}
                                 {selectedTemplate.preview.body && (
-                                  <div className="text-navy-800 whitespace-pre-wrap break-words">{renderTemplateText(selectedTemplate.preview.body)}</div>
+                                  <div className="text-navy-800 whitespace-pre-wrap break-words">{renderTemplateText(selectedTemplate.preview.body, sampleResolver)}</div>
                                 )}
                                 {selectedTemplate.preview.footer && (
                                   <div className="text-navy-400 text-xs mt-1 whitespace-pre-wrap break-words">{selectedTemplate.preview.footer}</div>
@@ -966,8 +1119,9 @@ export default function ProjectsPage() {
                                   onChange={e => setParamColumns(prev => ({ ...prev, [ph.key]: e.target.value }))}
                                 >
                                   <option value="">— Kolon seç —</option>
+                                  {/* aha #3: option label enriched with the sample value + fill % */}
                                   {LIST_COLUMNS.map(c => (
-                                    <option key={c.v} value={c.v}>{c.label}</option>
+                                    <option key={c.v} value={c.v}>{columnOptionLabel(c)}</option>
                                   ))}
                                 </select>
                               </div>

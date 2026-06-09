@@ -565,6 +565,38 @@ app.MapPost("/api/v1/data-lists/import", async (HttpContext ctx, ContactListImpo
     return Results.Ok(response);
 });
 
+// FEAT-PROJELER PKT-14 — read-only list insights.
+// GET /api/v1/data-lists/preview-sample?listIds=1,2 — sample recipient + deduplicated reach +
+// per-column fill stats for the Projeler modal (one round-trip). Literal segment, so it never
+// collides with the {id:long} routes.
+app.MapGet("/api/v1/data-lists/preview-sample", async (HttpContext ctx, ContactListImportService svc, string? listIds) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (response, errorCode, message) = await svc.PreviewSampleAsync(tenantContext.TenantId, listIds, ctx.RequestAborted);
+    if (response == null)
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "Preview sample could not be loaded; please retry.", requestId), statusCode: ContactListStatus(errorCode));
+    return Results.Ok(response);
+});
+
+// GET /api/v1/data-lists/{id}/records?search=&page=&pageSize= — server-paged, searchable
+// records of one list (Veri Yönetimi viewer popup). Read-only.
+app.MapGet("/api/v1/data-lists/{id:long}/records", async (HttpContext ctx, ContactListImportService svc, long id, string? search, int page = 1, int pageSize = 50) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (response, errorCode, message) = await svc.RecordsPageAsync(tenantContext.TenantId, id, search, page, pageSize, ctx.RequestAborted);
+    if (response == null)
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "Records could not be loaded; please retry.", requestId), statusCode: ContactListStatus(errorCode));
+    return Results.Ok(response);
+});
+
 // ============================================================
 // FEAT-PROJELER (PKT-14) slice S2 — Projects CRUD (metadata only; send is PR-4)
 // ============================================================

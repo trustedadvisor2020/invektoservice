@@ -1,0 +1,118 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": "PKT-14",
+  "spec_ref": null,
+  "slug": "20260610-projeler-aha-list-viewer",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-10T20:15:00Z",
+  "updated_at": "2026-06-10T20:15:00Z",
+  "plan": {
+    "summary": "Two read-only data-list endpoints + SPA consumption. (A) Projeler modal aha pack 1/2/3/4/5: unified GET /api/v1/data-lists/preview-sample?listIds= -> {sample: first sendable record of first selected list, reach: COUNT(DISTINCT phone) across selected lists (sendable), column_stats: per-column filled/total} feeding (#2) sample-recipient live preview toggle in the WhatsApp bubble, (#3) column dropdown options with sample value + fill %, (#4) precise unique-reach counter in the target-lists header; plus client-only (#1) placeholder->column auto-match on template pick and (#5) dirty-form close guard. (B) Veri Yönetimi Listeler tab: double-click (or eye icon) on a list row opens a records viewer popup -> new GET /api/v1/data-lists/{id}/records?search=&page=&pageSize= (server-paged, ILIKE search across text columns, static SQL).",
+    "q_intent": "Q: 'aha 1 2 4 5 yapmak için auto çalıştır' + '3ü de ekle' + 'veri içeri aktarma sayfasında listeye çift tıklayınca içeriğini tablo olarak görebileceğim ve search yapılabilecek güzel bir popup ekle' + 'diğer sessiondaki işi bitince başla' (SS-D landed first, base pulled).",
+    "interview_notes": "Q decisions: unified endpoint (one call feeds #2+#3+#4, reach is PRECISE/deduped) over client-only rough sum; sample source = first sendable record of FIRST selected list automatically (no extra picker UI). Viewer defaults (announced, no objection): empty columns hidden, search across all text columns, 50/page, dbl-click + eye icon trigger. Reuses ContactList error-code family (no new INV codes). Tenant scoping IS the ownership check for preview-sample (foreign ids contribute nothing); {id}/records 404s via existing GetAsync when the list isn't the tenant's.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "GET /api/v1/data-lists/preview-sample?listIds=1,2 returns {sample (first sendable record of first list, null when none), reach (COUNT DISTINCT normalized_phone across selected lists, sendable only), column_stats (per-column filled/total over sendable rows)} — tenant-scoped, ContactList-gated, static SQL.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC2",
+        "criterion": "GET /api/v1/data-lists/{id}/records?search=&page=&pageSize= returns a server-paged records page (total + rows) with ILIKE search across phone/name/surname/email/field1-5/tags/note; LIKE wildcards in user input are escaped; pageSize clamped; 404 when the list is not this tenant's.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC3",
+        "criterion": "Projeler modal: (#1) picking a template auto-fills column dropdowns for placeholders whose key matches a column alias (ad/name, soyad/surname, email/eposta, etiket/tags, not/note, field1-5); (#2) the WhatsApp preview can toggle raw {{...}} vs the sample recipient's real values for mapped placeholders; (#3) each column option shows the sample value + fill %; (#4) the target-lists header shows the precise unique-recipient reach (debounced, fail-silent); (#5) closing a dirty form asks for confirmation.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC4",
+        "criterion": "Veri Yönetimi Listeler tab: double-click on a row (or the eye icon) opens an X-close popup with the list's records as a table (entirely-empty columns hidden), a debounced search box, and prev/next paging with 'X-Y / Z' counts.",
+        "verified": false,
+        "verification_note": null
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/DTOs/Outbound/DataListDtos.cs",
+    "src/Invekto.Outbound/Data/DataListRepository.cs",
+    "src/Invekto.Outbound/Services/ContactListImportService.cs",
+    "src/Invekto.Outbound/Program.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/DataImportPage.tsx",
+    "src/Invekto.Backend/wwwroot/app/**"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/DTOs/Outbound/DataListDtos.cs", "change": "ADDITIVE: ListRecordDto + ListColumnStatDto + DataListPreviewSampleResponse + ListRecordsPageResponse", "is_new": false },
+    { "path": "src/Invekto.Outbound/Data/DataListRepository.cs", "change": "GetPreviewSampleAsync (stats FILTER query + first-list sample) + GetRecordsPageAsync (static ILIKE search + count + page) + MapRecord", "is_new": false },
+    { "path": "src/Invekto.Outbound/Services/ContactListImportService.cs", "change": "PreviewSampleAsync (gate + listIds parse/cap) + RecordsPageAsync (gate + clamp + LIKE-escape + 404 probe)", "is_new": false },
+    { "path": "src/Invekto.Outbound/Program.cs", "change": "2 GET endpoints: /api/v1/data-lists/preview-sample + /api/v1/data-lists/{id:long}/records (existing TenantContext + ContactListStatus pattern)", "is_new": false },
+    { "path": "src/Invekto.Backend/Program.cs", "change": "2 GET proxies under /api/v1/outbound/data-lists/* (query string forwarded verbatim)", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "change": "ListRecord/ListColumnStat/DataListPreviewSample/ListRecordsPage types + getDataListPreviewSample + getDataListRecords", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx", "change": "aha #1 auto-match (COLUMN_ALIASES) + #2 sample-preview toggle (renderTemplateText resolver) + #3 columnOptionLabel (sample+fill%) + #4 reach counter + #5 dirty guard (fingerprint baseline) + debounced seq-guarded insight fetch (fail-silent)", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/DataImportPage.tsx", "change": "list viewer popup: dbl-click + Eye trigger, debounced seq-guarded server-paged fetch, search box, empty-column hiding, sendable badge, prev/next paging", "is_new": false },
+    { "path": "src/Invekto.Backend/wwwroot/app/**", "change": "regenerated committed SPA bundle (GENERATED artifact, pre-built-SPA deploy model)", "is_new": false }
+  ],
+  "git_diff": { "patch_truncated": null, "sha256": "182D61E7E7164014AAE1C453FC2D3FE047AEDE96DE2C7BC83E9B4DC1C3DF084D", "full_path": "arch/plans/diffs/20260610-projeler-aha-list-viewer.diff", "stats": { "insertions": 803, "deletions": 17, "files_count": 8 } },
+  "build": { "status": "PASS", "command": "dotnet build InvektoServis.sln --no-restore -v q ; npm run build (Dashboard)", "timestamp": "2026-06-10T20:40:00Z", "duration_ms": 45000, "output_tail": "0 Error(s), 42 pre-existing warnings. Dashboard built in 10.05s (ProjectsPage-B2aDi3U8.js + DataImportPage-Cm8cc-O9.js + index-BWMvng0S.js).", "error_summary": null, "services": ["Invekto.Shared", "Invekto.Outbound", "Invekto.Backend"] },
+  "verification_questions": [
+    { "id": "Q1", "question": "Are both new endpoints strictly read-only, tenant-scoped on every query (tenant_id predicate on list_records/data_lists), and behind the existing ContactList gate — with foreign list ids unable to leak any other tenant's data?", "category": "Auth" },
+    { "id": "Q2", "question": "Is the records search SQL static (single parameterized pattern, no string concatenation) with LIKE wildcard escaping of user input, and are page/pageSize clamped server-side so an arbitrary query cannot become unbounded?", "category": "Data" },
+    { "id": "Q3", "question": "Do the modal aha features fail SOFT — if preview-sample errors or returns nothing, the modal still works exactly as before (no blocked save, no crash; sample toggle and stats simply absent)?", "category": "Lifecycle" },
+    { "id": "Q4", "question": "Does the dirty-form guard only intercept closeModal (X) and not the successful-save path, and is the snapshot taken AFTER the async edit re-populate so an untouched edit form is not falsely flagged dirty?", "category": "Process/Policy" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Send/dispatch paths (bulk-send, broadcast, cxapi) — read-only endpoints only",
+      "P0-3 gate / allowlists / ProjectsOptions / BulkSendOptions",
+      "SS-D pause/resume/cancel code (just landed — untouched)",
+      "Migrations / DB schema (no new tables or columns)"
+    ],
+    "non_goals": [
+      "Aha #6 (gönderim-yakında şeridi) — Q excluded it",
+      "Record editing in the viewer (read-only table)",
+      "Per-list dynamic columns (list_records schema is fixed)"
+    ],
+    "intentional_exclusions": [
+      "No new INV error codes — both endpoints reuse the ContactList code family (INV-OB-046/047/049/053)",
+      "No tests (CLAUDE.md: no tests unless requested; read-only GETs over existing gated repo patterns)",
+      "wwwroot/app bundle is a generated artifact (pre-built-SPA deploy model)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "ContactListImportService new methods: NpgsqlException catch -> ContactListDbError 503 (existing pattern)",
+      "SPA preview-sample fetch: fail-silent (modal keeps working without sample/stats/reach)",
+      "SPA viewer fetch: error text shown in popup, retry by re-searching"
+    ],
+    "user_facing_errors": [
+      "Viewer: 'Kayıtlar yüklenemedi' + INV-OB code via errText (existing helper)",
+      "Dirty guard: 'Kaydedilmemiş değişiklikler var. Kapatılsın mı?' (window.confirm)"
+    ],
+    "silent_failure_risk": true,
+    "silent_failure_explanation": "preview-sample consumption is DELIBERATELY fail-silent in the modal (aha extras must never block the core create/edit flow). This is a UX-availability decision, logged client-side via console only; the save path has its own explicit validation and does not depend on the endpoint."
+  },
+  "aha_moments": [
+    { "category": "UX", "user_pain": "Operatör her {{name}}/{{email}} için elle kolon seçiyordu, eşleşme barizken.", "suggestion": "Şablon seçilince placeholder anahtarını kolon alias'larıyla otomatik eşle (ad→Ad, email→E-posta).", "aha_moment": "Şablonu seçer seçmez dropdown'lar kendiliğinden doğru dolu gelir." },
+    { "category": "RELIABILITY", "user_pain": "Önizleme {{name}} gösteriyordu; yanlış kolon eşlemesi gönderime kadar fark edilmezdi.", "suggestion": "İlk gerçek kayıttan örnek alıcıyla dolu önizleme toggle'ı.", "aha_moment": "Kaydetmeden 'Merhaba Ahmet' görünür — yanlış eşleme anında belli olur." },
+    { "category": "SPEED", "user_pain": "Alan 1-5 anonim — doğru kolonu bulmak için Veri Yönetimi'ne gidip bakmak gerekiyordu.", "suggestion": "Kolon seçeneğinde örnek değer + doluluk yüzdesi göster.", "aha_moment": "'Alan 1 — İstanbul · %92' okununca kolon tanınır, sekme değiştirmek gerekmez." },
+    { "category": "UX", "user_pain": "Kampanyanın kaç benzersiz kişiye gideceği ancak Gönder önizlemesinde görülüyordu.", "suggestion": "Hedef listeler başlığında dedup'lı canlı erişim sayacı.", "aha_moment": "3 liste seçilince '4.200 benzersiz alıcı' kurulum anında görünür." },
+    { "category": "SUPPORT", "user_pain": "Listeye ne yüklendiğini görmek için export alıp Excel'de açmak gerekiyordu; yanlış import geç fark ediliyordu.", "suggestion": "Liste satırına çift tık → aranabilir, sayfalı kayıt görüntüleyici popup.", "aha_moment": "Import biter bitmez çift tıkla içerik tabloda — yanlış kolon eşlemesi 5 saniyede görülür." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "updated_by": "DevAgent",
+    "iteration": 0,
+    "blocking_issues": [],
+    "raw_text": "gpt-5.5 codex_review iter0 PASS — 12/12 CQ + 4/4 CoVe, 0 blocking. Read-only tenant-scoped endpoints behind existing ContactList gate; static parameterized search SQL with LIKE-escape + server clamps; fail-soft seq-guarded SPA consumption; additive Shared DTOs."
+  }
+}

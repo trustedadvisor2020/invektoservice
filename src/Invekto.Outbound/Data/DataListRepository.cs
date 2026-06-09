@@ -512,6 +512,142 @@ public class DataListRepository
         return await cmd.ExecuteNonQueryAsync(ct);
     }
 
+    // ------------------------------------------------------------------
+    // FEAT-PROJELER PKT-14 — read-only list insights (aha pack + viewer).
+    // ------------------------------------------------------------------
+
+    /// <summary>
+    /// One round-trip insight over the selected lists for the Projeler modal:
+    /// precise deduplicated reach + per-column fill stats (SENDABLE rows only — matches
+    /// who a send would target) + a real sample recipient (first sendable record of the
+    /// FIRST id, the operator's primary list). Foreign/other-tenant ids simply contribute
+    /// nothing (every query carries tenant_id) — scoping IS the ownership check.
+    /// </summary>
+    public virtual async Task<DataListPreviewSampleResponse> GetPreviewSampleAsync(
+        int tenantId, long[] listIds, CancellationToken ct = default)
+    {
+        const string statsSql = @"
+            SELECT
+                COUNT(DISTINCT normalized_phone)::int                   AS reach,
+                COUNT(*)::int                                           AS total,
+                COUNT(*) FILTER (WHERE COALESCE(name,'')    <> '')::int AS f_name,
+                COUNT(*) FILTER (WHERE COALESCE(surname,'') <> '')::int AS f_surname,
+                COUNT(*) FILTER (WHERE COALESCE(email,'')   <> '')::int AS f_email,
+                COUNT(*) FILTER (WHERE COALESCE(field1,'')  <> '')::int AS f_field1,
+                COUNT(*) FILTER (WHERE COALESCE(field2,'')  <> '')::int AS f_field2,
+                COUNT(*) FILTER (WHERE COALESCE(field3,'')  <> '')::int AS f_field3,
+                COUNT(*) FILTER (WHERE COALESCE(field4,'')  <> '')::int AS f_field4,
+                COUNT(*) FILTER (WHERE COALESCE(field5,'')  <> '')::int AS f_field5,
+                COUNT(*) FILTER (WHERE COALESCE(tags,'')    <> '')::int AS f_tags,
+                COUNT(*) FILTER (WHERE COALESCE(note,'')    <> '')::int AS f_note
+            FROM list_records
+            WHERE tenant_id=@tid AND list_id = ANY(@ids) AND sendable = TRUE";
+
+        const string sampleSql = @"
+            SELECT normalized_phone, name, surname, email, field1, field2, field3, field4, field5, tags, note, sendable
+            FROM list_records
+            WHERE tenant_id=@tid AND list_id=@first AND sendable = TRUE
+            ORDER BY id
+            LIMIT 1";
+
+        var response = new DataListPreviewSampleResponse();
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+
+        await using (var cmd = new NpgsqlCommand(statsSql, conn))
+        {
+            cmd.Parameters.AddWithValue("tid", tenantId);
+            cmd.Parameters.AddWithValue("ids", listIds);
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            if (await reader.ReadAsync(ct))
+            {
+                response.Reach = reader.GetInt32(0);
+                var total = reader.GetInt32(1);
+                string[] cols = { "name", "surname", "email", "field1", "field2", "field3", "field4", "field5", "tags", "note" };
+                for (var i = 0; i < cols.Length; i++)
+                    response.ColumnStats[cols[i]] = new ListColumnStatDto { Filled = reader.GetInt32(2 + i), Total = total };
+            }
+        }
+
+        await using (var cmd = new NpgsqlCommand(sampleSql, conn))
+        {
+            cmd.Parameters.AddWithValue("tid", tenantId);
+            cmd.Parameters.AddWithValue("first", listIds[0]);
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            if (await reader.ReadAsync(ct))
+                response.Sample = MapRecord(reader);
+        }
+
+        return response;
+    }
+
+    /// <summary>
+    /// Server-paged, searchable records of ONE list (viewer popup). Static SQL: the search is a
+    /// single parameterized ILIKE pattern over every text column (the SERVICE escapes LIKE
+    /// wildcards and builds the %...% pattern); an empty @q short-circuits the filter. Caller
+    /// pre-validates list ownership (GetAsync) and clamps page/pageSize.
+    /// </summary>
+    public virtual async Task<ListRecordsPageResponse> GetRecordsPageAsync(
+        int tenantId, long listId, string likePattern, int page, int pageSize, CancellationToken ct = default)
+    {
+        const string where = @"
+            WHERE tenant_id=@tid AND list_id=@lid
+              AND (@q = '' OR normalized_phone ILIKE @q OR name ILIKE @q OR surname ILIKE @q
+                   OR email ILIKE @q OR field1 ILIKE @q OR field2 ILIKE @q OR field3 ILIKE @q
+                   OR field4 ILIKE @q OR field5 ILIKE @q OR tags ILIKE @q OR note ILIKE @q)";
+
+        const string countSql = $"SELECT COUNT(*)::int FROM list_records {where}";
+        const string pageSql = $@"
+            SELECT normalized_phone, name, surname, email, field1, field2, field3, field4, field5, tags, note, sendable
+            FROM list_records
+            {where}
+            ORDER BY id
+            LIMIT @limit OFFSET @offset";
+
+        var response = new ListRecordsPageResponse { Page = page, PageSize = pageSize };
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+
+        await using (var cmd = new NpgsqlCommand(countSql, conn))
+        {
+            cmd.Parameters.AddWithValue("tid", tenantId);
+            cmd.Parameters.AddWithValue("lid", listId);
+            cmd.Parameters.AddWithValue("q", likePattern);
+            response.Total = (int)(await cmd.ExecuteScalarAsync(ct) ?? 0);
+        }
+
+        await using (var cmd = new NpgsqlCommand(pageSql, conn))
+        {
+            cmd.Parameters.AddWithValue("tid", tenantId);
+            cmd.Parameters.AddWithValue("lid", listId);
+            cmd.Parameters.AddWithValue("q", likePattern);
+            cmd.Parameters.AddWithValue("limit", pageSize);
+            cmd.Parameters.AddWithValue("offset", (page - 1) * pageSize);
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+                response.Records.Add(MapRecord(reader));
+        }
+
+        return response;
+    }
+
+    /// <summary>Maps the shared 12-column record projection (phone..note + sendable).</summary>
+    private static ListRecordDto MapRecord(NpgsqlDataReader reader) => new()
+    {
+        Phone = reader.IsDBNull(0) ? null : reader.GetString(0),
+        Name = reader.IsDBNull(1) ? null : reader.GetString(1),
+        Surname = reader.IsDBNull(2) ? null : reader.GetString(2),
+        Email = reader.IsDBNull(3) ? null : reader.GetString(3),
+        Field1 = reader.IsDBNull(4) ? null : reader.GetString(4),
+        Field2 = reader.IsDBNull(5) ? null : reader.GetString(5),
+        Field3 = reader.IsDBNull(6) ? null : reader.GetString(6),
+        Field4 = reader.IsDBNull(7) ? null : reader.GetString(7),
+        Field5 = reader.IsDBNull(8) ? null : reader.GetString(8),
+        Tags = reader.IsDBNull(9) ? null : reader.GetString(9),
+        Note = reader.IsDBNull(10) ? null : reader.GetString(10),
+        Sendable = reader.GetBoolean(11)
+    };
+
     /// <summary>Custom-scenario update of existing records, gated by flags.</summary>
     private async Task<int> UpdateExistingCustomAsync(
         NpgsqlConnection conn, NpgsqlTransaction tx, int tenantId, long listId,

@@ -3834,6 +3834,14 @@ app.MapPut("/api/v1/outbound/data-lists/{id:long}", async (HttpContext ctx, Outb
 app.MapDelete("/api/v1/outbound/data-lists/{id:long}", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
     await OutboundProxyDelete(ctx, obClient, jsonLog, $"/api/v1/data-lists/{id}"));
 
+// FEAT-PROJELER PKT-14 — read-only list insights (query string forwarded verbatim).
+// preview-sample = Projeler modal sample/reach/column-stats; {id}/records = viewer popup page.
+app.MapGet("/api/v1/outbound/data-lists/preview-sample", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyGet(ctx, obClient, jsonLog, $"/api/v1/data-lists/preview-sample{ctx.Request.QueryString.Value}"));
+
+app.MapGet("/api/v1/outbound/data-lists/{id:long}/records", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
+    await OutboundProxyGet(ctx, obClient, jsonLog, $"/api/v1/data-lists/{id}/records{ctx.Request.QueryString.Value}"));
+
 // Export Manager (FEAT-OBI Phase 1A Plan B). File downloads are STREAMED through
 // (ResponseHeadersRead -> CopyToAsync) so a 50k-row XLSX/CSV never buffers in Backend
 // memory, preserving Content-Type + Content-Disposition + the no-store/nosniff headers.

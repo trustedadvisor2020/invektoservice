@@ -145,6 +145,77 @@ public sealed class ContactListImportService
     }
 
     // ------------------------------------------------------------------
+    // FEAT-PROJELER PKT-14 — read-only list insights (aha pack + viewer)
+    // ------------------------------------------------------------------
+    private const int MaxPreviewSampleLists = 50;   // defensive cap on ?listIds= ids per call
+    private const int MaxRecordsPageSize = 200;     // viewer page ceiling (default 50 client-side)
+    private const int MaxSearchLength = 200;        // search term cap before pattern build
+
+    /// <summary>
+    /// Projeler modal insight: sample recipient + deduplicated reach + per-column fill stats
+    /// over the selected lists. Read-only; tenant scoping in the repo IS the ownership check
+    /// (foreign ids contribute nothing).
+    /// </summary>
+    public async Task<(DataListPreviewSampleResponse? response, string? errorCode, string? message)> PreviewSampleAsync(
+        int tenantId, string? listIdsCsv, CancellationToken ct)
+    {
+        if (!Allowed(tenantId)) return (null, ErrorCodes.ContactListDisabled, "Contact lists not enabled for this tenant");
+
+        var ids = new List<long>();
+        foreach (var part in (listIdsCsv ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (!long.TryParse(part, out var id) || id <= 0)
+                return (null, ErrorCodes.ContactListInvalidPayload, "listIds must be a comma-separated list of positive ids");
+            ids.Add(id);
+        }
+        if (ids.Count == 0)
+            return (null, ErrorCodes.ContactListInvalidPayload, "listIds is required");
+        if (ids.Count > MaxPreviewSampleLists)
+            return (null, ErrorCodes.ContactListInvalidPayload, $"Too many lists ({ids.Count} > {MaxPreviewSampleLists})");
+
+        try { return (await _repo.GetPreviewSampleAsync(tenantId, ids.ToArray(), ct), null, null); }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"data-lists preview-sample failed (tenant={tenantId}): {ex.Message}");
+            return (null, ErrorCodes.ContactListDbError, "Preview sample failed due to a database error; please retry.");
+        }
+    }
+
+    /// <summary>
+    /// Viewer popup: one server-paged, searchable records page. The search term is matched
+    /// LITERALLY — LIKE wildcards in user input are escaped here before the parameterized
+    /// ILIKE pattern is built ('' disables the filter in SQL). 404 when the list isn't this
+    /// tenant's (existing GetAsync probe).
+    /// </summary>
+    public async Task<(ListRecordsPageResponse? response, string? errorCode, string? message)> RecordsPageAsync(
+        int tenantId, long listId, string? search, int page, int pageSize, CancellationToken ct)
+    {
+        if (!Allowed(tenantId)) return (null, ErrorCodes.ContactListDisabled, "Contact lists not enabled for this tenant");
+
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, MaxRecordsPageSize);
+
+        var trimmed = (search ?? "").Trim();
+        if (trimmed.Length > MaxSearchLength) trimmed = trimmed[..MaxSearchLength];
+        var pattern = trimmed.Length == 0
+            ? ""
+            : "%" + trimmed.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "%";
+
+        try
+        {
+            var list = await _repo.GetAsync(tenantId, listId, ct);
+            if (list == null) return (null, ErrorCodes.ContactListNotFound, $"List {listId} not found");
+
+            return (await _repo.GetRecordsPageAsync(tenantId, listId, pattern, page, pageSize, ct), null, null);
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"data-list records failed (tenant={tenantId}, list={listId}): {ex.Message}");
+            return (null, ErrorCodes.ContactListDbError, "Records could not be loaded due to a database error; please retry.");
+        }
+    }
+
+    // ------------------------------------------------------------------
     // import
     // ------------------------------------------------------------------
     public async Task<(ImportBatchResponse? response, string? errorCode, string? message)> ImportAsync(
