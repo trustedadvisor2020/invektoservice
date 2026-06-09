@@ -2,6 +2,8 @@ using System.Text;
 using System.Text.Json;
 using Invekto.Outbound.Data;
 using Invekto.Shared.Constants;
+using Invekto.Shared.Contracts.Inma;
+using Invekto.Shared.Contracts.Inma.Dtos;
 using Invekto.Shared.DTOs.Outbound;
 using Invekto.Shared.Logging;
 using Npgsql;
@@ -25,11 +27,18 @@ public sealed class ProjectsService
     private readonly BulkSendRepository _bulkRepo;
     private readonly BulkSendOrchestrator _bulkOrch;
     private readonly BulkSendOptions _bulkOptions;
+    // PR-4 (HSM run): the CxapiSend allowlist gate (checked BEFORE any vendor call — preview AND
+    // confirm), the live cxapi template catalog (ownership/required-param validation, hard-fail)
+    // and the WapCRM creds reader (same shared-Postgres read the send path uses, PR-3a precedent).
+    private readonly CxapiSendOptions _cxapiOptions;
+    private readonly WapCrmTemplateClient _templateClient;
+    private readonly OutboundRepository _outboundRepo;
     private readonly JsonLinesLogger _logger;
 
     public ProjectsService(
         ProjectsRepository repo, ProjectsOptions options,
         BulkSendRepository bulkRepo, BulkSendOrchestrator bulkOrch, BulkSendOptions bulkOptions,
+        CxapiSendOptions cxapiOptions, WapCrmTemplateClient templateClient, OutboundRepository outboundRepo,
         JsonLinesLogger logger)
     {
         _repo = repo;
@@ -37,6 +46,9 @@ public sealed class ProjectsService
         _bulkRepo = bulkRepo;
         _bulkOrch = bulkOrch;
         _bulkOptions = bulkOptions;
+        _cxapiOptions = cxapiOptions;
+        _templateClient = templateClient;
+        _outboundRepo = outboundRepo;
         _logger = logger;
     }
 
@@ -230,9 +242,38 @@ public sealed class ProjectsService
                 return (null, ErrorCodes.ProjectRunInProgress,
                     "Bu projede aktif bir gönderim var. Önce onu tamamlayın, sürdürün veya iptal edin.");
 
-            // Eligibility: a run dispatches plain_text content only. HSM send is PR-4.
-            var (templateId, inlineText, eligErr, eligMsg) = ResolveSendContent(detail.Project);
-            if (eligErr != null) return (null, eligErr, eligMsg);
+            // Eligibility — TWO content families (Q decision 2026-06-10, PR-4):
+            //   plain_text  -> templateId/inlineText carriers (SS-C path, unchanged)
+            //   wapcrm_template (HSM) -> validated against the LIVE cxapi catalog, snapshotted immutable.
+            int? templateId = null;
+            string? inlineText = null;
+            BulkSendRepository.HsmSnapshotInput? hsmSnapshot = null;
+            if (detail.Project.TemplateKind == ProjectTemplateKinds.WapcrmTemplate)
+            {
+                // hsm is null exactly when an error code was returned — bind non-null without (!).
+                var (hsm, hsmErr, hsmMsg) = ResolveHsmContent(detail.Project);
+                if (hsm is null)
+                    return (null, hsmErr ?? ErrorCodes.ProjectInvalidSendConfig, hsmMsg ?? "Şablon yapılandırması geçersiz.");
+                var (validated, valErr, valMsg) = await ValidateHsmRunAsync(tenantId, hsm, ct);
+                if (valErr != null) return (null, valErr, valMsg);
+                hsmSnapshot = new BulkSendRepository.HsmSnapshotInput
+                {
+                    InstanceId = hsm.InstanceId,
+                    WaTemplateId = hsm.WaTemplateId,
+                    TemplateLanguage = hsm.TemplateLanguage,
+                    ParamMappingJson = hsm.ParamMappingJson,
+                    TextParamColumns = hsm.TextParamColumns,
+                    TextParamLiterals = hsm.TextParamLiterals,
+                    RequiredParamKeys = validated.RequiredParamKeys
+                };
+            }
+            else
+            {
+                var (tid, itext, eligErr, eligMsg) = ResolveSendContent(detail.Project);
+                if (eligErr != null) return (null, eligErr, eligMsg);
+                templateId = tid;
+                inlineText = itext;
+            }
 
             var listIds = detail.Targets.Select(t => t.DataListId).Distinct().ToArray();
             if (listIds.Length == 0) return (null, ErrorCodes.ProjectNoTargets, "Projenin hedef listesi yok. Önce en az bir liste ekleyin.");
@@ -242,11 +283,11 @@ public sealed class ProjectsService
             if (existing != null && existing.Status != "preview_ready")
                 return (null, ErrorCodes.BulkSendAlreadyConfirmed, $"'{campaignId}' kampanyası zaten {existing.Status}; yeni bir gönderim başlatın.");
 
-            var (jobId, snapshotted, snapErr) = await _bulkRepo.CreatePreviewJobFromProjectAsync(
-                tenantId, campaignId, projectId, templateId, inlineText, listIds, _bulkOptions.MaxRecipientsPerCampaign, ct);
-            if (snapErr != null)
+            var snap = await _bulkRepo.CreatePreviewJobFromProjectAsync(
+                tenantId, campaignId, projectId, templateId, inlineText, listIds, _bulkOptions.MaxRecipientsPerCampaign, ct, hsmSnapshot);
+            if (snap.ErrorCode != null)
             {
-                var msg = snapErr switch
+                var msg = snap.ErrorCode switch
                 {
                     ErrorCodes.ProjectNoTargets => "Projenin hedef listesi yok. Önce en az bir liste ekleyin.",
                     ErrorCodes.ContactListNotFound => "Bir hedef liste bulunamadı (silinmiş olabilir). Liste seçimini güncelleyin.",
@@ -255,25 +296,35 @@ public sealed class ProjectsService
                     ErrorCodes.ContactListDbError => "Önizleme oluşturulurken veritabanı hatası; hiçbir şey gönderilmedi. Lütfen tekrar deneyin.",
                     _ => "Önizleme oluşturulamadı."
                 };
-                return (null, snapErr, msg);
+                return (null, snap.ErrorCode, msg);
             }
-            if (snapshotted == 0)
+            if (snap.Snapshotted == 0)
+            {
+                // HSM: every distinct recipient was excluded for a missing required param — tell the
+                // operator WHICH params are empty instead of a generic "no recipients".
+                if (snap.SkippedMissingParams > 0)
+                    return (null, ErrorCodes.HsmRequiredParamUnmapped,
+                        $"Tüm alıcılarda zorunlu şablon parametresi eksik ({FormatSkippedByParam(snap.SkippedParamsJson)}). Liste verisini tamamlayın.");
                 return (null, ErrorCodes.ContactListNoSendable, "Gönderilebilir alıcı yok.");
+            }
 
-            var sample = await _bulkRepo.GetRecipientPhonesSampleAsync(tenantId, jobId, _bulkOptions.PreviewSampleSize, ct);
-            _logger.SystemInfo($"project preview: tenant={tenantId}, project={projectId}, campaign={campaignId}, job={jobId}, snapshotted={snapshotted}");
+            var sample = await _bulkRepo.GetRecipientPhonesSampleAsync(tenantId, snap.JobId, _bulkOptions.PreviewSampleSize, ct);
+            _logger.SystemInfo(
+                $"project preview: tenant={tenantId}, project={projectId}, campaign={campaignId}, job={snap.JobId}, " +
+                $"snapshotted={snap.Snapshotted}{(hsmSnapshot != null ? $", hsm={hsmSnapshot.WaTemplateId}, skipped_missing_params={snap.SkippedMissingParams}" : "")}");
 
             return (new BulkSendPreviewResponse
             {
                 CampaignId = campaignId,
                 Status = "preview_ready",
                 HardCap = _bulkOptions.MaxRecipientsPerCampaign,
-                TotalInput = snapshotted,
-                TotalValid = snapshotted,
+                TotalInput = snap.Snapshotted + snap.SkippedMissingParams,
+                TotalValid = snap.Snapshotted,
                 TotalDuplicate = 0,
                 TotalInvalid = 0,
                 Sample = sample,
-                InvalidSamples = new List<string>()
+                InvalidSamples = new List<string>(),
+                SkippedParams = BuildSkippedParamsInfo(snap)
             }, null, null);
         }
         catch (NpgsqlException ex)
@@ -300,19 +351,47 @@ public sealed class ProjectsService
 
         try
         {
-            // RE-VALIDATE at confirm time (TOCTOU: the project may have been archived or switched to HSM since
-            // preview). An archived/removed project loads as null -> reject BEFORE any dispatch; an HSM /
-            // content-less project is rejected by ResolveSendContent -> never silently dispatched.
+            // RE-VALIDATE at confirm time (TOCTOU: the project may have been archived or its content
+            // switched since preview). An archived/removed project loads as null -> reject BEFORE any
+            // dispatch; a content-less project is rejected -> never silently dispatched.
             var detail = await _repo.GetAsync(tenantId, projectId, ct);
             if (detail == null) return (null, ErrorCodes.ProjectNotFound, $"Proje {projectId} bulunamadı veya arşivlenmiş.");
 
-            var (_, _, eligErr, eligMsg) = ResolveSendContent(detail.Project);
-            if (eligErr != null) return (null, eligErr, eligMsg);
+            var projectIsHsm = detail.Project.TemplateKind == ProjectTemplateKinds.WapcrmTemplate;
+            if (!projectIsHsm)
+            {
+                var (_, _, eligErr, eligMsg) = ResolveSendContent(detail.Project);
+                if (eligErr != null) return (null, eligErr, eligMsg);
+            }
 
             var job = await _bulkRepo.GetJobAsync(tenantId, campaignId, ct);
             if (job == null) return (null, ErrorCodes.BulkSendJobNotFound, $"'{campaignId}' için önizleme bulunamadı.");
             if (job.ProjectId != projectId)
                 return (null, ErrorCodes.ProjectInvalidPayload, "Kampanya bu projeye ait değil.");
+
+            // PR-4: a FRESH dispatch must match the project's CURRENT content family — an HSM preview
+            // cannot dispatch after the project was switched to plain text (or vice versa); the stale
+            // snapshot would send content the operator no longer intends. Re-preview re-snapshots.
+            var jobIsHsm = !string.IsNullOrEmpty(job.WaTemplateId);
+            if (job.Status == "preview_ready" && jobIsHsm != projectIsHsm)
+                return (null, ErrorCodes.ProjectInvalidPayload,
+                    "Proje içeriği önizlemeden sonra değişti; yeniden önizleme alın.");
+
+            // PR-4: HSM second live validation at confirm (Codex plan-consult TOCTOU finding): the
+            // template may have been deleted/renamed or its requiredInputs changed since preview.
+            // Validated against the JOB SNAPSHOT (immutable run config), not the live project row.
+            // Only a fresh dispatch revalidates — an idempotent re-confirm of an already-dispatched
+            // job just returns its live status below. Drift seconds AFTER this check is the accepted
+            // residual: those sends fail per-message with provider 621/622 (persisted typed).
+            if (job.Status == "preview_ready" && jobIsHsm)
+            {
+                // hsm is null exactly when an error code was returned — bind non-null without (!).
+                var (hsm, hsmErr, hsmMsg) = ResolveHsmContentFromJob(job);
+                if (hsm is null)
+                    return (null, hsmErr ?? ErrorCodes.ProjectInvalidSendConfig, hsmMsg ?? "Önizleme kaydı geçersiz; yeniden önizleme alın.");
+                var (_, valErr, valMsg) = await ValidateHsmRunAsync(tenantId, hsm, ct);
+                if (valErr != null) return (null, valErr, valMsg);
+            }
 
             // One active run per project (SS-D): a preview_ready job is a NEW dispatch — reject it while a run
             // is already in flight or paused (INV-OB-080); the operator must complete, resume or cancel that
@@ -444,6 +523,284 @@ public sealed class ProjectsService
             return (null, null, ErrorCodes.ProjectNoContent, "Serbest metin boş.");
         }
         return (null, null, ErrorCodes.ProjectNoContent, "Projede gönderilecek içerik tanımlı değil (galeri şablonu veya serbest metin seçin).");
+    }
+
+    // ------------------------------------------------------------------
+    // PR-4 — HSM (approved-template) run content + live-catalog validation
+    // ------------------------------------------------------------------
+
+    /// <summary>An HSM run's parsed config: snapshot fields + the operator's param bindings.</summary>
+    private sealed class HsmRunContent
+    {
+        public required int InstanceId { get; init; }
+        public required string WaTemplateId { get; init; }
+        public string? TemplateLanguage { get; init; }
+        public required string ParamMappingJson { get; init; }
+        public required List<KeyValuePair<string, string>> TextParamColumns { get; init; }
+        public required List<KeyValuePair<string, string>> TextParamLiterals { get; init; }
+        /// <summary>HEADER media literal URL (source='literal' media mapping entry), if any.</summary>
+        public string? HeaderMediaUrl { get; init; }
+    }
+
+    private sealed class HsmValidationOutcome
+    {
+        public required IReadOnlySet<string> RequiredParamKeys { get; init; }
+    }
+
+    /// <summary>Resolve an HSM project's run content from the LIVE project row (preview path).</summary>
+    private static (HsmRunContent? hsm, string? errorCode, string? message) ResolveHsmContent(ProjectSummary p)
+    {
+        if (p.InstanceId is not int instanceId || instanceId <= 0)
+            return (null, ErrorCodes.ProjectInvalidSendConfig, "Projenin gönderim hattı (instance) seçilmemiş.");
+        var waTemplateId = p.WaTemplateId?.Trim();
+        if (string.IsNullOrEmpty(waTemplateId))
+            return (null, ErrorCodes.ProjectInvalidSendConfig, "Projede onaylı şablon seçilmemiş.");
+
+        // param_mapping is stored opaque (BuildSendConfig only checked object/array + size); parse the
+        // SPA shape here, fail-loud on anything unreadable — never dispatch with a guessed mapping.
+        var mappingJson = p.ParamMapping is JsonElement el && el.ValueKind is not JsonValueKind.Undefined and not JsonValueKind.Null
+            ? el.GetRawText()
+            : "[]";
+        return ParseHsmMapping(instanceId, waTemplateId, p.TemplateLanguage, mappingJson);
+    }
+
+    /// <summary>Resolve an HSM run's content from the JOB SNAPSHOT (confirm-time revalidation — immutable run config).</summary>
+    private static (HsmRunContent? hsm, string? errorCode, string? message) ResolveHsmContentFromJob(BulkSendRepository.JobRecord job)
+    {
+        if (job.InstanceId is not int instanceId || instanceId <= 0 || string.IsNullOrEmpty(job.WaTemplateId))
+            return (null, ErrorCodes.ProjectInvalidSendConfig, "Önizleme kaydı eksik şablon yapılandırması taşıyor; yeniden önizleme alın.");
+        return ParseHsmMapping(instanceId, job.WaTemplateId, job.TemplateLanguage, job.ParamMappingJson ?? "[]");
+    }
+
+    /// <summary>
+    /// Parses the SPA param_mapping shape (camelCase entries: kind/location/paramKey/mediaType/source/
+    /// column/value) into typed bindings. Column-sourced text params must reference a REAL list column
+    /// (<see cref="BulkSendRepository.IsHsmListColumn"/> whitelist — also the SQL-injection boundary for
+    /// the snapshot SQL). Unknown/garbled entries are a typed reject, never silently ignored.
+    /// </summary>
+    private static (HsmRunContent? hsm, string? errorCode, string? message) ParseHsmMapping(
+        int instanceId, string waTemplateId, string? templateLanguage, string mappingJson)
+    {
+        var textColumns = new List<KeyValuePair<string, string>>();
+        var textLiterals = new List<KeyValuePair<string, string>>();
+        string? headerMediaUrl = null;
+        try
+        {
+            using var doc = JsonDocument.Parse(mappingJson);
+            if (doc.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var entry in doc.RootElement.EnumerateArray())
+                {
+                    if (entry.ValueKind != JsonValueKind.Object)
+                        return (null, ErrorCodes.ProjectInvalidSendConfig, "Şablon parametre eşlemesi bozuk; projeyi düzenleyip yeniden kaydedin.");
+
+                    var kind = GetString(entry, "kind");
+                    var source = GetString(entry, "source");
+                    var paramKey = GetString(entry, "paramKey")?.Trim();
+
+                    // STRICT value domains (Codex chunk-3 iter0+iter1): kind ∈ {text, media, null/empty
+                    // legacy}, source ∈ {column, literal, null/empty legacy} — validated for EVERY entry
+                    // (media included) BEFORE any branch consumes it. Anything else is a malformed/garbled
+                    // mapping — typed reject, NEVER coerced into a guessed binding and dispatched.
+                    var kindIsMedia = string.Equals(kind, "media", StringComparison.OrdinalIgnoreCase);
+                    var kindIsText = string.IsNullOrEmpty(kind) || string.Equals(kind, "text", StringComparison.OrdinalIgnoreCase);
+                    if (!kindIsMedia && !kindIsText)
+                        return (null, ErrorCodes.ProjectInvalidSendConfig, $"Şablon eşlemesinde bilinmeyen tür: '{kind}'. Projeyi düzenleyip yeniden kaydedin.");
+
+                    var sourceIsColumn = string.Equals(source, "column", StringComparison.OrdinalIgnoreCase);
+                    var sourceIsLiteral = string.IsNullOrEmpty(source) || string.Equals(source, "literal", StringComparison.OrdinalIgnoreCase);
+                    if (!sourceIsColumn && !sourceIsLiteral)
+                        return (null, ErrorCodes.ProjectInvalidSendConfig, $"Şablon eşlemesinde bilinmeyen kaynak: '{source}'. Projeyi düzenleyip yeniden kaydedin.");
+
+                    if (kindIsMedia)
+                    {
+                        // Media mapping: a LITERAL public URL — a column-sourced media is not expressible
+                        // on the wire and the SPA never produces it; reject rather than read the wrong field.
+                        if (sourceIsColumn)
+                            return (null, ErrorCodes.ProjectInvalidSendConfig, "Medya eşlemesi kolondan beslenemez; medya için sabit bir URL girin.");
+                        // Multiple media entries are not expressible on the wire (single headerMedia) —
+                        // reject rather than pick one silently.
+                        var url = GetString(entry, "value")?.Trim();
+                        if (string.IsNullOrEmpty(url)) continue; // unset media row (operator never filled it)
+                        if (headerMediaUrl != null)
+                            return (null, ErrorCodes.ProjectInvalidSendConfig, "Birden fazla medya eşlemesi var; tek başlık medyası destekleniyor.");
+                        headerMediaUrl = url;
+                        continue;
+                    }
+
+                    if (string.IsNullOrEmpty(paramKey))
+                        continue; // placeholder row the operator never bound — required-coverage check decides
+
+                    if (sourceIsColumn)
+                    {
+                        var column = GetString(entry, "column")?.Trim();
+                        if (string.IsNullOrEmpty(column))
+                            continue; // unbound dropdown — required-coverage check decides
+                        if (!BulkSendRepository.IsHsmListColumn(column))
+                            return (null, ErrorCodes.ProjectInvalidSendConfig, $"'{column}' geçerli bir liste kolonu değil; eşlemeyi güncelleyin.");
+                        textColumns.Add(new KeyValuePair<string, string>(paramKey, column));
+                    }
+                    else
+                    {
+                        // 'literal' (or legacy rows without source): a constant value for every recipient.
+                        var value = GetString(entry, "value");
+                        if (string.IsNullOrWhiteSpace(value))
+                            continue; // empty literal — required-coverage check decides
+                        textLiterals.Add(new KeyValuePair<string, string>(paramKey, value));
+                    }
+                }
+            }
+            else if (doc.RootElement.ValueKind != JsonValueKind.Null)
+            {
+                // An object-shaped mapping has no defined param semantics — fail loud (never guess).
+                return (null, ErrorCodes.ProjectInvalidSendConfig, "Şablon parametre eşlemesi beklenen biçimde değil; projeyi düzenleyip yeniden kaydedin.");
+            }
+        }
+        catch (JsonException)
+        {
+            return (null, ErrorCodes.ProjectInvalidSendConfig, "Şablon parametre eşlemesi okunamadı; projeyi düzenleyip yeniden kaydedin.");
+        }
+
+        return (new HsmRunContent
+        {
+            InstanceId = instanceId,
+            WaTemplateId = waTemplateId,
+            TemplateLanguage = templateLanguage,
+            ParamMappingJson = mappingJson,
+            TextParamColumns = textColumns,
+            TextParamLiterals = textLiterals,
+            HeaderMediaUrl = headerMediaUrl
+        }, null, null);
+
+        static string? GetString(JsonElement obj, string prop)
+            => obj.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+    }
+
+    /// <summary>
+    /// PR-4: the LIVE cxapi catalog validation — runs at preview AND again immediately before a fresh
+    /// confirm (TOCTOU). Order is deliberate: (1) CxapiSend allowlist FIRST so a non-allowlisted tenant
+    /// never triggers a vendor call (INV-OB-085; empty allowlist = the whole HSM path is prod-inert),
+    /// (2) creds, (3) live template list (HARD FAIL when unreachable — INV-OB-084, no stale/sessiz
+    /// fallback), (4) slug ownership (INV-OB-081), (5) requiredInputs coverage: dynamic BUTTON params
+    /// rejected (INV-OB-083, G13.3 deferred), required text params must be bound to a column or a
+    /// non-empty literal (INV-OB-082), a required HEADER media needs an https literal URL (INV-OB-082).
+    /// </summary>
+    private async Task<(HsmValidationOutcome validated, string? errorCode, string? message)> ValidateHsmRunAsync(
+        int tenantId, HsmRunContent hsm, CancellationToken ct)
+    {
+        var none = new HsmValidationOutcome { RequiredParamKeys = new HashSet<string>(StringComparer.Ordinal) };
+
+        if (!_cxapiOptions.IsTenantAllowed(tenantId))
+            return (none, ErrorCodes.HsmSendNotAllowlisted, "Onaylı şablon gönderimi bu hesapta henüz açık değil.");
+
+        var wap = await _outboundRepo.GetWapCrmSettingsAsync(tenantId, ct);
+        if (wap == null || string.IsNullOrWhiteSpace(wap.SecretKey) || wap.UserId <= 0)
+            return (none, ErrorCodes.CxapiRouteMisconfigured,
+                "WapCRM bağlantı ayarları eksik (instance/secret/user). Hesap ayarlarını tamamlayın.");
+
+        var list = await _templateClient.ListTemplatesAsync(wap.SecretKey, hsm.InstanceId, tenantId, ct);
+        if (list.Outcome != WapCrmTemplateListOutcome.Success)
+        {
+            _logger.SystemWarn(
+                $"[{ErrorCodes.HsmTemplateCatalogUnreachable}] HSM template catalog fetch failed: tenant={tenantId}, instance={hsm.InstanceId}, outcome={list.Outcome}, http={list.HttpStatusCode}, providerCode={list.ProviderStatusCode}");
+            return (none, ErrorCodes.HsmTemplateCatalogUnreachable,
+                "Şablon doğrulaması yapılamadı (sağlayıcıya ulaşılamadı). Birazdan tekrar deneyin.");
+        }
+
+        var template = list.Templates.FirstOrDefault(t =>
+            string.Equals(t.TemplateId?.Trim(), hsm.WaTemplateId, StringComparison.Ordinal));
+        if (template == null)
+            return (none, ErrorCodes.HsmTemplateNotFound,
+                "Seçilen şablon bu hatta bulunamadı. Şablon listesini yenileyip tekrar seçin.");
+
+        var requiredKeys = new HashSet<string>(StringComparer.Ordinal);
+        var boundColumnKeys = new HashSet<string>(hsm.TextParamColumns.Select(b => b.Key), StringComparer.Ordinal);
+        var boundLiteralKeys = new HashSet<string>(hsm.TextParamLiterals.Select(b => b.Key), StringComparer.Ordinal);
+
+        foreach (var input in template.RequiredInputs ?? new List<WapCrmRequiredInputDto>())
+        {
+            var location = input.Location?.Trim();
+            var kind = input.Kind?.Trim();
+
+            if (string.Equals(location, "BUTTON", StringComparison.OrdinalIgnoreCase))
+                return (none, ErrorCodes.HsmDynamicButtonUnsupported,
+                    "Dinamik buton parametresi içeren şablonlar henüz desteklenmiyor.");
+
+            if (string.Equals(kind, "text", StringComparison.OrdinalIgnoreCase))
+            {
+                var key = input.ParamKey?.Trim();
+                if (string.IsNullOrEmpty(key))
+                    return (none, ErrorCodes.HsmDynamicButtonUnsupported,
+                        "Şablon, adlandırılmamış zorunlu bir parametre istiyor; bu şablon türü desteklenmiyor.");
+                if (!boundColumnKeys.Contains(key) && !boundLiteralKeys.Contains(key))
+                    return (none, ErrorCodes.HsmRequiredParamUnmapped,
+                        $"Şablonun zorunlu parametresi eşlenmemiş: {key}. Proje düzenleyicisinde kolon eşlemesini tamamlayın.");
+                requiredKeys.Add(key);
+            }
+            else if (string.Equals(kind, "media", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!string.Equals(location, "HEADER", StringComparison.OrdinalIgnoreCase))
+                    return (none, ErrorCodes.HsmDynamicButtonUnsupported,
+                        "Şablonun gerektirdiği medya konumu desteklenmiyor.");
+                if (string.IsNullOrEmpty(hsm.HeaderMediaUrl)
+                    || !Uri.TryCreate(hsm.HeaderMediaUrl, UriKind.Absolute, out var mediaUri)
+                    || mediaUri.Scheme != Uri.UriSchemeHttps)
+                    return (none, ErrorCodes.HsmRequiredParamUnmapped,
+                        "Şablonun başlık medyası için geçerli bir https URL eşlemesi gerekli.");
+            }
+            else
+            {
+                return (none, ErrorCodes.HsmDynamicButtonUnsupported,
+                    "Şablonun gerektirdiği parametre türü desteklenmiyor.");
+            }
+        }
+
+        return (new HsmValidationOutcome { RequiredParamKeys = requiredKeys }, null, null);
+    }
+
+    /// <summary>
+    /// PR-4: extract the HEADER media literal URL from a snapshotted param_mapping JSON.
+    /// Used by BulkSendOrchestrator at dispatch (the mapping-shape knowledge lives HERE).
+    /// Returns null on a missing/garbled mapping — dispatch-time validation already ran
+    /// (preview + pre-confirm); a template that REQUIRES media never reaches dispatch unbound.
+    /// </summary>
+    internal static string? ExtractHeaderMediaUrl(string? mappingJson)
+    {
+        if (string.IsNullOrEmpty(mappingJson)) return null;
+        var (hsm, _, _) = ParseHsmMapping(instanceId: 1, waTemplateId: "x", templateLanguage: null, mappingJson);
+        return hsm?.HeaderMediaUrl;
+    }
+
+    /// <summary>Operator-facing "param: n" summary from the preview_skipped_params audit JSON.</summary>
+    private static string FormatSkippedByParam(string? skippedJson)
+    {
+        if (string.IsNullOrEmpty(skippedJson)) return "eksik parametre";
+        try
+        {
+            using var doc = JsonDocument.Parse(skippedJson);
+            if (doc.RootElement.TryGetProperty("by_param", out var bp) && bp.ValueKind == JsonValueKind.Object)
+            {
+                var parts = bp.EnumerateObject().Select(p => $"{p.Name}: {p.Value}").ToList();
+                if (parts.Count > 0) return string.Join(", ", parts);
+            }
+        }
+        catch (JsonException) { /* audit json is server-built; fall through to the generic label */ }
+        return "eksik parametre";
+    }
+
+    /// <summary>Preview-response skip block (count + by_param) from the snapshot result; null for plain runs / zero skips.</summary>
+    private static BulkSkippedParamsInfo? BuildSkippedParamsInfo(BulkSendRepository.ProjectSnapshotResult snap)
+    {
+        if (snap.SkippedMissingParams <= 0 || string.IsNullOrEmpty(snap.SkippedParamsJson)) return null;
+        var info = new BulkSkippedParamsInfo { Count = snap.SkippedMissingParams };
+        try
+        {
+            using var doc = JsonDocument.Parse(snap.SkippedParamsJson);
+            if (doc.RootElement.TryGetProperty("by_param", out var bp) && bp.ValueKind == JsonValueKind.Object)
+                info.ByParam = bp.EnumerateObject().ToDictionary(p => p.Name, p => p.Value.GetInt32());
+        }
+        catch (JsonException) { /* count alone still renders */ }
+        return info;
     }
 
     // ------------------------------------------------------------------

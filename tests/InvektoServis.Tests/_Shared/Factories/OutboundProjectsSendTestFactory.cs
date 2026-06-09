@@ -26,7 +26,7 @@ namespace InvektoServis.Tests._Shared.Factories;
 /// The faked repos are exposed via computed lookups against the built provider (the substitutes are
 /// registered as singletons) so the factory needs no null-forgiving backing fields.
 /// </summary>
-public sealed class OutboundProjectsSendTestFactory : OutboundTestFactory
+public class OutboundProjectsSendTestFactory : OutboundTestFactory
 {
     public ProjectsRepository FakeProjectsRepo => Services.GetRequiredService<ProjectsRepository>();
     public BulkSendRepository FakeBulkRepo => Services.GetRequiredService<BulkSendRepository>();

@@ -116,6 +116,26 @@ public sealed class BulkSendPreviewResponse
     /// <summary>Raw values that failed normalization, for operator correction (capped).</summary>
     [JsonPropertyName("invalid_samples")]
     public List<string> InvalidSamples { get; set; } = new();
+
+    /// <summary>
+    /// PR-4 (HSM project runs only): recipients EXCLUDED at preview because a required template
+    /// param resolved empty/NULL from its mapped list column. Null for plain runs / zero skips —
+    /// existing consumers are unaffected. The full capped audit (incl. masked samples) persists
+    /// in bulk_send_jobs.preview_skipped_params.
+    /// </summary>
+    [JsonPropertyName("skipped_params")]
+    public BulkSkippedParamsInfo? SkippedParams { get; set; }
+}
+
+/// <summary>PR-4: preview-time skip summary for HSM runs ("N alıcı atlanacak" + per-param breakdown).</summary>
+public sealed class BulkSkippedParamsInfo
+{
+    [JsonPropertyName("count")]
+    public int Count { get; set; }
+
+    /// <summary>paramKey -> number of recipients whose mapped column was empty for it.</summary>
+    [JsonPropertyName("by_param")]
+    public Dictionary<string, int>? ByParam { get; set; }
 }
 
 /// <summary>

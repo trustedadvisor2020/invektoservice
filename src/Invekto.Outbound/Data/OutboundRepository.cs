@@ -4,6 +4,7 @@ using Invekto.Shared.Data;
 using Invekto.Shared.DTOs.Outbound;
 using Invekto.Shared.Logging;
 using Npgsql;
+using NpgsqlTypes;
 
 namespace Invekto.Outbound.Data;
 
@@ -210,12 +211,16 @@ public class OutboundRepository
     public virtual async Task<Guid> CreateBroadcastAsync(
         int tenantId, int? templateId, int totalRecipients, int queued,
         DateTime? scheduledAt, string? lang = null, CancellationToken ct = default,
-        string sendRoute = "mainapp_bridge", int? instanceId = null)
+        string sendRoute = "mainapp_bridge", int? instanceId = null,
+        string? templateKind = null, string? waTemplateId = null)
     {
+        // PR-4: templateKind/waTemplateId stamp an HSM broadcast (run reporting); both default
+        // null so every existing caller keeps writing NULL — byte-identical to the pre-PR-4
+        // INSERT (the columns are nullable with no DB default).
         const string sql = @"
             INSERT INTO outbound_broadcasts
-                (tenant_id, template_id, total_recipients, queued, status, scheduled_at, lang, send_route, instance_id)
-            VALUES (@tid, @tmpl, @total, @queued, 'queued', @sched, @lang, @route, @inst)
+                (tenant_id, template_id, total_recipients, queued, status, scheduled_at, lang, send_route, instance_id, template_kind, wa_template_id)
+            VALUES (@tid, @tmpl, @total, @queued, 'queued', @sched, @lang, @route, @inst, @tkind, @watid)
             RETURNING id";
 
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -229,6 +234,8 @@ public class OutboundRepository
         cmd.Parameters.AddWithValue("lang", (object?)lang ?? DBNull.Value);
         cmd.Parameters.AddWithValue("route", sendRoute);
         cmd.Parameters.AddWithValue("inst", instanceId.HasValue ? (object)instanceId.Value : DBNull.Value);
+        cmd.Parameters.Add(new NpgsqlParameter("tkind", NpgsqlDbType.Varchar) { Value = (object?)templateKind ?? DBNull.Value });
+        cmd.Parameters.Add(new NpgsqlParameter("watid", NpgsqlDbType.Varchar) { Value = (object?)waTemplateId ?? DBNull.Value });
 
         var id = await cmd.ExecuteScalarAsync(ct);
         return (Guid)id!;
@@ -724,6 +731,59 @@ public class OutboundRepository
         cmd.CommandText = $@"
             INSERT INTO outbound_messages
                 (tenant_id, broadcast_id, template_id, recipient_phone, message_text, status, lang, dynamic_fields, send_route, instance_id)
+            VALUES {string.Join(",\n                   ", valueClauses)}";
+
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    /// <summary>
+    /// FEAT-PROJELER / cxapi PR-4: batch insert for an HSM (approved-template) broadcast's
+    /// messages — writes the PR-1 reserved columns for the first time:
+    /// message_kind='wapcrm_template', template_ref (slug), per-recipient template_params
+    /// (the RESOLVED {paramKey: value} dict from the preview snapshot, copied verbatim),
+    /// template_language (display-only) and the broadcast-level template_header_media
+    /// ({"url": ...}; fileName derives in the send client). message_text is the
+    /// machine-distinguishable display placeholder — NEVER a send-payload source.
+    /// dynamic_fields stays NULL (DMP and HSM are mutually exclusive by design).
+    /// </summary>
+    public virtual async Task BatchInsertHsmMessagesAsync(
+        int tenantId, Guid broadcastId, string waTemplateId,
+        List<(string phone, string text, string paramsJson)> messages,
+        string? templateLanguage, string? headerMediaJson,
+        string? lang = null, CancellationToken ct = default,
+        string sendRoute = "wapcrm_cxapi", int? instanceId = null)
+    {
+        if (messages.Count == 0) return;
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+
+        var valueClauses = new List<string>();
+        await using var cmd = new NpgsqlCommand();
+        cmd.Connection = conn;
+
+        for (var i = 0; i < messages.Count; i++)
+        {
+            valueClauses.Add($"(@tid, @bid, @phone{i}, @msg{i}, 'queued', @lang, @route, @inst, 'wapcrm_template', @tref, @tp{i}, @tlang, @thm)");
+            cmd.Parameters.AddWithValue($"phone{i}", messages[i].phone);
+            cmd.Parameters.AddWithValue($"msg{i}", messages[i].text);
+            cmd.Parameters.Add(new NpgsqlParameter($"tp{i}", NpgsqlDbType.Jsonb) { Value = messages[i].paramsJson });
+        }
+
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("bid", broadcastId);
+        cmd.Parameters.AddWithValue("lang", (object?)lang ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("route", sendRoute);
+        cmd.Parameters.AddWithValue("inst", instanceId.HasValue ? (object)instanceId.Value : DBNull.Value);
+        cmd.Parameters.Add(new NpgsqlParameter("tref", NpgsqlDbType.Varchar) { Value = waTemplateId });
+        cmd.Parameters.Add(new NpgsqlParameter("tlang", NpgsqlDbType.Varchar) { Value = (object?)templateLanguage ?? DBNull.Value });
+        cmd.Parameters.Add(new NpgsqlParameter("thm", NpgsqlDbType.Jsonb) { Value = (object?)headerMediaJson ?? DBNull.Value });
+
+        // template_id (INSE) intentionally absent -> NULL; an HSM message references the provider
+        // template via template_ref only.
+        cmd.CommandText = $@"
+            INSERT INTO outbound_messages
+                (tenant_id, broadcast_id, recipient_phone, message_text, status, lang, send_route, instance_id,
+                 message_kind, template_ref, template_params, template_language, template_header_media)
             VALUES {string.Join(",\n                   ", valueClauses)}";
 
         await cmd.ExecuteNonQueryAsync(ct);

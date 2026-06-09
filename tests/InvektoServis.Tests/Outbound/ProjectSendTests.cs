@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
 using InvektoServis.Tests._Shared.Factories;
+using Invekto.Outbound.Data;
 using Invekto.Shared.DTOs.Outbound;
 using NSubstitute;
 
@@ -55,22 +56,42 @@ public class ProjectSendTests : IClassFixture<OutboundProjectsSendTestFactory>
     }
 
     [Fact]
-    public async Task PreviewSend_HsmProject_Rejected_Inv076()
+    public async Task PreviewSend_HsmProject_NotAllowlisted_Rejected_Inv085_NoVendorCall()
     {
+        // PR-4 P0-3 inertness pin: this factory leaves CxapiSend at its DEFAULT (disabled, empty
+        // allowlist) — exactly the prod state. A fully-configured HSM project must reject with
+        // INV-OB-085 BEFORE any vendor call or snapshot. (The allowlisted/validation matrix lives
+        // in ProjectsServiceHsmTests with its own CxapiSend-enabled factory.)
+        var detail = Detail(7, ProjectTemplateKinds.WapcrmTemplate, null, null, null, withTarget: true);
+        detail.Project.WaTemplateId = "kampanya_tr";
         _factory.FakeProjectsRepo.GetAsync(Arg.Any<int>(), Arg.Is<long>(7), Arg.Any<CancellationToken>())
-            .Returns(Detail(7, ProjectTemplateKinds.WapcrmTemplate, null, null, null, withTarget: true));
+            .Returns(detail);
         // The FakeBulkRepo is a shared IClassFixture mock; clear prior tests' calls so the
         // "no snapshot for HSM" assertion below is order-independent.
         _factory.FakeBulkRepo.ClearReceivedCalls();
 
         var resp = await _client.PostAsJsonAsync("/api/v1/projects/7/send/preview", new { campaign_id = "c1" });
 
-        resp.StatusCode.Should().Be((HttpStatusCode)422);
-        (await resp.Content.ReadAsStringAsync()).Should().Contain("INV-OB-076");
-        // HSM rejection happens before any snapshot — the bulk repo is never touched.
+        resp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await resp.Content.ReadAsStringAsync()).Should().Contain("INV-OB-085");
+        // The gate fires before any snapshot — the bulk repo is never touched.
         await _factory.FakeBulkRepo.DidNotReceive().CreatePreviewJobFromProjectAsync(
             Arg.Any<int>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<int?>(), Arg.Any<string?>(),
-            Arg.Any<long[]>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+            Arg.Any<long[]>(), Arg.Any<int>(), Arg.Any<CancellationToken>(), Arg.Any<BulkSendRepository.HsmSnapshotInput?>());
+    }
+
+    [Fact]
+    public async Task PreviewSend_HsmProject_WithoutTemplate_Rejected_Inv073()
+    {
+        // An HSM project with NO template selected fails config-resolution (before the allowlist
+        // even matters this is a 4xx config error, mirrored by the SPA's sendDisabledReason).
+        _factory.FakeProjectsRepo.GetAsync(Arg.Any<int>(), Arg.Is<long>(13), Arg.Any<CancellationToken>())
+            .Returns(Detail(13, ProjectTemplateKinds.WapcrmTemplate, null, null, null, withTarget: true));
+
+        var resp = await _client.PostAsJsonAsync("/api/v1/projects/13/send/preview", new { campaign_id = "c6" });
+
+        ((int)resp.StatusCode).Should().Be(400);
+        (await resp.Content.ReadAsStringAsync()).Should().Contain("INV-OB-073");
     }
 
     [Fact]
@@ -104,8 +125,8 @@ public class ProjectSendTests : IClassFixture<OutboundProjectsSendTestFactory>
             .Returns(Detail(11, ProjectTemplateKinds.PlainText, ProjectContentModes.FreeText, null, "Merhaba dünya!", withTarget: true));
         _factory.FakeBulkRepo.CreatePreviewJobFromProjectAsync(
                 Arg.Any<int>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<int?>(), Arg.Any<string?>(),
-                Arg.Any<long[]>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns((42L, 3, (string?)null));
+                Arg.Any<long[]>(), Arg.Any<int>(), Arg.Any<CancellationToken>(), Arg.Any<BulkSendRepository.HsmSnapshotInput?>())
+            .Returns(new BulkSendRepository.ProjectSnapshotResult { JobId = 42, Snapshotted = 3 });
         _factory.FakeBulkRepo.GetRecipientPhonesSampleAsync(Arg.Any<int>(), Arg.Any<long>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new List<string> { "+905551112233" });
 
@@ -116,11 +137,11 @@ public class ProjectSendTests : IClassFixture<OutboundProjectsSendTestFactory>
         body.Should().NotBeNull();
         (body?.TotalValid ?? -1).Should().Be(3);
 
-        // free_text -> inline carrier: template_id NULL, inline_message_text = the project body.
+        // free_text -> inline carrier: template_id NULL, inline_message_text = the project body, NO hsm.
         await _factory.FakeBulkRepo.Received(1).CreatePreviewJobFromProjectAsync(
             Arg.Any<int>(), Arg.Any<string>(), Arg.Is<long>(11),
             Arg.Is<int?>(t => t == null), Arg.Is<string?>(s => s == "Merhaba dünya!"),
-            Arg.Any<long[]>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+            Arg.Any<long[]>(), Arg.Any<int>(), Arg.Any<CancellationToken>(), Arg.Is<BulkSendRepository.HsmSnapshotInput?>(h => h == null));
     }
 
     [Fact]
@@ -130,8 +151,8 @@ public class ProjectSendTests : IClassFixture<OutboundProjectsSendTestFactory>
             .Returns(Detail(12, ProjectTemplateKinds.PlainText, ProjectContentModes.GalleryTemplate, outboundTemplateId: 77, null, withTarget: true));
         _factory.FakeBulkRepo.CreatePreviewJobFromProjectAsync(
                 Arg.Any<int>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<int?>(), Arg.Any<string?>(),
-                Arg.Any<long[]>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns((43L, 2, (string?)null));
+                Arg.Any<long[]>(), Arg.Any<int>(), Arg.Any<CancellationToken>(), Arg.Any<BulkSendRepository.HsmSnapshotInput?>())
+            .Returns(new BulkSendRepository.ProjectSnapshotResult { JobId = 43, Snapshotted = 2 });
         _factory.FakeBulkRepo.GetRecipientPhonesSampleAsync(Arg.Any<int>(), Arg.Any<long>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new List<string>());
 
@@ -143,6 +164,6 @@ public class ProjectSendTests : IClassFixture<OutboundProjectsSendTestFactory>
         await _factory.FakeBulkRepo.Received(1).CreatePreviewJobFromProjectAsync(
             Arg.Any<int>(), Arg.Any<string>(), Arg.Is<long>(12),
             Arg.Is<int?>(t => t == 77), Arg.Is<string?>(s => s == null),
-            Arg.Any<long[]>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+            Arg.Any<long[]>(), Arg.Any<int>(), Arg.Any<CancellationToken>(), Arg.Is<BulkSendRepository.HsmSnapshotInput?>(h => h == null));
     }
 }

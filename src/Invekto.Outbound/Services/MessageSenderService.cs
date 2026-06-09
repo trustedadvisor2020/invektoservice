@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Invekto.Outbound.Data;
 using Invekto.Shared.Constants;
 using Invekto.Shared.Contracts.Inma;
@@ -281,6 +282,29 @@ public sealed class MessageSenderService : IHostedService, IDisposable
             return;
         }
 
+        // ── PR-4: an HSM row (message_kind='wapcrm_template') sends the approved template via
+        // template_ref + the RESOLVED per-recipient params snapshotted at preview. Parse the
+        // snapshot BEFORE the posting CAS so a malformed row fails cleanly from 'sending'
+        // (typed, no POST, never stranded). Plain-text rows take the PR-3a path unchanged. ──
+        var isHsm = msg.MessageKind == "wapcrm_template";
+        WapCrmTemplateSendRequest? templateRequest = null;
+        if (isHsm)
+        {
+            var (parsed, parseError) = BuildTemplateRequest(msg, instanceId, wap.UserId, secretKey);
+            if (parsed == null)
+            {
+                _logger.SystemError(
+                    $"[{ErrorCodes.CxapiRouteMisconfigured}] HSM message snapshot invalid: tenant={msg.TenantId}, message={msg.Id} ({parseError})");
+                var (_, hsmFailBid) = await _repository.MarkCxapiOutcomeAsync(
+                    msg.Id, msg.TenantId, "failed", providerStatusCode: null, providerStatus: null, providerRequestId: null,
+                    providerErrorMessage: $"[{ErrorCodes.CxapiRouteMisconfigured}] {parseError}",
+                    attemptCount: msg.AttemptCount, counterColumn: "failed", fromStatus: "sending", ct: CancellationToken.None);
+                if (hsmFailBid.HasValue) await TryCompleteBroadcastAsync(hsmFailBid.Value, ct);
+                return;
+            }
+            templateRequest = parsed;
+        }
+
         var attempt = msg.AttemptCount + 1;
 
         // CAS 'sending' -> 'posting' immediately before the POST (Codex P0-1). A miss means a concurrent
@@ -294,21 +318,39 @@ public sealed class MessageSenderService : IHostedService, IDisposable
         WapCrmSendResult result;
         try
         {
-            result = await _wapCrmSendClient.SendPlainTextAsync(new WapCrmSendRequest
-            {
-                TenantId = msg.TenantId,
-                InstanceId = instanceId,
-                UserId = wap.UserId,
-                SecretKey = secretKey,
-                ChatPhoneNumber = msg.RecipientPhone,
-                MessageText = msg.MessageText
-            }, ct);
+            // PR-4: route by the row's immutable message_kind. The state machine, outcome mapping,
+            // wamid persistence and rate-limit cooldown below are IDENTICAL for both kinds.
+            result = templateRequest != null
+                ? await _wapCrmSendClient.SendTemplateAsync(templateRequest, ct)
+                : await _wapCrmSendClient.SendPlainTextAsync(new WapCrmSendRequest
+                {
+                    TenantId = msg.TenantId,
+                    InstanceId = instanceId,
+                    UserId = wap.UserId,
+                    SecretKey = secretKey,
+                    ChatPhoneNumber = msg.RecipientPhone,
+                    MessageText = msg.MessageText
+                }, ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
             // Shutdown mid-POST: leave the row 'posting'. ResetSendingMessages won't touch it; the next
             // startup sweep resolves it to 'ambiguous' (delivery unknown). Do NOT classify here.
             throw;
+        }
+        catch (ArgumentException ex)
+        {
+            // Client-side contract guard fired (e.g. a media URL that slipped past the pre-parse).
+            // Nothing was POSTed — resolve the 'posting' row to a typed terminal failure so it is
+            // never stranded (claimed-job doctrine), then stop.
+            _logger.SystemError(
+                $"[{ErrorCodes.CxapiRouteMisconfigured}] cxapi send request invalid: tenant={msg.TenantId}, message={msg.Id} ({ex.Message})");
+            var (_, argFailBid) = await _repository.MarkCxapiOutcomeAsync(
+                msg.Id, msg.TenantId, "failed", providerStatusCode: null, providerStatus: null, providerRequestId: null,
+                providerErrorMessage: $"[{ErrorCodes.CxapiRouteMisconfigured}] {ex.Message}",
+                attemptCount: attempt, counterColumn: "failed", fromStatus: "posting", ct: CancellationToken.None);
+            if (argFailBid.HasValue) await TryCompleteBroadcastAsync(argFailBid.Value, ct);
+            return;
         }
 
         var decision = CxapiOutcomeMapper.Map(result.Outcome, attempt, _cxapiOptions.MaxSendAttempts);
@@ -370,6 +412,74 @@ public sealed class MessageSenderService : IHostedService, IDisposable
         // RateLimited requeue is not terminal; everything else may complete the broadcast.
         if (!decision.Requeue && broadcastId.HasValue)
             await TryCompleteBroadcastAsync(broadcastId.Value, ct);
+    }
+
+    /// <summary>
+    /// PR-4: builds the typed template send request from an HSM row's snapshot columns.
+    /// template_params is the FLAT resolved {paramKey: value} dict written at broadcast create
+    /// (copied from the preview snapshot); template_header_media is {"url": ...}. Returns
+    /// (null, reason) on a malformed snapshot — the caller fails the row typed, no POST.
+    /// </summary>
+    private static (WapCrmTemplateSendRequest? request, string? error) BuildTemplateRequest(
+        QueuedMessage msg, int instanceId, int userId, string secretKey)
+    {
+        var slug = msg.TemplateRef?.Trim();
+        if (string.IsNullOrEmpty(slug))
+            return (null, "HSM row has no template_ref");
+
+        List<WapCrmTemplateParamValue>? parameters = null;
+        if (!string.IsNullOrEmpty(msg.TemplateParams))
+        {
+            try
+            {
+                var dict = JsonSerializer.Deserialize<Dictionary<string, string>>(msg.TemplateParams);
+                if (dict is { Count: > 0 })
+                    parameters = dict
+                        .Select(kv => new WapCrmTemplateParamValue { ParamKey = kv.Key, Value = kv.Value ?? string.Empty })
+                        .ToList();
+            }
+            catch (JsonException ex)
+            {
+                return (null, $"template_params unreadable: {ex.Message}");
+            }
+        }
+
+        WapCrmTemplateHeaderMedia? headerMedia = null;
+        if (!string.IsNullOrEmpty(msg.TemplateHeaderMedia))
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(msg.TemplateHeaderMedia);
+                if (doc.RootElement.ValueKind == JsonValueKind.Object
+                    && doc.RootElement.TryGetProperty("url", out var urlEl)
+                    && urlEl.ValueKind == JsonValueKind.String
+                    && urlEl.GetString() is string url
+                    && !string.IsNullOrWhiteSpace(url))
+                {
+                    headerMedia = new WapCrmTemplateHeaderMedia { Url = url };
+                }
+                else
+                {
+                    return (null, "template_header_media has no url");
+                }
+            }
+            catch (JsonException ex)
+            {
+                return (null, $"template_header_media unreadable: {ex.Message}");
+            }
+        }
+
+        return (new WapCrmTemplateSendRequest
+        {
+            TenantId = msg.TenantId,
+            InstanceId = instanceId,
+            UserId = userId,
+            SecretKey = secretKey,
+            ChatPhoneNumber = msg.RecipientPhone,
+            TemplateId = slug,
+            Parameters = parameters,
+            HeaderMedia = headerMedia
+        }, null);
     }
 
     private async Task TryCompleteBroadcastAsync(Guid broadcastId, CancellationToken ct)

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Invekto.Outbound.Data;
 using Invekto.Shared.Constants;
 using Invekto.Shared.DTOs.Outbound;
@@ -58,17 +59,22 @@ public sealed class BroadcastOrchestrator
         if (request.Recipients.Count > 1000)
             return (null, ErrorCodes.OutboundTooManyRecipients, $"Max 1000 recipients per broadcast, got {request.Recipients.Count}");
 
-        // FEAT-PROJELER send-exec (SS-A): the content source is EITHER an INSE template (template_id) OR
-        // inline free text (message_text). EXACTLY ONE — reject both-or-neither so the caller's intent is
-        // never silently coerced. Inline is a literal body sent to every recipient (no INSE template lookup,
-        // no DMP/dynamic substitution); it backs the Projeler free_text run (SS-C).
-        // inlineText is non-null (empty when no body) so the inline render path never needs a null-forgiving (!).
+        // Content source — EXACTLY ONE of three (reject any mix so the caller's intent is never
+        // silently coerced):
+        //   template_id   -> INSE template (legacy broadcast/bulk + a project's gallery_template)
+        //   message_text  -> inline free text (SS-A; literal body, no substitution)
+        //   wa_template_id (PR-4) -> approved-template (HSM) over cxapi; per-recipient PARAM VALUES
+        //                            arrive RESOLVED in each recipient's Variables (preview snapshot).
+        // inlineText/hsmTemplateId are non-null locals so no render path needs a null-forgiving (!).
         var inlineText = request.MessageText?.Trim() ?? string.Empty;
         var useInline = inlineText.Length > 0;
-        if (useInline && request.TemplateId > 0)
-            return (null, ErrorCodes.OutboundInvalidBroadcastPayload, "Provide either template_id or message_text, not both");
-        if (!useInline && request.TemplateId <= 0)
-            return (null, ErrorCodes.OutboundInvalidBroadcastPayload, "template_id or message_text is required");
+        var hsmTemplateId = request.WaTemplateId?.Trim() ?? string.Empty;
+        var useHsm = hsmTemplateId.Length > 0;
+        var sourceCount = (useInline ? 1 : 0) + (request.TemplateId > 0 ? 1 : 0) + (useHsm ? 1 : 0);
+        if (sourceCount > 1)
+            return (null, ErrorCodes.OutboundInvalidBroadcastPayload, "Provide exactly one of template_id / message_text / wa_template_id");
+        if (sourceCount == 0)
+            return (null, ErrorCodes.OutboundInvalidBroadcastPayload, "template_id, message_text or wa_template_id is required");
 
         // Template mode loads + validates the INSE template and runs the DMP gate; inline mode skips ALL of
         // that (literal text, no placeholders). lang: request override > template lang (template mode) / the
@@ -78,7 +84,7 @@ public sealed class BroadcastOrchestrator
         var useDynamic = false;
         string[]? broadcastDynamicFields = null;
 
-        if (!useInline)
+        if (!useInline && !useHsm)
         {
             // Validate template exists
             template = await _repository.GetTemplateByIdAsync(tenantId, request.TemplateId, ct);
@@ -114,6 +120,14 @@ public sealed class BroadcastOrchestrator
         // the tenant default (settings_json->'wapcrm'.instance_id); secret/userId are loaded per-batch at
         // send time (never persisted). Decided once per broadcast (homogeneous route, Codex P0 #5).
         var cxapiRoute = _cxapiOptions.IsTenantAllowed(tenantId);
+
+        // PR-4: an HSM broadcast can ONLY ride cxapi — approved templates cannot go through the
+        // INMA Main App bridge. NO fallback (roadmap "sessiz fallback yok"): a non-allowlisted
+        // tenant is rejected with the same typed code the upstream gates use. With the allowlist
+        // empty (P0-3) this keeps the whole HSM path inert at every layer.
+        if (useHsm && !cxapiRoute)
+            return (null, ErrorCodes.HsmSendNotAllowlisted, "Onaylı şablon gönderimi bu hesapta henüz açık değil.");
+
         var sendRoute = "mainapp_bridge";
         int? instanceId = null;
         if (cxapiRoute)
@@ -164,6 +178,10 @@ public sealed class BroadcastOrchestrator
         var skippedOptout = 0;
         var skippedConsent = 0;
         var messagesToInsert = new List<(string phone, string text, string[]? dynamicFields)>();
+        // PR-4 (HSM): index-aligned with messagesToInsert (single Add point per recipient below).
+        // Each entry is the recipient's RESOLVED param dict serialized verbatim from Variables —
+        // the preview snapshot already resolved columns -> values; this loop copies, never re-derives.
+        var hsmParamsJson = new List<string>();
 
         foreach (var recipient in validRecipients)
         {
@@ -182,6 +200,22 @@ public sealed class BroadcastOrchestrator
 
             string messageText;
             string[]? recipientDynamicFields = null;
+            if (useHsm)
+            {
+                // PR-4 approved-template: WhatsApp renders the REAL text provider-side from the
+                // pre-approved template + per-recipient params. message_text stores a machine-
+                // distinguishable DISPLAY placeholder only — INVARIANT: for message_kind=
+                // 'wapcrm_template' it is NEVER a send-payload source (UI shows template_ref +
+                // template_params instead). KVKK disclaimer is intentionally NOT appended: the
+                // wire carries no free text to append to — a health tenant's disclaimer must be
+                // part of the Meta-approved template content itself.
+                messageText = $"[WAPCRM_TEMPLATE] {hsmTemplateId}";
+                hsmParamsJson.Add(recipient.Variables is { Count: > 0 }
+                    ? JsonSerializer.Serialize(recipient.Variables)
+                    : "{}");
+                messagesToInsert.Add((recipient.Phone, messageText, null));
+                continue;
+            }
             if (useInline)
             {
                 // SS-A inline free text: the SAME literal body for every recipient. No INSE substitution
@@ -242,26 +276,53 @@ public sealed class BroadcastOrchestrator
                 "No valid recipients after opt-out filtering and variable validation");
         }
 
-        // SS-A: inline broadcasts carry NO template_id (outbound_broadcasts/outbound_messages.template_id
-        // are nullable); template broadcasts keep their id. Used for the broadcast, messages AND audit rows.
-        int? broadcastTemplateId = useInline ? null : request.TemplateId;
+        // SS-A/PR-4: inline + HSM broadcasts carry NO INSE template_id (nullable columns); template
+        // broadcasts keep their id. Used for the broadcast, messages AND audit rows.
+        int? broadcastTemplateId = (useInline || useHsm) ? null : request.TemplateId;
 
-        // Create broadcast record (GR-2.3: with language; PR-3a: immutable route + tenant-default instance)
+        // PR-4 (HSM): the single dynamic HEADER media for the whole broadcast, persisted per message
+        // as template_header_media JSONB ({"url": ...}); fileName derivation happens in the send client.
+        var hsmHeaderMediaJson = useHsm && !string.IsNullOrWhiteSpace(request.TemplateHeaderMediaUrl)
+            ? JsonSerializer.Serialize(new { url = request.TemplateHeaderMediaUrl.Trim() })
+            : null;
+
+        // Create broadcast record (GR-2.3: with language; PR-3a: immutable route + instance;
+        // PR-4: HSM broadcasts also stamp template_kind + wa_template_id for run reporting)
         var broadcastId = await _repository.CreateBroadcastAsync(
             tenantId, broadcastTemplateId, request.Recipients.Count,
-            messagesToInsert.Count, request.ScheduledAt, lang, ct, sendRoute, instanceId);
+            messagesToInsert.Count, request.ScheduledAt, lang, ct, sendRoute, instanceId,
+            templateKind: useHsm ? "wapcrm_template" : null,
+            waTemplateId: useHsm ? hsmTemplateId : null);
 
-        // Batch insert all messages (single multi-row INSERT, GR-2.3: with language; PR-3a: route + instance)
-        await _repository.BatchInsertMessagesAsync(
-            tenantId, broadcastId, broadcastTemplateId, messagesToInsert, lang, ct, sendRoute, instanceId);
+        // Batch insert all messages (single multi-row INSERT). HSM rows additionally carry
+        // message_kind='wapcrm_template' + template_ref + per-recipient template_params +
+        // template_header_media (PR-1 reserved columns, written for the first time here).
+        if (useHsm)
+        {
+            await _repository.BatchInsertHsmMessagesAsync(
+                tenantId, broadcastId, hsmTemplateId,
+                messagesToInsert.Select((m, i) => (m.phone, m.text, hsmParamsJson[i])).ToList(),
+                request.TemplateLanguage, hsmHeaderMediaJson, lang, ct, sendRoute, instanceId);
+        }
+        else
+        {
+            await _repository.BatchInsertMessagesAsync(
+                tenantId, broadcastId, broadcastTemplateId, messagesToInsert, lang, ct, sendRoute, instanceId);
+        }
         var queuedCount = messagesToInsert.Count;
 
         // GR-3.29: Audit trail - batch insert for compliance (single multi-row INSERT).
         // AuditTrail records the rendered MessageText only (DynamicFields is per-message
         // metadata, not customer-visible content) — project to the legacy (phone, content) shape.
-        var auditRecords = messagesToInsert
-            .Select(m => (phone: m.phone, content: m.text))
-            .ToList();
+        // PR-4 (HSM): the real text renders provider-side, so the compliance row records the
+        // template slug + the exact per-recipient param values that were filled.
+        var auditRecords = useHsm
+            ? messagesToInsert
+                .Select((m, i) => (phone: m.phone, content: $"{m.text} params={hsmParamsJson[i]}"))
+                .ToList()
+            : messagesToInsert
+                .Select(m => (phone: m.phone, content: m.text))
+                .ToList();
         await _repository.BatchInsertAuditTrailAsync(
             tenantId, broadcastTemplateId, null, auditRecords, ct);
 

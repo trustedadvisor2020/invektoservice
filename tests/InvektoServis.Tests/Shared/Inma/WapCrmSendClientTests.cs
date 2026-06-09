@@ -341,4 +341,219 @@ public sealed class WapCrmSendClientTests
         await act.Should().ThrowAsync<ArgumentException>();
         handler.Captured.Should().BeEmpty();
     }
+
+    // ════════════════════════════════════════════════════════════════════
+    // PR-4 — approved-template (HSM) send: SendTemplateAsync
+    // ════════════════════════════════════════════════════════════════════
+
+    private static WapCrmTemplateSendRequest TReq(
+        string secret = "secret-1",
+        IReadOnlyList<WapCrmTemplateParamValue>? parameters = null,
+        WapCrmTemplateHeaderMedia? headerMedia = null,
+        string templateId = "siparis_bilgi_tr") => new()
+    {
+        TenantId = 42,
+        InstanceId = 15,
+        UserId = 7,
+        SecretKey = secret,
+        ChatPhoneNumber = "905551112233",
+        TemplateId = templateId,
+        Parameters = parameters,
+        HeaderMedia = headerMedia
+    };
+
+    // ── PR-4 AC2: Submitted + EXACT template wire body (pinned) ────────
+
+    [Fact]
+    public async Task Template_Submitted_with_pinned_wire_body_params_and_headerMedia_and_NO_language()
+    {
+        var (client, http, handler) = Build((_, _) => Envelope(true, "200", "req-77", "ok", data: "wamid.TEMPLATE1"));
+
+        var result = await client.SendTemplateAsync(TReq(
+            parameters: new[]
+            {
+                new WapCrmTemplateParamValue { ParamKey = "ad", Value = "Ahmet" },
+                new WapCrmTemplateParamValue { ParamKey = "order_id", Value = "12345" }
+            },
+            headerMedia: new WapCrmTemplateHeaderMedia { Url = "https://cdn.example.com/img/resim.jpg", FileName = "resim.jpg" }));
+
+        result.Outcome.Should().Be(WapCrmSendOutcome.Submitted);
+        result.ProviderMessageId.Should().Be("wamid.TEMPLATE1"); // identical wamid capture as plain-text
+        result.AttemptCount.Should().Be(1);
+
+        var cap = handler.Captured.Single();
+        cap.Method.Should().Be("POST");
+        cap.Url.Should().EndWith("/api/chatoperation"); // SAME endpoint as plain-text
+        cap.Secret.Should().Be("secret-1");
+
+        using var doc = JsonDocument.Parse(cap.Body);
+        var root = doc.RootElement;
+        root.GetProperty("instanceID").GetInt32().Should().Be(15);
+        root.GetProperty("userID").GetInt32().Should().Be(7);
+        root.GetProperty("chatPhoneNumber").GetString().Should().Be("905551112233");
+
+        var template = root.GetProperty("template");
+        template.GetProperty("templateId").GetString().Should().Be("siparis_bilgi_tr");
+        var prms = template.GetProperty("parameters");
+        prms.GetArrayLength().Should().Be(2);
+        prms[0].GetProperty("paramKey").GetString().Should().Be("ad");
+        prms[0].GetProperty("value").GetString().Should().Be("Ahmet");
+        prms[1].GetProperty("paramKey").GetString().Should().Be("order_id");
+        prms[1].GetProperty("value").GetString().Should().Be("12345");
+        var media = template.GetProperty("headerMedia");
+        media.GetProperty("url").GetString().Should().Be("https://cdn.example.com/img/resim.jpg");
+        media.GetProperty("fileName").GetString().Should().Be("resim.jpg");
+
+        // NO language anywhere (INMA 2026-06-08: language is embedded in the slug) and
+        // NO plain-text fields on a template send.
+        root.TryGetProperty("language", out _).Should().BeFalse();
+        template.TryGetProperty("language", out _).Should().BeFalse();
+        root.TryGetProperty("messageType", out _).Should().BeFalse();
+        root.TryGetProperty("messageText", out _).Should().BeFalse();
+
+        http.DefaultRequestHeaders.Contains("X-CIB-SecretKey").Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Template_omits_parameters_and_headerMedia_when_absent()
+    {
+        var (client, _, handler) = Build((_, _) => Envelope(true, "200", "r", data: "wamid.X"));
+
+        var result = await client.SendTemplateAsync(TReq()); // a template with no required inputs
+
+        result.Outcome.Should().Be(WapCrmSendOutcome.Submitted);
+        using var doc = JsonDocument.Parse(handler.Captured.Single().Body);
+        var template = doc.RootElement.GetProperty("template");
+        template.GetProperty("templateId").GetString().Should().Be("siparis_bilgi_tr");
+        template.TryGetProperty("parameters", out _).Should().BeFalse();
+        template.TryGetProperty("headerMedia", out _).Should().BeFalse();
+    }
+
+    // ── PR-4 AC2: 621 (template not found) / 622 (missing param) typed, never retried ──
+
+    [Fact]
+    public async Task Template_ProviderFailed_on_621_and_622_not_retried()
+    {
+        var (c621, _, h621) = Build((_, _) => Envelope(false, "621", "req-a", "template not found"));
+        var r621 = await c621.SendTemplateAsync(TReq());
+        r621.Outcome.Should().Be(WapCrmSendOutcome.ProviderFailed);
+        r621.ProviderStatusCode.Should().Be("621");
+        h621.Captured.Should().HaveCount(1); // terminal — never retried
+
+        var (c622, _, h622) = Build((_, _) => Envelope(false, "622", "req-b", "missing required parameter"));
+        var r622 = await c622.SendTemplateAsync(TReq(parameters: new[]
+        {
+            new WapCrmTemplateParamValue { ParamKey = "ad", Value = "Ahmet" }
+        }));
+        r622.Outcome.Should().Be(WapCrmSendOutcome.ProviderFailed);
+        r622.ProviderStatusCode.Should().Be("622");
+        r622.ProviderErrorMessage.Should().Be("missing required parameter");
+        h622.Captured.Should().HaveCount(1);
+    }
+
+    // ── PR-4 AC2: rate-limit recovery identical to plain-text ──────────
+
+    [Fact]
+    public async Task Template_recovers_when_302_is_followed_by_a_200()
+    {
+        var (client, _, handler) = Build((_, i) => i == 0 ? Redirect(302) : Envelope(true, "200", "req-ok", data: "wamid.R"));
+
+        var result = await client.SendTemplateAsync(TReq());
+
+        result.Outcome.Should().Be(WapCrmSendOutcome.Submitted);
+        result.ProviderMessageId.Should().Be("wamid.R");
+        result.AttemptCount.Should().Be(2);
+        handler.Captured.Should().HaveCount(2);
+        // The retried attempt re-sends the SAME template payload.
+        using var first = JsonDocument.Parse(handler.Captured.First().Body);
+        using var second = JsonDocument.Parse(handler.Captured.Last().Body);
+        second.RootElement.GetProperty("template").GetProperty("templateId").GetString()
+            .Should().Be(first.RootElement.GetProperty("template").GetProperty("templateId").GetString());
+    }
+
+    // ── PR-4 AC2: timeout => Ambiguous, no retry (duplicate-send risk) ──
+
+    [Fact]
+    public async Task Template_timeout_is_Ambiguous_and_not_retried()
+    {
+        var (client, _, handler) = Build((_, _) => throw new TaskCanceledException());
+
+        var result = await client.SendTemplateAsync(TReq());
+
+        result.Outcome.Should().Be(WapCrmSendOutcome.Ambiguous);
+        result.AttemptCount.Should().Be(1);
+        handler.Captured.Should().HaveCount(1);
+    }
+
+    // ── PR-4: Submitted WITHOUT wamid stays Submitted (sent; only correlation id missing) ──
+
+    [Fact]
+    public async Task Template_submitted_without_wamid_stays_Submitted_with_null_ProviderMessageId()
+    {
+        var (client, _, _) = Build((_, _) => Envelope(true, "200", "r")); // no data field
+
+        var result = await client.SendTemplateAsync(TReq());
+
+        result.Outcome.Should().Be(WapCrmSendOutcome.Submitted); // NOT Ambiguous — provider said status=true
+        result.ProviderMessageId.Should().BeNull();
+    }
+
+    // ── PR-4: media URL hard validation (https-only, no whitespace/control) ──
+
+    [Fact]
+    public async Task Template_throws_on_invalid_media_url_without_sending()
+    {
+        var (client, _, handler) = Build((_, _) => Envelope(true, "200"));
+
+        // http:// (not https), relative, embedded-whitespace AND leading/trailing-whitespace URLs are
+        // all caller-contract violations — the RAW value is scanned with no pre-trim (no silent repair).
+        foreach (var bad in new[]
+        {
+            "http://cdn.example.com/a.jpg", "/relative/a.jpg", "https://cdn.example.com/a b.jpg",
+            " https://cdn.example.com/a.jpg", "https://cdn.example.com/a.jpg ", "\thttps://cdn.example.com/a.jpg",
+        })
+        {
+            var act = () => client.SendTemplateAsync(TReq(headerMedia: new WapCrmTemplateHeaderMedia { Url = bad }));
+            await act.Should().ThrowAsync<ArgumentException>();
+        }
+        handler.Captured.Should().BeEmpty(); // nothing ever reached the wire
+    }
+
+    // ── PR-4: fileName derived + sanitized from the URL when absent ────
+
+    [Fact]
+    public async Task Template_derives_sanitized_fileName_from_url_when_absent()
+    {
+        var (client, _, handler) = Build((_, _) => Envelope(true, "200", "r", data: "wamid.F"));
+
+        await client.SendTemplateAsync(TReq(headerMedia: new WapCrmTemplateHeaderMedia
+        {
+            Url = "https://cdn.example.com/path/Resim%20Adi.jpg?v=2" // escaped space + query string
+        }));
+
+        using var doc = JsonDocument.Parse(handler.Captured.Single().Body);
+        var media = doc.RootElement.GetProperty("template").GetProperty("headerMedia");
+        media.GetProperty("url").GetString().Should().Be("https://cdn.example.com/path/Resim%20Adi.jpg?v=2");
+        // Last path segment, unescaped, then sanitized to [A-Za-z0-9._-]: "Resim Adi.jpg" -> "ResimAdi.jpg".
+        media.GetProperty("fileName").GetString().Should().Be("ResimAdi.jpg");
+    }
+
+    // ── PR-4: caller-contract validation (fail-fast, nothing sent) ─────
+
+    [Fact]
+    public async Task Template_throws_on_blank_templateId_or_empty_paramKey_without_sending()
+    {
+        var (client, _, handler) = Build((_, _) => Envelope(true, "200"));
+
+        var blankTemplate = () => client.SendTemplateAsync(TReq(templateId: "   "));
+        await blankTemplate.Should().ThrowAsync<ArgumentException>();
+
+        var emptyParamKey = () => client.SendTemplateAsync(TReq(parameters: new[]
+        {
+            new WapCrmTemplateParamValue { ParamKey = " ", Value = "x" }
+        }));
+        await emptyParamKey.Should().ThrowAsync<ArgumentException>();
+
+        handler.Captured.Should().BeEmpty();
+    }
 }

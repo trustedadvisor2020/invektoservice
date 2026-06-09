@@ -62,6 +62,64 @@ public sealed class WapCrmSendRequest
 }
 
 /// <summary>
+/// A single approved-template (HSM) send request for cxapi POST /api/chatoperation — PR-4.
+/// The wire body carries a <c>template</c> object (templateId slug + named parameters +
+/// optional headerMedia) INSTEAD of messageType/messageText. There is NO <c>language</c>
+/// field on the wire: per INMA (2026-06-08) every language is a separate template slug,
+/// so language selection happens at template pick time, never at send time.
+/// Credential handling is identical to <see cref="WapCrmSendRequest"/> (per-call secret,
+/// never logged, never on DefaultRequestHeaders).
+/// </summary>
+public sealed class WapCrmTemplateSendRequest
+{
+    /// <summary>InvektoServis tenant id. Used only for keying/logging — NOT sent on the wire.</summary>
+    public int TenantId { get; init; }
+
+    /// <summary>cxapi <c>instanceID</c> (WapCRM channel). The caller must have verified this instance belongs to the tenant.</summary>
+    public int InstanceId { get; init; }
+
+    /// <summary>cxapi <c>userID</c> — from <see cref="WapCrmSettings.UserId"/>.</summary>
+    public int UserId { get; init; }
+
+    /// <summary>Per-request <c>X-CIB-SecretKey</c> (tenant API key). NEVER logged, NEVER on DefaultRequestHeaders.</summary>
+    public required string SecretKey { get; init; }
+
+    /// <summary>Destination phone in cxapi format (e.g. 905XXXXXXXXX).</summary>
+    public required string ChatPhoneNumber { get; init; }
+
+    /// <summary>Approved-template slug (<c>template.templateId</c>) from cxapi POST /api/templates. Language is embedded in the slug.</summary>
+    public required string TemplateId { get; init; }
+
+    /// <summary>
+    /// Named parameter values for the template's required text inputs
+    /// (<c>template.parameters[{paramKey,value}]</c>). Empty/null when the template
+    /// has no required text inputs — the wire object then omits <c>parameters</c>.
+    /// </summary>
+    public IReadOnlyList<WapCrmTemplateParamValue>? Parameters { get; init; }
+
+    /// <summary>Dynamic header media (<c>template.headerMedia</c>) — only for templates whose requiredInputs demand media. Null = omitted on the wire (fixed-media headers are added provider-side).</summary>
+    public WapCrmTemplateHeaderMedia? HeaderMedia { get; init; }
+}
+
+/// <summary>A single named template parameter value ({paramKey, value}).</summary>
+public sealed class WapCrmTemplateParamValue
+{
+    public required string ParamKey { get; init; }
+    public required string Value { get; init; }
+}
+
+/// <summary>
+/// Dynamic header media for an approved-template send. <see cref="Url"/> must be a public,
+/// auth-less HTTPS URL. <see cref="FileName"/> is optional — when absent the client derives
+/// a sanitized name from the URL's last path segment (fallback "media").
+/// </summary>
+public sealed class WapCrmTemplateHeaderMedia
+{
+    public required string Url { get; init; }
+    public string? FileName { get; init; }
+}
+
+/// <summary>
 /// The typed outcome of a send. Field names mirror the PR-1 outbound_messages
 /// columns (provider_status_code / provider_status / provider_request_id /
 /// provider_error_message / attempt_count) so PR-3 can persist them directly.

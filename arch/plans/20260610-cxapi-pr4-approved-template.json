@@ -1,0 +1,286 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "gr_list": [
+    {
+      "id": "GR1",
+      "description": "Shared WapCrmSendClient template send path: SendTemplateAsync + template wire DTOs (templateId + parameters[{paramKey,value}] + headerMedia{url,fileName}; NO language field — INMA 2026-06-08: dil slug'a gomulu) + media URL validasyonu (https-only scheme, max length, whitespace/control-char reject) + fileName URL son segmentinden sanitize edilerek turetilir (fallback: mediaType uzantili 'media') + Submitted-ama-bos-wamid -> 'sent' + WARN (plain-text PR-3b-1 davranisiyla tutarli; Ambiguous DEGIL — provider status=true dedi) + 621/622 kesin non-retry (ProviderFailed terminal) + >=6 pinned fake tests (success+wamid, 621/622 typed, missing-param provider reject, rate-limit retry, timeout->Ambiguous, header media body shape, bos-wamid WARN)",
+      "services_affected": ["Invekto.Shared", "InvektoServis.Tests"]
+    },
+    {
+      "id": "GR2",
+      "description": "Migration 062 + canonical sync (PR-1 CQ11 borcu): bulk_send_jobs +6 snapshot kolonu (instance_id INTEGER, template_kind VARCHAR(16), wa_template_id VARCHAR(128), param_mapping JSONB, template_language VARCHAR(8) display-only, preview_skipped_params JSONB capped-audit {count, by_param, sample<=100 [masked_phone, list_id, record_id, missing[]]}) + chk_bulk_message_source 3-yol XOR (template_id|inline_message_text|wa_template_id) + template_kind/wa_template_id tutarlilik CHECK + INV-SEED-062 verifier + arch/db/outbound.sql canonical sync + arch/errors.md INV-OB-081..085. NOT: template_contract_hash kolonu BILEREK eklenmedi (confirm-sonrasi provider drift per-message 621/622 provider_status_code ile zaten persist; marjinal degere sema eklenmez)",
+      "services_affected": ["DB"]
+    },
+    {
+      "id": "GR3",
+      "description": "Preview yolu (Outbound): HSM preview de CxapiSend allowlist GATE'I ARKASINDA — tenant allowlist'te degilse vendor'a TEK cagri bile gitmeden INV-OB-085 reject (Codex plan-consult bulgusu: 'send yok ama vendor dogrulama var' prod-inert DEGILDIR; bos allowlist = tam inert, P0-3 ruhu korunur). Allowlist'li tenant icin: ResolveSendContent HSM dali (INV-OB-076 reject yerine HSM config carrier) + CANLI cxapi template-list dogrulamasi HARD-FAIL (WapCrmTemplateClient Outbound DI; slug yok->INV-OB-081 ownership, required param unmapped->INV-OB-082, dinamik BUTTON param->INV-OB-083 reject [G13.3 ertelendi], cxapi erisilemez->INV-OB-084) + CreatePreviewJobFromProjectAsync genisletme: 6 cxapi kolonu snapshot + per-recipient variables_json RESOLVED form {source:{list_id,record_id}, params:{paramKey:value}} (ham kolon kopyasi DEGIL — confirm/broadcast yeniden YORUMLAMAZ, kopyalar; drift yuzeyi kapanir; cift telefonda kaynak = proje hedef sirasindaki ILK liste + en dusuk record id) + zorunlu parametresi eksik alici snapshot'a ALINMAZ (preview response sayaci + preview_skipped_params JSONB capped audit)",
+      "services_affected": ["Invekto.Outbound"]
+    },
+    {
+      "id": "GR4",
+      "description": "Confirm/dispatch yolu (Outbound): ConfirmSendAsync HSM gate — tenant CxapiSend allowlist'te degilse typed reject INV-OB-085 (HSM'in kopru fallback'i YOK, sessiz fallback yasak; bos allowlist = P0-3 inert korunur) + confirm oncesi IKINCI CANLI template dogrulamasi (Codex plan-consult: preview-confirm arasi template silinebilir/requiredInputs degisebilir — ayni INV-OB-081..084 kontrol seti confirm'de tekrar, hard-fail; confirm-sonrasi saniyelik drift per-message 621/622 ile yakalanir, kabul edilen residual) + BulkSendOrchestrator HSM dali (BroadcastSendRequest WaTemplateId/HeaderMedia/TemplateLanguage + per-recipient RESOLVED params snapshot'tan tasir) + BroadcastOrchestrator HSM mesaj olusturma: per-recipient template_params JSONB (snapshot'taki resolved params'in KOPYASI, yeniden hesaplama yok), message_kind='wapcrm_template', template_ref=wa_template_id, template_header_media, send_route='wapcrm_cxapi', message_text='[WAPCRM_TEMPLATE] {slug}' makinece-ayirt-edilir display placeholder (INVARIANT: message_kind='wapcrm_template' => message_text display-only, ASLA send-payload kaynagi degil; UI HSM mesajda template_ref+params gosterir); OPT-OUT + CONSENT filtreleri HSM yolunda AYNEN uygulanir (double-guard: INSE OptOutManager + cxapi server-side INMA — text-render atlanir ama filtre atlanMAZ); resolved-param'i eksik alici confirm'de de skip+audit (belt over preview); sablonun requiredInputs'u BOS ise param_mapping null/bos gecerli",
+      "services_affected": ["Invekto.Outbound"]
+    },
+    {
+      "id": "GR5",
+      "description": "Send loop (Outbound): QueuedMessage read projection +message_kind/template_ref/template_params/template_header_media + MessageSenderService.SendViaCxapiAsync template dali -> SendTemplateAsync (PR-3a state machine AYNEN: CAS sending->posting, timeout->ambiguous never-retry, wamid capture CAS persist, CxapiOutcomeMapper reuse)",
+      "services_affected": ["Invekto.Outbound"]
+    },
+    {
+      "id": "GR6",
+      "description": "SPA minimal: ProjectsPage sendDisabledReason HSM engeli kalkar + preview yanitinda 'N alicida eksik parametre — atlanacak' gosterimi + api.ts preview response tipi; modal redesign param_mapping shape'i AYNEN tuketilir (UI degisikligi yok)",
+      "services_affected": ["Invekto.Backend (Dashboard SPA)"]
+    }
+  ],
+  "slug": "20260610-cxapi-pr4-approved-template",
+  "risk": "HIGH",
+  "status": "DONE",
+  "created_at": "2026-06-10T01:35:00+03:00",
+  "updated_at": "2026-06-10T01:35:00+03:00",
+  "plan": {
+    "summary": "cxapi approved-template (HSM) send: bulk_send_jobs cxapi snapshot kolonlari (migration 062, PR-1 CQ11 borcu kapanir) + WapCrmSendClient.SendTemplateAsync (templateId+parameters+headerMedia, language YOK) + proje run preview/confirm HSM zinciri (canli template-list dogrulamasi hard-fail + per-recipient param substitution list_records kolonlarindan + eksik-param alici skip) + send loop template dali. Kapsam SADECE proje run'lari (CSV bulk-send haric); dinamik BUTTON sablonlari reject (G13.3 ertelendi). Send go-live G12/P0-3 gate'ine bagli — kod inert deploy edilir.",
+    "q_intent": "PR-4 cxapi approved-template (HSM) send — bulk_send_jobs cxapi kolonlari (PR-1 CQ11 borcu) + param_mapping {source,column} per-recipient substitution + HSM template send. Pre-req: WapCrmSendClient canli cxapi wire-shape dogrulamasi once. Deploy dahil.",
+    "interview_notes": "Q kararlari (2026-06-10 interview, 8/8): (1) Eksik mapped-kolon degeri olan alici ATLANIR (preview'da sayac gosterilir; fail-open + gorunur, mevcut missingVars skip pattern'i ile uyumlu). (2) Preview aninda CANLI cxapi template-list dogrulamasi YAPILIR; cxapi erisilemezse preview HARD-FAIL (roadmap 'sessiz fallback yok' ilkesi). (3) requiredInputs'ta dinamik BUTTON parametresi olan sablonlar REJECT (G13.3 erteleme kararina sadik). (4) Cift telefonda kolon kaynagi: proje hedef sirasindaki ILK liste, ayni listede en dusuk record id (deterministik). (5) template_language bulk_send_jobs'a EKLENIR, display-only (immutable run snapshot; wire'a ASLA yazilmaz — INMA 2026-06-08: send body'de language alani YOK, dil slug'a gomulu). (6) HSM kapsami SADECE proje run'lari (CSV bulk-send ileride ayri paket). (7) 7 AC onaylandi. (8) DEPLOY DAHIL: migration 062 + Outbound + Backend + SPA; 10/10 HEALTHY + gate snapshot degismedi kaniti AC7. || PLAN-REVIEW (codex_consult gpt-5.5 critique, 2026-06-10) UYGULANDI: (a) preview HSM yolu da CxapiSend allowlist arkasina alindi — allowlist-disi tenant'a vendor'a tek cagri bile yok, tam inert; (b) confirm oncesi IKINCI canli template dogrulamasi eklendi (TOCTOU: template silinme/requiredInputs degisimi); (c) message_text placeholder makinece-ayirt-edilir '[WAPCRM_TEMPLATE] {slug}' + display-only invariant; (d) per-recipient variables_json RESOLVED form {source, params} — confirm/broadcast yeniden yorumlamaz; (e) skipped-alici kalici audit: bulk_send_jobs.preview_skipped_params JSONB capped (count+by_param+sample<=100); (f) headerMedia fileName URL'den sanitize turetme + https-only/length-cap media URL validasyonu. REDDEDILDI (gerekceli): template_contract_hash kolonu (per-message 621/622 provider_status_code drift'i zaten persist eder — marjinal degere sema yok); bos-wamid->Ambiguous onerisi (YANLIS semantik: provider status=true = mesaj gitti; ambiguous 'akibet bilinmiyor+ops review' demek; plain-text PR-3b-1 ile tutarli olarak sent+WARN).",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "HSM projeli run zinciri preview->confirm->dispatch outbound_messages'a message_kind='wapcrm_template' + send_route='wapcrm_cxapi' + template_ref/template_params/template_header_media yazar (fake/unit testlerle kanit; canli send YOK — gate kapali)",
+        "verified": true,
+        "verification_note": "ProjectsServiceHsmTests OK-path: validated HsmSnapshotInput (slug+requiredKeys+bindings) snapshot'a ulasiyor; BroadcastOrchestrator HSM dali + BatchInsertHsmMessagesAsync kolonlari yaziyor (kod yolu + build); canli DB insert dogrulamasi deploy smoke'ta (AC7)"
+      },
+      {
+        "id": "AC2",
+        "criterion": "SendTemplateAsync wire body pinli testlerle dogru: template{templateId, parameters[{paramKey,value}], headerMedia{url,fileMedia}} mevcut, language alani YOK, 621/622 typed ProviderFailed, timeout->Ambiguous, wamid capture calisir",
+        "verified": true,
+        "verification_note": "WapCrmSendClientTests 24/24 (9 yeni template testi: tam wire pin + TryGetProperty('language')=false + messageType/messageText yok + 621/622 non-retry + 302 recovery + Ambiguous + bos-wamid Submitted+WARN + media URL reject + fileName sanitize)"
+      },
+      {
+        "id": "AC3",
+        "criterion": "Migration 062 idempotent (ADD COLUMN IF NOT EXISTS + DROP/ADD named CHECK) + arch/db/outbound.sql canonical sync + INV-SEED-062 fail-loud verifier — PR-1 CQ11 borcu kapanir",
+        "verified": true,
+        "verification_note": "062-cxapi-pr4-bulk-hsm.sql 060/061 pattern'inde idempotent; canonical outbound.sql bulk_send_jobs senkron; INV-SEED-062 6-kolon + 3-yol XOR def + 2 CHECK varlik assert'i; prod execute AC7'de"
+      },
+      {
+        "id": "AC4",
+        "criterion": "Validasyonlar typed INV-OB-081..085 kodlariyla calisir: ownership (slug yok), required-param unmapped, dinamik-buton reject, cxapi-unreachable hard-fail, allowlist-disi HSM preview VE confirm reject (vendor'a cagri yok); confirm oncesi ikinci canli dogrulama ayni kontrol setiyle; eksik-param alici skip sayaci preview yanitinda + preview_skipped_params JSONB audit",
+        "verified": true,
+        "verification_note": "ProjectsServiceHsmTests 8/8 (081/082+paramKey-mesajda/083/084+snapshot-yok/062/073 + OK-path skipped passthrough TotalInput=valid+skipped) + ProjectSendTests kapali-gate 085 (403, vendor+snapshot yok); confirm revalidation ayni ValidateHsmRunAsync seti job snapshot'indan"
+      },
+      {
+        "id": "AC5",
+        "criterion": "P0-3 gate korunur: hicbir allowlist'e dokunulmaz, CxapiSend prod config'de yok, HSM confirm bos allowlist'te INV-OB-085 ile reject eder (inert), plain-text bridge yolu davranis degistirmez",
+        "verified": true,
+        "verification_note": "Hicbir config/appsettings dosyasina dokunulmadi (diff kaniti); 3 katman gate (ProjectsService preview+confirm, BulkSendOrchestrator claim-oncesi belt, BroadcastOrchestrator create guard); kapali-gate test pini vendor-cagrisiz 403; plain-text: CreateBroadcastAsync/BatchInsert default'lari byte-identik + Broadcast/BulkSend suite PASS"
+      },
+      {
+        "id": "AC6",
+        "criterion": "Plain-text yol regresyonsuz: mevcut WapCrmSendClient/Template testleri + bulk/broadcast testleri PASS, full solution build 0 error",
+        "verified": true,
+        "verification_note": "Full solution build 0E; targeted 59/60 PASS — tek fail + 29 digeri ORTAMSAL (dev PC'de Postgres yok + Backend test host assembly-load): git stash ile MASTER baseline'da AYNI 30 test fail kanitlandi (regresyon SIFIR)"
+      },
+      {
+        "id": "AC7",
+        "criterion": "Deploy: ONCE migration 062 prod'da (INV-SEED-062 exception'siz + read-back), SONRA Outbound + Backend + SPA; 10/10 servis HEALTHY + gate snapshot DEGISMEDI (Projects=[5050] ∩ BulkSend=[18173130]=∅, CxapiSend yok) + canli SPA bundle hash dogrulanir",
+        "verified": false,
+        "verification_note": null
+      }
+    ]
+  },
+  "allowed_files": [
+    "arch/db/migrations/062-cxapi-pr4-bulk-hsm.sql",
+    "arch/db/outbound.sql",
+    "arch/errors.md",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Shared/Contracts/Inma/WapCrmSendClient.cs",
+    "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmSendDtos.cs",
+    "src/Invekto.Shared/DTOs/Outbound/BroadcastDtos.cs",
+    "src/Invekto.Shared/DTOs/Outbound/BulkSendDtos.cs",
+    "src/Invekto.Shared/DTOs/Outbound/ProjectDtos.cs",
+    "src/Invekto.Outbound/Program.cs",
+    "src/Invekto.Outbound/Data/BulkSendRepository.cs",
+    "src/Invekto.Outbound/Data/OutboundRepository.cs",
+    "src/Invekto.Outbound/Services/ProjectsService.cs",
+    "src/Invekto.Outbound/Services/BulkSendOrchestrator.cs",
+    "src/Invekto.Outbound/Services/BroadcastOrchestrator.cs",
+    "src/Invekto.Outbound/Services/MessageSenderService.cs",
+    "tests/InvektoServis.Tests/Shared/Inma/WapCrmSendClientTests.cs",
+    "tests/InvektoServis.Tests/Outbound/ProjectSendTests.cs",
+    "tests/InvektoServis.Tests/Outbound/ProjectsServiceHsmTests.cs",
+    "tests/InvektoServis.Tests/_Shared/Factories/OutboundProjectsSendTestFactory.cs",
+    "tests/InvektoServis.Tests/_Shared/Factories/OutboundProjectsHsmTestFactory.cs",
+    "src/Invekto.Backend/wwwroot/app/index.html",
+    "src/Invekto.Backend/wwwroot/app/assets/ (vite build output, deploy artifact)",
+    "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "tracking/feat-projeler-cxapi-roadmap.md",
+    "tracking/README.md",
+    "arch/session-memory.md",
+    "arch/plans/20260610-cxapi-pr4-approved-template.json",
+    "arch/plans/diffs/20260610-cxapi-pr4-approved-template.diff"
+  ],
+  "files_changed": [
+    { "path": "arch/db/migrations/062-cxapi-pr4-bulk-hsm.sql", "is_new": true, "change": "bulk_send_jobs +6 HSM snapshot kolonu, 3-yol XOR chk_bulk_message_source, kind-domain + HSM-consistency CHECK, INV-SEED-062 fail-loud verifier; idempotent" },
+    { "path": "arch/db/outbound.sql", "is_new": false, "change": "canonical sync: bulk_send_jobs yeni kolonlar + 3 CHECK (migration 062 aynasi)" },
+    { "path": "arch/errors.md", "is_new": false, "change": "INV-OB-081..085 (HSM run validation kodlari)" },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false, "change": "INV-OB-081..085 sabitleri (HsmTemplateNotFound/RequiredParamUnmapped/DynamicButtonUnsupported/CatalogUnreachable/NotAllowlisted)" },
+    { "path": "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmSendDtos.cs", "is_new": false, "change": "WapCrmTemplateSendRequest + WapCrmTemplateParamValue + WapCrmTemplateHeaderMedia (additive)" },
+    { "path": "src/Invekto.Shared/Contracts/Inma/WapCrmSendClient.cs", "is_new": false, "change": "SendTemplateAsync (template{templateId,parameters[],headerMedia} wire; language YOK) + SendCoreAsync ortak cekirdek (retry/parse/wamid byte-identik refactor) + media URL hard-validation (https-only/length/control-char) + fileName sanitize-derivation + Submitted-bos-wamid WARN" },
+    { "path": "src/Invekto.Shared/DTOs/Outbound/BroadcastDtos.cs", "is_new": false, "change": "BroadcastSendRequest.TemplateHeaderMediaUrl (additive nullable)" },
+    { "path": "src/Invekto.Shared/DTOs/Outbound/BulkSendDtos.cs", "is_new": false, "change": "BulkSendPreviewResponse.SkippedParams + BulkSkippedParamsInfo (additive nullable)" },
+    { "path": "src/Invekto.Outbound/Data/BulkSendRepository.cs", "is_new": false, "change": "JobRecord +5 HSM snapshot alani; HsmSnapshotInput + ProjectSnapshotResult; CreatePreviewJobFromProjectAsync HSM dali (DISTINCT ON ilk-hedef-liste deterministik kaynak + RESOLVED-param variables_json [flat dict, CSV yolu ile ayni sekil] + required-eksik alici exclusion + preview_skipped_params capped audit; paramKey'ler BIND PARAM, kolon adlari SADECE sabit whitelist'ten — CQ5 injection boundary); GetJobAsync +5 kolon" },
+    { "path": "src/Invekto.Outbound/Data/OutboundRepository.cs", "is_new": false, "change": "CreateBroadcastAsync +templateKind/waTemplateId opsiyonel (default null => eski INSERT byte-identik, kolonlar nullable defaultsuz) + BatchInsertHsmMessagesAsync (PR-1 reserved kolonlar ilk kez yazilir: message_kind/template_ref/template_params/template_language/template_header_media)" },
+    { "path": "src/Invekto.Outbound/Services/ProjectsService.cs", "is_new": false, "change": "HSM preview/confirm: CxapiSend allowlist gate vendor cagrisi ONCESI (preview VE confirm, 085) + ResolveHsmContent/ParseHsmMapping (SPA camelCase shape parse, fail-loud, kolon whitelist) + ValidateHsmRunAsync canli katalog (081/082/083/084 + creds 062) + confirm IKINCI canli dogrulama (job SNAPSHOT uzerinden — TOCTOU) + kind-mismatch re-preview reject + skipped_params preview yanitina" },
+    { "path": "src/Invekto.Outbound/Services/BulkSendOrchestrator.cs", "is_new": false, "change": "ConfirmAsync HSM allowlist belt (raw /bulk-send/confirm yolu dahil, claim ONCESI) + 3. icerik dali (WaTemplateId -> HSM BroadcastSendRequest + snapshot instance override; plain proje yolu ProjectInstanceId davranisi AYNEN)" },
+    { "path": "src/Invekto.Outbound/Services/BroadcastOrchestrator.cs", "is_new": false, "change": "3-yol icerik XOR + HSM-cxapi-only guard (085, kopru fallback yok) + HSM mesaj olusturma (recipient.Variables'taki RESOLVED params KOPYALANIR — yeniden hesaplama yok; message_text='[WAPCRM_TEMPLATE] {slug}' display-only invariant; KVKK append BILEREK yok — onayli sablon icerigine gomulu olmali; opt-out/consent filtreleri AYNEN) + BatchInsertHsmMessagesAsync + HSM audit-trail (slug + params)" },
+    { "path": "src/Invekto.Outbound/Services/MessageSenderService.cs", "is_new": false, "change": "SendViaCxapiAsync template dali: BuildTemplateRequest pre-parse CAS ONCESI (malformed snapshot 'sending'den typed fail, POST yok) + SendTemplateAsync + ArgumentException typed-catch ('posting' asla stranded kalmaz); state machine/outcome mapping/wamid persist AYNEN" },
+    { "path": "src/Invekto.Outbound/Program.cs", "is_new": false, "change": "WapCrmTemplateClient + WapCrmTemplateOptions DI (Backend kaydinin aynasi; SSRF-fixed base URL, redirect=rate-limit) + ProjectSendStatus HSM eslemeleri (085->403, 081/082/083->422, 084->503, 062->422)" },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "is_new": false, "change": "BulkSendPreviewResponse.skipped_params + BulkSkippedParamsInfo tipi" },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx", "is_new": false, "change": "sendDisabledReason HSM engeli kalkti (sablon+instance client mirror) + sendContentSummary HSM + preview modalinda amber skip uyarisi (count + by_param)" },
+    { "path": "tests/InvektoServis.Tests/Shared/Inma/WapCrmSendClientTests.cs", "is_new": false, "change": "+9 pinned template testi (wire pin + language YOK + 621/622 non-retry + rate-limit recovery + timeout Ambiguous + bos-wamid Submitted + media URL reject + fileName sanitize + caller-contract)" },
+    { "path": "tests/InvektoServis.Tests/Outbound/ProjectSendTests.cs", "is_new": false, "change": "HSM kapali-gate pini INV-OB-085 (vendor cagrisi + snapshot YOK) + INV-OB-073 sablonsuz HSM + yeni imza adaptasyonu" },
+    { "path": "tests/InvektoServis.Tests/Outbound/ProjectsServiceHsmTests.cs", "is_new": true, "change": "HSM validasyon matrisi 8 test: OK-path snapshot iceriği dogrulamasi + 081/082/083/084/062/073 + confirm kind-mismatch re-preview" },
+    { "path": "tests/InvektoServis.Tests/_Shared/Factories/OutboundProjectsHsmTestFactory.cs", "is_new": true, "change": "CxapiSend-acik test host + canned cxapi katalog handler (GERCEK WapCrmTemplateClient parse yolu)" },
+    { "path": "tests/InvektoServis.Tests/_Shared/Factories/OutboundProjectsSendTestFactory.cs", "is_new": false, "change": "sealed kaldirildi (HSM factory turetmesi)" },
+    { "path": "src/Invekto.Backend/wwwroot/app/", "is_new": false, "change": "vite production build output (index-C9I5croP.js — deploy artifact; review diff'inden HARIC, kaynak api.ts/ProjectsPage.tsx diff'te)" }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "683d42cd2489ca581c6dfef9ed1e6bd5a6b9bba5b400f1f29cedf61d6730f30a",
+    "full_path": "arch/plans/diffs/20260610-cxapi-pr4-approved-template.diff",
+    "stats": { "insertions": 2100, "deletions": 142, "files_count": 22 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-06-10T02:55:00+03:00",
+    "duration_ms": null,
+    "output_tail": "Build succeeded. 0 Error(s). Targeted tests 59/60 PASS (tek fail = Outbound.BroadcastTests.SendBroadcast_ValidData_Returns202, dev PC'de Postgres yok — MASTER BASELINE'DA DA AYNI 30 ortamsal test fail ediyor, git stash ile kanitlandi: 30/30 master'da da fail, regresyon SIFIR). PR-4 suite'leri: WapCrmSendClientTests 24/24, ProjectSendTests 7/7, ProjectsServiceHsmTests 8/8, WapCrmTemplateClientTests 5/5. SPA: tsc --noEmit temiz + vite build OK (index-C9I5croP.js).",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Outbound", "Invekto.Backend (Dashboard SPA)"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Preview snapshot cift telefonlu alicilarda kolon degerlerini DETERMINISTIK cozuyor mu (proje hedef sirasindaki ilk liste + en dusuk record id) ve zorunlu parametresi eksik alicilar bulk_send_recipients'a HIC yazilmadan preview sayacinda gorunuyor mu (confirm'de gonderilemezler)?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Confirm-zamani CxapiSend allowlist gate'i HSM run'lar icin enforce ediliyor mu — kopru fallback'i OLMADAN typed INV-OB-085 reject, bos allowlist'te tam inert (P0-3 korunur) ve plain-text yolun davranisi degismeden?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "HSM send dali PR-3a idempotent state machine'i AYNEN koruyor mu: CAS 'sending'->'posting' POST oncesi, timeout/transport->'ambiguous' asla otomatik retry yok, wamid (env.Data) CAS-persist 'posting' uzerinden, RateLimited-only requeue + cooldown?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "Migration 062 chk_bulk_message_source 3-yol XOR'u (template_id | inline_message_text | wa_template_id tam BIR tanesi) mevcut prod satirlarini kirmadan replace ediyor mu ve template_kind <-> wa_template_id tutarliligi DB seviyesinde enforce ediliyor mu (canonical outbound.sql sync + INV-SEED-062 dahil)?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q5",
+      "question": "Canli template-list dogrulamasi preview'da VE confirm oncesi HARD-FAIL mi (cxapi erisilemez/listede slug yok/required param unmapped/dinamik BUTTON -> typed INV-OB-081..084, sessiz fallback veya sessiz devam YOK), allowlist-disi tenant icin vendor'a HIC cagri yapilmiyor mu (INV-OB-085 once) ve template listesi cagrisinda per-request X-CIB-SecretKey cross-tenant guvenli mi?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "CxapiSend/BulkSend/Projects allowlist'leri ve prod appsettings.Production.json gate konfigurasyonu (P0-3 — hicbir allowlist'e tenant eklenmez)",
+      "INMA Main App kopru yolu (Automation chatoperation bridge) — HSM kopruden GIDEMEZ, dokunulmaz",
+      "CSV bulk-send sayfasi/BulkSendPage HSM UI (kapsam disi, ileride ayri paket)",
+      "DataImportPage / veri-import akisi (scientific fix'e dokunma)",
+      "PhoneNormalizer / CsvRecipientParser davranisi",
+      "SS-D pause/resume/cancel lifecycle semantigi (sadece HSM iceriginin snapshot'tan okunmasi garanti edilir)"
+    ],
+    "non_goals": [
+      "Dinamik buton URL parametreleri (G13.3 Q karari ERTELENDI — requiredInputs BUTTON goren sablon reject edilir)",
+      "CSV bulk-send HSM destegi (sadece proje run'lari)",
+      "Template list cache katmani (preview her seferinde canli dogrular — hard-fail ilkesi)",
+      "Gate-open / pilot tenant allowlist degisikligi (ayri bilincli Q karari)",
+      "outbound_messages'a yeni kolon (PR-1 kolonlari template_ref/template_params/template_header_media yeterli)"
+    ],
+    "intentional_exclusions": [
+      "Send body'ye language alani YAZILMAZ (INMA 2026-06-08: her dil ayri slug; template_language kolonu display/audit-only)",
+      "HSM mesajin gercek render'i WhatsApp tarafinda — message_text kolonuna '[sablon] {slug}' display placeholder yazilir (metin sahibi Meta/WapCRM)",
+      "wa_template_id icin DB-ici katalog tutulmaz — canli cxapi listesi tek otorite (preview-zamani dogrulama)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "WapCrmSendClient.SendTemplateAsync — PR-2 pattern: typed outcome, throw yalniz caller-cancel",
+      "ProjectsService.PreviewSendAsync HSM dogrulama blogu — WapCrmTemplateListResult outcome switch (Success disinda INV-OB-084 hard-fail; ProviderRejected ayri mesaj)",
+      "BulkSendOrchestrator.ConfirmAsync mevcut typed-catch + finally finalize backstop AYNEN (claimed job asla stranded kalmaz)",
+      "MessageSenderService.SendViaCxapiAsync template dali — OperationCanceledException shutdown semantigi PR-3a ile ayni"
+    ],
+    "user_facing_errors": [
+      "INV-OB-081: 'Secilen sablon bu hatta bulunamadi. Sablon listesini yenileyip tekrar secin.'",
+      "INV-OB-082: 'Sablonun zorunlu parametresi eslenmemis: {paramKey}. Proje duzenleyicisinde kolon eslemesini tamamlayin.'",
+      "INV-OB-083: 'Dinamik buton parametresi iceren sablonlar henuz desteklenmiyor.'",
+      "INV-OB-084: 'Sablon dogrulamasi yapilamadi (saglayiciya ulasilamadi). Birazdan tekrar deneyin.'",
+      "INV-OB-085: 'Onayli sablon gonderimi bu hesapta henuz acik degil.' (preview VE confirm — vendor'a cagri yapilmadan)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Tum reject yollari typed INV kodu + operator mesaji tasir. Eksik-param alici skip'i SESSIZ DEGIL: preview yanitinda sayac + log line; confirm'de belt-katmani da loglar. HSM allowlist-disi confirm sessiz koprye DUSMEZ — hard reject (kopru HSM tasiyamaz). cxapi list erisilemezse preview sessiz devam etmez, INV-OB-084 hard-fail."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Operator hangi alicilarin neden atlanacagini bilmeden gonderime basiyor",
+      "suggestion": "Preview yanitinda eksik-parametre alici sayisi + hangi kolonlarin bos oldugu kirilimi ('3 alici: ad bos')",
+      "aha_moment": "Operator gonder demeden ONCE listesindeki veri eksigini gorur ve duzeltebilir"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Silinen/yeniden adlandirilan sablonla kampanya baslatilirsa tum mesajlar saglayicida 621 ile patlar",
+      "suggestion": "Preview aninda canli cxapi template-list dogrulamasi (ownership + required param coverage) hard-fail",
+      "aha_moment": "Hatali sablon kampanyasi daha preview'da net Turkce hatayla durur — tek mesaj bile yanmaz"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Saglayici 621/622 reddi operatore 'failed' olarak gorunur, destek talebi acilir",
+      "suggestion": "621/622 provider_status_code + failed_reason'a INV kodu + sablon slug'i ile islenir; run detayinda gorunur",
+      "aha_moment": "Operator failed mesajin sebebini (eksik parametre / sablon yok) destek beklemeden kendisi okur"
+    },
+    {
+      "category": "UX",
+      "user_pain": "Operator HSM mesajinin aliciya gercekte nasil gidecegini gonderim oncesi goremiyor",
+      "suggestion": "Modal'daki WhatsApp-stil onizleme zaten ornek-alici degerleriyle calisiyor (aha #2); preview yanitina ilk gecerli alicinin cozulmus parametre setini ekle",
+      "aha_moment": "Preview'da gercek alici verisiyle dolu sablon gorunur — 'gonderilecek mesaj tam bu'"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Musteriler onayli sablon (HSM) kampanyasini INMA disinda yonetemiyor; rakipler sunuyor",
+      "suggestion": "Projeler katmaninda uctan uca HSM kampanya akisi (liste hedefle -> sablon sec -> kolon esle -> gonder)",
+      "aha_moment": "Satis demosunda 'Excel listenizi yukleyin, onayli sablonu secin, kisiye ozel parametrelerle gonderin' tek akista gosterilir"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": null,
+    "received_at": "2026-06-10T03:55:00+03:00",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-06-10T03:55:00+03:00",
+    "raw_text": "CHUNKED REVIEW (5 chunk, codex_review gpt-5.5-2026-04-23, merge kurali ALL-PASS): chunk-1of5 Shared client iter0 FAIL(media URL pre-trim) -> iter1 FAIL(CQ8 async semantik [fix] + CQ12 INV-kod [corrected-premise red]) -> iter2 11/12 CQ + 3/3 CoVe, tek kalan CQ12 = client caller-contract ArgumentException'lari PRE-EXISTING shipped pattern (PR-2 SendPlainTextAsync Codex PASS iter0 + S3 WapCrmTemplateClient PASS iter1 ayni pattern; INV kodlama caller yuzeyinde: MessageSenderService ArgumentException typed-catch -> INV-OB-062 persist, ProjectsService -> INV-OB-082) -> Q FORCE PASS (2026-06-10, SS-D CQ9 emsali). chunk-2of5 migration+repo PASS iter0 (12/12+4/4). chunk-3of5 ProjectsService iter0 FAIL(ParseHsmMapping unknown kind/source coercion) -> iter1 FAIL(media source-domain bypass [fix] + CQ11 UNKNOWN [attestation eklendi]) -> PASS iter2 (12/12+3/3). chunk-4of5 orchestrators PASS iter0 (12/12+4/4). chunk-5of5 SPA+tests PASS iter0 (12/12+3/3). Q-override log: FORCE PASS yalniz chunk-1 CQ12 icin; gerekce = codebase prevalence kaniti (hot-lesson: corrected-premise once denendi, Codex reddetti -> DECISION_CONFLICT -> Q karari). Gercek bulgular folded: RAW media URL scan (pre-trim yok), async faulted-task paritesi, ParseHsmMapping STRICT kind/source domain (media dahil) + media source='column' reject.",
+    "code_quality_gate": {},
+    "cove_verification": {},
+    "blocking_issues": [],
+    "iteration": 2,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}

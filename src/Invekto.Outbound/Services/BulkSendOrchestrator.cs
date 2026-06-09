@@ -27,6 +27,10 @@ public sealed class BulkSendOrchestrator
     private readonly DataListRepository _dataListRepo;
     private readonly BulkSendOptions _options;
     private readonly ContactListOptions _contactListOptions;
+    // PR-4: HSM gate at the orchestrator too — ConfirmAsync is also reachable via the RAW
+    // /api/v1/bulk-send/confirm endpoint (not only ProjectsService), so the CxapiSend
+    // allowlist must hold on EVERY dispatch path (P0-3 inertness; HSM has no bridge fallback).
+    private readonly CxapiSendOptions _cxapiOptions;
     private readonly JsonLinesLogger _logger;
 
     public BulkSendOrchestrator(
@@ -37,6 +41,7 @@ public sealed class BulkSendOrchestrator
         DataListRepository dataListRepo,
         BulkSendOptions options,
         ContactListOptions contactListOptions,
+        CxapiSendOptions cxapiOptions,
         JsonLinesLogger logger)
     {
         _bulkRepo = bulkRepo;
@@ -46,6 +51,7 @@ public sealed class BulkSendOrchestrator
         _dataListRepo = dataListRepo;
         _options = options;
         _contactListOptions = contactListOptions;
+        _cxapiOptions = cxapiOptions;
         _logger = logger;
     }
 
@@ -233,6 +239,13 @@ public sealed class BulkSendOrchestrator
         if (job.Status != "preview_ready")
             return (await BuildStatusAsync(job, ct), null, null);
 
+        // PR-4: an HSM job dispatches ONLY over cxapi (approved templates cannot ride the INMA
+        // bridge — no fallback). Reject a fresh dispatch BEFORE the atomic claim so the job stays
+        // preview_ready. ProjectsService gates + live-revalidates upstream; this belt makes the
+        // P0-3 inertness path-independent (the raw /bulk-send/confirm endpoint included).
+        if (!string.IsNullOrEmpty(job.WaTemplateId) && !_cxapiOptions.IsTenantAllowed(tenantId))
+            return (null, ErrorCodes.HsmSendNotAllowlisted, "Onaylı şablon gönderimi bu hesapta henüz açık değil.");
+
         // Re-enforce the hard cap at confirm time (config may have been lowered after preview).
         var effectiveCap = Math.Min(job.HardCap, _options.MaxRecipientsPerCampaign);
         if (job.TotalValid > effectiveCap)
@@ -270,12 +283,21 @@ public sealed class BulkSendOrchestrator
                 return (null, ErrorCodes.BulkSendNoValidRecipients, "Snapshot is empty");
             }
 
+            // PR-4: an HSM job's broadcast-level config is derived ONCE from the run SNAPSHOT
+            // (immutable; never the live project row). The header-media URL comes from the
+            // snapshotted param_mapping; per-recipient PARAM VALUES already ride each
+            // recipient's Variables (resolved at preview — the dispatch copies, never re-derives).
+            var hsmHeaderMediaUrl = !string.IsNullOrEmpty(job.WaTemplateId)
+                ? ProjectsService.ExtractHeaderMediaUrl(job.ParamMappingJson)
+                : null;
+
             foreach (var chunk in Chunk(recipients, EffectiveChunkSize))
             {
-                // Content source per job (chk_bulk_message_source guarantees EXACTLY ONE):
+                // Content source per job (chk_bulk_message_source guarantees EXACTLY ONE, 3-way since 062):
                 //   TemplateId set -> template path (CSV/list + a project's gallery_template)
                 //   InlineMessageText set -> inline free text (a project's free_text run, SS-A path)
-                // Both are pattern-bound to non-nullable locals so neither branch needs a null-forgiving (!).
+                //   WaTemplateId set -> approved-template (HSM) run over cxapi (PR-4)
+                // All pattern-bound to non-nullable locals so no branch needs a null-forgiving (!).
                 BroadcastSendRequest req;
                 if (job.TemplateId is int templateId)
                 {
@@ -285,18 +307,33 @@ public sealed class BulkSendOrchestrator
                 {
                     req = new BroadcastSendRequest { MessageText = job.InlineMessageText, Lang = job.Lang, Recipients = chunk };
                 }
+                else if (job.WaTemplateId is string waTemplateId && waTemplateId.Length > 0)
+                {
+                    req = new BroadcastSendRequest
+                    {
+                        TemplateKind = "wapcrm_template",
+                        WaTemplateId = waTemplateId,
+                        TemplateLanguage = job.TemplateLanguage,
+                        TemplateHeaderMediaUrl = hsmHeaderMediaUrl,
+                        Lang = job.Lang,
+                        Recipients = chunk
+                    };
+                }
                 else
                 {
                     // Unreachable under the DB CHECK; never dispatch empty content — treat as a chunk failure.
                     anyDispatchFailure = true;
                     _logger.SystemError(
-                        $"[{ErrorCodes.BulkSendDispatchFailed}] Bulk job {job.Id} has neither template_id nor inline_message_text");
+                        $"[{ErrorCodes.BulkSendDispatchFailed}] Bulk job {job.Id} has no content source (template_id / inline_message_text / wa_template_id all empty)");
                     continue;
                 }
 
-                // A project run sends from the project's own Cloud API instance (ProjectInstanceId, null for
-                // CSV/list jobs -> tenant default). Consumed only on the cxapi route (gated off in prod).
-                var (resp, errCode, errMsg) = await _broadcast.CreateBroadcastAsync(tenantId, req, ct, job.ProjectInstanceId);
+                // A project run sends from the project's own Cloud API instance. An HSM run uses its
+                // SNAPSHOT instance (job.InstanceId, migration 062 — immutable to project edits); a
+                // plain project run keeps the live-project instance (ProjectInstanceId, PR-3a behaviour);
+                // CSV/list jobs pass null -> tenant default. Consumed only on the cxapi route.
+                var overrideInstance = !string.IsNullOrEmpty(job.WaTemplateId) ? job.InstanceId : job.ProjectInstanceId;
+                var (resp, errCode, errMsg) = await _broadcast.CreateBroadcastAsync(tenantId, req, ct, overrideInstance);
                 if (resp == null)
                 {
                     // A chunk with zero sendable recipients (all opt-out/consent-filtered) is not

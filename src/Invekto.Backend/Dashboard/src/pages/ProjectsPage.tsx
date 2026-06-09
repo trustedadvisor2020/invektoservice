@@ -638,28 +638,37 @@ export default function ProjectsPage() {
   }
 
   // ---- Run dispatch (Gönder) ----
-  // Client mirror of the server eligibility (ProjectsService.ResolveSendContent + target check): a run
-  // dispatches plain_text content only. Returns a disable reason, or null when the project can be sent.
+  // Client mirror of the server eligibility (ProjectsService.ResolveSendContent/ResolveHsmContent +
+  // target check). PR-4: an HSM (onaylı şablon) project is dispatchable once it carries a template +
+  // instance — the server still live-validates against the cxapi catalog (and rejects with INV-OB-08x
+  // when the tenant is not enabled). Returns a disable reason, or null when the project can be sent.
   function sendDisabledReason(p: ProjectSummary): string | null {
     // One active run per project (mirrors INV-OB-080): no new send while a run is in flight or paused.
     if (p.status === 'running' || p.status === 'paused')
       return 'Bu projede aktif bir gönderim var. Önce duraklatın, sürdürün veya iptal edin.';
-    if (p.template_kind === 'wapcrm_template')
-      return 'Onaylı şablon (HSM) gönderimi henüz aktif değil. Bu özellik yakında gelecek.';
-    if (p.template_kind !== 'plain_text')
-      return 'Önce proje ayarlarından gönderim içeriği (galeri şablonu veya serbest metin) ekleyin.';
-    if (p.content_mode === 'gallery_template' && !(p.outbound_template_id && p.outbound_template_id > 0))
-      return 'Galeri şablonu seçilmemiş. Proje ayarlarından bir şablon seçin.';
-    if (p.content_mode === 'free_text' && !(p.plain_text_body && p.plain_text_body.trim()))
-      return 'Serbest metin boş. Proje ayarlarından bir mesaj yazın.';
-    if (p.content_mode !== 'gallery_template' && p.content_mode !== 'free_text')
-      return 'Önce proje ayarlarından gönderim içeriği (galeri şablonu veya serbest metin) ekleyin.';
+    if (p.template_kind === 'wapcrm_template') {
+      if (!(p.wa_template_id && p.wa_template_id.trim()))
+        return 'Onaylı şablon seçilmemiş. Proje ayarlarından bir şablon seçin.';
+      if (!(p.instance_id && p.instance_id > 0))
+        return 'Gönderim hattı (instance) seçilmemiş. Proje ayarlarını tamamlayın.';
+    } else {
+      if (p.template_kind !== 'plain_text')
+        return 'Önce proje ayarlarından gönderim içeriği (galeri şablonu veya serbest metin) ekleyin.';
+      if (p.content_mode === 'gallery_template' && !(p.outbound_template_id && p.outbound_template_id > 0))
+        return 'Galeri şablonu seçilmemiş. Proje ayarlarından bir şablon seçin.';
+      if (p.content_mode === 'free_text' && !(p.plain_text_body && p.plain_text_body.trim()))
+        return 'Serbest metin boş. Proje ayarlarından bir mesaj yazın.';
+      if (p.content_mode !== 'gallery_template' && p.content_mode !== 'free_text')
+        return 'Önce proje ayarlarından gönderim içeriği (galeri şablonu veya serbest metin) ekleyin.';
+    }
     if (p.target_count <= 0)
       return 'Projenin hedef listesi yok. Düzenle’den en az bir liste ekleyin.';
     return null;
   }
 
   function sendContentSummary(p: ProjectSummary): string {
+    if (p.template_kind === 'wapcrm_template')
+      return p.wa_template_id?.trim() ? `Onaylı şablon: ${p.wa_template_id}` : '—';
     if (p.template_kind === 'plain_text' && p.content_mode === 'free_text')
       return p.plain_text_body?.trim() || '(boş)';
     if (p.template_kind === 'plain_text' && p.content_mode === 'gallery_template') {
@@ -1283,6 +1292,18 @@ export default function ProjectsPage() {
                           <span key={s} className="px-2 py-0.5 rounded bg-navy-50 text-navy-600 text-xs tabular-nums">{s}</span>
                         ))}
                       </div>
+                    </div>
+                  )}
+                  {(sendPreview.skipped_params?.count ?? 0) > 0 && (
+                    <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 text-amber-700 text-xs">
+                      <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                      <span>
+                        <span className="font-semibold tabular-nums">{(sendPreview.skipped_params?.count ?? 0).toLocaleString('tr-TR')}</span>{' '}
+                        alıcıda zorunlu şablon parametresi eksik — bu alıcılar atlanacak
+                        {sendPreview.skipped_params?.by_param && Object.keys(sendPreview.skipped_params.by_param).length > 0 && (
+                          <> ({Object.entries(sendPreview.skipped_params.by_param).map(([k, n]) => `${k}: ${n}`).join(', ')})</>
+                        )}.
+                      </span>
                     </div>
                   )}
                   <p className="text-[11px] text-navy-400">

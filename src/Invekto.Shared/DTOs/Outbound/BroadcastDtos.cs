@@ -61,6 +61,15 @@ public sealed class BroadcastSendRequest
     /// <summary>Maps approved-template params to recipient variables. Reserved (PR-4); unused in PR-1.</summary>
     [JsonPropertyName("param_mapping")]
     public List<TemplateParamMapping>? ParamMapping { get; set; }
+
+    /// <summary>
+    /// PR-4 (HSM): the dynamic HEADER media literal URL for this broadcast (one per broadcast —
+    /// the cxapi wire carries a single headerMedia). Null when the template needs no dynamic media.
+    /// Per-recipient PARAM VALUES are NOT here — they ride each <see cref="BroadcastRecipient.Variables"/>
+    /// (resolved at preview snapshot; the orchestrator copies, never re-derives).
+    /// </summary>
+    [JsonPropertyName("template_header_media_url")]
+    public string? TemplateHeaderMediaUrl { get; set; }
 }
 
 public sealed class BroadcastRecipient

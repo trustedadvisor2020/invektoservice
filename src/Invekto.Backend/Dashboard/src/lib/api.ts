@@ -2813,6 +2813,15 @@ export interface BulkSendPreviewResponse {
   total_invalid: number;
   sample: string[];
   invalid_samples: string[];
+  // PR-4 (HSM project runs only): recipients excluded at preview because a required template
+  // param resolved empty from its mapped list column. Absent/null for plain runs / zero skips.
+  skipped_params?: BulkSkippedParamsInfo | null;
+}
+
+// PR-4: preview-time skip summary for HSM runs ("N alıcı atlanacak" + per-param breakdown).
+export interface BulkSkippedParamsInfo {
+  count: number;
+  by_param?: Record<string, number> | null;
 }
 
 export interface BulkSendStatusResponse {

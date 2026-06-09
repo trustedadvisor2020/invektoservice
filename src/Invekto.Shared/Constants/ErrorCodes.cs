@@ -559,6 +559,13 @@ public static class ErrorCodes
     public const string ProjectRunNotCancellable = "INV-OB-079";           // Cancel rejected: the project is not 'running' or 'paused' (nothing in flight to cancel). 409.
     public const string ProjectRunInProgress = "INV-OB-080";               // New run rejected: the project already has an active run ('running' or 'paused'). Complete, resume or cancel it first (one active run per project). 409.
 
+    // FEAT-PROJELER / cxapi PR-4 — approved-template (HSM) run validation (INV-OB-081+)
+    public const string HsmTemplateNotFound = "INV-OB-081";                // HSM run: wa_template_id slug absent from the LIVE cxapi template list for the run's instance (deleted/renamed/not owned). Raised at preview AND pre-confirm revalidation. 422.
+    public const string HsmRequiredParamUnmapped = "INV-OB-082";           // HSM run: a live requiredInputs entry is not covered by param_mapping (text paramKey without a column, or HEADER media without a literal URL). Preview + pre-confirm. 422.
+    public const string HsmDynamicButtonUnsupported = "INV-OB-083";        // HSM run: template demands a dynamic BUTTON parameter — deliberately out of scope (G13.3 deferred). Never silently sent without the button value. 422.
+    public const string HsmTemplateCatalogUnreachable = "INV-OB-084";      // HSM run: live cxapi template-list call failed (rate-limit/timeout/transport/provider). HARD FAIL — never validated against stale data, never silently continues. 503.
+    public const string HsmSendNotAllowlisted = "INV-OB-085";              // HSM run: tenant not in the CxapiSend allowlist. Checked FIRST at preview AND confirm BEFORE any vendor call (HSM has no bridge fallback). Empty allowlist (P0-3) => whole path prod-inert. 403.
+
     // Lead Management errors (INV-LD-xxx) -- GR-3.13
     public const string LeadInvalidPayload = "INV-LD-001";
     public const string LeadNotFound = "INV-LD-002";

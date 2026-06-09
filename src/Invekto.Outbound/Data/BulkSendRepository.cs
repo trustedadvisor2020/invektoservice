@@ -52,6 +52,48 @@ public class BulkSendRepository
         // threaded to CreateBroadcastAsync so a project run sends from its own instance (cxapi route only).
         public long? ProjectId { get; init; }
         public int? ProjectInstanceId { get; init; }
+        // PR-4 (migration 062): the HSM run snapshot — copied from the project AT PREVIEW TIME so the
+        // run is immutable to later project edits. All null for plain/CSV/list jobs. WaTemplateId set
+        // <=> this is an HSM run (chk_bulk_message_source 3-way XOR). InstanceId here is the SNAPSHOT
+        // instance (vs ProjectInstanceId = live project JOIN, kept for the plain-text project path).
+        public int? InstanceId { get; init; }
+        public string? TemplateKind { get; init; }
+        public string? WaTemplateId { get; init; }
+        public string? ParamMappingJson { get; init; }
+        public string? TemplateLanguage { get; init; }
+    }
+
+    /// <summary>
+    /// PR-4: the validated HSM config <see cref="CreatePreviewJobFromProjectAsync"/> snapshots onto the
+    /// job + resolves per-recipient. Built by ProjectsService AFTER the live-catalog validation passed:
+    /// every <see cref="TextParamColumns"/> column is already whitelist-checked, and
+    /// <see cref="RequiredParamKeys"/> is the live template's required text paramKey set.
+    /// </summary>
+    public sealed class HsmSnapshotInput
+    {
+        public required int InstanceId { get; init; }
+        public required string WaTemplateId { get; init; }
+        public string? TemplateLanguage { get; init; }
+        /// <summary>The project's param_mapping JSONB, verbatim (opaque audit copy on the job row).</summary>
+        public required string ParamMappingJson { get; init; }
+        /// <summary>Text params resolved from a LIST COLUMN: paramKey -> whitelisted list_records column.</summary>
+        public required IReadOnlyList<KeyValuePair<string, string>> TextParamColumns { get; init; }
+        /// <summary>Text params with a LITERAL constant value (legacy mapping rows): paramKey -> value.</summary>
+        public required IReadOnlyList<KeyValuePair<string, string>> TextParamLiterals { get; init; }
+        /// <summary>The live template's REQUIRED text paramKeys — a recipient missing any of these is skipped.</summary>
+        public required IReadOnlySet<string> RequiredParamKeys { get; init; }
+    }
+
+    /// <summary>PR-4: result of a project preview snapshot (plain or HSM).</summary>
+    public sealed class ProjectSnapshotResult
+    {
+        public long JobId { get; init; }
+        public int Snapshotted { get; init; }
+        /// <summary>HSM only: recipients EXCLUDED because a required mapped param resolved empty/NULL.</summary>
+        public int SkippedMissingParams { get; init; }
+        /// <summary>HSM only: the capped preview_skipped_params audit JSON persisted on the job.</summary>
+        public string? SkippedParamsJson { get; init; }
+        public string? ErrorCode { get; init; }
     }
 
     /// <summary>Aggregated delivery counters across a job's child broadcasts (single query).</summary>
@@ -270,11 +312,32 @@ public class BulkSendRepository
     /// snapshotted, errorCode); on errorCode != null the tx is rolled back and (0,0) is returned. The
     /// caller (ProjectsService) guarantees the campaign is not already confirmed and ids are deduped/positive.
     /// </summary>
-    public virtual async Task<(long jobId, int snapshotted, string? errorCode)> CreatePreviewJobFromProjectAsync(
+    /// <summary>
+    /// PR-4: maps every SPA list-column key to its REAL list_records SQL column. The values below are
+    /// the ONLY identifiers ever interpolated into the HSM snapshot SQL — paramKey strings always
+    /// travel as bind parameters, never as SQL text (no injection surface; Codex CQ5).
+    /// </summary>
+    private static readonly IReadOnlyDictionary<string, string> HsmListColumns =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["name"] = "name", ["surname"] = "surname", ["email"] = "email",
+            ["field1"] = "field1", ["field2"] = "field2", ["field3"] = "field3",
+            ["field4"] = "field4", ["field5"] = "field5",
+            ["tags"] = "tags", ["note"] = "note"
+        };
+
+    /// <summary>True when the SPA column key maps to a real list_records column (HSM mapping validation).</summary>
+    public static bool IsHsmListColumn(string column) => HsmListColumns.ContainsKey(column);
+
+    public virtual async Task<ProjectSnapshotResult> CreatePreviewJobFromProjectAsync(
         int tenantId, string campaignId, long projectId, int? templateId, string? inlineText,
-        long[] listIds, int hardCap, CancellationToken ct = default)
+        long[] listIds, int hardCap, CancellationToken ct = default, HsmSnapshotInput? hsm = null)
     {
-        if (listIds.Length == 0) return (0, 0, ErrorCodes.ProjectNoTargets);
+        if (listIds.Length == 0) return new ProjectSnapshotResult { ErrorCode = ErrorCodes.ProjectNoTargets };
+        // Caller contract: EXACTLY ONE content source (plain template/inline XOR hsm) — the DB
+        // chk_bulk_message_source (3-way, migration 062) is the belt; this is the suspenders.
+        if (hsm != null && (templateId.HasValue || inlineText != null))
+            throw new ArgumentException("An HSM snapshot cannot also carry plain content.", nameof(hsm));
         try
         {
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -300,12 +363,12 @@ public class BulkSendRepository
         if (found != listIds.Length)
         {
             await tx.RollbackAsync(ct);
-            return (0, 0, ErrorCodes.ContactListNotFound);
+            return new ProjectSnapshotResult { ErrorCode = ErrorCodes.ContactListNotFound };
         }
         if (anyNotReady)
         {
             await tx.RollbackAsync(ct);
-            return (0, 0, ErrorCodes.ContactListNotReady);
+            return new ProjectSnapshotResult { ErrorCode = ErrorCodes.ContactListNotReady };
         }
 
         // Authoritative distinct-sendable count across all target lists (never trust a denormalized
@@ -322,7 +385,7 @@ public class BulkSendRepository
         if (distinctSendable == 0 || distinctSendable > hardCap)
         {
             await tx.RollbackAsync(ct);
-            return (0, 0, ErrorCodes.ContactListNoSendable);
+            return new ProjectSnapshotResult { ErrorCode = ErrorCodes.ContactListNoSendable };
         }
 
         await using (var del = new NpgsqlCommand(
@@ -336,62 +399,233 @@ public class BulkSendRepository
         long jobId;
         await using (var ins = new NpgsqlCommand(@"
             INSERT INTO bulk_send_jobs
-                (tenant_id, campaign_id, source, template_id, inline_message_text, lang, hard_cap, project_id, status)
-            VALUES (@tid, @cid, 'project', @tmpl, @inline, NULL, @cap, @pid, 'preview_ready')
+                (tenant_id, campaign_id, source, template_id, inline_message_text, lang, hard_cap, project_id, status,
+                 instance_id, template_kind, wa_template_id, param_mapping, template_language)
+            VALUES (@tid, @cid, 'project', @tmpl, @inline, NULL, @cap, @pid, 'preview_ready',
+                    @hinst, @hkind, @hwatid, @hmap, @hlang)
             RETURNING id", conn, tx))
         {
             ins.Parameters.AddWithValue("tid", tenantId);
             ins.Parameters.AddWithValue("cid", campaignId);
-            // EXACTLY ONE of template_id / inline_message_text is non-null (chk_bulk_message_source).
-            // Typed NULLs so the bind has a known type even when null.
+            // EXACTLY ONE of template_id / inline_message_text / wa_template_id is non-null
+            // (chk_bulk_message_source, 3-way since migration 062). Typed NULLs so every bind
+            // has a known type even when null. The HSM columns are the IMMUTABLE run snapshot
+            // (template_language display-only — never on the wire).
             ins.Parameters.Add(new NpgsqlParameter("tmpl", NpgsqlDbType.Integer) { Value = (object?)templateId ?? DBNull.Value });
             ins.Parameters.Add(new NpgsqlParameter("inline", NpgsqlDbType.Text) { Value = (object?)inlineText ?? DBNull.Value });
             ins.Parameters.AddWithValue("cap", hardCap);
             ins.Parameters.AddWithValue("pid", projectId);
+            ins.Parameters.Add(new NpgsqlParameter("hinst", NpgsqlDbType.Integer) { Value = (object?)hsm?.InstanceId ?? DBNull.Value });
+            ins.Parameters.Add(new NpgsqlParameter("hkind", NpgsqlDbType.Varchar) { Value = hsm != null ? "wapcrm_template" : DBNull.Value });
+            ins.Parameters.Add(new NpgsqlParameter("hwatid", NpgsqlDbType.Varchar) { Value = (object?)hsm?.WaTemplateId ?? DBNull.Value });
+            ins.Parameters.Add(new NpgsqlParameter("hmap", NpgsqlDbType.Jsonb) { Value = (object?)hsm?.ParamMappingJson ?? DBNull.Value });
+            ins.Parameters.Add(new NpgsqlParameter("hlang", NpgsqlDbType.Varchar) { Value = (object?)hsm?.TemplateLanguage ?? DBNull.Value });
             jobId = Convert.ToInt64(await ins.ExecuteScalarAsync(ct));
         }
 
-        // Snapshot DISTINCT sendable phones across ALL target lists (cross-list dedup). No per-recipient
-        // variables — list/project sends use INMA dynamic placeholders resolved server-side. The
-        // ON CONFLICT is a belt over the DISTINCT subquery. ORDER BY + LIMIT bound the snapshot to the cap.
         int snapshotted;
-        await using (var rc = new NpgsqlCommand(@"
-            INSERT INTO bulk_send_recipients (job_id, tenant_id, normalized_phone, variables_json)
-            SELECT @jid, @tid, d.normalized_phone, NULL
-            FROM (
-                SELECT DISTINCT normalized_phone
-                FROM list_records
-                WHERE tenant_id=@tid AND list_id = ANY(@lids) AND sendable=TRUE AND normalized_phone IS NOT NULL
-                ORDER BY normalized_phone
-                LIMIT @cap
-            ) d
-            ON CONFLICT (job_id, normalized_phone) DO NOTHING", conn, tx))
+        var skippedMissing = 0;
+        string? skippedJson = null;
+        if (hsm == null)
         {
+            // Plain path (UNCHANGED): snapshot DISTINCT sendable phones across ALL target lists
+            // (cross-list dedup). No per-recipient variables — plain list/project sends use INMA
+            // dynamic placeholders resolved server-side. The ON CONFLICT is a belt over the
+            // DISTINCT subquery. ORDER BY + LIMIT bound the snapshot to the cap.
+            await using var rc = new NpgsqlCommand(@"
+                INSERT INTO bulk_send_recipients (job_id, tenant_id, normalized_phone, variables_json)
+                SELECT @jid, @tid, d.normalized_phone, NULL
+                FROM (
+                    SELECT DISTINCT normalized_phone
+                    FROM list_records
+                    WHERE tenant_id=@tid AND list_id = ANY(@lids) AND sendable=TRUE AND normalized_phone IS NOT NULL
+                    ORDER BY normalized_phone
+                    LIMIT @cap
+                ) d
+                ON CONFLICT (job_id, normalized_phone) DO NOTHING", conn, tx);
             rc.Parameters.AddWithValue("jid", jobId);
             rc.Parameters.AddWithValue("tid", tenantId);
             rc.Parameters.AddWithValue("lids", listIds);
             rc.Parameters.AddWithValue("cap", hardCap);
             snapshotted = await rc.ExecuteNonQueryAsync(ct);
-        }
 
-        await using (var upd = new NpgsqlCommand(
-            "UPDATE bulk_send_jobs SET total_input=@n, total_valid=@n WHERE id=@jid AND tenant_id=@tid", conn, tx))
-        {
+            await using var upd = new NpgsqlCommand(
+                "UPDATE bulk_send_jobs SET total_input=@n, total_valid=@n WHERE id=@jid AND tenant_id=@tid", conn, tx);
             upd.Parameters.AddWithValue("n", snapshotted);
             upd.Parameters.AddWithValue("jid", jobId);
             upd.Parameters.AddWithValue("tid", tenantId);
             await upd.ExecuteNonQueryAsync(ct);
         }
+        else
+        {
+            (snapshotted, skippedMissing, skippedJson) =
+                await SnapshotHsmRecipientsAsync(conn, tx, tenantId, projectId, jobId, listIds, hardCap, distinctSendable, hsm, ct);
+        }
 
         await tx.CommitAsync(ct);
-        return (jobId, snapshotted, null);
+        return new ProjectSnapshotResult
+        {
+            JobId = jobId, Snapshotted = snapshotted,
+            SkippedMissingParams = skippedMissing, SkippedParamsJson = skippedJson
+        };
         }
         catch (NpgsqlException ex)
         {
             _logger.SystemError(
                 $"preview-from-project DB failure: tenant={tenantId}, campaign={campaignId}, project={projectId}, msg={ex.Message}");
-            return (0, 0, ErrorCodes.ContactListDbError);
+            return new ProjectSnapshotResult { ErrorCode = ErrorCodes.ContactListDbError };
         }
+    }
+
+    /// <summary>
+    /// PR-4: HSM recipient snapshot — set-based, inside the caller's transaction.
+    /// Per phone the SOURCE ROW is deterministic: the FIRST target list in the project's order
+    /// (project_targets.sort_order, then data_list_id), then the lowest record id (Q decision
+    /// 2026-06-10). variables_json = the FLAT resolved param dict {paramKey: value} (same shape
+    /// the CSV path stores, so GetRecipientsAsync deserializes both identically); empty values are
+    /// stripped (the wire omits an empty optional param). A recipient whose REQUIRED mapped column
+    /// resolves empty/NULL is EXCLUDED from the snapshot and persisted into the capped
+    /// preview_skipped_params audit (count + by_param + sample&lt;=100 with masked phones).
+    /// SQL-injection note (Codex CQ5): paramKeys/literals bind as parameters; the ONLY interpolated
+    /// identifiers are list_records column names resolved through the fixed <see cref="HsmListColumns"/>
+    /// whitelist (caller pre-validated via <see cref="IsHsmListColumn"/>; re-checked here fail-loud).
+    /// </summary>
+    private static async Task<(int snapshotted, int skipped, string? skippedJson)> SnapshotHsmRecipientsAsync(
+        NpgsqlConnection conn, NpgsqlTransaction tx, int tenantId, long projectId, long jobId,
+        long[] listIds, int hardCap, int distinctSendable, HsmSnapshotInput hsm, CancellationToken ct)
+    {
+        // ── params-object SQL fragments (keys + literals parameterized, columns whitelisted) ──
+        var kvFragments = new List<string>();
+        var binds = new List<NpgsqlParameter>();
+        var bindIx = 0;
+        foreach (var (paramKey, column) in hsm.TextParamColumns)
+        {
+            if (!HsmListColumns.TryGetValue(column, out var sqlCol))
+                throw new ArgumentException($"HSM param column '{column}' is not a list column.", nameof(hsm));
+            var kp = $"hk{bindIx++}";
+            binds.Add(new NpgsqlParameter(kp, NpgsqlDbType.Text) { Value = paramKey });
+            kvFragments.Add($"@{kp}, NULLIF(btrim(lr.{sqlCol}), '')");
+        }
+        foreach (var (paramKey, literal) in hsm.TextParamLiterals)
+        {
+            var kp = $"hk{bindIx++}";
+            var vp = $"hv{bindIx++}";
+            binds.Add(new NpgsqlParameter(kp, NpgsqlDbType.Text) { Value = paramKey });
+            binds.Add(new NpgsqlParameter(vp, NpgsqlDbType.Text) { Value = literal });
+            kvFragments.Add($"@{kp}, NULLIF(btrim(@{vp}), '')");
+        }
+        var paramsExpr = kvFragments.Count > 0
+            ? $"jsonb_strip_nulls(jsonb_build_object({string.Join(", ", kvFragments)}))"
+            : "'{}'::jsonb";
+
+        // ── eligibility predicate + missing-param cases (REQUIRED column-mapped params only;
+        //    a required LITERAL param was already validated non-empty by the service) ──
+        var requiredPredicates = new List<string>();
+        var missingCases = new List<string>();
+        var reqIx = 0;
+        foreach (var (paramKey, column) in hsm.TextParamColumns)
+        {
+            if (!hsm.RequiredParamKeys.Contains(paramKey)) continue;
+            var sqlCol = HsmListColumns[column]; // presence proven above
+            var rp = $"hr{reqIx++}";
+            binds.Add(new NpgsqlParameter(rp, NpgsqlDbType.Text) { Value = paramKey });
+            requiredPredicates.Add($"COALESCE(btrim(lr.{sqlCol}), '') <> ''");
+            missingCases.Add($"CASE WHEN COALESCE(btrim(lr.{sqlCol}), '') = '' THEN @{rp} END");
+        }
+        var eligibleExpr = requiredPredicates.Count > 0 ? string.Join(" AND ", requiredPredicates) : "TRUE";
+
+        const string sourceJoin = @"
+                FROM list_records lr
+                JOIN project_targets pt
+                  ON pt.tenant_id = lr.tenant_id AND pt.data_list_id = lr.list_id AND pt.project_id = @pid
+                WHERE lr.tenant_id = @tid AND lr.list_id = ANY(@lids)
+                  AND lr.sendable = TRUE AND lr.normalized_phone IS NOT NULL
+                ORDER BY lr.normalized_phone, pt.sort_order, pt.data_list_id, lr.id";
+
+        int snapshotted;
+        await using (var rc = new NpgsqlCommand($@"
+            INSERT INTO bulk_send_recipients (job_id, tenant_id, normalized_phone, variables_json)
+            SELECT @jid, @tid, d.normalized_phone, d.params
+            FROM (
+                SELECT DISTINCT ON (lr.normalized_phone)
+                       lr.normalized_phone,
+                       {paramsExpr} AS params,
+                       ({eligibleExpr}) AS eligible
+                {sourceJoin}
+            ) d
+            WHERE d.eligible
+            ORDER BY d.normalized_phone
+            LIMIT @cap
+            ON CONFLICT (job_id, normalized_phone) DO NOTHING", conn, tx))
+        {
+            rc.Parameters.AddWithValue("jid", jobId);
+            rc.Parameters.AddWithValue("tid", tenantId);
+            rc.Parameters.AddWithValue("pid", projectId);
+            rc.Parameters.AddWithValue("lids", listIds);
+            rc.Parameters.AddWithValue("cap", hardCap);
+            foreach (var p in binds) rc.Parameters.Add(p.Clone());
+            snapshotted = await rc.ExecuteNonQueryAsync(ct);
+        }
+
+        // ── capped skip audit (only computable when a required column-mapped param exists) ──
+        var skipped = 0;
+        string skippedJson;
+        if (missingCases.Count > 0)
+        {
+            await using var aud = new NpgsqlCommand($@"
+                WITH src AS (
+                    SELECT DISTINCT ON (lr.normalized_phone)
+                           lr.normalized_phone, lr.list_id, lr.id AS record_id,
+                           ARRAY(SELECT x FROM unnest(ARRAY[{string.Join(", ", missingCases)}]) AS x WHERE x IS NOT NULL) AS missing
+                    {sourceJoin}
+                ),
+                skipped AS (SELECT * FROM src WHERE cardinality(missing) > 0)
+                SELECT (SELECT COUNT(*) FROM skipped)::int,
+                       jsonb_build_object(
+                           'count', (SELECT COUNT(*) FROM skipped),
+                           'by_param', COALESCE((SELECT jsonb_object_agg(k, n)
+                                                 FROM (SELECT unnest(missing) AS k, COUNT(*) AS n FROM skipped GROUP BY 1) bp), '{{}}'::jsonb),
+                           'sample', COALESCE((SELECT jsonb_agg(s)
+                                               FROM (SELECT jsonb_build_object(
+                                                         'masked_phone', left(normalized_phone, 5) || '****' || right(normalized_phone, 2),
+                                                         'list_id', list_id,
+                                                         'record_id', record_id,
+                                                         'missing', to_jsonb(missing)) AS s
+                                                     FROM skipped ORDER BY normalized_phone LIMIT 100) sm), '[]'::jsonb))::text", conn, tx);
+            aud.Parameters.AddWithValue("tid", tenantId);
+            aud.Parameters.AddWithValue("pid", projectId);
+            aud.Parameters.AddWithValue("lids", listIds);
+            foreach (var p in binds) aud.Parameters.Add(p.Clone());
+            await using var r = await aud.ExecuteReaderAsync(ct);
+            if (await r.ReadAsync(ct))
+            {
+                skipped = r.GetInt32(0);
+                skippedJson = r.GetString(1);
+            }
+            else
+            {
+                skippedJson = "{\"count\":0,\"by_param\":{},\"sample\":[]}";
+            }
+        }
+        else
+        {
+            skippedJson = "{\"count\":0,\"by_param\":{},\"sample\":[]}";
+        }
+
+        await using (var upd = new NpgsqlCommand(@"
+            UPDATE bulk_send_jobs
+            SET total_input=@inp, total_valid=@val, preview_skipped_params=@skp
+            WHERE id=@jid AND tenant_id=@tid", conn, tx))
+        {
+            upd.Parameters.AddWithValue("inp", distinctSendable);
+            upd.Parameters.AddWithValue("val", snapshotted);
+            upd.Parameters.Add(new NpgsqlParameter("skp", NpgsqlDbType.Jsonb) { Value = skippedJson });
+            upd.Parameters.AddWithValue("jid", jobId);
+            upd.Parameters.AddWithValue("tid", tenantId);
+            await upd.ExecuteNonQueryAsync(ct);
+        }
+
+        return (snapshotted, skipped, skippedJson);
     }
 
     /// <summary>First N snapshot phones for a job (operator eyeball sample in the preview response).</summary>
@@ -420,11 +654,15 @@ public class BulkSendRepository
         // CSV/list jobs whose project_id is null -> unchanged behaviour). inline_message_text +
         // project_id (migration 057/060) are read so ConfirmAsync can take the inline / project-instance
         // branch. The join is keyed on the composite (tenant_id, id) so it stays tenant-scoped.
+        // PR-4: the HSM snapshot columns (j.instance_id..j.template_language, migration 062) are read
+        // alongside the live-project instance — an HSM run dispatches from its SNAPSHOT (immutable),
+        // while the plain-text project path keeps the live p.instance_id behaviour (PR-3a, unchanged).
         const string sql = @"
             SELECT j.id, j.tenant_id, j.campaign_id, j.template_id, j.inline_message_text, j.lang,
                    j.hard_cap, j.status, j.total_valid, j.total_queued, j.total_skipped_optout,
                    j.total_skipped_consent, j.dispatch_error, j.broadcast_ids, j.created_at,
-                   j.confirmed_at, j.completed_at, j.project_id, p.instance_id
+                   j.confirmed_at, j.completed_at, j.project_id, p.instance_id,
+                   j.instance_id, j.template_kind, j.wa_template_id, j.param_mapping, j.template_language
             FROM bulk_send_jobs j
             LEFT JOIN projects p ON p.tenant_id = j.tenant_id AND p.id = j.project_id
             WHERE j.tenant_id=@tid AND j.campaign_id=@cid";
@@ -457,7 +695,12 @@ public class BulkSendRepository
             ConfirmedAt = reader.IsDBNull(15) ? null : reader.GetDateTime(15),
             CompletedAt = reader.IsDBNull(16) ? null : reader.GetDateTime(16),
             ProjectId = reader.IsDBNull(17) ? null : reader.GetInt64(17),
-            ProjectInstanceId = reader.IsDBNull(18) ? null : reader.GetInt32(18)
+            ProjectInstanceId = reader.IsDBNull(18) ? null : reader.GetInt32(18),
+            InstanceId = reader.IsDBNull(19) ? null : reader.GetInt32(19),
+            TemplateKind = reader.IsDBNull(20) ? null : reader.GetString(20),
+            WaTemplateId = reader.IsDBNull(21) ? null : reader.GetString(21),
+            ParamMappingJson = reader.IsDBNull(22) ? null : reader.GetString(22),
+            TemplateLanguage = reader.IsDBNull(23) ? null : reader.GetString(23)
         };
     }
 

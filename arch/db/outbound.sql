@@ -258,12 +258,26 @@ CREATE TABLE IF NOT EXISTS bulk_send_jobs (
     tenant_id               INTEGER NOT NULL REFERENCES tenant_registry(tenant_id),
     campaign_id             VARCHAR(80) NOT NULL,
     source                  VARCHAR(16) NOT NULL DEFAULT 'csv',
-    -- Content source (migration 060): EXACTLY ONE of template_id / inline_message_text per job.
+    -- Content source (migration 060, 3-way since 062): EXACTLY ONE of
+    -- template_id / inline_message_text / wa_template_id per job.
     -- template_id = CSV/list runs + a project's gallery_template content (existing template path).
     -- inline_message_text = a project's free_text content (SS-A inline broadcast path, no template row).
+    -- wa_template_id = a project's approved-template (HSM) run (PR-4, cxapi-only).
     template_id             INTEGER REFERENCES outbound_templates(id),
     inline_message_text     TEXT,
     lang                    VARCHAR(8),
+    -- PR-4 (migration 062): cxapi HSM run snapshot — copied from the project AT PREVIEW
+    -- TIME so an in-flight/paused run is immutable to later project edits.
+    -- template_language is DISPLAY-ONLY (never on the wire: language is embedded in the
+    -- wa_template_id slug — INMA 2026-06-08). preview_skipped_params = capped audit of
+    -- recipients excluded at preview for empty mapped required params:
+    -- {count, by_param:{key:n}, sample:[{masked_phone,list_id,record_id,missing:[..]}] (<=100)}.
+    instance_id             INTEGER,
+    template_kind           VARCHAR(16),       -- 'plain_text' | 'wapcrm_template'
+    wa_template_id          VARCHAR(128),
+    param_mapping           JSONB,
+    template_language       VARCHAR(8),
+    preview_skipped_params  JSONB,
     hard_cap                INTEGER NOT NULL,
     total_input             INTEGER NOT NULL DEFAULT 0,
     total_valid             INTEGER NOT NULL DEFAULT 0,
@@ -286,8 +300,20 @@ CREATE TABLE IF NOT EXISTS bulk_send_jobs (
     CONSTRAINT chk_bulk_job_status CHECK (status IN (
         'preview_ready','confirming','sending','completed',
         'completed_with_errors','failed','cancelled','paused')),
-    -- Migration 060: exactly one content source (template XOR inline free text).
-    CONSTRAINT chk_bulk_message_source CHECK (num_nonnulls(template_id, inline_message_text) = 1),
+    -- Migration 060 (3-way since 062): exactly one content source
+    -- (gallery template XOR inline free text XOR approved-template slug).
+    CONSTRAINT chk_bulk_message_source CHECK (num_nonnulls(template_id, inline_message_text, wa_template_id) = 1),
+    -- Migration 062: template_kind value domain (mirrors chk_project_template_kind).
+    CONSTRAINT chk_bulk_template_kind CHECK (
+        template_kind IS NULL OR template_kind IN ('plain_text','wapcrm_template')),
+    -- Migration 062: HSM internal consistency — an HSM run must carry slug + instance;
+    -- non-HSM rows must not carry HSM-only payload.
+    CONSTRAINT chk_bulk_hsm_consistency CHECK (
+        CASE
+            WHEN template_kind = 'wapcrm_template'
+                THEN wa_template_id IS NOT NULL AND instance_id IS NOT NULL
+            ELSE wa_template_id IS NULL AND param_mapping IS NULL AND template_language IS NULL
+        END),
     CONSTRAINT uq_bulk_job_tenant_campaign UNIQUE (tenant_id, campaign_id)
 );
 

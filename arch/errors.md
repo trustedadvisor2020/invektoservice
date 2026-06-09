@@ -1095,6 +1095,21 @@ errors:
   - code: INV-OB-080
     description: "FEAT-PROJELER (PKT-14) send-exec SS-D — new run rejected: the project already has an active run ('running' or 'paused'). Raised by PreviewSendAsync/ConfirmSendAsync to enforce one active run per project; the operator must complete, resume or cancel the current run first. (409)"
     user_message: Bu projede aktif bir gönderim var. Önce onu tamamlayın, sürdürün veya iptal edin.
+  - code: INV-OB-081
+    description: "FEAT-PROJELER / cxapi PR-4 — HSM template not found/owned: the project's wa_template_id slug is absent from the LIVE cxapi template list for the run's instance (template deleted/renamed provider-side, or never belonged to this instance). Raised by the preview AND the pre-confirm revalidation (the same check runs twice — TOCTOU between preview and confirm). Hard fail; nothing is snapshotted/dispatched. (422)"
+    user_message: Seçilen şablon bu hatta bulunamadı. Şablon listesini yenileyip tekrar seçin.
+  - code: INV-OB-082
+    description: "FEAT-PROJELER / cxapi PR-4 — HSM required input not satisfied: a requiredInputs entry of the live template is not covered by the project's param_mapping (a required text paramKey has no mapped column, or a required HEADER media has no literal URL). Raised at preview and at the pre-confirm revalidation. (422)"
+    user_message: "Şablonun zorunlu parametresi eşlenmemiş. Proje düzenleyicisinde kolon eşlemesini tamamlayın."
+  - code: INV-OB-083
+    description: "FEAT-PROJELER / cxapi PR-4 — HSM template requires a dynamic BUTTON parameter (requiredInputs location=BUTTON); dynamic button URLs are deliberately out of scope (G13.3 deferred, Q decision 2026-06-08). Rejected at preview and at the pre-confirm revalidation — never silently sent without the button value. (422)"
+    user_message: Dinamik buton parametresi içeren şablonlar henüz desteklenmiyor.
+  - code: INV-OB-084
+    description: "FEAT-PROJELER / cxapi PR-4 — HSM template catalog unreachable: the live cxapi template-list call (preview or pre-confirm revalidation) did not return a usable list (rate-limited, timed out, transport error, or provider rejected). HARD FAIL — the run is never validated against stale/no data and never silently continues. (503)"
+    user_message: Şablon doğrulaması yapılamadı (sağlayıcıya ulaşılamadı). Birazdan tekrar deneyin.
+  - code: INV-OB-085
+    description: "FEAT-PROJELER / cxapi PR-4 — HSM send not enabled for this tenant: the tenant is not in the CxapiSend allowlist. Checked FIRST at BOTH preview and confirm, BEFORE any vendor call (an HSM run has no bridge fallback — approved templates cannot ride the INMA Main App bridge). With the allowlist empty (P0-3 gate) every HSM run rejects here, keeping the whole PR-4 path prod-inert with zero vendor traffic. (403)"
+    user_message: Onaylı şablon gönderimi bu hesapta henüz açık değil.
 
   # ── IG — Integrations (GR-3.4/3.6) ──
   - code: INV-IG-001

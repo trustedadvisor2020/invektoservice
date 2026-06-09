@@ -68,6 +68,8 @@ public sealed class WapCrmSendClient
     /// throw on provider/transport failures (only on a caller-contract violation
     /// or caller cancellation).
     /// </summary>
+    // async kept deliberately (Codex chunk-1 iter1 CQ8): pre-await caller-contract violations must
+    // keep surfacing as a FAULTED TASK (original PR-2 semantics), never as a synchronous throw.
     public async Task<WapCrmSendResult> SendPlainTextAsync(WapCrmSendRequest request, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -91,6 +93,84 @@ public sealed class WapCrmSendClient
             MessageText = request.MessageText
         });
 
+        return await SendCoreAsync(payloadJson, request.SecretKey, request.TenantId, request.InstanceId, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// PR-4: sends a single approved-template (HSM) message. The wire body carries a
+    /// <c>template</c> object (templateId slug + named parameters + optional headerMedia)
+    /// instead of messageType/messageText; there is NO <c>language</c> field (language is
+    /// embedded in the slug — INMA 2026-06-08). Envelope parse, wamid capture, the retry
+    /// doctrine (rate-limit-only retry, timeout → Ambiguous) and the typed result are
+    /// IDENTICAL to the plain-text path. Throws only on a caller-contract violation or
+    /// caller cancellation — async kept so those surface as a FAULTED TASK (plain-text parity).
+    /// </summary>
+    public async Task<WapCrmSendResult> SendTemplateAsync(WapCrmTemplateSendRequest request, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (string.IsNullOrWhiteSpace(request.SecretKey))
+            throw new ArgumentException("SecretKey is required.", nameof(request));
+        if (string.IsNullOrWhiteSpace(request.ChatPhoneNumber))
+            throw new ArgumentException("ChatPhoneNumber is required.", nameof(request));
+        if (string.IsNullOrWhiteSpace(request.TemplateId))
+            throw new ArgumentException("TemplateId is required.", nameof(request));
+        if (request.InstanceId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(request), "InstanceId must be a positive integer.");
+        if (request.UserId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(request), "UserId must be a positive integer.");
+
+        // Named parameters: a present entry must be well-formed ({paramKey, value} both
+        // non-empty key). Empty/null list => the wire object omits `parameters` entirely.
+        List<TemplateParamWire>? wireParams = null;
+        if (request.Parameters is { Count: > 0 })
+        {
+            wireParams = new List<TemplateParamWire>(request.Parameters.Count);
+            foreach (var p in request.Parameters)
+            {
+                if (p is null || string.IsNullOrWhiteSpace(p.ParamKey))
+                    throw new ArgumentException("Every template parameter requires a non-empty ParamKey.", nameof(request));
+                wireParams.Add(new TemplateParamWire { ParamKey = p.ParamKey, Value = p.Value ?? string.Empty });
+            }
+        }
+
+        // Dynamic header media: validate the URL hard (https-only, bounded, no
+        // whitespace/control chars) and derive a sanitized fileName when absent —
+        // the operator-supplied value is a literal URL from the dashboard mapping.
+        TemplateHeaderMediaWire? wireMedia = null;
+        if (request.HeaderMedia is { } media)
+        {
+            var url = ValidateHeaderMediaUrl(media.Url);
+            wireMedia = new TemplateHeaderMediaWire
+            {
+                Url = url,
+                FileName = SanitizeFileName(media.FileName, url)
+            };
+        }
+
+        var payloadJson = JsonSerializer.Serialize(new TemplatePayload
+        {
+            InstanceId = request.InstanceId,
+            UserId = request.UserId,
+            ChatPhoneNumber = request.ChatPhoneNumber,
+            Template = new TemplateBodyWire
+            {
+                TemplateId = request.TemplateId,
+                Parameters = wireParams,
+                HeaderMedia = wireMedia
+            }
+        }, PayloadJsonOptions);
+
+        return await SendCoreAsync(payloadJson, request.SecretKey, request.TenantId, request.InstanceId, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Shared send core for both wire shapes: POST + envelope parse + wamid capture +
+    /// rate-limit-only retry + typed terminal classification. Behaviour is byte-identical
+    /// to the original PR-2 plain-text loop.
+    /// </summary>
+    private async Task<WapCrmSendResult> SendCoreAsync(
+        string payloadJson, string secretKey, int tenantId, int instanceId, CancellationToken ct)
+    {
         var attempt = 0;
         string? lastProviderStatusCode = null;
         var lastHttp = 0;
@@ -107,7 +187,7 @@ public sealed class WapCrmSendClient
             {
                 Content = new StringContent(payloadJson, Encoding.UTF8, "application/json")
             };
-            if (!req.Headers.TryAddWithoutValidation(SecretKeyHeader, request.SecretKey))
+            if (!req.Headers.TryAddWithoutValidation(SecretKeyHeader, secretKey))
                 throw new InvalidOperationException("Failed to attach the WapCRM secret header.");
 
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -139,12 +219,19 @@ public sealed class WapCrmSendClient
                     }
 
                     if (env == null)
-                        return Transport(request, attempt, http, $"Unparseable cxapi response (HTTP {http}).");
+                        return Transport(tenantId, instanceId, attempt, http, $"Unparseable cxapi response (HTTP {http}).");
 
                     // status==true is AUTHORITATIVE: an accepted message is never retried,
                     // even if statusCode coincidentally resembles a rate-limit code.
                     if (response.IsSuccessStatusCode && env.Status)
                     {
+                        var wamid = ExtractWamid(env.Data);
+                        // PR-4: a Submitted send without a wamid is still SENT (provider said
+                        // status=true) — only the delivery-ack correlation id is missing. Surface
+                        // it loudly so an ack-less batch is diagnosable; never reclassify.
+                        if (wamid == null)
+                            _logger.SystemWarn(
+                                $"[cxapi-send] submitted WITHOUT wamid (env.data empty/non-string) — delivery ack will not correlate: tenant={tenantId}, instance={instanceId}, attempt={attempt}");
                         return new WapCrmSendResult
                         {
                             Outcome = WapCrmSendOutcome.Submitted,
@@ -152,11 +239,11 @@ public sealed class WapCrmSendClient
                             ProviderStatus = true,
                             ProviderStatusCode = env.StatusCode,
                             ProviderRequestId = env.RequestId,
-                            ProviderMessageId = ExtractWamid(env.Data),
+                            ProviderMessageId = wamid,
                             ProviderErrorMessage = env.Message,
                             AttemptCount = attempt,
-                            TenantId = request.TenantId,
-                            InstanceId = request.InstanceId
+                            TenantId = tenantId,
+                            InstanceId = instanceId
                         };
                     }
 
@@ -179,8 +266,8 @@ public sealed class WapCrmSendClient
                             ProviderRequestId = env.RequestId,
                             ProviderErrorMessage = env.Message,
                             AttemptCount = attempt,
-                            TenantId = request.TenantId,
-                            InstanceId = request.InstanceId
+                            TenantId = tenantId,
+                            InstanceId = instanceId
                         };
                     }
                 }
@@ -193,14 +280,14 @@ public sealed class WapCrmSendClient
             {
                 // Our per-attempt timeout fired — the request may already be on the server.
                 _logger.SystemWarn(
-                    $"[cxapi-send] timeout after {_options.TimeoutMs}ms -> ambiguous: tenant={request.TenantId}, instance={request.InstanceId}, attempt={attempt}");
-                return Ambiguous(request, attempt);
+                    $"[cxapi-send] timeout after {_options.TimeoutMs}ms -> ambiguous: tenant={tenantId}, instance={instanceId}, attempt={attempt}");
+                return Ambiguous(tenantId, instanceId, attempt);
             }
             catch (HttpRequestException ex)
             {
                 _logger.SystemWarn(
-                    $"[cxapi-send] transport error: tenant={request.TenantId}, instance={request.InstanceId}, attempt={attempt}, error={ex.Message}");
-                return Transport(request, attempt, 0, $"Transport error: {ex.Message}");
+                    $"[cxapi-send] transport error: tenant={tenantId}, instance={instanceId}, attempt={attempt}, error={ex.Message}");
+                return Transport(tenantId, instanceId, attempt, 0, $"Transport error: {ex.Message}");
             }
 
             // ── rate-limit path (the only retried outcome) ──
@@ -210,13 +297,13 @@ public sealed class WapCrmSendClient
                 {
                     var delay = ComputeBackoff(attempt - 1, retryAfter);
                     _logger.SystemInfo(
-                        $"[cxapi-send] rate-limited ({lastProviderStatusCode}) -> backoff {(int)delay.TotalMilliseconds}ms: tenant={request.TenantId}, instance={request.InstanceId}, attempt={attempt}");
+                        $"[cxapi-send] rate-limited ({lastProviderStatusCode}) -> backoff {(int)delay.TotalMilliseconds}ms: tenant={tenantId}, instance={instanceId}, attempt={attempt}");
                     await _delay(delay, ct).ConfigureAwait(false);
                     continue;
                 }
 
                 _logger.SystemWarn(
-                    $"[cxapi-send] rate-limit retries exhausted: tenant={request.TenantId}, instance={request.InstanceId}, attempts={attempt}");
+                    $"[cxapi-send] rate-limit retries exhausted: tenant={tenantId}, instance={instanceId}, attempts={attempt}");
                 return new WapCrmSendResult
                 {
                     Outcome = WapCrmSendOutcome.RateLimited,
@@ -224,8 +311,8 @@ public sealed class WapCrmSendClient
                     ProviderStatusCode = lastProviderStatusCode,
                     RetryAfter = retryAfter,
                     AttemptCount = attempt,
-                    TenantId = request.TenantId,
-                    InstanceId = request.InstanceId
+                    TenantId = tenantId,
+                    InstanceId = instanceId
                 };
             }
         }
@@ -275,24 +362,87 @@ public sealed class WapCrmSendClient
         return TimeSpan.FromMilliseconds(baseMs + jitterMs);
     }
 
-    private static WapCrmSendResult Ambiguous(WapCrmSendRequest request, int attempt) => new()
+    private static WapCrmSendResult Ambiguous(int tenantId, int instanceId, int attempt) => new()
     {
         Outcome = WapCrmSendOutcome.Ambiguous,
         HttpStatusCode = 0,
         ProviderErrorMessage = "Request timed out; delivery is unknown (not retried).",
         AttemptCount = attempt,
-        TenantId = request.TenantId,
-        InstanceId = request.InstanceId
+        TenantId = tenantId,
+        InstanceId = instanceId
     };
 
-    private static WapCrmSendResult Transport(WapCrmSendRequest request, int attempt, int http, string message) => new()
+    private static WapCrmSendResult Transport(int tenantId, int instanceId, int attempt, int http, string message) => new()
     {
         Outcome = WapCrmSendOutcome.TransportError,
         HttpStatusCode = http,
         ProviderErrorMessage = message,
         AttemptCount = attempt,
-        TenantId = request.TenantId,
-        InstanceId = request.InstanceId
+        TenantId = tenantId,
+        InstanceId = instanceId
+    };
+
+    /// <summary>
+    /// PR-4: hard validation for a dynamic header-media URL (operator-supplied literal).
+    /// HTTPS-only absolute URL, bounded length, no whitespace/control characters.
+    /// Throws <see cref="ArgumentException"/> — a malformed media URL is a caller-contract
+    /// violation (the orchestrator validates upstream; this is the wire-side belt).
+    /// </summary>
+    private static string ValidateHeaderMediaUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            throw new ArgumentException("HeaderMedia.Url is required when HeaderMedia is supplied.");
+        if (url.Length > MaxMediaUrlLength)
+            throw new ArgumentException($"HeaderMedia.Url exceeds {MaxMediaUrlLength} characters.");
+        // Scan the RAW value — NO pre-trim (Codex chunk-1 iter0). Leading/trailing whitespace is
+        // rejected exactly like embedded whitespace: upstream layers normalize operator input, so
+        // by the time a URL reaches the wire client ANY whitespace means a corrupt value, and the
+        // fail-loud contract is "reject before POST", never "silently repair".
+        foreach (var c in url)
+        {
+            if (char.IsControl(c) || char.IsWhiteSpace(c))
+                throw new ArgumentException("HeaderMedia.Url must not contain whitespace or control characters.");
+        }
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
+            throw new ArgumentException("HeaderMedia.Url must be an absolute https:// URL.");
+        return url;
+    }
+
+    /// <summary>
+    /// PR-4: derive/sanitize the header-media fileName. An explicit caller value is
+    /// sanitized; otherwise the URL's last path segment is used; fallback "media".
+    /// Only [A-Za-z0-9._-] survive; bounded to <see cref="MaxMediaFileNameLength"/>.
+    /// </summary>
+    private static string SanitizeFileName(string? fileName, string url)
+    {
+        var candidate = fileName;
+        if (string.IsNullOrWhiteSpace(candidate))
+        {
+            // Uri parse is guaranteed to succeed here (ValidateHeaderMediaUrl ran first).
+            var uri = new Uri(url, UriKind.Absolute);
+            var lastSegment = uri.Segments.Length > 0 ? uri.Segments[^1].Trim('/') : string.Empty;
+            candidate = Uri.UnescapeDataString(lastSegment);
+        }
+
+        var sb = new StringBuilder(candidate.Length);
+        foreach (var c in candidate)
+        {
+            if (char.IsAsciiLetterOrDigit(c) || c is '.' or '_' or '-')
+                sb.Append(c);
+        }
+        var clean = sb.ToString().Trim('.');
+        if (clean.Length == 0)
+            return "media";
+        return clean.Length <= MaxMediaFileNameLength ? clean : clean[^MaxMediaFileNameLength..];
+    }
+
+    private const int MaxMediaUrlLength = 2048;
+    private const int MaxMediaFileNameLength = 128;
+
+    /// <summary>Serializer for wire payloads: omit null optionals (parameters/headerMedia) entirely.</summary>
+    private static readonly JsonSerializerOptions PayloadJsonOptions = new()
+    {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
     /// <summary>cxapi /chatoperation plain-text wire body. Explicit names so acronym casing (instanceID/userID) is never mangled by a naming policy.</summary>
@@ -303,5 +453,33 @@ public sealed class WapCrmSendClient
         [JsonPropertyName("chatPhoneNumber")] public required string ChatPhoneNumber { get; init; }
         [JsonPropertyName("messageType")] public int MessageType { get; init; }
         [JsonPropertyName("messageText")] public required string MessageText { get; init; }
+    }
+
+    /// <summary>cxapi /chatoperation approved-template wire body (PR-4). NO language field — language is embedded in the templateId slug (INMA 2026-06-08).</summary>
+    private sealed class TemplatePayload
+    {
+        [JsonPropertyName("instanceID")] public int InstanceId { get; init; }
+        [JsonPropertyName("userID")] public int UserId { get; init; }
+        [JsonPropertyName("chatPhoneNumber")] public required string ChatPhoneNumber { get; init; }
+        [JsonPropertyName("template")] public required TemplateBodyWire Template { get; init; }
+    }
+
+    private sealed class TemplateBodyWire
+    {
+        [JsonPropertyName("templateId")] public required string TemplateId { get; init; }
+        [JsonPropertyName("parameters")] public List<TemplateParamWire>? Parameters { get; init; }
+        [JsonPropertyName("headerMedia")] public TemplateHeaderMediaWire? HeaderMedia { get; init; }
+    }
+
+    private sealed class TemplateParamWire
+    {
+        [JsonPropertyName("paramKey")] public required string ParamKey { get; init; }
+        [JsonPropertyName("value")] public required string Value { get; init; }
+    }
+
+    private sealed class TemplateHeaderMediaWire
+    {
+        [JsonPropertyName("url")] public required string Url { get; init; }
+        [JsonPropertyName("fileName")] public required string FileName { get; init; }
     }
 }

@@ -228,6 +228,30 @@ builder.Services.AddHttpClient<WapCrmSendClient>()
         sp.GetRequiredService<WapCrmSendOptions>(),
         sp.GetRequiredService<JsonLinesLogger>()));
 
+// ─── FEAT-PROJELER / cxapi PR-4: WapCrmTemplateClient (READ-ONLY template catalog) ───
+// ProjectsService validates an HSM run against the LIVE cxapi template list at preview AND
+// again before a fresh confirm (ownership + required-param coverage; hard-fail when the
+// catalog is unreachable). Mirrors the Backend registration: per-request X-CIB-SecretKey,
+// FIXED base URL (SSRF mitigation), AllowAutoRedirect=false (cxapi 301/302 = rate-limit),
+// per-attempt timeout inside the client (HttpClient timeout Infinite). The CxapiSend
+// allowlist is checked BEFORE any call — with the allowlist empty (P0-3) this client
+// never fires in prod.
+var wapCrmTemplateOptions = new WapCrmTemplateOptions();
+builder.Configuration.GetSection(WapCrmTemplateOptions.SectionName).Bind(wapCrmTemplateOptions);
+builder.Services.AddSingleton(wapCrmTemplateOptions);
+builder.Services.AddHttpClient<WapCrmTemplateClient>()
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        AllowAutoRedirect = false,
+        UseCookies = false
+    })
+    .ConfigureHttpClient((sp, http) =>
+    {
+        var opts = sp.GetRequiredService<WapCrmTemplateOptions>();
+        http.BaseAddress = new Uri(opts.BaseUrl.TrimEnd('/') + "/");
+        http.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
+    });
+
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
@@ -648,10 +672,17 @@ static int ProjectSendStatus(string? code) => code switch
     ErrorCodes.ContactListNoSendable => 422,
     ErrorCodes.BulkSendCapExceeded => 422,
     ErrorCodes.BulkSendNoValidRecipients => 422,
+    // PR-4 — HSM run validation (preview + pre-confirm revalidation)
+    ErrorCodes.HsmSendNotAllowlisted => 403,
+    ErrorCodes.HsmTemplateNotFound => 422,
+    ErrorCodes.HsmRequiredParamUnmapped => 422,
+    ErrorCodes.HsmDynamicButtonUnsupported => 422,
+    ErrorCodes.HsmTemplateCatalogUnreachable => 503,
+    ErrorCodes.CxapiRouteMisconfigured => 422,  // HSM preview: WapCRM creds missing/incomplete
     ErrorCodes.BulkSendDispatchFailed => 502,
     ErrorCodes.ContactListDbError => 503,
     ErrorCodes.ProjectDbError => 503,
-    _ => 400   // ProjectInvalidPayload + fallback
+    _ => 400   // ProjectInvalidPayload + ProjectInvalidSendConfig + fallback
 };
 
 app.MapGet("/api/v1/projects", async (HttpContext ctx, [FromServices] ProjectsService svc) =>
