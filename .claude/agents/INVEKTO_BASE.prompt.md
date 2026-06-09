@@ -8,7 +8,7 @@ Pipeline: DevAgent implements → `/rev` → MCP codex_review (automated) → Q 
 ## SESSION BOOTSTRAP
 
 1. **Auto Workflow aktif** (plan mode dahil)
-2. **Oku:** `arch/session-memory.md`, `arch/lessons-learned.md`
+2. **Oku (BOUNDED — büyüyen dosyayı ASLA tam Read etme):** `arch/session-memory.md` (`limit=320`; `END_CURRENT_STATE` pencerede yoksa DUR → `/optimize-memory`) · `arch/hot-lessons.md` (≤80 satır, standing kurallar) · Grep-only: `arch/lessons-learned.md` + `arch/*-archive.md`
 3. **Interview:** AskUserQuestion ile gri noktaları çöz
 4. **AC Gate:** Interview sonunda min 2 başarı kriteri sorusu sor, Q'dan teyit al
 5. **PP-006:** Q'yu challenge et — "Ya X olursa?", alternatif sun, trade-off belirt

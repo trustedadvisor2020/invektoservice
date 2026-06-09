@@ -12,11 +12,13 @@ $context = @"
 === INVEKTO SESSION INIT ===
 Tarih: $(Get-Date -Format "yyyy-MM-dd HH:mm")
 
-KRITIK DOSYALAR (TEK STANDART LISTE - shared engine v6.1 uyumlu):
-- arch/session-memory.md                           -> Son durum + Execution Queue
-- tracking/README.md                               -> Paket durumu (master tracking)
-- arch/lessons-learned.md (son 100 satir)          -> Tekrarlanan hatalar
-- .claude/agents/INVEKTO_BASE.prompt.md            -> Global rules
+KRITIK DOSYALAR (BOUNDED - buyuyen dosyayi ASLA tam Read etme):
+- arch/session-memory.md (limit=320; END_CURRENT_STATE pencerede yoksa DUR) -> Son durum + Queue
+- arch/hot-lessons.md (<=80 satir, hep yuklenir)                            -> Standing kurallar
+- tracking/pilot-launch-roadmap.md (PILOT MODE - queue + protokol)          -> Master queue
+- tracking/README.md                                                        -> Paket durumu
+- .claude/agents/INVEKTO_BASE.prompt.md                                     -> Global rules
+GREP-ONLY (asla tam Read): arch/lessons-learned.md, arch/lessons-learned-archive.md, arch/session-memory-archive.md
 
 NOT: active-work.md KULLANILMIYOR (shared v6.1, 2026-03-04 itibariyla).
 Execution queue ve recently completed session-memory.md icindedir.

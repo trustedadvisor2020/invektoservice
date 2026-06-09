@@ -14,6 +14,7 @@
   },
   "tracking": {
     "session_memory": "arch/session-memory.md",
+    "hot_lessons": "arch/hot-lessons.md",
     "lessons_learned": "arch/lessons-learned.md",
     "plans_dir": "arch/plans",
     "diffs_dir": "arch/plans/diffs"

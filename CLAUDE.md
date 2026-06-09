@@ -19,12 +19,13 @@ Q `claude` yerine `invs` kullanır → her session izole worktree'de (komut adı
 Her session basladiginda otomatik:
 
 1. **Auto Workflow aktif** — global `auto` skill kurallari (`~/.claude/skills/auto`)
-2. **Kritik dosyalari oku (TEK STANDART LISTE, shared v6.1 uyumlu):**
-   - `arch/session-memory.md` (son durum + execution queue + recently completed)
+2. **Kritik dosyalari oku (TEK STANDART LISTE, shared v6.1 uyumlu, BOUNDED — buyuyen dosyayi ASLA tam Read etme):**
+   - `arch/session-memory.md` — **`limit=320` ile oku.** Sonundaki `<!-- END_CURRENT_STATE max_lines=300 -->` isareti o pencerede GORUNMUYORSA: DUR, Q'ya "session-memory cap asildi, `/optimize-memory`" de. Tam Read YAPMA. (son durum + execution queue)
+   - `arch/hot-lessons.md` — standing kurallar (≤80 satir, hep yuklenir)
    - `tracking/pilot-launch-roadmap.md` **(PILOT MODE AKTIF — execution queue + devam protokolu)**
    - `tracking/README.md` (paket durumu)
-   - `arch/lessons-learned.md` (son 100 satir)
    - `.claude/agents/INVEKTO_BASE.prompt.md` (global rules)
+   - **Grep-only (asla tam Read):** `arch/lessons-learned.md`, `arch/lessons-learned-archive.md`, `arch/session-memory-archive.md`
 3. **Domain glossary:** `CONTEXT.md` — terminoloji belirsizse buraya bak (mikroservis/Solution Finder/embedding/Pilot Mode terimleri + workflow vocabulary). Her session zorunlu okuma DEGIL, lookup-on-demand. Yeni terim eklenince /wrap guncellesin.
 4. **PILOT MODE DAVRANIS (2026-04-21 itibariyla):**
    - `tracking/pilot-launch-roadmap.md` Master Queue'da ilk `PENDING` paketi bul
