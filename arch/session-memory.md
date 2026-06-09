@@ -20,6 +20,7 @@ _Güncel: 2026-06-10_
 **Pilot tenant gerçeği:** WapCRM-konfigli TEK tenant = **5050 (TestEticaret)**, vendor sandbox, instance_id NULL → **gerçek pilot YOK**. Gate-open için gerçek müşteri tenant + instance_id gerekli (Q kararı). Codex = gpt-5.5, LOW dahil her risk review.
 
 **Working tree uyarısı (her session tekrar):** ilgisiz `ui-mocks/*` + `chat-design` WIP master working tree'de — commit'lere dahil EDİLMEDİ; deploy öncesi `git status` + bundle-hash re-verify.
+**⚠️ PARALEL SESSION TESPİTİ (2026-06-09 23:1x):** `20260610-projeler-aha-list-viewer` paketi (plan JSON + DataListRepository GetPreviewSampleAsync +136 satır + Backend/Outbound Program.cs + ContactListImportService + DataListDtos) working tree'de UNCOMMITTED — başka bir session yazıyor/yazıyordu. SS-D commit'i (`c98b03fc`) de o session'dan. Bu dosyalara dokunma; sahibi session kendi /rev+commit'ini yapacak. (Hot-lesson: iki paralel session aynı repo.)
 
 ## Execution Queue (açık/pending — master: tracking/pilot-launch-roadmap.md)
 
