@@ -3,13 +3,14 @@
 > **BOUNDED FILE.** OVERWRITE edilir (append değil), ≤300 satır. Session init `limit=320` ile okur; sonundaki `END_CURRENT_STATE` işareti o pencerede görünmüyorsa DUR → `/optimize-memory`. Eski tam log: [session-memory-archive.md](session-memory-archive.md) (SADECE Grep). Kalıcı kararlar: [docs/decisions.md](docs/decisions.md). Standing kurallar: [hot-lessons.md](hot-lessons.md).
 > **Pilot Mode:** queue+tracking otoritesi `tracking/pilot-launch-roadmap.md`'de; bu dosya son durum detayı.
 
-_Güncel: 2026-06-09_
+_Güncel: 2026-06-10_
 
 ## Current State Snapshot
 
 **Platform:** 11 .NET 8 mikroservis, tek shared PostgreSQL 16 + pgvector. Prod = services.invekto.com, `C:\Invekto\{Service}\current\`, NSSM. Portlar: Backend 5000, ChatAnalysis 7101, Appointments 7102, Knowledge 7104, AgentAI 7105, Integrations 7106, **Outbound 7107**, Automation 7108, WhatsAppAnalytics 7109, Marketing 7112. FaceAnalysis 7110 + VisualSearch 7111 = Planned. VoiceRuntime + VoiceAI = ayrı NSSM (server-deploy enum'da EKSİK — L-2026-05-31).
 
 **Aktif iş: FEAT-PROJELER (PKT-14) — cxapi/WapCRM bulk-send motoru.**
+- **2026-06-10 (Backend+SPA, CLIENT-ONLY, 2 deploy, ikisi de Codex PASS):** **(1) wa-templates 502 FIX** (`b28073db`) — canlı cxapi `POST /api/templates` `preview` alanı OBJE (`{header,body,footer,buttons}`), `string?` değil → JsonException → TransportError → 502 (tenant 5050/instance 6570). Fix: `WapCrmTemplatePreviewDto` + name/language/category/paramFormat + gerçek-wire-shape pinli parse testi. **(2) Projeler modal REDESIGN** (`4de49e02`) — iki-kolon (sol ad/açıklama/liste, sağ gönderim) + kanal etiketinden (kod) kaldırıldı + Onaylı Şablon default/leftmost, Düz Metin disabled, Yok kaldırıldı + WhatsApp-stil önizleme baloncuğu (`{{...}}` vurgulu) + her placeholder (header'daki **hname** dahil — önizlemeden regex'le çıkarılır, cxapi requiredInputs eksik bıraksa bile) için liste-kolonu dropdown (Ad/Soyad/E-posta/Alan1-5/Etiket/Not). **Şablon OPSİYONEL** (seçmezse metadata-only kaydedilir). `param_mapping` entry shape += `source:'column'/column` (opak JSON, server `BuildSendConfig` sadece object/array+≤16KB doğrular → backend değişmedi; **PR-4 tüketir, şu an INERT**). SPA bundle artık `index-Bag-9o6R.js`. P0-3 dokunulmadı.
 - **2026-06-09 PM: SS-A/SS-B/SS-C PROD'A DEPLOY EDİLDİ.** Migration **059+060** + Outbound + Backend + SPA bundle (`index-L_L4TiDm.js`) canlı. **10/10 service HEALTHY.** Her iki migration INV-SEED verifier PASS; read-back doğrulandı.
 - **⛔ PROD-INERT KORUNDU (P0-3 gate):** `Projects` allowlist=[5050] ∩ `BulkSend` allowlist=[18173130] = **∅** → hiçbir tenant hem proje yönetip hem gönderemiyor. `CxapiSend` section prod config'de YOK → cxapi route default-OFF. Hiçbir allowlist'e dokunulmadı. Endpoint smoke: send-status 401 (registered + JWT-gated).
 - **Kod (commit'li, hepsi Codex PASS — FORCE PASS değil):** SS-A (`ed641ad8` broadcast inline-text), SS-B (`5f61a077` proje içerik config: gallery_template VEYA free_text), SS-C (`7c82d621` proje run dispatch + Gönder UI). Mimari: bir run = `bulk_send_job(project_id)` → mevcut bulk preview→confirm→status makinesi reuse.
