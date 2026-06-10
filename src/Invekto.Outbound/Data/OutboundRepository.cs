@@ -244,11 +244,17 @@ public class OutboundRepository
     public virtual async Task<BroadcastStatusResponse?> GetBroadcastStatusAsync(
         int tenantId, Guid broadcastId, CancellationToken ct = default)
     {
+        // failed_reason_sample: one failed message's reason (first by id, tenant-scoped) so a
+        // status poller (e.g. the project modal's test send) can show the operator WHY it failed.
         const string sql = @"
-            SELECT id, status, total_recipients, queued, sent, delivered, read, failed,
-                   created_at, started_at, completed_at
-            FROM outbound_broadcasts
-            WHERE tenant_id = @tid AND id = @bid";
+            SELECT b.id, b.status, b.total_recipients, b.queued, b.sent, b.delivered, b.read, b.failed,
+                   b.created_at, b.started_at, b.completed_at,
+                   (SELECT m.failed_reason FROM outbound_messages m
+                     WHERE m.tenant_id = @tid AND m.broadcast_id = b.id
+                       AND m.status = 'failed' AND m.failed_reason IS NOT NULL
+                     ORDER BY m.id LIMIT 1) AS failed_reason_sample
+            FROM outbound_broadcasts b
+            WHERE b.tenant_id = @tid AND b.id = @bid";
 
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = new NpgsqlCommand(sql, conn);
@@ -270,7 +276,8 @@ public class OutboundRepository
             Failed = reader.GetInt32(7),
             CreatedAt = reader.GetDateTime(8),
             StartedAt = reader.IsDBNull(9) ? null : reader.GetDateTime(9),
-            CompletedAt = reader.IsDBNull(10) ? null : reader.GetDateTime(10)
+            CompletedAt = reader.IsDBNull(10) ? null : reader.GetDateTime(10),
+            FailedReasonSample = reader.IsDBNull(11) ? null : reader.GetString(11)
         };
     }
 

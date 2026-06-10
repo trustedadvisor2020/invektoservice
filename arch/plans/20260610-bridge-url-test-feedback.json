@@ -1,0 +1,68 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260610-bridge-url-test-feedback",
+  "risk": "MEDIUM",
+  "status": "REVIEW",
+  "created_at": "2026-06-10T12:50:00+03:00",
+  "updated_at": "2026-06-10T13:05:00+03:00",
+  "plan": {
+    "summary": "Test-send'in gercek teslimati: (A) prod Outbound config 'Callback:DefaultCallbackUrl' http://localhost:5000 (PATH'SIZ -> Backend root'a POST -> 405 -> INV-INT-002) yerine Backend'in WapCRM kopru endpoint'i http://localhost:5000/api/v1/callback/wapcrm olacak (config-only, .bak'li targeted edit + Outbound restart). (B) Test-send UI'i 202'de durmayip NIHAI sonucu yoklar: BroadcastStatusResponse'a additive failed_reason_sample alani (ilk failed mesajin failed_reason'i, tenant-scoped subquery) + api.getBroadcastStatus client + ProjectsPage sendTest 1.5s araliklarla max 10 yoklama -> gonderildi (yesil) / GONDERILEMEDI + neden (kirmizi) / netlesmedi (notr).",
+    "q_intent": "1i yap. test ederken de hata varsa gostersin",
+    "interview_notes": "Root cause dogrulandi: 09:24 test broadcast'i (3459269e) mainapp_bridge rotasinda 4x HTTP 405 (url=http://localhost:5000) ile failed; kopru = Backend /api/v1/callback/wapcrm (Program.cs:8581, localhost-auth, tenant wapcrm settings + son INBOUND mesajin instance_id'siyle cxapi chatoperation'a iletir). 5050 + Q'nun numarasi icin inbound gecmis VAR (83 mesaj, instance 6570) -> URL duzelince teslim mumkun. Q'nun talebi geregi UI artik nihai sonucu ve hata nedenini gosterir.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "BroadcastStatusResponse.failed_reason_sample additive+nullable (JSON'da null'ken omit); GetBroadcastStatusAsync subquery'si parameterized + tenant-scoped (m.tenant_id=@tid AND m.broadcast_id=b.id); mevcut tuketicilerde davranis degismez.", "verified": true, "verification_note": "Statik SQL, AddWithValue parametreler, LIMIT 1 deterministik (ORDER BY m.id); full solution build 0 error." },
+      { "id": "AC2", "criterion": "Test-send UI: 202 sonrasi durum yoklamasi — failed>0 ise kirmizi 'GONDERILEMEDI — {failed_reason_sample}', sent/delivered/read>0 ise yesil 'gonderildi', completed-ama-sifir ise engellenme uyarisi, 15sn'de netlesmezse notr mesaj; buton yoklama boyunca disabled (testSending).", "verified": true, "verification_note": "Poll dongusu max 10x1.5s; tek yoklama hatasi continue (akis bozulmaz); erken return'ler finally ile testSending'i sifirlar. tsc PASS." },
+      { "id": "AC3", "criterion": "Prod config Callback:DefaultCallbackUrl = http://localhost:5000/api/v1/callback/wapcrm (.bak yedekli) + Outbound restart sonrasi yeni test-send'de 405 dongusu yok; kopru cagrisi calisir (Q UI'dan tekrar test eder, sonuc artik UI'da gorunur).", "verified": false, "verification_note": null }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/DTOs/Outbound/BroadcastDtos.cs",
+    "src/Invekto.Outbound/Data/OutboundRepository.cs",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx",
+    "src/Invekto.Backend/wwwroot/app/index.html",
+    "src/Invekto.Backend/wwwroot/app/assets/*",
+    "arch/plans/20260610-bridge-url-test-feedback.json",
+    "arch/plans/diffs/20260610-bridge-url-test-feedback.diff"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/DTOs/Outbound/BroadcastDtos.cs", "change": "BroadcastStatusResponse.FailedReasonSample (additive, nullable, WhenWritingNull omit).", "is_new": false },
+    { "path": "src/Invekto.Outbound/Data/OutboundRepository.cs", "change": "GetBroadcastStatusAsync: tenant-scoped failed_reason_sample subquery (status='failed', ORDER BY id LIMIT 1).", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "change": "getBroadcastStatus client + BroadcastStatusLite tipi.", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx", "change": "sendTest: 202 sonrasi 10x1.5s sonuc yoklamasi; testResult ok:true/false/null (yesil/kirmizi/notr); failed_reason_sample operatore gosterilir.", "is_new": false },
+    { "path": "src/Invekto.Backend/wwwroot/app/*", "change": "SPA build ciktisi (generated).", "is_new": false }
+  ],
+  "git_diff": { "patch_truncated": null, "sha256": null, "full_path": "arch/plans/diffs/20260610-bridge-url-test-feedback.diff", "stats": { "insertions": 0, "deletions": 0, "files_count": 0 } },
+  "build": { "status": "PASS", "command": "tsc && vite build (Dashboard) + dotnet build InvektoServis.sln --no-restore -v q", "timestamp": "2026-06-10T13:02:00+03:00", "duration_ms": 44000, "output_tail": "SPA built in 6.74s; solution 0 Error(s) 37.3s.", "error_summary": null, "services": ["Invekto.Shared", "Invekto.Outbound", "Invekto.Backend", "full-solution"] },
+  "verification_questions": [
+    { "id": "Q1", "question": "failed_reason_sample subquery'si tenant-scoped ve parameterized mi (m.tenant_id=@tid AND m.broadcast_id=b.id, statik SQL, interpolation yok), LIMIT 1 + ORDER BY m.id ile deterministik mi ve hicbir mevcut tuketicide (UI/proxy) davranis degisikligi yaratmiyor mu (additive nullable alan, null'ken JSON'dan omit)?", "category": "Data" },
+    { "id": "Q2", "question": "Test-send poll dongusu: erken return'ler (failed/sent/completed) finally ile testSending'i her yolda sifirlIyor mu; tek getBroadcastStatus hatasi continue ile yutulurken NIHAI sonuc asla sahte-basari olarak gosterilmiyor mu (failed>0 kirmizi, sent==0&&completed engelleme uyarisi, timeout notr — hicbiri yesil degil)?", "category": "Lifecycle" },
+    { "id": "Q3", "question": "Yeni network yuzeyi: getBroadcastStatus MEVCUT JWT'li Backend proxy'sini mi kullaniyor (/api/v1/outbound/broadcast/{id}/status, Program.cs:3779'da onceden var — bu diff'te endpoint/proxy/auth degisikligi YOK) ve broadcastId encodeURIComponent ile mi geciyor?", "category": "Auth" },
+    { "id": "Q4", "question": "Config degisikligi (diff disi, prod appsettings): DefaultCallbackUrl'in /api/v1/callback/wapcrm path'ine cevrilmesi yalniz Outbound'un bridge POST hedefini duzeltir — kopru endpoint'i localhost cagrilarini zaten kabul eder (Backend Program.cs:8584-8594 localhost/internal-key auth) ve bu plan kopru/endpoint KODUNA dokunmaz, dogru mu?", "category": "Process/Policy" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["MainAppCallbackClient/CallbackSettings (Shared retry client — dokunulmaz)", "Backend /api/v1/callback/wapcrm bridge endpoint kodu", "MessageSenderService send yollari", "Gate options siniflari"],
+    "non_goals": ["Bridge failed_reason'inin zenginlestirilmesi (SendCallbackAsync bool dondurur — kopru error body'sini tasimak Shared client signature degisikligi, ayri is)", "906/907 blocked durumunun ayri sayaclanmasi (pre-existing davranis)"],
+    "intentional_exclusions": ["Config degisikligi repo'da degil prod sunucuda (targeted edit + .bak); appsettings.json repo kopyasindaki bos default korunur"]
+  },
+  "error_handling": {
+    "try_catch_locations": ["ProjectsPage.sendTest poll: per-iteration try/catch continue (tek yoklama hatasi) + dis catch errText + finally testSending reset"],
+    "user_facing_errors": ["'Test mesajı GÖNDERİLEMEDİ — {failed_reason_sample}.'", "'Gönderim tamamlandı ama mesaj iletilmedi (alıcı tarafında engellenmiş olabilir).'", "'Sonuç henüz netleşmedi — mesaj hâlâ kuyrukta görünüyor.'"],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Onceki davranis (202'de yesil 'kuyruğa alındı' deyip susmak) sessiz-basarisizligin ta kendisiydi; bu degisiklik nihai sonucu zorunlu gosterir. Poll hatasi yutulsa bile sonuc 'netlesmedi' notru ile biter, asla sahte yesil olmaz."
+  },
+  "aha_moments": [
+    { "category": "UX", "user_pain": "Operator testin teslim edilip edilmedigini WhatsApp'i acmadan bilemiyor.", "suggestion": "Poll sonucu delivered/read'e yukselirse 'iletildi/okundu' rozetine yukselt.", "aha_moment": "Operator teslimi UI'dan teyit eder." },
+    { "category": "SUPPORT", "user_pain": "failed_reason teknik Ingilizce ('Callback to Main App failed...').", "suggestion": "Sik failed_reason'lara TR karsilik haritasi.", "aha_moment": "Operator nedeni cevirisiz anlar." },
+    { "category": "RELIABILITY", "user_pain": "Bridge URL'i gibi kritik config'ler sessizce yanlis kalabiliyor.", "suggestion": "Outbound startup'ta DefaultCallbackUrl'e HEAD/OPTIONS smoke + WARN logu.", "aha_moment": "Yanlis config deploy'da yakalanir, ilk gercek gonderimde degil." },
+    { "category": "SPEED", "user_pain": "15sn poll bazen kisa.", "suggestion": "Son durumda 'tekrar kontrol et' linki.", "aha_moment": "Operator beklemeden manuel yeniler." },
+    { "category": "SALES", "user_pain": "Bulk run'larin da teslim gorunurlugu sinirli.", "suggestion": "Proje detayinda failed_reason dagilimi (top-3 neden).", "aha_moment": "Musteri kampanya kalitesini gorur." }
+  ],
+  "overrides": [
+    { "command": "Q-PRE-APPROVAL", "by": "Q", "at": "2026-06-10T12:45:00+03:00", "reason": "Q: '1i yap. test ederken de hata varsa gostersin' — secenek 1 (bridge URL fix) + hata gorunurlugu acik talimat. Interview atlandi." }
+  ],
+  "verdict": { "status": "PASS", "source": null, "received_at": "2026-06-10T13:12:00+03:00", "updated_by": "DevAgent", "updated_at": "2026-06-10T13:12:00+03:00", "raw_text": "MCP codex_review (gpt-5.5) iter0 PASS — 12/12 CQ + 4/4 CoVe. Oncelikli bulgular: yok. CQ2 ozellikle dogrulandi: poll continue'su sahte-yesil uretemez (yesil yalniz sent/delivered/read>0).", "code_quality_gate": {}, "cove_verification": {}, "blocking_issues": [], "iteration": 0, "escalation_required": false, "escalation_reason": null }
+}

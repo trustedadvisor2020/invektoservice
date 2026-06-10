@@ -223,9 +223,10 @@ export default function ProjectsPage() {
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all');
 
   // ---- Test send (GR-8): one plain-text message to one number, from the CURRENT form state.
+  // testResult.ok: true=delivered (green), false=failed (red), null=pending/inconclusive (neutral).
   const [testPhone, setTestPhone] = useState('');
   const [testSending, setTestSending] = useState(false);
-  const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
+  const [testResult, setTestResult] = useState<{ ok: boolean | null; text: string } | null>(null);
 
   // Only WhatsApp Cloud API lines are valid send channels (instance_type === 1; excludes SMS/web/channel).
   const whatsappInstances = useMemo(() => instances.filter(i => i.instanceType === 1), [instances]);
@@ -455,9 +456,39 @@ export default function ProjectsPage() {
     setTestResult(null);
     try {
       const res = await api.projectTestSend({ phone, message_text: testMessageText });
-      setTestResult(res.queued > 0
-        ? { ok: true, text: 'Test mesajı kuyruğa alındı — WhatsApp\'ınızı kontrol edin.' }
-        : { ok: false, text: 'Mesaj gönderilmedi: numara filtrelendi (opt-out / izin).' });
+      if (res.queued === 0) {
+        setTestResult({ ok: false, text: 'Mesaj gönderilmedi: numara filtrelendi (opt-out / izin).' });
+        return;
+      }
+      // 202 = sadece "kuyruğa girdi". Worker saniyeler içinde teslim eder/düşürür — NİHAİ sonucu
+      // yokla ki operatör hatayı (failed_reason) gerçekten GÖRSÜN (Q 2026-06-10: "hata varsa göstersin").
+      setTestResult({ ok: null, text: 'Kuyruğa alındı — gönderim sonucu bekleniyor…' });
+      for (let i = 0; i < 10; i++) {
+        await new Promise<void>(resolve => { window.setTimeout(resolve, 1500); });
+        let st;
+        try {
+          st = await api.getBroadcastStatus(res.broadcast_id);
+        } catch {
+          continue; // tek yoklama hatası akışı bozmasın — sonraki tura geç
+        }
+        if (st.failed > 0) {
+          setTestResult({
+            ok: false,
+            text: `Test mesajı GÖNDERİLEMEDİ${st.failed_reason_sample ? ` — ${st.failed_reason_sample}` : ''}.`,
+          });
+          return;
+        }
+        if (st.sent + st.delivered + st.read > 0) {
+          setTestResult({ ok: true, text: 'Test mesajı gönderildi ✓ — WhatsApp\'ınızı kontrol edin.' });
+          return;
+        }
+        if (st.status === 'completed') {
+          // Tamamlandı ama ne sent ne failed: ör. sağlayıcı tarafında engellendi (906/907).
+          setTestResult({ ok: false, text: 'Gönderim tamamlandı ama mesaj iletilmedi (alıcı tarafında engellenmiş olabilir).' });
+          return;
+        }
+      }
+      setTestResult({ ok: null, text: 'Sonuç henüz netleşmedi — mesaj hâlâ kuyrukta görünüyor.' });
     } catch (e) {
       setTestResult({ ok: false, text: errText(e, 'Test mesajı gönderilemedi') });
     } finally {
@@ -1389,7 +1420,12 @@ export default function ProjectsPage() {
                         </Button>
                       </div>
                       {testResult && (
-                        <p className={cn('text-xs', testResult.ok ? 'text-green-600' : 'text-red-600')}>{testResult.text}</p>
+                        <p className={cn(
+                          'text-xs',
+                          testResult.ok === true ? 'text-green-600' : testResult.ok === false ? 'text-red-600' : 'text-navy-500',
+                        )}>
+                          {testResult.text}
+                        </p>
                       )}
                     </div>
                   )}

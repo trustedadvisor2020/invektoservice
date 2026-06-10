@@ -152,4 +152,13 @@ public sealed class BroadcastStatusResponse
 
     [JsonPropertyName("completed_at")]
     public DateTime? CompletedAt { get; set; }
+
+    /// <summary>
+    /// One failed message's failed_reason (first by id), so a status poller — e.g. the project
+    /// modal's test send — can SHOW the operator why a send failed instead of a bare counter.
+    /// Additive + null when nothing failed (omitted from JSON); existing consumers unaffected.
+    /// </summary>
+    [JsonPropertyName("failed_reason_sample")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? FailedReasonSample { get; set; }
 }

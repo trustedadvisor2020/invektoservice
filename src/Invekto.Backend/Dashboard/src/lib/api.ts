@@ -2400,6 +2400,13 @@ class OpsApiClient {
     });
   }
 
+  // Broadcast outcome poll (test-send result): the 202 only means "queued" — the worker delivers
+  // seconds later; this surfaces the FINAL outcome incl. failed_reason_sample for the operator.
+  async getBroadcastStatus(broadcastId: string): Promise<BroadcastStatusLite> {
+    return this.request<BroadcastStatusLite>(
+      `/api/v1/outbound/broadcast/${encodeURIComponent(broadcastId)}/status`);
+  }
+
   // --- FEAT-OBI Phase 1A Plan B: Export Manager ---
   async listSendJobs(): Promise<SendJobSummary[]> {
     return this.request<SendJobSummary[]>('/api/v1/outbound/exports/send-jobs');
@@ -2542,6 +2549,17 @@ export interface ProjectTestSendResponse {
   queued: number;
   skipped_optout: number;
   skipped_consent?: number;
+}
+// Mirrors BroadcastStatusResponse (subset the test-send poller consumes).
+export interface BroadcastStatusLite {
+  broadcast_id: string;
+  status: string;
+  queued: number;
+  sent: number;
+  delivered: number;
+  read: number;
+  failed: number;
+  failed_reason_sample?: string;
 }
 
 // Project send message kind (mirrors ProjectTemplateKinds in ProjectDtos.cs).
