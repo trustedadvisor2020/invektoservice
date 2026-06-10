@@ -1,0 +1,52 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260610-bulksend-allowalltenants",
+  "risk": "CRITICAL",
+  "status": "REVIEW",
+  "created_at": "2026-06-10T05:40:00+03:00",
+  "updated_at": "2026-06-10T05:45:00+03:00",
+  "plan": {
+    "summary": "Q GATE-OPEN karari (yazili, 2026-06-10 sabah): BulkSend'i TUM tenantlara ac. BulkSendOptions'a ProjectsOptions ile birebir ayni AllowAllTenants flag'i eklenir (explicit flag — 'bos liste = herkes' sessiz-acilma anti-pattern'i degil); prod config'e BulkSend.AllowAllTenants=true targeted-insert edilir. CxapiSend ayri gate olarak KAPALI kalir (cxapi route OFF, HSM inert); Projects allowlist [5050] degismez — proje/test-send dual-gate geregi yalniz 5050'de canlanir, CSV/list bulk-send tum tenantlarda acilir (bridge route, mevcut hard cap'ler gecerli).",
+    "q_intent": "tüm tenantlara bulksend aç. wrap",
+    "interview_notes": "Interview yok — Q'nun acik yazili gate-open emri (P0-3 dokrininin sahibi karari verdi). Pattern secimi: AllowAllTenants flag (ProjectsOptions emsali) > 11 tenant'i listeye dondurmak (yeni tenant'lar otomatik dahil olsun diye).",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "BulkSendOptions.IsTenantAllowed: Enabled && (AllowAllTenants || AllowedTenantIds.Contains) — ProjectsOptions.IsTenantAllowed ile birebir ayni sekil; AllowAllTenants default FALSE (config'te yoksa davranis bugunku ile ayni).", "verified": true, "verification_note": "Kod ProjectsOptions:39-40'in kopyasi; bool default=false; mevcut prod config (flag'siz) ile bit-identik davranis." },
+      { "id": "AC2", "criterion": "Prod config'e BulkSend.AllowAllTenants=true targeted-insert (.bak yedekli, full reserialize YOK) + Outbound deploy + restart sonrasi gate snapshot: BulkSend herkese acik, CxapiSend hala YOK, Projects=[5050] degismedi; 10/10 health.", "verified": false, "verification_note": null }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Outbound/Services/BulkSendOptions.cs",
+    "arch/plans/20260610-bulksend-allowalltenants.json",
+    "arch/plans/diffs/20260610-bulksend-allowalltenants.diff"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Outbound/Services/BulkSendOptions.cs", "change": "AllowAllTenants property (xml-doc'lu, Q karari attest) + IsTenantAllowed ProjectsOptions-mirror.", "is_new": false }
+  ],
+  "git_diff": { "patch_truncated": null, "sha256": null, "full_path": "arch/plans/diffs/20260610-bulksend-allowalltenants.diff", "stats": { "insertions": 12, "deletions": 2, "files_count": 1 } },
+  "build": { "status": "PASS", "command": "dotnet build Invekto.Outbound.csproj --no-restore -v q", "timestamp": "2026-06-10T05:42:00+03:00", "duration_ms": 5480, "output_tail": "0 Error(s)", "error_summary": null, "services": ["Invekto.Outbound"] },
+  "verification_questions": [
+    { "id": "Q1", "question": "AllowAllTenants default FALSE mu ve flag config'te hic yokken IsTenantAllowed davranisi onceki implementasyonla bit-identik mi (mevcut prod allowlist [18173130] davranisi degismeden) — sessiz-acilma yolu (bos liste = herkes gibi) KESINLIKLE yok mu?", "category": "Auth" },
+    { "id": "Q2", "question": "BulkSend'i herkese acmak cxapi route'unu veya HSM yolunu aciyor mu — CxapiSendOptions ayri gate olarak degismeden kaliyor mu (route karari CreateBroadcastAsync/BroadcastOrchestrator icinde CxapiSend allowlist'ine bakar, BulkSend'e degil)?", "category": "Process/Policy" },
+    { "id": "Q3", "question": "Bu flag'i tuketen TUM callsite'lar IsTenantAllowed uzerinden mi geciyor (AllowedTenantIds'i dogrudan okuyan bypass callsite var mi) ve degisiklik tek dosyada mi?", "category": "Data" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["CxapiSendOptions/ProjectsOptions/ContactListOptions (degismez)", "Send yollari (orchestrator/sender)", "appsettings repo kopyalari (prod config server-side targeted edit)"],
+    "non_goals": ["CxapiSend acilisi", "Projects allowlist genisletme", "Hard cap degisikligi"],
+    "intentional_exclusions": ["Config degisikligi repo'da degil prod sunucuda (secret-bearing dosya, targeted insert + .bak — hot-lesson)"]
+  },
+  "error_handling": { "try_catch_locations": [], "user_facing_errors": [], "silent_failure_risk": false, "silent_failure_explanation": "Salt options-sinifi degisikligi; tum reject yollari mevcut typed INV kodlariyla ayni kalir. Explicit flag deseni sayesinde config'te flag yokken davranis degismez." },
+  "aha_moments": [
+    { "category": "RELIABILITY", "user_pain": "Gate acilislari el ile config edit gerektiriyor.", "suggestion": "SuperAdmin ops sayfasina gate goruntuleme (read-only snapshot) karti.", "aha_moment": "Q gate durumunu SSH'siz gorur." },
+    { "category": "SUPPORT", "user_pain": "Hangi tenant neden 403 aliyor anlamak log gerektiriyor.", "suggestion": "Gate reject loglarina tenant+gate adi standart formati (zaten kismen var) + ops endpoint.", "aha_moment": "Destek 403 nedenini tek bakista soyler." },
+    { "category": "UX", "user_pain": "Test-send acilinca operatorler kecfetmeyebilir.", "suggestion": "Proje modalinda ilk acilista test-send blogu icin tek seferlik vurgu.", "aha_moment": "Operator gondermeden once test etmeyi ogrenir." },
+    { "category": "SPEED", "user_pain": "Bulk-send cap'i (MaxRecipientsPerCampaign) pilot degerinde kalmis olabilir.", "suggestion": "Gate-open sonrasi cap degerlerini Q ile gozden gecir.", "aha_moment": "Gercek kampanyalar cap'e takilmaz." },
+    { "category": "SALES", "user_pain": "Bulk-send artik tum tenantlarda ama kimse bilmiyor.", "suggestion": "Tenant duyurusu/changelog notu.", "aha_moment": "Musteriler yeni yetenegi kullanmaya baslar." }
+  ],
+  "overrides": [
+    { "command": "Q-GATE-OPEN", "by": "Q", "at": "2026-06-10T05:38:00+03:00", "reason": "Q yazili emri: 'tüm tenantlara bulksend aç. wrap' — P0-3 dokrininin ongordugu 'ayri/bilinçli Q karari' BU. Interview atlandi (acik talimat). CxapiSend ve Projects gate'leri Q'nun emri disinda oldugu icin DOKUNULMADI." }
+  ],
+  "verdict": { "status": "PASS", "source": null, "received_at": "2026-06-10T06:05:00+03:00", "updated_by": "DevAgent", "updated_at": "2026-06-10T06:05:00+03:00", "raw_text": "MCP codex_review (gpt-5.5): iter0 FAIL (evidence-gap: CQ9/Q2 cxapi-bagimsizlik + Q3 bypass-grep diff disi) -> iter1 callsite kanitlari (BroadcastOrchestrator:122/128, BulkSendOrchestrator:246, ProjectsService:787 cxapi; bypass-grep sifir) -> 12/12 CQ + 4/4 CoVe PASS ama CRITICAL paket-format eksik (5. VQ + invariant proof pack) -> iter2 INVARIANT-1..5 proof pack + Q5 tenant-isolation VQ -> PASS (12/12 CQ + 5/5 CoVe). Kod iter0'dan beri DEGISMEDI; FORCE PASS degil.", "code_quality_gate": {}, "cove_verification": {}, "blocking_issues": [], "iteration": 2, "escalation_required": false, "escalation_reason": null }
+}

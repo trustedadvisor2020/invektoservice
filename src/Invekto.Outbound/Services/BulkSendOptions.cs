@@ -11,8 +11,16 @@ public sealed class BulkSendOptions
     /// <summary>Master kill-switch. Default false = endpoints return INV-OB-039.</summary>
     public bool Enabled { get; set; }
 
-    /// <summary>Pilot tenant allowlist. Empty = no tenant may use bulk send.</summary>
+    /// <summary>Pilot tenant allowlist. Empty = no tenant (unless <see cref="AllowAllTenants"/>).</summary>
     public List<int> AllowedTenantIds { get; set; } = new();
+
+    /// <summary>
+    /// When true, every tenant may use bulk/project/test send (allowlist ignored). Explicit flag
+    /// (not "empty = all") so a misconfiguration can never silently open the send path — mirrors
+    /// <see cref="ProjectsOptions.AllowAllTenants"/>. Q gate-open decision 2026-06-10.
+    /// The cxapi route stays independently gated by CxapiSendOptions (default-OFF).
+    /// </summary>
+    public bool AllowAllTenants { get; set; }
 
     /// <summary>Kademeli hard cap on deduped valid recipients per campaign (Codex §3).</summary>
     public int MaxRecipientsPerCampaign { get; set; } = 50;
@@ -38,5 +46,6 @@ public sealed class BulkSendOptions
     /// </summary>
     public int ConfirmingStaleMinutes { get; set; } = 10;
 
-    public bool IsTenantAllowed(int tenantId) => Enabled && AllowedTenantIds.Contains(tenantId);
+    public bool IsTenantAllowed(int tenantId) =>
+        Enabled && (AllowAllTenants || AllowedTenantIds.Contains(tenantId));
 }
