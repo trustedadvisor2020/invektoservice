@@ -130,6 +130,13 @@
       "aha_moment": "Tek bakista 'sorun bende degil' — deneme-yanilma dongusu hic baslamaz."
     }
   ],
+  "status_log": [
+    { "ts": "2026-06-10T11:35:00Z", "event": "PLAN_CREATED", "notes": "Q raporu 'header gonderdigimizden farkli geldi' uzerine kok-neden analizi: DB snapshot + canli cxapi template-list (9/9 sablon) kanitiyla vendor-side gap dogrulandi. Q karari: INMA bildirimi + UI uyarisi (esleme/wire aynen, forward-compat)." },
+    { "ts": "2026-06-10T11:48:00Z", "event": "IMPL_COMPLETE_BUILD_PASS", "notes": "ProjectsPage.tsx +22/-0 (vendorUnappliedKeys useMemo + amber uyari, 1528 pattern aynasi). Dashboard build PASS (tsc+vite 8.86s, 0 error), bundle index-DkW2SyMn.js." },
+    { "ts": "2026-06-10T11:54:00Z", "event": "CODEX_ITER0_PASS", "model_used": "gpt-5.5-2026-04-23", "tokens": { "total": 8732 }, "notes": "iter0 PASS 12/12 CQ + 2/2 CoVe, blocking NONE. CODEX UTANSIN hedefi tutturuldu." },
+    { "ts": "2026-06-10T11:58:00Z", "event": "COMMITTED", "commit_sha": "bc4b705a", "notes": "43 dosya (kaynak + SPA asset rotasyonu + plan JSON). INMA bug raporu Q'ya ayri deliverable olarak teslim edildi." },
+    { "ts": "2026-06-10T12:05:00Z", "event": "DEPLOYED", "notes": "Backend server-deploy (config restore'lu), 10/10 HEALTHY, canli bundle index-DkW2SyMn.js dogrulandi. Migration yok, gate'ler degismedi (BulkSend=ALL, Projects=[5050], CxapiSend=[5050])." }
+  ],
   "verdict": {
     "status": "PASS",
     "source": "CODEX_TEXT_VIA_Q",
