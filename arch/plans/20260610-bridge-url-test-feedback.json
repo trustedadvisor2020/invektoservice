@@ -5,7 +5,7 @@
   "spec_ref": null,
   "slug": "20260610-bridge-url-test-feedback",
   "risk": "MEDIUM",
-  "status": "REVIEW",
+  "status": "DONE",
   "created_at": "2026-06-10T12:50:00+03:00",
   "updated_at": "2026-06-10T13:05:00+03:00",
   "plan": {
@@ -15,7 +15,7 @@
     "acceptance_criteria": [
       { "id": "AC1", "criterion": "BroadcastStatusResponse.failed_reason_sample additive+nullable (JSON'da null'ken omit); GetBroadcastStatusAsync subquery'si parameterized + tenant-scoped (m.tenant_id=@tid AND m.broadcast_id=b.id); mevcut tuketicilerde davranis degismez.", "verified": true, "verification_note": "Statik SQL, AddWithValue parametreler, LIMIT 1 deterministik (ORDER BY m.id); full solution build 0 error." },
       { "id": "AC2", "criterion": "Test-send UI: 202 sonrasi durum yoklamasi — failed>0 ise kirmizi 'GONDERILEMEDI — {failed_reason_sample}', sent/delivered/read>0 ise yesil 'gonderildi', completed-ama-sifir ise engellenme uyarisi, 15sn'de netlesmezse notr mesaj; buton yoklama boyunca disabled (testSending).", "verified": true, "verification_note": "Poll dongusu max 10x1.5s; tek yoklama hatasi continue (akis bozulmaz); erken return'ler finally ile testSending'i sifirlar. tsc PASS." },
-      { "id": "AC3", "criterion": "Prod config Callback:DefaultCallbackUrl = http://localhost:5000/api/v1/callback/wapcrm (.bak yedekli) + Outbound restart sonrasi yeni test-send'de 405 dongusu yok; kopru cagrisi calisir (Q UI'dan tekrar test eder, sonuc artik UI'da gorunur).", "verified": false, "verification_note": null }
+      { "id": "AC3", "criterion": "Prod config Callback:DefaultCallbackUrl = http://localhost:5000/api/v1/callback/wapcrm (.bak yedekli) + Outbound restart sonrasi yeni test-send'de 405 dongusu yok; kopru cagrisi calisir (Q UI'dan tekrar test eder, sonuc artik UI'da gorunur).", "verified": true, "verification_note": "Config FIXED (snapshot: CallbackUrl path'li, .bak: bak-20260610-bridgeurl) + Outbound/Backend deploy (~13:36) + 10/10 HEALTHY + canli SPA index-CO_yUrwY.js (poll'lu sendTest iceriyor). Son e2e teyit = Q'nun bir sonraki UI testi; sonuc (gonderildi/neden-gonderilemedi) artik UI'da gorunur." }
     ]
   },
   "allowed_files": [
