@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Briefcase, X, Plus, Pencil, Archive, Loader2, Info, ListChecks, FileText, Send, Users, CheckCircle2,
-  ExternalLink, Phone, Reply, Image as ImageIcon, Pause, Play, Ban, AlertTriangle,
+  ExternalLink, Phone, Reply, Image as ImageIcon, Pause, Play, Ban, AlertTriangle, RefreshCw,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -218,9 +218,16 @@ export default function ProjectsPage() {
   const [lifecycleBusyId, setLifecycleBusyId] = useState<number | null>(null);
   const [cancelTarget, setCancelTarget] = useState<ProjectSummary | null>(null);
 
-  // ---- Status filter (GR-9): chips over the full set (single includeArchived fetch).
-  // 'all' = everything EXCEPT archived; 'archived' is its own explicit chip.
+  // ---- Status filter (GR-9): single dropdown over the full set (single includeArchived fetch).
+  // 'all' = everything EXCEPT archived; 'archived' is its own explicit option.
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all');
+
+  // ---- Row template info: approved-template catalogs keyed by instance so rows can show
+  // the template NAME (not the raw id) + full content on hover. Fetched once per distinct
+  // channel (ref-set guard). 'error' = terminal fetch failure for that channel: the row keeps
+  // the id fallback, the tooltip says so, and the next projects reload (Yenile) retries.
+  const [rowTemplates, setRowTemplates] = useState<Record<number, WaTemplate[] | 'error'>>({});
+  const rowTplFetchedRef = useRef<Set<number>>(new Set());
 
   // ---- Test send (GR-8): one plain-text message to one number, from the CURRENT form state.
   // testResult.ok: true=delivered (green), false=failed (red), null=pending/inconclusive (neutral).
@@ -371,6 +378,33 @@ export default function ProjectsPage() {
     void loadInstances();
     void loadGalleryTemplates();
   }, []);
+
+  // Row template-name enrichment: fetch the approved-template catalog once per distinct
+  // channel used by a wapcrm_template project. The ref-set guard prevents duplicate fetches
+  // across project reloads. SUCCESSFUL catalogs stay cached for the page's lifetime (the
+  // catalog rarely changes; the edit modal always fetches fresh); FAILED channels are
+  // un-marked in the catch below, so the next projects reload (Yenile) retries them.
+  useEffect(() => {
+    const instanceIds = Array.from(new Set(
+      projects
+        .filter(p => p.template_kind === 'wapcrm_template' && p.instance_id != null && p.instance_id > 0)
+        .map(p => p.instance_id as number),
+    ));
+    for (const instId of instanceIds) {
+      if (rowTplFetchedRef.current.has(instId)) continue;
+      rowTplFetchedRef.current.add(instId);
+      void api.getWaTemplates(instId)
+        .then(res => setRowTemplates(prev => ({ ...prev, [instId]: res.templates ?? [] })))
+        .catch(e => {
+          // Enrichment-only failure: log it, mark the channel as terminal-error (tooltip tells
+          // the operator), and un-mark the ref so the next projects reload (Yenile) retries.
+          // The page itself never blocks on this — rows keep the template-id fallback.
+          console.warn(`[projects] şablon kataloğu alınamadı (instance ${instId}):`, e);
+          rowTplFetchedRef.current.delete(instId);
+          setRowTemplates(prev => ({ ...prev, [instId]: 'error' }));
+        });
+    }
+  }, [projects]);
 
   // ---- aha #5: dirty-form fingerprint (stable key order so map insertion order can't fake a diff) ----
   const stableMap = (o: Record<string, string>) => Object.keys(o).sort().map(k => `${k}=${o[k]}`).join('|');
@@ -802,6 +836,53 @@ export default function ProjectsPage() {
     return null;
   }
 
+  // Approved-template hover body: header/body/footer/buttons joined as plain text
+  // (native title tooltip — the table container is overflow-hidden, so an absolutely
+  // positioned tooltip would clip; title cannot).
+  function waPreviewText(t: WaTemplate): string {
+    const parts: string[] = [];
+    const h = t.preview?.header;
+    if (h?.text) parts.push(h.text);
+    else if (h?.type) parts.push(`[${h.type} başlık]`);
+    if (t.preview?.body) parts.push(t.preview.body);
+    if (t.preview?.footer) parts.push(t.preview.footer);
+    const btns = (t.preview?.buttons ?? []).map(b => b?.text).filter((x): x is string => !!x);
+    if (btns.length) parts.push(`[${btns.join(' | ')}]`);
+    return parts.join('\n\n') || 'Şablon içeriği boş';
+  }
+
+  // Row content line: the assigned content's NAME for the cell + full content for the tooltip.
+  // Returns null when the project has no content yet (no extra row line).
+  function rowContentInfo(p: ProjectSummary): { label: string; hover: string } | null {
+    if (p.template_kind === 'wapcrm_template' && p.wa_template_id?.trim()) {
+      const catalog = p.instance_id != null ? rowTemplates[p.instance_id] : undefined;
+      const tpl = Array.isArray(catalog)
+        ? catalog.find(t => t.templateId === p.wa_template_id)
+        : undefined;
+      return {
+        label: `Şablon: ${tpl?.name?.trim() || p.wa_template_id}`,
+        hover: tpl
+          ? waPreviewText(tpl)
+          : catalog === 'error'
+            ? 'Şablon içeriği yüklenemedi — Yenile ile tekrar deneyin'
+            : Array.isArray(catalog)
+              ? 'Şablon katalogda bulunamadı'
+              : 'Şablon içeriği yükleniyor…',
+      };
+    }
+    if (p.template_kind === 'plain_text' && p.content_mode === 'gallery_template' && p.outbound_template_id != null) {
+      const g = galleryTemplates.find(t => t.id === p.outbound_template_id);
+      return {
+        label: `Galeri: ${g?.name ?? `#${p.outbound_template_id}`}`,
+        hover: g?.message_template?.trim() || 'Şablon içeriği yüklenemedi',
+      };
+    }
+    if (p.template_kind === 'plain_text' && p.content_mode === 'free_text' && p.plain_text_body?.trim()) {
+      return { label: 'Serbest metin', hover: p.plain_text_body };
+    }
+    return null;
+  }
+
   function sendContentSummary(p: ProjectSummary): string {
     if (p.template_kind === 'wapcrm_template')
       return p.wa_template_id?.trim() ? `Onaylı şablon: ${p.wa_template_id}` : '—';
@@ -874,29 +955,37 @@ export default function ProjectsPage() {
         <div className="px-4 py-3 border-b border-navy-50 flex items-center gap-2 flex-wrap">
           <Briefcase className="w-4 h-4 text-navy-400" />
           <h2 className="text-sm font-medium text-navy-700">Projeler</h2>
-          {/* GR-9: status filter chips ('Tümü' = everything except archived) */}
-          {!featureDisabled && !loading && projects.length > 0 && (
-            <div className="ml-auto flex items-center gap-1 flex-wrap">
-              {([
-                { v: 'all' as const, label: 'Tümü', count: projects.filter(p => p.status !== 'archived').length },
-                ...((Object.keys(STATUS_META) as ProjectStatus[]).map(s => ({
-                  v: s, label: STATUS_META[s].label, count: statusCounts[s] ?? 0,
-                }))),
-              ]).map(f => (
-                <button
-                  key={f.v}
-                  type="button"
-                  onClick={() => setStatusFilter(f.v)}
-                  className={cn(
-                    'px-2 py-1 rounded-full text-xs border transition-colors tabular-nums',
-                    statusFilter === f.v
-                      ? 'border-brand-500 bg-brand-50 text-brand-700 font-medium'
-                      : 'border-navy-100 text-navy-500 hover:border-navy-200',
-                  )}
+          {/* GR-9: status filter ('Tümü' = everything except archived) — dropdown + Yenile (Q 2026-06-10) */}
+          {!featureDisabled && (
+            <div className="ml-auto flex items-center gap-2">
+              {!loading && projects.length > 0 && (
+                <select
+                  value={statusFilter}
+                  onChange={e => setStatusFilter(e.target.value as ProjectStatus | 'all')}
+                  aria-label="Durum filtresi"
+                  className="text-xs border border-navy-100 rounded-lg px-2 py-1.5 text-navy-600 bg-white tabular-nums focus:outline-none focus:border-brand-400"
                 >
-                  {f.label} ({f.count.toLocaleString('tr-TR')})
-                </button>
-              ))}
+                  {([
+                    { v: 'all' as const, label: 'Tümü', count: projects.filter(p => p.status !== 'archived').length },
+                    ...((Object.keys(STATUS_META) as ProjectStatus[]).map(s => ({
+                      v: s, label: STATUS_META[s].label, count: statusCounts[s] ?? 0,
+                    }))),
+                  ]).map(f => (
+                    <option key={f.v} value={f.v}>
+                      {f.label} ({f.count.toLocaleString('tr-TR')})
+                    </option>
+                  ))}
+                </select>
+              )}
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={loading}
+                title="Proje listesini yenile"
+                onClick={() => void loadProjects()}
+              >
+                <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} /> Yenile
+              </Button>
             </div>
           )}
         </div>
@@ -937,7 +1026,9 @@ export default function ProjectsPage() {
               </tr>
             </thead>
             <tbody>
-              {visibleProjects.map(p => (
+              {visibleProjects.map(p => {
+                const contentInfo = rowContentInfo(p);
+                return (
                 <tr
                   key={p.id}
                   className={cn('border-t border-navy-50', p.status !== 'archived' && 'cursor-pointer hover:bg-navy-50/40')}
@@ -953,6 +1044,11 @@ export default function ProjectsPage() {
                   <td className="px-4 py-2.5">
                     <div className="text-navy-900">{p.name}</div>
                     {p.description && <div className="text-xs text-navy-400 truncate max-w-xs">{p.description}</div>}
+                    {contentInfo && (
+                      <div className="text-[11px] text-navy-400 truncate max-w-xs" title={contentInfo.hover}>
+                        {contentInfo.label}
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-2.5">
                     <StatusBadge status={p.status} />
@@ -1039,7 +1135,8 @@ export default function ProjectsPage() {
                     )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         ))}

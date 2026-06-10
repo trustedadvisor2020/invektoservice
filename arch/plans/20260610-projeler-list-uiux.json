@@ -1,0 +1,179 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260610-projeler-list-uiux",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-06-10T15:15:00Z",
+  "updated_at": "2026-06-10T15:45:00Z",
+  "plan": {
+    "summary": "Projeler liste sayfasina 3 Q istegi (UI-only, tek dosya): (1) Yenile butonu (loadProjects; loading'de spinner+disabled, her zaman gorunur); (2) durum chip filtresi -> native select dropdown (ayni statusFilter state, sayacli option'lar; loading/empty guard'lari aynen); (3) proje satirinda atanan icerigin ADI + hover'da TAM icerik (native title tooltip): onayli sablonlarda WaTemplate.name (distinct instance basina TEK getWaTemplates fetch'i, FAIL-SILENT, id fallback), galeri sablonunda OutboundTemplateDto.name + message_template, serbest metinde govde. Wire/persist davranisi degismez.",
+    "q_intent": "projeler sayfasina guncelleme dugmesi ekle. filtreleri dropdown icine koy. proje satirina atanan sablonun adini yaz ve hover da icerigi goster",
+    "interview_notes": "Q talimati net (3 madde) — CLAUDE.md 'clear instruction = direkt basla'. Tasarim kararlari: hover = native title attr (tablo konteyneri overflow-hidden; absolute tooltip clipping riski sifirlanir); sablon adi kaynagi = mevcut wa-templates proxy'sinin distinct-instance fetch'i (modal acilisiyla ayni maliyet, sayfa basina ~1 canli cxapi cagrisi; FAIL-SILENT id fallback); Yenile rowTemplates cache'ini bilincli invalidate ETMEZ (katalog nadir degisir, modal acilisi zaten taze ceker).",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Tablo basliginda Yenile butonu: tiklaninca proje listesi yeniden yuklenir; yukleme sirasinda buton disabled + ikon doner; featureDisabled durumunda gorunmez.",
+        "verified": true,
+        "verification_note": "Yenile butonu header 985-996; disabled+spin loading; featureDisabled guard. Codex CQ10 PASS evidence."
+      },
+      {
+        "id": "AC2",
+        "criterion": "Durum filtresi chip dizisi yerine tek select dropdown: ayni secenekler (Tumu + 6 durum) sayaclariyla; secim davranisi (statusFilter, client-side filtreleme) bit-identik.",
+        "verified": true,
+        "verification_note": "Ayni statusFilter state + ayni secenek kumesi; CoVe Q3 PASS (bit-identik filtreleme)."
+      },
+      {
+        "id": "AC3",
+        "criterion": "Her proje satirinda atanan icerik adi gorunur (Sablon: {name|id} / Galeri: {name|#id} / Serbest metin) ve uzerine gelince tam icerik tooltip'te gosterilir (onayli sablonda header+body+footer+butonlar; galeri/serbest metinde govde). Icerigi olmayan projede satir eklenmez.",
+        "verified": true,
+        "verification_note": "rowContentInfo 3 mod + waPreviewText; native title tooltip; CQ1/CQ10 PASS."
+      },
+      {
+        "id": "AC4",
+        "criterion": "Sablon katalogu fetch'i instance basina EN FAZLA BIR kez yapilir (ref-set guard), hata sayfayi bloklamaz (id fallback), param_mapping/persist/test-send yollarina dokunulmaz.",
+        "verified": true,
+        "verification_note": "ref-set guard + console.warn + error-state + Yenile retry (iter0 FAIL fix); CQ2/CQ12 + CoVe Q2 PASS."
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx"
+  ],
+  "files_changed": [
+    {
+      "path": "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx",
+      "change": "RefreshCw import + rowTemplates state/ref + distinct-instance template fetch effect (FAIL-SILENT) + waPreviewText/rowContentInfo helpers + satirda icerik adi + title tooltip + chips->select dropdown + Yenile butonu. Salt-render + read-only fetch; persist/wire yollari dokunulmadi.",
+      "is_new": false
+    }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "a85ffda31e107dacddc6419981341cf9d749cc08bdf490e6dd953483bc5d7fd7",
+    "full_path": "arch/plans/diffs/20260610-projeler-list-uiux.diff",
+    "stats": {
+      "insertions": 124,
+      "deletions": 27,
+      "files_count": 1
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "npm run build (tsc && vite build) — Dashboard SPA",
+    "timestamp": "2026-06-10T15:40:00Z",
+    "duration_ms": 8970,
+    "output_tail": "vite v5 building for production... ProjectsPage chunk + index-BKdCQuBe.js 935.81 kB. built in 8.97s. 0 errors (tsc clean).",
+    "error_summary": null,
+    "services": [
+      "Dashboard SPA"
+    ]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Yeni getWaTemplates fetch'i mevcut JWT'li Backend proxy'sini mi kullaniyor — yeni network yuzeyi/auth yolu ekleniyor mu? (negatif-dogrulama)",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "rowTemplates effect'i ayni instance icin cift fetch'i nasil engelliyor; fetch hatasi veya bos templates durumunda satir render'i crash'siz id-fallback'e dusuyor mu?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Chip->dropdown degisimi statusFilter semantigini (all=arsiv haric; archived ayri secenek) ve visibleProjects filtrelemesini bit-identik koruyor mu; param_mapping/persist/test-send yollarina dokunulmadigi dogru mu?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Outbound/** ve tum .cs dosyalari (UI-only paket)",
+      "param_mapping uretimi/persist/test-send akislari",
+      "Prod config/gate'ler"
+    ],
+    "non_goals": [
+      "Sablon katalogunu Yenile'de yeniden cekme (bilincli — katalog nadir degisir)",
+      "Ozel/zengin tooltip bileseni (native title yeterli; overflow-hidden clipping riski yok)",
+      "Satir ici sablon onizleme baloncugu"
+    ],
+    "intentional_exclusions": [
+      "Arsivli projelerde de icerik satiri gosterilir (bilgi amacli, zararsiz)",
+      "rowTemplates cache'i sayfa yasam suresi boyunca tutulur (modal kendi taze fetch'ini yapar)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "rowTemplates effect: api.getWaTemplates(...).catch(() => {}) — FAIL-SILENT, satir id-fallback"
+    ],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Tek sessiz yol bilincli: satirdaki sablon ADI zenginlestirmesi (id fallback her zaman gorunur kalir). Veri yazimi/gonderim yollari degismiyor."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Operator satirda '1664033448202974' gibi anlamsiz bir sablon ID'si goruyor; hangi mesajin atandigini hatirlamak icin modali acmak zorunda.",
+      "suggestion": "Satirda sablon ADI + hover'da tam icerik (header/body/footer/butonlar).",
+      "aha_moment": "Tek bakista hangi projenin hangi mesaji atacagi belli — modal acmadan."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Ack-loop yeni acildi; operator sayac degisimini gormek icin sayfayi F5'liyor (tum SPA reload).",
+      "suggestion": "Yenile butonu sadece proje listesini tazeler.",
+      "aha_moment": "Gonderim sirasinda sayaclar tek tikla guncellenir."
+    },
+    {
+      "category": "UX",
+      "user_pain": "7 chip yatayda yer kapliyor, kucuk ekranda sarip karisiyor.",
+      "suggestion": "Tek dropdown (sayaclar option label'inda).",
+      "aha_moment": "Baslik satiri sade; filtre tek kontrol."
+    }
+  ],
+  "status_log": [
+    {
+      "ts": "2026-06-10T15:15:00Z",
+      "event": "PLAN_CREATED",
+      "notes": "Q 3-madde UI istegi; kod kesfi tamam (chips 877-901, satir 940-966, WaTemplate.name+preview mevcut, loadGalleryTemplates mount'ta)."
+    },
+    {
+      "ts": "2026-06-10T15:30:00Z",
+      "event": "CODEX_ITER0_FAIL",
+      "model_used": "gpt-5.5-2026-04-23",
+      "notes": "3 blocker (CQ1/CQ2/CQ12 — .catch(()=>{}) yutmasi: yaniltici yukleniyor-tooltip + retry yok + log yok). Gercek bulgular."
+    },
+    {
+      "ts": "2026-06-10T15:40:00Z",
+      "event": "FIX_BUILD_PASS",
+      "notes": "rowTemplates union'a 'error' state + console.warn + ref delete (Yenile retry) + uc-durum tooltip metni; effect comment'i kontrata hizalandi. Build 8.97s 0E."
+    },
+    {
+      "ts": "2026-06-10T15:44:00Z",
+      "event": "CODEX_ITER1_PASS",
+      "model_used": "gpt-5.5-2026-04-23",
+      "tokens": {
+        "total": 11136
+      },
+      "notes": "12/12 CQ + 3/3 CoVe, blocking NONE."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_MCP",
+    "received_at": "2026-06-10T15:44:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-06-10T15:45:00Z",
+    "raw_text": "OVERALL_VERDICT: PASS | 12/12 CQ PASS + 3/3 CoVe PASS | BLOCKING_ISSUES: NONE | model gpt-5.5-2026-04-23 | iter1 (iter0 FAIL: silent catch -> fixed with log + error-state + Yenile retry).",
+    "blocking_issues": [],
+    "iteration": 1,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}
