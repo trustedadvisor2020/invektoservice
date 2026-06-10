@@ -87,7 +87,7 @@
     { "path": "src/Invekto.Outbound/Program.cs", "change": "GR-8 POST /api/v1/projects/send/test endpoint + ProjectSendStatus 086->422/087->429 + endpoint katalogu; GR-9 GET /api/v1/projects?includeArchived bind.", "is_new": false },
     { "path": "src/Invekto.Backend/Program.cs", "change": "GR-8 POST /api/v1/outbound/projects/send/test proxy + katalog girisi; GR-9 GET projects proxy query-string verbatim passthrough.", "is_new": false },
     { "path": "arch/errors.md", "change": "INV-OB-086 + INV-OB-087 kayitlari.", "is_new": false },
-    { "path": "src/Invekto.Backend/wwwroot/app/*", "change": "SPA build ciktisi (tsc && vite build) — generated, bundle index-kIif2OHL.js.", "is_new": false }
+    { "path": "src/Invekto.Backend/wwwroot/app/*", "change": "SPA build ciktisi (tsc && vite build) — generated; final bundle (dblclick-fix sonrasi rebuild) index-BFWwejdz.js / ProjectsPage-HvzXU5av.js.", "is_new": false }
   ],
   "git_diff": { "patch_truncated": null, "sha256": "42053e69d3af565e927e886fbf5e630a829d74a202835db379b976721bd952bf", "full_path": "arch/plans/diffs/20260610-projeler-uiux-pack.diff", "stats": { "insertions": 771, "deletions": 239, "files_count": 22 } },
   "build": { "status": "PASS", "command": "tsc && vite build (Dashboard) + dotnet build InvektoServis.sln --no-restore -v q", "timestamp": "2026-06-10T04:23:00+03:00", "duration_ms": 37000, "output_tail": "Dashboard: built in 6.94s (bundle index-kIif2OHL.js). Solution: 42 Warning(s) [hepsi pre-existing MSB3277/xUnit], 0 Error(s), 30.14s.", "error_summary": null, "services": ["Invekto.Shared", "Invekto.Outbound", "Invekto.Backend", "full-solution"] },
