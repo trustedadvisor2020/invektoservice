@@ -456,14 +456,21 @@ public sealed class ProjectsService
         return entry.Count > TestSendPerMinuteCap;
     }
 
+    // HSM test bounds: a template's required text inputs are few; these caps only stop abuse.
+    private const int TestSendMaxTemplateParams = 32;
+    private const int TestSendMaxTemplateParamValueLength = 1024;
+
     /// <summary>
-    /// Send ONE plain-text test message to ONE number ("Test Gönder" in the project modal; not
-    /// bound to a saved project so create-mode content can be tested too). Same dual gate as a
-    /// project run (Projects + BulkSend) keeps this surface prod-inert until a tenant is
-    /// allowlisted for sending; then a per-tenant throttle, PhoneNormalizer validation and the
-    /// SHARED inline-text broadcast path — opt-out/consent filtering, KVKK disclaimer and the
-    /// cxapi-vs-bridge route decision are identical to real sends (no parallel "test" code path).
-    /// Every reject is a typed INV code; there is no silent no-op.
+    /// Send ONE test message to ONE number ("Test Gönder" in the project modal; not bound to a
+    /// saved project so create-mode content can be tested too). EXACTLY ONE content source:
+    /// plain text (message_text) or an approved HSM template (wa_template_id + resolved params —
+    /// the REAL template wire model per wapcrm-api-integration-guide §3.2; Q 2026-06-10).
+    /// Same dual gate as a project run (Projects + BulkSend) keeps this surface inert for
+    /// non-allowlisted tenants; then a per-tenant throttle, PhoneNormalizer validation and the
+    /// SHARED BroadcastOrchestrator path — opt-out/consent filtering and the route decision are
+    /// identical to real sends (an HSM test additionally requires the CxapiSend allowlist, which
+    /// the orchestrator enforces with INV-OB-085; no parallel "test" code path). Every reject is
+    /// a typed INV code; there is no silent no-op.
     /// </summary>
     public async Task<(BroadcastSendResponse? response, string? errorCode, string? message)> TestSendAsync(
         int tenantId, ProjectTestSendRequest request, CancellationToken ct)
@@ -479,21 +486,72 @@ public sealed class ProjectsService
             return (null, ErrorCodes.ProjectTestSendInvalidPayload, "Test numarası geçersiz. Numarayı +90… formatında girin.");
 
         var text = request.MessageText?.Trim() ?? string.Empty;
-        if (text.Length == 0)
-            return (null, ErrorCodes.ProjectTestSendInvalidPayload, "Test mesajı boş. Önce bir şablon veya içerik seçin.");
-        if (text.Length > PlainTextBodyMaxLength)
-            return (null, ErrorCodes.ProjectTestSendInvalidPayload, $"Test mesajı {PlainTextBodyMaxLength} karakteri aşıyor.");
+        var slug = request.WaTemplateId?.Trim() ?? string.Empty;
+        if (text.Length == 0 && slug.Length == 0)
+            return (null, ErrorCodes.ProjectTestSendInvalidPayload, "Test içeriği boş. Önce bir şablon veya içerik seçin.");
+        if (text.Length > 0 && slug.Length > 0)
+            return (null, ErrorCodes.ProjectTestSendInvalidPayload, "Tek içerik kaynağı gönderin: düz metin VEYA onaylı şablon.");
+
+        BroadcastSendRequest broadcastRequest;
+        int? overrideInstanceId = null;
+        if (slug.Length > 0)
+        {
+            // HSM template test — the wire carries template{templateId, parameters, headerMedia}.
+            if (request.InstanceId is not int inst || inst <= 0)
+                return (null, ErrorCodes.ProjectTestSendInvalidPayload, "Şablon testi için bir WhatsApp kanalı seçin.");
+            if (!await _repo.IsCloudApiInstanceOwnedAsync(tenantId, inst, ct))
+                return (null, ErrorCodes.ProjectTestSendInvalidPayload, "Seçilen kanal bu hesaba ait bir Cloud API hattı değil.");
+
+            var paramCount = request.TemplateParams?.Count ?? 0;
+            if (paramCount > TestSendMaxTemplateParams)
+                return (null, ErrorCodes.ProjectTestSendInvalidPayload, $"Şablon parametre sayısı sınırı aşıyor (en fazla {TestSendMaxTemplateParams}).");
+            if (request.TemplateParams != null)
+            {
+                foreach (var (key, value) in request.TemplateParams)
+                {
+                    if (string.IsNullOrWhiteSpace(key) || value == null || value.Length > TestSendMaxTemplateParamValueLength)
+                        return (null, ErrorCodes.ProjectTestSendInvalidPayload, "Şablon parametreleri geçersiz (boş anahtar veya çok uzun değer).");
+                }
+            }
+
+            var mediaUrl = request.TemplateHeaderMediaUrl?.Trim();
+            if (!string.IsNullOrEmpty(mediaUrl)
+                && (!Uri.TryCreate(mediaUrl, UriKind.Absolute, out var mediaUri)
+                    || (mediaUri.Scheme != Uri.UriSchemeHttp && mediaUri.Scheme != Uri.UriSchemeHttps)))
+                return (null, ErrorCodes.ProjectTestSendInvalidPayload, "Şablon medyası için herkese açık bir http(s) URL girin.");
+
+            overrideInstanceId = inst;
+            broadcastRequest = new BroadcastSendRequest
+            {
+                WaTemplateId = slug,
+                TemplateHeaderMediaUrl = string.IsNullOrEmpty(mediaUrl) ? null : mediaUrl,
+                Recipients = new List<BroadcastRecipient>
+                {
+                    new()
+                    {
+                        Phone = normalized,
+                        Variables = request.TemplateParams is { Count: > 0 }
+                            ? new Dictionary<string, string>(request.TemplateParams)
+                            : null
+                    }
+                }
+            };
+        }
+        else
+        {
+            if (text.Length > PlainTextBodyMaxLength)
+                return (null, ErrorCodes.ProjectTestSendInvalidPayload, $"Test mesajı {PlainTextBodyMaxLength} karakteri aşıyor.");
+            broadcastRequest = new BroadcastSendRequest
+            {
+                MessageText = text,
+                Recipients = new List<BroadcastRecipient> { new() { Phone = normalized } }
+            };
+        }
 
         try
         {
             var (resp, errCode, errMsg) = await _broadcastOrch.CreateBroadcastAsync(
-                tenantId,
-                new BroadcastSendRequest
-                {
-                    MessageText = text,
-                    Recipients = new List<BroadcastRecipient> { new() { Phone = normalized } }
-                },
-                ct);
+                tenantId, broadcastRequest, ct, overrideInstanceId);
             if (resp == null)
             {
                 // Single recipient: "no valid recipients" from the orchestrator means the number
@@ -501,14 +559,14 @@ public sealed class ProjectsService
                 var msg = errCode == ErrorCodes.OutboundInvalidBroadcastPayload
                     ? "Mesaj gönderilmedi: numara filtrelendi (opt-out / pazarlama izni yok)."
                     : errMsg;
-                _logger.SystemWarn($"project test-send rejected: tenant={tenantId}, phone={normalized}, code={errCode}");
+                _logger.SystemWarn($"project test-send rejected: tenant={tenantId}, phone={normalized}, kind={(slug.Length > 0 ? "hsm" : "plain")}, code={errCode}");
                 return (null, errCode, msg);
             }
 
             // Audit line (Codex plan-consult PR-001): who tested, to where, with what outcome.
             _logger.SystemInfo(
-                $"project test-send: tenant={tenantId}, phone={normalized}, broadcast={resp.BroadcastId}, " +
-                $"queued={resp.Queued}, skipped_optout={resp.SkippedOptout}, skipped_consent={resp.SkippedConsent}");
+                $"project test-send: tenant={tenantId}, phone={normalized}, kind={(slug.Length > 0 ? $"hsm:{slug}" : "plain")}, " +
+                $"broadcast={resp.BroadcastId}, queued={resp.Queued}, skipped_optout={resp.SkippedOptout}, skipped_consent={resp.SkippedConsent}");
             return (resp, null, null);
         }
         catch (NpgsqlException ex)

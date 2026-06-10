@@ -246,12 +246,15 @@ public class OutboundRepository
     {
         // failed_reason_sample: one failed message's reason (first by id, tenant-scoped) so a
         // status poller (e.g. the project modal's test send) can show the operator WHY it failed.
+        // COALESCE: bridge failures fill failed_reason; cxapi failures fill provider_error_message
+        // (e.g. 621 template-not-found / 622 missing-param) — surface whichever exists.
         const string sql = @"
             SELECT b.id, b.status, b.total_recipients, b.queued, b.sent, b.delivered, b.read, b.failed,
                    b.created_at, b.started_at, b.completed_at,
-                   (SELECT m.failed_reason FROM outbound_messages m
+                   (SELECT COALESCE(m.failed_reason, m.provider_error_message) FROM outbound_messages m
                      WHERE m.tenant_id = @tid AND m.broadcast_id = b.id
-                       AND m.status = 'failed' AND m.failed_reason IS NOT NULL
+                       AND m.status = 'failed'
+                       AND COALESCE(m.failed_reason, m.provider_error_message) IS NOT NULL
                      ORDER BY m.id LIMIT 1) AS failed_reason_sample
             FROM outbound_broadcasts b
             WHERE b.tenant_id = @tid AND b.id = @bid";

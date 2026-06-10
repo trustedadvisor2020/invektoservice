@@ -2539,9 +2539,15 @@ export interface DataListSummary {
 export type ProjectStatus = 'draft' | 'running' | 'paused' | 'completed' | 'cancelled' | 'archived';
 
 // GR-8 test send (mirrors ProjectTestSendRequest in ProjectDtos.cs; response = BroadcastSendResponse).
+// EXACTLY ONE content source: message_text (plain) OR wa_template_id (real HSM template wire —
+// wapcrm-api-integration-guide §3.2; template_params = resolved {paramKey: value} map).
 export interface ProjectTestSendRequest {
   phone: string;
-  message_text: string;
+  message_text?: string;
+  instance_id?: number;
+  wa_template_id?: string;
+  template_params?: Record<string, string>;
+  template_header_media_url?: string;
 }
 export interface ProjectTestSendResponse {
   broadcast_id: string;

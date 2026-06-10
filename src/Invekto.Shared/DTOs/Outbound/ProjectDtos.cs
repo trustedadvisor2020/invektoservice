@@ -192,18 +192,33 @@ public sealed class ProjectSendRequest
 }
 
 /// <summary>
-/// FEAT-PROJELER UI/UX pack (GR-8) — body for POST /api/v1/projects/send/test: ONE plain-text
-/// message to ONE number, fired from the project modal so the operator can smoke-test content on
-/// their own phone BEFORE saving/dispatching. Not bound to a project id (works in create mode);
-/// the message text arrives pre-rendered by the UI (an HSM project's preview text goes out as
-/// plain text — Q decision 2026-06-10, the approved-template format itself is NOT exercised).
-/// Server side: Projects + BulkSend gates, per-tenant throttle, PhoneNormalizer, then the same
-/// BroadcastOrchestrator inline-text path every real broadcast uses (opt-out/consent filters,
-/// KVKK disclaimer, route decision all identical). Response is the standard BroadcastSendResponse.
+/// FEAT-PROJELER UI/UX pack (GR-8) — body for POST /api/v1/projects/send/test: ONE message to
+/// ONE number, fired from the project modal so the operator can smoke-test content on their own
+/// phone BEFORE saving/dispatching. Not bound to a project id (works in create mode). EXACTLY ONE
+/// content source: <see cref="MessageText"/> (plain text) OR <see cref="WaTemplateId"/> (approved
+/// HSM template — Q 2026-06-10 öğleden sonra: the test must exercise the REAL template wire model
+/// per wapcrm-api-integration-guide §3.2; the earlier render-text-as-plain approximation is
+/// superseded now that PR-4 + the CxapiSend gate are live). Server side: Projects + BulkSend gates,
+/// per-tenant throttle, PhoneNormalizer, then the SAME BroadcastOrchestrator path every real
+/// broadcast uses (HSM rides cxapi only — non-allowlisted tenants reject INV-OB-085 inside the
+/// orchestrator). Response is the standard BroadcastSendResponse.
 /// </summary>
 public sealed class ProjectTestSendRequest
 {
     [JsonPropertyName("phone")] public string Phone { get; set; } = "";
 
+    /// <summary>Plain-text body. Empty when <see cref="WaTemplateId"/> drives an HSM test.</summary>
     [JsonPropertyName("message_text")] public string MessageText { get; set; } = "";
+
+    /// <summary>HSM test: the sending Cloud API channel (cxapi instanceID). Must be tenant-owned; required with <see cref="WaTemplateId"/>.</summary>
+    [JsonPropertyName("instance_id")] public int? InstanceId { get; set; }
+
+    /// <summary>HSM test: approved-template slug. Non-empty switches the test to the template wire model.</summary>
+    [JsonPropertyName("wa_template_id")] public string? WaTemplateId { get; set; }
+
+    /// <summary>HSM test: RESOLVED named parameter values (paramKey → value) — goes out as template.parameters[{paramKey,value}].</summary>
+    [JsonPropertyName("template_params")] public Dictionary<string, string>? TemplateParams { get; set; }
+
+    /// <summary>HSM test: dynamic HEADER media public URL (template.headerMedia). Null = omitted.</summary>
+    [JsonPropertyName("template_header_media_url")] public string? TemplateHeaderMediaUrl { get; set; }
 }

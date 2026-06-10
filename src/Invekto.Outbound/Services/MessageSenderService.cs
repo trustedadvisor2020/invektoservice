@@ -328,7 +328,7 @@ public sealed class MessageSenderService : IHostedService, IDisposable
                     InstanceId = instanceId,
                     UserId = wap.UserId,
                     SecretKey = secretKey,
-                    ChatPhoneNumber = msg.RecipientPhone,
+                    ChatPhoneNumber = ToCxapiPhone(msg.RecipientPhone),
                     MessageText = msg.MessageText
                 }, ct);
         }
@@ -475,12 +475,16 @@ public sealed class MessageSenderService : IHostedService, IDisposable
             InstanceId = instanceId,
             UserId = userId,
             SecretKey = secretKey,
-            ChatPhoneNumber = msg.RecipientPhone,
+            ChatPhoneNumber = ToCxapiPhone(msg.RecipientPhone),
             TemplateId = slug,
             Parameters = parameters,
             HeaderMedia = headerMedia
         }, null);
     }
+
+    // cxapi contract: chatPhoneNumber is "905XXXXXXXXX" WITHOUT the leading '+'
+    // (wapcrm-api-integration-guide §2/§3.2); our rows store E.164 ("+905...").
+    private static string ToCxapiPhone(string phone) => phone.TrimStart('+');
 
     private async Task TryCompleteBroadcastAsync(Guid broadcastId, CancellationToken ct)
     {

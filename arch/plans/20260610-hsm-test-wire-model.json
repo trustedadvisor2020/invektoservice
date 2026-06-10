@@ -1,0 +1,73 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260610-hsm-test-wire-model",
+  "risk": "HIGH",
+  "status": "DONE",
+  "created_at": "2026-06-10T14:05:00+03:00",
+  "updated_at": "2026-06-10T14:20:00+03:00",
+  "plan": {
+    "summary": "Q duzeltmesi: 'template gonderim modeli yanlis' — HSM sablonlu projede test, dun geceki render-text-as-plain yaklasimiyla DUZ METIN modeli gonderiyordu; PR-4 + CxapiSend artik canli oldugundan test GERCEK template wire modelini (template{templateId, parameters[{paramKey,value}], headerMedia}) kullanmali (wapcrm-api-integration-guide §3.2). Ayrica cxapi chatPhoneNumber kontrati '905...' (+'siz) — sender E.164'un basindaki '+'i siler (Q: '+ sorun degil' dedi ama dokuman kontrati net; INMA ikisini de kabul ediyor, kontrata uyuyoruz). Bonus: failed_reason_sample COALESCE(failed_reason, provider_error_message) — cxapi 621/622 reddi artik operatore gorunur.",
+    "q_intent": "http istegi dokumana uyacak. yanlis gondermissin. [...] + sorun degil. template gonderim modeli yanlis",
+    "interview_notes": "Onceki 'HSM testi render-metin duz gider' karari (dun gece, PR-4 yokken verilen yaklasiklik) Q tarafindan SUPERSEDED — full test = gercek HSM wire. Param degerleri ornek alicidan cozulur; ornek deger yoksa paramKey gorunur dummy olarak gider (622 reject'ten ogretici). Canli katalog dogrulamasi test yolunda YOK (run-path'in korumasi); cxapi 621/622 donerse provider_error_message UI'da gosterilir — bilincli tasarim.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "HSM sablonlu projede Test Gonder, cxapi'ye GUIDE-uyumlu template wire body gonderir: {instanceID, userID, chatPhoneNumber('+'siz), template:{templateId, parameters[{paramKey,value}], headerMedia?}} — messageType/messageText YOK; duz-metin projede eski plain model aynen.", "verified": true, "verification_note": "TestSendAsync HSM dali BroadcastSendRequest{WaTemplateId, TemplateHeaderMediaUrl, Recipients[0].Variables=params} + overrideInstanceId kurar -> orkestrator HSM uretimi -> MessageSenderService template dali -> SendTemplateAsync TemplatePayload (PR-4 wire, guide ile birebir). ToCxapiPhone '+' siler (her iki kind). Build 0E." },
+      { "id": "AC2", "criterion": "Guvenlik/izolasyon: HSM test instance'i tenant-owned Cloud API olmali (IsCloudApiInstanceOwnedAsync, INV-OB-086 reject); CxapiSend allowlist'i orkestratorde INV-OB-085 ile enforce (gate bypass yok); param sayisi/uzunluk ve media URL http(s) cap'leri typed reject; EXACTLY-ONE icerik kaynagi (text XOR template).", "verified": true, "verification_note": "Gate sirasi: Projects -> BulkSend -> throttle -> phone -> [HSM: instance>0 + ownership + param/media caps] -> CreateBroadcastAsync (icinde CxapiSend/085). Tum reject'ler typed INV-OB-086/085." },
+      { "id": "AC3", "criterion": "cxapi saglayici reddi (621 sablon-yok / 622 eksik-param vb.) UI test sonucunda gorunur: failed_reason_sample = COALESCE(failed_reason, provider_error_message).", "verified": true, "verification_note": "Subquery COALESCE'li, tenant-scoped, parameterized; UI poll degismedi (ayni alani gosteriyor)." }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/DTOs/Outbound/ProjectDtos.cs",
+    "src/Invekto.Outbound/Services/ProjectsService.cs",
+    "src/Invekto.Outbound/Services/MessageSenderService.cs",
+    "src/Invekto.Outbound/Data/OutboundRepository.cs",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx",
+    "src/Invekto.Backend/wwwroot/app/index.html",
+    "src/Invekto.Backend/wwwroot/app/assets/*",
+    "arch/plans/20260610-hsm-test-wire-model.json",
+    "arch/plans/diffs/20260610-hsm-test-wire-model.diff"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/DTOs/Outbound/ProjectDtos.cs", "change": "ProjectTestSendRequest += instance_id/wa_template_id/template_params/template_header_media_url (additive optional; EXACTLY-ONE text XOR template dokumante).", "is_new": false },
+    { "path": "src/Invekto.Outbound/Services/ProjectsService.cs", "change": "TestSendAsync HSM dali: exactly-one guard + instance ownership (IsCloudApiInstanceOwnedAsync) + param/media caps -> BroadcastSendRequest{WaTemplateId, Variables, TemplateHeaderMediaUrl} + overrideInstanceId; audit log kind=hsm:slug/plain.", "is_new": false },
+    { "path": "src/Invekto.Outbound/Services/MessageSenderService.cs", "change": "ToCxapiPhone: chatPhoneNumber '+'siz (guide §2/§3.2 kontrati) — plain + template her iki callsite.", "is_new": false },
+    { "path": "src/Invekto.Outbound/Data/OutboundRepository.cs", "change": "failed_reason_sample = COALESCE(failed_reason, provider_error_message) — cxapi 621/622 operatore gorunur.", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "change": "ProjectTestSendRequest tipi genisletildi (optional alanlar).", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx", "change": "sendTest: HSM'de template_params (ornek alicidan; deger yoksa paramKey dummy) + headerMedia + instance_id ile gercek HSM testi; not metni guncellendi.", "is_new": false },
+    { "path": "src/Invekto.Backend/wwwroot/app/*", "change": "SPA build ciktisi (generated).", "is_new": false }
+  ],
+  "git_diff": { "patch_truncated": null, "sha256": null, "full_path": "arch/plans/diffs/20260610-hsm-test-wire-model.diff", "stats": { "insertions": 0, "deletions": 0, "files_count": 0 } },
+  "build": { "status": "PASS", "command": "tsc && vite build (Dashboard) + dotnet build InvektoServis.sln --no-restore -v q", "timestamp": "2026-06-10T14:18:00+03:00", "duration_ms": 50000, "output_tail": "SPA built in 13.40s; solution 0 Error(s).", "error_summary": null, "services": ["Invekto.Shared", "Invekto.Outbound", "Invekto.Backend", "full-solution"] },
+  "verification_questions": [
+    { "id": "Q1", "question": "HSM test yolunda gate sirasi yan-etkiden ONCE tam mi: Projects -> BulkSend -> throttle -> PhoneNormalizer -> instance>0 -> IsCloudApiInstanceOwnedAsync(tenant-scoped, parameterized) -> param/media caps -> CreateBroadcastAsync(icinde CxapiSend allowlist INV-OB-085, HSM bridge-fallback YOK); ownership reddi typed INV-OB-086 mi (sessiz default yok)?", "category": "Auth" },
+    { "id": "Q2", "question": "Wire conformance: TestSendAsync'in kurdugu BroadcastSendRequest (WaTemplateId + Recipients[0].Variables + TemplateHeaderMediaUrl + overrideInstanceId) orkestratorun MEVCUT PR-4 HSM uretimine (hsmParamsJson=Serialize(Variables), template_ref/template_params/template_header_media) ve oradan SendTemplateAsync TemplatePayload'una (template{templateId,parameters[{paramKey,value}],headerMedia}, language YOK) degismeden akiyor mu — yeni paralel uretim yolu YOK mu?", "category": "Data" },
+    { "id": "Q3", "question": "EXACTLY-ONE icerik kaynagi: text XOR template guard'i her kombinasyonda typed INV-OB-086 mi (ikisi bos / ikisi dolu); plain yol onceki davranisla bit-identik mi (4096 cap dahil); ToCxapiPhone yalniz bastaki '+'i mi siliyor (E.164 digit'leri bozulmaz, bridge yolu etkilenmez — bridge kendi regex'iyle phone cikarir)?", "category": "Process/Policy" },
+    { "id": "Q4", "question": "COALESCE'li failed_reason_sample subquery'si tenant-scoped + parameterized kaldi mi ve yalniz status='failed' mesajlardan mi okuyor (sent/ambiguous karismaz); additive alan tuketicileri etkilemiyor mu?", "category": "Data" },
+    { "id": "Q5", "question": "Lifecycle: HSM test broadcast'i message_kind='wapcrm_template' satiri uretir, MessageSenderService pre-parse/CAS state machine (PR-3a/PR-4) degismeden calisir; canli katalog dogrulamasinin test yolunda OLMAMASI bilincli ve dokumante mi (621/622 provider reddi failed_reason_sample ile UI'a tasinir — sessiz kayip yok)?", "category": "Lifecycle" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["WapCrmSendClient wire siniflari (PR-4 pinli — degismedi)", "BroadcastOrchestrator HSM uretimi (sadece cagrilir)", "Gate options siniflari", "Run-path (Preview/ConfirmSendAsync) ve ValidateHsmRunAsync"],
+    "non_goals": ["Test yolunda canli template-katalog dogrulamasi (run-path korumasi; cxapi reddi UI'a tasiniyor)", "messageCategory alani (ayri is — Q'ya soruldu, karar bekliyor)"],
+    "intentional_exclusions": ["Param degeri yoksa paramKey dummy gider (bos deger 622 uretir; gorunur dummy testi ogretici kilar — UI yorum satirinda dokumante)"]
+  },
+  "error_handling": {
+    "try_catch_locations": ["TestSendAsync NpgsqlException -> INV-OB-071 (mevcut)", "UI sendTest poll per-iteration catch + dis catch + finally (degismedi)"],
+    "user_facing_errors": ["INV-OB-086 varyantlari: kanal secin / kanal hesaba ait degil / parametre gecersiz / medya URL gecersiz / tek icerik kaynagi", "INV-OB-085 (orkestrator, HSM allowlist)", "cxapi 621/622 provider mesaji failed_reason_sample ile UI'da"],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Tum yeni reject'ler typed INV-OB-086; HSM allowlist reddi orkestratorde typed 085; saglayici reddi artik COALESCE ile UI'a tasinir (onceden provider_error_message gorunmuyordu — gorunurluk ARTTI)."
+  },
+  "aha_moments": [
+    { "category": "UX", "user_pain": "Param degeri olmayan sablon testinde dummy 'name' metni gidiyor.", "suggestion": "Test oncesi eksik param uyarisi + manuel deger girme alani.", "aha_moment": "Operator testte gercek degerlerle oynayabilir." },
+    { "category": "SUPPORT", "user_pain": "621/622 kodlari ciplak geliyor.", "suggestion": "Sik cxapi statusCode'lari icin TR aciklama haritasi.", "aha_moment": "Operator kodu cevirmeden anlar." },
+    { "category": "RELIABILITY", "user_pain": "Test yolu katalog dogrulamasiz — yanlis slug ancak gonderimde belli olur.", "suggestion": "Test oncesi opsiyonel hizli katalog kontrolu (mevcut wa-templates cache'inden).", "aha_moment": "Yanlis slug aninda yakalanir." },
+    { "category": "SPEED", "user_pain": "Her HSM testi throttle kotasindan yer.", "suggestion": "Throttle kalan hakki UI'da goster.", "aha_moment": "Operator kac test hakki kaldigini bilir." },
+    { "category": "SALES", "user_pain": "Sablon onay sureci musteriye opak.", "suggestion": "Sablon durumu (onayli/beklemede) rozetini template picker'a ekle.", "aha_moment": "Musteri neyi gonderebilecegini gorur." }
+  ],
+  "overrides": [
+    { "command": "Q-DECISION-SUPERSEDE", "by": "Q", "at": "2026-06-10T13:55:00+03:00", "reason": "Q: 'template gonderim modeli yanlis' + onceki 'http istegi dokumana uyacak' — dun geceki 'HSM testi render-metin duz gider' karari Q tarafindan supersede edildi; test gercek HSM wire modeliyle gider. '+ sorun degil' notuna ragmen chatPhoneNumber '+'siz kontrata cekildi (dokuman acik, INMA toleransina yaslanilmaz)." }
+  ],
+  "verdict": { "status": "PASS", "source": null, "received_at": "2026-06-10T14:30:00+03:00", "updated_by": "DevAgent", "updated_at": "2026-06-10T14:30:00+03:00", "raw_text": "MCP codex_review (gpt-5.5) iter0 PASS — 12/12 CQ + 5/5 CoVe. Gate sirasi, wire conformance (PR-4 pinli TemplatePayload'a degismeden akis), exactly-one guard, COALESCE tenant-scope ve lifecycle dogrulandi.", "code_quality_gate": {}, "cove_verification": {}, "blocking_issues": [], "iteration": 0, "escalation_required": false, "escalation_reason": null }
+}

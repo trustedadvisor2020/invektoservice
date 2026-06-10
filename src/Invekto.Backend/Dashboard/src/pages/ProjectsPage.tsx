@@ -12,7 +12,7 @@ import {
   type InstanceDto, type WaTemplate, type ProjectTemplateKind, type ProjectTemplateParam,
   type ProjectContentMode, type OutboundTemplateDto,
   type BulkSendPreviewResponse, type BulkSendStatusResponse,
-  type DataListPreviewSample, type ListRecord,
+  type DataListPreviewSample, type ListRecord, type ProjectTestSendRequest,
 } from '../lib/api';
 
 // =============================================================
@@ -455,7 +455,32 @@ export default function ProjectsPage() {
     setTestSending(true);
     setTestResult(null);
     try {
-      const res = await api.projectTestSend({ phone, message_text: testMessageText });
+      // HSM template: the REAL template wire model goes out (templateId + resolved parameters +
+      // headerMedia — wapcrm-api-integration-guide §3.2; Q 2026-06-10). Param values resolve from
+      // the sample recipient via the current column mapping; with no sample value the paramKey
+      // itself ships as a visible dummy (a 622 reject would teach the operator less than seeing
+      // the template render with placeholder names). plain_text keeps the literal body.
+      const isHsmTest = templateKind === 'wapcrm_template' && !!selectedTemplate && !!waTemplateId;
+      let req: ProjectTestSendRequest;
+      if (isHsmTest) {
+        const params: Record<string, string> = {};
+        for (const ph of placeholders) {
+          const col = paramColumns[ph.key];
+          const sampleVal = col && listInsight?.sample ? recordValue(listInsight.sample, col) : null;
+          params[ph.key] = sampleVal ?? ph.key;
+        }
+        const mediaUrl = mediaInputs.length > 0 ? (mediaValues[mediaKey(mediaInputs[0])] ?? '').trim() : '';
+        req = {
+          phone,
+          instance_id: Number(instanceId),
+          wa_template_id: waTemplateId,
+          template_params: params,
+          ...(mediaUrl ? { template_header_media_url: mediaUrl } : {}),
+        };
+      } else {
+        req = { phone, message_text: testMessageText };
+      }
+      const res = await api.projectTestSend(req);
       if (res.queued === 0) {
         setTestResult({ ok: false, text: 'Mesaj gönderilmedi: numara filtrelendi (opt-out / izin).' });
         return;
@@ -1396,8 +1421,9 @@ export default function ProjectsPage() {
                         <Send className="w-3.5 h-3.5 text-navy-400" /> Test Mesajı
                       </label>
                       <p className="text-[11px] text-navy-400">
-                        Kendi numaranıza düz metin bağlantı testi gönderin.
-                        {templateKind === 'wapcrm_template' && ' Şablonun onaylı formatı değil, önizleme metni düz metin olarak gider.'}
+                        {templateKind === 'wapcrm_template'
+                          ? 'Kendi numaranıza GERÇEK onaylı şablon formatında test gönderin (parametreler örnek alıcıdan doldurulur).'
+                          : 'Kendi numaranıza düz metin bağlantı testi gönderin.'}
                       </p>
                       <div className="flex gap-2">
                         <input
