@@ -1,215 +1,179 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "inma-customer-status-webhook-v1.json",
-  "title": "INMA Customer Status Change Webhook Contract (FEAT-INMA-PIPELINE-V2 C2-C4)",
-  "description": "INMA-authoritative customer_status akisi (Q karari 2026-05-12). INMA agent UI'da veya API ile bir musterinin FeatureGroup secimi degistiginde INMA, firmanin MEVCUT webhook URL'ine (/api/v1/webhook/event?companyId=X) yeni bir event shape'i push eder. INSE opaque store + flow trigger (C3) bu eventi tuketir. Set Customer Status flow action (C4) ve Flow Builder status dropdown'u INMA'nin MEVCUT customer-feature-groups API'sini kullanir (WapCRM-External-API-Documentation.pdf SS6) — INMA tarafinda YENI endpoint gerekmez, tek yeni is bu webhook event'idir.\n\nNAMING CONVENTION: Bu payload PascalCase — mevcut /webhook/event kanalindaki INMA push'lariyla (messages, delivery-ack InstanceID/Status/StatusText) tutarlilik icin. (webchat-inma-channel.json'daki snake_case konvansiyonu Invekto'nun kendi endpoint'leri icindir; burada yazar INMA.)\n\nSUPERSEDES: 2026-05-12 memory'deki dedike 'POST /api/v1/inbound/inma/customer-status-change' endpoint fikri — Q karari 2026-06-10: cxapi delivery-ack ingress pattern'i (mevcut webhook reuse + shape discrimination) aynen uygulanir.\n\nREVIZE 2026-06-10 (Codex consult critique): required/recommended/optional katmanlamasi, ChangeVersion ordering primitifi, OriginRequestID loop korumasi, emit kurallari, free-text ayri alanlar, telefon normalizasyon sozlesmesi, dedupe 30 gun, durable-accept-then-202.",
-  "version": "1.1",
-  "status": "PROPOSED (INMA onayi bekleniyor — Q uzerinden iletilecek)",
+  "$id": "inma-customer-status-webhook-v2.json",
+  "title": "INMA customer.selection_changed Webhook Contract (FEAT-INMA-PIPELINE-V2 C2-C4) — FINAL",
+  "description": "INMA-authoritative customer_status akisi (Q karari 2026-05-12). v2.0 = INMA'nin RESMI CEVABINA gore nihai kontrat (cevap: arch/reports/20260610-inma-customer-status-webhook-cevap.md). Bizim v1.1 teklifimiz (PascalCase, mesaj/ack borusuna yeni shape) INMA gercekligiyle DEGISTI: event ZATEN CANLI olan ayri sistem-olaylari webhook altyapisindan gelir (transactional outbox + HMAC-SHA256 imza + retry). INMA 2026-06-10'da teklifimizdeki eksikleri AYNI GUN ekledi: data.phone/phones, data.originRequestId echo (update'e ClientRequestID), text-modu eventleri. ChangeVersion YOK (Faz 2; fallback recetesi asagida). INMA tarafinda BACKEND GELISTIRMESI GEREKMIYOR — is tamamen bizde: abonelik (KURULDU 2026-06-10 15:45, MSSQL CompanyWebhookEndpoints ID=1 dogrulandi) + consumer implementasyonu (C2).",
+  "version": "2.0",
+  "status": "FINAL (INMA cevabi 2026-06-10; abonelik canli — endpoint Url=https://services.invekto.com/api/v1/webhook/event?companyId=5050, EventType=customer.selection_changed Enabled)",
+
+  "delivery_channel": {
+    "infrastructure": "INMA sistem-olaylari webhook'u — mesaj/ack push borusundan AYRI altyapi (transactional outbox: durum degisikligiyle ayni DB tx'inde kuyruga yazilir, 'degisiklik oldu ama event uretilmedi' olamaz).",
+    "subscription": "Invekto panelinden bir kerelik kurulum: URL + secret + event aboneligi. Secret kurulumda BIR KEZ gorunur. 5050 icin KURULDU (2026-06-10 15:45). MSSQL dogrulama: CompanyWebhookEndpoints(CompanyID=11, Url=bizim endpoint, Enabled, TimeoutSeconds=30, SchemaVersion=1) + CompanyWebhookEndpointEvents(EventType='customer.selection_changed', Enabled). NOT: ayni Url mesaj/ack push'lari icin de gecerli (ayni tablo) — bu yonlendirmeyle 5050 delivery-ack loop'u da ACILDI.",
+    "auth": "HMAC-SHA256 imza: X-Invekto-Signature header (imza kapsami 'timestamp.body') + X-Invekto-Event-Id / X-Invekto-Event-Type / X-Invekto-Timestamp header'lari. Dogrulama kod ornekleri 'Invekto Webhook Musteri Rehberi' PDF'inde (C#/PHP/Python/Node/Java). KURAL: imzasiz/dogrulanmamis istek ISLENMEZ (C2 implementasyon sarti). Secret'in bizim tarafta saklanma yeri C2 interview konusu (tenant settings_json onerisi).",
+    "retry_policy": "At-least-once. Gecici hatalarda (5xx/408/429/timeout/DNS) exponential backoff: anlik → +1dk → +5dk → +15dk → +1sa → +6sa (6 deneme, ~7.5 saat); sonrasi kalici 'failed' (admin yeniden kuyruklayabilir). 3xx ve diger 4xx KALICI FAIL (retry yok), 401 max 3 deneme. URL bazli circuit breaker: ardisik 10 fail → 5dk-1sa soguma. Retry'da SAKLANAN GOVDE byte'i byte'ina yeniden gonderilir (id sabit).",
+    "response_contract": "2xx = kabul (dedupe bizde). Kalici kaydedemezsek 5xx → INMA retry. UYARI: handler'imizda EventType dali yokken bu eventler 400 alir = INMA tarafinda KALICI FAIL → C2 implementasyonu zaman-duyarli."
+  },
 
   "endpoints": {
-    "customer_status_changed_event": {
+    "customer_selection_changed_event": {
       "method": "POST",
-      "path": "/api/v1/webhook/event?companyId={InvektoCompanyCode}",
-      "owner": "Invekto (MEVCUT endpoint — Backend Program.cs webhook handler); INMA push eder",
-      "auth": "Mevcut webhook kanali ile AYNI (IP whitelist + companyId tenant resolution; HMAC YOK — Q karari 2026-06-10, mevcut mesaj/ack push'lariyla ayni guven modeli). INSE tarafi: companyId konfigure tenant'a map edilemiyorsa 401 (telefon'dan tenant cikarimi ASLA yapilmaz).",
-      "discriminator": "Payload'da 'messages' alani YOK + ust seviye 'EventType' alani VAR. INSE handler EventType dalini delivery-ack kontrolunden ONCE isler (WebhookDtos.IsDeliveryAckShape genisletilir — C2 implementasyonu).",
-      "idempotency": "EventID (UUID, INMA uretir). AYNI mantiksal degisikligin retry push'larinda DEGISMEZ; YENI mantiksal degisiklikte YENI uretilir. INSE dedupe: UNIQUE(tenant_id, event_id), saklama 30 GUN (24h yetersiz — gec retry/manuel replay otomasyonu yeniden tetikler). Duplicate → 202 (sessiz kabul).",
-      "response": "202 = event DURABLE olarak kabul edildi (once kalici yazim, sonra 202 — delivery-ack'in kosulsuz-202'sinden BILINCLI farkli: bu event degerli, kayip kabul edilemez). Kalici yazim basarisizsa 5xx → INMA retry eder. 400 = malformed JSON / zorunlu alan eksik. 401 = companyId cozumlenemedi.",
-      "emit_rules": "INMA SADECE etkin secim listesi degistiginde push eder (ayni nihai kume ile no-op update → push YOK). Temizleme → NewSelections=[]. Panel + API + bulk-import kaynakli degisiklikler push edilir (kaynak isaretli). Musteri olusturma sirasindaki ilk secim atamasi → push EDILIR (yeni mantiksal degisikliktir). Musteri merge/delete senaryolari kapsam DISI (soru 6). Multi-select karsilastirmasi KUME semantigi (sira degisikligi degisiklik DEGILDIR).",
-      "scope": "TUM FeatureGroup degisiklikleri push edilir (sadece customer_stage degil — Q karari 2026-06-10). INSE kendi tarafinda filtreler: FeatureGroupSystemKey='customer_stage' varsa onunla, yoksa tenant-konfig FeatureGroupID ile."
+      "path": "/api/v1/webhook/event?companyId={InvektoCompanyCode}  (abonelikte verilen URL — ayri route da secilebilirdi, mevcut endpoint tercih edildi)",
+      "owner": "Invekto consumer (C2 implementasyonu); INMA push eder (event CANLI, abonelik KURULU)",
+      "discriminator": "Govdede 'type' alani VAR (sistem olayi) — 'messages' (inbound) ve 'Status'/'InstanceMessageID' (ack) YOK. INSE handler 'type' dalini mesaj/ack kontrollerinden ONCE isler.",
+      "idempotency": "data dedupe anahtari = 'id' (UUID, retry'da sabit; X-Invekto-Event-Id header'inda da var). INSE dedupe: UNIQUE(tenant_id, event_id), saklama 30 gun."
     },
     "feature_groups_catalog": {
       "method": "GET|POST",
       "path": "https://cxapi.wapcrm.net/api/customer-feature-groups/catalog",
-      "owner": "INMA (MEVCUT — PDF SS6.1, degisiklik istenmiyor)",
-      "auth": "X-CIB-SecretKey + IP whitelist (mevcut cxapi konvansiyonu)",
-      "consumer_use": "Flow Builder 'customer_status' dropdown'u: INSE Backend proxy + cache (5dk TTL, FEAT-TFM resolver pattern) ile grup+feature listesi ceker. selectionMode 1=multi 2=single 3=text."
+      "owner": "INMA (MEVCUT — PDF SS6.1)",
+      "auth": "X-CIB-SecretKey + IP whitelist",
+      "consumer_use": "Flow Builder durum dropdown'u: Backend proxy + cache. Catalog-degisiklik event'i YOK (INMA cevabi soru 9) → periyodik refresh (gunluk + akis editoru acilisinda). featureGroupId/featureIds STABIL; isimler event uretim aninda cozulur → trigger eslesmesi ID ile."
     },
     "customer_selections_read": {
       "method": "POST",
       "path": "https://cxapi.wapcrm.net/api/customer-feature-groups/customer-selections",
-      "owner": "INMA (MEVCUT — PDF SS6.2, degisiklik istenmiyor)",
+      "owner": "INMA (MEVCUT — PDF SS6.2)",
       "auth": "X-CIB-SecretKey + IP whitelist",
-      "consumer_use": "Stale-event korumasi: ChangeVersion saglanamazsa flow tetiklemeden ONCE guncel durumu bu endpoint'ten dogrula (fetch-verify fallback). Ayrica lead detayinda guncel durum gosterimi. Lookup: CustomerID oncelikli, yoksa Phone; ikisi bos → 401, musteri yok → 903."
+      "consumer_use": "Sira-disilik/kacak tespitinde otoriter durum cekimi (fallback recetesi adim c) + telefon eslesmeyince customerId ile dogrulama."
     },
     "set_customer_status_action": {
       "method": "POST",
       "path": "https://cxapi.wapcrm.net/api/customer-feature-groups/update",
-      "owner": "INMA (MEVCUT — PDF SS6.3; OPSIYONEL kucuk ek: ClientRequestID kabul + webhook'ta echo)",
+      "owner": "INMA (MEVCUT — PDF SS6.3 + YENI: ClientRequestID alani 2026-06-10)",
       "auth": "X-CIB-SecretKey + IP whitelist",
-      "consumer_use": "C4 'Set Customer Status' flow action node: {CustomerID|Phone, FeatureGroupID, FeatureIDs[]} — grubun YENI TAM listesi gonderilir (full-list semantics, atomik + audit Source='api'). Hata: 920 grup yok/pasif, 921 feature yok/pasif, 922 tek-secim grubuna coklu, 923 feature gruba ait degil.",
-      "loop_guard": "BIRINCIL: update cagrisina ClientRequestID ekleriz; INMA webhook'ta OriginRequestID olarak echo eder → INSE kendi request-id'sini tanir, trigger'i bastirir. FALLBACK (echo yapilamazsa): ApiClient='invekto' isareti; o da yoksa ChangeSource='api' KABA bastirma (risk: baska entegrasyonlarin mesru API degisiklikleri de bastirilir — bilincli kabul, soru 2'nin cevabina gore netlesir). Opaque store HER kaynagi kaydeder; bastirma yalniz flow-trigger katmaninda."
+      "consumer_use": "C4 'Set Customer Status' action: {CustomerID|Phone, FeatureGroupID, FeatureIDs[], ClientRequestID?} — full-list semantics, atomik + audit Source='api'. ClientRequestID (string, max 128) event'te data.originRequestId olarak AYNEN doner. Hata: 920/921/922/923; lookup CustomerID oncelikli, Phone fallback, ikisi bos 401, musteri yok 903.",
+      "loop_guard": "BIRINCIL: ClientRequestID='invekto-{flowRunUuid}' gonder → event'te originRequestId eslesirse trigger SUPPRESS. IKINCI GUVENCE (INMA-side, zaten canli): natural idempotency — ayni nihai kumeyle update NO-OP'tur, event uretmez → sonsuz dongu zaten imkansiz. UCUNCU: actor.type=='api' icin tenant-config varsayilan suppress (diger API istemcileri icin; acilabilir)."
     }
   },
 
   "schemas": {
-    "CustomerStatusChangedEvent": {
+    "CustomerSelectionChangedEvent": {
       "type": "object",
-      "required": ["EventType", "EventID", "CustomerID", "Phone", "FeatureGroupID", "SelectionMode", "NewSelections", "ChangeSource", "ChangedAt"],
-      "field_tiers": {
-        "required": "EventType, EventID, CustomerID, Phone, FeatureGroupID, SelectionMode, NewSelections, ChangeSource, ChangedAt — minimal partner is yuku",
-        "strongly_recommended": "ChangeVersion (ordering), OriginRequestID + ApiClient (loop korumasi) — yapilabilirligi soru 1-2'de",
-        "optional": "FeatureGroupSystemKey, FeatureGroupName, OldSelections, ChangedBy, InstanceID, RgbCode, Old/NewTextValue(mode 3)"
-      },
+      "description": "INMA'nin GERCEK semasi (camelCase). Retry'da byte-identik gonderilir.",
       "properties": {
-        "EventType": {
-          "const": "customer_status_changed",
-          "description": "Sabit discriminator. INSE handler bu alanla dallanir."
+        "id": { "type": "string", "format": "uuid", "description": "Dedupe anahtari; retry'da sabit. X-Invekto-Event-Id header'iyla ayni." },
+        "type": { "const": "customer.selection_changed", "description": "Sabit discriminator." },
+        "version": { "type": "integer", "description": "Sema versiyonu (1). Additive eklemelerde ARTMAZ." },
+        "occurredAt": { "type": "string", "format": "date-time", "description": "ISO8601 UTC. Siralama guard'inda kullanilir (fallback recetesi adim a)." },
+        "companyId": { "type": "integer", "description": "INMA Company ID (dikkat: InvektoCompanyCode DEGIL — orn. 5050 icin companyId=11). Tenant cozumu query-string ?companyId={InvektoCompanyCode} ile yapilir; govdedeki companyId cross-check icin saklanir." },
+        "actor": {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "enum": ["user", "api", "system", "zoho-webhook"], "description": "user=panel agent; api=dis API; system=INMA ic; zoho-webhook=Zoho senkronu. 'import' YOK (toplu import secim tablosuna yazamaz). Zoho kaynaklilari istemiyorsak filtre bizde." },
+            "id": { "type": ["integer", "null"], "description": "Panel degisikliklerinde dolu (agent id)." },
+            "name": { "type": ["string", "null"], "description": "Gosterim/audit amacli — mantik kurulmaz." }
+          }
         },
-        "EventID": {
-          "type": "string",
-          "format": "uuid",
-          "description": "INMA uretir. Ayni mantiksal degisikligin retry'larinda AYNI; yeni degisiklikte YENI."
-        },
-        "ChangeVersion": {
-          "type": ["integer", "null"],
-          "description": "STRONGLY RECOMMENDED. Ayni CustomerID+FeatureGroupID icin monotonik artan sayac. Out-of-order teslimde INSE stale event'i atar (yereldeki son version'dan kucuk/esit → uygulanmaz). Saglanamazsa INSE fetch-verify fallback uygular (customer-selections ile dogrulama; ara durumlar collapse olabilir — kabul edilen trade-off)."
-        },
-        "CustomerID": {
-          "type": "integer",
-          "description": "INMA musteri kimligi (customer-feature-groups API'leriyle ayni kimlik uzayi)."
-        },
-        "Phone": {
-          "type": "string",
-          "pattern": "^[1-9][0-9]{7,14}$",
-          "description": "ZORUNLU — INSE lead korelasyon anahtari (CustomerID INMA-internal). Normalizasyon SOZLESMESI: yalniz rakam, ulke koduyla baslar (90...), '+' yok, '00' prefix yok, bosluk yok, WhatsApp suffix yok; INBOUND mesaj payload'larindaki telefonla AYNI normalizasyon. Coklu telefonlu musteri → eslesmede kullanilan birincil WhatsApp numarasi. CustomerID-Phone celiskisinde INSE Phone'u esas alir (kendi anahtari); Phone bos/eslesmiyor → event saklanir + WARN log, lead'e uygulanMAZ (drop-with-audit, lead-create YOK — C2 karari)."
-        },
-        "InstanceID": {
-          "type": ["integer", "null"],
-          "description": "OPSIYONEL: degisikligin yapildigi kanal baglami varsa."
-        },
-        "FeatureGroupID": { "type": "integer", "description": "ZORUNLU. INSE filtre fallback anahtari." },
-        "FeatureGroupSystemKey": {
-          "type": ["string", "null"],
-          "description": "OPSIYONEL (her grupta system key olmayabilir). Orn. 'customer_stage'. Varsa INSE eslesmeyi bununla yapar (rename'e dayanikli); yoksa tenant-konfig FeatureGroupID kullanilir."
-        },
-        "FeatureGroupName": { "type": ["string", "null"], "description": "OPSIYONEL gosterim adi, orn. 'Lead Asamasi'." },
-        "SelectionMode": { "type": "integer", "enum": [1, 2, 3], "description": "ZORUNLU. 1=Coklu, 2=Tek, 3=Metin (PDF SS6.1)." },
-        "OldSelections": {
-          "type": ["array", "null"],
-          "items": { "$ref": "#/schemas/SelectionItem" },
-          "description": "OPSIYONEL. null = saglanamadi/bilinmiyor; [] = onceki durum BILINEN-BOS. Bu ikisi ASLA birbirinin yerine kullanilmaz. Yanlis hesaplanmis OldSelections sahte trigger uretir — INMA icin maliyetliyse null gondersin, INSE kendi son snapshot'ina dayanir."
-        },
-        "NewSelections": {
-          "type": "array",
-          "items": { "$ref": "#/schemas/SelectionItem" },
-          "description": "ZORUNLU. Degisiklik sonrasi TAM liste (KUME semantigi — sira anlamsiz). Bos [] = secim temizlendi. SelectionMode=3'te bos birakilir, deger NewTextValue'da."
-        },
-        "OldTextValue": { "type": ["string", "null"], "description": "SelectionMode=3 icin onceki metin (null=bilinmiyor)." },
-        "NewTextValue": { "type": ["string", "null"], "description": "SelectionMode=3 icin yeni metin. Mode 3'te ZORUNLU (bos string = temizlendi). Selections dizilerine metin SIKISTIRILMAZ." },
-        "ChangeSource": {
-          "type": "string",
-          "enum": ["panel", "api", "import", "system"],
-          "description": "ZORUNLU. panel=agent UI; api=customer-feature-groups/update; import=toplu ice aktarim; system=INMA ic islemleri. Tek basina loop korumasi icin YETERSIZ (api ≠ mutlaka Invekto) — OriginRequestID/ApiClient ile birlikte degerlendirilir."
-        },
-        "ApiClient": {
-          "type": ["string", "null"],
-          "description": "STRONGLY RECOMMENDED (ChangeSource='api' iken): 'invekto' | baska istemci kimligi | null=bilinmiyor. Loop korumasinin ikinci katmani."
-        },
-        "OriginRequestID": {
-          "type": ["string", "null"],
-          "description": "STRONGLY RECOMMENDED: update cagrisindaki ClientRequestID'nin echo'su. INSE kendi flow-run-uuid'sini tanirsa trigger'i kesin olarak bastirir (loop korumasinin birincil katmani)."
-        },
-        "ChangedBy": {
-          "type": ["string", "null"],
-          "description": "OPSIYONEL, SADECE gosterim/audit — INSE bunun uzerine MANTIK KURMAZ (kararsiz/eksik olabilir). panel'de agent kimligi; api'de null."
-        },
-        "ChangedAt": {
-          "type": "string",
-          "format": "date-time",
-          "description": "ZORUNLU. ISO8601 UTC. Siralama icin TEK BASINA KULLANILMAZ (saat kaymasi/retry) — ChangeVersion veya fetch-verify esastir."
+        "data": {
+          "type": "object",
+          "properties": {
+            "customerId": { "type": "integer", "description": "customer-feature-groups API'leriyle ayni kimlik uzayi." },
+            "phone": { "type": "string", "description": "Ilk aktif telefon, YALNIZ RAKAM. Telefon yoksa alan GELMEZ. UYARI: ulke kodu GARANTI DEGIL (sisteme girildigi gibi, rakam-disi ayiklanmis) — WhatsApp kaynakli kayitlar pratikte 905... ama elle girilenler 0555... olabilir." },
+            "phones": { "type": "array", "items": { "type": "string" }, "description": "TUM aktif telefonlar (rakam, tekrarsiz). EN SAGLAM ESLEME: kendi numarani rakama indirip phones icinde ara. Eslesmeyen numarada customerId → customer-selections ile dogrula." },
+            "featureGroupId": { "type": "integer", "description": "Trigger/filtre eslesme anahtari (FeatureGroupSystemKey YOK — ID kullan, rename'e dayanikli)." },
+            "featureGroupName": { "type": "string" },
+            "selectionMode": { "type": "string", "enum": ["single", "multi", "text"], "description": "PDF'teki 2/1/3'un string karsiligi." },
+            "originRequestId": { "type": ["string", "null"], "description": "update cagrisindaki ClientRequestID'nin AYNEN echo'su (2026-06-10 eklendi). Loop-suppress birincil anahtari." },
+            "before": { "$ref": "#/schemas/SelectionState", "description": "HER ZAMAN DOLU (null/bilinmiyor durumu YOK) — zincir kontrolu icin kullanilir." },
+            "after": { "$ref": "#/schemas/SelectionState", "description": "Degisiklik sonrasi TAM kume. featureIds=[] = temizlendi." }
+          }
         }
       }
     },
-    "SelectionItem": {
+    "SelectionState": {
       "type": "object",
-      "required": ["FeatureID", "FeatureName"],
       "properties": {
-        "FeatureID": { "type": "integer", "description": "Mode 1-2'de zorunlu (mode 3 selections kullanmaz)." },
-        "FeatureName": { "type": "string", "description": "Secenek adi. NOT: rename sonrasi isim-tabanli otomasyonlar kirilgan — INSE trigger eslesmesi FeatureID tercih eder, isim gosterim icindir." },
-        "RgbCode": { "type": ["string", "null"], "description": "OPSIYONEL, orn. 'rgb(33,150,243)' — Dashboard rozet rengi." }
+        "featureIds": { "type": "array", "items": { "type": "integer" }, "description": "KUME semantigi. text modunda []." },
+        "featureNames": { "type": "array", "items": { "type": "string" }, "description": "Event uretim anindaki guncel isimler (gosterim; mantik featureIds ile)." },
+        "textValue": { "type": "string", "description": "SADECE selectionMode='text'. Alan YOKSA o yonde deger yok (before'da yok=ilk atama; after'da yok=temizlendi)." }
       }
     }
   },
 
   "examples": {
-    "single_select_change_minimal": {
-      "EventType": "customer_status_changed",
-      "EventID": "9f8e7d6c-5b4a-4321-9876-fedcba098765",
-      "CustomerID": 17,
-      "Phone": "905551112233",
-      "FeatureGroupID": 1,
-      "SelectionMode": 2,
-      "NewSelections": [{ "FeatureID": 19, "FeatureName": "Teklif Verildi" }],
-      "ChangeSource": "panel",
-      "ChangedAt": "2026-06-10T14:30:00Z"
+    "panel_change": {
+      "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+      "type": "customer.selection_changed",
+      "version": 1,
+      "occurredAt": "2026-06-10T14:30:00Z",
+      "companyId": 11,
+      "actor": { "type": "user", "id": 42, "name": "Agent Adi" },
+      "data": {
+        "customerId": 134162,
+        "phone": "905551112233",
+        "phones": ["905551112233"],
+        "featureGroupId": 1,
+        "featureGroupName": "Lead Asamasi",
+        "selectionMode": "single",
+        "originRequestId": null,
+        "before": { "featureIds": [5], "featureNames": ["Gorusme"] },
+        "after": { "featureIds": [7], "featureNames": ["Teklif Verildi"] }
+      }
     },
-    "single_select_change_full": {
-      "EventType": "customer_status_changed",
-      "EventID": "9f8e7d6c-5b4a-4321-9876-fedcba098765",
-      "ChangeVersion": 8,
-      "CustomerID": 17,
-      "Phone": "905551112233",
-      "InstanceID": 6570,
-      "FeatureGroupID": 1,
-      "FeatureGroupSystemKey": "customer_stage",
-      "FeatureGroupName": "Lead Asamasi",
-      "SelectionMode": 2,
-      "OldSelections": [{ "FeatureID": 7, "FeatureName": "Gorusme", "RgbCode": "rgb(255,193,7)" }],
-      "NewSelections": [{ "FeatureID": 19, "FeatureName": "Teklif Verildi", "RgbCode": "rgb(33,150,243)" }],
-      "ChangeSource": "panel",
-      "ApiClient": null,
-      "OriginRequestID": null,
-      "ChangedBy": "agent@firma.com",
-      "ChangedAt": "2026-06-10T14:30:00Z"
+    "invekto_flow_originated": {
+      "id": "2b3c4d5e-1111-4000-8000-000000000002",
+      "type": "customer.selection_changed",
+      "version": 1,
+      "occurredAt": "2026-06-10T14:31:05Z",
+      "companyId": 11,
+      "actor": { "type": "api", "id": null, "name": null },
+      "data": {
+        "customerId": 134162,
+        "phone": "905551112233",
+        "phones": ["905551112233"],
+        "featureGroupId": 1,
+        "featureGroupName": "Lead Asamasi",
+        "selectionMode": "single",
+        "originRequestId": "invekto-flowrun-7c1d2e3f",
+        "before": { "featureIds": [7], "featureNames": ["Teklif Verildi"] },
+        "after": { "featureIds": [9], "featureNames": ["Randevu"] }
+      }
     },
-    "api_sourced_by_invekto_flow": {
-      "EventType": "customer_status_changed",
-      "EventID": "2b3c4d5e-1111-4000-8000-000000000002",
-      "ChangeVersion": 9,
-      "CustomerID": 17,
-      "Phone": "905551112233",
-      "FeatureGroupID": 1,
-      "SelectionMode": 2,
-      "NewSelections": [{ "FeatureID": 22, "FeatureName": "Randevu" }],
-      "ChangeSource": "api",
-      "ApiClient": "invekto",
-      "OriginRequestID": "invekto-flowrun-7c1d2e3f-aaaa-bbbb-cccc-000000000001",
-      "ChangedAt": "2026-06-10T14:31:05Z"
-    },
-    "clear_selection": {
-      "EventType": "customer_status_changed",
-      "EventID": "1a2b3c4d-0000-4000-8000-000000000001",
-      "CustomerID": 17,
-      "Phone": "905551112233",
-      "FeatureGroupID": 5,
-      "SelectionMode": 1,
-      "OldSelections": [{ "FeatureID": 30, "FeatureName": "E-posta" }],
-      "NewSelections": [],
-      "ChangeSource": "panel",
-      "ChangedAt": "2026-06-10T15:00:00Z"
+    "text_mode": {
+      "id": "1a2b3c4d-0000-4000-8000-000000000001",
+      "type": "customer.selection_changed",
+      "version": 1,
+      "occurredAt": "2026-06-10T15:00:00Z",
+      "companyId": 11,
+      "actor": { "type": "user", "id": 42, "name": "Agent Adi" },
+      "data": {
+        "customerId": 134162,
+        "phone": "905551112233",
+        "phones": ["905551112233"],
+        "featureGroupId": 5,
+        "featureGroupName": "Notlar",
+        "selectionMode": "text",
+        "originRequestId": null,
+        "before": { "featureIds": [], "featureNames": [], "textValue": "eski not" },
+        "after": { "featureIds": [], "featureNames": [], "textValue": "yeni not" }
+      }
     }
   },
 
-  "inse_side_implementation_notes": {
-    "c2_ingress": "Backend webhook handler'a ucuncu dal: EventType=='customer_status_changed' → companyId konfig dogrulamasi (bilinmeyen → 401) → zorunlu alan validasyonu (eksik → 400) → DURABLE yazim (raw event tablosu) → 202; durable yazim FAIL → 5xx (INMA retry'ina yaslan). Islem ASYNC devam: dedupe(tenant_id, EventID, 30 gun) → ordering guard → leads.customer_status opaque yazim → Automation'a flow-trigger forward. DELIVERY-ACK'IN KOSULSUZ-202'SINDEN FARKLI — bilincli.",
-    "c2_ordering": "ChangeVersion varsa: yereldeki son (CustomerID,FeatureGroupID) version >= gelen → stale, uygulanmaz (event yine audit'e yazilir). ChangeVersion yoksa: flow tetiklemeden ONCE customer-selections fetch-verify; guncel durum payload'la uyusmuyorsa trigger atlanir, store guncel duruma cekilir. Hizli ardisik degisikliklerde ara durumlar collapse olabilir (Yeni→Gorusme→Teklif yalniz Teklif tetikler) — KABUL EDILEN trade-off (Q onayina sunulacak C2 interview'da).",
-    "c2_storage": "leads tablosuna YENI kolon customer_status TEXT (opaque). Derivasyon kurali: SelectionMode=2 → NewSelections[0].FeatureName; [] → NULL; SelectionMode=1 → FeatureName'ler alfabetik-sirali CSV; SelectionMode=3 → NewTextValue. Ham event ayrica audit tablosunda (FeatureID'ler dahil — rename durumunda kaynak veri kaybolmasin). Eski pipeline_status VARCHAR(30) Zoho-out sonrasi sahipsiz — migration'da birlikte ele alinir (C2 interview).",
-    "c2_identity": "Phone → lead eslesmesi tenant-scoped. Eslesme yoksa: event audit'e yazilir + WARN, lead-create YAPILMAZ. Bir telefon birden cok lead'e eslesirse (beklenmez ama): en son guncellenen lead + WARN log (C2 interview'da netlesir).",
-    "c3_trigger": "FlowGraphV2.TriggerTypes += 'customer_status_changed' + CustomerStatusChangedTriggerHandler (INodeHandler) + DI. Flow context: {{customer_status_group}}, {{old_customer_status}}, {{new_customer_status}}, {{customer_status_changed_by}}. trigger_config: grup eslesmesi (systemKey varsa o, yoksa FeatureGroupID) + opsiyonel from/to FeatureID eslesmesi (isim degil — rename guvenligi). Bastirma sirasi: OriginRequestID bizim flow-run kaydimizla eslesiyorsa SUPPRESS; degilse ApiClient=='invekto' SUPPRESS; degilse ChangeSource=='api' varsayilan SUPPRESS (tenant-config ile acilabilir: 'API kaynakli degisiklikler de tetiklesin').",
-    "c4_action": "ActionSetCustomerStatusHandler → INMA /api/customer-feature-groups/update (X-CIB-SecretKey tenant settings_json->wapcrm'den; client secimi C4 interview'da). Cagriya ClientRequestID=flow-run-uuid eklenir (INMA kabul ederse) + flow-run-uuid yerel suppress-tablosuna yazilir (OriginRequestID eslesmesi icin, TTL ~1h). Dropdown verisi: Backend proxy + 5dk cache ile catalog endpoint'i.",
-    "error_codes": "INV-INM-xxx tahsisi C2 implementasyon pre-flight'inda (arch/errors.md grep) — bu contract dosyasi kod tahsis ETMEZ."
+  "ordering_fallback_recipe": {
+    "source": "INMA cevabi soru 2 (ChangeVersion YOK — Faz 2 adayi; canlida sira-disilik frekansi yuksek cikarsa additive sayac eklenir, sema kirilmaz)",
+    "steps": [
+      "(a) occurredAt guard: customerId+featureGroupId basina son uygulanan occurredAt'i sakla; eski/esit olani atla.",
+      "(b) zincir kontrolu: sira dogruysa her event'in 'before'u elimizdeki guncel duruma esittir; degilse sira-disilik/kacak var.",
+      "(c) zincir kirildiysa customer-selections'tan otoriter durumu cek (fetch-verify), store'u ona cek; trigger'i payload yerine otoriter duruma gore degerlendir."
+    ]
   },
 
-  "open_questions_for_inma": [
-    "1. Webhook push retry politikasi: mevcut mesaj/ack push'lariyla ayni mi (at-least-once)? Basarisiz push kac kez / hangi araliklarla denenir? EventID ayni mantiksal degisikligin retry'larinda sabit kalir mi? 5xx aldiginizda retry eder misiniz?",
-    "2. ChangeVersion (ayni CustomerID+FeatureGroupID icin monotonik artan sayac) saglanabilir mi? (Out-of-order teslim korumasi icin cok degerli; yoksa biz her event'te guncel durumu customer-selections'tan dogrulariz — sizin API yukunuz artar.)",
-    "3. customer-feature-groups/update cagrisina opsiyonel ClientRequestID alani eklenip webhook'ta OriginRequestID olarak echo edilebilir mi? Olamiyorsa: API-kaynakli degisikliklerde ApiClient (hangi API istemcisi) alani verilebilir mi? (Kendi tetikledigimiz degisikligin geri-tetikleme yapmamasi icin; yalniz ChangeSource='api' yetersiz — baska entegrasyonlar da API kullanabilir.)",
-    "4. API/import/system kaynakli TUM degisiklikler push edilir mi ve ChangeSource dogru isaretlenir mi? No-op update'lerde (ayni nihai kume) push atlanir mi?",
-    "5. SelectionMode=3 (Metin) gruplarinda onerdigimiz ayri alanlar (NewTextValue/OldTextValue) uygun mu?",
-    "6. Musteri merge/delete senaryolarinda secim-degisikligi event'i uretilir mi? (Uretilmiyorsa sorun degil — bilmemiz yeterli.)",
-    "7. OldSelections saglanabilir mi? (Maliyetliyse null gonderin, biz kendi snapshot'imiza dayaniriz; [] yalniz 'onceki durum bilinen-bos' anlaminda kullanilsin.)",
-    "8. Phone alani inbound mesaj payload'larinizla AYNI normalizasyonda mi (yalniz rakam, ulke kodlu, '+' ve '00' yok)? Coklu telefonlu musteride hangi numara gonderilir?",
-    "9. Catalog degisiklikleri (grup/feature ekleme-silme-rename) icin ayrica event var mi, yoksa catalog'u periyodik refresh mi edelim? (Bilgi amacli — cache TTL kararimizi etkiler.)"
-  ]
+  "inse_side_implementation_notes": {
+    "c2_ingress": "Backend webhook handler'a 'type' dali (mesaj/ack kontrollerinden ONCE): HMAC dogrulama (X-Invekto-Signature, 'timestamp.body', secret tenant-scoped) → ZORUNLU; imzasiz istek ISLENMEZ → companyId tenant cozumu (query-string; govde companyId cross-check audit'e) → DURABLE raw-event yazimi → 2xx; persist FAIL → 5xx. Async: dedupe(tenant_id, id, 30g) → ordering_fallback_recipe → opaque store → Automation flow-trigger forward. NOT: dal yokken eventler 400 = INMA'da KALICI fail → oncelikli implement.",
+    "c2_secret": "Abonelik secret'i INMA panel kurulumunda bir kez gorunur; INMA MSSQL CompanyWebhookEndpoints.Secret'ta da durur (readonly erisimimiz var) ama dogru yol: Q panel'den alir → tenant settings_json'a (alan adi C2 interview).",
+    "c2_phone_matching": "phones[] icinde tenant-scoped leads.phone ara (kendi numarayi da rakama indir). Ulke kodu garantisi YOK → eslesmezse customerId ile customer-selections dogrulamasi; yine yoksa drop-with-audit + WARN (lead-create YOK).",
+    "c2_storage": "leads.customer_status TEXT (opaque). Derivasyon: single → after.featureNames[0]; [] → NULL; multi → featureNames alfabetik CSV; text → after.textValue (alan yoksa NULL). Ham event audit tablosuna featureIds ile (rename guvenligi). pipeline_status VARCHAR(30) kaderi C2 migration interview'unda.",
+    "c3_trigger": "FlowGraphV2.TriggerTypes += 'customer_status_changed' + INodeHandler + DI. trigger_config eslesmesi featureGroupId + opsiyonel from/to featureId (isim DEGIL). Suppress sirasi: originRequestId eslesmesi → actor.type=='api' tenant-config varsayilan suppress (acilabilir) → actor.type=='zoho-webhook' tenant-config (varsayilan suppress onerisi). Flow context: {{customer_status_group}}, {{old_customer_status}}, {{new_customer_status}}, {{customer_status_changed_by}}.",
+    "c4_action": "ActionSetCustomerStatusHandler → update endpoint'i + ClientRequestID='invekto-{flowRunUuid}' + flow-run-uuid suppress-tablosu (TTL ~1h). INMA natural idempotency (ayni kume no-op, event yok) ikinci guvence. Dropdown: catalog proxy + cache (gunluk refresh + editor acilisinda).",
+    "error_codes": "INV-INM-xxx tahsisi C2 pre-flight'inda."
+  },
+
+  "references": {
+    "inma_response": "arch/reports/20260610-inma-customer-status-webhook-cevap.md (INMA cevabi, alan esleme tablosu + retry + recete)",
+    "our_proposal_v1": "arch/reports/20260610-inma-customer-status-webhook-contract-draft.md (tarihce — v1.1 teklifimiz)",
+    "vendor_guide": "arch/docs/wapcrm-api-integration-guide.md (2026-06-10 guncel — requiredInputs HEADER fix'i + fixedValues dahil)",
+    "vendor_pdf": "temp/WapCRM-External-API-Documentation.pdf SS6 (customer-feature-groups) + 'Invekto Webhook Musteri Rehberi' PDF (imza dogrulama ornekleri — Q'dan istenecek)",
+    "subscription_evidence": "INMA MSSQL (readonly) CompanyWebhookEndpoints ID=1 CompanyID=11 Url=https://services.invekto.com/api/v1/webhook/event?companyId=5050 Enabled=1 UpdatedDate=2026-06-10T15:45 + CompanyWebhookEndpointEvents EventType=customer.selection_changed Enabled=1"
+  }
 }
