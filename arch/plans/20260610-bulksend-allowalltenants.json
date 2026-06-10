@@ -5,7 +5,7 @@
   "spec_ref": null,
   "slug": "20260610-bulksend-allowalltenants",
   "risk": "CRITICAL",
-  "status": "REVIEW",
+  "status": "DONE",
   "created_at": "2026-06-10T05:40:00+03:00",
   "updated_at": "2026-06-10T05:45:00+03:00",
   "plan": {
@@ -14,7 +14,7 @@
     "interview_notes": "Interview yok — Q'nun acik yazili gate-open emri (P0-3 dokrininin sahibi karari verdi). Pattern secimi: AllowAllTenants flag (ProjectsOptions emsali) > 11 tenant'i listeye dondurmak (yeni tenant'lar otomatik dahil olsun diye).",
     "acceptance_criteria": [
       { "id": "AC1", "criterion": "BulkSendOptions.IsTenantAllowed: Enabled && (AllowAllTenants || AllowedTenantIds.Contains) — ProjectsOptions.IsTenantAllowed ile birebir ayni sekil; AllowAllTenants default FALSE (config'te yoksa davranis bugunku ile ayni).", "verified": true, "verification_note": "Kod ProjectsOptions:39-40'in kopyasi; bool default=false; mevcut prod config (flag'siz) ile bit-identik davranis." },
-      { "id": "AC2", "criterion": "Prod config'e BulkSend.AllowAllTenants=true targeted-insert (.bak yedekli, full reserialize YOK) + Outbound deploy + restart sonrasi gate snapshot: BulkSend herkese acik, CxapiSend hala YOK, Projects=[5050] degismedi; 10/10 health.", "verified": false, "verification_note": null }
+      { "id": "AC2", "criterion": "Prod config'e BulkSend.AllowAllTenants=true targeted-insert (.bak yedekli, full reserialize YOK) + Outbound deploy + restart sonrasi gate snapshot: BulkSend herkese acik, CxapiSend hala YOK, Projects=[5050] degismedi; 10/10 health.", "verified": true, "verification_note": "Deploy ~08:22: config snapshot 'BulkSend: Enabled=True AllowAllTenants=True', 'Projects: [5050]', 'CxapiSend: YOK'; 10/10 HEALTHY. .bak: appsettings.Production.json.bak-20260610-bulksend-gateopen. Not: ilk insert denemesi dosya-geneli regex guard'a takildi (BulkSend._comment iceriginde eslesme) -> BulkSend-scoped object-property kontrolu ile duzeltildi." }
     ]
   },
   "allowed_files": [
