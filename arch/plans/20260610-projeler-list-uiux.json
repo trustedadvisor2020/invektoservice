@@ -155,6 +155,17 @@
       "notes": "rowTemplates union'a 'error' state + console.warn + ref delete (Yenile retry) + uc-durum tooltip metni; effect comment'i kontrata hizalandi. Build 8.97s 0E."
     },
     {
+      "ts": "2026-06-10T15:50:00Z",
+      "event": "COMMITTED",
+      "commit_sha": "4115fcd2",
+      "notes": "TSX + plan JSON master; SPA asset rotasyonu wrap commitinda (e762466d)."
+    },
+    {
+      "ts": "2026-06-10T16:19:00Z",
+      "event": "DEPLOYED",
+      "notes": "Backend server-deploy (config-restore'lu, webhook IP korundu), 10/10 HEALTHY, canli bundle index-BKdCQuBe.js dogrulandi. Migration yok, gate'ler degismedi."
+    },
+    {
       "ts": "2026-06-10T15:44:00Z",
       "event": "CODEX_ITER1_PASS",
       "model_used": "gpt-5.5-2026-04-23",
