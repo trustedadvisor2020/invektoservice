@@ -29,11 +29,27 @@ const MAX_FILE_BYTES = 15 * 1024 * 1024; // 15 MB — reject oversized uploads b
 const MAX_INPUT_ROWS = 50_000;           // mirrors ContactListOptions.MaxImportRows (NO auto-partition).
 const EXISTS_PROBE_BATCH = 20_000;       // <= ContactListOptions.MaxExistsProbe per request.
 const PREVIEW_ROWS = 10;
-const IMPORT_JOBS_KEY = 'invekto_import_jobs';
 
 type WizardStep = 1 | 2 | 3;
 
 type ParsedRow = Record<string, string>;
+
+// CSV bytes -> text. Strict UTF-8 first (fatal:true REJECTS invalid byte sequences instead of
+// silently emitting U+FFFD), then Windows-1254 (Turkish ANSI — Excel'in varsayılan "CSV" kaydı)
+// for files the strict pass rejects: "Yılmaz" stays "Yılmaz" in both encodings. Valid UTF-8
+// (BOM'lu/BOM'suz) decodes byte-identical to before. The 1254 decoder is feature-detected; a
+// runtime without it falls back to today's non-fatal UTF-8 — never worse than the status quo.
+function decodeCsvBytes(buf: ArrayBuffer): string {
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(buf);
+  } catch {
+    try {
+      return new TextDecoder('windows-1254').decode(buf);
+    } catch {
+      return new TextDecoder('utf-8').decode(buf);
+    }
+  }
+}
 
 interface FieldMapping {
   phone: string | null;
@@ -66,17 +82,6 @@ interface ImportSummary {
   dbExists: number;
   toInsert: number;
   toUpdate: number;
-}
-
-interface ImportJob {
-  id: number;
-  fileName: string;
-  listName: string;
-  inserted: number;
-  updated: number;
-  skipped: number;
-  invalid: number;
-  finishedAt: string;
 }
 
 // ---- Phone normalizer (PREVIEW ONLY) ----
@@ -235,14 +240,6 @@ export function DataImportPage() {
   // samples), so the operator hint cannot be missed on large files.
   const [sciNotationInFile, setSciNotationInFile] = useState(false);
 
-  const [jobs, setJobs] = useState<ImportJob[]>(() => {
-    try { return JSON.parse(localStorage.getItem(IMPORT_JOBS_KEY) || '[]'); }
-    catch (err) {
-      console.warn('[DataImport] import job history could not be parsed; starting empty:', err);
-      return [];
-    }
-  });
-
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ---- List viewer popup (double-click / eye icon on a list row) ----
@@ -363,13 +360,13 @@ export function DataImportPage() {
     try {
       const buf = await file.arrayBuffer();
       // Hardened parse: never read/eval formulas or embedded HTML; values as text.
-      // CSV: decode bytes as UTF-8 ourselves (TextDecoder strips a BOM and handles Turkish
-      // characters); SheetJS otherwise guesses Windows-1252 for a BOM-less CSV and mojibakes
-      // "Yılmaz" -> "YÄ±lmaz". Excel (.xlsx/.xls) stores text as UTF-8 internally, so the binary
-      // path is correct for those.
+      // CSV: decode bytes ourselves via decodeCsvBytes (strict UTF-8 -> Windows-1254 fallback;
+      // TextDecoder strips a BOM); SheetJS otherwise guesses Windows-1252 for a BOM-less CSV and
+      // mojibakes "Yılmaz" -> "YÄ±lmaz". Excel (.xlsx/.xls) stores text as UTF-8 internally, so
+      // the binary path is correct for those.
       const isCsv = lower.endsWith('.csv');
       const wb = isCsv
-        ? XLSX.read(new TextDecoder('utf-8').decode(buf), { type: 'string', cellFormula: false, cellHTML: false, cellDates: false })
+        ? XLSX.read(decodeCsvBytes(buf), { type: 'string', cellFormula: false, cellHTML: false, cellDates: false })
         : XLSX.read(buf, { type: 'array', cellFormula: false, cellHTML: false, cellDates: false });
       if (!wb.SheetNames.length) { setUploadErr('Dosyada sayfa bulunamadı.'); return; }
       if (wb.SheetNames.length > 1) setMultiSheetNote(true); // single-sheet only: use the first.
@@ -554,21 +551,6 @@ export function DataImportPage() {
         `${res.skipped_existing.toLocaleString('tr-TR')} atlandı, ` +
         `${res.invalid.toLocaleString('tr-TR')} geçersiz.`
       );
-      const job: ImportJob = {
-        id: Date.now(),
-        fileName,
-        listName: res.list_name,
-        inserted: res.inserted,
-        updated: res.updated,
-        skipped: res.skipped_existing,
-        invalid: res.invalid,
-        finishedAt: new Date().toISOString(),
-      };
-      setJobs(prev => {
-        const next = [job, ...prev].slice(0, 20);
-        localStorage.setItem(IMPORT_JOBS_KEY, JSON.stringify(next));
-        return next;
-      });
       await loadLists();
     } catch (e) {
       setImportErr(errText(e, 'İçe aktarma başarısız oldu.'));
@@ -600,6 +582,18 @@ export function DataImportPage() {
   }
 
   const setMap = (field: keyof FieldMapping) => (v: string | null) => setMapping(p => ({ ...p, [field]: v }));
+
+  // GR-2: a source column mapped to one field disappears from every OTHER field's dropdown
+  // (the field's own selection stays listed so its <select> keeps a valid value).
+  const usedColumns = useMemo(
+    () => new Set(Object.values(mapping).filter((v): v is string => v !== null)),
+    [mapping]);
+  const headersFor = (field: keyof FieldMapping) =>
+    headers.filter(h => h === mapping[field] || !usedColumns.has(h));
+  // Defense for stale state (e.g. a mapping captured before this rule existed): block İlerle
+  // visibly instead of importing the same column into two fields.
+  const mappedCols = Object.values(mapping).filter((v): v is string => v !== null);
+  const hasDuplicateMapping = new Set(mappedCols).size !== mappedCols.length;
 
   const optionalFields: { label: string; field: keyof FieldMapping }[] = [
     { label: 'Ad', field: 'name' },
@@ -697,23 +691,6 @@ export function DataImportPage() {
               </tbody>
             </table>
           ))}
-        </div>
-      )}
-
-      {/* ---- Recent jobs ---- */}
-      {!wizardOpen && jobs.length > 0 && (
-        <div className="bg-white border border-navy-100 rounded-xl shadow-soft p-4">
-          <h2 className="text-sm font-medium text-navy-700 mb-2">Son İçe Aktarmalar</h2>
-          <ul className="space-y-1.5 text-xs text-navy-600">
-            {jobs.slice(0, 5).map(j => (
-              <li key={j.id} className="flex items-center justify-between">
-                <span className="truncate">{j.listName} · {j.fileName}</span>
-                <span className="text-navy-400 tabular-nums">
-                  +{j.inserted} / ~{j.updated} / {j.invalid} geçersiz
-                </span>
-              </li>
-            ))}
-          </ul>
         </div>
       )}
 
@@ -819,13 +796,16 @@ export function DataImportPage() {
             <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="space-y-3">
                 <h3 className="text-sm font-medium text-navy-700">Alan Eşleme</h3>
-                <MapSelect label="Telefon" value={mapping.phone} headers={headers} onChange={setMap('phone')} required />
+                <MapSelect label="Telefon" value={mapping.phone} headers={headersFor('phone')} onChange={setMap('phone')} required />
                 {!mapping.phone && <div className="text-xs text-red-500 -mt-1">Telefon alanı zorunlu.</div>}
                 <div className="grid grid-cols-2 gap-3">
                   {optionalFields.map(f => (
-                    <MapSelect key={f.field} label={f.label} value={mapping[f.field]} headers={headers} onChange={setMap(f.field)} />
+                    <MapSelect key={f.field} label={f.label} value={mapping[f.field]} headers={headersFor(f.field)} onChange={setMap(f.field)} />
                   ))}
                 </div>
+                {hasDuplicateMapping && (
+                  <div className="text-xs text-red-500">Aynı kaynak kolon birden fazla alana eşlenemez. Eşlemeleri düzeltin.</div>
+                )}
               </div>
 
               <div className="space-y-4">
@@ -895,7 +875,7 @@ export function DataImportPage() {
 
               <div className="md:col-span-2 flex justify-end gap-2">
                 <Button variant="secondary" onClick={() => setStep(1)}>Geri</Button>
-                <Button disabled={!mapping.phone || !targetValid} onClick={() => setStep(3)}>İlerle</Button>
+                <Button disabled={!mapping.phone || !targetValid || hasDuplicateMapping} onClick={() => setStep(3)}>İlerle</Button>
               </div>
             </div>
           )}
@@ -983,9 +963,12 @@ export function DataImportPage() {
         </div>
       )}
 
-      {/* ---- List viewer popup (X-close): records table + search + server paging ---- */}
+      {/* ---- List viewer popup (X-close + backdrop click): records table + search + server paging ---- */}
       {viewerList && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/40 p-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/40 p-4"
+          onMouseDown={e => { if (e.target === e.currentTarget) setViewerList(null); }}
+        >
           <div className="bg-white border border-navy-100 rounded-xl shadow-soft relative w-full max-w-4xl max-h-[88vh] flex flex-col">
             <button
               onClick={() => setViewerList(null)}

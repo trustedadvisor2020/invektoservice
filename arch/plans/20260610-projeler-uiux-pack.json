@@ -1,0 +1,178 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260610-projeler-uiux-pack",
+  "risk": "HIGH",
+  "status": "DONE",
+  "created_at": "2026-06-10T03:25:00+03:00",
+  "updated_at": "2026-06-10T04:58:00+03:00",
+  "gr_list": [
+    { "id": "GR-1", "description": "Import CSV TR encoding fix: strict UTF-8 (TextDecoder fatal) dene, decode hatasinda windows-1254 fallback. windows-1254 decoder'i try/catch ile feature-detect edilir; desteklenmeyen ortamda bugunki non-fatal UTF-8 davranisina doner (regresyon imkansiz). XLSX yolu degismez. [PR-010 uygulandi]", "services_affected": ["Backend(SPA)"] },
+    { "id": "GR-2", "description": "Import wizard kolon tekil secim: bir alanda secilen kaynak kolon diger alan dropdown'larinda listelenmez (alanin kendi secimi gorunur kalir). Ek savunma: Adim 2 Ilerle butonunda duplicate non-null mapping guard'i (gorunur hata; stale state duplicate'i gecemez). [PR-009 uygulandi]", "services_affected": ["Backend(SPA)"] },
+    { "id": "GR-3", "description": "Import sayfasi 'Son Ice Aktarmalar' bolumu + ImportJob state/localStorage kaldirilir.", "services_affected": ["Backend(SPA)"] },
+    { "id": "GR-4", "description": "TUM dashboard modallarina dis-tik kapatma: backdrop onMouseDown + target===currentTarget guard, X butonunun CLOSE HANDLER'i aynen cagrilir (dirty-check/saving guard korunur). Kapsam: ProjectsPage(3), DataImportPage viewer, FaqEditModal, DocumentUpload, ApiKeyManagerCard, NewKeyCopyModal, FieldMapEditorCard, HealthCard, KanbanDrawer, FlowEditorPage, FlowListPage(3), FlowSettingsPanel, ExportManagerPage. Mevcut onClick-close'lar guard'li onMouseDown'a cevrilir; pointer-events-none dekoratif overlay'ler haric.", "services_affected": ["Backend(SPA)"] },
+    { "id": "GR-5", "description": "Sablon degisken dropdown'unda '%X dolu'/'bos' eki kaldirilir (columnOptionLabel); ornek deger kalir.", "services_affected": ["Backend(SPA)"] },
+    { "id": "GR-6", "description": "Proje modal sag kolondaki 'Gonderim Ayarlari' baslik blogu silinir.", "services_affected": ["Backend(SPA)"] },
+    { "id": "GR-7", "description": "Proje modal 3 kolon (max-w-3xl -> max-w-6xl, md:grid-cols-2 -> lg:grid-cols-3): kol-1 kimlik+listeler, kol-2 gonderim ayarlari (kanal/tur/sablon secimi), kol-3 onizleme + degisken eslemeleri + test gonderim blogu.", "services_affected": ["Backend(SPA)"] },
+    { "id": "GR-8", "description": "Test mesaj gonderme: Outbound POST /api/v1/projects/send/test (ProjectTestSendRequest{phone,message_text}) -> ProjectsService.TestSendAsync: Projects gate -> BulkSend gate -> per-tenant throttle (5/dk, INV-OB-087, 429) -> PhoneNormalizer -> mesaj trim/4096 -> BroadcastOrchestrator.CreateBroadcastAsync(inline text, tek alici) + audit log satiri (tenant, normalized phone, queued/skipped). INV-OB-086 (gecersiz payload). Backend proxy POST /api/v1/outbound/projects/send/test. UI: 3. kolon altinda tel input + Test Gonder + sonuc; self-test cercevesi ('Kendi numaraniza test mesaji gonderin') + HSM projede 'duz metin baglanti testi — gercek gonderim sablon formatinda gider' notu (Q karari). errors.md + endpoints.md guncellenir. [Codex plan-consult PR-001/PR-004 uygulandi]", "services_affected": ["Invekto.Shared", "Invekto.Outbound", "Invekto.Backend", "Backend(SPA)"] },
+    { "id": "GR-9", "description": "Projeler liste filtresi: ProjectsRepository.ListAsync includeArchived parametresi (default false, archived_at IS NULL korunur); GET /api/v1/projects?includeArchived=true + Backend proxy query passthrough; UI durum chip filtresi (Tumu|Taslak|Calisiyor|Duraklatildi|Tamamlandi|Iptal|Arsivli; Tumu=arsivsiz) + satira cift-tik openEdit (arsivli haric).", "services_affected": ["Invekto.Outbound", "Invekto.Backend", "Backend(SPA)"] }
+  ],
+  "plan": {
+    "summary": "FEAT-PROJELER UI/UX paketi: import TR encoding fallback, wizard kolon tekil secim, Son Ice Aktarmalar kaldirma, tum dashboard modallarina dis-tik kapatma, degisken dropdown sadelestirme, proje modal 3-kolon redesign + tek-alici test mesaj endpoint'i (mevcut Projects+BulkSend gate'leri ile prod-inert), proje durum/arsiv filtresi + cift-tik edit. Ayrica DB veri isleri (kod disi): tenant 5050 mojibake onarimi + 15 mock liste.",
+    "q_intent": "veri iceri aktarma yaparken tr harflere dikkat et, resimdekileri de duzelt; popup disina tiklayinca kapat; wizard'da bir alanda secilen kolon digerlerinde secilemesin; 5050 icin 15 mock liste (10-15 kayit); degisken dropdown'dan % doluluk cikar; Gonderim Ayarlari basligini sil; onizleme+degiskenleri 3. sutuna tasi, popup genislesin, test numarasiyla test mesaji gonderme ekle; projeler sayfasina durum+arsiv filtresi, cift-tik edit; Son Ice Aktarmalar bolumunu kaldir. [Q pre-approval: 'bana bisey sormadan kalanlarin hepsini sirayla yap' + 'deploy yap en son']",
+    "interview_notes": "Test-send gate: MEVCUT Projects+BulkSend gate'leri (P0-3 korunur; prod'da 5050 icin 403 inert). HSM projede test = render edilmis onizleme metni DUZ METIN olarak (PR-4 HSM testi degil; UI'da not gosterilir). Mock listeler: gercekci TR adlar/icerik, dogrudan prod SQL INSERT. Dis-tik: TUM dashboard modallari. Encoding: otomatik algila (strict UTF-8 -> Win-1254 fallback), manuel secici yok.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "Windows-1254 kodlu CSV import edildiginde TR karakterler (i,s,g,c,o,u,I) onizleme+payload'da dogru; UTF-8 (BOM'lu/BOM'suz) CSV ve XLSX davranisi degismez.", "verified": true, "verification_note": "decodeCsvBytes: fatal UTF-8 once denenir (gecerli UTF-8 bayt-bayt ayni sonuc, BOM strip korunur); yalniz decode EXCEPTION'inda windows-1254; 1254 decoder yoksa eski non-fatal UTF-8 (status-quo'dan kotu olamaz). XLSX yolu dokunulmadi. tsc PASS." },
+      { "id": "AC2", "criterion": "Tenant 5050 'liste 1' icindeki 7 mojibake isim DB'de onarildi (Yilmaz/Ayse/Sahin/Celik/Dogan/Yildiz/Huseyin Aydin dogru gorunur).", "verified": true, "verification_note": "Prod UPDATE id IN (1,2,4,5,7,8,9) RETURNING ile 7/7 dogru deger dondu (04:05). Rollback: c:/tmp/mojibake-rollback-5050.sql." },
+      { "id": "AC3", "criterion": "Tum dashboard modallari backdrop'a tiklayinca kapanir; proje edit modalinda kirli-form onayi dis-tikta da calisir; kayit (saving) sirasinda kapanmaz; panel ici tiklar/drag-release kapatmaz (target===currentTarget).", "verified": true, "verification_note": "17 overlay / 14 dosya: her backdrop X'in close handler'ini cagirir (edit=closeModal dirty+saving guard, ApiKey=!busy, FlowList=!creating/!templateCreating); onMouseDown+target===currentTarget pattern her yerde; mevcut onClick-closer'lar cevrildi, stopPropagation gereksizlesti." },
+      { "id": "AC4", "criterion": "Import wizard'da bir alanda secilen kaynak kolon diger alan dropdown'larinda secenek olarak gorunmez; alanin kendi degeri gorunur kalir; mevcut eslemeler bozulmaz.", "verified": true, "verification_note": "headersFor(field): h===mapping[field] || !usedColumns.has(h) — kendi secimi listede kalir, esleme state'i degistirilmez; stale-duplicate icin Ilerle'de hasDuplicateMapping guard + gorunur hata." },
+      { "id": "AC5", "criterion": "Tenant 5050'de 15 yeni gercekci TR liste, her biri 10-15 kayit (toplam 192), total_records/sendable_count tutarli, viewer'da TR karakterler dogru.", "verified": true, "verification_note": "Seed tek tx + in-tx verify (15/192) + COMMIT sonrasi bagimsiz SELECT: 17 liste/203 kayit (2 eski + 15 yeni), counter mismatch sorgusu 0 satir (04:15)." },
+      { "id": "AC6", "criterion": "Degisken kolon dropdown'unda '%X dolu'/'bos' eki yok; ornek deger ('Ad — \"Ahmet\"') kalir.", "verified": true, "verification_note": "columnOptionLabel stat bloku kaldirildi; sadece sample-deger eki kaldi." },
+      { "id": "AC7", "criterion": "'Gonderim Ayarlari' baslik blogu modal'da yok.", "verified": true, "verification_note": "Baslik div'i + Radio import'u kaldirildi." },
+      { "id": "AC8", "criterion": "Proje modali genis (max-w-6xl) ve lg'de 3 kolon; onizleme + degisken eslemeleri 3. kolonda; altinda test numarasi girisi + Test Gonder butonu; basari/filtrelendi/hata geri bildirimi gosterilir; endpoint Projects+BulkSend gate'leri arkasinda (prod-inert), telefon PhoneNormalizer ile dogrulanir, gecersiz payload INV-OB-086.", "verified": true, "verification_note": "TestSendAsync gate sirasi: Projects -> BulkSend -> throttle(INV-OB-087) -> PhoneNormalizer/4096(INV-OB-086) -> CreateBroadcastAsync (yan etkiden once tum gate'ler). Prod allowlist kesisimi bos -> 403 inert. UI: queued>0 basari / queued==0 filtrelendi / catch errText. Proxy status+body verbatim (OutboundProxyPost, INV-OB-074..085 ile ayni kanitli yol)." },
+      { "id": "AC9", "criterion": "Projeler tablosunda durum chip filtresi calisir (Tumu=arsivsiz; Arsivli secilince arsivlenmis projeler listelenir); satira cift-tik edit modalini acar (arsivli satirlar haric); includeArchived=false default ile mevcut API davranisi degismez.", "verified": true, "verification_note": "Tek includeArchived=true fetch + client-side chip filtre + sayac rozetleri; arsivli satirda cift-tik/aksiyon yok ('arsivli' etiketi); SQL '(@includeArchived OR archived_at IS NULL)' parameterized; default=false tum eski cagiranlar icin ayni sonuc." },
+      { "id": "AC10", "criterion": "'Son Ice Aktarmalar' bolumu ve ImportJob localStorage izi kaldirildi.", "verified": true, "verification_note": "JSX bolumu + ImportJob interface + jobs state + IMPORT_JOBS_KEY + submitImport yazma blogu silindi (okuma/yazma izi kalmadi)." },
+      { "id": "AC11", "criterion": "Solution build + SPA build PASS; Codex review PASS.", "verified": true, "verification_note": "Build PASS (SPA tsc+vite + solution 0 error). Codex gpt-5.5 3-chunk: c1 iter0 FAIL(CQ10 dblclick bubbling) -> interactive-element guard fix -> iter1 PASS; c2 iter0 PASS; c3 iter0 FAIL(CQ12 FP inline-hint + VQ Auth eksik) -> corrected-premise + Q1A Auth VQ -> iter1 PASS. Merged: PASS." }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Dashboard/src/pages/DataImportPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/components/knowledge/FaqEditModal.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/knowledge/DocumentUpload.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/LeadIntake/ApiKeyManagerCard.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/LeadIntake/NewKeyCopyModal.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/LeadIntake/FieldMapEditorCard.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/HealthCard.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/KanbanDrawer.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/FlowEditorPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/FlowListPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/panels/FlowSettingsPanel.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/ExportManagerPage.tsx",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Shared/DTOs/Outbound/ProjectDtos.cs",
+    "src/Invekto.Outbound/Services/ProjectsService.cs",
+    "src/Invekto.Outbound/Data/ProjectsRepository.cs",
+    "src/Invekto.Outbound/Program.cs",
+    "src/Invekto.Backend/Program.cs",
+    "arch/errors.md",
+    "arch/endpoints.md",
+    "src/Invekto.Backend/wwwroot/app/index.html",
+    "src/Invekto.Backend/wwwroot/app/assets/*",
+    "arch/plans/20260610-projeler-uiux-pack.json",
+    "arch/plans/diffs/20260610-projeler-uiux-pack.diff"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/DataImportPage.tsx", "change": "GR-1 decodeCsvBytes (fatal UTF-8 -> windows-1254 feature-detect fallback); GR-2 headersFor mutual exclusion + hasDuplicateMapping Ilerle guard; GR-3 Son Ice Aktarmalar bolumu + ImportJob/localStorage kaldirildi; GR-4 viewer backdrop onMouseDown guard.", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx", "change": "GR-5 columnOptionLabel %doluluk eki kaldirildi; GR-6 Gonderim Ayarlari basligi silindi; GR-7 max-w-6xl + lg:grid-cols-3, onizleme+param esleme 3. kolona tasindi, plain_text baloncugu; GR-8 testMessageText memo + sendTest + test-send UI blogu; GR-9 durum chip filtresi (statusCounts/visibleProjects, includeArchived fetch) + satir cift-tik openEdit (arsivli haric, aksiyonlar arsivlide gizli); GR-4 3 backdrop (edit=closeModal dirty-guard, send=closeSend, cancel).", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "change": "listProjects(includeArchived=false) query param; projectTestSend client; ProjectTestSendRequest/Response tipleri.", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/components/knowledge/FaqEditModal.tsx", "change": "GR-4 backdrop onMouseDown guard -> onClose.", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/components/knowledge/DocumentUpload.tsx", "change": "GR-4 backdrop onClick -> guarded onMouseDown (handleClose); panel stopPropagation kaldirildi (guard yeterli).", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/components/LeadIntake/ApiKeyManagerCard.tsx", "change": "GR-4 confirm modal backdrop guard (busy iken kapanmaz — X'in disabled={busy} pariteti).", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/components/LeadIntake/NewKeyCopyModal.tsx", "change": "GR-4 backdrop guard -> onClose (X paritesi).", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/components/LeadIntake/FieldMapEditorCard.tsx", "change": "GR-4 paste modal backdrop guard (X ile ayni state reset).", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/components/HealthCard.tsx", "change": "GR-4 endpoints popup backdrop onClick -> guarded onMouseDown.", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/components/KanbanDrawer.tsx", "change": "GR-4 sibling backdrop onClick -> onMouseDown (drag-release korumasi).", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/FlowEditorPage.tsx", "change": "GR-4 exit dialog backdrop guard -> setShowExitDialog(false) (X paritesi; Kaydet/Kaydetme butonlari dokunulmadi).", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/FlowListPage.tsx", "change": "GR-4 3 modal backdrop onClick -> guarded onMouseDown (creating/templateCreating guard'lari korundu).", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/panels/FlowSettingsPanel.tsx", "change": "GR-4 sibling backdrop onClick -> onMouseDown.", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/ExportManagerPage.tsx", "change": "GR-4 Liste Olustur modal backdrop guard.", "is_new": false },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "change": "GR-8 ProjectTestSendInvalidPayload INV-OB-086 (422) + ProjectTestSendThrottled INV-OB-087 (429) — additive.", "is_new": false },
+    { "path": "src/Invekto.Shared/DTOs/Outbound/ProjectDtos.cs", "change": "GR-8 ProjectTestSendRequest {phone, message_text} — additive.", "is_new": false },
+    { "path": "src/Invekto.Outbound/Services/ProjectsService.cs", "change": "GR-8 TestSendAsync (Projects gate -> BulkSend gate -> throttle 5/dk -> PhoneNormalizer -> 4096 cap -> CreateBroadcastAsync tek alici inline-text + audit log + NpgsqlException->INV-OB-071) + BroadcastOrchestrator/PhoneNormalizer ctor deps; GR-9 ListAsync includeArchived=false optional param.", "is_new": false },
+    { "path": "src/Invekto.Outbound/Data/ProjectsRepository.cs", "change": "GR-9 ListAsync includeArchived parametresi — parameterized (@includeArchived OR archived_at IS NULL), tenant-scoped, default eski davranis.", "is_new": false },
+    { "path": "src/Invekto.Outbound/Program.cs", "change": "GR-8 POST /api/v1/projects/send/test endpoint + ProjectSendStatus 086->422/087->429 + endpoint katalogu; GR-9 GET /api/v1/projects?includeArchived bind.", "is_new": false },
+    { "path": "src/Invekto.Backend/Program.cs", "change": "GR-8 POST /api/v1/outbound/projects/send/test proxy + katalog girisi; GR-9 GET projects proxy query-string verbatim passthrough.", "is_new": false },
+    { "path": "arch/errors.md", "change": "INV-OB-086 + INV-OB-087 kayitlari.", "is_new": false },
+    { "path": "src/Invekto.Backend/wwwroot/app/*", "change": "SPA build ciktisi (tsc && vite build) — generated, bundle index-kIif2OHL.js.", "is_new": false }
+  ],
+  "git_diff": { "patch_truncated": null, "sha256": "42053e69d3af565e927e886fbf5e630a829d74a202835db379b976721bd952bf", "full_path": "arch/plans/diffs/20260610-projeler-uiux-pack.diff", "stats": { "insertions": 771, "deletions": 239, "files_count": 22 } },
+  "build": { "status": "PASS", "command": "tsc && vite build (Dashboard) + dotnet build InvektoServis.sln --no-restore -v q", "timestamp": "2026-06-10T04:23:00+03:00", "duration_ms": 37000, "output_tail": "Dashboard: built in 6.94s (bundle index-kIif2OHL.js). Solution: 42 Warning(s) [hepsi pre-existing MSB3277/xUnit], 0 Error(s), 30.14s.", "error_summary": null, "services": ["Invekto.Shared", "Invekto.Outbound", "Invekto.Backend", "full-solution"] },
+  "verification_questions": [
+    { "id": "Q1", "question": "Test-send endpoint'i her yan etkiden ONCE hem Projects hem BulkSend allowlist gate'ini kontrol ediyor mu — prod state (Projects=[5050], BulkSend=[18173130], kesisim bos) ile hicbir tenant icin DB yazimi/vendor cagrisi olmadan 403 doner mi, CxapiSend route karari CreateBroadcastAsync icinde degismeden kalir mi?", "category": "Auth", "codex_answer": null, "codex_result": null },
+    { "id": "Q2", "question": "CSV decode yolu: strict UTF-8 (fatal:true) basarisiz olunca windows-1254 fallback — BOM'lu/BOM'suz gecerli UTF-8 dosyalarin davranisi bayt-bayt ayni kaliyor mu, fallback yalnizca decode EXCEPTION'inda devreye giriyor mu, XLSX yolu hic degismiyor mu?", "category": "Data", "codex_answer": null, "codex_result": null },
+    { "id": "Q3", "question": "Backdrop kapatma her modalda X butonunun close handler'inin AYNISINI cagiriyor mu (proje edit: dirty-fingerprint confirm + saving guard; send/cancel: state reset) ve onMouseDown + target===currentTarget guard'i panel-ici tik ve panel-ici basla/disari-birak drag'inde kapatmayi engelliyor mu?", "category": "Lifecycle", "codex_answer": null, "codex_result": null },
+    { "id": "Q4", "question": "ListAsync includeArchived parametresi: SQL parametreli ve tenant-scoped mi, default false ile mevcut cagiranlarin davranisi (arsivsiz liste) bayt-bayt korunuyor mu, Backend proxy query-string'i verbatim mi geciriyor?", "category": "Data", "codex_answer": null, "codex_result": null },
+    { "id": "Q5", "question": "Test-send akisi: PhoneNormalizer reject -> INV-OB-086 typed (sessiz kabul yok); opt-out/consent filtrelenen alici 'queued=0' yerine typed hata mesajiyla operatore donuyor mu; mesaj 4096 cap'i ProjectsService.PlainTextBodyMaxLength ile ayni sabitten mi geliyor; HSM projede UI'nin gonderdigi render-metin sunucuda DUZ METIN broadcast olarak mi isleniyor (wa_template_id YOK, HSM yolu tetiklenmiyor)?", "category": "Process/Policy", "codex_answer": null, "codex_result": null },
+    { "id": "Q6", "question": "Wizard kolon tekil secimi: kullanilan kolon seti diger alanlarin secenek listesinden cikarilirken alanin KENDI mevcut secimi listede kaliyor mu; onceden kaydedilmis/auto-guess eslemeler render'da silinmiyor mu; Telefon zorunlu alani da ayni kurala dahil mi?", "category": "Process/Policy", "codex_answer": null, "codex_result": null }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "BulkSendOrchestrator/BroadcastOrchestrator/MessageSenderService send yollari (test-send yalnizca CreateBroadcastAsync'i CAGIRIR, degistirmez)",
+      "PR-4 HSM zinciri (ValidateHsmRunAsync, WapCrmTemplateClient, migration 062 semasi)",
+      "Allowlist/gate konfigurasyonlari (ProjectsOptions/BulkSendOptions/CxapiSendOptions/ContactListOptions) ve appsettings",
+      "PhoneNormalizer (sadece cagrilir)",
+      "OnboardingWizardPage pointer-events-none dekoratif overlay"
+    ],
+    "non_goals": [
+      "HSM (onayli sablon) formatinda gercek test gonderimi (PR-4 yolu) — Q karari: render-metin duz gider",
+      "Manuel encoding secici UI",
+      "ESC ile kapatma (aha onerisi olarak kaydedildi)",
+      "Arsivden geri alma (unarchive)",
+      "Instance secimi test-send request'inde (tenant-default; ownership dogrulamasi kapsam disi)"
+    ],
+    "intentional_exclusions": [
+      "Test-send broadcast'i normal broadcast tablosuna yazilir (ayri test tablosu yok) — mevcut makineyi aynen reuse, audit izi broadcast kaydidir",
+      "column_stats DTO alani kalir (UI artik %doluluk gostermiyor ama preview-sample endpoint'i degismez)",
+      "Wizard (inline kart, overlay degil) dis-tik kapsami disinda — overlay olmayan UI'da dis-tik semantigi yok"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "ProjectsService.TestSendAsync — NpgsqlException -> INV-OB-071 (mevcut pattern)",
+      "DataImportPage.decodeCsvBytes — TypeError(fatal utf-8) catch -> windows-1254 fallback",
+      "ProjectsPage test-send UI — errText ile ApiClientError mesaji gosterimi"
+    ],
+    "user_facing_errors": [
+      "INV-OB-086: 'Gecersiz test gonderimi: telefon numarasi gecersiz veya mesaj metni bos/cok uzun.'",
+      "BulkSendDisabled/ProjectDisabled mevcut Turkce mesajlari (gate reject)",
+      "Opt-out/consent filtreli alici: orkestrator 'No valid recipients...' -> UI 'Numara filtrelendi (opt-out/izin yok) veya gecersiz.'"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Test-send'in tum reject yollari typed INV kodu doner (sessiz no-op yok); encoding fallback'i exception-tetiklidir, sessizce yanlis decode etmez (fatal UTF-8 gecen dosya UTF-8'dir); backdrop kapatma mevcut close handler'lari cagirir, yeni state yolu eklemez; includeArchived default false oldugu icin mevcut tuketicilerde davranis kaymaz."
+  },
+  "aha_moments": [
+    { "category": "UX", "user_pain": "Test mesaji gonderen operator mesajin gercekten ulasip ulasmadigini bilemiyor.", "suggestion": "Test Gonder basarisinda 'Kuyruga alindi — WhatsApp'inizi kontrol edin' + broadcast_id gosterimi.", "aha_moment": "Operator 10 saniye icinde kendi telefonunda mesaji gorur, projeyi guvenle baslatir." },
+    { "category": "UX", "user_pain": "Arsivli projeler arasinda kacinin oldugu gorunmuyor.", "suggestion": "Durum chip'lerinde sayac rozeti (orn. Arsivli (4)).", "aha_moment": "Operator filtreye tiklamadan dagilimi gorur." },
+    { "category": "RELIABILITY", "user_pain": "ANSI CSV sessizce fallback ile okununca operator fark etmiyor.", "suggestion": "Fallback devreye girdiginde Adim 1'de bilgi notu: 'Dosya Windows-1254 kodlamasiyla okundu.'", "aha_moment": "Operator dosya kaynagindaki kodlama sorununu kalici cozmek icin bilgilenir." },
+    { "category": "UX", "user_pain": "Modallar yalnizca X ile kapaniyor; klavye kullanicilari icin yavas.", "suggestion": "ESC tusu ile kapatma (ayni close handler), focus-trap ile birlikte.", "aha_moment": "Power user modali ESC ile aninda kapatir." },
+    { "category": "SUPPORT", "user_pain": "Test mesaji gercek kampanya mesajiyla karisabilir.", "suggestion": "Test gonderiminde govdenin basina '[TEST] ' on eki ekleme opsiyonu (checkbox).", "aha_moment": "Alici telefonda test ile gercek kampanya net ayrisir." }
+  ],
+  "plan_review_status": "completed",
+  "plan_review_applied": [
+    { "id": "PR-001", "severity": "blocker", "what_changed": "Test-send'e per-tenant throttle (5/dk, INV-OB-087 TestSendThrottled, 429) + audit log satiri eklendi. Mevcut legacy /api/v1/broadcast/send yuzeyinden STRICTLY daha siki (dual gate + throttle + tek alici)." },
+    { "id": "PR-004", "severity": "major", "what_changed": "UI notu netlestirildi: 'duz metin baglanti testi — gercek gonderim sablon formatinda gider' + self-test cercevesi. Sunucu render'i PR-4 olgunlasinca ayri is." },
+    { "id": "PR-007", "severity": "major", "what_changed": "GR-4 dev'inde modal-basina checklist: her overlay icin close handler + busy/dirty semantigi tek tek dogrulanip ayni guard'la baglanacak (orn. FlowListPage '!creating' guard'i korunur)." },
+    { "id": "PR-008", "severity": "major", "what_changed": "Dirty/async-saving state'i olan TUM modallar envanterlenecek; backdrop her yerde X'in guard'li close yolunu cagirir, asla dogrudan state reset degil." },
+    { "id": "PR-009", "severity": "major", "what_changed": "Adim 2 Ilerle'de duplicate non-null mapping guard'i (gorunur hata)." },
+    { "id": "PR-010", "severity": "major", "what_changed": "windows-1254 TextDecoder try/catch feature-detect; desteklenmezse mevcut non-fatal UTF-8 davranisi (bugunden kotu olamaz)." },
+    { "id": "PR-011", "severity": "major", "what_changed": "Mojibake UPDATE exact-id pinli (id IN (1,2,4,5,7,8,9) AND tenant_id=5050) + transaction + RETURNING diff + c:/tmp rollback script (eski degerler kayitli)." }
+  ],
+  "plan_review_rejected": [
+    { "id": "PR-002", "severity": "blocker", "why": "Test-send'in kullanim amaci operatorun KENDI numarasina self-test; consent kaydi olmayan numarayi reddetmek ozelligi islevsiz kilar. Mevcut legacy /broadcast/send ayni consent semantigiyle 1000 aliciya acikken tek-alici + dual-gate + throttle'li yuzey net daralmadir. Orkestratorun opt-out/consent filtreleri AYNEN calisir (bypass yok); sonuc sayaclari logda." },
+    { "id": "PR-003", "severity": "major", "why": "Test broadcast'i project_id/job tasimaz -> proje sayaclari etkilenmez; billing/quota mekanizmasi bu kod tabaninda yok. Ayri test-traffic semasi over-engineering; 'broadcast kaydi = audit izi' intentional_exclusions'da zaten belgeli. Dev'de proje sayaci etkilenmedigi dogrulanacak." },
+    { "id": "PR-005", "severity": "major", "why": "OutboundProxyPost status+body'yi verbatim gecirir (INV-OB-074..085 ayni yoldan prod'da calisiyor — kanitli pattern). Proje kurali 'istenmedikce test yok'; dev'de 086/087 -> HTTP map + proxy passthrough manuel dogrulanip AC8 notuna islenecek." },
+    { "id": "PR-006", "severity": "major", "why": "BroadcastOrchestrator zaten singleton kayitli (BulkSendOrchestrator tuketiyor); ProjectsService -> BroadcastOrchestrator yonu tek tarafli, dongu yok. Startup DI dogrulamasi deploy health-check'iyle kapsaniyor; konteyner testi proje test politikasi geregi eklenmiyor." },
+    { "id": "PR-012", "severity": "major", "why": "Arsivli projeler ayni tenant'in kendi verisi — istemciye 'sizma' degil, filtrenin amaci. Tek-fetch tasarimi korunuyor. Sunucu tarafinda arsivli projeye update/send davranisi dev'de dogrulanacak (mevcut LoadDetail archived_at IS NULL ise zaten 404); UI cift-tik + aksiyonlar arsivlide kapali." }
+  ],
+  "overrides": [
+    { "command": "Q-PRE-APPROVAL", "by": "Q", "at": "2026-06-10T03:05:00+03:00", "reason": "Q yazili talimat: 'diger session bittiginde... bana bisey sormadan kalanlarin hepsini sirayla yap' + 'deploy yap en son'. Plan onayi, paket-bolme onayi (diff >200 satir tek pakette), DB veri isleri (5050 mojibake onarim + 15 mock liste prod INSERT) ve deploy onayi bu talimatla verilmistir. Codex review ATLANMAZ (PASS sarti gecerli)." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": null,
+    "received_at": "2026-06-10T04:55:00+03:00",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-06-10T04:55:00+03:00",
+    "raw_text": "MCP codex_review (gpt-5.5-2026-04-23), 3 chunk: chunk-1of3 ProjectsPage iter0 FAIL [CQ10/Q4: satir onDoubleClick aksiyon butonlarindan bubbling] -> fix: closest('button, a, input, select') guard -> iter1 PASS (12/12 CQ, CoVe 3/3). chunk-2of3 backend iter0 PASS (12/12 CQ, CoVe 4/4 — gate sirasi, parameterized SQL, route cakismasi yok, typed INV kodlari dogrulandi). chunk-3of3 import+modals iter0 FAIL [CQ12 false-positive: inline client form hint INV kodu istedi — ayni-dosya prevalence ile corrected-premise; VQ-COVERAGE: Auth sorusu eksik — Q1A eklendi] -> iter1 PASS (12/12 CQ, CoVe 4/4). Merge kurali: ALL PASS -> PASS.",
+    "code_quality_gate": {},
+    "cove_verification": {},
+    "blocking_issues": [],
+    "iteration": 1,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}

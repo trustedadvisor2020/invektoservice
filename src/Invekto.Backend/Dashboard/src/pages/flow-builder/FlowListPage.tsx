@@ -470,11 +470,11 @@ export function FlowListPage() {
 
       {/* ── New Flow Dialog ── */}
       {showNewDialog && (
-        <div className="fixed inset-0 bg-navy-900/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => !creating && setShowNewDialog(false)}>
-          <div
-            className="bg-white border border-navy-100 rounded-2xl w-full max-w-md p-6 shadow-elevated flow-card-enter"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div
+          className="fixed inset-0 bg-navy-900/40 backdrop-blur-sm flex items-center justify-center z-50"
+          onMouseDown={e => { if (e.target === e.currentTarget && !creating) setShowNewDialog(false); }}
+        >
+          <div className="bg-white border border-navy-100 rounded-2xl w-full max-w-md p-6 shadow-elevated flow-card-enter">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-display font-semibold text-navy-900">Yeni Flow Olustur</h2>
               <button
@@ -513,11 +513,11 @@ export function FlowListPage() {
 
       {/* ── Delete Confirm Dialog ── */}
       {deleteTarget && (
-        <div className="fixed inset-0 bg-navy-900/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setDeleteTarget(null)}>
-          <div
-            className="bg-white border border-navy-100 rounded-2xl w-full max-w-sm p-6 shadow-elevated flow-card-enter"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div
+          className="fixed inset-0 bg-navy-900/40 backdrop-blur-sm flex items-center justify-center z-50"
+          onMouseDown={e => { if (e.target === e.currentTarget) setDeleteTarget(null); }}
+        >
+          <div className="bg-white border border-navy-100 rounded-2xl w-full max-w-sm p-6 shadow-elevated flow-card-enter">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-display font-semibold text-navy-900">Flow'u Sil</h2>
               <button
@@ -556,11 +556,11 @@ export function FlowListPage() {
           : [];
 
         return (
-          <div className="fixed inset-0 bg-navy-900/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => !templateCreating && setShowTemplateModal(false)}>
-            <div
-              className="bg-white border border-navy-100 rounded-2xl w-full max-w-5xl h-[82vh] flex flex-col shadow-elevated flow-card-enter"
-              onClick={(e) => e.stopPropagation()}
-            >
+          <div
+            className="fixed inset-0 bg-navy-900/40 backdrop-blur-sm flex items-center justify-center z-50"
+            onMouseDown={e => { if (e.target === e.currentTarget && !templateCreating) setShowTemplateModal(false); }}
+          >
+            <div className="bg-white border border-navy-100 rounded-2xl w-full max-w-5xl h-[82vh] flex flex-col shadow-elevated flow-card-enter">
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-navy-100">
                 <div className="flex items-center gap-3">

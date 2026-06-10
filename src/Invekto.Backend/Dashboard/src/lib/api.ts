@@ -2321,8 +2321,10 @@ class OpsApiClient {
 
   // --- FEAT-PROJELER PKT-14 S4: Projeler (projects) CRUD ---
   // Metadata only (name + description + target data-lists). Template/instance/send land in PR-4.
-  async listProjects(): Promise<ProjectSummary[]> {
-    return this.request<ProjectSummary[]>('/api/v1/outbound/projects');
+  // includeArchived=true also returns archived (soft-deleted) projects; default mirrors the old behavior.
+  async listProjects(includeArchived = false): Promise<ProjectSummary[]> {
+    return this.request<ProjectSummary[]>(
+      `/api/v1/outbound/projects${includeArchived ? '?includeArchived=true' : ''}`);
   }
 
   async getProject(id: number): Promise<ProjectDetail> {
@@ -2386,6 +2388,16 @@ class OpsApiClient {
 
   async projectSendCancel(projectId: number): Promise<ProjectDetail> {
     return this.request<ProjectDetail>(`/api/v1/outbound/projects/${projectId}/send/cancel`, { method: 'POST' });
+  }
+
+  // GR-8: one plain-text test message to one number, from the project modal. Dual-gated
+  // server-side (Projects + BulkSend) + per-tenant throttle; not tied to a saved project.
+  async projectTestSend(req: ProjectTestSendRequest): Promise<ProjectTestSendResponse> {
+    return this.request<ProjectTestSendResponse>('/api/v1/outbound/projects/send/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req),
+    });
   }
 
   // --- FEAT-OBI Phase 1A Plan B: Export Manager ---
@@ -2518,6 +2530,19 @@ export interface DataListSummary {
 // lifecycle timestamps are read-only (run-driven, populated in PR-4); S4 writes only
 // name/description/target_list_ids.
 export type ProjectStatus = 'draft' | 'running' | 'paused' | 'completed' | 'cancelled' | 'archived';
+
+// GR-8 test send (mirrors ProjectTestSendRequest in ProjectDtos.cs; response = BroadcastSendResponse).
+export interface ProjectTestSendRequest {
+  phone: string;
+  message_text: string;
+}
+export interface ProjectTestSendResponse {
+  broadcast_id: string;
+  total_recipients: number;
+  queued: number;
+  skipped_optout: number;
+  skipped_consent?: number;
+}
 
 // Project send message kind (mirrors ProjectTemplateKinds in ProjectDtos.cs).
 export type ProjectTemplateKind = 'plain_text' | 'wapcrm_template';

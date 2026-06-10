@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
 using Invekto.Outbound.Data;
@@ -33,12 +34,18 @@ public sealed class ProjectsService
     private readonly CxapiSendOptions _cxapiOptions;
     private readonly WapCrmTemplateClient _templateClient;
     private readonly OutboundRepository _outboundRepo;
+    // GR-8 (test send): the SAME inline-text broadcast path every real broadcast uses — test send
+    // is a thin wrapper around it (opt-out/consent filters, KVKK disclaimer, route decision all
+    // identical; a parallel "test" code path that skips filtering is deliberately NOT built).
+    private readonly BroadcastOrchestrator _broadcastOrch;
+    private readonly PhoneNormalizer _phoneNormalizer;
     private readonly JsonLinesLogger _logger;
 
     public ProjectsService(
         ProjectsRepository repo, ProjectsOptions options,
         BulkSendRepository bulkRepo, BulkSendOrchestrator bulkOrch, BulkSendOptions bulkOptions,
         CxapiSendOptions cxapiOptions, WapCrmTemplateClient templateClient, OutboundRepository outboundRepo,
+        BroadcastOrchestrator broadcastOrch, PhoneNormalizer phoneNormalizer,
         JsonLinesLogger logger)
     {
         _repo = repo;
@@ -49,6 +56,8 @@ public sealed class ProjectsService
         _cxapiOptions = cxapiOptions;
         _templateClient = templateClient;
         _outboundRepo = outboundRepo;
+        _broadcastOrch = broadcastOrch;
+        _phoneNormalizer = phoneNormalizer;
         _logger = logger;
     }
 
@@ -57,10 +66,13 @@ public sealed class ProjectsService
     // ------------------------------------------------------------------
     // Read
     // ------------------------------------------------------------------
-    public async Task<(List<ProjectSummary>? projects, string? errorCode)> ListAsync(int tenantId, CancellationToken ct)
+    // includeArchived (GR-9): the dashboard's Arşivli filter also lists soft-deleted projects;
+    // default false preserves the original list shape for every other caller.
+    public async Task<(List<ProjectSummary>? projects, string? errorCode)> ListAsync(
+        int tenantId, CancellationToken ct, bool includeArchived = false)
     {
         if (!Allowed(tenantId)) return (null, ErrorCodes.ProjectDisabled);
-        try { return (await _repo.ListAsync(tenantId, ct), null); }
+        try { return (await _repo.ListAsync(tenantId, ct, includeArchived), null); }
         catch (NpgsqlException ex)
         {
             _logger.SystemError($"projects list failed (tenant={tenantId}): {ex.Message}");
@@ -421,6 +433,88 @@ public sealed class ProjectsService
         {
             _logger.SystemError($"project confirm failed (tenant={tenantId}, project={projectId}): {ex.Message}");
             return (null, ErrorCodes.ProjectDbError, "Veritabanı hatası nedeniyle gönderim onaylanamadı. Lütfen tekrar deneyin.");
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Test send (GR-8) — ONE plain-text message to ONE number from the project modal.
+    // ------------------------------------------------------------------
+    // Per-tenant fixed-window throttle: test send is a REAL send surface, so it is capped hard
+    // (Codex plan-consult PR-001). In-memory is intentional — Outbound runs as a single NSSM
+    // instance per deployment; a restart resetting the window is acceptable for an anti-abuse cap.
+    private const int TestSendPerMinuteCap = 5;
+    private static readonly ConcurrentDictionary<int, (long Window, int Count)> _testSendWindows = new();
+
+    private static bool TestSendThrottled(int tenantId)
+    {
+        var window = DateTime.UtcNow.Ticks / TimeSpan.TicksPerMinute;
+        var entry = _testSendWindows.AddOrUpdate(
+            tenantId,
+            static (_, w) => (w, 1),
+            static (_, cur, w) => cur.Window == w ? (cur.Window, cur.Count + 1) : (w, 1),
+            window);
+        return entry.Count > TestSendPerMinuteCap;
+    }
+
+    /// <summary>
+    /// Send ONE plain-text test message to ONE number ("Test Gönder" in the project modal; not
+    /// bound to a saved project so create-mode content can be tested too). Same dual gate as a
+    /// project run (Projects + BulkSend) keeps this surface prod-inert until a tenant is
+    /// allowlisted for sending; then a per-tenant throttle, PhoneNormalizer validation and the
+    /// SHARED inline-text broadcast path — opt-out/consent filtering, KVKK disclaimer and the
+    /// cxapi-vs-bridge route decision are identical to real sends (no parallel "test" code path).
+    /// Every reject is a typed INV code; there is no silent no-op.
+    /// </summary>
+    public async Task<(BroadcastSendResponse? response, string? errorCode, string? message)> TestSendAsync(
+        int tenantId, ProjectTestSendRequest request, CancellationToken ct)
+    {
+        if (!Allowed(tenantId)) return (null, ErrorCodes.ProjectDisabled, "Projeler bu hesap için etkin değil.");
+        if (!_bulkOptions.IsTenantAllowed(tenantId)) return (null, ErrorCodes.BulkSendDisabled, "Gönderim bu hesap için etkin değil.");
+        if (TestSendThrottled(tenantId))
+            return (null, ErrorCodes.ProjectTestSendThrottled,
+                $"Çok sık test gönderimi (dakikada en fazla {TestSendPerMinuteCap}). Biraz bekleyip tekrar deneyin.");
+
+        var normalized = _phoneNormalizer.Normalize(request.Phone);
+        if (normalized == null)
+            return (null, ErrorCodes.ProjectTestSendInvalidPayload, "Test numarası geçersiz. Numarayı +90… formatında girin.");
+
+        var text = request.MessageText?.Trim() ?? string.Empty;
+        if (text.Length == 0)
+            return (null, ErrorCodes.ProjectTestSendInvalidPayload, "Test mesajı boş. Önce bir şablon veya içerik seçin.");
+        if (text.Length > PlainTextBodyMaxLength)
+            return (null, ErrorCodes.ProjectTestSendInvalidPayload, $"Test mesajı {PlainTextBodyMaxLength} karakteri aşıyor.");
+
+        try
+        {
+            var (resp, errCode, errMsg) = await _broadcastOrch.CreateBroadcastAsync(
+                tenantId,
+                new BroadcastSendRequest
+                {
+                    MessageText = text,
+                    Recipients = new List<BroadcastRecipient> { new() { Phone = normalized } }
+                },
+                ct);
+            if (resp == null)
+            {
+                // Single recipient: "no valid recipients" from the orchestrator means the number
+                // was filtered (opt-out / marketing consent) — name that cause for the operator.
+                var msg = errCode == ErrorCodes.OutboundInvalidBroadcastPayload
+                    ? "Mesaj gönderilmedi: numara filtrelendi (opt-out / pazarlama izni yok)."
+                    : errMsg;
+                _logger.SystemWarn($"project test-send rejected: tenant={tenantId}, phone={normalized}, code={errCode}");
+                return (null, errCode, msg);
+            }
+
+            // Audit line (Codex plan-consult PR-001): who tested, to where, with what outcome.
+            _logger.SystemInfo(
+                $"project test-send: tenant={tenantId}, phone={normalized}, broadcast={resp.BroadcastId}, " +
+                $"queued={resp.Queued}, skipped_optout={resp.SkippedOptout}, skipped_consent={resp.SkippedConsent}");
+            return (resp, null, null);
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"project test-send failed (tenant={tenantId}): {ex.Message}");
+            return (null, ErrorCodes.ProjectDbError, "Veritabanı hatası nedeniyle test mesajı gönderilemedi. Lütfen tekrar deneyin.");
         }
     }
 

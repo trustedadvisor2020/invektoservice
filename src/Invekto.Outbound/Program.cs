@@ -669,6 +669,8 @@ static int ProjectSendStatus(string? code) => code switch
     ErrorCodes.ProjectNoContent => 422,
     ErrorCodes.ProjectNoTargets => 422,
     ErrorCodes.ProjectHsmSendNotSupported => 422,
+    ErrorCodes.ProjectTestSendInvalidPayload => 422,   // GR-8 test send: bad phone / empty / oversized text
+    ErrorCodes.ProjectTestSendThrottled => 429,        // GR-8 test send: per-tenant per-minute cap
     ErrorCodes.ContactListNoSendable => 422,
     ErrorCodes.BulkSendCapExceeded => 422,
     ErrorCodes.BulkSendNoValidRecipients => 422,
@@ -685,14 +687,14 @@ static int ProjectSendStatus(string? code) => code switch
     _ => 400   // ProjectInvalidPayload + ProjectInvalidSendConfig + fallback
 };
 
-app.MapGet("/api/v1/projects", async (HttpContext ctx, [FromServices] ProjectsService svc) =>
+app.MapGet("/api/v1/projects", async (HttpContext ctx, [FromServices] ProjectsService svc, bool includeArchived = false) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
     var tenantContext = ctx.Items["TenantContext"] as TenantContext;
     if (tenantContext == null)
         return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
 
-    var (projects, errorCode) = await svc.ListAsync(tenantContext.TenantId, ctx.RequestAborted);
+    var (projects, errorCode) = await svc.ListAsync(tenantContext.TenantId, ctx.RequestAborted, includeArchived);
     if (projects == null)
         return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, ProjectMessage(errorCode), requestId), statusCode: ProjectStatus(errorCode));
     return Results.Ok(projects);
@@ -845,6 +847,24 @@ app.MapPost("/api/v1/projects/{id:long}/send/cancel", async (HttpContext ctx, [F
     if (detail == null)
         return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "Gönderim iptal edilemedi.", requestId), statusCode: ProjectSendStatus(errorCode));
     return Results.Ok(detail);
+});
+
+// GR-8 — single-recipient plain-text TEST send from the project modal. Not bound to a project id
+// (create-mode content is testable before save). Dual-gated (Projects + BulkSend) + per-tenant
+// throttle inside the service; with the prod allowlists disjoint (P0-3) this endpoint is inert.
+app.MapPost("/api/v1/projects/send/test", async (HttpContext ctx, [FromServices] ProjectsService svc, ProjectTestSendRequest? request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+    if (request == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.ProjectTestSendInvalidPayload, "Request body is required", requestId), statusCode: 422);
+
+    var (response, errorCode, message) = await svc.TestSendAsync(tenantContext.TenantId, request, ctx.RequestAborted);
+    if (response == null)
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "Test mesajı gönderilemedi.", requestId), statusCode: ProjectSendStatus(errorCode));
+    return Results.Json(response, statusCode: 202);
 });
 
 // ============================================================
@@ -1812,6 +1832,7 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "POST", Path = "/api/v1/projects", Description = "Create project (+targets)", Auth = "Bearer JWT", Category = "Projects" },
         new() { Method = "PUT", Path = "/api/v1/projects/{id}", Description = "Update project (partial +targets replace)", Auth = "Bearer JWT", Category = "Projects" },
         new() { Method = "DELETE", Path = "/api/v1/projects/{id}", Description = "Archive (soft-delete) project", Auth = "Bearer JWT", Category = "Projects" },
+        new() { Method = "POST", Path = "/api/v1/projects/send/test", Description = "Single-recipient plain-text TEST send (Projects+BulkSend gated, throttled)", Auth = "Bearer JWT", Category = "Projects" },
         new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },
         new() { Method = "GET", Path = "/ready", Description = "Readiness probe (DB check)", Auth = "none", Category = "Health" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery (this)", Auth = "none", Category = "Ops" },

@@ -432,7 +432,10 @@ export function ExportManagerPage() {
 
       {/* ── Liste Oluştur modal ── */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onMouseDown={e => { if (e.target === e.currentTarget) setModalOpen(false); }}
+        >
           <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-5 relative">
             <button
               onClick={() => setModalOpen(false)}

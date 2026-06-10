@@ -2603,6 +2603,7 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
             new() { Method = "POST", Path = "/api/v1/outbound/projects/{id}/send/pause", Description = "Pause a project run (queued->paused) proxy", Auth = "Bearer", Category = "API" },
             new() { Method = "POST", Path = "/api/v1/outbound/projects/{id}/send/resume", Description = "Resume a paused project run (paused->queued) proxy", Auth = "Bearer", Category = "API" },
             new() { Method = "POST", Path = "/api/v1/outbound/projects/{id}/send/cancel", Description = "Cancel a project run (remaining->cancelled) proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "POST", Path = "/api/v1/outbound/projects/send/test", Description = "Single-recipient plain-text TEST send proxy (gated + throttled)", Auth = "Bearer", Category = "API" },
 
             // FEAT-TFM MVP: tenant-scoped semantic field-mapping CRUD
             new() { Method = "GET", Path = "/api/v1/tenant-settings/field-mapping", Description = "Read tenant semantic→INMA field mapping", Auth = "Bearer", Category = "API" },
@@ -3890,8 +3891,9 @@ app.MapGet("/api/v1/outbound/bulk-send/{campaignId}/status", async (HttpContext 
 // FEAT-PROJELER PKT-14 S4 — Projeler CRUD proxy (thin pass-through over the Outbound /api/v1/projects
 // endpoints from S2; mirrors the data-lists GR4 block). The bearer is forwarded straight through;
 // Outbound does ExtractTenant + the ProjectsOptions gate. DELETE is soft-delete-as-archive in Outbound.
+// Query-string passes verbatim (GR-9: ?includeArchived=true also lists archived projects).
 app.MapGet("/api/v1/outbound/projects", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
-    await OutboundProxyGet(ctx, obClient, jsonLog, "/api/v1/projects"));
+    await OutboundProxyGet(ctx, obClient, jsonLog, $"/api/v1/projects{ctx.Request.QueryString.Value}"));
 
 app.MapGet("/api/v1/outbound/projects/{id:long}", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
     await OutboundProxyGet(ctx, obClient, jsonLog, $"/api/v1/projects/{id}"));
@@ -3926,6 +3928,11 @@ app.MapPost("/api/v1/outbound/projects/{id:long}/send/resume", async (HttpContex
 
 app.MapPost("/api/v1/outbound/projects/{id:long}/send/cancel", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
     await OutboundProxyPost(ctx, obClient, jsonLog, $"/api/v1/projects/{id}/send/cancel"));
+
+// GR-8 — single-recipient plain-text TEST send proxy (no project id; create-mode testable).
+// Outbound enforces Projects + BulkSend gates + per-tenant throttle; body/status pass verbatim.
+app.MapPost("/api/v1/outbound/projects/send/test", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, "/api/v1/projects/send/test"));
 
 // ============================================
 // FLOW BUILDER PROXY ENDPOINTS

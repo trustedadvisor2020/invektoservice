@@ -566,6 +566,10 @@ public static class ErrorCodes
     public const string HsmTemplateCatalogUnreachable = "INV-OB-084";      // HSM run: live cxapi template-list call failed (rate-limit/timeout/transport/provider). HARD FAIL — never validated against stale data, never silently continues. 503.
     public const string HsmSendNotAllowlisted = "INV-OB-085";              // HSM run: tenant not in the CxapiSend allowlist. Checked FIRST at preview AND confirm BEFORE any vendor call (HSM has no bridge fallback). Empty allowlist (P0-3) => whole path prod-inert. 403.
 
+    // FEAT-PROJELER UI/UX pack — single-recipient TEST send from the project modal (INV-OB-086+)
+    public const string ProjectTestSendInvalidPayload = "INV-OB-086";      // Test send: phone fails PhoneNormalizer OR message_text empty / over the plain-text cap. Typed reject before any side effect. 422.
+    public const string ProjectTestSendThrottled = "INV-OB-087";           // Test send: per-tenant fixed-window throttle exceeded (test send is a REAL send surface — anti-abuse cap). 429.
+
     // Lead Management errors (INV-LD-xxx) -- GR-3.13
     public const string LeadInvalidPayload = "INV-LD-001";
     public const string LeadNotFound = "INV-LD-002";

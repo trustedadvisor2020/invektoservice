@@ -1110,6 +1110,12 @@ errors:
   - code: INV-OB-085
     description: "FEAT-PROJELER / cxapi PR-4 — HSM send not enabled for this tenant: the tenant is not in the CxapiSend allowlist. Checked FIRST at BOTH preview and confirm, BEFORE any vendor call (an HSM run has no bridge fallback — approved templates cannot ride the INMA Main App bridge). With the allowlist empty (P0-3 gate) every HSM run rejects here, keeping the whole PR-4 path prod-inert with zero vendor traffic. (403)"
     user_message: Onaylı şablon gönderimi bu hesapta henüz açık değil.
+  - code: INV-OB-086
+    description: "FEAT-PROJELER UI/UX pack — project-modal TEST send payload invalid: phone fails PhoneNormalizer, or message_text is empty / exceeds the plain-text cap (4096). Typed reject before any side effect; the Projects + BulkSend gates are checked even earlier, keeping the surface prod-inert. (422)"
+    user_message: Geçersiz test gönderimi — numarayı ve mesaj içeriğini kontrol edin.
+  - code: INV-OB-087
+    description: "FEAT-PROJELER UI/UX pack — project-modal TEST send throttled: per-tenant fixed-window cap (5/min) exceeded. Test send is a REAL send surface (one plain-text message to one number via the shared broadcast path: opt-out/consent filters + KVKK disclaimer identical to real sends), so it is rate-capped against abuse. (429)"
+    user_message: Çok sık test gönderimi. Biraz bekleyip tekrar deneyin.
 
   # ── IG — Integrations (GR-3.4/3.6) ──
   - code: INV-IG-001

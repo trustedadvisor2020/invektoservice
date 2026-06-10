@@ -105,6 +105,7 @@ export function ApiKeyManagerCard({ settings, onRotate, onRevoke, busy }: ApiKey
           className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/40 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
+          onMouseDown={e => { if (e.target === e.currentTarget && !busy) setConfirmMode(null); }}
         >
           <div className="bg-white rounded-xl shadow-card w-full max-w-md p-6 relative">
             <button

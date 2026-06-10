@@ -55,6 +55,7 @@ export function NewKeyCopyModal({ open, plaintext, oldKeyExpiresAt, onClose }: N
       role="dialog"
       aria-modal="true"
       aria-labelledby="liw-new-key-title"
+      onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="bg-white rounded-xl shadow-card w-full max-w-lg p-6 relative">
         <button

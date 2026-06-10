@@ -70,7 +70,7 @@ export function KanbanDrawer({ card, onClose }: KanbanDrawerProps) {
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-slate-900/40 z-40 transition-opacity"
-        onClick={onClose}
+        onMouseDown={onClose}
         aria-hidden="true"
       />
 

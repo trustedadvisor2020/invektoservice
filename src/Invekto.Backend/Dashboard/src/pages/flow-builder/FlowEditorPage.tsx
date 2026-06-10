@@ -358,7 +358,10 @@ export function FlowEditorPage() {
 
         {/* Unsaved changes exit dialog */}
         {showExitDialog && (
-          <div className="fixed inset-0 bg-navy-900/40 backdrop-blur-sm flex items-center justify-center z-50">
+          <div
+            className="fixed inset-0 bg-navy-900/40 backdrop-blur-sm flex items-center justify-center z-50"
+            onMouseDown={e => { if (e.target === e.currentTarget) setShowExitDialog(false); }}
+          >
             <div className="bg-white border border-navy-100 rounded-2xl w-full max-w-sm p-6 shadow-elevated relative">
               <button
                 onClick={() => setShowExitDialog(false)}

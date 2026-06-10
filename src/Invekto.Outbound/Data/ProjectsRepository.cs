@@ -71,7 +71,10 @@ public class ProjectsRepository
     // ------------------------------------------------------------------
     // Read
     // ------------------------------------------------------------------
-    public virtual async Task<List<ProjectSummary>> ListAsync(int tenantId, CancellationToken ct = default)
+    // includeArchived (GR-9): TRUE also returns archived (soft-deleted) rows for the dashboard's
+    // Arşivli filter; FALSE keeps the original active-only shape (parameterized, tenant-scoped).
+    public virtual async Task<List<ProjectSummary>> ListAsync(
+        int tenantId, CancellationToken ct = default, bool includeArchived = false)
     {
         const string sql = @"
             SELECT p.id, p.name, p.description, p.status,
@@ -84,12 +87,13 @@ public class ProjectsRepository
                    p.content_mode, p.outbound_template_id, p.plain_text_body,
                    p.cancelled_count
             FROM projects p
-            WHERE p.tenant_id = @tid AND p.archived_at IS NULL
+            WHERE p.tenant_id = @tid AND (@includeArchived OR p.archived_at IS NULL)
             ORDER BY p.created_at DESC";
 
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("includeArchived", includeArchived);
 
         var list = new List<ProjectSummary>();
         await using var reader = await cmd.ExecuteReaderAsync(ct);

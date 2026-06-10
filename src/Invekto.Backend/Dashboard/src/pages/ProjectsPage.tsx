@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Briefcase, X, Plus, Pencil, Archive, Loader2, Info, ListChecks, Radio, FileText, Send, Users, CheckCircle2,
+  Briefcase, X, Plus, Pencil, Archive, Loader2, Info, ListChecks, FileText, Send, Users, CheckCircle2,
   ExternalLink, Phone, Reply, Image as ImageIcon, Pause, Play, Ban, AlertTriangle,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
@@ -218,6 +218,15 @@ export default function ProjectsPage() {
   const [lifecycleBusyId, setLifecycleBusyId] = useState<number | null>(null);
   const [cancelTarget, setCancelTarget] = useState<ProjectSummary | null>(null);
 
+  // ---- Status filter (GR-9): chips over the full set (single includeArchived fetch).
+  // 'all' = everything EXCEPT archived; 'archived' is its own explicit chip.
+  const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all');
+
+  // ---- Test send (GR-8): one plain-text message to one number, from the CURRENT form state.
+  const [testPhone, setTestPhone] = useState('');
+  const [testSending, setTestSending] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
+
   // Only WhatsApp Cloud API lines are valid send channels (instance_type === 1; excludes SMS/web/channel).
   const whatsappInstances = useMemo(() => instances.filter(i => i.instanceType === 1), [instances]);
   const selectedTemplate = useMemo(
@@ -241,7 +250,9 @@ export default function ProjectsPage() {
     setLoadError(null);
     setFeatureDisabled(false);
     try {
-      setProjects(await api.listProjects());
+      // includeArchived: the table fetches the FULL set once; the status chips filter client-side
+      // (an archived project is the tenant's own data — the Arşivli chip is how it is reached).
+      setProjects(await api.listProjects(true));
     } catch (e) {
       setProjects([]);
       // 403 = the tenant isn't enabled for projects (ProjectsOptions gate / plan).
@@ -403,16 +414,66 @@ export default function ProjectsPage() {
     ? [listInsight.sample.name, listInsight.sample.surname].filter(Boolean).join(' ')
     : '';
 
-  // aha #3: column option label enriched with the sample value + fill % from the insight.
+  // aha #3 (revised, Q 2026-06-10): column option label shows ONLY the sample value — the
+  // "%X dolu / boş" fill-rate suffix was dropped as noise.
   const columnOptionLabel = (c: { v: string; label: string }): string => {
     let label = c.label;
     const sampleVal = listInsight?.sample ? recordValue(listInsight.sample, c.v) : null;
     if (sampleVal) label += ` — "${sampleVal.length > 18 ? `${sampleVal.slice(0, 18)}…` : sampleVal}"`;
-    const stat = listInsight?.column_stats?.[c.v];
-    if (stat && stat.total > 0)
-      label += stat.filled === 0 ? ' · boş' : ` · %${Math.round((stat.filled / stat.total) * 100)} dolu`;
     return label;
   };
+
+  // ---- GR-8: the plain text a test message would carry, from the CURRENT (unsaved) form state.
+  // HSM template: rendered preview text — header/body/footer joined, mapped placeholders replaced
+  // with the sample recipient's values (independent of the showSample display toggle); unresolved
+  // placeholders stay literal {{key}} so the operator SEES what could not be resolved.
+  // plain_text: the free-text body, or the selected gallery template's text verbatim.
+  const testMessageText = useMemo(() => {
+    if (templateKind === 'wapcrm_template' && selectedTemplate?.preview) {
+      const resolve = (key: string): string | null => {
+        const col = paramColumns[key];
+        return col && listInsight?.sample ? recordValue(listInsight.sample, col) : null;
+      };
+      const render = (text: string | null | undefined) =>
+        (text ?? '').replace(/\{\{\s*([^}\s]+)\s*\}\}/g, (m, key: string) => resolve(key) ?? m);
+      const headerText = selectedTemplate.preview.header?.type === 'TEXT'
+        ? render(selectedTemplate.preview.header.text) : '';
+      const parts = [headerText, render(selectedTemplate.preview.body), render(selectedTemplate.preview.footer)]
+        .map(p => p.trim()).filter(p => p.length > 0);
+      return parts.join('\n\n');
+    }
+    if (templateKind === 'plain_text' && contentMode === 'free_text') return plainTextBody.trim();
+    if (templateKind === 'plain_text' && contentMode === 'gallery_template')
+      return (selectedGalleryTemplate?.message_template ?? '').trim();
+    return '';
+  }, [templateKind, selectedTemplate, paramColumns, listInsight, contentMode, plainTextBody, selectedGalleryTemplate]);
+
+  async function sendTest() {
+    const phone = testPhone.trim();
+    if (!phone || !testMessageText || testSending) return;
+    setTestSending(true);
+    setTestResult(null);
+    try {
+      const res = await api.projectTestSend({ phone, message_text: testMessageText });
+      setTestResult(res.queued > 0
+        ? { ok: true, text: 'Test mesajı kuyruğa alındı — WhatsApp\'ınızı kontrol edin.' }
+        : { ok: false, text: 'Mesaj gönderilmedi: numara filtrelendi (opt-out / izin).' });
+    } catch (e) {
+      setTestResult({ ok: false, text: errText(e, 'Test mesajı gönderilemedi') });
+    } finally {
+      setTestSending(false);
+    }
+  }
+
+  // ---- GR-9: status chip filtering over the single includeArchived fetch.
+  const statusCounts = useMemo(() => {
+    const counts: Partial<Record<ProjectStatus, number>> = {};
+    for (const p of projects) counts[p.status] = (counts[p.status] ?? 0) + 1;
+    return counts;
+  }, [projects]);
+  const visibleProjects = useMemo(
+    () => projects.filter(p => (statusFilter === 'all' ? p.status !== 'archived' : p.status === statusFilter)),
+    [projects, statusFilter]);
 
   function resetSendConfig() {
     // New projects default to the approved-template (HSM) flow (Q 2026-06-10); plain_text is disabled in the UI.
@@ -429,6 +490,12 @@ export default function ProjectsPage() {
     setPlainTextBody('');
   }
 
+  function resetTestSend() {
+    setTestPhone('');
+    setTestSending(false);
+    setTestResult(null);
+  }
+
   function openCreate() {
     setEditing(null);
     setName('');
@@ -437,6 +504,7 @@ export default function ProjectsPage() {
     resetSendConfig();
     setShowSample(true);
     setFormError(null);
+    resetTestSend();
     setModalOpen(true);
   }
 
@@ -447,6 +515,7 @@ export default function ProjectsPage() {
     setSelectedListIds([]);
     setShowSample(true);
     setFormError(null);
+    resetTestSend();
     setModalOpen(true);
 
     // Re-populate the send config from the project (the summary now carries it).
@@ -735,9 +804,34 @@ export default function ProjectsPage() {
       </div>
 
       <div className="bg-white border border-navy-100 rounded-xl shadow-soft overflow-hidden">
-        <div className="px-4 py-3 border-b border-navy-50 flex items-center gap-2">
+        <div className="px-4 py-3 border-b border-navy-50 flex items-center gap-2 flex-wrap">
           <Briefcase className="w-4 h-4 text-navy-400" />
           <h2 className="text-sm font-medium text-navy-700">Projeler</h2>
+          {/* GR-9: status filter chips ('Tümü' = everything except archived) */}
+          {!featureDisabled && !loading && projects.length > 0 && (
+            <div className="ml-auto flex items-center gap-1 flex-wrap">
+              {([
+                { v: 'all' as const, label: 'Tümü', count: projects.filter(p => p.status !== 'archived').length },
+                ...((Object.keys(STATUS_META) as ProjectStatus[]).map(s => ({
+                  v: s, label: STATUS_META[s].label, count: statusCounts[s] ?? 0,
+                }))),
+              ]).map(f => (
+                <button
+                  key={f.v}
+                  type="button"
+                  onClick={() => setStatusFilter(f.v)}
+                  className={cn(
+                    'px-2 py-1 rounded-full text-xs border transition-colors tabular-nums',
+                    statusFilter === f.v
+                      ? 'border-brand-500 bg-brand-50 text-brand-700 font-medium'
+                      : 'border-navy-100 text-navy-500 hover:border-navy-200',
+                  )}
+                >
+                  {f.label} ({f.count.toLocaleString('tr-TR')})
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {featureDisabled && (
@@ -758,6 +852,10 @@ export default function ProjectsPage() {
           <div className="px-4 py-10 text-center text-navy-400 text-sm">
             Henüz proje yok. “Yeni Proje” ile ilk projenizi oluşturun.
           </div>
+        ) : visibleProjects.length === 0 ? (
+          <div className="px-4 py-10 text-center text-navy-400 text-sm">
+            Bu filtrede proje yok.
+          </div>
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-navy-50/50 text-navy-500 text-xs">
@@ -772,8 +870,19 @@ export default function ProjectsPage() {
               </tr>
             </thead>
             <tbody>
-              {projects.map(p => (
-                <tr key={p.id} className="border-t border-navy-50">
+              {visibleProjects.map(p => (
+                <tr
+                  key={p.id}
+                  className={cn('border-t border-navy-50', p.status !== 'archived' && 'cursor-pointer hover:bg-navy-50/40')}
+                  onDoubleClick={e => {
+                    if (p.status === 'archived') return;
+                    // Action buttons live inside the row — a double-click on (or bubbling from)
+                    // any interactive control must not ALSO open the edit modal.
+                    if ((e.target as HTMLElement).closest('button, a, input, select')) return;
+                    void openEdit(p);
+                  }}
+                  title={p.status !== 'archived' ? 'Düzenlemek için çift tıklayın' : undefined}
+                >
                   <td className="px-4 py-2.5">
                     <div className="text-navy-900">{p.name}</div>
                     {p.description && <div className="text-xs text-navy-400 truncate max-w-xs">{p.description}</div>}
@@ -789,6 +898,9 @@ export default function ProjectsPage() {
                   <td className="px-4 py-2.5 text-right tabular-nums">{p.delivered_count.toLocaleString('tr-TR')}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums">{p.failed_count.toLocaleString('tr-TR')}</td>
                   <td className="px-4 py-2.5">
+                    {p.status === 'archived' ? (
+                      <div className="text-right text-xs text-navy-300">arşivli</div>
+                    ) : (
                     <div className="flex items-center justify-end gap-1.5">
                       {/* SS-D status-aware run controls: running -> Duraklat; paused -> Devam Et; either -> İptal */}
                       {p.status === 'running' && (
@@ -857,6 +969,7 @@ export default function ProjectsPage() {
                           : <Archive className="w-3.5 h-3.5 text-navy-400" />}
                       </Button>
                     </div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -865,10 +978,13 @@ export default function ProjectsPage() {
         ))}
       </div>
 
-      {/* ---- Create / Edit modal (X-close, no İptal text button) ---- */}
+      {/* ---- Create / Edit modal (X-close + backdrop click, no İptal text button) ---- */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/40 p-4">
-          <div className="bg-white border border-navy-100 rounded-xl shadow-soft relative w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/40 p-4"
+          onMouseDown={e => { if (e.target === e.currentTarget) closeModal(); }}
+        >
+          <div className="bg-white border border-navy-100 rounded-xl shadow-soft relative w-full max-w-6xl max-h-[90vh] overflow-y-auto">
             <button
               onClick={closeModal}
               className="absolute right-3 top-3 text-navy-300 hover:text-navy-600"
@@ -884,8 +1000,8 @@ export default function ProjectsPage() {
             </div>
 
             <div className="px-5 py-3">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {/* Left column: identity + target lists */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {/* Column 1: identity + target lists */}
                 <div className="space-y-4">
               <Input
                 label="Proje Adı"
@@ -946,17 +1062,12 @@ export default function ProjectsPage() {
                   </div>
                 )}
               </div>
-                </div>{/* /left column */}
+                </div>{/* /column 1 */}
 
-                {/* Right column: send config (WhatsApp channel + message kind + template) */}
+                {/* Column 2: send config (channel + message kind + template/content pickers).
+                    "Gönderim Ayarları" heading dropped (Q 2026-06-10). */}
                 <div className="space-y-4 md:border-l md:border-navy-50 md:pl-5">
               <div className="w-full space-y-3">
-                <div className="flex items-center gap-1.5">
-                  <Radio className="w-4 h-4 text-navy-400" />
-                  <label className="text-sm font-medium text-navy-700">Gönderim Ayarları</label>
-                  <span className="text-xs text-navy-400">(opsiyonel)</span>
-                </div>
-
                 {/* WhatsApp channel — Cloud API lines only */}
                 <div>
                   <label className="block text-xs font-medium text-navy-600 mb-1">WhatsApp Kanalı (hat)</label>
@@ -1043,116 +1154,7 @@ export default function ProjectsPage() {
                       </div>
                     )}
 
-                    {selectedTemplate && (
-                      <div className="space-y-3">
-                        {/* WhatsApp-style preview */}
-                        {selectedTemplate.preview && (
-                          <div>
-                            <div className="flex items-center justify-between mb-1">
-                              <label className="block text-xs font-medium text-navy-600">Önizleme</label>
-                              {/* aha #2: flip between raw {{...}} and the sample recipient's real values */}
-                              {listInsight?.sample && (
-                                <button
-                                  type="button"
-                                  onClick={() => setShowSample(s => !s)}
-                                  className="text-[11px] text-brand-600 hover:text-brand-700 underline decoration-dotted"
-                                >
-                                  {showSample
-                                    ? 'Değişkenleri göster'
-                                    : `Örnekle göster${sampleDisplayName ? ` (${sampleDisplayName})` : ''}`}
-                                </button>
-                              )}
-                            </div>
-                            <div className="rounded-lg p-3 bg-[#e5ddd5]">
-                              <div className="bg-white rounded-lg rounded-tl-none shadow-sm px-3 py-2 max-w-[90%] text-sm">
-                                {selectedTemplate.preview.header && (
-                                  selectedTemplate.preview.header.type === 'TEXT'
-                                    ? selectedTemplate.preview.header.text && (
-                                        <div className="font-semibold text-navy-900 mb-1 whitespace-pre-wrap break-words">
-                                          {renderTemplateText(selectedTemplate.preview.header.text, sampleResolver)}
-                                        </div>
-                                      )
-                                    : (
-                                      <div className="mb-2 flex items-center justify-center gap-1.5 rounded-md bg-navy-50 text-navy-400 text-xs py-5">
-                                        {mediaHeaderIcon(selectedTemplate.preview.header.type)}
-                                        {mediaHeaderLabel(selectedTemplate.preview.header.type)}
-                                      </div>
-                                    )
-                                )}
-                                {selectedTemplate.preview.body && (
-                                  <div className="text-navy-800 whitespace-pre-wrap break-words">{renderTemplateText(selectedTemplate.preview.body, sampleResolver)}</div>
-                                )}
-                                {selectedTemplate.preview.footer && (
-                                  <div className="text-navy-400 text-xs mt-1 whitespace-pre-wrap break-words">{selectedTemplate.preview.footer}</div>
-                                )}
-                                <div className="text-[10px] text-navy-300 text-right mt-1">şimdi</div>
-                              </div>
-                              {(selectedTemplate.preview.buttons?.length ?? 0) > 0 && (
-                                <div className="mt-1 space-y-1">
-                                  {selectedTemplate.preview.buttons?.map((b, bi) => (
-                                    <div
-                                      key={`${b.text ?? b.type ?? 'btn'}-${bi}`}
-                                      className="bg-white rounded-lg shadow-sm py-1.5 flex items-center justify-center gap-1.5 text-[#00a5f4] text-sm font-medium"
-                                    >
-                                      {buttonIcon(b.type)}{b.text ?? b.type}
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Per-parameter mapping: each {{...}} placeholder -> a list column (per-recipient at send time) */}
-                        {placeholders.length === 0 && mediaInputs.length === 0 ? (
-                          <p className="text-xs text-navy-400">Bu şablon parametre gerektirmiyor.</p>
-                        ) : (
-                          <div className="space-y-2">
-                            {placeholders.length > 0 && (
-                              <p className="text-[11px] text-navy-400">
-                                Her parametreyi seçili listedeki bir kolona eşleyin — gönderimde her kişiye kendi değeri yazılır.
-                              </p>
-                            )}
-                            {placeholders.map(ph => (
-                              <div key={ph.key} className="flex items-center gap-2">
-                                <span
-                                  className="shrink-0 w-2/5 text-xs font-medium text-navy-600 truncate"
-                                  title={`{{${ph.key}}} — ${ph.location}`}
-                                >
-                                  {`{{${ph.key}}}`}
-                                  <span className="text-navy-300 font-normal"> — {ph.location}</span>
-                                </span>
-                                <select
-                                  className="flex-1 px-3 py-2 bg-white border border-navy-100 rounded-lg text-navy-900 text-sm focus:outline-none focus:border-brand-500 focus:shadow-focus"
-                                  value={paramColumns[ph.key] ?? ''}
-                                  onChange={e => setParamColumns(prev => ({ ...prev, [ph.key]: e.target.value }))}
-                                >
-                                  <option value="">— Kolon seç —</option>
-                                  {/* aha #3: option label enriched with the sample value + fill % */}
-                                  {LIST_COLUMNS.map(c => (
-                                    <option key={c.v} value={c.v}>{columnOptionLabel(c)}</option>
-                                  ))}
-                                </select>
-                              </div>
-                            ))}
-                            {mediaInputs.map(ri => (
-                              <div key={mediaKey(ri)}>
-                                <label className="block text-xs font-medium text-navy-600 mb-1">
-                                  Medya ({ri.mediaType ?? 'dosya'}){ri.location ? ` — ${ri.location}` : ''}
-                                </label>
-                                <input
-                                  className="w-full px-3 py-2 bg-white border border-navy-100 rounded-lg text-navy-900 text-sm placeholder:text-navy-300 focus:outline-none focus:border-brand-500 focus:shadow-focus"
-                                  value={mediaValues[mediaKey(ri)] ?? ''}
-                                  placeholder="Herkese açık medya URL'i"
-                                  onChange={e => setMediaValues(prev => ({ ...prev, [mediaKey(ri)]: e.target.value }))}
-                                />
-                                {ri.note && <p className="text-[11px] text-navy-400 mt-0.5">{ri.note}</p>}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    {/* (Önizleme + parametre eşleme 3. kolona taşındı — GR-7) */}
                   </div>
                 )}
 
@@ -1203,11 +1205,7 @@ export default function ProjectsPage() {
                         ) : galleryTemplates.length === 0 ? (
                           <p className="text-xs text-navy-400 mt-1">Etkin şablon yok. “Şablon Galerisi”nden bir şablon oluşturun veya serbest metin kullanın.</p>
                         ) : null}
-                        {selectedGalleryTemplate && (
-                          <p className="text-xs text-navy-500 whitespace-pre-wrap border border-navy-50 rounded-lg p-2 mt-2 bg-navy-50/30">
-                            {selectedGalleryTemplate.message_template}
-                          </p>
-                        )}
+                        {/* (Şablon metni önizlemesi 3. kolondaki baloncukta — GR-7) */}
                       </div>
                     )}
 
@@ -1228,8 +1226,175 @@ export default function ProjectsPage() {
                   </div>
                 )}
               </div>
-                </div>{/* /right column */}
-              </div>{/* /two-column grid */}
+                </div>{/* /column 2 */}
+
+                {/* Column 3: Önizleme & Test (GR-7/GR-8) — WhatsApp önizleme, değişken eşlemeleri, test gönderim */}
+                <div className="space-y-4 md:border-l md:border-navy-50 md:pl-5 md:col-span-2 lg:col-span-1">
+                  {templateKind === 'wapcrm_template' && selectedTemplate && (
+                    <div className="space-y-3">
+                      {/* WhatsApp-style preview */}
+                      {selectedTemplate.preview && (
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="block text-xs font-medium text-navy-600">Önizleme</label>
+                            {/* aha #2: flip between raw {{...}} and the sample recipient's real values */}
+                            {listInsight?.sample && (
+                              <button
+                                type="button"
+                                onClick={() => setShowSample(s => !s)}
+                                className="text-[11px] text-brand-600 hover:text-brand-700 underline decoration-dotted"
+                              >
+                                {showSample
+                                  ? 'Değişkenleri göster'
+                                  : `Örnekle göster${sampleDisplayName ? ` (${sampleDisplayName})` : ''}`}
+                              </button>
+                            )}
+                          </div>
+                          <div className="rounded-lg p-3 bg-[#e5ddd5]">
+                            <div className="bg-white rounded-lg rounded-tl-none shadow-sm px-3 py-2 max-w-[90%] text-sm">
+                              {selectedTemplate.preview.header && (
+                                selectedTemplate.preview.header.type === 'TEXT'
+                                  ? selectedTemplate.preview.header.text && (
+                                      <div className="font-semibold text-navy-900 mb-1 whitespace-pre-wrap break-words">
+                                        {renderTemplateText(selectedTemplate.preview.header.text, sampleResolver)}
+                                      </div>
+                                    )
+                                  : (
+                                    <div className="mb-2 flex items-center justify-center gap-1.5 rounded-md bg-navy-50 text-navy-400 text-xs py-5">
+                                      {mediaHeaderIcon(selectedTemplate.preview.header.type)}
+                                      {mediaHeaderLabel(selectedTemplate.preview.header.type)}
+                                    </div>
+                                  )
+                              )}
+                              {selectedTemplate.preview.body && (
+                                <div className="text-navy-800 whitespace-pre-wrap break-words">{renderTemplateText(selectedTemplate.preview.body, sampleResolver)}</div>
+                              )}
+                              {selectedTemplate.preview.footer && (
+                                <div className="text-navy-400 text-xs mt-1 whitespace-pre-wrap break-words">{selectedTemplate.preview.footer}</div>
+                              )}
+                              <div className="text-[10px] text-navy-300 text-right mt-1">şimdi</div>
+                            </div>
+                            {(selectedTemplate.preview.buttons?.length ?? 0) > 0 && (
+                              <div className="mt-1 space-y-1">
+                                {selectedTemplate.preview.buttons?.map((b, bi) => (
+                                  <div
+                                    key={`${b.text ?? b.type ?? 'btn'}-${bi}`}
+                                    className="bg-white rounded-lg shadow-sm py-1.5 flex items-center justify-center gap-1.5 text-[#00a5f4] text-sm font-medium"
+                                  >
+                                    {buttonIcon(b.type)}{b.text ?? b.type}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Per-parameter mapping: each {{...}} placeholder -> a list column (per-recipient at send time) */}
+                      {placeholders.length === 0 && mediaInputs.length === 0 ? (
+                        <p className="text-xs text-navy-400">Bu şablon parametre gerektirmiyor.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {placeholders.length > 0 && (
+                            <p className="text-[11px] text-navy-400">
+                              Her parametreyi seçili listedeki bir kolona eşleyin — gönderimde her kişiye kendi değeri yazılır.
+                            </p>
+                          )}
+                          {placeholders.map(ph => (
+                            <div key={ph.key} className="flex items-center gap-2">
+                              <span
+                                className="shrink-0 w-2/5 text-xs font-medium text-navy-600 truncate"
+                                title={`{{${ph.key}}} — ${ph.location}`}
+                              >
+                                {`{{${ph.key}}}`}
+                                <span className="text-navy-300 font-normal"> — {ph.location}</span>
+                              </span>
+                              <select
+                                className="flex-1 px-3 py-2 bg-white border border-navy-100 rounded-lg text-navy-900 text-sm focus:outline-none focus:border-brand-500 focus:shadow-focus"
+                                value={paramColumns[ph.key] ?? ''}
+                                onChange={e => setParamColumns(prev => ({ ...prev, [ph.key]: e.target.value }))}
+                              >
+                                <option value="">— Kolon seç —</option>
+                                {/* aha #3 (revised): option label shows the sample value only */}
+                                {LIST_COLUMNS.map(c => (
+                                  <option key={c.v} value={c.v}>{columnOptionLabel(c)}</option>
+                                ))}
+                              </select>
+                            </div>
+                          ))}
+                          {mediaInputs.map(ri => (
+                            <div key={mediaKey(ri)}>
+                              <label className="block text-xs font-medium text-navy-600 mb-1">
+                                Medya ({ri.mediaType ?? 'dosya'}){ri.location ? ` — ${ri.location}` : ''}
+                              </label>
+                              <input
+                                className="w-full px-3 py-2 bg-white border border-navy-100 rounded-lg text-navy-900 text-sm placeholder:text-navy-300 focus:outline-none focus:border-brand-500 focus:shadow-focus"
+                                value={mediaValues[mediaKey(ri)] ?? ''}
+                                placeholder="Herkese açık medya URL'i"
+                                onChange={e => setMediaValues(prev => ({ ...prev, [mediaKey(ri)]: e.target.value }))}
+                              />
+                              {ri.note && <p className="text-[11px] text-navy-400 mt-0.5">{ri.note}</p>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* plain_text içerik baloncuğu: serbest metin veya seçili galeri şablonunun metni */}
+                  {templateKind === 'plain_text' && testMessageText !== '' && (
+                    <div>
+                      <label className="block text-xs font-medium text-navy-600 mb-1">Önizleme</label>
+                      <div className="rounded-lg p-3 bg-[#e5ddd5]">
+                        <div className="bg-white rounded-lg rounded-tl-none shadow-sm px-3 py-2 max-w-[90%] text-sm">
+                          <div className="text-navy-800 whitespace-pre-wrap break-words">{renderTemplateText(testMessageText)}</div>
+                          <div className="text-[10px] text-navy-300 text-right mt-1">şimdi</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {!(templateKind === 'wapcrm_template' && selectedTemplate) && !(templateKind === 'plain_text' && testMessageText !== '') && (
+                    <p className="text-xs text-navy-400">Önizleme ve test için bir şablon veya içerik seçin.</p>
+                  )}
+
+                  {/* GR-8: test send — kendi numarana düz metin bağlantı testi */}
+                  {testMessageText !== '' && (
+                    <div className="border-t border-navy-50 pt-3 space-y-2">
+                      <label className="text-xs font-medium text-navy-600 flex items-center gap-1">
+                        <Send className="w-3.5 h-3.5 text-navy-400" /> Test Mesajı
+                      </label>
+                      <p className="text-[11px] text-navy-400">
+                        Kendi numaranıza düz metin bağlantı testi gönderin.
+                        {templateKind === 'wapcrm_template' && ' Şablonun onaylı formatı değil, önizleme metni düz metin olarak gider.'}
+                      </p>
+                      <div className="flex gap-2">
+                        <input
+                          className="flex-1 min-w-0 px-3 py-2 bg-white border border-navy-100 rounded-lg text-navy-900 text-sm placeholder:text-navy-300 focus:outline-none focus:border-brand-500 focus:shadow-focus"
+                          placeholder="+905xxxxxxxxx"
+                          value={testPhone}
+                          onChange={e => setTestPhone(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') void sendTest(); }}
+                        />
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={testSending || !testPhone.trim() || !testMessageText}
+                          onClick={() => void sendTest()}
+                          title="Bu numaraya test mesajı gönder"
+                        >
+                          {testSending
+                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            : <Send className="w-3.5 h-3.5" />} Test Gönder
+                        </Button>
+                      </div>
+                      {testResult && (
+                        <p className={cn('text-xs', testResult.ok ? 'text-green-600' : 'text-red-600')}>{testResult.text}</p>
+                      )}
+                    </div>
+                  )}
+                </div>{/* /column 3 */}
+              </div>{/* /three-column grid */}
 
               {formError && <div className="text-sm text-red-600">{formError}</div>}
             </div>
@@ -1244,9 +1409,12 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      {/* ---- Gönder (run dispatch) modal: preview -> confirm -> status (X-close) ---- */}
+      {/* ---- Gönder (run dispatch) modal: preview -> confirm -> status (X-close + backdrop click) ---- */}
       {sendProject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/40 p-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/40 p-4"
+          onMouseDown={e => { if (e.target === e.currentTarget) closeSend(); }}
+        >
           <div className="bg-white border border-navy-100 rounded-xl shadow-soft relative w-full max-w-md">
             <button
               onClick={closeSend}
@@ -1346,9 +1514,12 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      {/* ---- İptal (cancel) confirm modal (X-close; irreversible — sent messages are not recalled) ---- */}
+      {/* ---- İptal (cancel) confirm modal (X-close + backdrop click; irreversible — sent messages are not recalled) ---- */}
       {cancelTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/40 p-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/40 p-4"
+          onMouseDown={e => { if (e.target === e.currentTarget) setCancelTarget(null); }}
+        >
           <div className="bg-white border border-navy-100 rounded-xl shadow-soft relative w-full max-w-md">
             <button
               onClick={() => setCancelTarget(null)}

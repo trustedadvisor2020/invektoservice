@@ -190,3 +190,20 @@ public sealed class ProjectSendRequest
     /// <summary>Client-supplied idempotency key, unique per tenant. One per Gönder flow (a run).</summary>
     [JsonPropertyName("campaign_id")] public string CampaignId { get; set; } = "";
 }
+
+/// <summary>
+/// FEAT-PROJELER UI/UX pack (GR-8) — body for POST /api/v1/projects/send/test: ONE plain-text
+/// message to ONE number, fired from the project modal so the operator can smoke-test content on
+/// their own phone BEFORE saving/dispatching. Not bound to a project id (works in create mode);
+/// the message text arrives pre-rendered by the UI (an HSM project's preview text goes out as
+/// plain text — Q decision 2026-06-10, the approved-template format itself is NOT exercised).
+/// Server side: Projects + BulkSend gates, per-tenant throttle, PhoneNormalizer, then the same
+/// BroadcastOrchestrator inline-text path every real broadcast uses (opt-out/consent filters,
+/// KVKK disclaimer, route decision all identical). Response is the standard BroadcastSendResponse.
+/// </summary>
+public sealed class ProjectTestSendRequest
+{
+    [JsonPropertyName("phone")] public string Phone { get; set; } = "";
+
+    [JsonPropertyName("message_text")] public string MessageText { get; set; } = "";
+}

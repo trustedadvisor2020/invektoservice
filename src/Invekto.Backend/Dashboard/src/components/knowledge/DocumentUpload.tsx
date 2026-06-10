@@ -112,8 +112,11 @@ export function DocumentUpload({ tenantId, open, mode, onClose, onUploadComplete
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={handleClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4" onClick={e => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      onMouseDown={e => { if (e.target === e.currentTarget) handleClose(); }}
+    >
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-navy-100">
           <div className="flex items-center gap-2">

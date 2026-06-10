@@ -262,8 +262,11 @@ export function HealthCard({ service, onRestart, isRestarting }: HealthCardProps
 
       {/* Endpoints Popup */}
       {showEndpoints && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-900/40 backdrop-blur-sm" onClick={() => setShowEndpoints(false)}>
-          <div className="bg-white rounded-2xl shadow-elevated max-w-lg w-full max-h-[80vh] overflow-hidden border border-navy-100" onClick={e => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-900/40 backdrop-blur-sm"
+          onMouseDown={e => { if (e.target === e.currentTarget) setShowEndpoints(false); }}
+        >
+          <div className="bg-white rounded-2xl shadow-elevated max-w-lg w-full max-h-[80vh] overflow-hidden border border-navy-100">
             {/* Popup Header */}
             <div className="p-4 border-b border-navy-100 flex items-center justify-between">
               <div className="flex items-center gap-3">
