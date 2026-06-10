@@ -1,0 +1,145 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260610-hsm-header-param-vendor-gap",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-06-10T11:35:00Z",
+  "updated_at": "2026-06-10T11:55:00Z",
+  "plan": {
+    "summary": "cxapi, sablon preview'unde gorunen HEADER text degiskenlerini ne requiredInputs'ta listeliyor ne de chatoperation gonderiminde uyguluyor (canli kanit: instance 6570, template 1664033448202974 — header 'Test {{hname}}', requiredInputs=[text@BODY:name]; gonderilen hname='taner' ignore edildi, aliciya WapCRM'in onayli varsayilan degeri 'Musterimiz' gitti). UI-only mitigasyon: requiredInputs'ta olmayan placeholder'lar icin param esleme bolumune amber uyari kutusu eklenir; esleme/wire davranisi DEGISMEZ (forward-compat — INMA duzeltince otomatik calisir).",
+    "q_intent": "mesaj header gonderdigimizden farkli geldi. [Karar: INMA bildirimi + UI uyarisi (Recommended) — INMA'ya teknik bug raporu hazirla + bizim UI'da header paramlarini 'WapCRM henuz desteklemiyor, onayli varsayilan degerle gider' diye isaretle; wire'da hname gondermeye devam = INMA fix'leyince otomatik calisir]",
+    "interview_notes": "Q AskUserQuestion ile 'INMA bildirimi + UI uyarisi (Recommended)' secenegini secti. Esleme dropdown'u ACIK kalir (deger wire'a gitmeye devam eder, forward-compat); uyari kutusu operatore vendor gap'ini soyler. Tespit kurali genel: placeholder preview'den cikarilmis ama requiredInputs(kind=text) icinde yok -> vendor-unapplied. INMA requiredInputs'u duzeltince anahtar listede gorunur, uyari otomatik kaybolur.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Sablonun preview'unde gorunen ama requiredInputs'ta (kind=text) paramKey olarak listelenmeyen her {{param}} icin param esleme bolumunde amber uyari kutusu gorunur ve etkilenen anahtarlari listeler (orn. {{hname}}).",
+        "verified": true,
+        "verification_note": "vendorUnappliedKeys useMemo (ProjectsPage.tsx:244-249) + kosullu amber blok (1389-1399); Codex CQ1/CQ10 evidence ile dogrulandi. Canli test sablonunda hname requiredInputs'ta yok -> uyari render olur."
+      },
+      {
+        "id": "AC2",
+        "criterion": "Wire/persist davranisi bit-identik kalir: esleme dropdown'lari acik, param_mapping ayni sekilde kaydedilir, template_params'a deger yazilmaya devam eder; backend/.cs dosyalarina dokunulmaz (forward-compat).",
+        "verified": true,
+        "verification_note": "Diff salt-render: tek TSX dosyasi, +22/-0; param_mapping uretimi/persist/test-send dokunulmadi. Codex CoVe Q1 PASS."
+      },
+      {
+        "id": "AC3",
+        "criterion": "Tum placeholder'lar requiredInputs'ta mevcutsa (INMA fix sonrasi veya BODY-only sablon) uyari kutusu hic render edilmez — otomatik kaybolma garantisi.",
+        "verified": true,
+        "verification_note": "Tespit kurali requiredInputs uyeligi: declared kumesi tum placeholder'lari kapsarsa vendorUnappliedKeys=[] -> blok render edilmez. Codex CoVe Q2 PASS (null-safe + bos kume davranisi)."
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx"
+  ],
+  "files_changed": [
+    {
+      "path": "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx",
+      "change": "vendorUnappliedKeys useMemo (preview placeholder'lari requiredInputs text paramKey kumesine karsi kontrol) + param esleme bolumune kosullu amber uyari kutusu (mevcut 1528 amber pattern aynasi). Salt-render, +22 satir.",
+      "is_new": false
+    }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "512b15447a7a389c0f96cba71ec58ed5865cb7fa882cdbcef584bcde0059fb1d",
+    "full_path": "arch/plans/diffs/20260610-hsm-header-param-vendor-gap.diff",
+    "stats": { "insertions": 22, "deletions": 0, "files_count": 1 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "npm run build (tsc && vite build) — Dashboard SPA",
+    "timestamp": "2026-06-10T11:48:00Z",
+    "duration_ms": 8860,
+    "output_tail": "vite v5.4.21 building for production... 2569 modules transformed. ../wwwroot/app/assets/ProjectsPage-C51rH43V.js 41.32 kB | index-DkW2SyMn.js 935.80 kB. built in 8.86s. 0 errors (tsc clean).",
+    "error_summary": null,
+    "services": ["Dashboard SPA"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Uyari kutusu yalnizca render katmaninda mi yasiyor — param_mapping uretimi, kayit/persist yolu ve test-send wire'i degisiyor mu?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "vendorUnappliedKeys hesabi requiredInputs null/undefined paramKey ve bos requiredInputs durumlarinda guvenli mi (crash/yanlis pozitif yok mu)?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Outbound/** (wire davranisi bilinçli degismiyor — hname gonderilmeye devam eder)",
+      "src/Invekto.Shared/** (DTO/kontrat degisikligi yok)",
+      "Prod config/gate'ler (Projects/CxapiSend/BulkSend dokunulmaz)"
+    ],
+    "non_goals": [
+      "cxapi'ye header paramini farkli bir alanla gonderme denemesi (dokumante alan yok; INMA-side fix bekleniyor)",
+      "Onizleme baloncugunda header substitusyonunu kaldirma (uyari kutusu yeterli; Q'nun sectigi kapsam)",
+      "Backend'de vendor-unapplied param filtreleme"
+    ],
+    "intentional_exclusions": [
+      "INMA bug raporu ayri deliverable (kod degil, Q'ya teslim edilen metin)",
+      "extractPlaceholders davranisi aynen korunur — operatorun TUM gorunur {{...}} icin kolon eslemesi bilinçli devam ediyor (forward-compat)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [
+      "Amber uyari: 'WapCRM bu degiskenleri gonderime henuz uygulamiyor: {{...}} — aliciya sablonun onayli varsayilan degeri gider. Esleme kaydedilir; WapCRM destegi ekleyince otomatik uygulanir.'"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Salt-render degisiklik: useMemo + kosullu JSX blok. Veri yolu, network cagrisi, state mutasyonu yok. vendorUnappliedKeys bos kume durumunda blok render edilmez (mevcut davranisla bit-identik gorunum)."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Operator onizlemede 'Test taner' goruyor ama aliciya 'Test Musterimiz' gidiyor — neden farkli oldugunu anlamiyor, urune guveni sarsiliyor.",
+      "suggestion": "Vendor-unapplied parametreler icin esleme bolumunde amber uyari kutusu (etkilenen anahtarlar listeli).",
+      "aha_moment": "Operator daha gondermeden 'header degiskeni WapCRM tarafindan uygulanmiyor' bilgisini gorur — surpriz yok."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Header farki bir destek bileti olarak donerdi ('mesaj yanlis gitti!'), kok neden vendor tarafinda oldugu icin destek ekibi acizdir.",
+      "suggestion": "Uyari metni vandor gap'ini ve beklenen davranisi (onayli varsayilan deger) acikca soyler.",
+      "aha_moment": "Destek bileti hic acilmaz; operator uyariyi okuyup INMA fix'ini bekler."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "INMA cxapi'yi duzelttiginde bizim tarafta bir sey degistirmek gerekirse fix gecikir.",
+      "suggestion": "Tespit kurali requiredInputs uyeligine bagli: INMA duzeltince anahtar requiredInputs'a girer, uyari otomatik kaybolur, gonderdigimiz param da uygulanmaya baslar — sifir kod degisikligi.",
+      "aha_moment": "INMA fix'i yayinladigi an her sey kendiliginden calisir."
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Gercek musteri pilotunda yaniltici onizleme demo sirasinda guven kaybettirir.",
+      "suggestion": "Pilot oncesi durust onizleme/uyari — bilinen vendor siniri urun sinirina donusmez.",
+      "aha_moment": "Demo'da 'bunu biliyoruz, INMA'da duzeltme talebimiz var' diyebilmek profesyonellik sinyali verir."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Operator header parametresinin neden uygulanmadigini debug etmeye calisarak vakit kaybeder (kolon eslemesini degistirir, tekrar dener...).",
+      "suggestion": "Uyari, denemeden ONCE gorunur ve dogru beklentiyi kurar.",
+      "aha_moment": "Tek bakista 'sorun bende degil' — deneme-yanilma dongusu hic baslamaz."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-06-10T11:54:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-06-10T11:55:00Z",
+    "raw_text": "OVERALL_VERDICT: PASS | 12/12 CQ PASS + 2/2 CoVe PASS | BLOCKING_ISSUES: NONE | model gpt-5.5-2026-04-23 | SUMMARY: render-only Dashboard warning for vendor-unapplied template variables; persistence/wire/tenant/db untouched; null-safety and scope discipline acceptable for LOW-risk UI mitigation.",
+    "blocking_issues": [],
+    "iteration": 0,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}

@@ -237,6 +237,17 @@ export default function ProjectsPage() {
   const placeholders = useMemo(() => extractPlaceholders(selectedTemplate), [selectedTemplate]);
   // Media inputs come from cxapi requiredInputs (preview text has no {{...}} for media).
   const mediaInputs = useMemo(() => requiredInputs.filter(ri => ri.kind === 'media'), [requiredInputs]);
+  // cxapi gap (canlı kanıt 2026-06-10, instance 6570): requiredInputs HEADER text değişkenlerini
+  // listelemiyor VE chatoperation bizim gönderdiğimiz bu paramKey'leri uygulamıyor — alıcıya şablonun
+  // Meta-onaylı varsayılan değeri gidiyor (header "Test {{hname}}" → "Test Müşterimiz"). Eşleme + wire
+  // bilinçli aynen kalıyor (INMA düzeltince otomatik çalışır); requiredInputs'ta görünmeyen anahtarlar
+  // için operatöre aşağıda amber uyarı gösterilir. INMA fix'i requiredInputs'a anahtarı ekleyince bu
+  // küme boşalır ve uyarı kendiliğinden kaybolur.
+  const vendorUnappliedKeys = useMemo(() => {
+    const declared = new Set(
+      (selectedTemplate?.requiredInputs ?? []).flatMap(ri => ri.kind === 'text' && ri.paramKey ? [ri.paramKey] : []));
+    return placeholders.filter(ph => !declared.has(ph.key)).map(ph => ph.key);
+  }, [selectedTemplate, placeholders]);
   // Stable key (location+mediaType, not index) so edit re-populate doesn't depend on async template load order.
   const mediaKey = (ri: { location: string | null; mediaType: string | null }) =>
     `${ri.location ?? ''}:${ri.mediaType ?? ''}`;
@@ -1378,6 +1389,17 @@ export default function ProjectsPage() {
                               </select>
                             </div>
                           ))}
+                          {vendorUnappliedKeys.length > 0 && (
+                            <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 text-amber-700 text-xs">
+                              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                              <span>
+                                WapCRM şu değişken(ler)i gönderimde henüz uygulamıyor:{' '}
+                                <span className="font-medium">{vendorUnappliedKeys.map(k => `{{${k}}}`).join(', ')}</span>
+                                {' '}— alıcıya şablonun onaylı varsayılan değeri gider. Eşlemeniz yine de kaydedilir
+                                ve WapCRM desteği eklediğinde otomatik geçerli olur.
+                              </span>
+                            </div>
+                          )}
                           {mediaInputs.map(ri => (
                             <div key={mediaKey(ri)}>
                               <label className="block text-xs font-medium text-navy-600 mb-1">
