@@ -8498,7 +8498,6 @@ app.MapGet("/api/v1/inma/nav", async (HttpContext ctx) =>
                 [
                     new InmaNavItem { Id = "home",            Label = "Ana Sayfa",       Path = "/",                Icon = "layout-dashboard" },
                     new InmaNavItem { Id = "flow-builder",    Label = "Flow Builder",    Path = "/flow-builder",    Icon = "git-branch" },
-                    new InmaNavItem { Id = "flow-templates",  Label = "Şablon Galerisi", Path = "/flow-templates",  Icon = "layout-template" },
                     new InmaNavItem { Id = "knowledge",       Label = "Bilgi Bankası",   Path = "/knowledge",       Icon = "book-open" },
                     new InmaNavItem { Id = "data-management", Label = "Veri Yönetimi",   Path = "/data-management", Icon = "database" },
                     new InmaNavItem { Id = "projects",        Label = "Projeler",        Path = "/projects",        Icon = "briefcase" },

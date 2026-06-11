@@ -1,0 +1,32 @@
+diff --git a/src/Invekto.Backend/Dashboard/src/components/Layout.tsx b/src/Invekto.Backend/Dashboard/src/components/Layout.tsx
+index ef9d6f0e..2d5eea5f 100644
+--- a/src/Invekto.Backend/Dashboard/src/components/Layout.tsx
++++ b/src/Invekto.Backend/Dashboard/src/components/Layout.tsx
+@@ -51,7 +51,6 @@ const ALL_NAV_ITEMS: NavItem[] = [
+   // — Tenant: Çalışma Alanı —
+   { path: '/',                label: 'Kontrol Paneli',   tenantLabel: 'Ana Sayfa', icon: LayoutDashboard, section: 'Çalışma Alanı' },
+   { path: '/flow-builder', label: 'Flow Builder', tenantLabel: 'Flow Builder', icon: GitBranch,    feature: 'FlowBuilder' },
+-  { path: '/flow-templates', label: 'Sablon Galerisi', tenantLabel: 'Sablon Galerisi', icon: LayoutTemplate, feature: 'FlowBuilder' },
+   { path: '/knowledge',       label: 'Bilgi Bankasi',    icon: BookOpen,     feature: 'Knowledge' },
+   // FEAT-OBI: Veri Yönetimi — İçe Aktarma (Listeler) + Dışa Aktarma (Export) tek sayfada
+   // iki sekme (tenant-visible; "Outbound" plan + ExportOptions gate'leri server-side enforce).
+@@ -68,6 +67,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
+   { path: '/licenses',        label: 'Lisanslama',        icon: Key,           opsOnly: true },
+   // — Ops: İçerik —
+   { path: '/templates',        label: 'Sablon Sistemi',    icon: LayoutTemplate,  opsOnly: true, section: 'İçerik' },
++  { path: '/flow-templates',   label: 'Şablon Galerisi',   icon: LayoutTemplate,  opsOnly: true },
+   { path: '/templates/ingestion', label: 'Veri Besleme',  icon: Upload,          opsOnly: true },
+   { path: '/intents',             label: 'Intent Yonetimi', icon: Brain,          opsOnly: true },
+   { path: '/ri/templates',        label: 'RI Sablonlari',   icon: Layers,         opsOnly: true },
+diff --git a/src/Invekto.Backend/Program.cs b/src/Invekto.Backend/Program.cs
+index 3816fbb2..da8587bd 100644
+--- a/src/Invekto.Backend/Program.cs
++++ b/src/Invekto.Backend/Program.cs
+@@ -8498,7 +8498,6 @@ app.MapGet("/api/v1/inma/nav", async (HttpContext ctx) =>
+                 [
+                     new InmaNavItem { Id = "home",            Label = "Ana Sayfa",       Path = "/",                Icon = "layout-dashboard" },
+                     new InmaNavItem { Id = "flow-builder",    Label = "Flow Builder",    Path = "/flow-builder",    Icon = "git-branch" },
+-                    new InmaNavItem { Id = "flow-templates",  Label = "Şablon Galerisi", Path = "/flow-templates",  Icon = "layout-template" },
+                     new InmaNavItem { Id = "knowledge",       Label = "Bilgi Bankası",   Path = "/knowledge",       Icon = "book-open" },
+                     new InmaNavItem { Id = "data-management", Label = "Veri Yönetimi",   Path = "/data-management", Icon = "database" },
+                     new InmaNavItem { Id = "projects",        Label = "Projeler",        Path = "/projects",        Icon = "briefcase" },

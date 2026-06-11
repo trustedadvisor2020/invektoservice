@@ -1,0 +1,189 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260611-tenant-nav-sablon-galerisi",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-06-11T17:25:00Z",
+  "updated_at": "2026-06-11T17:55:00Z",
+  "gr_list": [
+    {
+      "id": "GR-1",
+      "description": "Layout.tsx: '/flow-templates' (Sablon Galerisi) nav item'ini tenant 'Calisma Alani' blogundan cikar, ops 'Icerik' bloguna opsOnly:true ile tasi ('/templates' Sablon Sistemi'nin hemen altina). tenantLabel ve feature:'FlowBuilder' gate kaldirilir (ops item pattern'i: gate'siz). Sonuc: tenant session (tenantId!=0) item'i gormez; ops session (tenantId=0) ve no-session ops modu gorur.",
+      "services_affected": ["Dashboard SPA"]
+    },
+    {
+      "id": "GR-2",
+      "description": "Backend Program.cs /api/v1/inma/nav endpoint: workspace section'dan 'flow-templates' InmaNavItem satirini sil (INMA/WapCRM embedded shell tenant nav'i — Layout.tsx tenant menusuyle elle senkron tutulan dual-source liste).",
+      "services_affected": ["Invekto.Backend"]
+    }
+  ],
+  "plan": {
+    "summary": "Tenant sol nav'dan 'Sablon Galerisi' kaldirilir — hem SPA sidebar (Layout.tsx) hem INMA embedded nav (/api/v1/inma/nav). Item ops nav'a tasinir (opsOnly), /flow-templates route'u ve sayfa korunur.",
+    "q_intent": "tenant sol navdan sablon galerisini kaldir",
+    "interview_notes": "Q kararlari (AskUserQuestion): (1) Ops'ta kalsin — sadece tenant'tan gizle. (2) INMA nav'dan da kaldir — dual-source senkron korunur. (3) /flow-templates route'u kalsin — direkt URL + FlowListPage ici linkler calisir. NOT: Working tree'de IN_PROGRESS tr-diakritik-sweep WIP var (Layout.tsx dahil); commit'te SADECE bu paketin hunk'lari stage edilir, sweep hunk'lari calisma agacinda birakilir. PLAN-REVIEW (codex_consult, MODIFY): (a) INMA nav ops'ta kullaniliyor mu? -> HAYIR, endpoint yorumu 'Tenant-only: ops items intentionally excluded' (Program.cs:8470-8473) — cozuldu. (b) No-session ops modunda galeri 'Kullan' butonu kirik akis mi? -> HAYIR, handleUse 'if (!tenantId) return' guard'li, kontrollu no-op — cozuldu. (c) tenantId=0 impersonation ile karisir mi? -> HAYIR, impersonation session'da tenantId=firma id (banner kaniti) — cozuldu. (d) RESIDUAL ASSUMPTION: WapCRM Angular shell nav listesini dinamik render eder, 'flow-templates' id'sine hardcoded beklenti yok (harici repo, buradan grep'lenemez; endpoint tasarimi dinamik render varsayar) — Q onayina sunuldu. (e) Staging hijyeni: commit oncesi git diff --cached SADECE bu paketin 2 hunk'ini gostermeli — dev fazinda zorunlu kontrol.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Tenant session'da (tenantId != 0) SPA sol nav'da 'Sablon Galerisi' item'i render edilmez (opsOnly filtresi: Layout.tsx allFiltered).",
+        "verified": true,
+        "verification_note": "Item opsOnly:true ile ops blogunda; allFiltered filtresi 'if (item.opsOnly && session.tenantId !== 0) return false' tenant session'da item'i eler. tsc PASS."
+      },
+      {
+        "id": "AC2",
+        "criterion": "/api/v1/inma/nav response'unun workspace section'inda id='flow-templates' item'i bulunmaz.",
+        "verified": true,
+        "verification_note": "InmaNavItem satiri silindi (Program.cs inma/nav workspace Items); dotnet build PASS. Staged diff'te -1 satir dogrulandi."
+      },
+      {
+        "id": "AC3",
+        "criterion": "Ops nav'da item gorunur kalir (Icerik grubu), /flow-templates route'u App.tsx'te degismeden durur, SPA build (tsc+vite) ve Backend dotnet build PASS.",
+        "verified": true,
+        "verification_note": "opsOnly item no-session ops modu + tenantId=0 ops session'da gorunur; App.tsx diff'te yok; SPA (tsc+vite temp outDir) ve Backend build PASS."
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Dashboard/src/components/Layout.tsx",
+    "src/Invekto.Backend/Program.cs"
+  ],
+  "files_changed": [
+    {
+      "path": "src/Invekto.Backend/Dashboard/src/components/Layout.tsx",
+      "change": "'/flow-templates' nav item tenant 'Calisma Alani' blogundan cikarildi, ops 'Icerik' bloguna opsOnly:true ile tasindi (tenantLabel + feature gate kaldirildi)",
+      "is_new": false
+    },
+    {
+      "path": "src/Invekto.Backend/Program.cs",
+      "change": "/api/v1/inma/nav workspace section'dan flow-templates InmaNavItem satiri silindi",
+      "is_new": false
+    }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "8c10da4f06ca70a92f6a35d764de3f01a75489871bca4130e12e237fbd86e2a8",
+    "full_path": "arch/plans/diffs/20260611-tenant-nav-sablon-galerisi.diff",
+    "stats": {
+      "insertions": 1,
+      "deletions": 2,
+      "files_count": 2
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "npx tsc && npx vite build --outDir c:/tmp/dashboard-build-check (SPA, wwwroot'a dokunmadan) + dotnet build Invekto.Backend.csproj --no-restore",
+    "timestamp": "2026-06-11T17:40:00Z",
+    "duration_ms": null,
+    "output_tail": "SPA: tsc clean + vite built in 10.29s. Backend: Build succeeded, 0 Error(s) (NU1603 uyarilari pre-existing).",
+    "error_summary": null,
+    "services": ["Invekto.Backend", "Dashboard SPA"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "opsOnly:true isareti tenant session'larda (tenantId != 0) item'i guvenilir sekilde gizliyor mu — Layout.tsx filter mantigi (session.tenantId !== 0 -> false) baska bir koldan item'i geri getirebilir mi?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "InmaNavItem 'flow-templates' satirinin silinmesi InmaNavResponse shape'ini veya Angular/WapCRM consumer'ini kirar mi — consumer id bazli sabit beklenti tasiyor mu yoksa listeyi oldugu gibi mi render ediyor?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Route korunurken nav'dan kaldirma tutarli mi — FlowListPage/FlowEditorPage icindeki sablon akislari ve /flow-templates direkt URL erisimi tenant icin calismaya devam ediyor mu (kirik link yok)?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Backend/Dashboard/src/App.tsx (route kalir, dokunma)",
+      "src/Invekto.Backend/Dashboard/src/pages/FlowTemplateGalleryPage.tsx",
+      "src/Invekto.Backend/Dashboard/src/data/flow-templates.ts",
+      "Working tree'deki tr-diakritik-sweep WIP hunk'lari (Layout.tsx dahil diger tum dosyalar) — commit'e dahil edilmez"
+    ],
+    "non_goals": [
+      "/flow-templates route'unu kaldirmak",
+      "FlowBuilder feature flag mantigini degistirmek",
+      "FlowListPage icindeki sablon bolumunu degistirmek",
+      "INMA nav endpoint'ine feature/lisans filtresi eklemek"
+    ],
+    "intentional_exclusions": [
+      "No-session ops modunda item artik gorunur olur (opsOnly semantigi geregi) — 'ops'ta kalsin' karariyla tutarli, kabul edildi",
+      "tenantLabel ve feature gate kaldirilir cunku item artik tenant-facing degil; ops item'lari gate'siz pattern"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Salt nav gorunurlugu degisikligi — yeni kod yolu/IO yok; yanlislik build'de (tsc) veya gorsel olarak aninda yakalanir."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Tenant nav'inda kullanilmayan/karisiklik yaratan menu ogeleri bilissel yuk olusturuyor.",
+      "suggestion": "Tenant nav item'larini kullanim telemetrisiyle (tiklanma sayisi) periyodik gozden gecirip sadelestirme ritueli kur.",
+      "aha_moment": "Tenant ilk girdiginde nav'da yalnizca isine yarayan 6-7 ogeyi gorur ve aradigini saniyeler icinde bulur."
+    },
+    {
+      "category": "UX",
+      "user_pain": "Sablon galerisi nav'dan kalkinca tenant'lar sablonlari nereden bulacagini bilemeyebilir.",
+      "suggestion": "FlowListPage bos-durum ekranina 'Sablondan basla' karti ekle — galeri iceriği akis listesinin dogal baslangic noktasi olur.",
+      "aha_moment": "Ilk akisini olusturan tenant, bos listede hazir sablon kartlarini gorup tek tikla baslar."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Dual-source nav (Layout.tsx + /api/v1/inma/nav) elle senkron — unutulursa iki yuzey farkli menu gosterir.",
+      "suggestion": "Tenant nav listesini tek paylasimli kaynaktan (orn. backend nav endpoint'i veya ortak JSON) turet; Layout.tsx de oradan beslensin.",
+      "aha_moment": "Bir menu degisikligi tek dosyada yapilir, iki yuzey ayni anda guncellenir — 'INMA'da hala gorunuyor' destek bileti hic acilmaz."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Nav gorunurluk kurallari (opsOnly/feature/tenantLabel) buyudukce filtre mantigi kirilgan hale geliyor.",
+      "suggestion": "allFiltered filtresine kucuk bir birim test seti ekle (ops/no-session/tenant x feature kombinasyonlari).",
+      "aha_moment": "Yeni nav item eklerken test aninda 'tenant bunu gormemeli' hatasini yakalar — prod'a yanlis menu cikmaz."
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Hazir sablonlar urunun satis vitrini ama tenant nav'dan kalkinca kesif azalabilir.",
+      "suggestion": "Onboarding sihirbazina sektore gore onerilen 2-3 sablon karti ekle (galeri sayfasi route uzerinden hala erisilebilir).",
+      "aha_moment": "Yeni tenant kurulumda kendi sektorunun hazir akisini gorur ve 'bu tam bize gore' diyerek aktive olur."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": null,
+    "received_at": "2026-06-11T17:50:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-06-11T17:50:00Z",
+    "raw_text": "MCP codex_review (gpt-5.5-2026-04-23): OVERALL_VERDICT PASS. CQ1-CQ12 hepsi PASS. CoVe Q1-Q3 PASS (opsOnly filtresi tenant'i guvenilir gizler; InmaNavResponse shape stabil, sadece bir liste elemani eksildi; route/sayfa korunarak kirik link yok). BLOCKING_ISSUES: NONE.",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "Error-handling yolu degismedi; salt nav tanimi degisikligi." },
+      "CQ2": { "result": "PASS", "evidence": "Yeni try/catch veya silent-failure yolu eklenmedi." },
+      "CQ3": { "result": "PASS", "evidence": "Diff plan kapsamiyla birebir: Layout.tsx + Program.cs, scope creep yok." },
+      "CQ4": { "result": "PASS", "evidence": "Yeni item mevcut ALL_NAV_ITEMS pattern'ini izliyor, duplicate yok." },
+      "CQ5": { "result": "PASS", "evidence": "opsOnly item pattern'i ve statik InmaNavItem listesi korunuyor." },
+      "CQ6": { "result": "PASS", "evidence": "Statik dizi degisikligi; performans etkisi yok." },
+      "CQ7": { "result": "PASS", "evidence": "Yeni TODO/HACK/FIXME yok." },
+      "CQ8": { "result": "PASS", "evidence": "Route/DTO/endpoint shape degismedi; sadece bir liste elemani kaldirildi." }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "opsOnly filtre kontrati tenant session'da item'i eler; alternatif tenant entry eklenmedi." },
+      "Q2": { "result": "PASS", "reasoning": "InmaNavResponse yapisi ayni; opsiyonel liste elemani silindi, contract stabil." },
+      "Q3": { "result": "PASS", "reasoning": "Route kaydi ve sayfa korunuyor; FlowListPage/FlowEditorPage hedefleri kirilmadi." }
+    },
+    "blocking_issues": [],
+    "iteration": 0,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}
