@@ -184,6 +184,17 @@
         "total": 9619
       },
       "notes": "12/12 CQ + 3/3 CoVe PASS, blocking NONE — iteration=0 (CODEX UTANSIN hedefi). Build 11.78s 0E."
+    },
+    {
+      "ts": "2026-06-11T13:05:30Z",
+      "event": "COMMITTED",
+      "commit_sha": "d4a2c45d",
+      "notes": "TSX + plan JSON + SPA asset rotasyonu (index-B9Kn8nc-.js) tek feat commit'te master'a. UI test Q karariyla skip (gözle kontrol)."
+    },
+    {
+      "ts": "2026-06-11T13:10:00Z",
+      "event": "DEPLOYED",
+      "notes": "Backend server-deploy (config-restore'lu — webhook AllowedIps korundu), 10/10 HEALTHY, canlı bundle index-B9Kn8nc-.js doğrulandı. Migration yok, gate'ler değişmedi."
     }
   ],
   "verdict": {
