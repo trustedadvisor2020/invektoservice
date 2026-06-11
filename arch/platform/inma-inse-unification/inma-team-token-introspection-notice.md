@@ -207,7 +207,7 @@ INMA Angular dinamik menü implementasyonunuzu aldık. Backend tarafı bu çağr
 **Yapılan değişiklikler:**
 
 1. **CORS Policy `InmaNavCors`** aktif, sadece `/api/v1/inma/nav` endpoint'i için:
-   - Origins: `https://app.wapcrm.net`, `https://developer.wapcrm.net`, `http://localhost:4200`
+   - Origins: `https://app.wapcrm.net`, `https://app.wappflex.com`, `https://developer.wapcrm.net`, `http://localhost:4200`
    - Methods: `GET` (sadece read)
    - Headers: any (Bearer + standart preflight)
    - `AllowCredentials = false` (Angular HttpClient Bearer header explicit gönderir)
@@ -240,3 +240,15 @@ Origin: https://developer.wapcrm.net (veya http://localhost:4200)
 Beklenen: 200 + `{ sections: [...] }` Lucide kebab-case icon string'leri ile.
 
 **Not:** License/yetki filtresi henüz aktif değil (full tenant set döner). Tenant'a göre özelleştirilmiş menü backlog'da — ilerleyen pakette eklenecek. Şimdilik Angular tarafının Material Icons mapping + fallback menü implementasyonu yeterli.
+
+---
+
+## EK: White-label Origin Genişletmesi — `app.wappflex.com` (2026-06-11)
+
+Medipol (MLPCM) tenant'ı WapCRM white-label portalı `https://app.wappflex.com` üzerinden INSE dashboard'u embed ediyor. Aşağıdaki listeler bu origin'i kapsayacak şekilde genişletildi (bridge whitelist + CORS listesi özdeş tutulur — 20260416 paketi Q1 kuralı):
+
+1. **SPA postMessage bridge whitelist** (`INMA_ALLOWED_ORIGINS`): + `https://app.wappflex.com`
+2. **CORS `InmaNavCors`**: + `https://app.wappflex.com`
+3. **`apiBaseUrl` regex**: `*.wapcrm.net` yanında `*.wappflex.com` host'ları da kabul edilir (https zorunlu, tek seviye subdomain).
+
+**INMA takımından doğrulama beklenen:** wappflex shell'in gönderdiği `inma:auth` mesajındaki `apiBaseUrl` değeri ve wappflex JWT'lerinin `https://testapi.wapcrm.net/api/invekto/welcome` introspection'ı ile doğrulanabildiği (aynı backend/signing key varsayımı — MLPCM daha önce `app.wapcrm.net` üzerinden çalıştığı için beklenen davranış).

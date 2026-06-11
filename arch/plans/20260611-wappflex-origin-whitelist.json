@@ -1,0 +1,170 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260611-wappflex-origin-whitelist",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-06-11T15:50:00+03:00",
+  "updated_at": "2026-06-11T16:20:00+03:00",
+  "plan": {
+    "summary": "Medipol WapCRM'in white-label domain'i app.wappflex.com uzerinden INSE dashboard'u embed ediyor; inmaBridge.ts origin whitelist'i ve InmaNavCors CORS policy'si bu origin'i tanimadigi icin inma:auth postMessage sessizce dusuyor (login ekrani) ve /api/v1/inma/nav CORS'a takiliyor. Fix: app.wappflex.com her iki whitelist'e eklenir + INMA_API_BASE_URL_REGEX *.wappflex.com'u da kabul edecek sekilde genisletilir (parent'in wappflex-branded apiBaseUrl gondermesi ihtimaline karsi defensif).",
+    "q_intent": "medipol wapcrm den linke tikladiginda login ekrani geliyor. dashboard cikmiyor. [konsol: CORS error /api/v1/inma/nav origin app.wappflex.com] -> app.wappflex.com origin'ine izin ver",
+    "interview_notes": "Q konsol logunu paylasti: origin https://app.wappflex.com (WapCRM white-label markasi Wappflex). Root cause 2 katman: (1) inmaBridge.ts INMA_ALLOWED_ORIGINS prod listesinde yok -> inma:auth dusuyor -> SPA login'e duser (ana semptom); (2) Program.cs:548 InmaNavCors origins'te yok -> nav API CORS fail (fallback menu devrede, ikincil). Ek katman: INMA_API_BASE_URL_REGEX sadece *.wapcrm.net kabul ediyor — white-label parent buyuk olasilikla kendi apiBaseUrl'ini gonderir, *.wappflex.com da eklendi (regex mismatch INV-INT-105 ile tum inma:auth mesajini setAuth ONCESI reddeder — origin fix'i tek basina yetmezdi). Backend InmaTokenIntrospector server-side config'li ApiBaseUrl (testapi.wapcrm.net) kullanir, parent origin'den bagimsiz — degisiklik gerekmez. PROD DOGRULAMA (workflow wb5day8g1, 5 agent): deployed bundle index-BKdCQuBe.js'de 'wappflex' yok (root cause confirmed); log imzasi inma/nav 200 -> 1sn sonra onboarding/status 401 tenantId='-' (token hic gelmemis); tenant_registry'de mlpcm (15702882) kayitli — MLPCM/Medipol daha once app.wapcrm.net uzerinden calisiyordu, ayni INMA backend varsayimi guclu (introspection degisikligi gerekmez); Medipol icin ayri tenant satiri gerekmez, ResolveOrCreateByInmaCodeAsync lazy-provision yapar. inmaApiClient'in su an SIFIR consumer'i var — regex genislemesi runtime'da hicbir cagriyi wappflex host'una yonlendirmez (auth exchange SPA'nin kendi relative /api/v1/inma/auth/exchange endpoint'ini kullanir). DIKKAT: ayni working tree'de paralel paket var (20260611-login-test-girisleri-logo: LoginPage.tsx + InvektoLogo.tsx + wwwroot asset rotasyonu) — bu paketin commit'i SADECE kendi 3 dosyasini kapsar.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "inmaBridge.ts INMA_ALLOWED_ORIGINS prod listesine 'https://app.wappflex.com' eklendi; dev listesi degismedi. Yorum satiri white-label domain'i acikliyor.",
+        "verified": true,
+        "verification_note": "inmaBridge.ts:7-10 — prod listesi 4 origin, dev listesi degismedi, Medipol yorumu eklendi."
+      },
+      {
+        "id": "AC2",
+        "criterion": "inmaBridge.ts INMA_API_BASE_URL_REGEX hem *.wapcrm.net hem *.wappflex.com host'larini kabul ediyor (https zorunlu, subdomain tek seviye, trailing slash opsiyonel kurallari korunur).",
+        "verified": true,
+        "verification_note": "inmaBridge.ts:13 — /^https:\\/\\/[a-z0-9-]+\\.(wapcrm\\.net|wappflex\\.com)\\/?$/ — exact-host alternation, wildcard TLD yok."
+      },
+      {
+        "id": "AC3",
+        "criterion": "Program.cs InmaNavCors policy WithOrigins listesine 'https://app.wappflex.com' eklendi; GET-only + AllowAnyHeader + no-AllowCredentials degismedi. VoicePocCors ve diger policy'lere dokunulmadi.",
+        "verified": true,
+        "verification_note": "Program.cs:548-552 — 4 origin, GET-only korundu; VoicePocCors dokunulmadi; comment satiri eklendi."
+      },
+      {
+        "id": "AC4",
+        "criterion": "Invekto.Backend dotnet build PASS + Dashboard TypeScript derlemesi (vite/tsc) hatasiz.",
+        "verified": true,
+        "verification_note": "dotnet build 0 Errors (17 pre-existing warnings); npx tsc --noEmit temiz cikti."
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Dashboard/src/inma/inmaBridge.ts",
+    "src/Invekto.Backend/Program.cs",
+    "arch/platform/inma-inse-unification/inma-team-token-introspection-notice.md",
+    "arch/plans/20260611-wappflex-origin-whitelist.json"
+  ],
+  "files_changed": [
+    {"path": "src/Invekto.Backend/Dashboard/src/inma/inmaBridge.ts", "change": "INMA_ALLOWED_ORIGINS prod listesine https://app.wappflex.com eklendi + INMA_API_BASE_URL_REGEX (wapcrm.net|wappflex.com) alternation'a genisletildi + aciklayici yorumlar.", "is_new": false},
+    {"path": "src/Invekto.Backend/Program.cs", "change": "InmaNavCors WithOrigins listesine https://app.wappflex.com eklendi + comment satiri (2026-06-11 Medipol embed).", "is_new": false},
+    {"path": "arch/platform/inma-inse-unification/inma-team-token-introspection-notice.md", "change": "CORS origin listesi guncellendi + 'EK: White-label Origin Genisletmesi' bolumu (INMA takimina dogrulama sorulari dahil).", "is_new": false},
+    {"path": "arch/plans/20260611-wappflex-origin-whitelist.json", "change": "Plan JSON (bu dosya).", "is_new": true}
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "86f228fe74b54ec6ed31599e5ebbf9dbe2dae120c38badc61b5ce8e678e17169",
+    "full_path": "arch/plans/diffs/20260611-wappflex-origin-whitelist.diff",
+    "stats": { "insertions": 19, "deletions": 4, "files_count": 3 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\src\\Invekto.Backend\\Invekto.Backend.csproj --no-restore -v q\" && npx tsc --noEmit (Dashboard)",
+    "timestamp": "2026-06-11T16:05:00+03:00",
+    "duration_ms": 37240,
+    "output_tail": "Build succeeded. 17 Warning(s) (all pre-existing) / 0 Error(s) / Time Elapsed 00:00:37.24 — Dashboard tsc --noEmit: clean",
+    "error_summary": null,
+    "services": ["Invekto.Backend"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "app.wappflex.com whitelist'e eklemek guvenli mi: wappflex.com WapCRM'in (INMA parent) kendi white-label markasi — Medipol portal'i orada calisiyor (konsol kaniti: ayni INMA Angular bundle'i inma-nav cagrisi yapiyor). Wildcard YOK, sadece app subdomain'i CORS+bridge'e eklendi. AllowCredentials hala kapali.",
+      "category": "Auth"
+    },
+    {
+      "id": "Q2",
+      "question": "INMA_API_BASE_URL_REGEX genislemesi token sizdirma riski yaratir mi: apiBaseUrl, SPA'nin INMA access token'ini gonderdigi hedef. Regex *.wappflex.com'a genisliyor ama mesaji gonderen origin zaten whitelist'le sinirli (app.wapcrm.net/app.wappflex.com/developer.wapcrm.net) — token'i zaten elinde tutan parent disinda kimse apiBaseUrl dikte edemez. HTTPS zorunlu kaldi.",
+      "category": "Auth"
+    },
+    {
+      "id": "Q3",
+      "question": "Davranis regresyonu var mi: mevcut wapcrm.net tenant'lari icin her iki liste additive degisti (cikarilan origin yok), regex eski pattern'i aynen kapsiyor, response shape/endpoint auth gate degismedi. Fix'in prod'a ulasmasi icin hem Backend deploy hem SPA bundle rebuild gerekir (deploy notu).",
+      "category": "Lifecycle"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "InmaTokenIntrospector / InmaJwtSettings (server-side introspection config degismez)",
+      "VoicePocCors ve diger CORS policy'leri",
+      "JwtAuth middleware whitelist (20260416 paketinde duzenlendi, dokunulmaz)",
+      "/api/v1/inma/nav endpoint body (auth gate aynen kalir)"
+    ],
+    "non_goals": [
+      "developer.wappflex.com veya baska wappflex subdomain'leri eklemek (gozlemlenen tek origin app.wappflex.com)",
+      "Origin listesini config'e tasimak (appsettings) — ayri refactor karari, Q istemedi",
+      "INMA tarafinda wappflex domain konfigurasyonu (INMA takiminin isi)"
+    ],
+    "intentional_exclusions": [
+      "Backend tarafinda wappflex icin ayri introspection ApiBaseUrl — wappflex white-label frontend'tir, INMA backend API ayni wapcrm.net altyapisinda calisir; loglar aksini gosterirse ayri paket acilir."
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [
+      "INV-INT-105 (invalid apiBaseUrl) — regex mismatch durumunda InmaConnectionStatus tooltip'inde gorunur",
+      "CORS preflight reddi — browser network tab'de standart CORS hatasi"
+    ],
+    "silent_failure_risk": true,
+    "silent_failure_explanation": "inmaBridge.onMessage origin mismatch'te sessizce return eder (tasarim geregi — yabanci origin'lere hata sizdirilmaz). Bu fix tam da o sessiz dusmenin Medipol'u etkileyen ornegini cozuyor; whitelist'e eklenmeyen olasi baska white-label domain'ler ayni sessiz semptomu verir (lesson kaydi onerilir)."
+  },
+  "aha_moments": [
+    {
+      "category": "SUPPORT",
+      "user_pain": "Whitelist disi origin'den embed sessizce login ekranina duser — destek 'neden login goruyorum' ticket'inda kok nedeni goremez.",
+      "suggestion": "inmaBridge.onMessage origin reddinde console.warn ile tek satirlik diagnostic (origin + 'not whitelisted') logla — yabanci sayfaya bilgi sizdirmadan DevTools'ta gorunur.",
+      "aha_moment": "Destek DevTools console'da 'origin not whitelisted: https://app.X.com' satirini gorur gormez kok nedeni 10 saniyede teshis eder."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Her yeni WapCRM white-label domain'i (wappflex gibi) kod degisikligi + 2 ayri liste guncellemesi + deploy gerektiriyor.",
+      "suggestion": "Origin whitelist'i tek kaynaga indir: backend /api/v1/inma/nav config'inden veya appsettings'ten beslenen paylasimli liste; SPA build-time env ile ayni listeyi alir.",
+      "aha_moment": "Bir sonraki white-label domain geldiginde tek config satiri + deploy yeter — iki dosyada es zamanli edit unutulmaz."
+    },
+    {
+      "category": "UX",
+      "user_pain": "SSO token gelmediginde kullanici sebepsiz login ekrani gorur — 'WapCRM'den geldim, neden sifre soruyor?' kafa karisikligi.",
+      "suggestion": "SPA embed modunda (iframe icinde) login ekrani yerine 'WapCRM oturumu dogrulanamadi — sayfayi yenileyin veya yoneticinize basvurun' ozel hata gorunumu goster.",
+      "aha_moment": "Medipol kullanicisi sifre ekrani yerine ne yapacagini soyleyen net mesaj gorur — yanlis sifre denemesi/sifre sifirlama sarmali yasanmaz."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "inma:auth hic gelmezse SPA sonsuza kadar/uzun sure bekleyip sonra login'e duser — algilanan acilis suresi uzar.",
+      "suggestion": "inma:ready sonrasi kisa (orn. 3s) auth-bekleme timeout'u + tek seferlik inma:ready retry — parent yavas bootstrap'ta token'i kacirmaz.",
+      "aha_moment": "Yavas baglantida bile dashboard 'takildi' hissi vermeden ya acilir ya da net hata gosterir."
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Enterprise musteri (Medipol/MLPCM) onboarding'inde embed akisi ilk denemede calismayinca guven sarsilir.",
+      "suggestion": "Yeni tenant onboarding checklist'ine 'parent portal origin'i whitelist'te mi?' maddesi ekle (tracking/ onboarding dokumani).",
+      "aha_moment": "Bir sonraki enterprise tenant ilk tiklamada dashboard'u gorur — 'kurulumda hicbir sey takilmadi' izlenimi satis referansina doner."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-06-11T16:18:00+03:00",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-06-11T16:20:00+03:00",
+    "raw_text": "Iter 0 PASS — 12/12 CQ + 3/3 CoVe, 0 blocking. Additive exact-origin whitelist/CORS alignment + doc sync; no wildcard CORS, no AllowCredentials, no breaking change. Model: gpt-5.5-2026-04-23.",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "No error-handling paths changed; bridge validation path intact, only constants expanded (inmaBridge.ts:6-14)" },
+      "CQ2": { "result": "PASS", "evidence": "Fixes a previously silent postMessage drop by whitelisting the exact origin; no new silent paths" },
+      "CQ3": { "result": "PASS", "evidence": "3-file diff matches declared scope; no undeclared files" },
+      "CQ4": { "result": "PASS", "evidence": "Origin duplication bridge<->CORS is intentional contract mirroring (notice.md Q1 rule)" },
+      "CQ5": { "result": "PASS", "evidence": "Exact-origin whitelist style + ASP.NET CORS pattern preserved; no wildcard, no AllowCredentials" },
+      "CQ6": { "result": "PASS", "evidence": "Constant string + regex expansion only; no perf surface" },
+      "CQ7": { "result": "PASS", "evidence": "No TODO/HACK/FIXME in added lines" },
+      "CQ8": { "result": "PASS", "evidence": "Additive: existing origins preserved, regex still accepts prior wapcrm.net form" }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "Exact origin added (no wildcard); GET-only kept; AllowCredentials absent" },
+      "Q2": { "result": "PASS", "reasoning": "Regex HTTPS-only + single-subdomain; origins remain explicit whitelist — arbitrary origins cannot dictate apiBaseUrl" },
+      "Q3": { "result": "PASS", "reasoning": "No removed origins; regex backward-compatible; no endpoint/auth/token-exchange logic modified" }
+    },
+    "blocking_issues": [],
+    "iteration": 0,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}

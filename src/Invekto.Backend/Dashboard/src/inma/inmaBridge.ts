@@ -3,12 +3,14 @@ import { INMA_ERRORS, inmaErrorMessage, type InmaErrorCode } from './inmaErrors'
 
 // Parent INMA portal'inin origin'i. 'app.invekto.com' BIZIM kendi iframe domain'imiz olup
 // whitelist'te olmamalidir; parent INMA prod'da 'app.wapcrm.net' uzerinden gonderir.
+// 'app.wappflex.com' = WapCRM'in white-label markasi (orn. Medipol tenant'i bu portal'dan embed eder).
 // localhost:4200 prod'da da whitelisted - INMA takimi gelistirme sirasinda embed testi icin.
 const INMA_ALLOWED_ORIGINS: ReadonlyArray<string> = import.meta.env.PROD
-  ? ['https://app.wapcrm.net', 'https://developer.wapcrm.net', 'http://localhost:4200']
+  ? ['https://app.wapcrm.net', 'https://app.wappflex.com', 'https://developer.wapcrm.net', 'http://localhost:4200']
   : ['https://developer.wapcrm.net', 'http://localhost:4200'];
 
-const INMA_API_BASE_URL_REGEX = /^https:\/\/[a-z0-9-]+\.wapcrm\.net\/?$/;
+// wappflex.com = WapCRM white-label altyapisi; parent wappflex-branded apiBaseUrl gonderebilir.
+const INMA_API_BASE_URL_REGEX = /^https:\/\/[a-z0-9-]+\.(wapcrm\.net|wappflex\.com)\/?$/;
 const INMA_REFRESH_TIMEOUT_MS = 15_000;
 
 type InmaInboundMessage =

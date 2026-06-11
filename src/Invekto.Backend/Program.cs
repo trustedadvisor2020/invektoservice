@@ -534,6 +534,7 @@ builder.Services.AddSingleton<QnbVPosService>();
 
 // Selective CORS for INMA Angular consumers of /api/v1/inma/nav (Seçenek C, 2026-04-16).
 // Origins match the INMA bridge whitelist (parent INMA shell hosts).
+// app.wappflex.com = WapCRM white-label portal domain (2026-06-11, Medipol tenant embed).
 // AllowCredentials NOT enabled: Angular HttpClient sends Bearer header explicitly,
 // browser does NOT auto-propagate credentials cross-origin without it.
 //
@@ -545,7 +546,7 @@ builder.Services.AddSingleton<QnbVPosService>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("InmaNavCors", policy => policy
-        .WithOrigins("https://app.wapcrm.net", "https://developer.wapcrm.net", "http://localhost:4200")
+        .WithOrigins("https://app.wapcrm.net", "https://app.wappflex.com", "https://developer.wapcrm.net", "http://localhost:4200")
         .WithMethods("GET")
         .AllowAnyHeader());
 
