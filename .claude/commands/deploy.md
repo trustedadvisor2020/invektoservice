@@ -32,22 +32,22 @@ C:\CRMs\InvektoServices    ->     C:\Invekto\{Service}\current\
 ## Service List (12 services)
 
 > **NSSM Name DASH KULLANMAZ.** Get-Service ile dogrulanmis (2026-04-15).
-> **PORT DRIFT (2026-06-04):** Backend gercek port **5000 (http) + 443 (https)**, 5100 DEGIL (Get-NetTCPConnection ile dogrulandi). `server-health` da 5000'i probe eder. Diger satirlardaki portlar dogrulanmadi — deploy oncesi `Get-NetTCPConnection -State Listen -OwningProcess <pid>` ile teyit et.
+> **PORTLAR `server-health` ile DOGRULANDI (2026-06-11):** 5xxx serisi eski taslakti — gercek portlar asagida (10 servis health probe ciktisindan; WebChat/VoiceAI health enum'da yok, o ikisi dogrulanmadi). Smoke testte yanlis porta curl 000 doner (list-record deploy'unda yasandi: Outbound 5104 sanilip 7107 cikti).
 
-| Service | Port | NSSM Name | Path |
+| Service | Port (verified 2026-06-11) | NSSM Name | Path |
 |---------|------|-----------|------|
 | Backend | **5000** (+443 https) | InvektoBackend | `C:\Invekto\Backend\current\` |
-| WebChat | 5101 | InvektoWebChat | `C:\Invekto\WebChat\current\` |
-| Automation | 5102 | InvektoAutomation | `C:\Invekto\Automation\current\` |
-| AgentAI | 5103 | InvektoAgentAI | `C:\Invekto\AgentAI\current\` |
-| Outbound | 5104 | InvektoOutbound | `C:\Invekto\Outbound\current\` |
-| Knowledge | 5105 | InvektoKnowledge | `C:\Invekto\Knowledge\current\` |
-| WhatsAppAnalytics | 5106 | InvektoWhatsAppAnalytics | `C:\Invekto\WhatsAppAnalytics\current\` |
-| VoiceAI | 7114 | InvektoVoiceAI | `C:\Invekto\VoiceAI\current\` |
-| Marketing | — | InvektoMarketing | `C:\Invekto\Marketing\current\` |
-| ChatAnalysis | — | InvektoChatAnalysis | `C:\Invekto\ChatAnalysis\current\` |
-| Appointments | — | InvektoAppointments | `C:\Invekto\Appointments\current\` |
-| Integrations | — | InvektoIntegrations | `C:\Invekto\Integrations\current\` |
+| ChatAnalysis | 7101 | InvektoChatAnalysis | `C:\Invekto\ChatAnalysis\current\` |
+| Appointments | 7102 | InvektoAppointments | `C:\Invekto\Appointments\current\` |
+| Knowledge | 7104 | InvektoKnowledge | `C:\Invekto\Knowledge\current\` |
+| AgentAI | 7105 | InvektoAgentAI | `C:\Invekto\AgentAI\current\` |
+| Integrations | 7106 | InvektoIntegrations | `C:\Invekto\Integrations\current\` |
+| Outbound | 7107 | InvektoOutbound | `C:\Invekto\Outbound\current\` |
+| Automation | 7108 | InvektoAutomation | `C:\Invekto\Automation\current\` |
+| WhatsAppAnalytics | 7109 | InvektoWhatsAppAnalytics | `C:\Invekto\WhatsAppAnalytics\current\` |
+| Marketing | 7112 | InvektoMarketing | `C:\Invekto\Marketing\current\` |
+| WebChat | ? (dogrulanmadi) | InvektoWebChat | `C:\Invekto\WebChat\current\` |
+| VoiceAI | 7114 (dogrulanmadi) | InvektoVoiceAI | `C:\Invekto\VoiceAI\current\` |
 
 ## Deploy Steps (ORDER MATTERS)
 
