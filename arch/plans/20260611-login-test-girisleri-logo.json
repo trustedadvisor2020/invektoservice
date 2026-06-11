@@ -1,0 +1,201 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260611-login-test-girisleri-logo",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-06-11T12:50:00Z",
+  "updated_at": "2026-06-11T13:30:00Z",
+  "gr_list": [
+    {
+      "id": "GR-1",
+      "description": "LoginPage'den 'Test Girisleri' bolumunu tamamen kaldir (UI-only): JSX blogu + handleMockLogin + loginWithMock destructure. useAuth.loginWithMock / api.mockLogin / backend mock endpoint DOKUNULMAZ (config-gated, dev testleri icin kalir).",
+      "services_affected": ["Dashboard SPA"]
+    },
+    {
+      "id": "GR-2",
+      "description": "Logo bolumunu Q'nun verdigi gorsele uyarla: dikey (ikon ustte, navy 'invekto AI' altta) yerine YATAY tek satir — kirmizi ikon + kirmizi (#E54C4C) 'invekto' wordmark, AI suffix YOK. InvektoLogo'ya opsiyonel color prop (default #0A2540, geriye donuk uyumlu; Layout sidebar etkilenmez). SUPER ISTISNASI (plan review + Q karari): super.invekto.com mevcut dikey navy 'invekto super' logosunu korur. variant=none icin SVG genisligi wordmark'a daraltilir (sag bosluk/hizalama bozulmasin). Alt baslik metni korunur.",
+      "services_affected": ["Dashboard SPA"]
+    }
+  ],
+  "plan": {
+    "summary": "Login ekrani UI duzenlemesi (2 GR): (1) 'Test Girisleri' mock-login butonlari (Tam Yetkili / Demo Klinik / Demo Otel) her ortamdan kaldirilir — production'da koşulsuz gorunuyordu; (2) logo bolumu Q'nun gorseline gore yatay kirmizi marka logosuna (ikon + #E54C4C 'invekto', suffix'siz) donusturulur.",
+    "q_intent": "login ekraninda test girislerini kaldir. + ustteki logo bolumunu de bu sekilde yap (gorsel: yatay kirmizi ikon + kirmizi 'invekto' wordmark)",
+    "interview_notes": "Q kararlari (AskUserQuestion): (1) Test girisleri TAMAMEN kaldirilir (localhost-only gizleme degil); (2) temizlik SADECE UI — useAuth.loginWithMock + api.mockLogin + backend /api/v1/inma/auth/mock-login endpoint kalir (zaten InmaAuth:MockEnabled config-gated, kapaliyken 503). Logo istegi calisma sirasinda eklendi: gorseldeki marka logosu (favicon.svg ile ayni kirmizi #E54C4C), AI suffix gorselde yok.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Login ekraninda 'Test Girisleri' bolumu ve 3 mock buton HICBIR ortamda (localhost dahil) render edilmez; LoginPage.tsx'te handleMockLogin ve loginWithMock referansi kalmaz.",
+        "verified": true,
+        "verification_note": "JSX blogu (eski 136-157), handleMockLogin (28-31) ve loginWithMock destructure kaldirildi — diff'te 3 silme blogu; kosulsuz silme, ortam fark etmez. tsc unused-ref hatasi yok."
+      },
+      {
+        "id": "AC2",
+        "criterion": "Logo bolumu yatay tek satir: kirmizi ikon (logo.png) + kirmizi (#E54C4C) 'invekto' wordmark yan yana, 'AI' suffix yok; alt baslik ('Firma bilgilerinizle giris yapin' / 'Ops paneli girisi') korunur. super.invekto.com MEVCUT dikey navy 'invekto super' logosunu korur (Q karari). Layout sidebar'daki InvektoLogo gorunumu degismez; kaldirilan test bolumunden bos container/margin kalmaz.",
+        "verified": true,
+        "verification_note": "hostConfig.superHost ternary: super=eski dikey blok bit-identik, digerleri=flex row ikon(w-10)+InvektoLogo(md, variant=none, color=#E54C4C). Suffix yokken SVG genisligi suffixX'e daralir (sag olu bosluk yok). Layout.tsx dokunulmadi; color default #0A2540 + suffix'li genislik ayni. Test blogu komple silindi (bos kap yok)."
+      },
+      {
+        "id": "AC3",
+        "criterion": "Dashboard SPA build (tsc && vite build) 0 hata ile gecer; .cs dosyalarina ve useAuth/api mock-login zincirine hicbir dokunus yok (git diff sadece LoginPage.tsx + InvektoLogo.tsx).",
+        "verified": true,
+        "verification_note": "npm run build 11.78s 0 hata (tsc clean). git diff --stat: 2 dosya, +25/-41 — sadece LoginPage.tsx + InvektoLogo.tsx. Yeni bundle index-B9Kn8nc-.js (asset rotasyonu wrap commit'inde)."
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Dashboard/src/pages/LoginPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/ui/InvektoLogo.tsx"
+  ],
+  "files_changed": [
+    {
+      "path": "src/Invekto.Backend/Dashboard/src/pages/LoginPage.tsx",
+      "change": "Test Girisleri blogu + handleMockLogin + loginWithMock destructure kaldirildi; logo blogu hostConfig.superHost ternary (super=mevcut dikey navy+super, digerleri=yatay kirmizi ikon+wordmark); getLoginMode'a superHost alani eklendi.",
+      "is_new": false
+    },
+    {
+      "path": "src/Invekto.Backend/Dashboard/src/components/ui/InvektoLogo.tsx",
+      "change": "Opsiyonel color prop (default #0A2540, sadece ana wordmark fill'i — suffix renkleri ayri); suffix'siz modda SVG genisligi s.suffixX'e daraltildi (sag olu bosluk fix).",
+      "is_new": false
+    }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "0eb6c73bd8288a8fd403b3aed0241e050812c1276c4eb7630957c5e27d686c2c",
+    "full_path": "arch/plans/diffs/20260611-login-test-girisleri-logo.diff",
+    "stats": {
+      "insertions": 25,
+      "deletions": 41,
+      "files_count": 2
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "npm run build (tsc && vite build) — Dashboard SPA",
+    "timestamp": "2026-06-11T13:10:00Z",
+    "duration_ms": 11780,
+    "output_tail": "vite v5.4.21 building for production... 2569 modules transformed. ../wwwroot/app/assets/index-B9Kn8nc-.js 935.47 kB. built in 11.78s. 0 errors (tsc clean).",
+    "error_summary": null,
+    "services": ["Dashboard SPA"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Mock-login zincirinin backend tarafi (useAuth.loginWithMock, api.mockLogin, /api/v1/inma/auth/mock-login endpoint) dokunulmadan kaldi mi; UI kaldirma inma/ops login akislarini degistirmiyor mu? (negatif-dogrulama)",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "InvektoLogo'ya eklenen color prop'u default davranisi (navy #0A2540 + host-based suffix) bit-identik koruyor mu — Layout.tsx sidebar kullanimi etkilenmiyor mu?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "LoginPage'de kalan form akisi (handleSubmit, mode toggle, error gosterimi, version satiri) degismeden korunuyor mu; kaldirma sonrasi kullanilmayan import/dead code kalmiyor mu?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Backend/Program.cs (mock-login endpoint kalir — config-gated)",
+      "src/Invekto.Backend/Dashboard/src/hooks/useAuth.ts",
+      "src/Invekto.Backend/Dashboard/src/lib/api.ts (mockLogin kalir)",
+      "src/Invekto.Backend/Dashboard/src/components/Layout.tsx",
+      "Tum .cs dosyalari (UI-only paket)"
+    ],
+    "non_goals": [
+      "Backend mock endpoint'in silinmesi/disable edilmesi (Q karari: config-gated kalir)",
+      "useAuth/api katmaninda dead-code temizligi (Q karari: sadece UI)",
+      "Layout sidebar logosunun yeniden tasarimi"
+    ],
+    "intentional_exclusions": [
+      "loginWithMock useAuth'ta export edilmeye devam eder (LoginPage artik kullanmaz) — bilincli, ileride dev testleri icin",
+      "InvektoLogo'da kirmizi icin yeni variant yerine color prop tercih edildi (minimal, mevcut variant semantigi bozulmaz)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Salt-render degisikligi: JSX blogu kaldirma + SVG fill rengi parametrelestirme. Veri/auth akisi degismiyor, yeni hata yolu eklenmiyor."
+  },
+  "aha_moments": [
+    {
+      "category": "SALES",
+      "user_pain": "Gercek musteri login ekraninda 'TEST GIRISLERI / Demo Klinik / Demo Otel' butonlari goruyor — urun yarim/test asamasinda izlenimi veriyor.",
+      "suggestion": "Test girisleri bolumunu production UI'dan tamamen kaldir.",
+      "aha_moment": "Login ekrani ilk bakista temiz, bitmis bir urun gibi gorunur."
+    },
+    {
+      "category": "UX",
+      "user_pain": "Logo dikey iki parca (ikon + ayri yazi) ve marka kimligiyle (kirmizi wordmark) uyusmuyor.",
+      "suggestion": "Web sitesiyle ayni yatay kirmizi logo kullan.",
+      "aha_moment": "Kullanici siteden dashboard'a gectiginde ayni markayi gorur — guven suredurumu."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Mock butonlar production'da gorunur durumda; endpoint kapali olsa bile tiklayan kullanici anlamsiz hata goruyor.",
+      "suggestion": "UI'yi kaldirarak 503'e dusen olu tiklama yolunu yok et.",
+      "aha_moment": "Kullanici hata uretebilecek bir butonla hic karsilasmaz."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Musteri 'Demo Klinik nedir, ben otel degilim' diye sorabilir — destek yuku.",
+      "suggestion": "Kafa karistiran test senaryosu etiketlerini ekrandan kaldir.",
+      "aha_moment": "Destek ekibine login ekrani hakkinda soru gelmez."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Login karti gereksiz bir bolumle uzuyor; kucuk ekranda scroll gerekebiliyor.",
+      "suggestion": "Bolum kalkinca kart kisalir, form fold ustunde kalir.",
+      "aha_moment": "Mobil/kucuk pencerede login formu tek bakista tam gorunur."
+    }
+  ],
+  "status_log": [
+    {
+      "ts": "2026-06-11T12:50:00Z",
+      "event": "PLAN_CREATED",
+      "notes": "Interview tamam (kapsam: tamamen kaldir + UI-only). Logo istegi Q'dan calisma sirasinda geldi (gorsel: yatay kirmizi logo). Kod kesfi: LoginPage 28-31 handleMockLogin, 136-157 Test Girisleri blogu, 51-58 logo blogu; InvektoLogo fill hardcoded #0A2540; marka kirmizisi favicon.svg #E54C4C."
+    },
+    {
+      "ts": "2026-06-11T13:00:00Z",
+      "event": "PLAN_REVIEW_CODEX_CONSULT",
+      "model_used": "gpt-5.5-2026-04-23",
+      "notes": "Verdict: modify. APPLIED: (1) super.invekto.com suffix kaybi -> Q'ya soruldu, karar: super mevcut logoyu korur; (2) variant=none'da SVG sag boslugu -> genislik wordmark'a daraltilir; (3) AC2'ye bos-margin + sidebar gorsel kontrolu eklendi; (4) color prop sadece ana wordmark fill'ini etkiler (suffix renkleri ayri kalir). REJECTED: backend mock endpoint kaldirma onerisi (Q karari: config-gated kalir, UI-only paket); Neon font @font-face kirilganligi (mevcut durum, scope disi)."
+    },
+    {
+      "ts": "2026-06-11T13:05:00Z",
+      "event": "PLAN_APPROVED",
+      "notes": "Q onayi (AskUserQuestion): super korunsun + plan onaylandi, implementasyon basliyor."
+    },
+    {
+      "ts": "2026-06-11T13:18:00Z",
+      "event": "CODEX_ITER0_PASS",
+      "model_used": "gpt-5.5-2026-04-23",
+      "tokens": {
+        "total": 9619
+      },
+      "notes": "12/12 CQ + 3/3 CoVe PASS, blocking NONE — iteration=0 (CODEX UTANSIN hedefi). Build 11.78s 0E."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_MCP",
+    "received_at": "2026-06-11T13:18:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-06-11T13:18:00Z",
+    "raw_text": "OVERALL_VERDICT: PASS | 12/12 CQ PASS + 3/3 CoVe PASS | BLOCKING_ISSUES: NONE | model gpt-5.5-2026-04-23 | iteration 0. Summary: UI-only login page/logo changes are scoped to the declared Dashboard files and preserve existing normal auth flow.",
+    "blocking_issues": [],
+    "iteration": 0,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}

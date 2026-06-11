@@ -6,6 +6,8 @@ interface InvektoLogoProps {
   size?: 'sm' | 'md' | 'lg';
   showOne?: boolean;
   variant?: LogoVariant;
+  /** Ana wordmark fill rengi — suffix renklerini etkilemez */
+  color?: string;
   className?: string;
 }
 
@@ -28,18 +30,20 @@ const suffixConfig: Record<LogoVariant, { text: string; color: string } | null> 
   none: null,
 };
 
-export function InvektoLogo({ size = 'md', showOne, variant, className }: InvektoLogoProps) {
+export function InvektoLogo({ size = 'md', showOne, variant, color = '#0A2540', className }: InvektoLogoProps) {
   const resolved = variant ?? (showOne === false ? 'none' : getAutoVariant());
   const suffix = suffixConfig[resolved];
   const s = sizes[size];
   const baseline = s.height * 0.78;
   // "super" is wider than "ai"/"one" — extend viewBox accordingly
   const extraWidth = resolved === 'super' ? 40 : 0;
+  // suffix yokken genislik wordmark sonunda biter — sagda olu bosluk kalmaz (flex hizalama)
+  const width = suffix ? s.width + extraWidth : s.suffixX;
 
   return (
     <svg
-      viewBox={`0 0 ${s.width + extraWidth} ${s.height}`}
-      width={s.width + extraWidth}
+      viewBox={`0 0 ${width} ${s.height}`}
+      width={width}
       height={s.height}
       className={cn('inline-block select-none', className)}
       role="img"
@@ -51,7 +55,7 @@ export function InvektoLogo({ size = 'md', showOne, variant, className }: Invekt
         fontFamily="Neon, Inter, sans-serif"
         fontWeight={700}
         fontSize={s.fontSize}
-        fill="#0A2540"
+        fill={color}
         letterSpacing="-0.02em"
       >
         invekto

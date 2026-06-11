@@ -7,28 +7,23 @@ import { InvektoLogo } from '../components/ui/InvektoLogo';
 
 type LoginMode = 'inma' | 'ops';
 
-function getLoginMode(): { mode: LoginMode; locked: boolean } {
+function getLoginMode(): { mode: LoginMode; locked: boolean; superHost: boolean } {
   const host = window.location.hostname;
-  if (host === 'super.invekto.com') return { mode: 'ops', locked: true };
-  if (host === 'ai.invekto.com') return { mode: 'inma', locked: true };
+  if (host === 'super.invekto.com') return { mode: 'ops', locked: true, superHost: true };
+  if (host === 'ai.invekto.com') return { mode: 'inma', locked: true, superHost: false };
   // localhost / dev → her iki mod acik (toggle gosterilir)
-  return { mode: 'inma', locked: false };
+  return { mode: 'inma', locked: false, superHost: false };
 }
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { loginWithInma, loginWithOps, loginWithMock, isLoading, error } = useAuth();
+  const { loginWithInma, loginWithOps, isLoading, error } = useAuth();
 
   const [hostConfig] = useState(getLoginMode);
   const [mode, setMode] = useState<LoginMode>(hostConfig.mode);
   const [companyName, setCompanyName] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-
-  const handleMockLogin = async (scenario: 'full' | 'klinik' | 'otel') => {
-    const success = await loginWithMock(scenario);
-    if (success) navigate('/');
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,10 +43,19 @@ export function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-navy-50">
       <div className="w-full max-w-sm">
-        {/* Logo */}
+        {/* Logo — marka: yatay kirmizi ikon + wordmark; super.invekto.com mevcut dikey logoyu korur */}
         <div className="flex flex-col items-center mb-8">
-          <img src="/app/logo.png" alt="Invekto" className="w-14 h-14 mb-3" />
-          <InvektoLogo size="lg" className="mb-2" />
+          {hostConfig.superHost ? (
+            <>
+              <img src="/app/logo.png" alt="Invekto" className="w-14 h-14 mb-3" />
+              <InvektoLogo size="lg" className="mb-2" />
+            </>
+          ) : (
+            <div className="flex items-center gap-2.5 mb-2">
+              <img src="/app/logo.png" alt="Invekto" className="w-10 h-10" />
+              <InvektoLogo size="md" variant="none" color="#E54C4C" />
+            </div>
+          )}
           <p className="text-sm text-navy-300 mt-1">
             {mode === 'inma' ? 'Firma bilgilerinizle giris yapin' : 'Ops paneli girisi'}
           </p>
@@ -131,30 +135,6 @@ export function LoginPage() {
               {isLoading ? 'Giris yapiliyor...' : 'Giris Yap'}
             </Button>
           </form>
-
-
-          {mode === 'inma' && (
-            <div className="mt-5 pt-5 border-t border-navy-100/60">
-              <p className="text-2xs text-navy-300 mb-2 text-center font-medium uppercase tracking-wider">Test Girisleri</p>
-              <div className="flex gap-2">
-                {[
-                  { label: 'Tam Yetkili', scenario: 'full' as const },
-                  { label: 'Demo Klinik', scenario: 'klinik' as const },
-                  { label: 'Demo Otel', scenario: 'otel' as const },
-                ].map(({ label, scenario }) => (
-                  <button
-                    key={scenario}
-                    type="button"
-                    onClick={() => handleMockLogin(scenario)}
-                    disabled={isLoading}
-                    className="flex-1 text-xs py-2 rounded-lg bg-navy-50 hover:bg-navy-100 text-navy-500 font-medium disabled:opacity-40 transition-colors"
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
         <p className="mt-4 text-center text-2xs text-navy-200">v{__BUILD_TIME__}</p>
