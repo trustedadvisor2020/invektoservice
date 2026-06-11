@@ -5,9 +5,9 @@
   "spec_ref": null,
   "slug": "20260611-tr-diakritik-sweep",
   "risk": "LOW",
-  "status": "IN_PROGRESS",
+  "status": "DONE",
   "created_at": "2026-06-11T15:30:00Z",
-  "updated_at": "2026-06-11T15:30:00Z",
+  "updated_at": "2026-06-11T16:15:00Z",
   "gr_list": [
     {
       "id": "GR-1",
@@ -23,20 +23,20 @@
       {
         "id": "AC1",
         "criterion": "Dashboard ana sayfa basligi 'Hoşgeldiniz' yazar; login + dashboard + nav + tum sayfa/komponent UI metinlerinde eksik diakritik kalmaz (yaygin kelime taramasi temiz).",
-        "verified": false,
-        "verification_note": null
+        "verified": true,
+        "verification_note": "h1 'Hoşgeldiniz' dogrulandi; 102 dosya agent sweep, 86 dosyada ~1790 satir duzeltildi (en buyuk: OnboardingGuidePage 512, node-metadata 89, NodePropertyPanel 78). Kalan ASCII'ler bilincli: lookup key'ler, comment'ler, degisken adi ornekleri."
       },
       {
         "id": "AC2",
         "criterion": "Hicbir identifier/key/route/className/API alani/karsilastirma literali degismez — davranis bit-identik; SPA build (tsc && vite) 0 hata.",
-        "verified": false,
-        "verification_note": null
+        "verified": true,
+        "verification_note": "DETERMINISTIK KANIT (c:/tmp/verify-diacritics-diff.ps1): commit diff'inin 1747 satir-cifti iki-taraf-diakritik-soyma sonrasi BIREBIR esit = saf diakritik ispati. ~50 flagged satir = orijinal yazim hatasi duzeltmeleri (Codex Q3 PASS); 1 ajan hatasi (cevaplayiyor->cevaplıyor) elle duzeltildi. tsc 0E + vite OK."
       },
       {
         "id": "AC3",
         "criterion": "data/flow-templates.ts diff'te YOK (bilincli haric); .cs dosyalari dokunulmadi.",
-        "verified": false,
-        "verification_note": null
+        "verified": true,
+        "verification_note": "git status: flow-templates.ts untouched; commit pathspec Dashboard/src ile sinirli, .cs yok. NOT: ayni tree'de calisan paralel session'in 3 dosyadaki yapisal WIP'i commit'e sizdi (Layout/DataImportPage/ProjectsPage) — detay status_log + overrides."
       }
     ]
   },
@@ -44,23 +44,29 @@
     "src/Invekto.Backend/Dashboard/src/**/*.ts",
     "src/Invekto.Backend/Dashboard/src/**/*.tsx"
   ],
-  "files_changed": [],
+  "files_changed": [
+    {
+      "path": "src/Invekto.Backend/Dashboard/src/** (86 dosya, commit c8a20e04)",
+      "change": "UI-gorunen string'lerde TR diakritik normalizasyonu + ~50 yazim duzeltmesi. En buyukler: OnboardingGuidePage(512), node-metadata(89), NodePropertyPanel(78), FlowListPage(48), SettingsPage(47), AiChatPanel(42), FlowSettingsPanel(34), TemplateCreatePage(33), flow.ts(33), TemplateIngestionPage(26), FlowMonitorPage(22), CampaignConfigSettingsPage(22), WebChatPage(22). HARIC: flow-templates.ts + api.ts (paralel WIP).",
+      "is_new": false
+    }
+  ],
   "git_diff": {
     "patch_truncated": null,
-    "sha256": null,
-    "full_path": null,
+    "sha256": "158fb821dfde24b059795d40d408ae5b4097d344ece49c32d93bd576859edaf5",
+    "full_path": "arch/plans/diffs/20260611-tr-diakritik-sweep.diff",
     "stats": {
-      "insertions": 0,
-      "deletions": 0,
-      "files_count": 0
+      "insertions": 1803,
+      "deletions": 1794,
+      "files_count": 87
     }
   },
   "build": {
-    "status": null,
+    "status": "PASS",
     "command": "npm run build (tsc && vite build) — Dashboard SPA",
-    "timestamp": null,
-    "duration_ms": null,
-    "output_tail": null,
+    "timestamp": "2026-06-11T16:35:00Z",
+    "duration_ms": 9610,
+    "output_tail": "tsc clean (sweep sonrasi 2x dogrulandi) + vite 9.61s. Bundle commit'lenmedi/deploy ERTELENDI (paralel WIP icerdigi icin) — bir sonraki deploy tasir.",
     "error_summary": null,
     "services": ["Dashboard SPA"]
   },
@@ -147,17 +153,59 @@
       "ts": "2026-06-11T15:30:00Z",
       "event": "PLAN_CREATED",
       "notes": "Kesif: genis kelime taramasi 103 aday dosya (false-positive icerir — 'rapor','dosya' gibi dogru kelimeler de eslesti; agent dosya bazinda karar verir). flow-templates.ts (322 eslesme) Q karariyla HARIC. Yontem: Workflow pipeline, dosya-basina agent, kurallar: sadece render edilen metin; identifier/key/karsilastirma ASLA."
+    },
+    {
+      "ts": "2026-06-11T15:35:00Z",
+      "event": "PLAN_REVIEW_CODEX_CONSULT",
+      "model_used": "gpt-5.5-2026-04-23",
+      "notes": "18 bulgu. APPLIED: TR-01/13 literal-reuse grep kurali, TR-02 label/value ayrimi, TR-04 Playwright locator taramasi (spec dosyasi yok cikti), TR-06/17 glossary (Hoşgeldiniz bitisik, kelime secimi degismez), TR-07 NFC precomposed, TR-11 export-header dokunma. REJECTED: TR-14 i18n altyapisi (ayri proje), TR-08 font smoke (Inter TR glyph'leri mevcut)."
+    },
+    {
+      "ts": "2026-06-11T16:30:00Z",
+      "event": "WORKFLOW_SWEEP_DONE",
+      "notes": "102/102 dosya islendi (paralel agent, sonnet), 86 dosyada degisiklik. Deterministik dogrulayici: 1747 satir-cifti saf-diakritik ISPATLI; flagged ~50 = orijinal yazim hatasi duzeltmeleri; 1 ajan hatasi (cevaplayiyor) elle fix."
+    },
+    {
+      "ts": "2026-06-11T16:50:00Z",
+      "event": "COMMITTED",
+      "commit_sha": "c8a20e04",
+      "notes": "Pathspec-scoped commit (api.ts haric, bundle haric). RACE: paralel session'in Layout/DataImportPage/ProjectsPage yapisal WIP'i verifier kosusu ile commit arasinda tree'ye girdi ve SIZDI. Telafi: e516a1df (api.ts tip-tutarlilik); sizan parcalar sahibi session'da resmilesti (60c32cd3 PASS, f9bc3c24 PASS iter2, 7966d4b5 cift-yonlu race fix)."
+    },
+    {
+      "ts": "2026-06-11T17:00:00Z",
+      "event": "CODEX_ITER0_FAIL",
+      "model_used": "gpt-5.5-2026-04-23",
+      "notes": "Q-onayli ozel format (deterministik kanit + flagged-only). 3 blocker: CQ3 paralel-WIP sizintisi, CQ9/Q1 AiChatPanel.prompt render-only kanitsiz."
+    },
+    {
+      "ts": "2026-06-11T17:10:00Z",
+      "event": "CODEX_ITER1_FAIL",
+      "model_used": "gpt-5.5-2026-04-23",
+      "notes": "Q1 PASS (prompt = dogal-dil, 5/6 emsal sweep oncesi de diakritikli, key/label degismedi) + Q3 PASS (sweep seti temiz). Kalan blocker'lar YALNIZ sizinti: CQ3 (commit tarihsel non-minimal — pushlu master, geri alinamaz) + Q2 (DataImport parcasi sahibi session'da hala review'da)."
+    },
+    {
+      "ts": "2026-06-11T17:15:00Z",
+      "event": "Q_FORCE_PASS",
+      "notes": "Q override (yazili, AskUserQuestion): 'FORCE PASS' — gerekce: kalan blocker'lar capraz-session sizintisina dair; sweep'in kendi degisiklik sinifi Codex'te PASS (Q1+Q3); sizan parcalarin 2'si zaten PASS'li commit'lerde, kalan DataImport sahibi paketin aktif /rev dongusunde kapanacak. Lessons-learned'e kayit dusuldu."
+    }
+  ],
+  "overrides": [
+    {
+      "ts": "2026-06-11T17:15:00Z",
+      "command": "FORCE PASS",
+      "by": "Q",
+      "reason": "Iter1 kalan blocker'lari (CQ3/CQ9/Q2) yalniz paralel-session WIP sizintisi hakkinda; sweep'in kendi seti kanitli temiz. Sizinti envanteri: Layout=60c32cd3 PASS, ProjectsPage=f9bc3c24 PASS iter2, api.ts=e516a1df tip-fix, DataImportPage=20260611-list-record-add-remove paketi aktif review (sahibi session)."
     }
   ],
   "verdict": {
-    "status": null,
-    "source": null,
-    "received_at": null,
-    "updated_by": null,
-    "updated_at": null,
-    "raw_text": null,
+    "status": "PASS",
+    "source": "CODEX_MCP",
+    "received_at": "2026-06-11T17:15:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-06-11T17:15:00Z",
+    "raw_text": "Q-override: FORCE PASS — iter1'de sweep'in kendi seti temiz (Q1 PASS prompt-kanit, Q3 PASS diakritik/yazim seti, CQ4-8/10-12 PASS); kalan blocker'lar (CQ3/CQ9/Q2) yalniz paralel-session WIP sizintisi (Layout=60c32cd3 PASS, ProjectsPage=f9bc3c24 PASS, api.ts=e516a1df, DataImport=sahibi pakette aktif review). Deterministik kanit: 1747 satir-cifti saf-diakritik.",
     "blocking_issues": [],
-    "iteration": 0,
+    "iteration": 1,
     "escalation_required": false,
     "escalation_reason": null
   }
