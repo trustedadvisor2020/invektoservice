@@ -51,8 +51,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   // — Tenant: Çalışma Alanı —
   { path: '/',                label: 'Kontrol Paneli',   tenantLabel: 'Ana Sayfa', icon: LayoutDashboard, section: 'Çalışma Alanı' },
   { path: '/flow-builder', label: 'Flow Builder', tenantLabel: 'Flow Builder', icon: GitBranch,    feature: 'FlowBuilder' },
-  { path: '/flow-templates', label: 'Sablon Galerisi', tenantLabel: 'Sablon Galerisi', icon: LayoutTemplate, feature: 'FlowBuilder' },
-  { path: '/knowledge',       label: 'Bilgi Bankasi',    icon: BookOpen,     feature: 'Knowledge' },
+  { path: '/knowledge',       label: 'Bilgi Bankası',    icon: BookOpen,     feature: 'Knowledge' },
   // FEAT-OBI: Veri Yönetimi — İçe Aktarma (Listeler) + Dışa Aktarma (Export) tek sayfada
   // iki sekme (tenant-visible; "Outbound" plan + ExportOptions gate'leri server-side enforce).
   { path: '/data-management', label: 'Veri Yönetimi',     icon: Database },
@@ -61,16 +60,17 @@ const ALL_NAV_ITEMS: NavItem[] = [
   // NOTE: /api/v1/inma/nav workspace section ile senkron tutulur (dual-source nav).
   { path: '/projects',        label: 'Projeler',         tenantLabel: 'Projeler', icon: Briefcase },
   // — Tenant: Analiz —
-  { path: '/flow-monitor',    label: 'Flow Monitor',     tenantLabel: 'Flow Izleme', icon: Activity, feature: 'FlowBuilder', section: 'Analiz' },
+  { path: '/flow-monitor',    label: 'Flow Monitor',     tenantLabel: 'Flow İzleme', icon: Activity, feature: 'FlowBuilder', section: 'Analiz' },
   // — Ops: Yönetim —
   { path: '/tenants',         label: 'Firmalar',         icon: Building2,     opsOnly: true, section: 'Yönetim' },
   { path: '/yol-haritasi',    label: 'Yol Haritası',      icon: Kanban,        opsOnly: true },
   { path: '/licenses',        label: 'Lisanslama',        icon: Key,           opsOnly: true },
   // — Ops: İçerik —
   { path: '/templates',        label: 'Sablon Sistemi',    icon: LayoutTemplate,  opsOnly: true, section: 'İçerik' },
+  { path: '/flow-templates',   label: 'Şablon Galerisi',   icon: LayoutTemplate,  opsOnly: true },
   { path: '/templates/ingestion', label: 'Veri Besleme',  icon: Upload,          opsOnly: true },
-  { path: '/intents',             label: 'Intent Yonetimi', icon: Brain,          opsOnly: true },
-  { path: '/ri/templates',        label: 'RI Sablonlari',   icon: Layers,         opsOnly: true },
+  { path: '/intents',             label: 'Intent Yönetimi', icon: Brain,          opsOnly: true },
+  { path: '/ri/templates',        label: 'RI Şablonları',   icon: Layers,         opsOnly: true },
   // — Ops: İletişim —
   { path: '/webchat',         label: 'WebChat',          icon: Globe,         opsOnly: true, section: 'İletişim' },
   { path: '/messages',        label: 'Mesajlar',         icon: MessageSquare, opsOnly: true },
@@ -78,7 +78,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { path: 'external:hangfire', label: 'Hangfire',         icon: Clock,        opsOnly: true },
   { path: '/voice-test',       label: 'Voice Test',     icon: Mic,          opsOnly: true },
   // — Shared —
-  { path: '/onboarding',       label: 'Onboarding',       tenantLabel: 'Kurulum Sihirbazi', icon: Rocket },
+  { path: '/onboarding',       label: 'Onboarding',       tenantLabel: 'Kurulum Sihirbazı', icon: Rocket },
   { path: '/onboarding-guide', label: 'Onboarding Rehberi', icon: GraduationCap, opsOnly: true },
   { path: '/settings',        label: 'Ayarlar',          icon: Settings },
 ];
@@ -207,12 +207,12 @@ export function Layout({ children }: LayoutProps) {
       {/* Impersonation banner */}
       {isImpersonating && (
         <div className="fixed top-0 left-0 right-0 bg-amber-500 text-white px-4 py-2 flex items-center justify-between text-sm font-medium z-50">
-          <span>Firma #{session.tenantId} — SuperAdmin olarak goruntuleniyor</span>
+          <span>Firma #{session.tenantId} — SuperAdmin olarak görüntüleniyor</span>
           <button
             onClick={exitImpersonation}
             className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-md text-xs font-medium transition-colors"
           >
-            Cikis
+            Çıkış
           </button>
         </div>
       )}
@@ -230,7 +230,7 @@ export function Layout({ children }: LayoutProps) {
               <button
                 onClick={toggleSidebar}
                 className="w-10 h-10 mx-auto flex items-center justify-center rounded-xl hover:bg-slate-50 transition-all duration-200"
-                title="Menuyu ac"
+                title="Menüyü aç"
               >
                 <img src={`${import.meta.env.BASE_URL}logo.png`} alt="Invekto" className="w-8 h-8 rounded-xl" />
               </button>
@@ -277,7 +277,7 @@ export function Layout({ children }: LayoutProps) {
               <button
                 onClick={toggleSidebar}
                 className="w-6 h-6 flex items-center justify-center rounded-lg text-slate-300 hover:bg-slate-100 hover:text-slate-500 transition-all duration-200"
-                title="Menuyu kapat"
+                title="Menüyü kapat"
               >
                 <PanelLeftClose className="w-3.5 h-3.5" />
               </button>
@@ -297,10 +297,10 @@ export function Layout({ children }: LayoutProps) {
                 collapsed ? 'h-10 justify-center px-0' : 'h-[42px] gap-3 px-4 mx-1 mb-0.5'
               )}
               onClick={logout}
-              title={collapsed ? 'Cikis Yap' : undefined}
+              title={collapsed ? 'Çıkış Yap' : undefined}
             >
               <Power className={cn('w-5 h-5 flex-shrink-0 text-slate-300 group-hover:text-red-400 transition-colors', collapsed ? '' : '')} strokeWidth={1.8} />
-              {!collapsed && <span>Cikis Yap</span>}
+              {!collapsed && <span>Çıkış Yap</span>}
             </button>
           </div>
         </aside>

@@ -25,14 +25,14 @@ export function KnowledgePage() {
   };
 
   const tabs: { key: Tab; label: string; icon: typeof FileText }[] = [
-    { key: 'documents', label: 'Dokumanlar', icon: FileText },
+    { key: 'documents', label: 'Dökümanlar', icon: FileText },
     { key: 'faqs', label: 'SSS', icon: MessageSquare },
   ];
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-navy-900">Bilgi Bankasi</h1>
+        <h1 className="text-xl font-semibold text-navy-900">Bilgi Bankası</h1>
         {activeTab === 'documents' && (
           <div className="flex items-center gap-2">
             <button
@@ -40,7 +40,7 @@ export function KnowledgePage() {
               className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-colors"
             >
               <FileUp className="w-4 h-4" />
-              PDF Yukle
+              PDF Yükle
             </button>
             <button
               onClick={() => { setUploadMode('website'); setUploadOpen(true); }}

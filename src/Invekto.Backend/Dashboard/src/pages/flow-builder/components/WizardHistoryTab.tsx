@@ -8,7 +8,7 @@ export function WizardHistoryTab() {
   if (!wizardHistory || wizardHistory.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center px-6">
-        <p className="text-sm text-navy-300">AI gecmisi bulunamadi.</p>
+        <p className="text-sm text-navy-300">AI geçmişi bulunamadı.</p>
       </div>
     );
   }
@@ -19,7 +19,7 @@ export function WizardHistoryTab() {
         <svg className="w-4 h-4 text-purple-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
         </svg>
-        <span className="text-xs font-medium text-purple-700">Bu akis AI tarafindan olusturuldu</span>
+        <span className="text-xs font-medium text-purple-700">Bu akış AI tarafından oluşturuldu</span>
       </div>
 
       {wizardHistory.map((msg, i) => (
@@ -60,7 +60,7 @@ function HistoryMessage({ message }: { message: WizardMessage }) {
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              Akis yapisi uretildi
+              Akış yapısı üretildi
             </div>
           )}
         </div>

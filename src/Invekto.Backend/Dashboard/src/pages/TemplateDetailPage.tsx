@@ -51,7 +51,7 @@ export function TemplateDetailPage() {
         setVersions(vers.versions);
       } catch (err) {
         console.error('Failed to fetch template:', err);
-        setError('Sablon detaylari yuklenirken hata olustu.');
+        setError('Şablon detayları yüklenirken hata oluştu.');
       } finally {
         setLoading(false);
       }
@@ -67,7 +67,7 @@ export function TemplateDetailPage() {
       setTemplate(prev => prev ? { ...prev, is_published: true } : null);
     } catch (err) {
       console.error('Publish failed:', err);
-      setError('Sablon yayinlanirken hata olustu.');
+      setError('Şablon yayınlanırken hata oluştu.');
     }
   };
 
@@ -97,14 +97,14 @@ export function TemplateDetailPage() {
       // INV-INT-FE-042 frontend fallback code: surface actionable next step (retry /
       // check connection) so support can distinguish this failure from generic 500s.
       const code = err instanceof Error && err.message ? err.message : 'unknown';
-      setError(`[INV-INT-FE-042] Grup etiketi kaydedilemedi (${code}). Baglantiyi kontrol edip tekrar deneyin.`);
+      setError(`[INV-INT-FE-042] Grup etiketi kaydedilemedi (${code}). Bağlantıyı kontrol edip tekrar deneyin.`);
     } finally {
       setSavingGroupTag(false);
     }
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-12 text-navy-400 text-sm">Yukleniyor...</div>;
+    return <div className="flex items-center justify-center py-12 text-navy-400 text-sm">Yükleniyor...</div>;
   }
 
   if (!template) {
@@ -113,7 +113,7 @@ export function TemplateDetailPage() {
         {error && (
           <div className="max-w-md mx-auto bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700">{error}</div>
         )}
-        <div className="flex items-center justify-center text-navy-400 text-sm">Sablon bulunamadi</div>
+        <div className="flex items-center justify-center text-navy-400 text-sm">Şablon bulunamadı</div>
       </div>
     );
   }
@@ -141,7 +141,7 @@ export function TemplateDetailPage() {
             <h1 className="text-lg font-semibold text-navy-900">{template.name}</h1>
             {template.is_published ? (
               <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700">
-                <Check className="w-3 h-3" /> Yayinda
+                <Check className="w-3 h-3" /> Yayında
               </span>
             ) : (
               <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-600">Taslak</span>
@@ -151,7 +151,7 @@ export function TemplateDetailPage() {
         </div>
         {!template.is_published && (
           <button onClick={handlePublish} className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded bg-emerald-600 text-white hover:bg-emerald-500">
-            <Check className="w-3.5 h-3.5" /> Yayinla
+            <Check className="w-3.5 h-3.5" /> Yayınla
           </button>
         )}
       </div>
@@ -162,14 +162,14 @@ export function TemplateDetailPage() {
           {/* Description */}
           {template.description && (
             <div className="bg-white rounded-lg border border-navy-100 p-3">
-              <h3 className="text-xs font-medium text-navy-500 mb-1">Aciklama</h3>
+              <h3 className="text-xs font-medium text-navy-500 mb-1">Açıklama</h3>
               <p className="text-sm text-navy-700">{template.description}</p>
             </div>
           )}
 
           {/* Content JSON */}
           <div className="bg-white rounded-lg border border-navy-100 p-3">
-            <h3 className="text-xs font-medium text-navy-500 mb-2">Icerik (content_json)</h3>
+            <h3 className="text-xs font-medium text-navy-500 mb-2">İçerik (content_json)</h3>
             <pre className="text-[11px] bg-navy-25 rounded p-3 overflow-auto max-h-96 text-navy-700 font-mono">
               {JSON.stringify(template.content_json, null, 2)}
             </pre>
@@ -190,7 +190,7 @@ export function TemplateDetailPage() {
           {/* Version History */}
           {versions.length > 0 && (
             <div className="bg-white rounded-lg border border-navy-100 p-3">
-              <h3 className="text-xs font-medium text-navy-500 mb-2">Versiyon Gecmisi</h3>
+              <h3 className="text-xs font-medium text-navy-500 mb-2">Versiyon Geçmişi</h3>
               <div className="space-y-2">
                 {versions.map(v => (
                   <div key={v.id} className="flex items-start gap-2 text-xs border-l-2 border-navy-200 pl-3 py-1">
@@ -215,8 +215,8 @@ export function TemplateDetailPage() {
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div><span className="text-navy-400">Tip:</span> <span className="font-medium">{template.template_type}</span></div>
               <div><span className="text-navy-400">Dil:</span> <span className="font-medium">{template.lang}</span></div>
-              <div><span className="text-navy-400">Kullanim:</span> <span className="font-medium">{template.usage_count}</span></div>
-              <div><span className="text-navy-400">Olusturan:</span> <span className="font-medium">{template.created_by}</span></div>
+              <div><span className="text-navy-400">Kullanım:</span> <span className="font-medium">{template.usage_count}</span></div>
+              <div><span className="text-navy-400">Oluşturan:</span> <span className="font-medium">{template.created_by}</span></div>
             </div>
           </div>
 
@@ -241,7 +241,7 @@ export function TemplateDetailPage() {
                 {GROUP_TAG_SUGGESTIONS.map(g => <option key={g} value={g} />)}
               </datalist>
               <p className="text-[10px] text-navy-400">
-                Ayni grup etiketine sahip sablonlar rotasyon havuzu olustur. Bos birakirsaniz etiket silinir.
+                Aynı grup etiketine sahip şablonlar rotasyon havuzu oluştur. Boş bırakırsanız etiket silinir.
               </p>
               <button
                 onClick={handleSaveGroupTag}
@@ -255,7 +255,7 @@ export function TemplateDetailPage() {
 
           {/* Confidence */}
           <div className="bg-white rounded-lg border border-navy-100 p-3">
-            <h3 className="text-xs font-medium text-navy-500 mb-2">Guven Skoru</h3>
+            <h3 className="text-xs font-medium text-navy-500 mb-2">Güven Skoru</h3>
             <div className="flex items-center gap-2">
               <div className="flex-1 bg-navy-100 rounded-full h-2">
                 <div className="bg-emerald-500 h-2 rounded-full" style={{ width: `${template.confidence_score * 100}%` }} />
@@ -275,7 +275,7 @@ export function TemplateDetailPage() {
                 {template.sources.map(src => (
                   <div key={src.id} className="flex items-center justify-between text-xs">
                     <span className="text-navy-700">{src.tenant_name}</span>
-                    <span className="text-navy-400">{src.sample_count} ornek</span>
+                    <span className="text-navy-400">{src.sample_count} örnek</span>
                   </div>
                 ))}
               </div>
@@ -286,8 +286,8 @@ export function TemplateDetailPage() {
 
           {/* Timestamps */}
           <div className="bg-white rounded-lg border border-navy-100 p-3 space-y-1 text-xs text-navy-400">
-            <div>Olusturulma: {new Date(template.created_at).toLocaleDateString('tr-TR')}</div>
-            <div>Guncelleme: {new Date(template.updated_at).toLocaleDateString('tr-TR')}</div>
+            <div>Oluşturulma: {new Date(template.created_at).toLocaleDateString('tr-TR')}</div>
+            <div>Güncelleme: {new Date(template.updated_at).toLocaleDateString('tr-TR')}</div>
           </div>
         </div>
       </div>

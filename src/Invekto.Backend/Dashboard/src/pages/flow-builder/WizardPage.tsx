@@ -4,10 +4,10 @@ import { useAuth } from '../../hooks/useAuth';
 import { useWizardStore } from '../../stores/wizard-store';
 
 const thinkingMessages = [
-  'Dusunuyorum...',
-  'Hazirliyorum...',
+  'Düşünüyorum...',
+  'Hazırlıyorum...',
   'Bir saniye...',
-  'Planliyorum...',
+  'Planlıyorum...',
 ];
 import { WizardChat } from './components/WizardChat';
 import { WizardPreview } from './components/WizardPreview';
@@ -52,14 +52,14 @@ export function WizardPage() {
   useEffect(() => {
     if (!autoConfirmPending || confirming) return;
     clearAutoConfirm();
-    const name = nameInput.trim() || flowName || 'AI Akisi';
+    const name = nameInput.trim() || flowName || 'AI Akışı';
     setConfirming(true);
     confirmFlow(name)
       .then(() => navigate(`/flow-builder/editor/${flowId}`))
       .catch((err: unknown) => {
         // confirmFlow sets store `error` state internally; ensure fallback if it didn't
         if (!useWizardStore.getState().error) {
-          useWizardStore.setState({ error: err instanceof Error ? err.message : 'INV-BE-023: Akis olusturulamadi' });
+          useWizardStore.setState({ error: err instanceof Error ? err.message : 'INV-BE-023: Akış oluşturulamadı' });
         }
       })
       .finally(() => setConfirming(false));
@@ -70,7 +70,7 @@ export function WizardPage() {
   };
 
   const handleConfirm = async () => {
-    const name = nameInput.trim() || 'AI Akisi';
+    const name = nameInput.trim() || 'AI Akışı';
     setConfirming(true);
     try {
       await confirmFlow(name);
@@ -97,7 +97,7 @@ export function WizardPage() {
         <button
           onClick={handleBack}
           className="p-1.5 rounded-lg text-navy-400 hover:text-navy-700 hover:bg-navy-50 transition-colors"
-          title="Geri don"
+          title="Geri dön"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
@@ -114,7 +114,7 @@ export function WizardPage() {
             type="text"
             value={nameInput}
             onChange={e => setNameInput(e.target.value)}
-            placeholder="Akis adi..."
+            placeholder="Akış adı..."
             className="flex-1 min-w-0 bg-transparent text-sm font-medium text-navy-900 placeholder:text-navy-300 focus:outline-none"
           />
         </div>
@@ -132,7 +132,7 @@ export function WizardPage() {
             onClick={handleGoToEditor}
             className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-lg transition-colors flex-shrink-0"
           >
-            Editore Git
+            Editöre Git
           </button>
         ) : (
           <button
@@ -140,7 +140,7 @@ export function WizardPage() {
             disabled={!canConfirm || confirming}
             className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
           >
-            {confirming ? 'Olusturuluyor...' : 'Akisi Olustur'}
+            {confirming ? 'Oluşturuluyor...' : 'Akışı Oluştur'}
           </button>
         )}
       </header>

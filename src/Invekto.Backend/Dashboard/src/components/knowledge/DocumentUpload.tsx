@@ -37,8 +37,8 @@ export function DocumentUpload({ tenantId, open, mode, onClose, onUploadComplete
   };
 
   const validateFile = (f: File): string | null => {
-    if (!f.name.toLowerCase().endsWith('.pdf')) return 'Sadece PDF dosyalari desteklenir';
-    if (f.size > MAX_SIZE_MB * 1024 * 1024) return `Dosya ${MAX_SIZE_MB}MB limitini asiyor`;
+    if (!f.name.toLowerCase().endsWith('.pdf')) return 'Sadece PDF dosyaları desteklenir';
+    if (f.size > MAX_SIZE_MB * 1024 * 1024) return `Dosya ${MAX_SIZE_MB}MB limitini aşıyor`;
     return null;
   };
 
@@ -72,7 +72,7 @@ export function DocumentUpload({ tenantId, open, mode, onClose, onUploadComplete
       if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return 'Sadece http/https desteklenir';
       return null;
     } catch {
-      return 'Gecerli bir domain girin (ornek: ebrumoda.com)';
+      return 'Geçerli bir domain girin (örnek: ebrumoda.com)';
     }
   };
 
@@ -101,7 +101,7 @@ export function DocumentUpload({ tenantId, open, mode, onClose, onUploadComplete
       onUploadComplete();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Islem basarisiz');
+      setError(err instanceof Error ? err.message : 'İşlem başarısız');
     } finally {
       setUploading(false);
     }
@@ -122,7 +122,7 @@ export function DocumentUpload({ tenantId, open, mode, onClose, onUploadComplete
           <div className="flex items-center gap-2">
             {mode === 'pdf' ? <FileUp className="w-5 h-5 text-brand-500" /> : <Globe className="w-5 h-5 text-brand-500" />}
             <h3 className="text-base font-semibold text-navy-800">
-              {mode === 'pdf' ? 'PDF Yukle' : 'Web Sitesi Ekle'}
+              {mode === 'pdf' ? 'PDF Yükle' : 'Web Sitesi Ekle'}
             </h3>
           </div>
           <button onClick={handleClose} className="text-navy-400 hover:text-navy-600 transition-colors">
@@ -155,7 +155,7 @@ export function DocumentUpload({ tenantId, open, mode, onClose, onUploadComplete
                 ) : (
                   <label className="cursor-pointer">
                     <Upload className="w-8 h-8 text-navy-300 mx-auto mb-2" />
-                    <p className="text-sm text-navy-400">PDF dosyasini surukleyip birakin veya tiklayip secin</p>
+                    <p className="text-sm text-navy-400">PDF dosyasını sürükleyip bırakın veya tıklayıp seçin</p>
                     <p className="text-xs text-navy-300 mt-1">Maks {MAX_SIZE_MB}MB, sadece PDF</p>
                     <input
                       type="file"
@@ -182,7 +182,7 @@ export function DocumentUpload({ tenantId, open, mode, onClose, onUploadComplete
                 {detectedDomain ? (
                   <p className="text-xs text-brand-500 mt-1.5">{detectedDomain} taranacak</p>
                 ) : (
-                  <p className="text-xs text-navy-300 mt-1.5">Sitemap uzerinden tum sayfalar taranir ve indexlenir</p>
+                  <p className="text-xs text-navy-300 mt-1.5">Sitemap üzerinden tüm sayfalar taranır ve indexlenir</p>
                 )}
               </div>
             </>
@@ -190,12 +190,12 @@ export function DocumentUpload({ tenantId, open, mode, onClose, onUploadComplete
 
           {/* Title (shared) */}
           <div>
-            <label className="block text-sm font-medium text-navy-600 mb-1.5">Baslik</label>
+            <label className="block text-sm font-medium text-navy-600 mb-1.5">Başlık</label>
             <input
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
-              placeholder={mode === 'pdf' ? 'Dokuman basligi' : 'Site basligi (opsiyonel)'}
+              placeholder={mode === 'pdf' ? 'Döküman başlığı' : 'Site başlığı (opsiyonel)'}
               className="w-full px-3 py-2 text-sm border border-navy-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400"
             />
           </div>
@@ -211,8 +211,8 @@ export function DocumentUpload({ tenantId, open, mode, onClose, onUploadComplete
             className="px-5 py-2 text-sm font-medium bg-brand-500 text-white rounded-lg hover:bg-brand-600 disabled:opacity-50 transition-colors"
           >
             {uploading
-              ? (mode === 'pdf' ? 'Yukleniyor...' : 'Taraniyor...')
-              : (mode === 'pdf' ? 'Yukle' : 'Siteyi Tara')}
+              ? (mode === 'pdf' ? 'Yükleniyor...' : 'Taraniyor...')
+              : (mode === 'pdf' ? 'Yükle' : 'Siteyi Tara')}
           </button>
         </div>
       </div>

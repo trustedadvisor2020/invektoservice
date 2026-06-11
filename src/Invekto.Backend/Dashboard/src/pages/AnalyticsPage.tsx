@@ -159,7 +159,7 @@ export function AnalyticsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-navy-900">Analizler</h1>
-          <p className="text-sm text-navy-400 mt-0.5">Otomasyon metrikleri, duygu analizi ve WA analiz raporlari</p>
+          <p className="text-sm text-navy-400 mt-0.5">Otomasyon metrikleri, duygu analizi ve WA analiz raporları</p>
         </div>
         <Button variant="secondary" size="sm" onClick={fetchAutomationData} disabled={loading}>
           <RefreshCw className={`w-4 h-4 flex-shrink-0 ${loading ? 'animate-spin' : ''}`} />
@@ -186,7 +186,7 @@ export function AnalyticsPage() {
               </select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs text-navy-300 uppercase tracking-wider font-medium">Baslangic</label>
+              <label className="text-xs text-navy-300 uppercase tracking-wider font-medium">Başlangıç</label>
               <input
                 type="date"
                 className={inputClasses}
@@ -195,7 +195,7 @@ export function AnalyticsPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs text-navy-300 uppercase tracking-wider font-medium">Bitis</label>
+              <label className="text-xs text-navy-300 uppercase tracking-wider font-medium">Bitiş</label>
               <input
                 type="date"
                 className={inputClasses}
@@ -221,7 +221,7 @@ export function AnalyticsPage() {
       {!currentTenant?.has_automation_data && selectedTenant && (
         <Card>
           <CardContent className="py-8 text-center text-navy-300">
-            Bu tenant icin otomasyon verisi bulunamadi.
+            Bu tenant için otomasyon verisi bulunamadı.
           </CardContent>
         </Card>
       )}
@@ -244,7 +244,7 @@ export function AnalyticsPage() {
                   >
                     {waAnalyses.map(a => (
                       <option key={a.analysis_id} value={a.analysis_id}>
-                        {a.source_file_name ?? `Analysis #${a.analysis_id}`} ({a.total_conversations.toLocaleString()} konusma)
+                        {a.source_file_name ?? `Analysis #${a.analysis_id}`} ({a.total_conversations.toLocaleString()} konuşma)
                       </option>
                     ))}
                   </select>
@@ -256,7 +256,7 @@ export function AnalyticsPage() {
                       <span className="font-semibold text-navy-900">{waSummary.total_messages.toLocaleString()}</span>
                     </div>
                     <div>
-                      <span className="text-navy-300">Konusma: </span>
+                      <span className="text-navy-300">Konuşma: </span>
                       <span className="font-semibold text-navy-900">{waSummary.total_conversations.toLocaleString()}</span>
                     </div>
                     <div>
@@ -287,8 +287,8 @@ export function AnalyticsPage() {
       {/* GR-3.18: Placeholder panels */}
       {selectedTenant && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <PlaceholderPanel title="Iade Takibi" description="Iade surecleri ve istatistikleri bu alanda goruntulenecek." />
-          <PlaceholderPanel title="Duygu Analizi" description="AI sentiment node aktif — musteri duygu skorlari ve pozitif/negatif dagilimi biriktikce burada goruntulenecek." />
+          <PlaceholderPanel title="İade Takibi" description="İade süreçleri ve istatistikleri bu alanda görüntülenecek." />
+          <PlaceholderPanel title="Duygu Analizi" description="AI sentiment node aktif — müşteri duygu skorları ve pozitif/negatif dağılımı biriktikçe burada görüntülenecek." />
         </div>
       )}
     </div>

@@ -90,9 +90,9 @@ export function FlowEditorPage() {
       .catch((err) => {
         if (cancelled) return;
         if (err instanceof ApiClientError && err.status === 404) {
-          setLoadError('Flow bulunamadi.');
+          setLoadError('Flow bulunamadı.');
         } else {
-          setLoadError(err instanceof Error ? err.message : 'Flow yuklenemedi');
+          setLoadError(err instanceof Error ? err.message : 'Flow yüklenemedi');
         }
         setIsLoading(false);
       });
@@ -122,7 +122,7 @@ export function FlowEditorPage() {
       const ver = (res as unknown as { current_version?: number }).current_version;
       if (ver) setCurrentVersion(ver);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Kaydetme basarisiz');
+      setSaveError(err instanceof Error ? err.message : 'Kaydetme başarısız');
     } finally {
       setIsSaving(false);
     }
@@ -149,7 +149,7 @@ export function FlowEditorPage() {
         setIsActive(true);
       }
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'INV-AT-008: Flow aktivasyon hatasi');
+      setSaveError(err instanceof Error ? err.message : 'INV-AT-008: Flow aktivasyon hatası');
     } finally {
       setIsToggling(false);
     }
@@ -236,7 +236,7 @@ export function FlowEditorPage() {
 
     // If dirty, warn user to save first
     if (store.isDirty) {
-      setSaveError('Once flow\'u kaydedin, sonra test edin.');
+      setSaveError('Önce flow\'u kaydedin, sonra test edin.');
       return;
     }
 
@@ -261,7 +261,7 @@ export function FlowEditorPage() {
       };
       loadFlow(config, (detail.wizard_history as WizardMessage[] | null) ?? null);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Geri alma basarisiz');
+      setSaveError(err instanceof Error ? err.message : 'Geri alma başarısız');
     }
   }, [tenantId, flowId, loadFlow]);
 
@@ -300,7 +300,7 @@ export function FlowEditorPage() {
   if (isLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-navy-50 text-navy-400">
-        Flow yukleniyor...
+        Flow yükleniyor...
       </div>
     );
   }
@@ -313,7 +313,7 @@ export function FlowEditorPage() {
           onClick={() => navigate('/flow-builder')}
           className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm rounded-lg"
         >
-          Flow Listesine Don
+          Flow Listesine Dön
         </button>
       </div>
     );
@@ -328,7 +328,7 @@ export function FlowEditorPage() {
         {/* Save error banner */}
         {saveError && (
           <div className="bg-red-50 border-b border-red-200 px-4 py-2 text-xs text-red-600 flex items-center justify-between">
-            <span>Kaydetme hatasi: {saveError}</span>
+            <span>Kaydetme hatası: {saveError}</span>
             <button onClick={() => setSaveError(null)} className="text-red-400 hover:text-red-600">&times;</button>
           </div>
         )}
@@ -372,9 +372,9 @@ export function FlowEditorPage() {
                   <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
               </button>
-              <h2 className="text-lg font-semibold text-navy-900 mb-2">Kaydedilmemis Degisiklikler</h2>
+              <h2 className="text-lg font-semibold text-navy-900 mb-2">Kaydedilmemiş Değişiklikler</h2>
               <p className="text-sm text-navy-400 mb-5">
-                Yaptiginiz degisiklikler henuz kaydedilmedi. Ne yapmak istersiniz?
+                Yaptığınız değişiklikler henüz kaydedilmedi. Ne yapmak istersiniz?
               </p>
               <div className="flex justify-end gap-2">
                 <button
@@ -387,7 +387,7 @@ export function FlowEditorPage() {
                   onClick={handleExitSave}
                   className="px-4 py-2 text-sm bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-lg transition-colors"
                 >
-                  Kaydet ve Cik
+                  Kaydet ve Çık
                 </button>
               </div>
             </div>

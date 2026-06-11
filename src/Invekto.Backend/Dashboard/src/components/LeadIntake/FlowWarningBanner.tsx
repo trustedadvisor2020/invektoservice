@@ -22,7 +22,7 @@ export function FlowWarningBanner({ flowStatus }: FlowWarningBannerProps) {
     >
       <button
         type="button"
-        aria-label="Uyariyi bu oturum icin kapat"
+        aria-label="Uyarıyı bu oturum için kapat"
         onClick={() => setDismissed(true)}
         className="absolute top-2 right-2 p-1 rounded hover:bg-amber-100 text-amber-700"
       >
@@ -32,13 +32,13 @@ export function FlowWarningBanner({ flowStatus }: FlowWarningBannerProps) {
         <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
         <div className="flex-1">
           <p className="text-sm font-semibold text-amber-900">
-            Uyari: Welcome akisi <code className="bg-amber-100 px-1 rounded">{flowStatus.resolved_slug}</code> tenant&#39;in
-            aktif chatbot_flows listesinde bulunamadi.
+            Uyarı: Welcome akışı <code className="bg-amber-100 px-1 rounded">{flowStatus.resolved_slug}</code> tenant&#39;ın
+            aktif chatbot_flows listesinde bulunamadı.
           </p>
           <p className="text-xs text-amber-800 mt-1 leading-relaxed">
-            Yeni lead kayitlari olusacak ama welcome mesaji tetiklenmeyecek.{' '}
-            <code className="bg-amber-100 px-1 rounded">{flowStatus.resolved_slug}</code> adli bir flow&#39;u
-            Flow Builder&#39;da aktif hale getirin veya Ayarlar uzerinden welcome slug&#39;ini degistirin.
+            Yeni lead kayıtları oluşacak ama welcome mesajı tetiklenmeyecek.{' '}
+            <code className="bg-amber-100 px-1 rounded">{flowStatus.resolved_slug}</code> adlı bir flow&#39;u
+            Flow Builder&#39;da aktif hale getirin veya Ayarlar üzerinden welcome slug&#39;ını değiştirin.
           </p>
           <div className="mt-2">
             <Link

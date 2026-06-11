@@ -57,7 +57,7 @@ export function LoginPage() {
             </div>
           )}
           <p className="text-sm text-navy-300 mt-1">
-            {mode === 'inma' ? 'Firma bilgilerinizle giris yapin' : 'Ops paneli girisi'}
+            {mode === 'inma' ? 'Firma bilgilerinizle giriş yapın' : 'Ops paneli girişi'}
           </p>
         </div>
 
@@ -75,7 +75,7 @@ export function LoginPage() {
                 }`}
                 onClick={() => setMode('inma')}
               >
-                Firma Girisi
+                Firma Girişi
               </button>
               <button
                 type="button"
@@ -94,21 +94,21 @@ export function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'inma' && (
               <Input
-                label="Firma Adi"
+                label="Firma Adı"
                 type="text"
                 value={companyName}
                 onChange={e => setCompanyName(e.target.value)}
-                placeholder="Firma adinizi girin"
+                placeholder="Firma adınızı girin"
                 required
                 autoFocus
               />
             )}
             <Input
-              label="Kullanici Adi"
+              label="Kullanıcı Adı"
               type="text"
               value={username}
               onChange={e => setUsername(e.target.value)}
-              placeholder={mode === 'inma' ? 'Kullanici adinizi girin' : 'admin'}
+              placeholder={mode === 'inma' ? 'Kullanıcı adınızı girin' : 'admin'}
               required
               autoFocus={mode === 'ops'}
             />
@@ -132,7 +132,7 @@ export function LoginPage() {
               className="w-full h-10"
               disabled={isLoading}
             >
-              {isLoading ? 'Giris yapiliyor...' : 'Giris Yap'}
+              {isLoading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
             </Button>
           </form>
         </div>

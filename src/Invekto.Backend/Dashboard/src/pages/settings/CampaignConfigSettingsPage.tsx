@@ -101,7 +101,7 @@ function validateAndConvert(draft: CampaignConfigDraft): ConvertOk | ConvertFail
   };
 
   if (draft.campaigns.length > MAX_CAMPAIGNS) {
-    next.formError = `Cap asimi: max ${MAX_CAMPAIGNS} kampanya. Mevcut ${draft.campaigns.length}.`;
+    next.formError = `Çap aşımı: max ${MAX_CAMPAIGNS} kampanya. Mevcut ${draft.campaigns.length}.`;
     return { ok: false, draft: next };
   }
 
@@ -117,7 +117,7 @@ function validateAndConvert(draft: CampaignConfigDraft): ConvertOk | ConvertFail
     };
 
     if (!/^[a-z][a-z0-9_-]{1,63}$/.test(c.slug)) {
-      out.rowError = 'Slug gecersiz: kucuk harfle baslamali, [a-z0-9_-], 2-64 karakter.';
+      out.rowError = 'Slug geçersiz: küçük harfle başlamalı, [a-z0-9_-], 2-64 karakter.';
       anyFail = true;
       return out;
     }
@@ -127,14 +127,14 @@ function validateAndConvert(draft: CampaignConfigDraft): ConvertOk | ConvertFail
       return out;
     }
     if (slugSeen.has(c.slug.toLowerCase())) {
-      out.rowError = `Ayni slug '${c.slug}' birden fazla kampanyada kullanilmis.`;
+      out.rowError = `Aynı slug '${c.slug}' birden fazla kampanyada kullanılmış.`;
       anyFail = true;
       return out;
     }
     slugSeen.add(c.slug.toLowerCase());
 
     if (!c.name.trim()) {
-      out.rowError = 'Kampanya adi bos olamaz.';
+      out.rowError = 'Kampanya adı boş olamaz.';
       anyFail = true;
       return out;
     }
@@ -144,18 +144,18 @@ function validateAndConvert(draft: CampaignConfigDraft): ConvertOk | ConvertFail
       return out;
     }
     if (c.endDate < c.startDate) {
-      out.rowError = 'end_date start_date\'ten once olamaz.';
+      out.rowError = 'end_date start_date\'ten önce olamaz.';
       anyFail = true;
       return out;
     }
 
     if (c.cities.length === 0) {
-      out.rowError = 'Kampanyada en az bir sehir olmali.';
+      out.rowError = 'Kampanyada en az bir şehir olmalı.';
       anyFail = true;
       return out;
     }
     if (c.cities.length > MAX_CITIES) {
-      out.rowError = `Cap asimi: max ${MAX_CITIES} sehir.`;
+      out.rowError = `Çap aşımı: max ${MAX_CITIES} şehir.`;
       anyFail = true;
       return out;
     }
@@ -164,29 +164,29 @@ function validateAndConvert(draft: CampaignConfigDraft): ConvertOk | ConvertFail
     out.cities = c.cities.map((city) => {
       if (!/^[a-z][a-z0-9_-]{0,39}$/.test(city.slug)) {
         anyFail = true;
-        return { ...city, rowError: 'City slug gecersiz: kucuk harfle baslamali, [a-z0-9_-], max 40 karakter.' };
+        return { ...city, rowError: 'City slug geçersiz: küçük harfle başlamalı, [a-z0-9_-], max 40 karakter.' };
       }
       if (citySlugSeen.has(city.slug.toLowerCase())) {
         anyFail = true;
-        return { ...city, rowError: `Ayni city slug '${city.slug}' birden fazla.` };
+        return { ...city, rowError: `Aynı city slug '${city.slug}' birden fazla.` };
       }
       citySlugSeen.add(city.slug.toLowerCase());
       if (!city.name.trim()) {
         anyFail = true;
-        return { ...city, rowError: 'City adi bos olamaz.' };
+        return { ...city, rowError: 'City adı boş olamaz.' };
       }
       return city;
     });
 
     if (c.dates.length > MAX_DATES) {
-      out.rowError = `Cap asimi: max ${MAX_DATES} tarih.`;
+      out.rowError = `Çap aşımı: max ${MAX_DATES} tarih.`;
       anyFail = true;
       return out;
     }
     out.dates = c.dates.map((d) => {
       if (!citySlugSeen.has(d.city.toLowerCase())) {
         anyFail = true;
-        return { ...d, rowError: `dates.city '${d.city}' cities[] icinde yok.` };
+        return { ...d, rowError: `dates.city '${d.city}' cities[] içinde yok.` };
       }
       if (!/^\d{4}-\d{2}-\d{2}$/.test(d.date)) {
         anyFail = true;
@@ -262,7 +262,7 @@ export function CampaignConfigSettingsPage() {
       await save(result.config);
       setSavedAt(new Date().toISOString());
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Kayit basarisiz.');
+      setSaveError(err instanceof Error ? err.message : 'Kayıt başarısız.');
     } finally {
       setIsSaving(false);
     }
@@ -275,18 +275,18 @@ export function CampaignConfigSettingsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-semibold mb-2">Multi-City Campaign Config</h1>
         <p className="text-sm text-gray-600">
-          Tenant kampanyalarini, sehirlerini ve event tarihlerini yonetin. Flow icindeki{' '}
+          Tenant kampanyalarını, şehirlerini ve event tarihlerini yönetin. Flow içindeki{' '}
           <code className="bg-gray-100 px-1 rounded">{'{{campaign.cities_human}}'}</code>,{' '}
           <code className="bg-gray-100 px-1 rounded">{'{{campaign.event_date}}'}</code> gibi
           placeholder'lar bu kayittan beslenir. Aktif window disinda outbound dispatch
           otomatik suspend edilir (INV-BE-119).
         </p>
         {updatedAt && (
-          <p className="text-xs text-gray-500 mt-2">Son guncelleme: {new Date(updatedAt).toLocaleString()}</p>
+          <p className="text-xs text-gray-500 mt-2">Son güncelleme: {new Date(updatedAt).toLocaleString()}</p>
         )}
       </div>
 
-      {isLoading && <div className="text-sm text-gray-500 mb-4">Yukleniyor...</div>}
+      {isLoading && <div className="text-sm text-gray-500 mb-4">Yükleniyor...</div>}
       {error && (
         <div className="bg-red-50 border border-red-200 rounded p-3 mb-4 text-sm text-red-800">
           {error.message}
@@ -378,7 +378,7 @@ function CampaignCard({ index, campaign, onChange, onRemove, disabled }: Campaig
           type="button"
           onClick={onRemove}
           disabled={disabled}
-          aria-label="Kampanyayi sil"
+          aria-label="Kampanyayı sil"
           className="text-gray-400 hover:text-red-600 text-xl leading-none"
         >
           ×
@@ -415,7 +415,7 @@ function CampaignCard({ index, campaign, onChange, onRemove, disabled }: Campaig
           />
         </label>
         <label className="text-sm">
-          <span className="block mb-1 text-gray-700">Baslangic</span>
+          <span className="block mb-1 text-gray-700">Başlangıç</span>
           <input
             type="date"
             value={campaign.startDate}
@@ -425,7 +425,7 @@ function CampaignCard({ index, campaign, onChange, onRemove, disabled }: Campaig
           />
         </label>
         <label className="text-sm">
-          <span className="block mb-1 text-gray-700">Bitis</span>
+          <span className="block mb-1 text-gray-700">Bitiş</span>
           <input
             type="date"
             value={campaign.endDate}
@@ -443,11 +443,11 @@ function CampaignCard({ index, campaign, onChange, onRemove, disabled }: Campaig
           onChange={(e) => update({ active: e.target.checked })}
           disabled={disabled}
         />
-        <span>Aktif (window disindaki dispatch'i suspend eder)</span>
+        <span>Aktif (window dışındaki dispatch'i suspend eder)</span>
       </label>
 
       <div className="mb-4">
-        <h3 className="font-medium mb-2 text-sm">Sehirler ({campaign.cities.length}/{MAX_CITIES})</h3>
+        <h3 className="font-medium mb-2 text-sm">Şehirler ({campaign.cities.length}/{MAX_CITIES})</h3>
         {campaign.cities.map((city, cityIdx) => (
           <div key={city.draftId} className="flex gap-2 mb-2">
             <input
@@ -486,7 +486,7 @@ function CampaignCard({ index, campaign, onChange, onRemove, disabled }: Campaig
               type="button"
               onClick={() => removeCity(cityIdx)}
               disabled={disabled}
-              aria-label="Sehri sil"
+              aria-label="Şehri sil"
               className="text-gray-400 hover:text-red-600 px-2"
             >
               ×
@@ -508,7 +508,7 @@ function CampaignCard({ index, campaign, onChange, onRemove, disabled }: Campaig
           disabled={disabled || campaign.cities.length >= MAX_CITIES}
           className="text-sm text-blue-600 hover:underline disabled:opacity-50"
         >
-          + Sehir Ekle
+          + Şehir Ekle
         </button>
       </div>
 
@@ -522,7 +522,7 @@ function CampaignCard({ index, campaign, onChange, onRemove, disabled }: Campaig
               disabled={disabled}
               className="flex-1 border border-gray-300 rounded px-2 py-1 text-sm"
             >
-              <option value="">— sehir sec —</option>
+              <option value="">— şehir seç —</option>
               {campaign.cities.map((c) => (
                 <option key={c.draftId} value={c.slug}>
                   {c.name || c.slug}

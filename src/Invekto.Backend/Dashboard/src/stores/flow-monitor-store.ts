@@ -111,7 +111,7 @@ export const useFlowMonitorStore = create<FlowMonitorState>((set, get) => ({
       });
       set({ executions: res.items, total: res.total, isLoading: false });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '[INV-AT-049] Monitor verileri yuklenemedi';
+      const msg = err instanceof Error ? err.message : '[INV-AT-049] Monitor verileri yüklenemedi';
       set({ error: msg, isLoading: false });
     }
   },
@@ -122,7 +122,7 @@ export const useFlowMonitorStore = create<FlowMonitorState>((set, get) => ({
       const detail = await api.getFlowExecution(tenantId, flowId, logId);
       set({ selectedExecution: detail, isLoadingDetail: false });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '[INV-AT-041] Yurutme detayi yuklenemedi';
+      const msg = err instanceof Error ? err.message : '[INV-AT-041] Yürütme detayı yüklenemedi';
       set({ error: msg, isLoadingDetail: false });
     }
   },
@@ -188,7 +188,7 @@ export const useFlowMonitorStore = create<FlowMonitorState>((set, get) => ({
           fullText += event.content || '';
           set({ aiStreamingText: stripStreamingBlocks(fullText) });
         } else if (event.type === 'error') {
-          set({ aiError: event.content || '[INV-AT-050] AI servisi yanit veremedi.', aiIsStreaming: false });
+          set({ aiError: event.content || '[INV-AT-050] AI servisi yanıt veremedi.', aiIsStreaming: false });
           return;
         } else if (event.type === 'done') {
           const cleanContent = event.content || stripCodeBlocks(fullText);
@@ -211,7 +211,7 @@ export const useFlowMonitorStore = create<FlowMonitorState>((set, get) => ({
       }
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
-      const msg = err instanceof Error ? err.message : '[INV-AT-051] AI baglantisi kesildi.';
+      const msg = err instanceof Error ? err.message : '[INV-AT-051] AI bağlantısı kesildi.';
       set({ aiError: msg, aiIsStreaming: false });
     }
   },
@@ -225,7 +225,7 @@ export const useFlowMonitorStore = create<FlowMonitorState>((set, get) => ({
       await api.updateFlow(tenantId, selectedExecution.flow_id, { flow_config: aiPendingFlowConfig });
       const successMsg: WizardMessage = {
         role: 'assistant',
-        content: 'Degisiklikler basariyla kaydedildi ve yeni surum olusturuldu.',
+        content: 'Değişiklikler başarıyla kaydedildi ve yeni sürüm oluşturuldu.',
         timestamp: new Date().toISOString(),
       };
       set(state => ({
@@ -234,7 +234,7 @@ export const useFlowMonitorStore = create<FlowMonitorState>((set, get) => ({
         aiMessages: [...state.aiMessages, successMsg],
       }));
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '[INV-AT-052] AI degisiklik kaydetme basarisiz.';
+      const msg = err instanceof Error ? err.message : '[INV-AT-052] AI değişiklik kaydetme başarısız.';
       set({ aiError: msg, aiIsSaving: false });
     }
   },

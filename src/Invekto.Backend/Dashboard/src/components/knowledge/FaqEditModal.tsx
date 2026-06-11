@@ -50,7 +50,7 @@ export function FaqEditModal({ tenantId, faq, onClose, onSave }: Props) {
       }
       onSave();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Kayit basarisiz');
+      setError(err instanceof Error ? err.message : 'Kayıt başarısız');
     } finally {
       setSaving(false);
     }
@@ -65,7 +65,7 @@ export function FaqEditModal({ tenantId, faq, onClose, onSave }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-navy-100">
           <h3 className="text-sm font-medium text-navy-900">
-            {isEdit ? 'SSS Duzenle' : 'SSS Olustur'}
+            {isEdit ? 'SSS Düzenle' : 'SSS Oluştur'}
           </h3>
           <button onClick={onClose} className="text-navy-300 hover:text-navy-500">
             <X className="w-4 h-4" />
@@ -81,7 +81,7 @@ export function FaqEditModal({ tenantId, faq, onClose, onSave }: Props) {
               value={question}
               onChange={e => setQuestion(e.target.value)}
               className="w-full px-3 py-2 text-sm border border-navy-200 rounded-md focus:outline-none focus:ring-1 focus:ring-brand-500"
-              placeholder="Iade politikasi nedir?"
+              placeholder="İade politikası nedir?"
             />
           </div>
 
@@ -92,7 +92,7 @@ export function FaqEditModal({ tenantId, faq, onClose, onSave }: Props) {
               onChange={e => setAnswer(e.target.value)}
               rows={4}
               className="w-full px-3 py-2 text-sm border border-navy-200 rounded-md focus:outline-none focus:ring-1 focus:ring-brand-500 resize-y"
-              placeholder="Iade politikamiz..."
+              placeholder="İade politikamız..."
             />
           </div>
 
@@ -114,20 +114,20 @@ export function FaqEditModal({ tenantId, faq, onClose, onSave }: Props) {
                 onChange={e => setLang(e.target.value)}
                 className="w-full px-3 py-2 text-sm border border-navy-200 rounded-md"
               >
-                <option value="tr">Turkce</option>
-                <option value="en">Ingilizce</option>
+                <option value="tr">Türkçe</option>
+                <option value="en">İngilizce</option>
               </select>
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-navy-500 mb-1">Anahtar Kelimeler (virgul ile ayirin)</label>
+            <label className="block text-xs font-medium text-navy-500 mb-1">Anahtar Kelimeler (virgül ile ayırın)</label>
             <input
               type="text"
               value={keywords}
               onChange={e => setKeywords(e.target.value)}
               className="w-full px-3 py-2 text-sm border border-navy-200 rounded-md"
-              placeholder="iade, geri odeme, politika"
+              placeholder="iade, geri ödeme, politika"
             />
           </div>
 
@@ -140,14 +140,14 @@ export function FaqEditModal({ tenantId, faq, onClose, onSave }: Props) {
             onClick={onClose}
             className="px-4 py-1.5 text-sm text-navy-500 bg-navy-100 rounded-md hover:bg-navy-100 transition-colors"
           >
-            Iptal
+            İptal
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
             className="px-4 py-1.5 text-sm bg-brand-500 text-white rounded-md hover:bg-brand-600 disabled:opacity-50 transition-colors"
           >
-            {saving ? 'Kaydediliyor...' : isEdit ? 'Guncelle' : 'Olustur'}
+            {saving ? 'Kaydediliyor...' : isEdit ? 'Güncelle' : 'Oluştur'}
           </button>
         </div>
       </div>

@@ -48,16 +48,16 @@ export function RiOnboardingPanel({ tenantId, sector }: Props) {
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-navy-900">
-                {data.sectorDisplayName} Sektoru Rehberi
+                {data.sectorDisplayName} Sektörü Rehberi
               </h3>
               <p className="text-xs text-navy-400 mt-0.5">
-                Sektorunuze ozel onboarding adimlari ve hizli baslangic onerileri
+                Sektörünüze özel onboarding adımları ve hızlı başlangıç önerileri
               </p>
             </div>
             {hasOverview && (
               <div className="text-right shrink-0">
                 <p className="text-lg font-bold text-brand-600">{data.overview!.totalTemplates}</p>
-                <p className="text-[10px] text-navy-400">Hazir Sablon</p>
+                <p className="text-[10px] text-navy-400">Hazır Şablon</p>
               </div>
             )}
           </div>
@@ -71,7 +71,7 @@ export function RiOnboardingPanel({ tenantId, sector }: Props) {
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-sm">
                 <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                Ilk 7 Gun Plani
+                İlk 7 Gün Planı
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -117,7 +117,7 @@ export function RiOnboardingPanel({ tenantId, sector }: Props) {
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-sm">
                 <Sparkles className="w-4 h-4 text-amber-500" />
-                Hizli Baslangic
+                Hızlı Başlangıç
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -130,7 +130,7 @@ export function RiOnboardingPanel({ tenantId, sector }: Props) {
                         item.type === 'intent' ? 'bg-purple-100 text-purple-700' :
                         'bg-emerald-100 text-emerald-700'
                       }`}>
-                        {item.type === 'flow' ? 'Akis' : item.type === 'intent' ? 'Niyet' : 'SSS'}
+                        {item.type === 'flow' ? 'Akış' : item.type === 'intent' ? 'Niyet' : 'SSS'}
                       </span>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-navy-700 truncate">{item.title}</p>
@@ -148,7 +148,7 @@ export function RiOnboardingPanel({ tenantId, sector }: Props) {
                       )}
                       {item.actionUrl && (
                         <a href={item.actionUrl.replace('/app', '')} className="text-[10px] text-brand-500 hover:text-brand-600 flex items-center gap-0.5">
-                          Baslat <ArrowRight className="w-3 h-3" />
+                          Başlat <ArrowRight className="w-3 h-3" />
                         </a>
                       )}
                     </div>
@@ -174,14 +174,14 @@ export function RiOnboardingPanel({ tenantId, sector }: Props) {
               {data.comparison.tenantAvgResponseMin != null && (
                 <ComparisonStat
                   icon={<Clock className="w-4 h-4 text-amber-500" />}
-                  label="Ort. Cevap Suresi"
+                  label="Ort. Cevap Süresi"
                   value={`${data.comparison.tenantAvgResponseMin.toFixed(0)}dk`}
                 />
               )}
               {data.comparison.tenantConversionRate != null && (
                 <ComparisonStat
                   icon={<TrendingUp className="w-4 h-4 text-emerald-500" />}
-                  label="Donusum Orani"
+                  label="Dönüşüm Oranı"
                   value={`%${(data.comparison.tenantConversionRate * 100).toFixed(1)}`}
                 />
               )}
@@ -216,15 +216,15 @@ export function RiOnboardingPanel({ tenantId, sector }: Props) {
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm">
               <BarChart3 className="w-4 h-4 text-navy-500" />
-              Sektor Sablon Durumu
+              Sektör Şablon Durumu
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 text-center">
               <OverviewStat label="Intent" count={data.overview.intentCount} />
               <OverviewStat label="SSS" count={data.overview.faqCount} />
-              <OverviewStat label="Akis" count={data.overview.flowCount} />
-              <OverviewStat label="Itiraz" count={data.overview.objectionCount} />
+              <OverviewStat label="Akış" count={data.overview.flowCount} />
+              <OverviewStat label="İtiraz" count={data.overview.objectionCount} />
               <OverviewStat label="Takip" count={data.overview.followupCount} />
             </div>
           </CardContent>

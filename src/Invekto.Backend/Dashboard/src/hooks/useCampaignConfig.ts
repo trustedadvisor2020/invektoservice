@@ -106,7 +106,7 @@ export function useCampaignConfig(enabled: boolean = true): CampaignConfigState 
         }
       } catch (err) {
         if (isMountedRef.current) {
-          setError(wrapError(err, 'Kampanya ayarlari yuklenemedi.'));
+          setError(wrapError(err, 'Kampanya ayarları yüklenemedi.'));
           setErrorKind(classifyError(err));
         }
       } finally {
@@ -129,7 +129,7 @@ export function useCampaignConfig(enabled: boolean = true): CampaignConfigState 
       }
     } catch (err) {
       if (isMountedRef.current) {
-        setError(wrapError(err, 'Kampanya ayarlari yenilenemedi.'));
+        setError(wrapError(err, 'Kampanya ayarları yenilenemedi.'));
         setErrorKind(classifyError(err));
       }
     } finally {
@@ -145,7 +145,7 @@ export function useCampaignConfig(enabled: boolean = true): CampaignConfigState 
       await refresh();
       return resp.data?.campaign_config ?? config;
     } catch (err) {
-      throw wrapError(err, 'Kampanya ayarlari kaydedilemedi.');
+      throw wrapError(err, 'Kampanya ayarları kaydedilemedi.');
     }
   }, [refresh]);
 

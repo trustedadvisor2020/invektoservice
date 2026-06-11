@@ -117,7 +117,7 @@ export function useFollowupSequence(enabled: boolean = true): FollowupSequenceSt
         }
       } catch (err) {
         if (isMountedRef.current) {
-          setError(wrapError(err, 'Followup sequence listesi yuklenemedi.'));
+          setError(wrapError(err, 'Followup sequence listesi yüklenemedi.'));
           setErrorKind(classifyError(err));
         }
       } finally {

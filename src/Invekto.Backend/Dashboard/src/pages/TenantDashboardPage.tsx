@@ -57,12 +57,12 @@ interface FeatureCardDef {
 }
 
 const FEATURE_CARDS: FeatureCardDef[] = [
-  { feature: 'FlowBuilder', path: '/flow-builder', label: 'Flow Builder', desc: 'Akis tasarimi', icon: GitBranch, color: 'text-brand-500', bgColor: 'bg-brand-50' },
-  { feature: 'Knowledge', path: '/knowledge', label: 'Bilgi Bankasi', desc: 'Dokuman ve SSS', icon: BookOpen, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
-  { feature: 'Outbound', path: '/campaigns', label: 'Kampanyalar', desc: 'Toplu mesaj gonderin', icon: Megaphone, color: 'text-violet-600', bgColor: 'bg-violet-50' },
-  { feature: 'Appointments', path: '/appointments', label: 'Randevular', desc: 'Randevu yonetimi', icon: CalendarDays, color: 'text-amber-600', bgColor: 'bg-amber-50' },
-  { feature: 'Analytics', path: '/analytics', label: 'Analizler', desc: 'Performans raporlari', icon: BarChart3, color: 'text-cyan-600', bgColor: 'bg-cyan-50' },
-  { feature: 'Marketing', path: '/marketing', label: 'Pazarlama', desc: 'Yorum ve yonlendirme', icon: Star, color: 'text-rose-600', bgColor: 'bg-rose-50' },
+  { feature: 'FlowBuilder', path: '/flow-builder', label: 'Flow Builder', desc: 'Akış tasarımı', icon: GitBranch, color: 'text-brand-500', bgColor: 'bg-brand-50' },
+  { feature: 'Knowledge', path: '/knowledge', label: 'Bilgi Bankası', desc: 'Doküman ve SSS', icon: BookOpen, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
+  { feature: 'Outbound', path: '/campaigns', label: 'Kampanyalar', desc: 'Toplu mesaj gönderin', icon: Megaphone, color: 'text-violet-600', bgColor: 'bg-violet-50' },
+  { feature: 'Appointments', path: '/appointments', label: 'Randevular', desc: 'Randevu yönetimi', icon: CalendarDays, color: 'text-amber-600', bgColor: 'bg-amber-50' },
+  { feature: 'Analytics', path: '/analytics', label: 'Analizler', desc: 'Performans raporları', icon: BarChart3, color: 'text-cyan-600', bgColor: 'bg-cyan-50' },
+  { feature: 'Marketing', path: '/marketing', label: 'Pazarlama', desc: 'Yorum ve yönlendirme', icon: Star, color: 'text-rose-600', bgColor: 'bg-rose-50' },
 ];
 
 // --- Page ---
@@ -85,37 +85,37 @@ export function TenantDashboardPage() {
       {/* Hosgeldiniz */}
       <div>
         <h1 className="text-xl font-semibold text-navy-900">
-          Hosgeldiniz{session?.fullName ? `, ${session.fullName}` : ''}!
+          Hoşgeldiniz{session?.fullName ? `, ${session.fullName}` : ''}!
         </h1>
       </div>
 
       {/* Istatistikler */}
       <div>
-        <h2 className="text-xs font-semibold text-navy-300 uppercase tracking-wider mb-3">Genel Bakis</h2>
+        <h2 className="text-xs font-semibold text-navy-300 uppercase tracking-wider mb-3">Genel Bakış</h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <StatCard
-            label="Toplam Gorusme"
+            label="Toplam Görüşme"
             value={stats?.total_replies}
             icon={MessageSquare}
             color="text-brand-500"
             bgColor="bg-brand-50"
           />
           <StatCard
-            label="Otomatik Cozulen"
+            label="Otomatik Çözülen"
             value={stats?.deflected_count}
             icon={CheckCircle2}
             color="text-emerald-600"
             bgColor="bg-emerald-50"
           />
           <StatCard
-            label="Insan Destek"
+            label="İnsan Destek"
             value={stats?.handoff_count}
             icon={UserCheck}
             color="text-amber-600"
             bgColor="bg-amber-50"
           />
           <StatCard
-            label="Basari Orani"
+            label="Başarı Oranı"
             value={stats ? `%${Math.round(stats.deflection_rate * 100)}` : undefined}
             icon={TrendingUp}
             color="text-violet-600"
@@ -127,7 +127,7 @@ export function TenantDashboardPage() {
       {/* Hizli Erisim */}
       {features.length > 0 && (
         <div>
-          <h2 className="text-xs font-semibold text-navy-300 uppercase tracking-wider mb-3">Hizli Erisim</h2>
+          <h2 className="text-xs font-semibold text-navy-300 uppercase tracking-wider mb-3">Hızlı Erişim</h2>
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
             {features.map(f => {
               const Icon = f.icon;

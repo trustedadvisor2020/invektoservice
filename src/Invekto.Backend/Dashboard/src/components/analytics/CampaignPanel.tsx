@@ -22,15 +22,15 @@ export default function CampaignPanel({ campaigns }: Props) {
   if (campaigns.length === 0) {
     return (
       <Card>
-        <CardHeader><CardTitle>Kampanya Istatistikleri</CardTitle></CardHeader>
-        <CardContent><p className="text-sm text-navy-300">Henuz kampanya verisi yok.</p></CardContent>
+        <CardHeader><CardTitle>Kampanya İstatistikleri</CardTitle></CardHeader>
+        <CardContent><p className="text-sm text-navy-300">Henüz kampanya verisi yok.</p></CardContent>
       </Card>
     );
   }
 
   return (
     <Card>
-      <CardHeader><CardTitle>Kampanya Istatistikleri</CardTitle></CardHeader>
+      <CardHeader><CardTitle>Kampanya İstatistikleri</CardTitle></CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -39,10 +39,10 @@ export default function CampaignPanel({ campaigns }: Props) {
                 <th className="pb-2 font-medium">Kampanya</th>
                 <th className="pb-2 font-medium">Tip</th>
                 <th className="pb-2 font-medium">Durum</th>
-                <th className="pb-2 font-medium text-right">Gonderilen</th>
-                <th className="pb-2 font-medium text-right">Iletilen</th>
+                <th className="pb-2 font-medium text-right">Gönderilen</th>
+                <th className="pb-2 font-medium text-right">İletilen</th>
                 <th className="pb-2 font-medium text-right">Okunan</th>
-                <th className="pb-2 font-medium text-right">Donusum</th>
+                <th className="pb-2 font-medium text-right">Dönüşüm</th>
                 <th className="pb-2 font-medium">Tarih</th>
               </tr>
             </thead>

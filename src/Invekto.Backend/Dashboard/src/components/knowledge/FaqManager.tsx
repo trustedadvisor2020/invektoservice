@@ -31,7 +31,7 @@ export function FaqManager({ tenantId }: Props) {
       setTotal(result.total);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'SSS yuklenemedi');
+      setError(err instanceof Error ? err.message : 'SSS yüklenemedi');
     } finally {
       setLoading(false);
     }
@@ -71,7 +71,7 @@ export function FaqManager({ tenantId }: Props) {
             type="text"
             value={categoryFilter}
             onChange={e => { setCategoryFilter(e.target.value); setPage(1); }}
-            placeholder="Kategoriye gore filtrele"
+            placeholder="Kategoriye göre filtrele"
             className="px-2 py-1 text-xs border border-navy-100 rounded"
           />
         </div>
@@ -94,7 +94,7 @@ export function FaqManager({ tenantId }: Props) {
       {faqs.length === 0 && !error ? (
         <div className="p-8 text-center text-sm text-navy-300">
           <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
-          SSS bulunamadi
+          SSS bulunamadı
         </div>
       ) : (
         <div className="divide-y divide-navy-100">
@@ -144,7 +144,7 @@ export function FaqManager({ tenantId }: Props) {
             disabled={page === 1}
             className="px-3 py-1 text-xs text-navy-500 bg-navy-100 rounded disabled:opacity-50"
           >
-            Onceki
+            Önceki
           </button>
           <span className="text-xs text-navy-400">{page} / {totalPages}</span>
           <button

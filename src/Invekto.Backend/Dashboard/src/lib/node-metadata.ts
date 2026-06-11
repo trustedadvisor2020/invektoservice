@@ -16,310 +16,310 @@ export interface NodeGuide {
 
 export const NODE_GUIDES: Record<FlowNodeType, NodeGuide> = {
   trigger_start: {
-    summary: 'Her akisin tek ve zorunlu giris noktasidir. Musteri mesaj gonderdiginde akis buradan baslar.',
+    summary: 'Her akışın tek ve zorunlu giriş noktasıdır. Müşteri mesaj gönderdiğinde akış buradan başlar.',
     detail:
-      'Baslangic node\'u akisinizin ilk adimini belirler. Bir musteriden mesaj geldiginde sistem bu node\'u bulur ve akisi baslatir.\n\n' +
-      'Her akista yalnizca bir tane Baslangic node\'u olabilir ve silinemez. Hangi WhatsApp hatlarindan gelen mesajlarin bu akisi tetikleyecegini secebilirsiniz. Hat secimi yapmazsaniz tum hatlar bu akisi kullanir.\n\n' +
-      'Baslangic node\'u dogrudan bir sonraki adima baglanir. Genellikle bir karsilama mesaji veya intent algilama adimina baglanir.',
+      'Başlangıç node\'u akışınızın ilk adımını belirler. Bir müşteriden mesaj geldiğinde sistem bu node\'u bulur ve akışı başlatır.\n\n' +
+      'Her akışta yalnızca bir tane Başlangıç node\'u olabilir ve silinemez. Hangi WhatsApp hatlarından gelen mesajların bu akışı tetikleyeceğini seçebilirsiniz. Hat seçimi yapmazsanız tüm hatlar bu akışı kullanır.\n\n' +
+      'Başlangıç node\'u doğrudan bir sonraki adıma bağlanır. Genellikle bir karşılama mesajı veya intent algılama adımına bağlanır.',
     scenarios:
-      '- Musteri destek akisi: Baslangic → Karsilama mesaji → Intent Algilama\n' +
-      '- Tek hat satis botu: Baslangic (sadece satis hatti secili) → Menu\n' +
-      '- Coklu hat: Baslangic (tum hatlar) → Mesai Saati kontrolu',
+      '- Müşteri destek akışı: Başlangıç → Karşılama mesajı → Intent Algılama\n' +
+      '- Tek hat satış botu: Başlangıç (sadece satış hattı seçili) → Menü\n' +
+      '- Çoklu hat: Başlangıç (tüm hatlar) → Mesai Saati kontrolü',
     antiPatterns:
-      '- Birden fazla Baslangic node\'u eklenemez (sistem otomatik engeller)\n' +
-      '- Baslangic\'tan sonra dogrudan Temsilciye Aktar koymak gereksiz — musteri bot ile hic konusamaz\n' +
-      '- Hat secimi yapmadan birakma: Tum hatlar ayni akisi kullanir, bu genelde istenmez',
+      '- Birden fazla Başlangıç node\'u eklenemez (sistem otomatik engeller)\n' +
+      '- Başlangıç\'tan sonra doğrudan Temsilciye Aktar koymak gereksiz — müşteri bot ile hiç konuşamaz\n' +
+      '- Hat seçimi yapmadan bırakma: Tüm hatlar aynı akışı kullanır, bu genelde istenmez',
   },
   webhook_trigger: {
-    summary: 'Dis sistemlerden gelen HTTP istekleriyle akisi baslatir. CRM, e-ticaret veya baska bir yazilim entegrasyonu icin kullanilir.',
+    summary: 'Dış sistemlerden gelen HTTP istekleriyle akışı başlatır. CRM, e-ticaret veya başka bir yazılım entegrasyonu için kullanılır.',
     detail:
-      'Webhook tetikleyici, dis bir sistem (ornegin e-ticaret sitesi, CRM veya otomasyon araci) belirli bir URL\'ye HTTP POST istegi gonderdiginde akisi baslatir.\n\n' +
-      'Gelen veri (payload) bir degiskene atanir ve akis boyunca kullanilabilir. Ornegin bir siparis tamamlandiginda e-ticaret sistemi bu webhook\'u tetikler ve siparis bilgilerini gonderir.\n\n' +
-      'Secret Key (gizli anahtar) ayarlayarak sadece yetkili sistemlerin tetikleme yapmasini saglayabilirsiniz.',
+      'Webhook tetikleyici, dış bir sistem (örneğin e-ticaret sitesi, CRM veya otomasyon aracı) belirli bir URL\'ye HTTP POST isteği gönderdiğinde akışı başlatır.\n\n' +
+      'Gelen veri (payload) bir değişkene atanır ve akış boyunca kullanılabilir. Örneğin bir sipariş tamamlandığında e-ticaret sistemi bu webhook\'u tetikler ve sipariş bilgilerini gönderir.\n\n' +
+      'Secret Key (gizli anahtar) ayarlayarak sadece yetkili sistemlerin tetikleme yapmasını sağlayabilirsiniz.',
     scenarios:
-      '- E-ticaret siparis bildirimi: Siparis tamamlaninca webhook → Musteriye "Siparisniniz alindi" mesaji\n' +
-      '- CRM entegrasyonu: Yeni musteri kaydi → Hos geldiniz mesaji\n' +
-      '- Otomasyon araci (Zapier/n8n): Dis event → Akis tetikleme',
+      '- E-ticaret sipariş bildirimi: Sipariş tamamlanınca webhook → Müşteriye "Siparişiniz alındı" mesajı\n' +
+      '- CRM entegrasyonu: Yeni müşteri kaydı → Hoşgeldiniz mesajı\n' +
+      '- Otomasyon aracı (Zapier/n8n): Dış event → Akış tetikleme',
     antiPatterns:
-      '- Normal musteri mesajlari icin webhook kullanmayin — bunun icin Baslangic node\'u var\n' +
-      '- Secret Key\'siz birakmayin — herkes tetikleyebilir\n' +
-      '- Cok fazla veri gondermekten kacinin — sadece gerekli alanlari gonderin',
+      '- Normal müşteri mesajları için webhook kullanmayın — bunun için Başlangıç node\'u var\n' +
+      '- Secret Key\'siz bırakmayın — herkes tetikleyebilir\n' +
+      '- Çok fazla veri göndermekten kaçının — sadece gerekli alanları gönderin',
   },
   outbound_trigger: {
-    summary: 'Toplu mesaj kampanyalari icin tetikleyicidir. Outbound modulu bir kampanya baslattiginda bu akis devreye girer.',
+    summary: 'Toplu mesaj kampanyaları için tetikleyicidir. Outbound modülü bir kampanya başlattığında bu akış devreye girer.',
     detail:
-      'Outbound tetikleyici, toplu mesaj kampanyalarinda kullanilir. Siz bir kampanya olusturdugunda ve baslattiginizda, her bir musteriye bu akis uygulanir.\n\n' +
-      'Kampanya bilgileri (kampanya ID, musteri verileri) otomatik olarak degiskenlere atanir. Bu sayede kisisellestirilmis mesajlar gonderebilirsiniz.\n\n' +
-      'Ornegin "Indirim kampanyasi" adinda bir outbound kampanya olusturdunuz — tetiklendiginde her musteriye ozel indirim mesaji gonderilir.',
+      'Outbound tetikleyici, toplu mesaj kampanyalarında kullanılır. Siz bir kampanya oluşturduğunuzda ve başlattığınızda, her bir müşteriye bu akış uygulanır.\n\n' +
+      'Kampanya bilgileri (kampanya ID, müşteri verileri) otomatik olarak değişkenlere atanır. Bu sayede kişiselleştirilmiş mesajlar gönderebilirsiniz.\n\n' +
+      'Örneğin "İndirim kampanyası" adında bir outbound kampanya oluşturdunuz — tetiklendiğinde her müşteriye özel indirim mesajı gönderilir.',
     scenarios:
-      '- Toplu indirim bildirimi: Kampanya tetiklenir → Kisisel mesaj → Menu (ilgileniyor musunuz?)\n' +
-      '- Hatirlatma kampanyasi: Randevu hatirlatma → Onay/iptal secenegi\n' +
-      '- Yeniden pazarlama: Eski musterilere tekrar ulasma',
+      '- Toplu indirim bildirimi: Kampanya tetiklenir → Kişisel mesaj → Menü (ilgileniyor musunuz?)\n' +
+      '- Hatırlatma kampanyası: Randevu hatırlatma → Onay/iptal seçeneği\n' +
+      '- Yeniden pazarlama: Eski müşterilere tekrar ulaşma',
     antiPatterns:
-      '- Tek tek musteri mesajlari icin outbound kullanmayin — Baslangic node\'u yeterli\n' +
-      '- Kampanya icerigi akisa gomuluyorsa degisken kullanmayi unutmayin\n' +
-      '- Cok sik kampanya gonderimi musteri sikayet riski olusturur',
+      '- Tek tek müşteri mesajları için outbound kullanmayın — Başlangıç node\'u yeterli\n' +
+      '- Kampanya içeriği akışa gömülüyorsa değişken kullanmayı unutmayın\n' +
+      '- Çok sık kampanya gönderimi müşteri şikayet riski oluşturur',
   },
   schedule_trigger: {
-    summary: 'Belirli zamanlarda otomatik olarak tetiklenir. Gunluk, haftalik veya ozel bir zaman diliminde akis baslatir.',
+    summary: 'Belirli zamanlarda otomatik olarak tetiklenir. Günlük, haftalık veya özel bir zaman diliminde akış başlatır.',
     detail:
-      'Zamanlayici, cron ifadesi kullanarak belirli zamanlarda otomatik tetiklenen bir akis baslangicidir. Ornegin "Her gun sabah 9\'da" veya "Her Pazartesi saat 10\'da" gibi zamanlamalar yapabilirsiniz.\n\n' +
-      'Cron ifadesi 5 alandan olusur: dakika, saat, ayin gunu, ay, haftanin gunu. En yaygin kullanimlar icin ornekler asagidadir.\n\n' +
-      'Saat dilimini Turkiye olarak secmeniz onemlidir, aksi halde farkli saatlerde tetiklenebilir.',
+      'Zamanlayıcı, cron ifadesi kullanarak belirli zamanlarda otomatik tetiklenen bir akış başlangıcıdır. Örneğin "Her gün sabah 9\'da" veya "Her Pazartesi saat 10\'da" gibi zamanlamalar yapabilirsiniz.\n\n' +
+      'Cron ifadesi 5 alandan oluşur: dakika, saat, ayın günü, ay, haftanın günü. En yaygın kullanımlar için örnekler aşağıdadır.\n\n' +
+      'Saat dilimini Türkiye olarak seçmeniz önemlidir, aksi halde farklı saatlerde tetiklenebilir.',
     scenarios:
-      '- Gunluk rapor: Her sabah 09:00 → Dunku ozet mesaji gonder\n' +
-      '- Haftalik hatirlatma: Her Pazartesi 10:00 → Haftalik gorev listesi\n' +
-      '- Aylik fatura: Her ayin 1\'inde → Fatura hatirlatma mesaji',
+      '- Günlük rapor: Her sabah 09:00 → Dünkü özet mesajı gönder\n' +
+      '- Haftalık hatırlatma: Her Pazartesi 10:00 → Haftalık görev listesi\n' +
+      '- Aylık fatura: Her ayın 1\'inde → Fatura hatırlatma mesajı',
     antiPatterns:
-      '- Musteri mesajlarina cevap vermek icin zamanlayici kullanmayin — Baslangic node\'u kullanin\n' +
-      '- Cok sik tetikleme (her dakika gibi) sistem yukunu arttirir\n' +
-      '- Saat dilimini UTC birakmayin — Turkiye saatini secin',
+      '- Müşteri mesajlarına cevap vermek için zamanlayıcı kullanmayın — Başlangıç node\'u kullanın\n' +
+      '- Çok sık tetikleme (her dakika gibi) sistem yükünü artırır\n' +
+      '- Saat dilimini UTC bırakmayın — Türkiye saatini seçin',
   },
   message_text: {
-    summary: 'Musteriye duz metin mesaji gonderir. En temel ve en cok kullanilan adimdir.',
+    summary: 'Müşteriye düz metin mesajı gönderir. En temel ve en çok kullanılan adımdır.',
     detail:
-      'Mesaj node\'u musteriye yaziyla bir mesaj gonderir. Mesaj icinde degiskenler kullanabilirsiniz: ornegin {{musteri_adi}} yazarsaniz musterinin adi otomatik yerlestirilir.\n\n' +
-      '"Kullanici yanitini bekle" secenegi acikken, mesaj gonderildikten sonra akis durur ve musterinin cevabini bekler. Musterinin gonderdigi cevap {{user_input}} degiskenine atanir ve sonraki adimlarda kullanilabilir.\n\n' +
-      'WhatsApp mesaj limiti 4096 karakterdir. Bu limiti asmamaya dikkat edin.',
+      'Mesaj node\'u müşteriye yazıyla bir mesaj gönderir. Mesaj içinde değişkenler kullanabilirsiniz: örneğin {{musteri_adi}} yazarsanız müşterinin adı otomatik yerleştirilir.\n\n' +
+      '"Kullanıcı yanıtını bekle" seçeneği açıkken, mesaj gönderildikten sonra akış durur ve müşterinin cevabını bekler. Müşterinin gönderdiği cevap {{user_input}} değişkenine atanır ve sonraki adımlarda kullanılabilir.\n\n' +
+      'WhatsApp mesaj limiti 4096 karakterdir. Bu limiti aşmamaya dikkat edin.',
     scenarios:
-      '- Karsilama: "Merhaba {{musteri_adi}}, size nasil yardimci olabilirim?"\n' +
-      '- Bilgilendirme: "Siparisniniz kargoya verildi. Takip no: {{kargo_no}}"\n' +
-      '- Soru sorma (yanit bekle acik): "Randevu icin hangi tarih uygun?" → Cevabi al → Devam et',
+      '- Karşılama: "Merhaba {{musteri_adi}}, size nasıl yardımcı olabilirim?"\n' +
+      '- Bilgilendirme: "Siparişiniz kargoya verildi. Takip no: {{kargo_no}}"\n' +
+      '- Soru sorma (yanıt bekle açık): "Randevu için hangi tarih uygun?" → Cevabı al → Devam et',
     antiPatterns:
-      '- Cok uzun mesajlar gondermeyin — musteriler okumaz (maks 4096 karakter)\n' +
-      '- Art arda 3\'ten fazla mesaj node\'u koymayin — musteri spam gibi algilar\n' +
-      '- Yanit beklemeniz gerekmiyorsa "Kullanici yanitini bekle"yi acik birakmayin — akisi gereksiz durdurur',
+      '- Çok uzun mesajlar göndermeyin — müşteriler okumaz (maks 4096 karakter)\n' +
+      '- Art arda 3\'ten fazla mesaj node\'u koymayın — müşteri spam gibi algılar\n' +
+      '- Yanıt beklemeniz gerekmiyorsa "Kullanıcı yanıtını bekle"yi açık bırakmayın — akışı gereksiz durdurur',
   },
   message_menu: {
-    summary: 'Musteriye secenekli bir menu gosterir. Musteri bir secenek sectikten sonra akis o dala devam eder.',
+    summary: 'Müşteriye seçenekli bir menü gösterir. Müşteri bir seçenek seçtikten sonra akış o dala devam eder.',
     detail:
-      'Menu node\'u musteriye bir mesaj ve altinda secenekler gonderir. Musteri numarayi veya secenegi yazdiginda, akis o secenegin dalina yonlenir.\n\n' +
-      'Her secenek icin bir "anahtar" (musteri ne yazar) ve bir "etiket" (musteri ne gorur) tanimlanir. Ornegin anahtar: "1", etiket: "Satis". Musteri "1" yazdiginda Satis dalina gider.\n\n' +
-      'Her secenegin kendine ait bir cikis baglantisi vardir. Boylece farkli secenekler farkli adimlara yonlendirilir.',
+      'Menü node\'u müşteriye bir mesaj ve altında seçenekler gönderir. Müşteri numarayı veya seçeneği yazdığında, akış o seçeneğin dalına yönlenir.\n\n' +
+      'Her seçenek için bir "anahtar" (müşteri ne yazar) ve bir "etiket" (müşteri ne görür) tanımlanır. Örneğin anahtar: "1", etiket: "Satış". Müşteri "1" yazdığında Satış dalına gider.\n\n' +
+      'Her seçeneğin kendine ait bir çıkış bağlantısı vardır. Böylece farklı seçenekler farklı adımlara yönlendirilir.',
     scenarios:
-      '- Ana menu: "1-Satis, 2-Destek, 3-Bilgi" → Her biri farkli akisa gider\n' +
-      '- Onay: "1-Evet, devam et / 2-Hayir, iptal" → Iki farkli dal\n' +
-      '- Urun secimi: "Hangi urunle ilgileniyorsunuz?" → Urun secenekleri',
+      '- Ana menü: "1-Satış, 2-Destek, 3-Bilgi" → Her biri farklı akışa gider\n' +
+      '- Onay: "1-Evet, devam et / 2-Hayır, iptal" → İki farklı dal\n' +
+      '- Ürün seçimi: "Hangi ürünle ilgileniyorsunuz?" → Ürün seçenekleri',
     antiPatterns:
-      '- 10\'dan fazla secenek koymayin — musteri karar veremez\n' +
-      '- Her secenegin baglantisini yapin — baglantisiz secenek akisi kirar\n' +
-      '- Menu metnini bos birakmayin — musteri ne secegini anlamaz',
+      '- 10\'dan fazla seçenek koymayın — müşteri karar veremez\n' +
+      '- Her seçeneğin bağlantısını yapın — bağlantısız seçenek akışı kırar\n' +
+      '- Menü metnini boş bırakmayın — müşteri ne seçeceğini anlamaz',
   },
   logic_condition: {
-    summary: 'Bir kosulu kontrol eder ve sonuca gore akisi iki dala ayirir: Dogru veya Yanlis.',
+    summary: 'Bir koşulu kontrol eder ve sonuca göre akışı iki dala ayırır: Doğru veya Yanlış.',
     detail:
-      'Kosul node\'u bir degiskenin degerini kontrol eder. Ornegin "musteri_tipi esittir VIP" kosulunu tanimlarsaniz, VIP musteriler Dogru dalina, digerler Yanlis dalina yonlenir.\n\n' +
-      'Kullanabileceginiz operatorler: Esittir, Icerir, Baslar, Buyuktur, Kucuktur, Bos mu ve Regex. Her biri farkli karsilastirma turu yapar.\n\n' +
-      'Degisken olarak onceki adimlardan gelen herhangi bir degeri kullanabilirsiniz. Ornegin {{__last_input}} musterinin son mesajini icerir.',
+      'Koşul node\'u bir değişkenin değerini kontrol eder. Örneğin "musteri_tipi eşittir VIP" koşulunu tanımlarsanız, VIP müşteriler Doğru dalına, diğerleri Yanlış dalına yönlenir.\n\n' +
+      'Kullanabileceğiniz operatörler: Eşittir, İçerir, Başlar, Büyüktür, Küçüktür, Boş mu ve Regex. Her biri farklı karşılaştırma türü yapar.\n\n' +
+      'Değişken olarak önceki adımlardan gelen herhangi bir değeri kullanabilirsiniz. Örneğin {{__last_input}} müşterinin son mesajını içerir.',
     scenarios:
-      '- VIP kontrolu: musteri_tipi = "VIP" → Ozel karsilama / Normal karsilama\n' +
-      '- Mesaj icerik kontrolu: __last_input icerir "iptal" → Iptal akisi\n' +
-      '- Bos kontrol: telefon bos mu → Telefon sor / Devam et',
+      '- VIP kontrolü: musteri_tipi = "VIP" → Özel karşılama / Normal karşılama\n' +
+      '- Mesaj içerik kontrolü: __last_input içerir "iptal" → İptal akışı\n' +
+      '- Boş kontrol: telefon boş mu → Telefon sor / Devam et',
     antiPatterns:
-      '- Karmasik mantik icin ic ice kosul koymak yerine Switch kullanin\n' +
-      '- Degisken adini yanlis yazmamaya dikkat edin — eslesme olmaz\n' +
-      '- Her iki dali da (Dogru/Yanlis) baglayin — baglantisiz dal akisi kirar',
+      '- Karmaşık mantık için iç içe koşul koymak yerine Switch kullanın\n' +
+      '- Değişken adını yanlış yazmamaya dikkat edin — eşleşme olmaz\n' +
+      '- Her iki dalı da (Doğru/Yanlış) bağlayın — bağlantısız dal akışı kırar',
   },
   logic_switch: {
-    summary: 'Bir degiskenin degerine gore akisi birden fazla dala ayirir. Coklu secenek icin idealdir.',
+    summary: 'Bir değişkenin değerine göre akışı birden fazla dala ayırır. Çoklu seçenek için idealdir.',
     detail:
-      'Switch node\'u bir degiskeni birden fazla degerle karsilastirir. Hangi deger eslesirse o daldan devam eder. Hicbiri eslesmezse Varsayilan dalina gider.\n\n' +
-      'Ornegin "departman" degiskeni "satis", "destek" veya "muhasebe" olabilir. Her biri farkli bir dala yonlendirilir. Tanimmadigi bir deger gelirse Varsayilan dali devreye girer.\n\n' +
-      'Kosul node\'undan farki: Kosul sadece Dogru/Yanlis (2 dal) verir, Switch ise istediginiz kadar dal olusturabilir.',
+      'Switch node\'u bir değişkeni birden fazla değerle karşılaştırır. Hangi değer eşleşirse o daldan devam eder. Hiçbiri eşleşmezse Varsayılan dalına gider.\n\n' +
+      'Örneğin "departman" değişkeni "satis", "destek" veya "muhasebe" olabilir. Her biri farklı bir dala yönlendirilir. Tanımadığı bir değer gelirse Varsayılan dalı devreye girer.\n\n' +
+      'Koşul node\'undan farkı: Koşul sadece Doğru/Yanlış (2 dal) verir, Switch ise istediğiniz kadar dal oluşturabilir.',
     scenarios:
-      '- Departman yonlendirme: satis/destek/muhasebe/varsayilan\n' +
-      '- Dil secimi: tr/en/de → Farkli dilde mesajlar\n' +
-      '- Siparis durumu: yeni/hazir/kargoda/teslim → Farkli bilgilendirmeler',
+      '- Departman yönlendirme: satis/destek/muhasebe/varsayilan\n' +
+      '- Dil seçimi: tr/en/de → Farklı dilde mesajlar\n' +
+      '- Sipariş durumu: yeni/hazir/kargoda/teslim → Farklı bilgilendirmeler',
     antiPatterns:
-      '- Sadece 2 durum varsa Switch yerine Kosul kullanin — daha basit\n' +
-      '- Varsayilan dalini baglantisiz birakmayin — bilinmeyen degerler kaybolur\n' +
-      '- Maks 10 durum sinirini asmayin — cok fazla dal yonetimi zorlastirir',
+      '- Sadece 2 durum varsa Switch yerine Koşul kullanın — daha basit\n' +
+      '- Varsayılan dalını bağlantısız bırakmayın — bilinmeyen değerler kaybolur\n' +
+      '- Maks 10 durum sınırını aşmayın — çok fazla dal yönetimi zorlaştırır',
   },
   logic_working_hours: {
-    summary: 'Mesai saati ici mi disi mi kontrol eder ve buna gore dallanir.',
+    summary: 'Mesai saati içi mi dışı mı kontrol eder ve buna göre dallanır.',
     detail:
-      'Mesai Saati node\'u, tenant (isletme) ayarlarinda tanimli olan calisma saatlerini kullanir. Musteri mesaji mesai saatleri icinde geldiyse "Mesai Ici" dalina, disinda geldiyse "Mesai Disi" dalina yonlenir.\n\n' +
-      'Bu node\'un kendisinde ayar yoktur — calisma saatleri isletme ayarlarindan otomatik alinir. Bu sayede merkezi bir yerden yonetim saglanir.\n\n' +
-      'Mesai disi dalinda genellikle "Su anda mesai saatleri disindayiz, en kisa surede donecegiz" gibi bir mesaj gonderilir.',
+      'Mesai Saati node\'u, tenant (işletme) ayarlarında tanımlı olan çalışma saatlerini kullanır. Müşteri mesajı mesai saatleri içinde geldiyse "Mesai İçi" dalına, dışında geldiyse "Mesai Dışı" dalına yönlenir.\n\n' +
+      'Bu node\'un kendisinde ayar yoktur — çalışma saatleri işletme ayarlarından otomatik alınır. Bu sayede merkezi bir yerden yönetim sağlanır.\n\n' +
+      'Mesai dışı dalında genellikle "Şu anda mesai saatleri dışındayız, en kısa sürede döneceğiz" gibi bir mesaj gönderilir.',
     scenarios:
-      '- Mesai ici: Normal akis (bot + temsilci) / Mesai disi: Otomatik mesaj\n' +
-      '- Acil durumlar: Mesai disi → Acil mi? → Evet → Nobetci temsilciye aktar\n' +
-      '- Farkli hizmet: Mesai ici → Canli destek / Mesai disi → FAQ botu',
+      '- Mesai içi: Normal akış (bot + temsilci) / Mesai dışı: Otomatik mesaj\n' +
+      '- Acil durumlar: Mesai dışı → Acil mi? → Evet → Nöbetçi temsilciye aktar\n' +
+      '- Farklı hizmet: Mesai içi → Canlı destek / Mesai dışı → FAQ botu',
     antiPatterns:
-      '- Isletme ayarlarinda calisma saatleri tanimlanmadan bu node\'u kullanmayin\n' +
-      '- Mesai disi dalini bos birakmayin — musteri cevapsiz kalir\n' +
-      '- 7/24 hizmet veren isletmelerde gereksiz — akisi karmasiklastirir',
+      '- İşletme ayarlarında çalışma saatleri tanımlanmadan bu node\'u kullanmayın\n' +
+      '- Mesai dışı dalını boş bırakmayın — müşteri cevapsız kalır\n' +
+      '- 7/24 hizmet veren işletmelerde gereksiz — akışı karmaşıklaştırır',
   },
   ai_intent: {
-    summary: 'Musterinin ne istedigini yapay zeka ile otomatik anlar ve dogru dala yonlendirir.',
+    summary: 'Müşterinin ne istediğini yapay zeka ile otomatik anlar ve doğru dala yönlendirir.',
     detail:
-      'Intent Algilama, musterinin mesajini yapay zeka (Claude AI) ile analiz eder ve hangi konuyla ilgilendigini (intent) tespit eder. Ornegin musteri "fiyat ne kadar?" yazdigi zaman AI bunu "fiyat_bilgisi" intent\'i olarak algilar.\n\n' +
-      'Tanimlayaciginiz her intent icin bir cikis dali olusur. AI musterinin mesajini analiz eder ve en uygun intent\'e yonlendirir. Guven esigi altinda kalan mesajlar "Diger" dalina gider.\n\n' +
-      '"Musteri ismini sor" secenegi acikken, AI once musterinin adini sorar, dogrular ve sohbet boyunca ismiyle hitap eder. Bu daha samimi bir deneyim saglar.',
+      'Intent Algılama, müşterinin mesajını yapay zeka (Claude AI) ile analiz eder ve hangi konuyla ilgilendiğini (intent) tespit eder. Örneğin müşteri "fiyat ne kadar?" yazdığı zaman AI bunu "fiyat_bilgisi" intent\'i olarak algılar.\n\n' +
+      'Tanımlayacağınız her intent için bir çıkış dalı oluşur. AI müşterinin mesajını analiz eder ve en uygun intent\'e yönlendirir. Güven eşiği altında kalan mesajlar "Diğer" dalına gider.\n\n' +
+      '"Müşteri ismini sor" seçeneği açıkken, AI önce müşterinin adını sorar, doğrular ve sohbet boyunca ismiyle hitap eder. Bu daha samimi bir deneyim sağlar.',
     scenarios:
-      '- Satis botu: satin_alma / fiyat_sorgulama / iade / diger\n' +
+      '- Satış botu: satin_alma / fiyat_sorgulama / iade / diger\n' +
       '- Destek botu: teknik_sorun / fatura / sikayet / diger\n' +
       '- Genel bot: randevu / bilgi / sikayet / insan_ile_gorusme / diger',
     antiPatterns:
-      '- Cok fazla intent (10+) tanimlamayin — AI\'nin dogru secme orani duser\n' +
-      '- Birbirine cok benzer intent\'ler tanimlamayin (ornek: "satin_alma" ve "alis") — karisiklik yaratir\n' +
-      '- Guven esigini cok yuksek tutmayin (90%+) — cogu mesaj "Diger"e duser\n' +
-      '- Intent isimlerini Turkce ve anlasilir yazin',
+      '- Çok fazla intent (10+) tanımlamayın — AI\'nin doğru seçme oranı düşer\n' +
+      '- Birbirine çok benzer intent\'ler tanımlamayın (örnek: "satin_alma" ve "alis") — karışıklık yaratır\n' +
+      '- Güven eşiğini çok yüksek tutmayın (90%+) — çoğu mesaj "Diğer"e düşer\n' +
+      '- Intent isimlerini Türkçe ve anlaşılır yazın',
   },
   ai_faq: {
-    summary: 'Bilgi bankasinda musteri sorusuna cevap arar. Eslesen cevabi otomatik gonderir.',
+    summary: 'Bilgi bankasında müşteri sorusuna cevap arar. Eşleşen cevabı otomatik gönderir.',
     detail:
-      'FAQ Arama, musterinin sorusunu bilgi bankasindaki (FAQ ve dokumanlar) kayitlarla karsilastirir. Semantik arama kullanir — yani kelime kelime degil, anlam bazli eslestirir.\n\n' +
-      'Ornegin musteriniz "iade suresi ne kadar?" diye sorduysa ve bilgi bankanizda "Iade Politikasi: Urunler 14 gun icinde iade edilebilir" kaydi varsa, bu eslesti olarak bulunur ve cevap gonderilir.\n\n' +
-      'FAQ eslesirse cevap dogrudan gonderilir. Dokuman eslesirse AI ile ozetlenip gonderilir. Minimum guven esigi altindaki sonuclar "Eslesmedi" dalina yonlenir ve baska bir adim devreye girer.',
+      'FAQ Arama, müşterinin sorusunu bilgi bankasındaki (FAQ ve dökümanlar) kayıtlarla karşılaştırır. Semantik arama kullanır — yani kelime kelime değil, anlam bazlı eşleştirir.\n\n' +
+      'Örneğin müşteriniz "iade süresi ne kadar?" diye sorduysa ve bilgi bankanızda "İade Politikası: Ürünler 14 gün içinde iade edilebilir" kaydı varsa, bu eşleşti olarak bulunur ve cevap gönderilir.\n\n' +
+      'FAQ eşleşirse cevap doğrudan gönderilir. Döküman eşleşirse AI ile özetlenip gönderilir. Minimum güven eşiği altındaki sonuçlar "Eşleşmedi" dalına yönlenir ve başka bir adım devreye girer.',
     scenarios:
-      '- Musteri destek: Soru → FAQ\'da ara → Bulursa cevapla / Bulamazsa temsilciye aktar\n' +
-      '- Bilgi botu: Soru → FAQ + Dokuman ara → Cevapla / "Bu konuda bilgim yok"\n' +
-      '- Hibrit: Intent Algilama → "bilgi" intent\'i → FAQ Arama → Temsilci',
+      '- Müşteri destek: Soru → FAQ\'da ara → Bulursa cevapla / Bulamazsa temsilciye aktar\n' +
+      '- Bilgi botu: Soru → FAQ + Döküman ara → Cevapla / "Bu konuda bilgim yok"\n' +
+      '- Hibrit: Intent Algılama → "bilgi" intent\'i → FAQ Arama → Temsilci',
     antiPatterns:
-      '- Bilgi bankasi bossa bu node ise yaramaz — once icerik ekleyin\n' +
-      '- Minimum guveni cok dusuk tutmayin (20% alti) — alakasiz cevaplar gider\n' +
-      '- Minimum guveni cok yuksek tutmayin (90%+) — cogu soru eslesmez\n' +
-      '- FAQ yerine genel sohbet botu olarak kullanmayin — bunun icin Intent Algilama var',
+      '- Bilgi bankası boşsa bu node işe yaramaz — önce içerik ekleyin\n' +
+      '- Minimum güveni çok düşük tutmayın (20% altı) — alakasız cevaplar gider\n' +
+      '- Minimum güveni çok yüksek tutmayın (90%+) — çoğu soru eşleşmez\n' +
+      '- FAQ yerine genel sohbet botu olarak kullanmayın — bunun için Intent Algılama var',
   },
   ai_sentiment: {
-    summary: 'Musterinin duygusal durumunu yapay zeka ile analiz eder: olumlu mu olumsuz mu?',
+    summary: 'Müşterinin duygusal durumunu yapay zeka ile analiz eder: olumlu mu olumsuz mu?',
     detail:
-      'Duygu Analizi, musterinin mesajindaki duygu tonunu AI ile tespit eder. Skor esik degerinin uzerindeyse "Pozitif" dalina, altindaysa "Negatif" dalina yonlenir.\n\n' +
-      'Bu sayede kizgin veya mutsuz musterileri erken tespit edip ozel ilgi gosterebilirsiniz. Ornegin negatif duygu tespit edildiginde dogrudan temsilciye aktarma yapilabilir.\n\n' +
-      'Esik degeri 0-100% arasinda ayarlanir. %50 varsayilan degerdir. Daha hassas tespit icin esigi dusuk tutabilirsiniz.',
+      'Duygu Analizi, müşterinin mesajındaki duygu tonunu AI ile tespit eder. Skor eşik değerinin üzerindeyse "Pozitif" dalına, altındaysa "Negatif" dalına yönlenir.\n\n' +
+      'Bu sayede kızgın veya mutsuz müşterileri erken tespit edip özel ilgi gösterebilirsiniz. Örneğin negatif duygu tespit edildiğinde doğrudan temsilciye aktarma yapılabilir.\n\n' +
+      'Eşik değeri 0-100% arasında ayarlanır. %50 varsayılan değerdir. Daha hassas tespit için eşiği düşük tutabilirsiniz.',
     scenarios:
-      '- Sikayet yonetimi: Negatif → Temsilciye hemen aktar / Pozitif → Normal akis\n' +
-      '- Memnuniyet olcumu: Hizmet sonrasi → Duygu analizi → Negatif → Ozur + indirim teklifi\n' +
-      '- Escalation: Negatif → "Sizi anliyoruz, hemen bir yetkiliye bagliyorum"',
+      '- Şikayet yönetimi: Negatif → Temsilciye hemen aktar / Pozitif → Normal akış\n' +
+      '- Memnuniyet ölçümü: Hizmet sonrası → Duygu analizi → Negatif → Özür + indirim teklifi\n' +
+      '- Escalation: Negatif → "Sizi anlıyoruz, hemen bir yetkiliye bağlıyorum"',
     antiPatterns:
-      '- Her mesajda duygu analizi yapmayin — gereksiz yavastir\n' +
-      '- Tek kelimelik cevaplarda ("evet", "hayir") dogru sonuc vermeyebilir\n' +
-      '- Sadece duygu analizine dayanarak karar vermeyin — baska verilerle birlestirin',
+      '- Her mesajda duygu analizi yapmayın — gereksiz yavaştır\n' +
+      '- Tek kelimelik cevaplarda ("evet", "hayır") doğru sonuç vermeyebilir\n' +
+      '- Sadece duygu analizine dayanarak karar vermeyin — başka verilerle birleştirin',
   },
   action_handoff: {
-    summary: 'Sohbeti canli bir temsilciye yonlendirir. Akis burada sona erer.',
+    summary: 'Sohbeti canlı bir temsilciye yönlendirir. Akış burada sona erer.',
     detail:
-      'Temsilciye Aktar, bot ile musteri arasindaki sohbeti sonlandirip canli bir temsilciye devreder. Bu bir "terminal" node\'dur — yani bu adimdan sonra akis devam etmez.\n\n' +
-      'Ozet sablonu alanina, temsilcinin gorecegi ozet bilgiyi yazabilirsiniz. Degiskenler kullanarak musterinin adi, sorunu gibi bilgileri ozetleyebilirsiniz. Ornegin: "{{musteri_adi}} - {{__detected_intent}} hakkinda destek istiyor".\n\n' +
-      'Temsilci sohbete baglandiginda musterinin onceki mesajlarini ve bu ozeti gorebilir.',
+      'Temsilciye Aktar, bot ile müşteri arasındaki sohbeti sonlandırıp canlı bir temsilciye devreder. Bu bir "terminal" node\'dur — yani bu adımdan sonra akış devam etmez.\n\n' +
+      'Özet şablonu alanına, temsilcinin göreceği özet bilgiyi yazabilirsiniz. Değişkenler kullanarak müşterinin adı, sorunu gibi bilgileri özetleyebilirsiniz. Örneğin: "{{musteri_adi}} - {{__detected_intent}} hakkında destek istiyor".\n\n' +
+      'Temsilci sohbete bağlandığında müşterinin önceki mesajlarını ve bu özeti görebilir.',
     scenarios:
-      '- Karmasik sorunlar: Bot cevaplayamadi → Temsilciye aktar\n' +
-      '- Musteri istegi: "Insanla konusmak istiyorum" → Dogrudan aktar\n' +
-      '- Kizgin musteri: Duygu analizi negatif → Hemen temsilciye aktar',
+      '- Karmaşık sorunlar: Bot cevaplayamadı → Temsilciye aktar\n' +
+      '- Müşteri isteği: "İnsanla konuşmak istiyorum" → Doğrudan aktar\n' +
+      '- Kızgın müşteri: Duygu analizi negatif → Hemen temsilciye aktar',
     antiPatterns:
-      '- Her akisin sonuna koymak zorunda degilsiniz — FAQ ile cozulen sorular icin gereksiz\n' +
-      '- Bu node\'dan sonra baska bir adim baglamayin — calistirilmaz\n' +
-      '- Ozet bos birakmayin — temsilci musterinin neyle ilgilendigini anlamaz',
+      '- Her akışın sonuna koymak zorunda değilsiniz — FAQ ile çözülen sorular için gereksiz\n' +
+      '- Bu node\'dan sonra başka bir adım bağlamayın — çalıştırılmaz\n' +
+      '- Özet boş bırakmayın — temsilci müşterinin neyle ilgilendiğini anlamaz',
   },
   action_assign_group: {
-    summary: 'Sohbeti belirli bir temsilci grubuna yonlendirir. Departman bazli dagitim icin idealdir.',
+    summary: 'Sohbeti belirli bir temsilci grubuna yönlendirir. Departman bazlı dağıtım için idealdir.',
     detail:
-      'Gruba Ata, sohbeti belirli bir INMA temsilci grubuna yonlendirir. Temsilciye Aktar\'dan farki, rastgele bir temsilci yerine belirli bir gruba (ornegin "Satis Ekibi" veya "Teknik Destek") yonlendirmesidir.\n\n' +
-      'Grup ID\'si INMA\'dan alinir. Grup adi sadece gorsel amaclidir — siz ve ekibiniz icin okunabilirlik saglar.\n\n' +
-      'Ozet sablonu ile temsilciye aktarilacak bilgileri ozellestirebilirsiniz.',
+      'Gruba Ata, sohbeti belirli bir INMA temsilci grubuna yönlendirir. Temsilciye Aktar\'dan farkı, rastgele bir temsilci yerine belirli bir gruba (örneğin "Satış Ekibi" veya "Teknik Destek") yönlendirmesidir.\n\n' +
+      'Grup ID\'si INMA\'dan alınır. Grup adı sadece görsel amaçlıdır — siz ve ekibiniz için okunabilirlik sağlar.\n\n' +
+      'Özet şablonu ile temsilciye aktarılacak bilgileri özelleştirebilirsiniz.',
     scenarios:
-      '- Departman yonlendirme: Satis intent\'i → Satis grubuna ata\n' +
-      '- VIP musteri: VIP kontrolu → Ozel destek grubuna ata\n' +
+      '- Departman yönlendirme: Satış intent\'i → Satış grubuna ata\n' +
+      '- VIP müşteri: VIP kontrolü → Özel destek grubuna ata\n' +
       '- Teknik sorun: Teknik intent → Teknik destek grubuna ata',
     antiPatterns:
-      '- Grup ID\'sini bos birakmayin — yonlendirme calismaz\n' +
+      '- Grup ID\'sini boş bırakmayın — yönlendirme çalışmaz\n' +
       '- Tek temsilci grubunuz varsa Temsilciye Aktar yeterli — Gruba Ata gereksiz\n' +
-      '- Bu node\'dan sonra baska adim baglamayin — terminal node\'dur',
+      '- Bu node\'dan sonra başka adım bağlamayın — terminal node\'dur',
   },
   action_api_call: {
-    summary: 'Dis bir web servisine HTTP istegi gonderir ve cevabini degiskene atar.',
+    summary: 'Dış bir web servisine HTTP isteği gönderir ve cevabını değişkene atar.',
     detail:
-      'API Cagrisi, akis sirasinda dis bir web servisine (API) istek gonderir. Ornegin bir CRM\'den musteri bilgisi cekme, siparis sisteminze durum sorgulama veya baska bir servise veri gonderme icin kullanilir.\n\n' +
-      'HTTP metodu (GET/POST/PUT/DELETE), URL, basliklar ve gonderilecek veri (body) tanimlanir. Cevap belirtilen degiskene atanir ve sonraki adimlarda kullanilabilir.\n\n' +
-      'Zaman asimi ayari onemlidir — cok kisa tutarsaniz yavas API\'ler zaman asimina ugrar, cok uzun tutarsaniz musteri bekler.',
+      'API Çağrısı, akış sırasında dış bir web servisine (API) istek gönderir. Örneğin bir CRM\'den müşteri bilgisi çekme, sipariş sisteminize durum sorgulama veya başka bir servise veri gönderme için kullanılır.\n\n' +
+      'HTTP metodu (GET/POST/PUT/DELETE), URL, başlıklar ve gönderilecek veri (body) tanımlanır. Cevap belirtilen değişkene atanır ve sonraki adımlarda kullanılabilir.\n\n' +
+      'Zaman aşımı ayarı önemlidir — çok kısa tutarsanız yavaş API\'ler zaman aşımına uğrar, çok uzun tutarsanız müşteri bekler.',
     scenarios:
-      '- Musteri bilgisi: GET /api/customers/{{phone}} → Bilgiyi mesajda kullan\n' +
-      '- Siparis olusturma: POST /api/orders → Siparis numarasini musteriye gonder\n' +
-      '- Stok kontrolu: GET /api/stock/{{urun_id}} → Stok durumunu goster',
+      '- Müşteri bilgisi: GET /api/customers/{{phone}} → Bilgiyi mesajda kullan\n' +
+      '- Sipariş oluşturma: POST /api/orders → Sipariş numarasını müşteriye gönder\n' +
+      '- Stok kontrolü: GET /api/stock/{{urun_id}} → Stok durumunu göster',
     antiPatterns:
-      '- URL\'yi bos birakmayin — istek gonderilemez\n' +
-      '- Zaman asimini 30 saniyeye cikartmayin — musteri bu kadar beklemez\n' +
-      '- Hassas bilgileri (sifre, API key) dogrudan URL\'ye yazmayin — baslik (header) kullanin\n' +
-      '- Hata dalini baglamayin birakmamaya dikkat edin — API hatasi akisi kirar',
+      '- URL\'yi boş bırakmayın — istek gönderilemez\n' +
+      '- Zaman aşımını 30 saniyeye çıkartmayın — müşteri bu kadar beklemez\n' +
+      '- Hassas bilgileri (şifre, API key) doğrudan URL\'ye yazmayın — başlık (header) kullanın\n' +
+      '- Hata dalını bağlantısız bırakmamaya dikkat edin — API hatası akışı kırar',
   },
   action_delay: {
-    summary: 'Akisi belirli bir sure duraklatir. Dogal bir konusma temposu icin kullanilir.',
+    summary: 'Akışı belirli bir süre duraklatır. Doğal bir konuşma temposu için kullanılır.',
     detail:
-      'Bekle node\'u akisi tanimladiginiz sure kadar duraklatir. Bu sure boyunca musteriye bir sey gonderilmez.\n\n' +
-      'En yaygin kullanim: Art arda mesaj gondermek yerine araya kucuk beklemeler koyarak daha dogal bir sohbet temposu olusturmak.\n\n' +
+      'Bekle node\'u akışı tanımladığınız süre kadar duraklatır. Bu süre boyunca müşteriye bir şey gönderilmez.\n\n' +
+      'En yaygın kullanım: Art arda mesaj göndermek yerine araya küçük beklemeler koyarak daha doğal bir sohbet temposu oluşturmak.\n\n' +
       'Minimum 1 saniye, maksimum 300 saniye (5 dakika) bekleyebilir. Genellikle 1-3 saniye yeterlidir.',
     scenarios:
-      '- Dogal tempo: Mesaj → 2sn bekle → Mesaj (spam gibi gorunmez)\n' +
-      '- Islem suresi simulasyonu: "Siparisninizi kontrol ediyorum..." → 3sn bekle → Sonuc\n' +
-      '- Ardisik mesaj: Mesaj 1 → 1sn → Mesaj 2 → 1sn → Menu',
+      '- Doğal tempo: Mesaj → 2sn bekle → Mesaj (spam gibi görünmez)\n' +
+      '- İşlem süresi simülasyonu: "Siparişinizi kontrol ediyorum..." → 3sn bekle → Sonuç\n' +
+      '- Ardışık mesaj: Mesaj 1 → 1sn → Mesaj 2 → 1sn → Menü',
     antiPatterns:
-      '- 10 saniyeden uzun beklemeler koymayin — musteri botu bozuldu sanir\n' +
-      '- Her mesaj arasina bekle koymak zorunda degilsiniz\n' +
-      '- Kritik islemlerde (temsilciye aktarma gibi) gecikme eklemeyin',
+      '- 10 saniyeden uzun beklemeler koymayın — müşteri botu bozuldu sanır\n' +
+      '- Her mesaj arasına bekle koymak zorunda değilsiniz\n' +
+      '- Kritik işlemlerde (temsilciye aktarma gibi) gecikme eklemeyin',
   },
   action_call_flow: {
-    summary: 'Baska bir akisi alt program gibi cagirip sonucunu bekler. Tekrar kullanilabilir akislar icin idealdir.',
+    summary: 'Başka bir akışı alt program gibi çağırıp sonucunu bekler. Tekrar kullanılabilir akışlar için idealdir.',
     detail:
-      'Alt Flow, mevcut akisin icinden baska bir akisi cagirir. Alt akis tamamlandiginda ana akis kaldigi yerden devam eder.\n\n' +
-      'Girdi esleme ile ana akistan alt akisa degisken aktarabilirsiniz. Cikti esleme ile alt akistan ana akisa sonuc alabilirsiniz. Ornegin musteri bilgilerini alt akisa gonderip, alt akisin topladigi verileri geri alabilirsiniz.\n\n' +
-      'Alt akis basariyla tamamlanirsa "Tamamlandi" dalina, hata olursa "Hata" dalina yonlenir.',
+      'Alt Flow, mevcut akışın içinden başka bir akışı çağırır. Alt akış tamamlandığında ana akış kaldığı yerden devam eder.\n\n' +
+      'Girdi eşleme ile ana akıştan alt akışa değişken aktarabilirsiniz. Çıktı eşleme ile alt akıştan ana akışa sonuç alabilirsiniz. Örneğin müşteri bilgilerini alt akışa gönderip, alt akışın topladığı verileri geri alabilirsiniz.\n\n' +
+      'Alt akış başarıyla tamamlanırsa "Tamamlandı" dalına, hata olursa "Hata" dalına yönlenir.',
     scenarios:
-      '- Musteri dogrulama alt akisi: Ana akis → Dogrulama akisi cagir → Dogrulandi/Basarisiz\n' +
-      '- Ortak FAQ: Birden fazla akis ayni FAQ alt akisini cagirabilir\n' +
-      '- Siparis sureci: Ana akis → Siparis alt akisi → Sonuca gore devam',
+      '- Müşteri doğrulama alt akışı: Ana akış → Doğrulama akışı çağır → Doğrulandı/Başarısız\n' +
+      '- Ortak FAQ: Birden fazla akış aynı FAQ alt akışını çağırabilir\n' +
+      '- Sipariş süreci: Ana akış → Sipariş alt akışı → Sonuca göre devam',
     antiPatterns:
-      '- Kendini cagiran dongusel akis olusturamayin — sonsuz dongu olusur\n' +
-      '- Cok derin zincirleme (akis → alt akis → alt alt akis) kacinilmali — debug zorlasir\n' +
-      '- Alt akisin hata dalini baglantilanmayi unutmayin\n' +
-      '- Basit isler icin alt akis kullanmayin — dogrudan ana akista yapin',
+      '- Kendini çağıran döngüsel akış oluşturamazsınız — sonsuz döngü oluşur\n' +
+      '- Çok derin zincirleme (akış → alt akış → alt alt akış) kaçınılmalı — debug zorlaşır\n' +
+      '- Alt akışın hata dalını bağlamayı unutmayın\n' +
+      '- Basit işler için alt akış kullanmayın — doğrudan ana akışta yapın',
   },
   utility_set_variable: {
-    summary: 'Bir degiskene deger atar veya mevcut degeri degistirir. Veri tasima ve hesaplama icin kullanilir.',
+    summary: 'Bir değişkene değer atar veya mevcut değeri değiştirir. Veri taşıma ve hesaplama için kullanılır.',
     detail:
-      'Degisken Ata, akis icinde kullanilacak bir degiskene deger verir. Bu deger sabit bir metin, baska bir degiskenin degeri veya bir ifade olabilir.\n\n' +
-      'Ornegin musteri turunu belirleyip "musteri_tipi" degiskenine "VIP" atayabilir, sonraki adimlarda bu degiskeni kullanabilirsiniz.\n\n' +
-      'Deger ifadesinde {{degisken}} yazarak mevcut degiskenlere referans verebilirsiniz. Ornegin "Merhaba {{musteri_adi}}" gibi birlesik degerler olusturabilirsiniz.',
+      'Değişken Ata, akış içinde kullanılacak bir değişkene değer verir. Bu değer sabit bir metin, başka bir değişkenin değeri veya bir ifade olabilir.\n\n' +
+      'Örneğin müşteri türünü belirleyip "musteri_tipi" değişkenine "VIP" atayabilir, sonraki adımlarda bu değişkeni kullanabilirsiniz.\n\n' +
+      'Değer ifadesinde {{degisken}} yazarak mevcut değişkenlere referans verebilirsiniz. Örneğin "Merhaba {{musteri_adi}}" gibi birleşik değerler oluşturabilirsiniz.',
     scenarios:
-      '- Bayrak atama: musteri_tipi = "VIP" → Sonraki kosulda kullan\n' +
-      '- Birlesik deger: tam_ad = "{{ad}} {{soyad}}"\n' +
-      '- Sayac: deneme_sayisi = "{{deneme_sayisi + 1}}"',
+      '- Bayrak atama: musteri_tipi = "VIP" → Sonraki koşulda kullan\n' +
+      '- Birleşik değer: tam_ad = "{{ad}} {{soyad}}"\n' +
+      '- Sayaç: deneme_sayisi = "{{deneme_sayisi + 1}}"',
     antiPatterns:
-      '- Degisken adini bos birakmayin — atama yapilmaz\n' +
-      '- Ayni degiskeni cok fazla yerde degistirmeyin — takip zorlasir\n' +
-      '- Degisken isimlerini anlasilir ve tutarli yazin (ornek: musteri_adi, siparis_no)',
+      '- Değişken adını boş bırakmayın — atama yapılmaz\n' +
+      '- Aynı değişkeni çok fazla yerde değiştirmeyin — takip zorlaşır\n' +
+      '- Değişken isimlerini anlaşılır ve tutarlı yazın (örnek: musteri_adi, siparis_no)',
   },
   utility_note: {
-    summary: 'Akisa gorsel yorum ekler. Calistirilmaz, sadece siz ve ekibiniz icin aciklama amacidir.',
+    summary: 'Akışa görsel yorum ekler. Çalıştırılmaz, sadece siz ve ekibiniz için açıklama amaçlıdır.',
     detail:
-      'Not node\'u akis icinde calistirilmayan, sadece gorsel bir aciklama kutusudur. Karmasik akislarda belirli bolgelerin ne yaptigini aciklamak icin kullanilir.\n\n' +
-      'Renk secenekleri ile farkli konulari (uyari, bilgi, onemli not) gorsel olarak ayirt edebilirsiniz. Sari: genel not, Kirmizi: uyari, Mavi: bilgi, Yesil: onay, Mor: ozel not.\n\n' +
-      'Not node\'unu herhangi bir yere koyabilirsiniz — akisi etkilemez, baglanti yapmaniz gerekmez.',
+      'Not node\'u akış içinde çalıştırılmayan, sadece görsel bir açıklama kutusudur. Karmaşık akışlarda belirli bölgelerin ne yaptığını açıklamak için kullanılır.\n\n' +
+      'Renk seçenekleri ile farklı konuları (uyarı, bilgi, önemli not) görsel olarak ayırt edebilirsiniz. Sarı: genel not, Kırmızı: uyarı, Mavi: bilgi, Yeşil: onay, Mor: özel not.\n\n' +
+      'Not node\'unu herhangi bir yere koyabilirsiniz — akışı etkilemez, bağlantı yapmanız gerekmez.',
     scenarios:
-      '- Aciklama: "Bu bolum VIP musteriler icin ozel akis"\n' +
-      '- Uyari (kirmizi): "DIKKAT: Bu API cagrisinda hata olursa temsilciye aktarilir"\n' +
-      '- Hatirlatma (sari): "Bu kisimdaki mesaj metnini guncellemeyi unutma"',
+      '- Açıklama: "Bu bölüm VIP müşteriler için özel akış"\n' +
+      '- Uyarı (kırmızı): "DİKKAT: Bu API çağrısında hata olursa temsilciye aktarılır"\n' +
+      '- Hatırlatma (sarı): "Bu kısımdaki mesaj metnini güncellemeyi unutma"',
     antiPatterns:
-      '- Not node\'unu akisa baglamayin — gereksiz baglanti olusturur\n' +
-      '- Her adima not eklemek akisi karmasik gosterir — sadece gerekli yerlere ekleyin\n' +
-      '- Not icine teknik bilgi (degisken adlari vs.) yazmak yerine anlasilir aciklama yazin',
+      '- Not node\'unu akışa bağlamayın — gereksiz bağlantı oluşturur\n' +
+      '- Her adıma not eklemek akışı karmaşık gösterir — sadece gerekli yerlere ekleyin\n' +
+      '- Not içine teknik bilgi (değişken adları vs.) yazmak yerine anlaşılır açıklama yazın',
   },
   action_ecommerce: {
-    summary: 'E-ticaret platformunda siparis, urun ve musteri islemleri yapar.',
+    summary: 'E-ticaret platformunda sipariş, ürün ve müşteri işlemleri yapar.',
     detail:
-      'E-Ticaret node\'u, entegre edilmis e-ticaret platformunda (ikas vb.) islem yapmanizi saglar. Siparis listeleme, urun sorgulama, kargolama, durum guncelleme ve iade gibi islemleri akis icinden otomatik olarak gerceklestirir.\n\n' +
-      'Her islem icin gerekli alanlar degisir. Ornegin siparis detayi icin siparis ID gerekli, kargolama icin siparis ID + takip kodu + kargo firmasi gereklidir.\n\n' +
-      'Sonuc belirtilen degiskene atanir. Basarili islemler "success" dalina, hatalar "error" dalina yonlenir.',
+      'E-Ticaret node\'u, entegre edilmiş e-ticaret platformunda (ikas vb.) işlem yapmanızı sağlar. Sipariş listeleme, ürün sorgulama, kargolama, durum güncelleme ve iade gibi işlemleri akış içinden otomatik olarak gerçekleştirir.\n\n' +
+      'Her işlem için gerekli alanlar değişir. Örneğin sipariş detayı için sipariş ID gerekli, kargolama için sipariş ID + takip kodu + kargo firması gereklidir.\n\n' +
+      'Sonuç belirtilen değişkene atanır. Başarılı işlemler "success" dalına, hatalar "error" dalına yönlenir.',
     scenarios:
-      '- Siparis sorgulama: Musteri telefonu ile siparis ara → Sonucu mesajla gonder\n' +
-      '- Kargo bildirimi: Siparis ID ile kargola → Takip numarasini musteriye gonder\n' +
-      '- Urun bilgisi: Urun ID ile detay al → Fiyat ve stok bilgisini goster\n' +
-      '- Iade islemi: Siparis + kalem ID ile iade → Sonucu bildir',
+      '- Sipariş sorgulama: Müşteri telefonu ile sipariş ara → Sonucu mesajla gönder\n' +
+      '- Kargo bildirimi: Sipariş ID ile kargola → Takip numarasını müşteriye gönder\n' +
+      '- Ürün bilgisi: Ürün ID ile detay al → Fiyat ve stok bilgisini göster\n' +
+      '- İade işlemi: Sipariş + kalem ID ile iade → Sonucu bildir',
     antiPatterns:
-      '- Siparis ID\'sini bos birakmayin — detay/kargolama/iade calismaz\n' +
-      '- Kargolama icin takip kodu ve kargo firmasi zorunlu\n' +
-      '- Hata dalini baglantisiz birakmayin — API hatasi akisi kirar\n' +
-      '- Cok fazla e-ticaret node\'u art arda koymayin — her biri API cagrisi yapar',
+      '- Sipariş ID\'sini boş bırakmayın — detay/kargolama/iade çalışmaz\n' +
+      '- Kargolama için takip kodu ve kargo firması zorunlu\n' +
+      '- Hata dalını bağlantısız bırakmayın — API hatası akışı kırar\n' +
+      '- Çok fazla e-ticaret node\'u art arda koymayın — her biri API çağrısı yapar',
   },
 };
 
@@ -334,35 +334,35 @@ export interface NodeOutputVar {
 
 export const NODE_OUTPUT_VARS: Partial<Record<FlowNodeType, NodeOutputVar[]>> = {
   trigger_start: [
-    { name: '__chat_id', description: 'Sohbet kimlik numarasi' },
-    { name: '__phone', description: 'Musteri telefon numarasi' },
-    { name: '__last_input', description: 'Musterinin son mesaji' },
-    { name: '__instance_id', description: 'Mesajin geldigi hat ID' },
+    { name: '__chat_id', description: 'Sohbet kimlik numarası' },
+    { name: '__phone', description: 'Müşteri telefon numarası' },
+    { name: '__last_input', description: 'Müşterinin son mesajı' },
+    { name: '__instance_id', description: 'Mesajın geldiği hat ID' },
   ],
   webhook_trigger: [
     { name: 'webhook_payload', description: 'Gelen webhook verisi (JSON)' },
   ],
   outbound_trigger: [
-    { name: 'campaign_id', description: 'Kampanya kimlik numarasi' },
+    { name: 'campaign_id', description: 'Kampanya kimlik numarası' },
   ],
   schedule_trigger: [
-    { name: '__trigger_time', description: 'Tetiklenme zamani' },
+    { name: '__trigger_time', description: 'Tetiklenme zamanı' },
   ],
   message_text: [
-    { name: 'user_input', description: 'Musterinin cevabi (yanit bekle aciksa)' },
+    { name: 'user_input', description: 'Müşterinin cevabı (yanıt bekle açıksa)' },
   ],
   message_menu: [
-    { name: '__selected_option', description: 'Secilen secenek etiketi' },
-    { name: '__selected_key', description: 'Secilen secenek anahtari' },
+    { name: '__selected_option', description: 'Seçilen seçenek etiketi' },
+    { name: '__selected_key', description: 'Seçilen seçenek anahtarı' },
   ],
   ai_intent: [
-    { name: '__detected_intent', description: 'Tespit edilen intent adi' },
-    { name: '__intent_confidence', description: 'Guven skoru (0-1)' },
-    { name: '__customer_name', description: 'Musteri adi (isim sorma aciksa)' },
+    { name: '__detected_intent', description: 'Tespit edilen intent adı' },
+    { name: '__intent_confidence', description: 'Güven skoru (0-1)' },
+    { name: '__customer_name', description: 'Müşteri adı (isim sorma açıksa)' },
   ],
   ai_faq: [
     { name: '__faq_answer', description: 'Bulunan cevap metni' },
-    { name: '__faq_confidence', description: 'Eslesme guven skoru' },
+    { name: '__faq_confidence', description: 'Eşleşme güven skoru' },
   ],
   ai_sentiment: [
     { name: '__sentiment_score', description: 'Duygu skoru (0-1)' },
@@ -373,10 +373,10 @@ export const NODE_OUTPUT_VARS: Partial<Record<FlowNodeType, NodeOutputVar[]>> = 
     { name: '__api_status_code', description: 'HTTP durum kodu' },
   ],
   action_ecommerce: [
-    { name: 'ecom_result', description: 'E-ticaret islem sonucu (JSON)' },
+    { name: 'ecom_result', description: 'E-ticaret işlem sonucu (JSON)' },
   ],
   utility_set_variable: [
-    { name: '(kullanici tanimli)', description: 'Atanan degisken adi ve degeri' },
+    { name: '(kullanıcı tanımlı)', description: 'Atanan değişken adı ve değeri' },
   ],
 };
 
@@ -390,12 +390,12 @@ export interface SystemVariable {
 }
 
 export const SYSTEM_VARIABLES: SystemVariable[] = [
-  { name: '__last_input', description: 'Musterinin son mesaji' },
-  { name: '__chat_id', description: 'Sohbet kimlik numarasi' },
-  { name: '__phone', description: 'Musteri telefon numarasi' },
+  { name: '__last_input', description: 'Müşterinin son mesajı' },
+  { name: '__chat_id', description: 'Sohbet kimlik numarası' },
+  { name: '__phone', description: 'Müşteri telefon numarası' },
   { name: '__instance_id', description: 'Mesaj gelen hat ID' },
-  { name: '__customer_name', description: 'Musteri adi (varsa)' },
-  { name: '__timestamp', description: 'Islem zamani' },
+  { name: '__customer_name', description: 'Müşteri adı (varsa)' },
+  { name: '__timestamp', description: 'İşlem zamanı' },
 ];
 
 // ============================================================
@@ -405,27 +405,27 @@ export const SYSTEM_VARIABLES: SystemVariable[] = [
 /** Static handle → label mapping for known node types */
 export const EDGE_HANDLE_LABELS: Partial<Record<FlowNodeType, Record<string, string>>> = {
   logic_condition: {
-    true_handle: 'DOGRU',
-    false_handle: 'YANLIS',
+    true_handle: 'DOĞRU',
+    false_handle: 'YANLIŞ',
   },
   logic_working_hours: {
-    within_hours: 'MESAI ICI',
-    outside_hours: 'MESAI DISI',
+    within_hours: 'MESAİ İÇİ',
+    outside_hours: 'MESAİ DIŞI',
   },
   ai_intent: {
     high_confidence: 'ALGILANDI',
-    low_confidence: 'DIGER',
+    low_confidence: 'DİĞER',
   },
   ai_faq: {
-    matched: 'ESLESTI',
-    no_match: 'ESLESMEDI',
+    matched: 'EŞLEŞTİ',
+    no_match: 'EŞLEŞMEDİ',
   },
   ai_sentiment: {
-    positive: 'POZITIF',
-    negative: 'NEGATIF',
+    positive: 'POZİTİF',
+    negative: 'NEGATİF',
   },
   action_api_call: {
-    success: 'BASARILI',
+    success: 'BAŞARILI',
     error: 'HATA',
   },
   action_call_flow: {
@@ -433,7 +433,7 @@ export const EDGE_HANDLE_LABELS: Partial<Record<FlowNodeType, Record<string, str
     error: 'HATA',
   },
   action_ecommerce: {
-    success: 'BASARILI',
+    success: 'BAŞARILI',
     error: 'HATA',
   },
 };
@@ -477,7 +477,7 @@ export function resolveEdgeLabel(
 export function describeCron(expression: string): string | null {
   if (!expression || !expression.trim()) return null;
   const parts = expression.trim().split(/\s+/);
-  if (parts.length !== 5) return 'Gecersiz cron ifadesi (5 alan olmali)';
+  if (parts.length !== 5) return 'Geçersiz cron ifadesi (5 alan olmalı)';
 
   const [minute, hour, dayOfMonth, month, dayOfWeek] = parts;
 
@@ -500,12 +500,12 @@ export function describeCron(expression: string): string | null {
 
   // Every day at specific time
   if (dayOfMonth === '*' && month === '*' && dayOfWeek === '*') {
-    return `Her gun saat ${timeStr}`;
+    return `Her gün saat ${timeStr}`;
   }
 
   // Weekdays
   if (dayOfMonth === '*' && month === '*' && (dayOfWeek === '1-5' || dayOfWeek === 'MON-FRI')) {
-    return `Hafta ici her gun saat ${timeStr}`;
+    return `Hafta içi her gün saat ${timeStr}`;
   }
 
   // Specific day of week
@@ -517,7 +517,7 @@ export function describeCron(expression: string): string | null {
   // Specific day of month
   if (dayOfMonth !== '*' && month === '*' && dayOfWeek === '*') {
     const dom = parseInt(dayOfMonth, 10);
-    if (!isNaN(dom)) return `Her ayin ${dom}. gunu saat ${timeStr}`;
+    if (!isNaN(dom)) return `Her ayın ${dom}. günü saat ${timeStr}`;
   }
 
   return formatRawCron(parts);
@@ -525,14 +525,14 @@ export function describeCron(expression: string): string | null {
 
 function getDayName(day: string): string | null {
   const map: Record<string, string> = {
-    '0': 'Pazar', '7': 'Pazar', '1': 'Pazartesi', '2': 'Sali',
-    '3': 'Carsamba', '4': 'Persembe', '5': 'Cuma', '6': 'Cumartesi',
-    'SUN': 'Pazar', 'MON': 'Pazartesi', 'TUE': 'Sali',
-    'WED': 'Carsamba', 'THU': 'Persembe', 'FRI': 'Cuma', 'SAT': 'Cumartesi',
+    '0': 'Pazar', '7': 'Pazar', '1': 'Pazartesi', '2': 'Salı',
+    '3': 'Çarşamba', '4': 'Perşembe', '5': 'Cuma', '6': 'Cumartesi',
+    'SUN': 'Pazar', 'MON': 'Pazartesi', 'TUE': 'Salı',
+    'WED': 'Çarşamba', 'THU': 'Perşembe', 'FRI': 'Cuma', 'SAT': 'Cumartesi',
   };
   return map[day.toUpperCase()] ?? null;
 }
 
 function formatRawCron(parts: string[]): string {
-  return `Cron: ${parts.join(' ')} (ozel zamanlama)`;
+  return `Cron: ${parts.join(' ')} (özel zamanlama)`;
 }

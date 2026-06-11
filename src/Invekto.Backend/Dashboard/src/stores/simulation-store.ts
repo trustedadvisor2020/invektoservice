@@ -86,7 +86,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     } catch (err) {
       const msg = err instanceof ApiClientError
         ? `[${err.errorCode}] ${err.message}`
-        : err instanceof Error ? err.message : 'Simulasyon baslatma hatasi';
+        : err instanceof Error ? err.message : 'Simülasyon başlatma hatası';
       set({ error: msg, isLoading: false });
     }
   },
@@ -114,7 +114,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     } catch (err) {
       const msg = err instanceof ApiClientError
         ? `[${err.errorCode}] ${err.message}`
-        : err instanceof Error ? err.message : 'Simulasyon adim hatasi';
+        : err instanceof Error ? err.message : 'Simülasyon adım hatası';
       set({ error: msg, isLoading: false });
     }
   },

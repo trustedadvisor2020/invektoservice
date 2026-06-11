@@ -235,8 +235,15 @@ export default function ProjectsPage() {
   const [testSending, setTestSending] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean | null; text: string } | null>(null);
 
-  // Only WhatsApp Cloud API lines are valid send channels (instance_type === 1; excludes SMS/web/channel).
-  const whatsappInstances = useMemo(() => instances.filter(i => i.instanceType === 1), [instances]);
+  // Only real WABA lines are valid send channels. cxapi gives instanceType=1 to BOTH WABA and
+  // QR-Code lines, so connectionType is the discriminator. null connectionType (pre-063 cache row)
+  // falls back to the old type filter for DISPLAY only — the server-side guard is strict WABA, so a
+  // stale non-WABA row shown here is rejected at save/test (fail-closed).
+  const whatsappInstances = useMemo(
+    () => instances.filter(i => i.connectionType != null
+      ? i.connectionType.trim().toUpperCase() === 'WABA'
+      : i.instanceType === 1),
+    [instances]);
   const selectedTemplate = useMemo(
     () => templates.find(t => t.templateId === waTemplateId) ?? null, [templates, waTemplateId]);
   const requiredInputs = selectedTemplate?.requiredInputs ?? [];

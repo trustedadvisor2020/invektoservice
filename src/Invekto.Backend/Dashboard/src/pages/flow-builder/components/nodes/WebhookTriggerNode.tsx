@@ -25,7 +25,7 @@ function WebhookTriggerNodeComponent(props: NodeProps) {
       <div className="flex items-center gap-1 text-xs">
         <span className="text-navy-400">POST webhook</span>
         {hasSecret && (
-          <span className="text-emerald-500" title="HMAC dogrulama aktif">&#x1f512;</span>
+          <span className="text-emerald-500" title="HMAC doğrulama aktif">&#x1f512;</span>
         )}
       </div>
     </BaseNode>

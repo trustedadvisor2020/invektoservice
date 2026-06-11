@@ -1,0 +1,164 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260611-tr-diakritik-sweep",
+  "risk": "LOW",
+  "status": "IN_PROGRESS",
+  "created_at": "2026-06-11T15:30:00Z",
+  "updated_at": "2026-06-11T15:30:00Z",
+  "gr_list": [
+    {
+      "id": "GR-1",
+      "description": "Dashboard SPA genelinde kullanici-gorunur UI metinlerinde eksik TR diakritiklerini duzelt (Hosgeldiniz->Hoşgeldiniz dahil, Q yazimi bitisik). SADECE render edilen metinler: JSX text, label/title/placeholder/desc/tooltip/aria-label prop'lari, setError/toast mesajlari. ASLA degismez: identifier'lar, obje KEY'leri, route path'leri, className'ler, API alan adlari, === karsilastirmalarinda kullanilan literaller, console.log mesajlari, comment'ler. HARIC: data/flow-templates.ts (musteri mesaj sablonu icerigi, Q karari ayri konu).",
+      "services_affected": ["Dashboard SPA"]
+    }
+  ],
+  "plan": {
+    "summary": "Tum Dashboard SPA UI metinlerinde TR diakritik duzeltmesi (Q: 'Hosgeldiniz degis hosgeldiniz olacak; baska tr sorunlari da var duzelt' + kapsam karari: tum SPA). ~100 aday dosya, dosya-basina paralel agent sweep (Workflow), sonra SPA build + leftover grep + Codex chunked review.",
+    "q_intent": "Hosgeldiniz degis hosgeldiniz olacak. baska tr sorunlari da var duzelt.",
+    "interview_notes": "Q kapsam karari (AskUserQuestion): TUM SPA UI metinleri. flow-templates.ts icerik datasi HARIC (322 eslesme — musteriye giden WhatsApp sablon icerigi, ayri konu olarak soru metninde belirtildi, Q bu kapsamla onayladi). 'Hosgeldiniz' -> 'Hoşgeldiniz' (Q'nun dikta ettigi bitisik yazim; TDK ayri yazimi uygulanmadi — Q talimatı esas).",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Dashboard ana sayfa basligi 'Hoşgeldiniz' yazar; login + dashboard + nav + tum sayfa/komponent UI metinlerinde eksik diakritik kalmaz (yaygin kelime taramasi temiz).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC2",
+        "criterion": "Hicbir identifier/key/route/className/API alani/karsilastirma literali degismez — davranis bit-identik; SPA build (tsc && vite) 0 hata.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC3",
+        "criterion": "data/flow-templates.ts diff'te YOK (bilincli haric); .cs dosyalari dokunulmadi.",
+        "verified": false,
+        "verification_note": null
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Dashboard/src/**/*.ts",
+    "src/Invekto.Backend/Dashboard/src/**/*.tsx"
+  ],
+  "files_changed": [],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": null,
+    "full_path": null,
+    "stats": {
+      "insertions": 0,
+      "deletions": 0,
+      "files_count": 0
+    }
+  },
+  "build": {
+    "status": null,
+    "command": "npm run build (tsc && vite build) — Dashboard SPA",
+    "timestamp": null,
+    "duration_ms": null,
+    "output_tail": null,
+    "error_summary": null,
+    "services": ["Dashboard SPA"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Degisen string'lerin hicbiri program mantiginda (key/lookup/karsilastirma/route/css/api alani) kullanilmiyor mu — sadece render edilen metinler mi degisti?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "flow-templates.ts ve .cs dosyalari diff disinda mi; degisiklikler yalnizca Dashboard/src altinda mi?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Diakritik duzeltmeleri dogru TR yazimina mi gidiyor (ş/ç/ğ/ü/ö/ı/İ yerinde; yanlis kelimeye yanlis harf basilmamis)?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Backend/Dashboard/src/data/flow-templates.ts (musteri sablon icerigi — Q karari haric)",
+      "Tum .cs dosyalari",
+      "Identifier/key/route/className/API alanlari/karsilastirma literalleri (her dosyada)"
+    ],
+    "non_goals": [
+      "flow-templates.ts sablon iceriklerinin TR duzeltmesi (ayri paket olabilir)",
+      "console.log/warn dev mesajlari (kullanici gormez)",
+      "Kod comment'leri (minimal diff)",
+      "TDK 'Hoş geldiniz' ayri yazimi (Q bitisik istedi)"
+    ],
+    "intentional_exclusions": [
+      "CSS uppercase ile i->I donusumu (pre-existing kozmetik, font/CSS konusu)",
+      "Backend'den gelen dinamik metinler (ayri yuzey)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Salt metin degisikligi; mantik/akis degismiyor. Build + leftover grep + Codex chunked review guvence katmanlari."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Musteri panelde 'Hosgeldiniz', 'Genel Bakis', 'Basari Orani' gibi bozuk Turkce goruyor — ozensiz/yabanci urun izlenimi.",
+      "suggestion": "Tum UI metinlerinde duzgun TR diakritikleri.",
+      "aha_moment": "Panel ana dili Turkce olan bir urun gibi okunur."
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Demo sirasinda potansiyel musteri bozuk karakterli ekran goruntusu aliyor.",
+      "suggestion": "Gorunur tum yuzeylerde tutarli Turkce.",
+      "aha_moment": "Ekran goruntusu pazarlama malzemesi olarak kullanilabilir."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "'Neden Turkce karakterler bozuk?' sorusu destek kanalina dusuyor.",
+      "suggestion": "Kok cozum: kaynak metinler duzeltilir.",
+      "aha_moment": "Bu soru bir daha gelmez."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Yeni eklenen ekranlar mevcut bozuk pattern'i kopyaliyor (ornek koddan).",
+      "suggestion": "Tum taban temizlenince yeni kod dogru ornekten beslenir.",
+      "aha_moment": "Yeni sayfalar otomatik dogru Turkce ile dogar."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Tek tek sayfa raporlayip duzelttirmek Q'nun zamanini yiyor.",
+      "suggestion": "Tek seferde tum SPA taramasi (paralel agent sweep).",
+      "aha_moment": "Bir komutla 100 dosya ayni anda temizlenir."
+    }
+  ],
+  "status_log": [
+    {
+      "ts": "2026-06-11T15:30:00Z",
+      "event": "PLAN_CREATED",
+      "notes": "Kesif: genis kelime taramasi 103 aday dosya (false-positive icerir — 'rapor','dosya' gibi dogru kelimeler de eslesti; agent dosya bazinda karar verir). flow-templates.ts (322 eslesme) Q karariyla HARIC. Yontem: Workflow pipeline, dosya-basina agent, kurallar: sadece render edilen metin; identifier/key/karsilastirma ASLA."
+    }
+  ],
+  "verdict": {
+    "status": null,
+    "source": null,
+    "received_at": null,
+    "updated_by": null,
+    "updated_at": null,
+    "raw_text": null,
+    "blocking_issues": [],
+    "iteration": 0,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}

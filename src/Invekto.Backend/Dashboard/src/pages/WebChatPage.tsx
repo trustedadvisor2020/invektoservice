@@ -59,7 +59,7 @@ export function WebChatPage() {
       setError(null);
     } catch (err) {
       console.error('WebChat conversations fetch failed:', err);
-      setError('Sohbetler yuklenemedi');
+      setError('Sohbetler yüklenemedi');
     } finally {
       setLoading(false);
     }
@@ -72,7 +72,7 @@ export function WebChatPage() {
       setMessages(result.messages);
     } catch (err) {
       console.error('WebChat messages fetch failed:', err);
-      setChatError('Mesajlar yuklenemedi');
+      setChatError('Mesajlar yüklenemedi');
     }
   }, []);
 
@@ -132,7 +132,7 @@ export function WebChatPage() {
       setMessages(prev => [...prev, result.message]);
     } catch (err) {
       console.error('Send failed:', err);
-      setChatError('Mesaj gonderilemedi');
+      setChatError('Mesaj gönderilemedi');
       setMsgInput(content);
     } finally {
       setSending(false);
@@ -152,7 +152,7 @@ export function WebChatPage() {
       await fetchConversations();
     } catch (err) {
       console.error('Close failed:', err);
-      setChatError('Sohbet kapatilmadi');
+      setChatError('Sohbet kapatılmadı');
     } finally {
       setClosing(false);
     }
@@ -167,7 +167,7 @@ export function WebChatPage() {
       await fetchConversations();
     } catch (err) {
       console.error('Route AI failed:', err);
-      setChatError('AI yonlendirme basarisiz');
+      setChatError('AI yönlendirme başarısız');
     } finally {
       setRouting(false);
     }
@@ -195,7 +195,7 @@ export function WebChatPage() {
             Aktif web sohbetleri
             {conversations.length > 0 && (
               <span className="ml-2 text-navy-300">
-                ({activeCount} aktif{showClosed && closedCount > 0 ? `, ${closedCount} kapali` : ''})
+                ({activeCount} aktif{showClosed && closedCount > 0 ? `, ${closedCount} kapalı` : ''})
               </span>
             )}
           </p>
@@ -208,7 +208,7 @@ export function WebChatPage() {
               onChange={e => setShowClosed(e.target.checked)}
               className="rounded border-navy-300 text-brand-500 focus:ring-brand-500"
             />
-            Kapali sohbetler
+            Kapalı sohbetler
           </label>
           <button
             onClick={fetchConversations}
@@ -235,7 +235,7 @@ export function WebChatPage() {
             {loading && conversations.length === 0 ? (
               <div className="flex items-center justify-center py-12 text-navy-300 text-sm">
                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                Yukleniyor...
+                Yükleniyor...
               </div>
             ) : error ? (
               <div className="p-4 text-sm text-red-500">{error}</div>
@@ -256,7 +256,7 @@ export function WebChatPage() {
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm font-medium text-navy-800 truncate">
-                      {conv.visitor_name || conv.visitor_email || `Ziyaretci #${conv.visitor_id.slice(0, 8)}`}
+                      {conv.visitor_name || conv.visitor_email || `Ziyaretçi #${conv.visitor_id.slice(0, 8)}`}
                     </span>
                     <StatusBadge status={conv.status} />
                   </div>
@@ -285,7 +285,7 @@ export function WebChatPage() {
             <div className="flex-1 flex items-center justify-center text-navy-300">
               <div className="text-center">
                 <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p className="text-sm">Bir sohbet secin</p>
+                <p className="text-sm">Bir sohbet seçin</p>
               </div>
             </div>
           ) : (
@@ -298,7 +298,7 @@ export function WebChatPage() {
                   </div>
                   <div>
                     <h3 className="text-sm font-semibold text-navy-800">
-                      {activeConv?.visitor_name || activeConv?.visitor_email || `Ziyaretci #${activeConv?.visitor_id.slice(0, 8)}`}
+                      {activeConv?.visitor_name || activeConv?.visitor_email || `Ziyaretçi #${activeConv?.visitor_id.slice(0, 8)}`}
                     </h3>
                     {activeConv?.visitor_email && activeConv?.visitor_name && (
                       <p className="text-xs text-navy-400">{activeConv.visitor_email}</p>
@@ -314,7 +314,7 @@ export function WebChatPage() {
                       className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-emerald-50 text-emerald-600 rounded-md hover:bg-emerald-100 disabled:opacity-50 transition-colors"
                     >
                       {routing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bot className="w-3 h-3" />}
-                      AI'a Yonlendir
+                      AI'a Yönlendir
                     </button>
                   )}
                   {activeConv?.status !== 'closed' && (
@@ -335,10 +335,10 @@ export function WebChatPage() {
                 {msgLoading ? (
                   <div className="flex items-center justify-center py-12 text-navy-300 text-sm">
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    Mesajlar yukleniyor...
+                    Mesajlar yükleniyor...
                   </div>
                 ) : messages.length === 0 ? (
-                  <div className="text-center text-sm text-navy-300 py-12">Henuz mesaj yok</div>
+                  <div className="text-center text-sm text-navy-300 py-12">Henüz mesaj yok</div>
                 ) : (
                   messages.map(msg => <ChatBubble key={msg.id} message={msg} />)
                 )}
@@ -362,7 +362,7 @@ export function WebChatPage() {
                       value={msgInput}
                       onChange={e => setMsgInput(e.target.value)}
                       onKeyDown={handleKeyDown}
-                      placeholder="Mesajinizi yazin... (Enter ile gonderin)"
+                      placeholder="Mesajınızı yazın... (Enter ile gönderin)"
                       rows={1}
                       className="flex-1 resize-none rounded-lg border border-navy-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-500"
                     />
@@ -386,18 +386,18 @@ export function WebChatPage() {
             <div className="px-4 py-3 border-b border-navy-100 bg-navy-50">
               <h2 className="text-sm font-semibold text-navy-700 flex items-center gap-2">
                 <User className="w-4 h-4" />
-                Ziyaretci Profili
+                Ziyaretçi Profili
               </h2>
             </div>
             <div className="flex-1 overflow-y-auto p-4">
               {visitorLoading ? (
                 <div className="flex items-center justify-center py-8 text-navy-300 text-sm">
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  Yukleniyor...
+                  Yükleniyor...
                 </div>
               ) : !visitor ? (
                 <div className="text-sm text-navy-300 text-center py-8">
-                  Profil bulunamadi
+                  Profil bulunamadı
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -407,7 +407,7 @@ export function WebChatPage() {
                       <User className="w-7 h-7 text-brand-600" />
                     </div>
                     <p className="text-sm font-semibold text-navy-800">
-                      {visitor.name || 'Anonim Ziyaretci'}
+                      {visitor.name || 'Anonim Ziyaretçi'}
                     </p>
                     {visitor.email && (
                       <p className="text-xs text-navy-400 mt-0.5">{visitor.email}</p>
@@ -416,7 +416,7 @@ export function WebChatPage() {
 
                   {/* Info rows */}
                   <div className="space-y-3">
-                    <ProfileRow icon={Globe} label="Ziyaretci ID" value={visitor.visitor_id.slice(0, 12) + '...'} />
+                    <ProfileRow icon={Globe} label="Ziyaretçi ID" value={visitor.visitor_id.slice(0, 12) + '...'} />
                     {visitor.email && <ProfileRow icon={Mail} label="E-posta" value={visitor.email} />}
                     {visitor.page_url && (
                       <ProfileRow icon={Link} label="Sayfa" value={visitor.page_url} truncate />
@@ -430,12 +430,12 @@ export function WebChatPage() {
                     )}
                     <ProfileRow
                       icon={Eye}
-                      label="Ilk Gorulen"
+                      label="İlk Görülen"
                       value={formatDateTime(visitor.first_seen)}
                     />
                     <ProfileRow
                       icon={Clock}
-                      label="Son Gorulen"
+                      label="Son Görülen"
                       value={formatDateTime(visitor.last_seen)}
                     />
                   </div>
@@ -515,7 +515,7 @@ function StatusBadge({ status }: { status: string }) {
   const config: Record<string, { label: string; cls: string }> = {
     active: { label: 'Aktif', cls: 'bg-green-50 text-green-700' },
     ai: { label: 'AI', cls: 'bg-emerald-50 text-emerald-700' },
-    closed: { label: 'Kapali', cls: 'bg-navy-100 text-navy-500' },
+    closed: { label: 'Kapalı', cls: 'bg-navy-100 text-navy-500' },
   };
   const c = config[status] || { label: status, cls: 'bg-navy-100 text-navy-500' };
   return (

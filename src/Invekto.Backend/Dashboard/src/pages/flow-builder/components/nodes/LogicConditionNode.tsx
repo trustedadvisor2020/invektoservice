@@ -44,7 +44,7 @@ function LogicConditionNodeComponent(props: NodeProps) {
           {data.variable} {opLabel} {data.operator === 'is_empty' ? '' : data.value || '?'}
         </span>
       ) : (
-        <span className="text-navy-400 italic">Kosul tanimlanmadi</span>
+        <span className="text-navy-400 italic">Koşul tanımlanmadı</span>
       )}
     </BaseNode>
   );

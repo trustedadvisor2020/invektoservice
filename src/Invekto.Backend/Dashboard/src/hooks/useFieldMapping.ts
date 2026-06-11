@@ -134,7 +134,7 @@ export function useFieldMapping(enabled: boolean = true): FieldMappingState {
         }
       } catch (err) {
         if (isMountedRef.current) {
-          setError(wrapError(err, 'Tenant field mapping yuklenemedi.'));
+          setError(wrapError(err, 'Tenant field mapping yüklenemedi.'));
           setErrorKind(classifyError(err));
         }
       } finally {

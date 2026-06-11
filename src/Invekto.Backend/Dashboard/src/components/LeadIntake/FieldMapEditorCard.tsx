@@ -102,9 +102,9 @@ export function FieldMapEditorCard({ settings, onSave, busy, onDraftChange }: Fi
     const duplicates = new Map<string, number>();
     for (const r of rows) {
       if (!r.source.trim() && !r.canonical.trim()) continue;
-      if (!r.source.trim()) errors.push('Kaynak alan adi bos birakilamaz.');
-      else if (!r.canonical.trim()) errors.push(`'${r.source}' icin canonical alan secilmedi.`);
-      else if (!CANONICAL_FIELDS.includes(r.canonical)) errors.push(`Tanimsiz canonical alan: '${r.canonical}'.`);
+      if (!r.source.trim()) errors.push('Kaynak alan adı boş bırakılamaz.');
+      else if (!r.canonical.trim()) errors.push(`'${r.source}' için canonical alan seçilmedi.`);
+      else if (!CANONICAL_FIELDS.includes(r.canonical)) errors.push(`Tanımsız canonical alan: '${r.canonical}'.`);
       else {
         mappedCanonicals.add(r.canonical);
         duplicates.set(r.canonical, (duplicates.get(r.canonical) ?? 0) + 1);
@@ -114,7 +114,7 @@ export function FieldMapEditorCard({ settings, onSave, busy, onDraftChange }: Fi
       if (count > 1 && c !== 'metadata') errors.push(`Canonical alan '${c}' birden fazla kaynak alana atanamaz.`);
     }
     for (const req of REQUIRED_CANONICALS) {
-      if (!mappedCanonicals.has(req)) errors.push(`Zorunlu canonical alan '${req}' icin en az bir satir gerekli.`);
+      if (!mappedCanonicals.has(req)) errors.push(`Zorunlu canonical alan '${req}' için en az bir satır gerekli.`);
     }
     return { errors, valid: errors.length === 0 };
   }, [rows]);
@@ -165,7 +165,7 @@ export function FieldMapEditorCard({ settings, onSave, busy, onDraftChange }: Fi
       setPasteOpen(false);
       setPasteText('');
     } catch (err) {
-      const msg = err instanceof SyntaxError ? `Gecersiz JSON format: ${err.message}` : 'Gecersiz JSON format.';
+      const msg = err instanceof SyntaxError ? `Geçersiz JSON format: ${err.message}` : 'Geçersiz JSON format.';
       setPasteError(msg);
     }
   }
@@ -183,7 +183,7 @@ export function FieldMapEditorCard({ settings, onSave, busy, onDraftChange }: Fi
       await onSave(map, phoneCountryHint.trim() || null);
       setDirty(false);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Kayit basarisiz.';
+      const msg = err instanceof Error ? err.message : 'Kayıt başarısız.';
       setSaveError(msg);
     }
   }
@@ -192,18 +192,18 @@ export function FieldMapEditorCard({ settings, onSave, busy, onDraftChange }: Fi
     <Card className="p-5">
       <div className="flex items-center justify-between mb-4">
         <CardTitle className="flex items-center gap-2">
-          Alan Eslemesi (Field Map)
+          Alan Eşlemesi (Field Map)
         </CardTitle>
         <Button variant="secondary" onClick={() => setPasteOpen(true)} disabled={busy}>
           <Lightbulb className="w-4 h-4 mr-1" />
-          Kaynak Yapistirma Yardimi
+          Kaynak Yapıştırma Yardımı
         </Button>
       </div>
 
       <p className="text-sm text-navy-500 mb-4 leading-relaxed">
-        Landing form alanlarinizi (kaynak) Invekto canonical alanlarina eslestirin. Zorunlu:{' '}
+        Landing form alanlarınızı (kaynak) Invekto canonical alanlarına eşleştirin. Zorunlu:{' '}
         <code className="bg-navy-50 px-1 rounded">phone</code> ve{' '}
-        <code className="bg-navy-50 px-1 rounded">consent</code> canonical alanlari icin en az birer satir olmali.
+        <code className="bg-navy-50 px-1 rounded">consent</code> canonical alanları için en az birer satır olmalı.
       </p>
 
       <div className="overflow-x-auto">
@@ -224,7 +224,7 @@ export function FieldMapEditorCard({ settings, onSave, busy, onDraftChange }: Fi
                     value={r.source}
                     onChange={e => updateRow(r.id, { source: e.target.value })}
                     disabled={busy}
-                    placeholder="ornek: ad_soyad"
+                    placeholder="örnek: ad_soyad"
                     className="w-full border border-navy-200 rounded px-2 py-1 focus:border-navy-400 focus:outline-none"
                   />
                 </td>
@@ -235,7 +235,7 @@ export function FieldMapEditorCard({ settings, onSave, busy, onDraftChange }: Fi
                     disabled={busy}
                     className="w-full border border-navy-200 rounded px-2 py-1 focus:border-navy-400 focus:outline-none"
                   >
-                    <option value="">— secin —</option>
+                    <option value="">— seçin —</option>
                     {CANONICAL_FIELDS.map(c => (
                       <option key={c} value={c}>
                         {c}{REQUIRED_CANONICALS.includes(c) ? ' *' : ''}
@@ -246,7 +246,7 @@ export function FieldMapEditorCard({ settings, onSave, busy, onDraftChange }: Fi
                 <td className="py-2 text-right">
                   <button
                     type="button"
-                    aria-label="Satiri sil"
+                    aria-label="Satırı sil"
                     onClick={() => removeRow(r.id)}
                     disabled={busy}
                     className="p-1.5 rounded text-navy-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
@@ -263,13 +263,13 @@ export function FieldMapEditorCard({ settings, onSave, busy, onDraftChange }: Fi
       <div className="mt-3">
         <Button variant="secondary" onClick={addRow} disabled={busy}>
           <Plus className="w-4 h-4 mr-1" />
-          Satir Ekle
+          Satır Ekle
         </Button>
       </div>
 
       <div className="mt-5 flex items-end gap-4 flex-wrap">
         <div>
-          <label className="block text-xs text-navy-500 mb-1">Telefon Ulke Ipucu (ISO 3166-1 alpha-2)</label>
+          <label className="block text-xs text-navy-500 mb-1">Telefon Ülke İpucu (ISO 3166-1 alpha-2)</label>
           <input
             type="text"
             maxLength={2}
@@ -287,11 +287,11 @@ export function FieldMapEditorCard({ settings, onSave, busy, onDraftChange }: Fi
           <div className="flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
             <div className="flex-1 text-xs text-amber-900">
-              <div className="font-semibold">Sunucu tarafinda degisiklik tespit edildi</div>
+              <div className="font-semibold">Sunucu tarafında değişiklik tespit edildi</div>
               <div className="mt-0.5">
-                Baska bir sekme veya kullanici bu ayarlari guncelledi. Sizin kaydedilmemis
-                satirlariniz korunuyor. Guncel sunucu haline gecmek icin alttaki butonu
-                kullanin; aksi halde Kaydet&#39;e basarsaniz tekrar 409 alabilirsiniz.
+                Başka bir sekme veya kullanıcı bu ayarları güncelledi. Sizin kaydedilmemiş
+                satırlarınız korunuyor. Güncel sunucu haline geçmek için alttaki butonu
+                kullanın; aksi halde Kaydet&#39;e basarsanız tekrar 409 alabilirsiniz.
               </div>
               <button
                 type="button"
@@ -299,7 +299,7 @@ export function FieldMapEditorCard({ settings, onSave, busy, onDraftChange }: Fi
                 disabled={busy}
                 className="mt-2 text-xs font-medium text-amber-900 underline hover:text-amber-700 disabled:opacity-40"
               >
-                Sunucu halini yukle (degisikliklerimi goz ardi et)
+                Sunucu halini yükle (değişikliklerimi göz ardı et)
               </button>
             </div>
           </div>
@@ -324,7 +324,7 @@ export function FieldMapEditorCard({ settings, onSave, busy, onDraftChange }: Fi
           variant="primary"
           onClick={handleSave}
           disabled={busy || !dirty || !validation.valid}
-          title={!validation.valid ? 'Zorunlu alanlar eksik' : dirty ? undefined : 'Kaydedilmemis degisiklik yok'}
+          title={!validation.valid ? 'Zorunlu alanlar eksik' : dirty ? undefined : 'Kaydedilmemiş değişiklik yok'}
         >
           <Save className="w-4 h-4 mr-1" />
           {busy ? 'Kaydediliyor...' : 'Kaydet'}
@@ -349,8 +349,8 @@ export function FieldMapEditorCard({ settings, onSave, busy, onDraftChange }: Fi
             </button>
             <h3 className="text-lg font-semibold text-navy-900 mb-2">Kaynak Yapistirma Yardimi</h3>
             <p className="text-sm text-navy-500 mb-3 leading-relaxed">
-              Landing formunuzun gonderecegi ornek JSON payload&#39;i yapistirin; ust seviye anahtarlar
-              bos satirlara eklenecek (mevcut kaynak alanlariniz degistirilmez).
+              Landing formunuzun göndereceği örnek JSON payload&#39;ı yapıştırın; üst seviye anahtarlar
+              boş satırlara eklenecek (mevcut kaynak alanlarınız değiştirilmez).
             </p>
             <textarea
               value={pasteText}
@@ -362,10 +362,10 @@ export function FieldMapEditorCard({ settings, onSave, busy, onDraftChange }: Fi
             {pasteError && <p className="text-xs text-red-600 mt-2">{pasteError}</p>}
             <div className="mt-4 flex justify-end gap-3">
               <Button variant="secondary" onClick={() => { setPasteOpen(false); setPasteError(null); }}>
-                Vazgec
+                Vazgeç
               </Button>
               <Button variant="primary" onClick={extractSourcesFromPaste}>
-                Alanlari Cikar
+                Alanları Çıkar
               </Button>
             </div>
           </div>

@@ -26,7 +26,7 @@ export function TranslationStats() {
     return (
       <Card>
         <CardContent className="py-6 text-center text-navy-300 text-sm">
-          Ceviri istatistikleri yukleniyor...
+          Çeviri istatistikleri yükleniyor...
         </CardContent>
       </Card>
     );
@@ -38,7 +38,7 @@ export function TranslationStats() {
     { label: 'Aktif Cache', value: stats.active_cached, icon: Database, color: 'bg-brand-100 text-brand-600' },
     { label: 'Tenant', value: stats.tenant_count, icon: Users, color: 'bg-green-100 text-green-600' },
     { label: 'Dil', value: stats.language_count, icon: Languages, color: 'bg-purple-100 text-purple-600' },
-    { label: 'Suresi Dolmus', value: stats.expired, icon: Clock, color: 'bg-navy-100 text-navy-500' },
+    { label: 'Süresi Dolmuş', value: stats.expired, icon: Clock, color: 'bg-navy-100 text-navy-500' },
   ];
 
   return (
@@ -46,7 +46,7 @@ export function TranslationStats() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Languages className="w-4 h-4 text-navy-400" />
-          <h3 className="text-sm font-medium text-navy-700">Ceviri Cache</h3>
+          <h3 className="text-sm font-medium text-navy-700">Çeviri Cache</h3>
         </div>
         <Button variant="ghost" size="sm" onClick={fetchStats} disabled={loading}>
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -74,7 +74,7 @@ export function TranslationStats() {
       {stats.top_languages.length > 0 && (
         <Card>
           <CardContent className="py-3 px-3">
-            <p className="text-xs text-navy-400 mb-2">Dil Dagilimi</p>
+            <p className="text-xs text-navy-400 mb-2">Dil Dağılımı</p>
             <div className="flex flex-wrap gap-1.5">
               {stats.top_languages.map(l => (
                 <span key={l.language} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-navy-50 text-xs text-navy-600">

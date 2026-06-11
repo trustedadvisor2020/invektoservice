@@ -73,7 +73,7 @@ export function FlowSettingsModal({ open, onClose }: FlowSettingsModalProps) {
       const result = await api.validateFlow(config);
       setFbValidationResult(result);
     } catch (err) {
-      setValidationError(err instanceof Error ? err.message : 'Dogrulama basarisiz');
+      setValidationError(err instanceof Error ? err.message : 'Doğrulama başarısız');
     } finally {
       setValidating(false);
     }
@@ -91,7 +91,7 @@ export function FlowSettingsModal({ open, onClose }: FlowSettingsModalProps) {
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-navy-100">
           <div className="flex items-center gap-4">
-            <h2 className="text-sm font-semibold text-navy-900">Flow Ayarlari</h2>
+            <h2 className="text-sm font-semibold text-navy-900">Flow Ayarları</h2>
             {hasWizardHistory && (
               <div className="flex border-b border-transparent -mb-4 pb-3">
                 <button
@@ -117,7 +117,7 @@ export function FlowSettingsModal({ open, onClose }: FlowSettingsModalProps) {
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
                   </svg>
-                  AI Gecmisi
+                  AI Geçmişi
                 </button>
               </div>
             )}
@@ -139,13 +139,13 @@ export function FlowSettingsModal({ open, onClose }: FlowSettingsModalProps) {
           <WizardHistoryTab />
         ) : (
           <>
-          <FieldGroup label="Flow Aciklamasi" tooltip="Flow'un ne is yaptigini kisa bir cumleyle aciklayin. Bu aciklama flow listesinde de gorunur.">
+          <FieldGroup label="Flow Açıklaması" tooltip="Flow'un ne iş yaptığını kısa bir cümleyle açıklayın. Bu açıklama flow listesinde de görünür.">
             <textarea
               value={flowMetadata.description ?? ''}
               onChange={(e) => setMetadata({ description: e.target.value })}
               rows={2}
               className="w-full bg-navy-50 border border-navy-200 rounded-lg px-3 py-2 text-sm text-navy-700 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 resize-none"
-              placeholder="Flow aciklamasi..."
+              placeholder="Flow açıklaması..."
             />
           </FieldGroup>
 
@@ -161,7 +161,7 @@ export function FlowSettingsModal({ open, onClose }: FlowSettingsModalProps) {
                   : 'bg-brand-500 hover:bg-brand-600 text-white'
               )}
             >
-              {validating ? 'Dogrulaniyor...' : 'Akisi Dogrula'}
+              {validating ? 'Doğrulanıyor...' : 'Akışı Doğrula'}
             </button>
 
             {/* Copy JSON button */}
@@ -175,7 +175,7 @@ export function FlowSettingsModal({ open, onClose }: FlowSettingsModalProps) {
               )}
               title="Flow JSON'u dosya olarak indir"
             >
-              {jsonCopied ? 'Indirildi!' : (
+              {jsonCopied ? 'İndirildi!' : (
                 <>
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -201,7 +201,7 @@ export function FlowSettingsModal({ open, onClose }: FlowSettingsModalProps) {
                   <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  Akis gecerli, sorun yok.
+                  Akış geçerli, sorun yok.
                 </div>
               )}
 
@@ -218,7 +218,7 @@ export function FlowSettingsModal({ open, onClose }: FlowSettingsModalProps) {
 
               {validationResult.warnings.length > 0 && (
                 <div>
-                  <span className="text-amber-700 font-medium">Uyarilar ({validationResult.warnings.length})</span>
+                  <span className="text-amber-700 font-medium">Uyarılar ({validationResult.warnings.length})</span>
                   <ul className="mt-1 space-y-0.5">
                     {validationResult.warnings.map((w, i) => (
                       <li key={i} className="text-amber-600 leading-tight">{w}</li>
@@ -236,7 +236,7 @@ export function FlowSettingsModal({ open, onClose }: FlowSettingsModalProps) {
           )}
 
           <FieldGroup
-            label="Mesai Disi Mesaji"
+            label="Mesai Dışı Mesajı"
             tooltip={buildOffHoursTooltip(workingHours)}
           >
             <textarea
@@ -244,27 +244,27 @@ export function FlowSettingsModal({ open, onClose }: FlowSettingsModalProps) {
               onChange={(e) => setSettings({ off_hours_message: e.target.value })}
               rows={3}
               className="w-full bg-navy-50 border border-navy-200 rounded-lg px-3 py-2 text-sm text-navy-700 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 resize-none"
-              placeholder="Mesai saatleri disinda gonderilecek mesaj..."
+              placeholder="Mesai saatleri dışında gönderilecek mesaj..."
             />
           </FieldGroup>
 
           <FieldGroup
-            label="Bilinmeyen Girdi Mesaji"
-            tooltip="Bot'un anlayamadigi veya eslestiremedigi mesajlara verilen yanit. Orn: 'Anlayamadim, lutfen seceneklerden birini secin.' veya 'Bu konuda yardimci olamiyorum, size nasil yardimci olabilirim?'"
+            label="Bilinmeyen Girdi Mesajı"
+            tooltip="Bot'un anlayamadığı veya eşleştiremediği mesajlara verilen yanıt. Örn: 'Anlayamadım, lütfen seçeneklerden birini seçin.' veya 'Bu konuda yardımcı olamıyorum, size nasıl yardımcı olabilirim?'"
           >
             <textarea
               value={settings.unknown_input_message ?? ''}
               onChange={(e) => setSettings({ unknown_input_message: e.target.value })}
               rows={2}
               className="w-full bg-navy-50 border border-navy-200 rounded-lg px-3 py-2 text-sm text-navy-700 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 resize-none"
-              placeholder="Gecersiz girdi mesaji..."
+              placeholder="Geçersiz girdi mesajı..."
             />
           </FieldGroup>
 
           <div className="grid grid-cols-3 gap-3">
             <FieldGroup
-              label="Handoff Guven Esigi"
-              tooltip="AI'nin canli temsilciye yonlendirme karari icin gereken minimum guven skoru (0-1 arasi). 0.5 = orta guven, 0.8 = yuksek guven. Dusuk deger daha fazla yonlendirme yapar."
+              label="Handoff Güven Eşiği"
+              tooltip="AI'nin canlı temsilciye yönlendirme kararı için gereken minimum güven skoru (0-1 arası). 0.5 = orta güven, 0.8 = yüksek güven. Düşük değer daha fazla yönlendirme yapar."
             >
               <input
                 type="number"
@@ -278,8 +278,8 @@ export function FlowSettingsModal({ open, onClose }: FlowSettingsModalProps) {
             </FieldGroup>
 
             <FieldGroup
-              label="Session Zaman Asimi (dk)"
-              tooltip="Kullanicinin son mesajindan sonra oturumun kapanacagi sure (dakika). Orn: 30 dk = yarim saat sessizlikte oturum sifirlanir. 5 dk = hizli islemler icin kisa oturum."
+              label="Session Zaman Aşımı (dk)"
+              tooltip="Kullanıcının son mesajından sonra oturumun kapanacağı süre (dakika). Örn: 30 dk = yarım saat sessizlikte oturum sıfırlanır. 5 dk = hızlı işlemler için kısa oturum."
             >
               <input
                 type="number"
@@ -292,8 +292,8 @@ export function FlowSettingsModal({ open, onClose }: FlowSettingsModalProps) {
             </FieldGroup>
 
             <FieldGroup
-              label="Maks. Dongu Sayisi"
-              tooltip="Bir akis adiminin tekrarlanabilecegi maksimum sayi. Sonsuz donguyu onler. Orn: 10 = kullanici 10 kez yanlis girerse akis durur. 3 = daha katı, hizli cikis."
+              label="Maks. Döngü Sayısı"
+              tooltip="Bir akış adımının tekrarlanabileceği maksimum sayı. Sonsuz döngüyü önler. Örn: 10 = kullanıcı 10 kez yanlış girerse akış durur. 3 = daha katı, hızlı çıkış."
             >
               <input
                 type="number"
@@ -314,15 +314,15 @@ export function FlowSettingsModal({ open, onClose }: FlowSettingsModalProps) {
 }
 
 const DAY_TR: Record<string, string> = {
-  Monday: 'Pazartesi', Tuesday: 'Sali', Wednesday: 'Carsamba',
-  Thursday: 'Persembe', Friday: 'Cuma', Saturday: 'Cumartesi', Sunday: 'Pazar',
+  Monday: 'Pazartesi', Tuesday: 'Salı', Wednesday: 'Çarşamba',
+  Thursday: 'Perşembe', Friday: 'Cuma', Saturday: 'Cumartesi', Sunday: 'Pazar',
 };
 
 function buildOffHoursTooltip(wh: FbWorkingHoursInfo | null): string {
-  const base = 'Calisma saatleri disinda gelen mesajlara otomatik gonderilen yanit.';
+  const base = 'Çalışma saatleri dışında gelen mesajlara otomatik gönderilen yanıt.';
 
   if (!wh?.configured)
-    return `${base} Henuz mesai saatleri tanimlanmamis — tanimlandiginda burada gorunur.`;
+    return `${base} Henüz mesai saatleri tanımlanmamış — tanımlandığında burada görünür.`;
 
   const parts: string[] = [base];
 
@@ -331,7 +331,7 @@ function buildOffHoursTooltip(wh: FbWorkingHoursInfo | null): string {
 
   if (wh.days_off && wh.days_off.length > 0) {
     const trDays = wh.days_off.map((d) => DAY_TR[d] ?? d).join(', ');
-    parts.push(`Tatil gunleri: ${trDays}`);
+    parts.push(`Tatil günleri: ${trDays}`);
   }
 
   if (wh.timezone)

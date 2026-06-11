@@ -23,7 +23,7 @@ function ActionAssignGroupNodeComponent(props: NodeProps) {
       hasDefaultOutput={false}
     >
       <div className="space-y-1">
-        <span className="text-red-400/70">Terminal - gruba yonlendirilir</span>
+        <span className="text-red-400/70">Terminal - gruba yönlendirilir</span>
         {data.group_name && (
           <div className="text-navy-500 text-[10px] mt-1 truncate">
             Grup: {data.group_name}

@@ -10,8 +10,8 @@ interface Props {
 
 const STATUS_CONFIG: Record<string, { icon: typeof Clock; color: string; label: string }> = {
   pending: { icon: Clock, color: 'text-yellow-600 bg-yellow-50', label: 'Bekliyor' },
-  processing: { icon: Loader2, color: 'text-blue-600 bg-blue-50', label: 'Isleniyor' },
-  ready: { icon: CheckCircle, color: 'text-green-600 bg-green-50', label: 'Hazir' },
+  processing: { icon: Loader2, color: 'text-blue-600 bg-blue-50', label: 'İşleniyor' },
+  ready: { icon: CheckCircle, color: 'text-green-600 bg-green-50', label: 'Hazır' },
   error: { icon: AlertCircle, color: 'text-red-600 bg-red-50', label: 'Hata' },
 };
 
@@ -31,7 +31,7 @@ export function DocumentList({ tenantId, refreshKey }: Props) {
       setTotal(result.total);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Dokumanlar yuklenemedi');
+      setError(err instanceof Error ? err.message : 'Dokümanlar yüklenemedi');
     } finally {
       setLoading(false);
     }
@@ -48,13 +48,13 @@ export function DocumentList({ tenantId, refreshKey }: Props) {
   }, [documents, fetchDocuments]);
 
   const handleDelete = async (docId: number) => {
-    if (!confirm('Bu dokuman ve tum parcalari silinsin mi?')) return;
+    if (!confirm('Bu doküman ve tüm parçaları silinsin mi?')) return;
     setDeleting(docId);
     try {
       await api.deleteDocument(tenantId, docId);
       fetchDocuments();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Dokuman silinemedi');
+      setError(err instanceof Error ? err.message : 'Doküman silinemedi');
     } finally {
       setDeleting(null);
     }
@@ -66,7 +66,7 @@ export function DocumentList({ tenantId, refreshKey }: Props) {
     <div className="bg-white rounded-lg border border-navy-100">
       <div className="flex items-center justify-between px-4 py-3 border-b border-navy-100">
         <h3 className="text-sm font-medium text-navy-700">
-          Dokumanlar {total > 0 && <span className="text-navy-300">({total})</span>}
+          Dokümanlar {total > 0 && <span className="text-navy-300">({total})</span>}
         </h3>
         <button onClick={fetchDocuments} className="text-navy-300 hover:text-navy-500">
           <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
@@ -78,7 +78,7 @@ export function DocumentList({ tenantId, refreshKey }: Props) {
       {documents.length === 0 && !error ? (
         <div className="p-8 text-center text-sm text-navy-300">
           <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
-          Henuz dokuman yuklenmemis
+          Henüz doküman yüklenmemiş
         </div>
       ) : (
         <div className="divide-y divide-navy-100">
@@ -97,7 +97,7 @@ export function DocumentList({ tenantId, refreshKey }: Props) {
                   </div>
                   <div className="flex items-center gap-3 mt-0.5 text-xs text-navy-300">
                     <span>{doc.sourceType.toUpperCase()}</span>
-                    {doc.chunkCount > 0 && <span>{doc.chunkCount} parca</span>}
+                    {doc.chunkCount > 0 && <span>{doc.chunkCount} parça</span>}
                     <span>{new Date(doc.createdAt).toLocaleDateString()}</span>
                   </div>
                 </div>
@@ -122,7 +122,7 @@ export function DocumentList({ tenantId, refreshKey }: Props) {
             disabled={page === 1}
             className="px-3 py-1 text-xs text-navy-500 bg-navy-100 rounded disabled:opacity-50"
           >
-            Onceki
+            Önceki
           </button>
           <span className="text-xs text-navy-400">{page} / {totalPages}</span>
           <button

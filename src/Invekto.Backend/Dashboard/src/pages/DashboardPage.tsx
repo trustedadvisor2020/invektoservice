@@ -32,10 +32,10 @@ export function DashboardPage() {
         alert(`${service.name} yeniden başlatıldı.`);
         setTimeout(refreshHealth, 5000);
       } else {
-        alert(`Yeniden baslatma basarisiz: ${result.message}`);
+        alert(`Yeniden başlatma başarısız: ${result.message}`);
       }
     } catch (error) {
-      alert(`Yeniden baslatma hatasi: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}`);
+      alert(`Yeniden başlatma hatası: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}`);
     } finally {
       setRestartingService(null);
     }
@@ -89,7 +89,7 @@ export function DashboardPage() {
           <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
             <AlertTriangle className="w-4 h-4 text-red-500" />
           </div>
-          <span className="text-sm text-red-600 font-medium">Bazi servisler calismiyor!</span>
+          <span className="text-sm text-red-600 font-medium">Bazı servisler çalışmıyor!</span>
         </div>
       )}
 
@@ -107,7 +107,7 @@ export function DashboardPage() {
         ) : (
           <Card className="col-span-full">
             <CardContent className="py-8 text-center text-navy-300">
-              {healthLoading ? 'Servisler yukleniyor...' : 'Servis bulunamadi'}
+              {healthLoading ? 'Servisler yükleniyor...' : 'Servis bulunamadı'}
             </CardContent>
           </Card>
         )}

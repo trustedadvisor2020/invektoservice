@@ -36,12 +36,12 @@ export function DryRunPreviewCard({ draftFieldMap, draftPhoneCountryHint, onRun 
     try {
       const parsed: unknown = JSON.parse(payloadText);
       if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-        setParseError('Payload bir JSON nesnesi olmali.');
+        setParseError('Payload bir JSON nesnesi olmalı.');
         return;
       }
       payload = parsed as Record<string, unknown>;
     } catch (err) {
-      const msg = err instanceof SyntaxError ? `Gecersiz JSON format: ${err.message}` : 'Gecersiz JSON format.';
+      const msg = err instanceof SyntaxError ? `Geçersiz JSON format: ${err.message}` : 'Geçersiz JSON format.';
       setParseError(msg);
       return;
     }
@@ -50,7 +50,7 @@ export function DryRunPreviewCard({ draftFieldMap, draftPhoneCountryHint, onRun 
       const resp = await onRun(payload, draftFieldMap, draftPhoneCountryHint);
       setResult(resp);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Dry-run basarisiz.';
+      const msg = err instanceof Error ? err.message : 'Dry-run başarısız.';
       setServerError(msg);
       setResult(null);
     } finally {
@@ -62,12 +62,12 @@ export function DryRunPreviewCard({ draftFieldMap, draftPhoneCountryHint, onRun 
     <Card className="p-5">
       <CardTitle className="flex items-center gap-2 mb-4">
         <PlayCircle className="w-4 h-4 text-navy-600" />
-        Dry-Run Onizleme
+        Dry-Run Önizleme
       </CardTitle>
 
       <p className="text-sm text-navy-500 mb-3 leading-relaxed">
-        Ornek bir landing payload&#39;i yapistirin; mevcut alan eslemesi (kaydedilmemis taslak dahil)
-        uzerinden gercek intake yolunun ne yapacagini gorun. Hicbir lead kaydi olusturulmaz,
+        Örnek bir landing payload&#39;i yapıştırın; mevcut alan eşlemesi (kaydedilmemiş taslak dahil)
+        üzerinden gerçek intake yolunun ne yapacağını görün. Hiçbir lead kaydı oluşturulmaz,
         welcome flow tetiklenmez.
       </p>
 
@@ -83,7 +83,7 @@ export function DryRunPreviewCard({ draftFieldMap, draftPhoneCountryHint, onRun 
           {parseError && <p className="text-xs text-red-600 mt-1">{parseError}</p>}
           <div className="mt-3">
             <Button variant="primary" onClick={handleRun} disabled={busy}>
-              {busy ? 'Calisiyor...' : 'Dry Run Calistir'}
+              {busy ? 'Çalışıyor...' : 'Dry Run Çalıştır'}
             </Button>
           </div>
         </div>
@@ -93,7 +93,7 @@ export function DryRunPreviewCard({ draftFieldMap, draftPhoneCountryHint, onRun 
           <div className="border border-navy-200 rounded p-3 min-h-[280px] bg-navy-50">
             {serverError && <div className="text-xs text-red-700">{serverError}</div>}
             {!result && !serverError && (
-              <div className="text-xs text-navy-400">Henuz calistirilmadi.</div>
+              <div className="text-xs text-navy-400">Henüz çalıştırılmadı.</div>
             )}
             {result && (
               <div className="space-y-3 text-xs">
@@ -130,7 +130,7 @@ export function DryRunPreviewCard({ draftFieldMap, draftPhoneCountryHint, onRun 
 
                 {Object.keys(result.resolved_fields).length > 0 && (
                   <div>
-                    <div className="text-navy-500 font-medium mb-1">Cozumlenen alanlar:</div>
+                    <div className="text-navy-500 font-medium mb-1">Çözümlenen alanlar:</div>
                     <table className="w-full text-xs">
                       <tbody>
                         {Object.entries(result.resolved_fields).map(([k, v]) => (
@@ -149,7 +149,7 @@ export function DryRunPreviewCard({ draftFieldMap, draftPhoneCountryHint, onRun 
                 {result.warnings.length > 0 && (
                   <div>
                     <div className="text-navy-500 font-medium mb-1 flex items-center gap-1">
-                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600" /> Uyarilar:
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600" /> Uyarılar:
                     </div>
                     <ul className="list-disc list-inside text-amber-800 space-y-0.5">
                       {result.warnings.map((w, i) => <li key={i}>{w}</li>)}

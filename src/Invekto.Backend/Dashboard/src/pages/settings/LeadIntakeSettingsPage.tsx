@@ -34,7 +34,7 @@ function extractError(err: unknown, fallback: string): { code: string; message: 
 }
 
 export function LeadIntakeSettingsPage() {
-  useEffect(() => { document.title = 'Invekto AI - Lead Kaynaklari'; }, []);
+  useEffect(() => { document.title = 'Invekto AI - Lead Kaynakları'; }, []);
 
   const [settings, setSettings] = useState<TenantLandingSettingsDto | null>(null);
   const [auditEntries, setAuditEntries] = useState<LiwAuditEntryDto[]>([]);
@@ -57,7 +57,7 @@ export function LeadIntakeSettingsPage() {
       setSettings(data);
       draftRef.current = { map: data.field_map, phoneHint: data.phone_country_hint };
     } catch (err) {
-      const e = extractError(err, 'Ayarlar yuklenemedi.');
+      const e = extractError(err, 'Ayarlar yüklenemedi.');
       setError(`[${e.code}] ${e.message}`);
     } finally {
       setLoading(false);
@@ -74,7 +74,7 @@ export function LeadIntakeSettingsPage() {
       // Surface the failure as a toast + structured console log so ops visibility is preserved.
       const e = extractError(err, 'Degisiklik gecmisi yuklenemedi.');
       console.warn(`[${e.code}] LeadIntakeSettings: audit list failed — ${e.message}`);
-      setToast(`Degisiklik gecmisi yuklenemedi: [${e.code}]`);
+      setToast(`Değişiklik geçmişi yüklenemedi: [${e.code}]`);
     } finally {
       setAuditLoading(false);
     }
@@ -102,9 +102,9 @@ export function LeadIntakeSettingsPage() {
       await loadSettings();
       await loadAudit();
     } catch (err) {
-      const e = extractError(err, 'Anahtar yenileme basarisiz.');
+      const e = extractError(err, 'Anahtar yenileme başarısız.');
       if (e.is409) {
-        setToast('Ayarlar baska bir sekmede degistirildi, son hali yuklendi.');
+        setToast('Ayarlar başka bir sekmede değiştirildi, son hali yüklendi.');
         await loadSettings();
         await loadAudit();
       } else {
@@ -120,13 +120,13 @@ export function LeadIntakeSettingsPage() {
     setBusy(true);
     try {
       await api.revokeLeadIntakeApiKey(settings.updated_at);
-      setToast('API anahtari iptal edildi.');
+      setToast('API anahtarı iptal edildi.');
       await loadSettings();
       await loadAudit();
     } catch (err) {
-      const e = extractError(err, 'Anahtar iptal basarisiz.');
+      const e = extractError(err, 'Anahtar iptal başarısız.');
       if (e.is409) {
-        setToast('Ayarlar baska bir sekmede degistirildi, son hali yuklendi.');
+        setToast('Ayarlar başka bir sekmede değiştirildi, son hali yüklendi.');
         await loadSettings();
         await loadAudit();
       } else {
@@ -149,14 +149,14 @@ export function LeadIntakeSettingsPage() {
         phone_country_hint: phoneCountryHint,
         expected_row_version: settings.updated_at,
       });
-      setToast('Alan eslemesi kaydedildi.');
+      setToast('Alan eşlemesi kaydedildi.');
       await loadSettings();
       await loadAudit();
       return resp;
     } catch (err) {
-      const e = extractError(err, 'Alan eslemesi kaydedilemedi.');
+      const e = extractError(err, 'Alan eşlemesi kaydedilemedi.');
       if (e.is409) {
-        setToast('Ayarlar baska bir sekmede degistirildi, son hali yuklendi.');
+        setToast('Ayarlar başka bir sekmede değiştirildi, son hali yüklendi.');
         await loadSettings();
         await loadAudit();
       }
@@ -186,7 +186,7 @@ export function LeadIntakeSettingsPage() {
   if (loading) {
     return (
       <div className="p-8">
-        <div className="text-navy-400 text-sm">Yukleniyor...</div>
+        <div className="text-navy-400 text-sm">Yükleniyor...</div>
       </div>
     );
   }
@@ -198,7 +198,7 @@ export function LeadIntakeSettingsPage() {
           <div className="flex items-start gap-2">
             <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
             <div>
-              <div className="text-sm font-semibold text-red-900">Ayarlar yuklenemedi</div>
+              <div className="text-sm font-semibold text-red-900">Ayarlar yüklenemedi</div>
               <div className="text-xs text-red-700 mt-1">{error}</div>
               <div className="mt-3">
                 <Button variant="secondary" onClick={() => { setLoading(true); void loadSettings(); }}>
@@ -218,7 +218,7 @@ export function LeadIntakeSettingsPage() {
     <div className="p-6 space-y-4">
       <h1 className="-mx-6 -mt-6 px-6 py-4 mb-2 text-xl font-semibold text-navy-900 flex items-center gap-2 border-b border-navy-100">
         <Webhook className="w-5 h-5 text-navy-400" />
-        Lead Kaynaklari (Landing Webhook)
+        Lead Kaynakları (Landing Webhook)
       </h1>
 
       <FlowWarningBanner flowStatus={settings.flow_status} />

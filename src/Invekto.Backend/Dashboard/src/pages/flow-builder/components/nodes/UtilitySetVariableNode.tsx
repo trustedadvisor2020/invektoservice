@@ -27,7 +27,7 @@ function UtilitySetVariableNodeComponent(props: NodeProps) {
             : data.value_expression}
         </span>
       ) : (
-        <span className="text-navy-400 italic">Degisken atamasi tanimlanmadi</span>
+        <span className="text-navy-400 italic">Değişken ataması tanımlanmadı</span>
       )}
     </BaseNode>
   );

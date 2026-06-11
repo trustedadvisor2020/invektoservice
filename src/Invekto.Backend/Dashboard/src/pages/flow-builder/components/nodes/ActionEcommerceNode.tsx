@@ -12,14 +12,14 @@ const EcommerceIcon = () => (
 );
 
 const OP_LABELS: Record<EcommerceOperation, string> = {
-  list_orders: 'Siparisler',
-  get_order: 'Siparis Detay',
-  list_products: 'Urunler',
-  get_product: 'Urun Detay',
-  list_customers: 'Musteriler',
+  list_orders: 'Siparişler',
+  get_order: 'Sipariş Detay',
+  list_products: 'Ürünler',
+  get_product: 'Ürün Detay',
+  list_customers: 'Müşteriler',
   fulfill_order: 'Kargola',
-  update_order_status: 'Durum Guncelle',
-  refund_order_line: 'Iade',
+  update_order_status: 'Durum Güncelle',
+  refund_order_line: 'İade',
 };
 
 function ActionEcommerceNodeComponent(props: NodeProps) {

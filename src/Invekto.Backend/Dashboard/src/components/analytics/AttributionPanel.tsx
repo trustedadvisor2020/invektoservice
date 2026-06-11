@@ -11,7 +11,7 @@ export default function AttributionPanel({ summary, costPerLead }: Props) {
     return (
       <Card>
         <CardHeader><CardTitle>Lead Kaynak Analizi</CardTitle></CardHeader>
-        <CardContent><p className="text-sm text-navy-300">Kaynak verisi yukleniyor...</p></CardContent>
+        <CardContent><p className="text-sm text-navy-300">Kaynak verisi yükleniyor...</p></CardContent>
       </Card>
     );
   }
@@ -21,15 +21,15 @@ export default function AttributionPanel({ summary, costPerLead }: Props) {
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <MetricCard label="Toplam Lead" value={summary.total_leads} color="bg-brand-50 text-brand-700" />
-        <MetricCard label="Donusum" value={summary.converted_leads} color="bg-green-50 text-green-700" />
-        <MetricCard label="Donusum Orani" value={`${summary.conversion_rate}%`} color="bg-purple-50 text-purple-700" />
+        <MetricCard label="Dönüşüm" value={summary.converted_leads} color="bg-green-50 text-green-700" />
+        <MetricCard label="Dönüşüm Oranı" value={`${summary.conversion_rate}%`} color="bg-purple-50 text-purple-700" />
         <MetricCard label="Toplam Gelir" value={`${summary.total_revenue.toLocaleString()} TRY`} color="bg-amber-50 text-amber-700" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* By Source */}
         <Card>
-          <CardHeader><CardTitle>Kaynak Bazinda</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Kaynak Bazında</CardTitle></CardHeader>
           <CardContent>
             {summary.by_source.length === 0 ? (
               <p className="text-sm text-navy-300">Kaynak verisi yok.</p>
@@ -39,7 +39,7 @@ export default function AttributionPanel({ summary, costPerLead }: Props) {
                   <tr className="text-left text-navy-300 border-b">
                     <th className="pb-2 font-medium">Kaynak</th>
                     <th className="pb-2 font-medium text-right">Lead</th>
-                    <th className="pb-2 font-medium text-right">Donusum</th>
+                    <th className="pb-2 font-medium text-right">Dönüşüm</th>
                     <th className="pb-2 font-medium text-right">Oran</th>
                   </tr>
                 </thead>

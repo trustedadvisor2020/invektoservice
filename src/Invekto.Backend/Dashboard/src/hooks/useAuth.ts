@@ -44,7 +44,7 @@ export function useAuth() {
           api.removeTokens();
           setIsAuthenticated(false);
           setSession(null);
-          setError('INMA oturumu dogrulanamadi');
+          setError('INMA oturumu doğrulanamadı');
         });
 
       api.getWelcome()
@@ -53,7 +53,7 @@ export function useAuth() {
       navigate('/', { replace: true });
     } else {
       api.removeTokens();
-      setError('Token gecersiz veya suresi dolmus');
+      setError('Token geçersiz veya süresi dolmuş');
       setIsAuthenticated(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -134,7 +134,7 @@ export function useAuth() {
     } catch (err: unknown) {
       api.clearSession();
       setIsAuthenticated(false);
-      setError(err instanceof Error ? err.message : 'Hizli giris basarisiz');
+      setError(err instanceof Error ? err.message : 'Hızlı giriş başarısız');
       return false;
     } finally {
       setIsLoading(false);
@@ -156,7 +156,7 @@ export function useAuth() {
     } catch (err: unknown) {
       api.clearSession();
       setIsAuthenticated(false);
-      setError(err instanceof Error ? err.message : 'Mock login basarisiz');
+      setError(err instanceof Error ? err.message : 'Mock login başarısız');
       return false;
     } finally {
       setIsLoading(false);
@@ -190,7 +190,7 @@ export function useAuth() {
     } catch (err: unknown) {
       api.clearSession();
       setIsAuthenticated(false);
-      setError(err instanceof Error ? err.message : 'Giris basarisiz');
+      setError(err instanceof Error ? err.message : 'Giriş başarısız');
       return false;
     } finally {
       setIsLoading(false);

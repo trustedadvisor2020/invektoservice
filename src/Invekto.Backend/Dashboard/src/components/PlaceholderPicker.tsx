@@ -53,12 +53,12 @@ export function PlaceholderPicker({
   const errorMessage = !error
     ? null
     : errorKind === 'not_configured'
-      ? 'INMA entegrasyonu yapilandirilmamis. Yonetici tenant ayarlarindan eklemelidir.'
+      ? 'INMA entegrasyonu yapılandırılmamış. Yönetici tenant ayarlarından eklemelidir.'
       : errorKind === 'upstream_fail'
-        ? 'INMA dinamik alan listesine ulasilamadi. Kisa sure sonra tekrar deneyin.'
+        ? 'INMA dinamik alan listesine ulaşılamadı. Kısa süre sonra tekrar deneyin.'
         : errorKind === 'invalidate_partial'
-          ? 'Onbellek yenileme kismen basarisiz; liste 1 saate kadar eski olabilir.'
-          : 'INMA alanlari alinamadi. Yenile butonu ile tekrar deneyin.';
+          ? 'Önbellek yenileme kısmen başarısız; liste 1 saate kadar eski olabilir.'
+          : 'INMA alanları alınamadı. Yenile butonu ile tekrar deneyin.';
   const isSoftWarning = errorKind === 'invalidate_partial';
 
   useEffect(() => {
@@ -99,7 +99,7 @@ export function PlaceholderPicker({
           variant="ghost"
           size="sm"
           onClick={() => setOpen((v) => !v)}
-          title="INMA alanlarini mesaj metnine ekle"
+          title="INMA alanlarını mesaj metnine ekle"
         >
           <Variable className="w-4 h-4 mr-1" />
           {triggerLabel}
@@ -141,7 +141,7 @@ export function PlaceholderPicker({
                     type="button"
                     onClick={() => handleSelectSemantic(entry.semanticName)}
                     className="w-full text-left px-3 py-1.5 hover:bg-gray-50 flex items-center justify-between gap-2"
-                    title={`Imlec konumuna {{${entry.semanticName}}} eklenir (INMA kaynak: ${entry.source})`}
+                    title={`İmleç konumuna {{${entry.semanticName}}} eklenir (INMA kaynak: ${entry.source})`}
                   >
                     <span className="text-sm text-gray-900 truncate">{entry.semanticName}</span>
                     <span className="text-xs font-mono text-gray-500">{`{{${entry.semanticName}}}`}</span>
@@ -159,7 +159,7 @@ export function PlaceholderPicker({
             {isLoading && (
               <div className="flex items-center gap-2 px-3 py-2 text-sm text-gray-500">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Alanlar yukleniyor...
+                Alanlar yükleniyor...
               </div>
             )}
 
@@ -179,7 +179,7 @@ export function PlaceholderPicker({
 
             {!isLoading && (!error || isSoftWarning) && fields.length === 0 && (
               <div className="px-3 py-2 text-sm text-gray-500">
-                Kullanilabilir alan yok. (INMA tenant yapilandirmasi eksik)
+                Kullanılabilir alan yok. (INMA tenant yapılandırması eksik)
               </div>
             )}
 
@@ -189,7 +189,7 @@ export function PlaceholderPicker({
                 type="button"
                 onClick={() => handleSelectInma(f.FieldKey)}
                 className="w-full text-left px-3 py-1.5 hover:bg-gray-50 flex items-center justify-between gap-2"
-                title={`Imleç konumuna {{${f.FieldKey}}} eklenir`}
+                title={`İmleç konumuna {{${f.FieldKey}}} eklenir`}
               >
                 <span className="text-sm text-gray-900 truncate">{f.FieldName || f.FieldKey}</span>
                 <span className="text-xs font-mono text-gray-500">{`{{${f.FieldKey}}}`}</span>
@@ -219,13 +219,13 @@ export function PlaceholderPicker({
 export function renderDynamicPreview(text: string, mapping?: Record<string, string>): string {
   if (!text) return '';
   const defaults: Record<string, string> = {
-    name: 'Ornek Musteri',
+    name: 'Örnek Müşteri',
     email: 'ornek@email.com',
     note: 'Demo not',
     pushname: 'Demo Push',
     datalistname: 'Demo Liste',
-    cf1: 'Istanbul',
-    cf2: 'ABC A.S.',
+    cf1: 'İstanbul',
+    cf2: 'ABC A.Ş.',
     cf3: 'Demo 3',
     cf4: 'Demo 4',
     cf5: 'Demo 5',

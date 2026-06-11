@@ -17,8 +17,8 @@ export function RiRescueAlerts({ data }: Props) {
   if (!data || data.totalCandidates === 0) {
     return (
       <Card>
-        <CardHeader><CardTitle>Rescue Alarmlari</CardTitle></CardHeader>
-        <CardContent className="py-8 text-center text-navy-300 text-sm">Kurtarilabilecek konusma bulunamadi</CardContent>
+        <CardHeader><CardTitle>Rescue Alarmları</CardTitle></CardHeader>
+        <CardContent className="py-8 text-center text-navy-300 text-sm">Kurtarılabilecek konuşma bulunamadı</CardContent>
       </Card>
     );
   }
@@ -30,7 +30,7 @@ export function RiRescueAlerts({ data }: Props) {
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="flex items-center gap-2">
           <Bell className="w-4 h-4 text-orange-500" />
-          Rescue Alarmlari
+          Rescue Alarmları
         </CardTitle>
         <Badge variant="warning">{data.totalCandidates} aday</Badge>
       </CardHeader>
@@ -49,7 +49,7 @@ export function RiRescueAlerts({ data }: Props) {
                 </span>
               </div>
               <div className="flex items-center gap-3 text-xs text-navy-400 flex-shrink-0">
-                <span>{c.daysSince} gun once</span>
+                <span>{c.daysSince} gün önce</span>
                 <span className="font-medium text-brand-600">skor: {c.rescuePriorityScore.toFixed(0)}</span>
               </div>
             </div>

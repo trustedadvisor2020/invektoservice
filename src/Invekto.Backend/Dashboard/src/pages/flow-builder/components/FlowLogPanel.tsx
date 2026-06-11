@@ -39,8 +39,8 @@ function formatDate(iso: string): string {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
-  running: { label: 'Calisiyor', bg: 'bg-amber-100', text: 'text-amber-700' },
-  completed: { label: 'Tamamlandi', bg: 'bg-emerald-100', text: 'text-emerald-700' },
+  running: { label: 'Çalışıyor', bg: 'bg-amber-100', text: 'text-amber-700' },
+  completed: { label: 'Tamamlandı', bg: 'bg-emerald-100', text: 'text-emerald-700' },
   error: { label: 'Hata', bg: 'bg-red-100', text: 'text-red-700' },
   handed_off: { label: 'Devredildi', bg: 'bg-sky-100', text: 'text-sky-700' },
   waiting: { label: 'Bekliyor', bg: 'bg-navy-100', text: 'text-navy-500' },
@@ -112,7 +112,7 @@ export function FlowLogPanel({ tenantId, flowId }: FlowLogPanelProps) {
           <line x1="9" y1="12" x2="15" y2="12" />
           <line x1="9" y1="16" x2="15" y2="16" />
         </svg>
-        <span className="text-sm font-medium flex-1">Akis Loglari</span>
+        <span className="text-sm font-medium flex-1">Akış Logları</span>
         <span className="text-xs opacity-75">{total}</span>
         <button
           onClick={() => refresh(tenantId, flowId)}
@@ -148,7 +148,7 @@ export function FlowLogPanel({ tenantId, flowId }: FlowLogPanelProps) {
         )}
 
         {!isLoading && executions.length === 0 && !error && (
-          <div className="px-3 py-8 text-center text-sm text-navy-300">Henuz log yok</div>
+          <div className="px-3 py-8 text-center text-sm text-navy-300">Henüz log yok</div>
         )}
 
         {/* Detail view */}
@@ -277,7 +277,7 @@ function ExecutionDetail({
       {/* Variables */}
       {detail.variables_final && Object.keys(detail.variables_final).length > 0 && (
         <div className="px-3 py-2 border-t border-navy-100 flex-shrink-0 max-h-32 overflow-y-auto">
-          <div className="text-[10px] text-navy-300 mb-1">Degiskenler</div>
+          <div className="text-[10px] text-navy-300 mb-1">Değişkenler</div>
           {Object.entries(detail.variables_final)
             .filter(([k]) => !k.startsWith('__'))
             .map(([k, v]) => (
@@ -345,7 +345,7 @@ function TraceNode({ entry, index }: { entry: NodeTraceEntry; index: number }) {
         {/* Variables snapshot */}
         {entry.variables && Object.keys(entry.variables).length > 0 && (
           <div className="mt-1 px-2 py-1 bg-navy-25 border border-navy-100 rounded">
-            <div className="text-[9px] text-navy-300 mb-0.5">Degiskenler</div>
+            <div className="text-[9px] text-navy-300 mb-0.5">Değişkenler</div>
             {Object.entries(entry.variables)
               .filter(([k]) => !k.startsWith('__'))
               .map(([k, v]) => (

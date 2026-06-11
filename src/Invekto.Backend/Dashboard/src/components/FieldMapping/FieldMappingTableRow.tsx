@@ -58,20 +58,20 @@ export function FieldMappingTableRow({
   let semanticError: string | null = null;
   if (mapped) {
     if (isReservedSemanticName(draft.semanticName)) {
-      semanticError = '"' + draft.semanticName + '" rezerve kelime (INMA Allowlist / leads kolon / cfN sablonu); farkli semantic secin.';
+      semanticError = '"' + draft.semanticName + '" rezerve kelime (INMA Allowlist / leads kolon / cfN şablonu); farklı semantic seçin.';
     } else if (!SEMANTIC_NAME_PATTERN.test(draft.semanticName)) {
-      semanticError = 'Kucuk harfle baslayan, a-z 0-9 _ iceren 2-64 karakter.';
+      semanticError = 'Küçük harfle başlayan, a-z 0-9 _ içeren 2-64 karakter.';
     } else if (isDuplicateSemantic) {
-      semanticError = 'Bu semantic isim birden fazla cf slotunda kullaniliyor — isimler benzersiz olmali.';
+      semanticError = 'Bu semantic isim birden fazla cf slotunda kullanılıyor — isimler benzersiz olmalı.';
     }
   } else if (draft.type === 'enum' && draft.enumValuesInput.trim().length > 0) {
     // Edge: user started typing enum values without semantic — remind to add semantic.
-    semanticError = 'Enum degerleri icin once semantic isim girin.';
+    semanticError = 'Enum değerleri için önce semantic isim girin.';
   }
 
   // Enum values required when type=enum AND row is mapped.
   const enumError = mapped && draft.type === 'enum' && draft.enumValuesInput.trim().length === 0
-    ? 'Enum icin en az 1 deger (virgulle ayrilmis).'
+    ? 'Enum için en az 1 değer (virgülle ayrılmış).'
     : null;
 
   const anyError = semanticError || enumError || rowError;
@@ -193,7 +193,7 @@ export function FieldMappingTableRow({
     {rowError && (
       <tr className="border-b border-red-200 bg-red-25">
         <td colSpan={7} className="px-3 py-2 text-xs text-red-600">
-          <strong>Sunucu hatasi:</strong> {rowError}
+          <strong>Sunucu hatası:</strong> {rowError}
         </td>
       </tr>
     )}

@@ -32,10 +32,10 @@ function AiFaqNodeComponent(props: NodeProps) {
     >
       <div className="flex flex-col gap-0.5">
         <span className="text-navy-500 text-xs">
-          Min guven: {(minConf * 100).toFixed(0)}%
+          Min güven: {(minConf * 100).toFixed(0)}%
         </span>
         <span className="text-navy-400 text-[10px]">
-          {searchSource === 'all' ? 'FAQ + Dokumanlar' : 'Sadece FAQ'}
+          {searchSource === 'all' ? 'FAQ + Dökümanlar' : 'Sadece FAQ'}
         </span>
       </div>
     </BaseNode>

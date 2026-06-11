@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx';
 import {
   Upload, FileSpreadsheet, X, AlertTriangle, CheckCircle2, Loader2,
   Trash2, Download, ChevronDown, Info, List as ListIcon,
-  Eye, Search, ChevronLeft, ChevronRight,
+  Eye, Search, ChevronLeft, ChevronRight, Plus,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { cn } from '../lib/utils';
@@ -143,6 +143,21 @@ function errText(e: unknown, fallback: string): string {
   return fallback;
 }
 
+// Viewer single-record mutations: map the known INV-OB codes to actionable Turkish
+// messages (AC3); anything else falls back to errText's code+message form.
+function recordErrText(e: unknown, fallback: string): string {
+  if (e instanceof ApiClientError) {
+    switch (e.errorCode) {
+      case 'INV-OB-088': return 'Bu numara listede zaten var.';
+      case 'INV-OB-047': return 'Geçersiz telefon numarası. Örnek format: 905xxxxxxxxx';
+      case 'INV-OB-048': return 'Liste kayıt limitine ulaştı.';
+      case 'INV-OB-051': return 'Liste şu anda içe aktarım işleminde — bitince tekrar deneyin.';
+      case 'INV-OB-089': return 'Kayıt bulunamadı (başka bir kullanıcı silmiş olabilir). Liste yenilendi.';
+    }
+  }
+  return errText(e, fallback);
+}
+
 // Module-level so it keeps a stable component identity across parent re-renders
 // (a nested component would remount the <select> on every keystroke).
 function MapSelect({
@@ -190,7 +205,7 @@ function StatusBadge({ status }: { status: DataListSummary['status'] }) {
 // ---- List viewer popup (FEAT-PROJELER PKT-14) ----
 // All string-valued record columns; phone is always shown, the rest hide when the loaded
 // page has no value in them (fixed list_records schema, so this is the full universe).
-const VIEWER_COLUMNS: { key: Exclude<keyof ListRecord, 'sendable'>; label: string }[] = [
+const VIEWER_COLUMNS: { key: Exclude<keyof ListRecord, 'sendable' | 'id'>; label: string }[] = [
   { key: 'phone', label: 'Telefon' },
   { key: 'name', label: 'Ad' },
   { key: 'surname', label: 'Soyad' },
@@ -251,12 +266,100 @@ export function DataImportPage() {
   const [viewerPageNum, setViewerPageNum] = useState(1);
   const viewerSeqRef = useRef(0); // drops stale responses (rapid typing/paging)
 
+  // ---- Viewer single-record mutations (manual add + 2-stage permanent delete) ----
+  const [addOpen, setAddOpen] = useState(false);
+  const [addForm, setAddForm] = useState({ phone: '', name: '', surname: '', email: '' });
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+  const [addedOk, setAddedOk] = useState(false);
+  const [armedDeleteId, setArmedDeleteId] = useState<number | null>(null); // first trash click arms this row
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [rowError, setRowError] = useState<string | null>(null);
+  const disarmTimerRef = useRef<number | null>(null);
+
   function openViewer(l: DataListSummary) {
     setViewerList(l);
     setViewerSearch('');
     setViewerPageNum(1);
     setViewerPage(null);
     setViewerError(null);
+    setAddOpen(false);
+    setAddForm({ phone: '', name: '', surname: '', email: '' });
+    setAddError(null);
+    setAddedOk(false);
+    setArmedDeleteId(null);
+    setRowError(null);
+  }
+
+  // The armed "Emin misin?" state self-disarms after 3s; clear the timer on unmount.
+  useEffect(() => () => {
+    if (disarmTimerRef.current) window.clearTimeout(disarmTimerRef.current);
+  }, []);
+
+  // Fresh counters from a mutation response -> popup header + main list table, no extra fetch.
+  // setViewerList's new reference also retriggers the records effect (single batched refetch).
+  function applyRecordCounters(listId: number, totalRecords: number, sendableCount: number) {
+    setLists(ls => ls.map(l => l.id === listId ? { ...l, total_records: totalRecords, sendable_count: sendableCount } : l));
+    setViewerList(v => v && v.id === listId ? { ...v, total_records: totalRecords, sendable_count: sendableCount } : v);
+  }
+
+  async function submitAddRecord() {
+    if (!viewerList || adding) return;
+    const phone = addForm.phone.trim();
+    if (!phone) { setAddError('Telefon zorunlu.'); return; }
+    setAdding(true);
+    setAddError(null);
+    setAddedOk(false);
+    try {
+      const res = await api.addDataListRecord(viewerList.id, {
+        phone,
+        name: addForm.name.trim() || undefined,
+        surname: addForm.surname.trim() || undefined,
+        email: addForm.email.trim() || undefined,
+      });
+      setAddForm({ phone: '', name: '', surname: '', email: '' });
+      setAddedOk(true);
+      // ORDER BY id puts the new record on the LAST page — jump there (search cleared)
+      // so the operator actually SEES the row that was just added.
+      setViewerSearch('');
+      setViewerPageNum(Math.max(1, Math.ceil(res.total_records / VIEWER_PAGE_SIZE)));
+      applyRecordCounters(viewerList.id, res.total_records, res.sendable_count);
+    } catch (e) {
+      setAddError(recordErrText(e, 'Kayıt eklenemedi'));
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  function armDelete(recordId: number) {
+    setArmedDeleteId(recordId);
+    setRowError(null);
+    if (disarmTimerRef.current) window.clearTimeout(disarmTimerRef.current);
+    disarmTimerRef.current = window.setTimeout(() => setArmedDeleteId(null), 3000);
+  }
+
+  async function confirmDeleteRecord(record: ListRecord) {
+    if (!viewerList || deletingId !== null) return;
+    if (disarmTimerRef.current) window.clearTimeout(disarmTimerRef.current);
+    setArmedDeleteId(null);
+    setDeletingId(record.id);
+    setRowError(null);
+    try {
+      const res = await api.deleteDataListRecord(viewerList.id, record.id);
+      // Deleting the only row of page>1 -> step back; batched with the counter patch below
+      // so the effect refetches once.
+      if ((viewerPage?.records.length ?? 0) === 1 && viewerPageNum > 1) setViewerPageNum(p => p - 1);
+      applyRecordCounters(viewerList.id, res.total_records, res.sendable_count);
+    } catch (e) {
+      setRowError(recordErrText(e, 'Kayıt silinemedi'));
+      if (e instanceof ApiClientError && e.errorCode === 'INV-OB-089') {
+        // Another user/tab already removed it — refresh the page + main table counters.
+        setViewerList(v => (v ? { ...v } : v));
+        void loadLists();
+      }
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   // Debounced server-paged fetch; search resets to page 1 at the input's onChange.
@@ -988,8 +1091,8 @@ export function DataImportPage() {
               </p>
             </div>
 
-            <div className="px-5 pb-3">
-              <div className="relative">
+            <div className="px-5 pb-3 flex items-center gap-2">
+              <div className="relative flex-1">
                 <Search className="w-4 h-4 text-navy-300 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   className="w-full pl-9 pr-3 py-2 bg-white border border-navy-100 rounded-lg text-navy-900 text-sm placeholder:text-navy-300 focus:outline-none focus:border-brand-500 focus:shadow-focus"
@@ -998,7 +1101,73 @@ export function DataImportPage() {
                   onChange={e => { setViewerSearch(e.target.value); setViewerPageNum(1); }}
                 />
               </div>
+              {viewerList.status === 'ready' && (
+                <Button
+                  size="sm"
+                  variant={addOpen ? 'secondary' : 'primary'}
+                  onClick={() => { setAddOpen(o => !o); setAddError(null); setAddedOk(false); }}
+                >
+                  <Plus className="w-4 h-4" /> Yeni Kayıt
+                </Button>
+              )}
             </div>
+
+            {/* Manual single-record add panel (phone required; invalid + duplicate rejected server-side) */}
+            {addOpen && viewerList.status === 'ready' && (
+              <div className="px-5 pb-3">
+                <div className="border border-navy-100 rounded-lg p-3 bg-navy-50/40">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                    <input
+                      className="px-3 py-2 bg-white border border-navy-100 rounded-lg text-navy-900 text-sm placeholder:text-navy-300 focus:outline-none focus:border-brand-500 focus:shadow-focus"
+                      placeholder="Telefon *"
+                      autoFocus
+                      value={addForm.phone}
+                      onChange={e => { setAddForm(f => ({ ...f, phone: e.target.value })); setAddError(null); setAddedOk(false); }}
+                      onKeyDown={e => { if (e.key === 'Enter') void submitAddRecord(); }}
+                    />
+                    <input
+                      className="px-3 py-2 bg-white border border-navy-100 rounded-lg text-navy-900 text-sm placeholder:text-navy-300 focus:outline-none focus:border-brand-500 focus:shadow-focus"
+                      placeholder="Ad"
+                      value={addForm.name}
+                      onChange={e => { setAddForm(f => ({ ...f, name: e.target.value })); setAddedOk(false); }}
+                      onKeyDown={e => { if (e.key === 'Enter') void submitAddRecord(); }}
+                    />
+                    <input
+                      className="px-3 py-2 bg-white border border-navy-100 rounded-lg text-navy-900 text-sm placeholder:text-navy-300 focus:outline-none focus:border-brand-500 focus:shadow-focus"
+                      placeholder="Soyad"
+                      value={addForm.surname}
+                      onChange={e => { setAddForm(f => ({ ...f, surname: e.target.value })); setAddedOk(false); }}
+                      onKeyDown={e => { if (e.key === 'Enter') void submitAddRecord(); }}
+                    />
+                    <input
+                      className="px-3 py-2 bg-white border border-navy-100 rounded-lg text-navy-900 text-sm placeholder:text-navy-300 focus:outline-none focus:border-brand-500 focus:shadow-focus"
+                      placeholder="E-posta"
+                      value={addForm.email}
+                      onChange={e => { setAddForm(f => ({ ...f, email: e.target.value })); setAddedOk(false); }}
+                      onKeyDown={e => { if (e.key === 'Enter') void submitAddRecord(); }}
+                    />
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-3">
+                    <div className="text-xs min-h-[1rem]">
+                      {addError ? (
+                        <span className="text-red-600">{addError}</span>
+                      ) : addedOk ? (
+                        <span className="text-emerald-600 inline-flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Kayıt eklendi
+                        </span>
+                      ) : null}
+                    </div>
+                    <Button size="sm" onClick={() => void submitAddRecord()} disabled={adding || !addForm.phone.trim()}>
+                      {adding && <Loader2 className="w-4 h-4 animate-spin" />} Ekle
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {rowError && (
+              <div className="px-5 pb-2 text-xs text-red-600">{rowError}</div>
+            )}
 
             <div className="flex-1 overflow-auto border-t border-navy-50">
               {viewerError ? (
@@ -1018,11 +1187,12 @@ export function DataImportPage() {
                       {viewerVisibleCols.map(c => (
                         <th key={c.key} className="text-left font-medium px-4 py-2 whitespace-nowrap">{c.label}</th>
                       ))}
+                      {viewerList.status === 'ready' && <th className="px-2 py-2 w-12" aria-label="İşlem"></th>}
                     </tr>
                   </thead>
                   <tbody className={cn(viewerLoading && 'opacity-50')}>
-                    {viewerPage.records.map((r, i) => (
-                      <tr key={`${r.phone ?? 'x'}-${i}`} className={cn('border-t border-navy-50', !r.sendable && 'opacity-60')}>
+                    {viewerPage.records.map(r => (
+                      <tr key={r.id} className={cn('border-t border-navy-50', !r.sendable && 'opacity-60')}>
                         {viewerVisibleCols.map(c => (
                           <td key={c.key} className="px-4 py-2 text-navy-800 max-w-[220px] truncate" title={r[c.key] ?? ''}>
                             {c.key === 'phone'
@@ -1037,6 +1207,32 @@ export function DataImportPage() {
                               : (r[c.key] ?? '')}
                           </td>
                         ))}
+                        {viewerList.status === 'ready' && (
+                          <td className="px-2 py-2 text-right whitespace-nowrap">
+                            {armedDeleteId === r.id ? (
+                              <button
+                                onClick={() => void confirmDeleteRecord(r)}
+                                disabled={deletingId !== null}
+                                className="text-red-600 hover:text-red-700 text-[11px] font-semibold disabled:opacity-50"
+                                title="Silmeyi onayla"
+                              >
+                                Emin misin?
+                              </button>
+                            ) : deletingId === r.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin text-navy-300 inline" />
+                            ) : (
+                              <button
+                                onClick={() => armDelete(r.id)}
+                                disabled={deletingId !== null}
+                                className="text-navy-300 hover:text-red-600 disabled:opacity-50"
+                                title="Kaydı listeden sil"
+                                aria-label="Kaydı listeden sil"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>

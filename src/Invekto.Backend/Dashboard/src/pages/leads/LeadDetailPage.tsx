@@ -32,7 +32,7 @@ export function LeadDetailPage({ leadId }: LeadDetailPageProps) {
             Lead #{leadId}
           </h2>
           <p className="text-sm text-navy-500 mt-1">
-            Detay panelindeki sekmeler asagida.
+            Detay panelindeki sekmeler aşağıda.
           </p>
         </CardContent>
       </Card>
@@ -42,7 +42,7 @@ export function LeadDetailPage({ leadId }: LeadDetailPageProps) {
           isActive={activeTab === 'photos'}
           onClick={() => setActiveTab('photos')}
         >
-          Fotograflar
+          Fotoğraflar
         </TabButton>
       </div>
 

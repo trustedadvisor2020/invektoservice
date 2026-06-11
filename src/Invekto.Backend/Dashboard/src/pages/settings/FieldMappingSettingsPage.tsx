@@ -170,9 +170,9 @@ export function FieldMappingSettingsPage() {
       setUpdatedAt(resp.data.updated_at);
       setRowErrors({});
     } catch (err) {
-      const e = extractError(err, 'Field mapping yuklenemedi.');
+      const e = extractError(err, 'Field mapping yüklenemedi.');
       if (e.status === 403) {
-        setPageError('Yetkiniz yok: baska tenant datasina erisemezsiniz.' + (e.code ? ' (' + e.code + ')' : ''));
+        setPageError('Yetkiniz yok: başka tenant datasına erişemezsiniz.' + (e.code ? ' (' + e.code + ')' : ''));
       } else {
         setPageError(formatError(e));
       }
@@ -265,7 +265,7 @@ export function FieldMappingSettingsPage() {
     // surface an explicit error rather than silently dropping the click. Codex
     // CQ2 flagged the prior silent return.
     if (!tenantId) {
-      setPageError('Tenant bilgisi henuz yuklenmedi. Sayfayi yenileyip tekrar deneyin.');
+      setPageError('Tenant bilgisi henüz yüklenmedi. Sayfayı yenileyip tekrar deneyin.');
       return;
     }
     setSaving(true);
@@ -298,7 +298,7 @@ export function FieldMappingSettingsPage() {
           setPageError(formatError(e));
         }
       } else if (e.status === 403) {
-        setPageError('Yetkiniz yok (INV-AUTH-010). Lutfen kendi tenant hesabinizla deneyin.');
+        setPageError('Yetkiniz yok (INV-AUTH-010). Lütfen kendi tenant hesabınızla deneyin.');
       } else {
         setPageError(formatError(e));
       }
@@ -309,7 +309,7 @@ export function FieldMappingSettingsPage() {
 
   if (loading) {
     return (
-      <div className="p-6 text-navy-500">Field mapping yukleniyor...</div>
+      <div className="p-6 text-navy-500">Field mapping yükleniyor...</div>
     );
   }
 
@@ -320,9 +320,9 @@ export function FieldMappingSettingsPage() {
         <h1 className="text-2xl font-semibold text-navy-900">Field Mapping</h1>
       </div>
       <p className="text-sm text-navy-600 mb-6">
-        INMA'nin 10 custom field slotuna (cf1..cf10) tenant'a ozel semantic isimler bagla.
-        Ornek: <code className="bg-navy-50 px-1 rounded">roadshow_city</code> &rarr; cf1 (enum: Dublin, Cork).
-        FlowBuilder + Template editorde semantic isim kullanilabilir.
+        INMA'nin 10 custom field slotuna (cf1..cf10) tenant'a özel semantic isimler bağla.
+        Örnek: <code className="bg-navy-50 px-1 rounded">roadshow_city</code> &rarr; cf1 (enum: Dublin, Cork).
+        FlowBuilder + Template editörde semantic isim kullanılabilir.
       </p>
 
       {/* INMA dynamic-fields hook error banner — covers ALL 4 documented errorKinds
@@ -332,9 +332,9 @@ export function FieldMappingSettingsPage() {
         <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded flex items-start gap-2">
           <AlertCircle size={16} className="text-amber-600 mt-0.5" />
           <div className="text-sm text-amber-800">
-            INMA config edilmemis (INV-OB-038). Tenant admin paneli uzerinden en az 1 custom
+            INMA config edilmemiş (INV-OB-038). Tenant admin paneli üzerinden en az 1 custom
             field aktif edildikten sonra bu sayfada semantic mapping girebilirsiniz. Mevcut
-            kaydedilmis mapping'ler editable kalir.
+            kaydedilmiş mapping'ler editable kalır.
           </div>
         </div>
       )}
@@ -342,9 +342,9 @@ export function FieldMappingSettingsPage() {
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded flex items-start gap-2">
           <AlertCircle size={16} className="text-red-600 mt-0.5" />
           <div className="text-sm text-red-800">
-            INMA servisine ulasilamiyor (INV-OB-037). Label bilgileri gecici olarak bos
-            gorunecek; mevcut kaydedilmis mapping'ler editable kalir. Birkac dakika sonra
-            sayfayi yenileyerek tekrar deneyin.
+            INMA servisine ulaşılamıyor (INV-OB-037). Label bilgileri geçici olarak boş
+            görünecek; mevcut kaydedilmiş mapping'ler editable kalır. Birkaç dakika sonra
+            sayfayı yenileyerek tekrar deneyin.
           </div>
         </div>
       )}
@@ -352,8 +352,8 @@ export function FieldMappingSettingsPage() {
         <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded flex items-start gap-2">
           <AlertCircle size={16} className="text-amber-600 mt-0.5" />
           <div className="text-sm text-amber-800">
-            Cache yenileme kismen basarisiz (INV-OB-037). Gosterilen label listesi en fazla
-            1 saat bayat olabilir. Sonuclar bekleneni karsilamiyorsa sayfayi yenileyin.
+            Cache yenileme kısmen başarısız (INV-OB-037). Gösterilen label listesi en fazla
+            1 saat bayat olabilir. Sonuçlar bekleneni karşılamıyorsa sayfayı yenileyin.
           </div>
         </div>
       )}
@@ -361,8 +361,8 @@ export function FieldMappingSettingsPage() {
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded flex items-start gap-2">
           <AlertCircle size={16} className="text-red-600 mt-0.5" />
           <div className="text-sm text-red-800">
-            INMA label listesi alinamadi (bilinmeyen hata). Auth durumunuzu kontrol edip
-            sayfayi yenileyin. Sorun devam ederse destek ekibine bildirin.
+            INMA label listesi alınamadı (bilinmeyen hata). Auth durumunuzu kontrol edip
+            sayfayı yenileyin. Sorun devam ederse destek ekibine bildirin.
           </div>
         </div>
       )}
@@ -385,7 +385,7 @@ export function FieldMappingSettingsPage() {
             Mapping Tablosu (cf1..cf10)
             {updatedAt && (
               <span className="ml-2 text-xs font-normal text-navy-400">
-                Son guncellenme: {new Date(updatedAt).toLocaleString('tr-TR')}
+                Son güncellenme: {new Date(updatedAt).toLocaleString('tr-TR')}
               </span>
             )}
           </CardTitle>
@@ -396,7 +396,7 @@ export function FieldMappingSettingsPage() {
                 <th className="px-3 py-2 text-xs font-medium text-navy-600 uppercase w-40">INMA Label</th>
                 <th className="px-3 py-2 text-xs font-medium text-navy-600 uppercase">Semantic</th>
                 <th className="px-3 py-2 text-xs font-medium text-navy-600 uppercase w-32">Tip</th>
-                <th className="px-3 py-2 text-xs font-medium text-navy-600 uppercase">Enum Degerleri</th>
+                <th className="px-3 py-2 text-xs font-medium text-navy-600 uppercase">Enum Değerleri</th>
                 <th className="px-3 py-2 text-xs font-medium text-navy-600 uppercase text-center w-20">Zorunlu</th>
                 <th className="px-3 py-2 text-xs font-medium text-navy-600 uppercase text-right w-24">Action</th>
               </tr>
@@ -423,7 +423,7 @@ export function FieldMappingSettingsPage() {
 
       <div className="mt-6 flex items-center justify-between">
         <p className="text-xs text-navy-500">
-          {isDirty ? 'Kaydedilmemis degisiklikler var.' : 'Tum degisiklikler kaydedildi.'}
+          {isDirty ? 'Kaydedilmemiş değişiklikler var.' : 'Tüm değişiklikler kaydedildi.'}
         </p>
         <div className="flex gap-2">
           <Button
@@ -432,7 +432,7 @@ export function FieldMappingSettingsPage() {
             disabled={!isDirty || saving}
           >
             <RotateCcw size={14} className="mr-1" />
-            Vazgec
+            Vazgeç
           </Button>
           <Button
             onClick={handleSave}

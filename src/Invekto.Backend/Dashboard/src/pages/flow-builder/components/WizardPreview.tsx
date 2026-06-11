@@ -88,7 +88,7 @@ export function WizardPreview() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6z" />
               </svg>
             </div>
-            <p className="text-sm text-navy-400">AI akis yapisi olusturdugunda burada on izleme gorunecek</p>
+            <p className="text-sm text-navy-400">AI akış yapısı oluşturduğunda burada ön izleme görünecek</p>
           </div>
         ) : (
           <ReactFlow
@@ -116,7 +116,7 @@ export function WizardPreview() {
             </div>
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded ring-2 ring-amber-400" />
-              <span className="text-navy-600">Degisti</span>
+              <span className="text-navy-600">Değişti</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded ring-2 ring-red-400 opacity-50" />
@@ -133,7 +133,7 @@ export function WizardPreview() {
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" />
             </svg>
-            Akisin calismasi icin yapilmasi gerekenler
+            Akışın çalışması için yapılması gerekenler
           </h4>
           <div className="space-y-2">
             {prerequisites.map((p, i) => (

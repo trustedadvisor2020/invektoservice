@@ -62,7 +62,7 @@ function checkOrphan(
   return {
     type: 'orphan',
     severity: 'error',
-    message: 'Bu adima hicbir yerden ulasilamiyor',
+    message: 'Bu adıma hiçbir yerden ulaşılamıyor',
   };
 }
 
@@ -76,7 +76,7 @@ function checkDeadEnd(
   return {
     type: 'dead_end',
     severity: 'warning',
-    message: 'Bu adimdan sonra devam eden bir baglanti yok',
+    message: 'Bu adımdan sonra devam eden bir bağlantı yok',
   };
 }
 
@@ -91,7 +91,7 @@ function checkEmptyField(node: Node): ValidationError | null {
         return {
           type: 'empty_field',
           severity: 'error',
-          message: 'Mesaj metni bos',
+          message: 'Mesaj metni boş',
         };
       }
       break;
@@ -102,7 +102,7 @@ function checkEmptyField(node: Node): ValidationError | null {
         return {
           type: 'empty_field',
           severity: 'error',
-          message: 'Menu secenegi eklenmedi',
+          message: 'Menü seçeneği eklenmedi',
         };
       }
       break;
@@ -110,17 +110,17 @@ function checkEmptyField(node: Node): ValidationError | null {
     case 'logic_condition': {
       const cond = data as LogicConditionData;
       if (!cond.variable || cond.variable.trim() === '') {
-        return { type: 'empty_field', severity: 'error', message: 'Kosul degiskeni bos' };
+        return { type: 'empty_field', severity: 'error', message: 'Koşul değişkeni boş' };
       }
       if (cond.operator !== 'is_empty' && (!cond.value || cond.value.trim() === '')) {
-        return { type: 'empty_field', severity: 'warning', message: 'Kosul degeri bos' };
+        return { type: 'empty_field', severity: 'warning', message: 'Koşul değeri boş' };
       }
       break;
     }
     case 'logic_switch': {
       const sw = data as LogicSwitchData;
       if (!sw.variable || sw.variable.trim() === '') {
-        return { type: 'empty_field', severity: 'error', message: 'Switch degiskeni bos' };
+        return { type: 'empty_field', severity: 'error', message: 'Switch değişkeni boş' };
       }
       if (!sw.cases || sw.cases.length === 0) {
         return { type: 'empty_field', severity: 'error', message: 'Switch durumu eklenmedi' };
@@ -130,69 +130,69 @@ function checkEmptyField(node: Node): ValidationError | null {
     case 'action_delay': {
       const delay = data as ActionDelayData;
       if (!delay.seconds || delay.seconds <= 0) {
-        return { type: 'empty_field', severity: 'warning', message: 'Bekleme suresi gecersiz' };
+        return { type: 'empty_field', severity: 'warning', message: 'Bekleme süresi geçersiz' };
       }
       break;
     }
     case 'utility_set_variable': {
       const sv = data as UtilitySetVariableData;
       if (!sv.variable_name || sv.variable_name.trim() === '') {
-        return { type: 'empty_field', severity: 'error', message: 'Degisken adi bos' };
+        return { type: 'empty_field', severity: 'error', message: 'Değişken adı boş' };
       }
       if (!sv.value_expression || sv.value_expression.trim() === '') {
-        return { type: 'empty_field', severity: 'warning', message: 'Deger ifadesi bos' };
+        return { type: 'empty_field', severity: 'warning', message: 'Değer ifadesi boş' };
       }
       break;
     }
     case 'ai_intent': {
       const ai = data as AiIntentData;
       if (!ai.intents || ai.intents.length === 0) {
-        return { type: 'empty_field', severity: 'error', message: 'Intent listesi bos' };
+        return { type: 'empty_field', severity: 'error', message: 'Intent listesi boş' };
       }
       break;
     }
     case 'schedule_trigger': {
       const sched = data as ScheduleTriggerData;
       if (!sched.cron_expression || sched.cron_expression.trim() === '') {
-        return { type: 'empty_field', severity: 'error', message: 'Cron ifadesi bos' };
+        return { type: 'empty_field', severity: 'error', message: 'Cron ifadesi boş' };
       }
       break;
     }
     case 'action_api_call': {
       const api = data as ActionApiCallData;
       if (!api.url || api.url.trim() === '') {
-        return { type: 'empty_field', severity: 'error', message: 'API URL bos' };
+        return { type: 'empty_field', severity: 'error', message: 'API URL boş' };
       }
       if (!api.method) {
-        return { type: 'empty_field', severity: 'error', message: 'HTTP metodu secilmedi' };
+        return { type: 'empty_field', severity: 'error', message: 'HTTP metodu seçilmedi' };
       }
       break;
     }
     case 'action_call_flow': {
       const cf = data as ActionCallFlowData;
       if (!cf.flow_id || cf.flow_id.trim() === '') {
-        return { type: 'empty_field', severity: 'error', message: 'Hedef flow secilmedi' };
+        return { type: 'empty_field', severity: 'error', message: 'Hedef flow seçilmedi' };
       }
       break;
     }
     case 'action_assign_group': {
       const ag = data as ActionAssignGroupData;
       if (!ag.group_id || ag.group_id.trim() === '') {
-        return { type: 'empty_field', severity: 'error', message: 'Grup ID bos' };
+        return { type: 'empty_field', severity: 'error', message: 'Grup ID boş' };
       }
       break;
     }
     case 'action_ecommerce': {
       const ec = data as ActionEcommerceData;
       if (!ec.operation) {
-        return { type: 'empty_field', severity: 'error', message: 'E-ticaret islemi secilmedi' };
+        return { type: 'empty_field', severity: 'error', message: 'E-ticaret işlemi seçilmedi' };
       }
       const needsOrderId = ['get_order', 'fulfill_order', 'update_order_status', 'refund_order_line'].includes(ec.operation);
       if (needsOrderId && (!ec.order_id || ec.order_id.trim() === '')) {
-        return { type: 'empty_field', severity: 'error', message: 'Siparis ID bos' };
+        return { type: 'empty_field', severity: 'error', message: 'Sipariş ID boş' };
       }
       if (ec.operation === 'get_product' && (!ec.product_id || ec.product_id.trim() === '')) {
-        return { type: 'empty_field', severity: 'error', message: 'Urun ID bos' };
+        return { type: 'empty_field', severity: 'error', message: 'Ürün ID boş' };
       }
       break;
     }

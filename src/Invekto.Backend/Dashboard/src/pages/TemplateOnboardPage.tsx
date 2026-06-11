@@ -17,7 +17,7 @@ export function TemplateOnboardPage() {
         setTenants(data.tenants);
       } catch (err) {
         console.error('Failed to fetch tenants:', err);
-        setError('Tenant listesi yuklenemedi. Sayfayi yenileyin.');
+        setError('Tenant listesi yüklenemedi. Sayfayı yenileyin.');
       }
     };
     fetchTenants();
@@ -45,9 +45,9 @@ export function TemplateOnboardPage() {
       <div>
         <h1 className="text-lg font-semibold text-navy-900 flex items-center gap-2">
           <Users className="w-5 h-5" />
-          Sablon Dagitimi (Onboarding)
+          Şablon Dağıtımı (Onboarding)
         </h1>
-        <p className="text-xs text-navy-400">Sektore ait yayinlanmis sablonlari bir tenant'a toplu dagit</p>
+        <p className="text-xs text-navy-400">Sektöre ait yayınlanmış şablonları bir tenant'a toplu dağıt</p>
       </div>
 
       {/* Form */}
@@ -60,7 +60,7 @@ export function TemplateOnboardPage() {
               onChange={e => setSelectedTenant(e.target.value)}
               className="w-full text-xs border border-navy-200 rounded px-2 py-1.5"
             >
-              <option value="">Tenant secin...</option>
+              <option value="">Tenant seçin...</option>
               {tenants.map(t => (
                 <option key={t.tenantId} value={t.tenantId}>
                   {t.tenantName} (#{t.tenantId})
@@ -69,14 +69,14 @@ export function TemplateOnboardPage() {
             </select>
           </div>
           <div>
-            <label className="text-[10px] text-navy-400 block mb-1">Sektor</label>
+            <label className="text-[10px] text-navy-400 block mb-1">Sektör</label>
             <select
               value={sector}
               onChange={e => setSector(e.target.value)}
               className="w-full text-xs border border-navy-200 rounded px-2 py-1.5"
             >
               <option value="eticaret">E-Ticaret</option>
-              <option value="dis_klinik">Dis Klinigi</option>
+              <option value="dis_klinik">Diş Kliniği</option>
               <option value="estetik">Estetik</option>
             </select>
           </div>
@@ -87,7 +87,7 @@ export function TemplateOnboardPage() {
               className="w-full flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-medium rounded bg-navy-800 text-white hover:bg-navy-700 disabled:opacity-50"
             >
               {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Users className="w-3.5 h-3.5" />}
-              {loading ? 'Dagitiliyor...' : 'Sablonlari Dagit'}
+              {loading ? 'Dağıtılıyor...' : 'Şablonları Dağıt'}
             </button>
           </div>
         </div>
@@ -104,7 +104,7 @@ export function TemplateOnboardPage() {
         <div className="bg-white rounded-lg border border-navy-100 p-4">
           <h2 className="text-sm font-medium text-navy-800 mb-3 flex items-center gap-1">
             <CheckCircle className="w-4 h-4 text-emerald-600" />
-            Dagitim Tamamlandi
+            Dağıtım Tamamlandı
           </h2>
           <div className="grid grid-cols-4 gap-3">
             <div className="bg-emerald-50 rounded-lg p-3 text-center">
@@ -117,11 +117,11 @@ export function TemplateOnboardPage() {
             </div>
             <div className="bg-red-50 rounded-lg p-3 text-center">
               <div className="text-2xl font-bold text-red-700">{result.failed_count}</div>
-              <div className="text-[10px] text-red-600">Basarisiz</div>
+              <div className="text-[10px] text-red-600">Başarısız</div>
             </div>
             <div className="bg-navy-50 rounded-lg p-3 text-center">
               <div className="text-2xl font-bold text-navy-700">{result.duration_ms}</div>
-              <div className="text-[10px] text-navy-500">ms sure</div>
+              <div className="text-[10px] text-navy-500">ms süre</div>
             </div>
           </div>
         </div>

@@ -75,19 +75,19 @@ function validateAndConvert(
   };
   // Slug shape — same as backend regex.
   if (!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(draft.slug)) {
-    next.formError = 'Slug gecersiz: lowercase harf/rakam ile baslamali, [a-z0-9_-] icerebilir, max 64 karakter.';
+    next.formError = 'Slug geçersiz: lowercase harf/rakam ile başlamalı, [a-z0-9_-] içerebilir, max 64 karakter.';
     return { ok: false, draft: next };
   }
   if (draft.abSplitPercent < 0 || draft.abSplitPercent > 100) {
-    next.formError = 'A/B split 0-100 araliginda olmali.';
+    next.formError = 'A/B split 0-100 aralığında olmalı.';
     return { ok: false, draft: next };
   }
   if (draft.stages.length === 0) {
-    next.formError = 'En az 1 stage tanimlamalisiniz.';
+    next.formError = 'En az 1 stage tanımlamalısınız.';
     return { ok: false, draft: next };
   }
   if (draft.stages.length > MAX_STAGES) {
-    next.formError = `Cap asimi: max ${MAX_STAGES} stage. Mevcut ${draft.stages.length}.`;
+    next.formError = `Çap aşımı: max ${MAX_STAGES} stage. Mevcut ${draft.stages.length}.`;
     return { ok: false, draft: next };
   }
 
@@ -97,7 +97,7 @@ function validateAndConvert(
     const delay = Number(s.delayDaysInput);
     if (!Number.isFinite(delay) || delay <= 0) {
       anyRowFail = true;
-      return { ...s, rowError: 'delay_days 0\'dan buyuk bir tam sayi olmali.' };
+      return { ...s, rowError: 'delay_days 0\'dan büyük bir tam sayı olmalı.' };
     }
     if (delay > MAX_WINDOW) {
       anyRowFail = true;
@@ -106,11 +106,11 @@ function validateAndConvert(
     cumulative += delay;
     if (cumulative > MAX_WINDOW) {
       anyRowFail = true;
-      return { ...s, rowError: `Cap asimi: kumulatif pencere max ${MAX_WINDOW}; bu stage sonunda ${cumulative}.` };
+      return { ...s, rowError: `Çap aşımı: kümülatif pencere max ${MAX_WINDOW}; bu stage sonunda ${cumulative}.` };
     }
     if (!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(s.templateSlug)) {
       anyRowFail = true;
-      return { ...s, rowError: 'template_slug gecersiz: [a-z0-9_-] kullanin, lowercase ile baslayin.' };
+      return { ...s, rowError: 'template_slug geçersiz: [a-z0-9_-] kullanın, lowercase ile başlayın.' };
     }
     return { ...s, rowError: null };
   });
@@ -239,32 +239,32 @@ export function FollowupSequenceSettingsPage() {
     <div className="p-6 max-w-4xl">
       <h1 className="text-2xl font-semibold text-gray-900 mb-2">Follow-Up Sequence</h1>
       <p className="text-sm text-gray-600 mb-2">
-        Lead cevap vermediginde / offer reddedildiginde otomatik gonderilen N-asamali
-        nurture mesaj zinciri. A/B kontrol grubu deterministik atanir
+        Lead cevap vermediğinde / offer reddedildiğinde otomatik gönderilen N-aşamalı
+        nurture mesaj zinciri. A/B kontrol grubu deterministik atanır
         (sha256(tenant|lead|sequence) % 100).
       </p>
       <p className="text-xs text-gray-500 mb-4">
-        No-reply threshold: <span className="font-mono">{noReplyThresholdDays}</span> gun
+        No-reply threshold: <span className="font-mono">{noReplyThresholdDays}</span> gün
         (NoReplyCheckJob welcome enqueue'dan sonra bu kadar bekler, sonra inbound kontrol eder).
       </p>
 
       {testMode && (
         <div className="bg-amber-50 border border-amber-300 rounded p-3 mb-4 text-sm text-amber-900">
-          <span className="font-semibold">TEST MODE aktif:</span> stage delay degerleri
-          <span className="font-mono"> dakika </span>olarak yorumlaniyor (gun degil). Smoke
+          <span className="font-semibold">TEST MODE aktif:</span> stage delay değerleri
+          <span className="font-mono"> dakika </span>olarak yorumlanıyor (gün değil). Smoke
           sonrasi <span className="font-mono">tenant_settings.efs_test_mode</span> FALSE yapin.
         </div>
       )}
 
       {isLoading && (
         <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-4 text-sm text-blue-800">
-          Sequence listesi yukleniyor...
+          Sequence listesi yükleniyor...
         </div>
       )}
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded p-3 mb-4 text-sm text-red-800">
-          <span className="font-semibold">Yukleme hatasi:</span> {error.message}
+          <span className="font-semibold">Yükleme hatası:</span> {error.message}
           <button
             type="button"
             onClick={() => refresh()}
@@ -366,7 +366,7 @@ export function FollowupSequenceSettingsPage() {
 
       <div className="flex items-center justify-between mb-4">
         <div className="text-xs text-gray-600">
-          {summary.stageCount} stage · toplam delay: {summary.totalDelay} {testMode ? 'dk' : 'gun'} · A/B {summary.drip}%/{summary.control}%
+          {summary.stageCount} stage · toplam delay: {summary.totalDelay} {testMode ? 'dk' : 'gün'} · A/B {summary.drip}%/{summary.control}%
         </div>
         <button
           type="button"

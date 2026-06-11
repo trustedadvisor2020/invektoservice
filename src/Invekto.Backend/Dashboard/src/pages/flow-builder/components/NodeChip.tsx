@@ -11,22 +11,22 @@ export const NODE_COLORS: Record<string, string> = {
 };
 
 const NODE_DESCRIPTIONS: Record<string, { label: string; description: string; color: string }> = {
-  trigger_start: { label: 'Baslangic', description: 'Akisin giris noktasi. Musteri mesaj gonderdiginde tetiklenir.', color: NODE_COLORS.trigger_start },
+  trigger_start: { label: 'Başlangıç', description: 'Akışın giriş noktası. Müşteri mesaj gönderdiğinde tetiklenir.', color: NODE_COLORS.trigger_start },
   webhook_trigger: { label: 'Webhook', description: 'Dis sistemden gelen HTTP istegi ile tetiklenen baslangic noktasi.', color: NODE_COLORS.webhook_trigger },
   outbound_trigger: { label: 'Outbound', description: 'Toplu mesaj kampanyasi tetikleyicisi.', color: NODE_COLORS.outbound_trigger },
-  schedule_trigger: { label: 'Zamanlayici', description: 'Belirlenen zamanda otomatik tetiklenen baslangic noktasi (cron).', color: NODE_COLORS.schedule_trigger },
-  message_text: { label: 'Mesaj', description: 'Kullaniciya metin mesaj gonderir.', color: NODE_COLORS.message_text },
-  message_menu: { label: 'Menu', description: 'Kullaniciya secenekli bir menu sunar. Her secenek farkli dala yonlendirir.', color: NODE_COLORS.message_menu },
-  logic_condition: { label: 'Kosul', description: 'Bir degiskeni kontrol ederek akisi ikiye ayirir (dogru/yanlis).', color: NODE_COLORS.logic_condition },
-  logic_switch: { label: 'Switch', description: 'Bir degiskene gore birden fazla dala yonlendirir.', color: NODE_COLORS.logic_switch },
-  ai_intent: { label: 'Intent Algilama', description: 'Musteri mesajini AI ile analiz eder ve niyetini tespit eder (randevu, fiyat, iptal vb).', color: NODE_COLORS.ai_intent },
-  ai_faq: { label: 'FAQ Arama', description: 'Musteri sorusunu bilgi bankasinda arar. Eslesme bulursa otomatik cevap verir.', color: NODE_COLORS.ai_faq },
-  ai_sentiment: { label: 'Duygu Analizi', description: 'Musteri mesajinin duygusunu analiz eder (pozitif/negatif).', color: NODE_COLORS.ai_sentiment },
-  action_handoff: { label: 'Temsilciye Aktar', description: 'Gorusmeyi canli bir insan temsilciye aktarir. Akis burada sona erer.', color: NODE_COLORS.action_handoff },
-  action_api_call: { label: 'API Cagrisi', description: 'Harici bir API endpoint\'ine istek gonderir (GET/POST/PUT/DELETE).', color: NODE_COLORS.action_api_call },
-  action_delay: { label: 'Bekle', description: 'Belirli bir sure bekler (saniye). Kullaniciya dusunme/bekleme suresi verir.', color: NODE_COLORS.action_delay },
-  utility_set_variable: { label: 'Degisken Ata', description: 'Bir degiskene deger atar. Sonraki adimlar bu degeri kullanabilir.', color: NODE_COLORS.utility_set_variable },
-  utility_note: { label: 'Not', description: 'Gorsel aciklama dugumu. Calistirilmaz, sadece tasarimcinin notlari icin.', color: NODE_COLORS.utility_note },
+  schedule_trigger: { label: 'Zamanlayıcı', description: 'Belirlenen zamanda otomatik tetiklenen başlangıç noktası (cron).', color: NODE_COLORS.schedule_trigger },
+  message_text: { label: 'Mesaj', description: 'Kullanıcıya metin mesaj gönderir.', color: NODE_COLORS.message_text },
+  message_menu: { label: 'Menü', description: 'Kullanıcıya seçenekli bir menü sunar. Her seçenek farklı dala yönlendirir.', color: NODE_COLORS.message_menu },
+  logic_condition: { label: 'Koşul', description: 'Bir değişkeni kontrol ederek akışı ikiye ayırır (doğru/yanlış).', color: NODE_COLORS.logic_condition },
+  logic_switch: { label: 'Switch', description: 'Bir değişkene göre birden fazla dala yönlendirir.', color: NODE_COLORS.logic_switch },
+  ai_intent: { label: 'Intent Algılama', description: 'Müşteri mesajını AI ile analiz eder ve niyetini tespit eder (randevu, fiyat, iptal vb).', color: NODE_COLORS.ai_intent },
+  ai_faq: { label: 'FAQ Arama', description: 'Müşteri sorusunu bilgi bankasında arar. Eşleşme bulursa otomatik cevap verir.', color: NODE_COLORS.ai_faq },
+  ai_sentiment: { label: 'Duygu Analizi', description: 'Müşteri mesajının duygusunu analiz eder (pozitif/negatif).', color: NODE_COLORS.ai_sentiment },
+  action_handoff: { label: 'Temsilciye Aktar', description: 'Görüşmeyi canlı bir insan temsilciye aktarır. Akış burada sona erer.', color: NODE_COLORS.action_handoff },
+  action_api_call: { label: 'API Çağrısı', description: 'Harici bir API endpoint\'ine istek gönderir (GET/POST/PUT/DELETE).', color: NODE_COLORS.action_api_call },
+  action_delay: { label: 'Bekle', description: 'Belirli bir süre bekler (saniye). Kullanıcıya düşünme/bekleme süresi verir.', color: NODE_COLORS.action_delay },
+  utility_set_variable: { label: 'Değişken Ata', description: 'Bir değişkene değer atar. Sonraki adımlar bu değeri kullanabilir.', color: NODE_COLORS.utility_set_variable },
+  utility_note: { label: 'Not', description: 'Görsel açıklama düğümü. Çalıştırılmaz, sadece tasarımcının notları için.', color: NODE_COLORS.utility_note },
 };
 
 // Regex to find node type references in text

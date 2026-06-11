@@ -22,8 +22,8 @@ function TriggerStartNodeComponent(props: NodeProps) {
     >
       <span className="text-emerald-600">
         {instanceCount > 0
-          ? `${instanceCount} hat secili`
-          : 'Musteri mesaj gonderince baslar'}
+          ? `${instanceCount} hat seçili`
+          : 'Müşteri mesaj gönderince başlar'}
       </span>
     </BaseNode>
   );

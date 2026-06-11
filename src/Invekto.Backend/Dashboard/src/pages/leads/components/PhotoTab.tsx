@@ -29,9 +29,9 @@ interface PhotoTabProps {
 }
 
 const STATUS_LABEL: Record<PhotoStatus, { tr: string; variant: 'default' | 'success' | 'warning' | 'error' | 'info' }> = {
-  none:       { tr: 'Henuz istenmedi', variant: 'default' },
+  none:       { tr: 'Henüz istenmedi', variant: 'default' },
   requested:  { tr: 'Foto bekleniyor', variant: 'info' },
-  received:   { tr: 'Foto alindi',     variant: 'success' },
+  received:   { tr: 'Foto alındı',     variant: 'success' },
   escalated:  { tr: 'Eskalasyon',      variant: 'warning' },
   rejected:   { tr: 'Reddedildi',      variant: 'error' },
 };
@@ -55,7 +55,7 @@ export function PhotoTab({ leadId }: PhotoTabProps) {
       } else {
         // eslint-disable-next-line no-console
         console.error('[PhotoTab] fetchPhotos unexpected error', err);
-        setError('Beklenmeyen bir hata olustu — konsolu kontrol edin.');
+        setError('Beklenmeyen bir hata oluştu — konsolu kontrol edin.');
       }
     } finally {
       setLoading(false);
@@ -85,7 +85,7 @@ export function PhotoTab({ leadId }: PhotoTabProps) {
         // for ops debugging; user-facing message generic.
         // eslint-disable-next-line no-console
         console.error('[PhotoTab] redispatch unexpected error', err);
-        setError('Beklenmeyen bir hata olustu — konsolu kontrol edin.');
+        setError('Beklenmeyen bir hata oluştu — konsolu kontrol edin.');
       }
     } finally {
       setRequesting(false);
@@ -96,7 +96,7 @@ export function PhotoTab({ leadId }: PhotoTabProps) {
     return (
       <Card className="mt-4">
         <CardContent>
-          <p className="text-sm text-navy-500">Foto bilgileri yukleniyor...</p>
+          <p className="text-sm text-navy-500">Foto bilgileri yükleniyor...</p>
         </CardContent>
       </Card>
     );
@@ -124,7 +124,7 @@ export function PhotoTab({ leadId }: PhotoTabProps) {
     <Card className="mt-4">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>Fotograflar</CardTitle>
+          <CardTitle>Fotoğraflar</CardTitle>
           <Badge variant={statusMeta.variant}>{statusMeta.tr}</Badge>
         </div>
       </CardHeader>
@@ -146,9 +146,9 @@ export function PhotoTab({ leadId }: PhotoTabProps) {
             variant="secondary"
             onClick={handleRedispatch}
             disabled={requesting || isRejected}
-            title={isRejected ? 'Bu lead reddedildi; istek gonderilemez.' : undefined}
+            title={isRejected ? 'Bu lead reddedildi; istek gönderilemez.' : undefined}
           >
-            {requesting ? 'Gonderiliyor...' : 'Tekrar Iste'}
+            {requesting ? 'Gönderiliyor...' : 'Tekrar İste'}
           </Button>
         </div>
 
@@ -157,7 +157,7 @@ export function PhotoTab({ leadId }: PhotoTabProps) {
             Inbound Foto Listesi ({data.thumbnails.length})
           </h4>
           {data.thumbnails.length === 0 ? (
-            <p className="text-sm text-navy-500">Henuz foto alinmadi.</p>
+            <p className="text-sm text-navy-500">Henüz foto alınmadı.</p>
           ) : (
             <ul className="space-y-2">
               {data.thumbnails.map((t: PhotoThumbnail) => (
@@ -193,14 +193,14 @@ function formatDateTime(iso: string): string {
 
 function mapErrorToUserMessage(status: number): string {
   switch (status) {
-    case 401: return 'Oturum suresi dolmus, tekrar giris yapin.';
-    case 403: return 'Bu kayda erisim izniniz yok.';
-    case 404: return 'Lead bulunamadi.';
+    case 401: return 'Oturum süresi dolmuş, tekrar giriş yapın.';
+    case 403: return 'Bu kayda erişim izniniz yok.';
+    case 404: return 'Lead bulunamadı.';
     // 409 INV-AT-085 PhotoRequestRejectedLock: post-pilot opt-out lock
     // (Codex iter 2 CQ12 fix — 409-spesifik mesaj eklendi).
-    case 409: return 'Bu lead reddedilmis durumda; tekrar istek gonderilemez.';
-    case 408: return 'Istek zaman asimi; lutfen tekrar deneyin.';
-    case 503: return 'Veritabani gecici kullanilamiyor; birkac saniye sonra tekrar deneyin.';
-    default:  return 'Foto suanda goruntulenemiyor; birkac dakika sonra tekrar deneyin.';
+    case 409: return 'Bu lead reddedilmiş durumda; tekrar istek gönderilemez.';
+    case 408: return 'İstek zaman aşımı; lütfen tekrar deneyin.';
+    case 503: return 'Veritabanı geçici kullanılamıyor; birkaç saniye sonra tekrar deneyin.';
+    default:  return 'Foto şu anda görüntülenemiyor; birkaç dakika sonra tekrar deneyin.';
   }
 }

@@ -12,21 +12,21 @@ interface AuditLogTimelineProps {
 }
 
 const ACTION_LABELS: Record<LiwAuditAction, { label: string; icon: typeof KeyRound }> = {
-  'apikey.rotate':       { label: 'API anahtari yenilendi',       icon: KeyRound },
-  'apikey.revoke':       { label: 'API anahtari iptal edildi',    icon: ShieldOff },
-  'fieldmap.save':       { label: 'Alan eslemesi guncellendi',    icon: Save },
-  'welcome_slug.change': { label: 'Welcome akisi degisti',         icon: Save },
+  'apikey.rotate':       { label: 'API anahtarı yenilendi',       icon: KeyRound },
+  'apikey.revoke':       { label: 'API anahtarı iptal edildi',    icon: ShieldOff },
+  'fieldmap.save':       { label: 'Alan eşlemesi güncellendi',    icon: Save },
+  'welcome_slug.change': { label: 'Welcome akışı değişti',         icon: Save },
 };
 
 function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return 'az once';
-  if (minutes < 60) return `${minutes} dk once`;
+  if (minutes < 1) return 'az önce';
+  if (minutes < 60) return `${minutes} dk önce`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} saat once`;
+  if (hours < 24) return `${hours} saat önce`;
   const days = Math.floor(hours / 24);
-  if (days < 30) return `${days} gun once`;
+  if (days < 30) return `${days} gün önce`;
   return new Date(iso).toLocaleDateString('tr-TR');
 }
 
@@ -34,15 +34,15 @@ function summarizeEntry(entry: LiwAuditEntryDto): string {
   if (entry.action === 'apikey.rotate') {
     const beforeMasked = (entry.before_json?.masked_active_key as string | null | undefined) ?? null;
     const afterMasked = (entry.after_json?.masked_active_key as string | null | undefined) ?? null;
-    if (!beforeMasked && afterMasked) return `Ilk anahtar olusturuldu: ${afterMasked}`;
+    if (!beforeMasked && afterMasked) return `İlk anahtar oluşturuldu: ${afterMasked}`;
     if (beforeMasked && afterMasked) return `Eski: ${beforeMasked} -> Yeni: ${afterMasked}`;
     return 'Anahtar yenilendi';
   }
-  if (entry.action === 'apikey.revoke') return 'Landing webhook kanali devre disi birakildi';
+  if (entry.action === 'apikey.revoke') return 'Landing webhook kanalı devre dışı bırakıldı';
   if (entry.action === 'fieldmap.save') {
     const beforeKeys = countFieldMap(entry.before_json);
     const afterKeys = countFieldMap(entry.after_json);
-    return `${beforeKeys} satir -> ${afterKeys} satir`;
+    return `${beforeKeys} satır -> ${afterKeys} satır`;
   }
   if (entry.action === 'welcome_slug.change') {
     const b = (entry.before_json?.welcome_flow_slug as string | null | undefined) ?? null;
@@ -62,14 +62,14 @@ export function AuditLogTimeline({ entries, loading }: AuditLogTimelineProps) {
     <Card className="p-5">
       <CardTitle className="flex items-center gap-2 mb-4">
         <Clock className="w-4 h-4 text-navy-600" />
-        Degisiklik Gecmisi
+        Değişiklik Geçmişi
       </CardTitle>
 
       {loading && entries.length === 0 && (
-        <div className="text-xs text-navy-400">Yukleniyor...</div>
+        <div className="text-xs text-navy-400">Yükleniyor...</div>
       )}
       {!loading && entries.length === 0 && (
-        <div className="text-xs text-navy-400">Henuz degisiklik kaydi yok.</div>
+        <div className="text-xs text-navy-400">Henüz değişiklik kaydı yok.</div>
       )}
 
       <ol className="space-y-3">

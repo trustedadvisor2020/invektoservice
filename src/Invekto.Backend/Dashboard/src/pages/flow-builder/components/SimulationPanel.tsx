@@ -69,13 +69,13 @@ export function SimulationPanel() {
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
         </div>
-        <span className="text-white text-xs font-medium flex-1">Simulasyon</span>
+        <span className="text-white text-xs font-medium flex-1">Simülasyon</span>
 
         {/* Restart button */}
         <button
           onClick={reset}
           className="p-1 rounded hover:bg-emerald-500 transition-colors text-emerald-200 hover:text-white"
-          title="Yeniden Baslat"
+          title="Yeniden Başlat"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
             <polyline points="1 4 1 10 7 10" />
@@ -118,7 +118,7 @@ export function SimulationPanel() {
               : 'text-navy-400 hover:text-navy-700'
           )}
         >
-          Degiskenler
+          Değişkenler
         </button>
       </div>
 
@@ -129,7 +129,7 @@ export function SimulationPanel() {
           <div className="flex-1 overflow-y-auto px-3 py-3 min-h-0">
             {messages.length === 0 && !isLoading && (
               <div className="text-xs text-navy-300 text-center mt-8">
-                Bir mesaj gondererek simulasyonu baslatın
+                Bir mesaj göndererek simülasyonu başlatın
               </div>
             )}
 
@@ -162,14 +162,14 @@ export function SimulationPanel() {
           {/* Terminal state banner */}
           {isTerminal && (
             <div className="px-3 py-2 bg-navy-100 border-t border-navy-100 text-xs text-navy-400 text-center">
-              {status === 'completed' && 'Akis tamamlandi.'}
-              {status === 'error' && 'Akis hata ile sonlandi.'}
-              {status === 'handed_off' && 'Musteri temsilcisine yonlendirildi.'}
+              {status === 'completed' && 'Akış tamamlandı.'}
+              {status === 'error' && 'Akış hata ile sonlandı.'}
+              {status === 'handed_off' && 'Müşteri temsilcisine yönlendirildi.'}
               <button
                 onClick={reset}
                 className="ml-2 text-brand-600 hover:text-brand-500 underline"
               >
-                Yeniden Baslat
+                Yeniden Başlat
               </button>
             </div>
           )}
@@ -204,7 +204,7 @@ export function SimulationPanel() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={pendingInput?.type === 'menu' ? 'Secenek secin veya yazin...' : 'Mesaj yazin...'}
+                placeholder={pendingInput?.type === 'menu' ? 'Seçenek seçin veya yazın...' : 'Mesaj yazın...'}
                 disabled={isLoading}
                 className="flex-1 text-xs border border-navy-100 rounded-full px-3 py-1.5 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30 disabled:bg-navy-50"
               />
@@ -253,15 +253,15 @@ export function SimulationPanel() {
 
           {/* Variable inspector table */}
           <div className="px-3 py-2">
-            <span className="text-[10px] font-medium text-navy-300 uppercase tracking-wider">Degiskenler</span>
+            <span className="text-[10px] font-medium text-navy-300 uppercase tracking-wider">Değişkenler</span>
             {variableEntries.length === 0 ? (
-              <div className="text-xs text-navy-300 mt-2">Henuz degisken yok.</div>
+              <div className="text-xs text-navy-300 mt-2">Henüz değişken yok.</div>
             ) : (
               <table className="w-full mt-1.5 text-xs">
                 <thead>
                   <tr className="border-b border-navy-100">
                     <th className="text-left py-1 font-medium text-navy-400 pr-2">Anahtar</th>
-                    <th className="text-left py-1 font-medium text-navy-400">Deger</th>
+                    <th className="text-left py-1 font-medium text-navy-400">Değer</th>
                   </tr>
                 </thead>
                 <tbody>

@@ -53,7 +53,7 @@ export function Toolbar({ onSave, isSaving, onBack, onTest, paletteOpen, onToggl
       const res = await api.getFlowVersions(tenantId, flowId);
       setVersions(res.versions);
     } catch (err) {
-      setVersionsError(err instanceof Error ? err.message : 'Surum listesi yuklenemedi');
+      setVersionsError(err instanceof Error ? err.message : 'Sürüm listesi yüklenemedi');
     }
     setVersionsLoading(false);
   }, [tenantId, flowId]);
@@ -86,7 +86,7 @@ export function Toolbar({ onSave, isSaving, onBack, onTest, paletteOpen, onToggl
           <button
             onClick={onBack}
             className="p-1.5 rounded hover:bg-navy-50 transition-colors text-navy-500"
-            title="Flow Listesine Don"
+            title="Flow Listesine Dön"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
               <polyline points="15 18 9 12 15 6" />
@@ -104,7 +104,7 @@ export function Toolbar({ onSave, isSaving, onBack, onTest, paletteOpen, onToggl
                 ? 'bg-brand-50 text-brand-600 hover:bg-brand-100'
                 : 'text-navy-500 hover:bg-navy-50'
             )}
-            title={paletteOpen ? 'Node panelini gizle' : 'Node panelini goster'}
+            title={paletteOpen ? 'Node panelini gizle' : 'Node panelini göster'}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
               <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -119,12 +119,12 @@ export function Toolbar({ onSave, isSaving, onBack, onTest, paletteOpen, onToggl
           value={flowMetadata.name}
           onChange={(e) => setMetadata({ name: e.target.value })}
           className="bg-transparent text-sm font-medium text-navy-900 border-none outline-none w-40 focus:ring-1 focus:ring-brand-500/30 rounded px-2 py-1 min-w-0"
-          placeholder="Flow Adi"
+          placeholder="Flow Adı"
         />
 
         {/* Dirty indicator */}
         {isDirty && (
-          <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" title="Kaydedilmemis degisiklikler" />
+          <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" title="Kaydedilmemiş değişiklikler" />
         )}
 
         {/* Activate / Deactivate toggle */}
@@ -140,7 +140,7 @@ export function Toolbar({ onSave, isSaving, onBack, onTest, paletteOpen, onToggl
                   ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
                   : 'bg-navy-50 text-navy-400 hover:bg-navy-100 border border-navy-200'
             )}
-            title={isActive ? 'Flow\'u durdur' : 'Flow\'u baslat'}
+            title={isActive ? 'Flow\'u durdur' : 'Flow\'u başlat'}
           >
             {isActive ? (
               <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
@@ -167,7 +167,7 @@ export function Toolbar({ onSave, isSaving, onBack, onTest, paletteOpen, onToggl
                   ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
                   : 'bg-navy-50 text-navy-500 hover:bg-navy-100 border-navy-200'
               )}
-              title="Surum gecmisi"
+              title="Sürüm geçmişi"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
                 <circle cx="12" cy="12" r="10" />
@@ -181,11 +181,11 @@ export function Toolbar({ onSave, isSaving, onBack, onTest, paletteOpen, onToggl
             {versionDropdownOpen && (
               <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-navy-200 rounded-lg shadow-elevated z-50 max-h-60 overflow-y-auto">
                 {versionsLoading ? (
-                  <div className="px-3 py-2 text-xs text-navy-400">Yukleniyor...</div>
+                  <div className="px-3 py-2 text-xs text-navy-400">Yükleniyor...</div>
                 ) : versionsError ? (
                   <div className="px-3 py-2 text-xs text-red-500">{versionsError}</div>
                 ) : versions.length === 0 ? (
-                  <div className="px-3 py-2 text-xs text-navy-400">Surum bulunamadi</div>
+                  <div className="px-3 py-2 text-xs text-navy-400">Sürüm bulunamadı</div>
                 ) : (
                   versions.map((v) => (
                     <div
@@ -252,7 +252,7 @@ export function Toolbar({ onSave, isSaving, onBack, onTest, paletteOpen, onToggl
               'p-1.5 rounded hover:bg-navy-50 transition-colors',
               canRedo ? 'text-navy-500' : 'text-navy-200 cursor-not-allowed'
             )}
-            title="Ileri Al (Ctrl+Y)"
+            title="İleri Al (Ctrl+Y)"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
               <polyline points="23 4 23 10 17 10" />
@@ -292,7 +292,7 @@ export function Toolbar({ onSave, isSaving, onBack, onTest, paletteOpen, onToggl
                 ? 'bg-sky-500 text-white'
                 : 'bg-navy-50 hover:bg-navy-100 text-navy-500'
             )}
-            title="Akis Loglari"
+            title="Akış Logları"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
               <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
@@ -332,7 +332,7 @@ export function Toolbar({ onSave, isSaving, onBack, onTest, paletteOpen, onToggl
                 ? 'bg-navy-50 text-navy-300 cursor-not-allowed'
                 : 'bg-emerald-600 hover:bg-emerald-500 text-white'
           )}
-          title={isDirty ? 'Once flow\'u kaydedin' : 'Test Et'}
+          title={isDirty ? 'Önce flow\'u kaydedin' : 'Test Et'}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
             <polygon points="5 3 19 12 5 21 5 3" />

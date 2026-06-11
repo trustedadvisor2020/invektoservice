@@ -61,7 +61,7 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
       set({ flowId: result.flow_id, wizardStatus: 'drafting', messages: [] });
       return result.flow_id;
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Wizard baslatilamadi. Sayfayi yenileyip tekrar deneyin.';
+      const msg = err instanceof Error ? err.message : 'Wizard başlatılamadı. Sayfayı yenileyip tekrar deneyin.';
       set({ error: msg });
       throw err;
     }
@@ -81,7 +81,7 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
         currentFlowPreview: lastSnapshot?.flow_config_snapshot || null,
       });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Wizard verisi yuklenemedi. Internet baglantinizi kontrol edin.';
+      const msg = err instanceof Error ? err.message : 'Wizard verisi yüklenemedi. İnternet bağlantınızı kontrol edin.';
       set({ error: msg });
     }
   },
@@ -111,7 +111,7 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
           fullText += event.content || '';
           set({ streamingText: stripStreamingBlocks(fullText) });
         } else if (event.type === 'error') {
-          set({ error: event.content || 'AI hatasi', isStreaming: false });
+          set({ error: event.content || 'AI hatası', isStreaming: false });
           return;
         } else if (event.type === 'done') {
           const assistantMsg: WizardMessage = {
@@ -137,7 +137,7 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
       }
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
-      const msg = err instanceof Error ? err.message : 'Sunucu baglantisi kesildi. Mesajiniz gonderilmedi, tekrar deneyin.';
+      const msg = err instanceof Error ? err.message : 'Sunucu bağlantısı kesildi. Mesajınız gönderilmedi, tekrar deneyin.';
       set({ error: msg, isStreaming: false });
     }
   },
@@ -151,7 +151,7 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
       await confirmWizard(flowId, tenantId, name, currentFlowPreview);
       set({ wizardStatus: 'completed', flowName: name });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Akis olusturulamadi. Tekrar deneyin veya destek ile iletisime gecin.';
+      const msg = err instanceof Error ? err.message : 'Akış oluşturulamadı. Tekrar deneyin veya destek ile iletişime geçin.';
       set({ error: msg });
     }
   },

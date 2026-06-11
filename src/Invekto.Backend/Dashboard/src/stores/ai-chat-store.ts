@@ -208,7 +208,7 @@ export const useAiChatStore = create<AiChatStore>((set, get) => ({
       // from display below but its presence keeps the banner alive across refresh/re-open.
       const seedMsg = normalized.find(m => m.role === 'user' && m.content.startsWith('TEMPLATE_SEED:'));
       const restoredTemplate: TemplateContext | null = seedMsg
-        ? { title: seedMsg.content.substring('TEMPLATE_SEED:'.length).trim() || 'Sablon' }
+        ? { title: seedMsg.content.substring('TEMPLATE_SEED:'.length).trim() || 'Şablon' }
         : null;
       // Hide all TEMPLATE_SEED user messages from the visible chat (they remain in backend history
       // so Claude API conversation context stays intact with alternating user/assistant turns).
@@ -218,7 +218,7 @@ export const useAiChatStore = create<AiChatStore>((set, get) => ({
       // 404 = no history yet (normal for non-wizard flows), other errors surface to user
       const isNotFound = err instanceof Error && err.message.includes('404');
       if (!isNotFound) {
-        set({ error: err instanceof Error ? err.message : 'Sohbet gecmisi yuklenemedi. Yeni sohbet baslatildi.' });
+        set({ error: err instanceof Error ? err.message : 'Sohbet geçmişi yüklenemedi. Yeni sohbet başlatıldı.' });
       }
     }
   },
@@ -281,7 +281,7 @@ export const useAiChatStore = create<AiChatStore>((set, get) => ({
           // Strip options/flowconfig blocks from live streaming display
           set({ streamingText: stripStreamingBlocks(fullText) });
         } else if (event.type === 'error') {
-          set({ error: event.content || 'AI servisi yanit veremedi. Lutfen tekrar deneyin.', isStreaming: false });
+          set({ error: event.content || 'AI servisi yanıt veremedi. Lütfen tekrar deneyin.', isStreaming: false });
           return;
         } else if (event.type === 'done') {
           // Prefer clean content from backend (options block already stripped)
@@ -307,7 +307,7 @@ export const useAiChatStore = create<AiChatStore>((set, get) => ({
       }
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
-      const msg = err instanceof Error ? err.message : 'Baglanti kesildi. Tekrar deneyin.';
+      const msg = err instanceof Error ? err.message : 'Bağlantı kesildi. Tekrar deneyin.';
       set({ error: msg, isStreaming: false });
     }
   },

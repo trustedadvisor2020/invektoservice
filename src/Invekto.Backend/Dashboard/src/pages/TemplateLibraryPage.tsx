@@ -471,7 +471,7 @@ function OpsTemplateView() {
       setTotal(result.total);
     } catch (err) {
       console.error('Failed to fetch templates:', err);
-      setError('Sablonlar yuklenirken hata olustu. Tekrar deneyin.');
+      setError('Şablonlar yüklenirken hata oluştu. Tekrar deneyin.');
     } finally {
       setLoading(false);
     }
@@ -486,7 +486,7 @@ function OpsTemplateView() {
       fetchTemplates();
     } catch (err) {
       console.error('Publish failed:', err);
-      setError('Sablon yayinlanirken hata olustu.');
+      setError('Şablon yayınlanırken hata oluştu.');
     }
   };
 
@@ -497,7 +497,7 @@ function OpsTemplateView() {
       fetchTemplates();
     } catch (err) {
       console.error('Delete failed:', err);
-      setError('Sablon silinirken hata olustu.');
+      setError('Şablon silinirken hata oluştu.');
     }
   };
 
@@ -510,9 +510,9 @@ function OpsTemplateView() {
         <div>
           <h1 className="text-lg font-semibold text-navy-900 flex items-center gap-2">
             <LayoutTemplate className="w-5 h-5" />
-            Sablon Kutuphanesi
+            Şablon Kütüphanesi
           </h1>
-          <p className="text-xs text-navy-400">{total} sablon kayitli</p>
+          <p className="text-xs text-navy-400">{total} şablon kayıtlı</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={fetchTemplates} className="p-1.5 rounded hover:bg-navy-50">
@@ -552,7 +552,7 @@ function OpsTemplateView() {
           onChange={e => { setFilterType(e.target.value); setPage(1); }}
           className="text-xs border border-navy-200 rounded px-2 py-1"
         >
-          <option value="">Tum Tipler</option>
+          <option value="">Tüm Tipler</option>
           {TEMPLATE_TYPES.filter(Boolean).map(t => (
             <option key={t} value={t}>{t.toUpperCase()}</option>
           ))}
@@ -562,7 +562,7 @@ function OpsTemplateView() {
           onChange={e => { setFilterScope(e.target.value); setPage(1); }}
           className="text-xs border border-navy-200 rounded px-2 py-1"
         >
-          <option value="">Tum Scope</option>
+          <option value="">Tüm Scope</option>
           {SCOPES.filter(Boolean).map(s => (
             <option key={s} value={s}>{s}</option>
           ))}
@@ -582,14 +582,14 @@ function OpsTemplateView() {
         <table className="w-full text-xs">
           <thead className="bg-navy-50 text-navy-500">
             <tr>
-              <th className="text-left px-3 py-2 font-medium">Sablon</th>
+              <th className="text-left px-3 py-2 font-medium">Şablon</th>
               <th className="text-left px-3 py-2 font-medium">Tip</th>
               <th className="text-left px-3 py-2 font-medium">Scope</th>
               <th className="text-center px-3 py-2 font-medium">v</th>
-              <th className="text-center px-3 py-2 font-medium">Guven</th>
+              <th className="text-center px-3 py-2 font-medium">Güven</th>
               <th className="text-center px-3 py-2 font-medium">Kaynak</th>
               <th className="text-center px-3 py-2 font-medium">Durum</th>
-              <th className="text-right px-3 py-2 font-medium">Islem</th>
+              <th className="text-right px-3 py-2 font-medium">İşlem</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-navy-50">
@@ -624,7 +624,7 @@ function OpsTemplateView() {
                   <td className="px-3 py-2 text-center">
                     {item.is_published ? (
                       <span className="inline-flex items-center gap-0.5 text-emerald-600 text-[10px]">
-                        <Check className="w-3 h-3" /> Yayinda
+                        <Check className="w-3 h-3" /> Yayında
                       </span>
                     ) : (
                       <span className="text-amber-500 text-[10px]">Taslak</span>
@@ -632,11 +632,11 @@ function OpsTemplateView() {
                   </td>
                   <td className="px-3 py-2 text-right" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-1">
-                      <button onClick={() => navigate(`/templates/${item.id}`)} className="p-1 hover:bg-navy-100 rounded" title="Goruntule">
+                      <button onClick={() => navigate(`/templates/${item.id}`)} className="p-1 hover:bg-navy-100 rounded" title="Görüntüle">
                         <Eye className="w-3.5 h-3.5 text-navy-500" />
                       </button>
                       {!item.is_published && (
-                        <button onClick={() => handlePublish(item.id)} className="p-1 hover:bg-emerald-50 rounded" title="Yayinla">
+                        <button onClick={() => handlePublish(item.id)} className="p-1 hover:bg-emerald-50 rounded" title="Yayınla">
                           <Check className="w-3.5 h-3.5 text-emerald-600" />
                         </button>
                       )}
@@ -651,7 +651,7 @@ function OpsTemplateView() {
             {items.length === 0 && !loading && (
               <tr>
                 <td colSpan={8} className="px-3 py-8 text-center text-navy-400">
-                  Sablon bulunamadi
+                  Şablon bulunamadı
                 </td>
               </tr>
             )}
@@ -667,7 +667,7 @@ function OpsTemplateView() {
             disabled={page <= 1}
             className="px-2 py-1 rounded border border-navy-200 disabled:opacity-40"
           >
-            Onceki
+            Önceki
           </button>
           <span className="text-navy-500">{page} / {totalPages}</span>
           <button

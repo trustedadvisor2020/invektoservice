@@ -67,17 +67,17 @@ export function NewKeyCopyModal({ open, plaintext, oldKeyExpiresAt, onClose }: N
           <X className="w-4 h-4" />
         </button>
         <h2 id="liw-new-key-title" className="text-lg font-semibold text-navy-900 mb-2">
-          Yeni API Anahtari Olusturuldu
+          Yeni API Anahtarı Oluşturuldu
         </h2>
         <p className="text-sm text-navy-500 mb-4 leading-relaxed">
-          Bu anahtar size <strong>yalnizca bir kez</strong> gosterilmektedir.
-          Asagidaki degeri kopyalayip landing sayfaniza veya form tarafiniza yerlestirin.
-          Pencere kapandiktan sonra anahtarin tam hali bir daha gosterilmeyecek.
+          Bu anahtar size <strong>yalnızca bir kez</strong> gösterilmektedir.
+          Aşağıdaki değeri kopyalayıp landing sayfanıza veya form tarafınıza yerleştirin.
+          Pencere kapandıktan sonra anahtarın tam hali bir daha gösterilmeyecek.
         </p>
         {oldKeyExpiresAt && (
           <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-2 mb-4">
-            Eski anahtar 24 saat boyunca (son gecerlilik: {new Date(oldKeyExpiresAt).toLocaleString('tr-TR')})
-            calismaya devam edecek. Landing sayfanizi bu sure icinde yeni anahtarla guncelleyin.
+            Eski anahtar 24 saat boyunca (son geçerlilik: {new Date(oldKeyExpiresAt).toLocaleString('tr-TR')})
+            çalışmaya devam edecek. Landing sayfanızı bu süre içinde yeni anahtarla güncelleyin.
           </p>
         )}
         <div className="bg-navy-50 border border-navy-200 rounded-md p-3 mb-4 font-mono text-sm text-navy-800 break-all select-all">
@@ -85,19 +85,19 @@ export function NewKeyCopyModal({ open, plaintext, oldKeyExpiresAt, onClose }: N
         </div>
         {copyFailed && (
           <p className="text-xs text-red-600 mb-3">
-            Pano erisimi engellendi. Yukaridaki metni manuel olarak secip kopyalayin.
+            Pano erişimi engellendi. Yukarıdaki metni manuel olarak seçip kopyalayın.
           </p>
         )}
         <div className="flex justify-end gap-3">
           <Button variant="secondary" onClick={handleCopy}>
             {copied ? (
-              <><Check className="w-4 h-4 mr-1" /> Kopyalandi</>
+              <><Check className="w-4 h-4 mr-1" /> Kopyalandı</>
             ) : (
               <><Copy className="w-4 h-4 mr-1" /> Kopyala</>
             )}
           </Button>
           <Button variant="primary" onClick={onClose}>
-            Kopyaladim, kapat
+            Kopyaladım, kapat
           </Button>
         </div>
       </div>

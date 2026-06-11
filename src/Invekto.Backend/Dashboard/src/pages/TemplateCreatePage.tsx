@@ -88,19 +88,19 @@ export function TemplateCreatePage() {
 
     // Validation
     if (!SLUG_RE.test(form.slug)) {
-      setSingleError('[INV-INT-FE-043] Slug formati gecersiz — sadece lowercase harf, rakam, tire.');
+      setSingleError('[INV-INT-FE-043] Slug formatı geçersiz — sadece lowercase harf, rakam, tire.');
       return;
     }
     if (!form.name.trim()) {
-      setSingleError('[INV-INT-FE-043] Isim bos birakilamaz.');
+      setSingleError('[INV-INT-FE-043] İsim boş bırakılamaz.');
       return;
     }
     if (form.scope === 'tenant' && !form.tenant_id.trim()) {
-      setSingleError('[INV-INT-FE-043] Tenant scope icin tenant_id zorunlu.');
+      setSingleError('[INV-INT-FE-043] Tenant scope için tenant_id zorunlu.');
       return;
     }
     if (form.scope === 'sector' && !form.sector.trim()) {
-      setSingleError('[INV-INT-FE-043] Sector scope icin sector zorunlu.');
+      setSingleError('[INV-INT-FE-043] Sector scope için sector zorunlu.');
       return;
     }
     if (form.group_tag.length > 50) {
@@ -113,7 +113,7 @@ export function TemplateCreatePage() {
       content = JSON.parse(form.content_json);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'parse error';
-      setSingleError(`[INV-INT-FE-043] content_json gecersiz JSON: ${msg}`);
+      setSingleError(`[INV-INT-FE-043] content_json geçersiz JSON: ${msg}`);
       return;
     }
 
@@ -138,7 +138,7 @@ export function TemplateCreatePage() {
       setForm(emptyForm);
     } catch (err) {
       const code = err instanceof Error && err.message ? err.message : 'unknown';
-      setSingleError(`[INV-INT-FE-044] Template kaydedilemedi (${code}). Slug catismasi varsa farkli slug deneyin.`);
+      setSingleError(`[INV-INT-FE-044] Template kaydedilemedi (${code}). Slug çatışması varsa farklı slug deneyin.`);
     } finally {
       setSaving(false);
     }
@@ -161,20 +161,20 @@ export function TemplateCreatePage() {
       arr = JSON.parse(bulkJson);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'parse error';
-      setParseError(`[INV-INT-FE-045] JSON parse hatasi: ${msg}`);
+      setParseError(`[INV-INT-FE-045] JSON parse hatası: ${msg}`);
       return;
     }
 
     if (!Array.isArray(arr)) {
-      setParseError('[INV-INT-FE-045] JSON kok dizi (array) olmali.');
+      setParseError('[INV-INT-FE-045] JSON kök dizi (array) olmalı.');
       return;
     }
     if (arr.length === 0) {
-      setParseError('[INV-INT-FE-045] Bos dizi — en az 1 template gerekli.');
+      setParseError('[INV-INT-FE-045] Boş dizi — en az 1 template gerekli.');
       return;
     }
     if (arr.length > 100) {
-      setParseError(`[INV-INT-FE-045] ${arr.length} template gonderildi, maksimum 100.`);
+      setParseError(`[INV-INT-FE-045] ${arr.length} template gönderildi, maksimum 100.`);
       return;
     }
 
@@ -196,11 +196,11 @@ export function TemplateCreatePage() {
         return;
       }
       if (!SLUG_RE.test(slug)) {
-        setParseError(`[INV-INT-FE-045] Item ${i} slug="${slug}" format gecersiz.`);
+        setParseError(`[INV-INT-FE-045] Item ${i} slug="${slug}" format geçersiz.`);
         return;
       }
       if (!item.content_json || typeof item.content_json !== 'object') {
-        setParseError(`[INV-INT-FE-045] Item ${i} (slug="${slug}"): content_json obje olmali.`);
+        setParseError(`[INV-INT-FE-045] Item ${i} (slug="${slug}"): content_json obje olmalı.`);
         return;
       }
       normalized.push(item as unknown as TemplateCreateInput);
@@ -218,7 +218,7 @@ export function TemplateCreatePage() {
       setBulkResult(result);
     } catch (err) {
       const code = err instanceof Error && err.message ? err.message : 'unknown';
-      setParseError(`[INV-INT-FE-046] Topluca yukleme basarisiz (${code}).`);
+      setParseError(`[INV-INT-FE-046] Topluca yükleme başarısız (${code}).`);
     } finally {
       setBulkSaving(false);
     }
@@ -244,7 +244,7 @@ export function TemplateCreatePage() {
         <div className="flex-1">
           <h1 className="text-lg font-semibold text-navy-900 flex items-center gap-2">
             <Plus className="w-5 h-5" />
-            Yeni Template Olustur
+            Yeni Template Oluştur
           </h1>
           <p className="text-xs text-navy-400">Tek template formu veya JSON topluca import.</p>
         </div>
@@ -284,9 +284,9 @@ export function TemplateCreatePage() {
           {created && (
             <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 text-xs text-emerald-700">
               <Check className="w-4 h-4" />
-              <span>Olusturuldu: <strong>{created.name}</strong> (id={created.id}, slug={created.slug})</span>
+              <span>Oluşturuldu: <strong>{created.name}</strong> (id={created.id}, slug={created.slug})</span>
               <button onClick={() => navigate(`/templates/${created.id}`)} className="ml-auto text-xs underline hover:text-emerald-900">
-                Goruntule
+                Görüntüle
               </button>
             </div>
           )}
@@ -332,12 +332,12 @@ export function TemplateCreatePage() {
                   type="number"
                   value={form.tenant_id}
                   onChange={e => setForm({ ...form, tenant_id: e.target.value })}
-                  placeholder={form.scope === 'tenant' ? 'orn. 5050' : 'scope sector/platform icin bos'}
+                  placeholder={form.scope === 'tenant' ? 'orn. 5050' : 'scope sector/platform için boş'}
                   className="w-full text-xs border border-navy-200 rounded px-2 py-1.5 outline-none"
                 />
               </div>
               <div>
-                <label className="text-[10px] font-medium text-navy-500">Sektor {form.scope === 'sector' && <span className="text-red-500">*</span>}</label>
+                <label className="text-[10px] font-medium text-navy-500">Sektör {form.scope === 'sector' && <span className="text-red-500">*</span>}</label>
                 <input
                   type="text"
                   value={form.sector}
@@ -362,7 +362,7 @@ export function TemplateCreatePage() {
                 <p className="text-[10px] text-navy-400 mt-0.5">lowercase, rakam, tire</p>
               </div>
               <div>
-                <label className="text-[10px] font-medium text-navy-500">Isim <span className="text-red-500">*</span></label>
+                <label className="text-[10px] font-medium text-navy-500">İsim <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   value={form.name}
@@ -374,7 +374,7 @@ export function TemplateCreatePage() {
             </div>
 
             <div>
-              <label className="text-[10px] font-medium text-navy-500">Aciklama</label>
+              <label className="text-[10px] font-medium text-navy-500">Açıklama</label>
               <input
                 type="text"
                 value={form.description}
@@ -385,7 +385,7 @@ export function TemplateCreatePage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[10px] font-medium text-navy-500">Tags (virgul ayrilir)</label>
+                <label className="text-[10px] font-medium text-navy-500">Tags (virgül ayrılır)</label>
                 <input
                   type="text"
                   value={form.tags}
@@ -443,7 +443,7 @@ export function TemplateCreatePage() {
                 className="px-3 py-1.5 text-xs font-medium rounded border border-navy-200 hover:bg-navy-50"
                 disabled={saving}
               >
-                Vazgec
+                Vazgeç
               </button>
               <button
                 onClick={handleSingleSave}
@@ -483,14 +483,14 @@ export function TemplateCreatePage() {
             </div>
             <div className="flex items-center justify-between">
               <p className="text-[10px] text-navy-400">
-                Zorunlu alanlar: <code>template_type, scope, slug, name, lang, content_json</code>. tenant_id scope=tenant icin zorunlu.
+                Zorunlu alanlar: <code>template_type, scope, slug, name, lang, content_json</code>. tenant_id scope=tenant için zorunlu.
               </p>
               <button
                 onClick={handleBulkParse}
                 disabled={!bulkJson.trim() || bulkSaving}
                 className="px-3 py-1.5 text-xs font-medium rounded border border-navy-200 hover:bg-navy-50 disabled:opacity-40"
               >
-                Dogrula ve Onizle
+                Doğrula ve Önizle
               </button>
             </div>
           </div>
@@ -500,7 +500,7 @@ export function TemplateCreatePage() {
             <div className="bg-white rounded-lg border border-navy-100 overflow-hidden">
               <div className="px-3 py-2 bg-navy-50 flex items-center justify-between">
                 <span className="text-xs font-medium text-navy-700">
-                  Onizleme: {parsed.length} template hazir
+                  Önizleme: {parsed.length} template hazır
                 </span>
                 <button
                   onClick={handleBulkSubmit}
@@ -508,7 +508,7 @@ export function TemplateCreatePage() {
                   className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded bg-navy-800 text-white hover:bg-navy-700 disabled:opacity-40"
                 >
                   <Upload className="w-3.5 h-3.5" />
-                  {bulkSaving ? 'Yukleniyor...' : `Topluca Yukle (${parsed.length})`}
+                  {bulkSaving ? 'Yükleniyor...' : `Topluca Yükle (${parsed.length})`}
                 </button>
               </div>
               <table className="w-full text-xs">
@@ -516,7 +516,7 @@ export function TemplateCreatePage() {
                   <tr>
                     <th className="text-left px-3 py-1.5 font-medium">#</th>
                     <th className="text-left px-3 py-1.5 font-medium">Slug</th>
-                    <th className="text-left px-3 py-1.5 font-medium">Isim</th>
+                    <th className="text-left px-3 py-1.5 font-medium">İsim</th>
                     <th className="text-left px-3 py-1.5 font-medium">Tip</th>
                     <th className="text-left px-3 py-1.5 font-medium">Kapsam</th>
                     <th className="text-left px-3 py-1.5 font-medium">Grup Etiketi</th>
@@ -553,12 +553,12 @@ export function TemplateCreatePage() {
               <div className="bg-white rounded-lg border border-navy-100 p-3">
                 <div className="flex items-center gap-3">
                   <div className="flex-1">
-                    <h3 className="text-sm font-medium text-navy-900">Yukleme Sonucu</h3>
+                    <h3 className="text-sm font-medium text-navy-900">Yükleme Sonucu</h3>
                     <p className="text-xs text-navy-500">
                       Toplam {bulkResult.total} — {' '}
-                      <span className="text-emerald-600 font-medium">{bulkResult.succeeded_count} basarili</span>
+                      <span className="text-emerald-600 font-medium">{bulkResult.succeeded_count} başarılı</span>
                       {bulkResult.failed_count > 0 && (
-                        <> / <span className="text-red-600 font-medium">{bulkResult.failed_count} basarisiz</span></>
+                        <> / <span className="text-red-600 font-medium">{bulkResult.failed_count} başarısız</span></>
                       )}
                     </p>
                   </div>
@@ -567,7 +567,7 @@ export function TemplateCreatePage() {
                       onClick={handleRetryFailed}
                       className="px-3 py-1.5 text-xs font-medium rounded bg-navy-800 text-white hover:bg-navy-700"
                     >
-                      Basarisizlari Tekrar Dene
+                      Başarısızları Tekrar Dene
                     </button>
                   )}
                   <button
@@ -583,7 +583,7 @@ export function TemplateCreatePage() {
                 <div className="bg-white rounded-lg border border-red-200 overflow-hidden">
                   <div className="px-3 py-2 bg-red-50 flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 text-red-600" />
-                    <span className="text-xs font-medium text-red-700">Basarisiz Olan Template'ler</span>
+                    <span className="text-xs font-medium text-red-700">Başarısız Olan Template'ler</span>
                   </div>
                   <table className="w-full text-xs">
                     <thead className="bg-red-25 text-navy-500">

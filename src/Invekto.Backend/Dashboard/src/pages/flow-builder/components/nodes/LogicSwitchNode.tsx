@@ -35,7 +35,7 @@ function LogicSwitchNodeComponent(props: NodeProps) {
       outputPosition="right"
     >
       {!data.variable && cases.length === 0 ? (
-        <span className="text-navy-400 italic">Switch tanimlanmadi</span>
+        <span className="text-navy-400 italic">Switch tanımlanmadı</span>
       ) : data.variable ? (
         <span className="text-navy-500 text-xs font-mono">{data.variable}</span>
       ) : null}

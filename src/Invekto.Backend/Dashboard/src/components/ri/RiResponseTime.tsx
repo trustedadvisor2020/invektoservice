@@ -20,8 +20,8 @@ export function RiResponseTime({ data }: Props) {
   if (!data || data.totalConversations === 0) {
     return (
       <Card>
-        <CardHeader><CardTitle>Cevap Suresi Korelasyonu</CardTitle></CardHeader>
-        <CardContent className="py-8 text-center text-navy-300 text-sm">Henuz cevap suresi verisi yok</CardContent>
+        <CardHeader><CardTitle>Cevap Süresi Korelasyonu</CardTitle></CardHeader>
+        <CardContent className="py-8 text-center text-navy-300 text-sm">Henüz cevap süresi verisi yok</CardContent>
       </Card>
     );
   }
@@ -40,11 +40,11 @@ export function RiResponseTime({ data }: Props) {
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="flex items-center gap-2">
           <Clock className="w-4 h-4 text-amber-500" />
-          Cevap Suresi Korelasyonu
+          Cevap Süresi Korelasyonu
         </CardTitle>
         <div className="text-xs text-navy-300">
           {avgMinutes != null && <span>Ort: <strong className="text-navy-600">{avgMinutes}dk</strong></span>}
-          <span className="ml-3">{data.totalConversations} konusma</span>
+          <span className="ml-3">{data.totalConversations} konuşma</span>
         </div>
       </CardHeader>
       <CardContent>
@@ -59,10 +59,10 @@ export function RiResponseTime({ data }: Props) {
               <Tooltip
                 contentStyle={{ backgroundColor: 'white', border: '1px solid #E3E8EE', borderRadius: '0.5rem', fontSize: '12px' }}
                 formatter={(value: number, name: string) =>
-                  name === 'conversionRate' ? [`%${value}`, 'Conversion'] : [value, 'Konusma']
+                  name === 'conversionRate' ? [`%${value}`, 'Conversion'] : [value, 'Konuşma']
                 }
               />
-              <Bar yAxisId="left" dataKey="conversations" name="Konusma" radius={[2, 2, 0, 0]}>
+              <Bar yAxisId="left" dataKey="conversations" name="Konuşma" radius={[2, 2, 0, 0]}>
                 {chartData.map((entry) => (
                   <Cell key={entry.bucket} fill={BUCKET_COLORS[entry.bucket] ?? '#8898AA'} />
                 ))}

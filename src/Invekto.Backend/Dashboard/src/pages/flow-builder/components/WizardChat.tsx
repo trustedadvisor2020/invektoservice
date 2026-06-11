@@ -4,12 +4,12 @@ import { renderWithNodeChips } from './NodeChip';
 import type { WizardMessage, WizardOption } from '../../../types/wizard';
 
 const thinkingMessages = [
-  'Bir saniye, dusunuyorum...',
-  'Hmm, guzel bir seyler geliyor...',
+  'Bir saniye, düşünüyorum...',
+  'Hmm, güzel bir şeyler geliyor...',
   'Fikirlerimi topluyorum...',
-  'Yaratici moduma gectim...',
-  'Hemen hazirliyorum...',
-  'Sizin icin en iyisini dusunuyorum...',
+  'Yaratıcı moduma geçtim...',
+  'Hemen hazırlıyorum...',
+  'Sizin için en iyisini düşünüyorum...',
 ];
 
 /** Split long assistant messages into summary + collapsible detail.
@@ -95,11 +95,11 @@ export function WizardChat() {
             </div>
             <h3 className="text-lg font-semibold text-navy-900 mb-2">AI Flow Wizard</h3>
             <p className="text-sm text-navy-400 max-w-md">
-              Olusturmak istediginiz chatbot akisini dogal dille anlatın.
-              AI size sorular sorarak en uygun akisi tasarlayacak.
+              Oluşturmak istediğiniz chatbot akışını doğal dille anlatın.
+              AI size sorular sorarak en uygun akışı tasarlayacak.
             </p>
             <div className="mt-4 flex flex-wrap gap-2 justify-center">
-              {['Musteri karsilama akisi', 'Randevu alma botu', 'Siparis takip sistemi', 'FAQ cevaplama'].map(s => (
+              {['Müşteri karşılama akışı', 'Randevu alma botu', 'Sipariş takip sistemi', 'FAQ cevaplama'].map(s => (
                 <button
                   key={s}
                   onClick={() => setInput(s)}
@@ -178,7 +178,7 @@ export function WizardChat() {
                 value={freeInput}
                 onChange={e => setFreeInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleFreeSend(); } }}
-                placeholder="Kendi cevabinizi yazin..."
+                placeholder="Kendi cevabınızı yazın..."
                 className="flex-1 px-3 py-2 bg-white border border-navy-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-300 placeholder:text-navy-300"
               />
               <button
@@ -207,7 +207,7 @@ export function WizardChat() {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Akisinizi anlatin... (Shift+Enter = yeni satir)"
+            placeholder="Akışınızı anlatın... (Shift+Enter = yeni satır)"
             rows={2}
             disabled={isStreaming}
             className="flex-1 px-3 py-2.5 bg-navy-25 border border-navy-100 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-300 disabled:opacity-50 placeholder:text-navy-300"
@@ -217,7 +217,7 @@ export function WizardChat() {
             disabled={isStreaming || !input.trim()}
             className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed self-end"
           >
-            Gonder
+            Gönder
           </button>
         </div>
       </div>
@@ -236,7 +236,7 @@ function CollapsibleContent({ text }: { text: string }) {
             <svg className="w-3.5 h-3.5 transition-transform group-open/detail:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
             </svg>
-            Detaylari goster
+            Detayları göster
           </summary>
           <div className="mt-1.5 pt-1.5 border-t border-navy-50 whitespace-pre-wrap text-navy-600">
             {renderWithNodeChips(detail)}
@@ -279,7 +279,7 @@ function MessageBubble({ message }: { message: WizardMessage }) {
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            Akis olusturuldu — editore yonlendiriliyor...
+            Akış oluşturuldu — editöre yönlendiriliyor...
           </div>
         )}
       </div>

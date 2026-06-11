@@ -60,7 +60,7 @@ export function RevenueIntelligencePage() {
         <h1 className="text-xl font-semibold text-navy-900">Revenue Intelligence</h1>
         <Card>
           <CardContent className="py-8 text-center text-navy-300">
-            Bu sayfa tenant olarak giris yaptiginizda kullanilabilir.
+            Bu sayfa tenant olarak giriş yaptığınızda kullanılabilir.
           </CardContent>
         </Card>
       </div>
@@ -77,7 +77,7 @@ export function RevenueIntelligencePage() {
             Revenue Intelligence
           </h1>
           <p className="text-sm text-navy-400 mt-0.5">
-            Gelir, agent performansi, itirazlar ve talep analizi
+            Gelir, agent performansı, itirazlar ve talep analizi
             {sector && <span className="ml-1 text-brand-500 font-medium">({sector})</span>}
           </p>
         </div>
@@ -91,7 +91,7 @@ export function RevenueIntelligencePage() {
       {error && (
         <Card>
           <CardContent className="py-4 text-center text-red-500 text-sm">
-            Veri yuklenirken hata: {error}
+            Veri yüklenirken hata: {error}
           </CardContent>
         </Card>
       )}
@@ -101,7 +101,7 @@ export function RevenueIntelligencePage() {
         <Card>
           <CardContent className="py-8 text-center text-navy-300">
             <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2" />
-            Veriler yukleniyor...
+            Veriler yükleniyor...
           </CardContent>
         </Card>
       )}
@@ -140,13 +140,13 @@ export function RevenueIntelligencePage() {
           {data.benchmarks && (
             <Card>
               <CardHeader>
-                <CardTitle>Sektor Benchmark: {data.benchmarks.displayName}</CardTitle>
+                <CardTitle>Sektör Benchmark: {data.benchmarks.displayName}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
                   <div>
                     <p className="text-2xl font-bold text-navy-900">{data.benchmarks.totalTemplates}</p>
-                    <p className="text-xs text-navy-400">Toplam Sablon</p>
+                    <p className="text-xs text-navy-400">Toplam Şablon</p>
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-brand-600">{data.benchmarks.intentCount}</p>
@@ -169,7 +169,7 @@ export function RevenueIntelligencePage() {
           {!data.revenue && !data.agentLeaderboard && !data.responseTime && (
             <Card>
               <CardContent className="py-8 text-center text-navy-300 text-sm">
-                Henuz insight verisi hesaplanmamis. Nightly batch islendikten sonra veriler burada gorunecek.
+                Henüz insight verisi hesaplanmamış. Nightly batch işlendikten sonra veriler burada görünecek.
               </CardContent>
             </Card>
           )}

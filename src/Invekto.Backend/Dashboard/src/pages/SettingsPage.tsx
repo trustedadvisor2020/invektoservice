@@ -14,7 +14,7 @@ interface TabDef { id: SettingsTab; label: string; icon: typeof Settings; tenant
 
 const ALL_TABS: TabDef[] = [
   { id: 'general', label: 'Temel Bilgiler', icon: Building2 },
-  { id: 'working-hours', label: 'Calisma Saatleri', icon: Clock, tenantOnly: true },
+  { id: 'working-hours', label: 'Çalışma Saatleri', icon: Clock, tenantOnly: true },
   { id: 'lines', label: 'Hatlar', icon: Phone, tenantOnly: true },
 ];
 
@@ -27,16 +27,16 @@ const INSTANCE_TYPE_LABELS: Record<number, { label: string; icon: typeof Smartph
 
 const ALL_DAYS = [
   { value: 'Monday', label: 'Pazartesi' },
-  { value: 'Tuesday', label: 'Sali' },
-  { value: 'Wednesday', label: 'Carsamba' },
-  { value: 'Thursday', label: 'Persembe' },
+  { value: 'Tuesday', label: 'Salı' },
+  { value: 'Wednesday', label: 'Çarşamba' },
+  { value: 'Thursday', label: 'Perşembe' },
   { value: 'Friday', label: 'Cuma' },
   { value: 'Saturday', label: 'Cumartesi' },
   { value: 'Sunday', label: 'Pazar' },
 ];
 
 const COMMON_TIMEZONES = [
-  { value: 'Europe/Istanbul', label: 'Turkiye (UTC+3)' },
+  { value: 'Europe/Istanbul', label: 'Türkiye (UTC+3)' },
   { value: 'Europe/London', label: 'Londra (UTC+0/+1)' },
   { value: 'Europe/Berlin', label: 'Berlin (UTC+1/+2)' },
   { value: 'Europe/Moscow', label: 'Moskova (UTC+3)' },
@@ -86,7 +86,7 @@ export function SettingsPage() {
     } catch (err) {
       const code = err instanceof ApiClientError ? err.errorCode : '';
       const msg = err instanceof Error ? err.message : String(err);
-      setSectorError(`Sektor yuklenemedi${code ? ` [${code}]` : ''}: ${msg}`);
+      setSectorError(`Sektör yüklenemedi${code ? ` [${code}]` : ''}: ${msg}`);
     } finally {
       setSectorLoading(false);
     }
@@ -104,7 +104,7 @@ export function SettingsPage() {
     } catch (err) {
       const code = err instanceof ApiClientError ? err.errorCode : '';
       const msg = err instanceof Error ? err.message : String(err);
-      setSectorError(`Sektor kaydedilemedi${code ? ` [${code}]` : ''}: ${msg}`);
+      setSectorError(`Sektör kaydedilemedi${code ? ` [${code}]` : ''}: ${msg}`);
     } finally {
       setSectorSaving(false);
     }
@@ -119,9 +119,9 @@ export function SettingsPage() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Bilinmeyen hata';
       if (msg.includes('WapCRM') || msg.includes('yapilandirilmamis')) {
-        setError('WapCRM API anahtari yapilandirilmamis. Lutfen firma ayarlarinizi kontrol edin.');
+        setError('WapCRM API anahtarı yapılandırılmamış. Lütfen firma ayarlarınızı kontrol edin.');
       } else {
-        setError(`Hat listesi yuklenemedi: ${msg}`);
+        setError(`Hat listesi yüklenemedi: ${msg}`);
       }
     } finally {
       setLoading(false);
@@ -140,7 +140,7 @@ export function SettingsPage() {
       setWhConfigured(result.configured);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Bilinmeyen hata';
-      setWhError(`Calisma saatleri yuklenemedi: ${msg}`);
+      setWhError(`Çalışma saatleri yüklenemedi: ${msg}`);
     } finally {
       setWhLoading(false);
     }
@@ -162,7 +162,7 @@ export function SettingsPage() {
       setInstances(result.instances);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Bilinmeyen hata';
-      setError(`WapCRM yenileme basarisiz: ${msg}`);
+      setError(`WapCRM yenileme başarısız: ${msg}`);
     } finally {
       setRefreshing(false);
     }
@@ -178,7 +178,7 @@ export function SettingsPage() {
       ));
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Bilinmeyen hata';
-      alert(msg.includes('flow') ? 'Bu hat bir akis tarafindan kullaniliyor. Once akistan cikarin.' : msg);
+      alert(msg.includes('flow') ? 'Bu hat bir akış tarafından kullanılıyor. Önce akıştan çıkarın.' : msg);
     } finally {
       setTogglingId(null);
     }
@@ -200,7 +200,7 @@ export function SettingsPage() {
       setTimeout(() => setWhSuccess(false), 3000);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Bilinmeyen hata';
-      setWhError(`Calisma saatleri kaydedilemedi: ${msg}`);
+      setWhError(`Çalışma saatleri kaydedilemedi: ${msg}`);
     } finally {
       setWhSaving(false);
     }
@@ -299,12 +299,12 @@ export function SettingsPage() {
 
 const SECTOR_OPTIONS = [
   { value: 'eticaret', label: 'E-Ticaret' },
-  { value: 'dis_klinik', label: 'Dis Klinigi' },
+  { value: 'dis_klinik', label: 'Diş Kliniği' },
   { value: 'estetik', label: 'Estetik Merkezi' },
-  { value: 'saglik', label: 'Saglik' },
+  { value: 'saglik', label: 'Sağlık' },
   { value: 'otel', label: 'Otel & Konaklama' },
-  { value: 'guzellik', label: 'Guzellik Salonu' },
-  { value: 'egitim', label: 'Egitim' },
+  { value: 'guzellik', label: 'Güzellik Salonu' },
+  { value: 'egitim', label: 'Eğitim' },
   { value: 'mobil', label: 'Mobil Uygulama' },
   { value: 'genel', label: 'Genel' },
 ];
@@ -358,7 +358,7 @@ function GeneralTab({ session, sector, sectorLoading, sectorSaving, sectorError,
               ))}
               {session.inseFeatures.length > 0 && (
                 <div className="flex items-center">
-                  <span className="w-32 text-sm text-navy-400">Moduller</span>
+                  <span className="w-32 text-sm text-navy-400">Modüller</span>
                   <div className="flex gap-1.5">
                     {session.inseFeatures.map(f => (
                       <Badge key={f} variant="info">{f}</Badge>
@@ -376,10 +376,10 @@ function GeneralTab({ session, sector, sectorLoading, sectorSaving, sectorError,
         <div className="mb-3">
           <h2 className="text-base font-semibold text-navy-900 flex items-center gap-2">
             <Factory className="w-4 h-4 text-navy-400" />
-            Sektor
+            Sektör
           </h2>
           <p className="text-xs text-navy-400 mt-0.5">
-            Isletmenizin sektorunu belirleyin. Sablon ve icerik onerileri sektore gore kisisellesir.
+            İşletmenizin sektörünü belirleyin. Şablon ve içerik önerileri sektöre göre kişiselleşir.
           </p>
         </div>
         <Card>
@@ -392,21 +392,21 @@ function GeneralTab({ session, sector, sectorLoading, sectorSaving, sectorError,
             {sectorSuccess && (
               <div className="p-3 mb-3 bg-emerald-50 border border-emerald-100 rounded-xl text-sm text-emerald-700 flex items-center gap-2">
                 <Check className="w-4 h-4" />
-                Sektor basariyla kaydedildi.
+                Sektör başarıyla kaydedildi.
               </div>
             )}
             {sectorLoading ? (
-              <div className="py-4 text-center text-navy-300">Yukleniyor...</div>
+              <div className="py-4 text-center text-navy-300">Yükleniyor...</div>
             ) : (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-navy-700 mb-1">Sektor</label>
+                  <label className="block text-sm font-medium text-navy-700 mb-1">Sektör</label>
                   <select
                     value={localSector}
                     onChange={e => setLocalSector(e.target.value)}
                     className="w-full max-w-xs px-3 py-2 border border-navy-100 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 bg-white"
                   >
-                    <option value="">Seciniz...</option>
+                    <option value="">Seçiniz...</option>
                     {SECTOR_OPTIONS.map(s => (
                       <option key={s.value} value={s.value}>{s.label}</option>
                     ))}
@@ -437,7 +437,7 @@ function GeneralTab({ session, sector, sectorLoading, sectorSaving, sectorError,
             Lead Kaynaklari
           </h2>
           <p className="text-xs text-navy-400 mt-0.5">
-            Landing webhook API anahtari, alan eslemesi ve dry-run onizlemesi.
+            Landing webhook API anahtarı, alan eşlemesi ve dry-run önizlemesi.
           </p>
         </div>
         <Card>
@@ -449,7 +449,7 @@ function GeneralTab({ session, sector, sectorLoading, sectorSaving, sectorError,
               <div>
                 <div className="text-sm font-medium text-navy-900">Landing Webhook Ayarlari</div>
                 <div className="text-xs text-navy-400 mt-0.5">
-                  API key yonetimi, alan eslemesi (field map), dry-run onizlemesi ve degisiklik gecmisi.
+                  API key yönetimi, alan eşlemesi (field map), dry-run önizlemesi ve değişiklik geçmişi.
                 </div>
               </div>
               <ChevronRight className="w-5 h-5 text-navy-400 flex-shrink-0" />
@@ -466,7 +466,7 @@ function GeneralTab({ session, sector, sectorLoading, sectorSaving, sectorError,
             Field Mapping
           </h2>
           <p className="text-xs text-navy-400 mt-0.5">
-            INMA custom field slotlarini (cf1..cf10) semantic isimlere bagla (FlowBuilder + Template editor icin).
+            INMA custom field slotlarını (cf1..cf10) semantic isimlere bağla (FlowBuilder + Template editor için).
           </p>
         </div>
         <Card>
@@ -478,7 +478,7 @@ function GeneralTab({ session, sector, sectorLoading, sectorSaving, sectorError,
               <div>
                 <div className="text-sm font-medium text-navy-900">Tenant Field Mapping Editor</div>
                 <div className="text-xs text-navy-400 mt-0.5">
-                  10-slot tablo: INMA Label + semantic isim + tip (enum/date/bool/int/string) + enum degerleri.
+                  10-slot tablo: INMA Label + semantic isim + tip (enum/date/bool/int/string) + enum değerleri.
                 </div>
               </div>
               <ChevronRight className="w-5 h-5 text-navy-400 flex-shrink-0" />
@@ -496,7 +496,7 @@ function GeneralTab({ session, sector, sectorLoading, sectorSaving, sectorError,
               <div>
                 <div className="text-sm font-medium text-navy-900">Follow-Up Sequence Editor</div>
                 <div className="text-xs text-navy-400 mt-0.5">
-                  N-asamali drip nurture: stage liste + delay + template_slug + A/B split (deterministik kontrol grubu).
+                  N-aşamalı drip nurture: stage liste + delay + template_slug + A/B split (deterministik kontrol grubu).
                 </div>
               </div>
               <ChevronRight className="w-5 h-5 text-navy-400 flex-shrink-0" />
@@ -514,7 +514,7 @@ function GeneralTab({ session, sector, sectorLoading, sectorSaving, sectorError,
               <div>
                 <div className="text-sm font-medium text-navy-900">Multi-City Campaign Config</div>
                 <div className="text-xs text-navy-400 mt-0.5">
-                  Tenant kampanyalari + sehirler + event tarihleri. {'{{campaign.cities_human}}'} substitution + outbound window guard (INV-BE-119).
+                  Tenant kampanyaları + şehirler + event tarihleri. {'{{campaign.cities_human}}'} substitution + outbound window guard (INV-BE-119).
                 </div>
               </div>
               <ChevronRight className="w-5 h-5 text-navy-400 flex-shrink-0" />
@@ -532,7 +532,7 @@ function GeneralTab({ session, sector, sectorLoading, sectorSaving, sectorError,
               <div>
                 <div className="text-sm font-medium text-navy-900">Klinik Bilgileri</div>
                 <div className="text-xs text-navy-400 mt-0.5">
-                  Klinik iletisim + ekip uyeleri. {'{{clinic.name}}'} {'{{clinic.phone}}'} {'{{team.dentist.name}}'} substitution. Multi-tenant icin hardcoded yerine.
+                  Klinik iletişim + ekip üyeleri. {'{{clinic.name}}'} {'{{clinic.phone}}'} {'{{team.dentist.name}}'} substitution. Multi-tenant için hardcoded yerine.
                 </div>
               </div>
               <ChevronRight className="w-5 h-5 text-navy-400 flex-shrink-0" />
@@ -574,13 +574,13 @@ function WorkingHoursTab({
         <div className="flex items-center gap-2">
           <h2 className="text-base font-semibold text-navy-900 flex items-center gap-2">
             <Clock className="w-4 h-4 text-navy-400" />
-            Calisma Saatleri
+            Çalışma Saatleri
           </h2>
           {whConfigured && <Badge variant="success">Aktif</Badge>}
-          {!whConfigured && !whLoading && <Badge variant="default">Yapilandirilmamis</Badge>}
+          {!whConfigured && !whLoading && <Badge variant="default">Yapılandırılmamış</Badge>}
         </div>
         <p className="text-xs text-navy-400 mt-0.5">
-          Mesai saatlerini belirleyin. Mesai disinda gelen mesajlara otomatik cevap gonderilir.
+          Mesai saatlerini belirleyin. Mesai dışında gelen mesajlara otomatik cevap gönderilir.
         </p>
       </div>
       <Card>
@@ -594,20 +594,20 @@ function WorkingHoursTab({
         {whSuccess && (
           <div className="p-3 mb-3 bg-emerald-50 border border-emerald-100 rounded-xl text-sm text-emerald-700 flex items-center gap-2">
             <Check className="w-4 h-4" />
-            Calisma saatleri basariyla kaydedildi.
+            Çalışma saatleri başarıyla kaydedildi.
           </div>
         )}
 
         {whLoading ? (
           <div className="py-8 text-center text-navy-300">
-            Yukleniyor...
+            Yükleniyor...
           </div>
         ) : (
           <div className="space-y-5">
             {/* Time range */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-navy-700 mb-1">Baslangic Saati</label>
+                <label className="block text-sm font-medium text-navy-700 mb-1">Başlangıç Saati</label>
                 <input
                   type="time"
                   value={whStart}
@@ -616,7 +616,7 @@ function WorkingHoursTab({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-navy-700 mb-1">Bitis Saati</label>
+                <label className="block text-sm font-medium text-navy-700 mb-1">Bitiş Saati</label>
                 <input
                   type="time"
                   value={whEnd}
@@ -642,7 +642,7 @@ function WorkingHoursTab({
 
             {/* Days off */}
             <div>
-              <label className="block text-sm font-medium text-navy-700 mb-2">Kapali Gunler</label>
+              <label className="block text-sm font-medium text-navy-700 mb-2">Kapalı Günler</label>
               <div className="flex flex-wrap gap-2">
                 {ALL_DAYS.map(day => {
                   const isOff = whDaysOff.includes(day.value);
@@ -663,7 +663,7 @@ function WorkingHoursTab({
                 })}
               </div>
               <p className="text-xs text-navy-300 mt-1">
-                Kapali gunlerde tum gun mesai disi mesaji gonderilir.
+                Kapalı günlerde tüm gün mesai dışı mesajı gönderilir.
               </p>
             </div>
 
@@ -709,7 +709,7 @@ function LinesTab({ instances, loading, refreshing, togglingId, error, onRefresh
             Hatlar
           </h2>
           <p className="text-xs text-navy-400 mt-0.5">
-            Mesaj alinacak hatlari yonetin. Kapali hatlardan gelen mesajlar yoksayilir.
+            Mesaj alınacak hatları yönetin. Kapalı hatlardan gelen mesajlar yoksayılır.
             {instances.length > 0 && <span className="ml-1">({instances.length} hat)</span>}
           </p>
         </div>
@@ -736,10 +736,10 @@ function LinesTab({ instances, loading, refreshing, togglingId, error, onRefresh
             <thead>
               <tr className="bg-navy-50 border-b border-navy-100">
                 <th className="text-left px-4 py-2.5 font-medium text-navy-500 w-12">Durum</th>
-                <th className="text-left px-4 py-2.5 font-medium text-navy-500">Hat Adi</th>
+                <th className="text-left px-4 py-2.5 font-medium text-navy-500">Hat Adı</th>
                 <th className="text-left px-4 py-2.5 font-medium text-navy-500">Numara</th>
                 <th className="text-left px-4 py-2.5 font-medium text-navy-500">Tip</th>
-                <th className="text-left px-4 py-2.5 font-medium text-navy-500">Akis</th>
+                <th className="text-left px-4 py-2.5 font-medium text-navy-500">Akış</th>
                 <th className="text-center px-4 py-2.5 font-medium text-navy-500 w-16">Aktif</th>
               </tr>
             </thead>
@@ -747,13 +747,13 @@ function LinesTab({ instances, loading, refreshing, togglingId, error, onRefresh
               {loading && instances.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-12 text-navy-300">
-                    Hatlar yukleniyor...
+                    Hatlar yükleniyor...
                   </td>
                 </tr>
               ) : instances.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-12 text-navy-300">
-                    {error ? 'Hat bulunamadi' : 'Henuz hat eklenmemis. WapCRM\'den yenileyin.'}
+                    {error ? 'Hat bulunamadı' : 'Henüz hat eklenmemiş. WapCRM\'den yenileyin.'}
                   </td>
                 </tr>
               ) : (
@@ -793,7 +793,7 @@ function LinesTab({ instances, loading, refreshing, togglingId, error, onRefresh
                         {inst.flowName ? (
                           <Badge variant="info">{inst.flowName}</Badge>
                         ) : (
-                          <span className="text-xs text-navy-200">Atanmamis</span>
+                          <span className="text-xs text-navy-200">Atanmamış</span>
                         )}
                       </td>
                       <td className="px-4 py-2.5 text-center">
@@ -805,8 +805,8 @@ function LinesTab({ instances, loading, refreshing, togglingId, error, onRefresh
                           className="w-4 h-4 rounded border-navy-200 text-brand-600 focus:ring-brand-500 disabled:opacity-50 disabled:cursor-not-allowed"
                           title={
                             isFlowAssigned && inst.isEnabled
-                              ? `"${inst.flowName}" akisinda kullaniliyor — once akistan cikarin`
-                              : inst.isEnabled ? 'Kapat' : 'Ac'
+                              ? `"${inst.flowName}" akışında kullanılıyor — önce akıştan çıkarın`
+                              : inst.isEnabled ? 'Kapat' : 'Aç'
                           }
                         />
                       </td>

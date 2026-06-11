@@ -9,17 +9,17 @@ import { cn } from '../lib/utils';
 const POLL_INTERVAL = 5000;
 
 const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string; dot: string }> = {
-  running:    { label: 'Calisiyor',   bg: 'bg-amber-100',   text: 'text-amber-700',   dot: 'bg-amber-500' },
-  completed:  { label: 'Tamamlandi',  bg: 'bg-emerald-100', text: 'text-emerald-700', dot: 'bg-emerald-500' },
+  running:    { label: 'Çalışıyor',   bg: 'bg-amber-100',   text: 'text-amber-700',   dot: 'bg-amber-500' },
+  completed:  { label: 'Tamamlandı',  bg: 'bg-emerald-100', text: 'text-emerald-700', dot: 'bg-emerald-500' },
   error:      { label: 'Hata',        bg: 'bg-red-100',     text: 'text-red-700',     dot: 'bg-red-500' },
   handed_off: { label: 'Devredildi',  bg: 'bg-sky-100',     text: 'text-sky-700',     dot: 'bg-sky-500' },
   waiting:    { label: 'Bekliyor',    bg: 'bg-navy-100',    text: 'text-navy-500',    dot: 'bg-navy-400' },
 };
 
 const STATUS_OPTIONS = [
-  { value: '', label: 'Tum Durumlar' },
-  { value: 'running', label: 'Calisiyor' },
-  { value: 'completed', label: 'Tamamlandi' },
+  { value: '', label: 'Tüm Durumlar' },
+  { value: 'running', label: 'Çalışıyor' },
+  { value: 'completed', label: 'Tamamlandı' },
   { value: 'error', label: 'Hata' },
   { value: 'handed_off', label: 'Devredildi' },
   { value: 'waiting', label: 'Bekliyor' },
@@ -87,7 +87,7 @@ export function FlowMonitorPage() {
   }, [tenantId, filters, page, loadExecutions]);
 
   if (tenantId <= 0) {
-    return <div className="p-8 text-center text-navy-400">Tenant bilgisi bulunamadi.</div>;
+    return <div className="p-8 text-center text-navy-400">Tenant bilgisi bulunamadı.</div>;
   }
 
   return (
@@ -224,7 +224,7 @@ function MonitorFilterBar({ flows, filters, onFilterChange, total, isLoading, on
       <div className="flex-1" />
 
       {/* Total count */}
-      <span className="text-xs text-slate-400">{total} kayit</span>
+      <span className="text-xs text-slate-400">{total} kayıt</span>
 
       {/* Refresh button */}
       <button
@@ -266,7 +266,7 @@ function ExecutionListPanel({ executions, total, page, isLoading, error, selecte
     <>
       {/* List header */}
       <div className="px-3 py-2 border-b border-slate-100 flex-shrink-0">
-        <div className="text-xs font-medium text-slate-500">Son Yurutmeler</div>
+        <div className="text-xs font-medium text-slate-500">Son Yürütmeler</div>
       </div>
 
       {/* Error */}
@@ -283,7 +283,7 @@ function ExecutionListPanel({ executions, total, page, isLoading, error, selecte
 
       {/* Empty */}
       {!isLoading && executions.length === 0 && !error && (
-        <div className="px-3 py-12 text-center text-sm text-slate-400">Henuz yurutme kaydI yok</div>
+        <div className="px-3 py-12 text-center text-sm text-slate-400">Henüz yürütme kaydı yok</div>
       )}
 
       {/* Execution list */}
@@ -330,7 +330,7 @@ function ExecutionListPanel({ executions, total, page, isLoading, error, selecte
             onClick={() => onPageChange(page - 1)}
             className="text-xs text-slate-500 hover:text-slate-700 disabled:opacity-30"
           >
-            Onceki
+            Önceki
           </button>
           <span className="text-xs text-slate-400">{page + 1} / {totalPages}</span>
           <button
@@ -364,7 +364,7 @@ function ExecutionTimeline({ detail, isLoading, onBack }: TimelineProps) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-10 h-10 text-slate-300 mx-auto mb-3">
             <path d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
           </svg>
-          <p className="text-sm text-slate-400">Detay gormek icin sol listeden bir yurutme secin</p>
+          <p className="text-sm text-slate-400">Detay görmek için sol listeden bir yürütme seçin</p>
         </div>
       </div>
     );
@@ -389,7 +389,7 @@ function ExecutionTimeline({ detail, isLoading, onBack }: TimelineProps) {
         <button
           onClick={onBack}
           className="p-1 rounded hover:bg-slate-100 text-slate-400"
-          title="Listeye don"
+          title="Listeye dön"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
             <path d="M19 12H5M12 19l-7-7 7-7" />
@@ -421,7 +421,7 @@ function ExecutionTimeline({ detail, isLoading, onBack }: TimelineProps) {
       {/* Node trace timeline */}
       <div className="flex-1 overflow-y-auto px-5 py-4">
         <div className="text-xs font-medium text-slate-500 mb-3">
-          Node Izleme ({detail.node_trace.length} adim)
+          Node İzleme ({detail.node_trace.length} adım)
         </div>
         <div className="space-y-0">
           {detail.node_trace.map((entry, i) => (
@@ -433,7 +433,7 @@ function ExecutionTimeline({ detail, isLoading, onBack }: TimelineProps) {
       {/* Error detail */}
       {detail.error_detail && (
         <div className="px-5 py-3 border-t border-red-200 bg-red-50 flex-shrink-0">
-          <div className="text-[10px] text-red-400 font-medium mb-0.5">Hata Detayi</div>
+          <div className="text-[10px] text-red-400 font-medium mb-0.5">Hata Detayı</div>
           <div className="text-sm text-red-700 font-mono whitespace-pre-wrap">{detail.error_detail}</div>
         </div>
       )}
@@ -441,7 +441,7 @@ function ExecutionTimeline({ detail, isLoading, onBack }: TimelineProps) {
       {/* Variables */}
       {detail.variables_final && Object.keys(detail.variables_final).length > 0 && (
         <div className="px-5 py-3 border-t border-slate-200 flex-shrink-0 max-h-40 overflow-y-auto bg-slate-50">
-          <div className="text-[10px] text-slate-400 font-medium mb-1">Degiskenler (Final)</div>
+          <div className="text-[10px] text-slate-400 font-medium mb-1">Değişkenler (Final)</div>
           <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
             {Object.entries(detail.variables_final)
               .filter(([k]) => !k.startsWith('__'))
@@ -514,7 +514,7 @@ function TimelineNode({ entry, index, isLast }: { entry: NodeTraceEntry; index: 
         {/* Variables snapshot */}
         {entry.variables && Object.keys(entry.variables).length > 0 && (
           <div className="mt-1.5 px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-md">
-            <div className="text-[9px] text-slate-400 mb-0.5">Degiskenler</div>
+            <div className="text-[9px] text-slate-400 mb-0.5">Değişkenler</div>
             {Object.entries(entry.variables)
               .filter(([k]) => !k.startsWith('__'))
               .map(([k, v]) => (
@@ -568,8 +568,8 @@ function MonitorAiPanel({ tenantId, selectedExecution }: AiPanelProps) {
 
     proactiveSentRef.current = selectedExecution.id;
     const autoMsg = selectedExecution.status === 'error'
-      ? 'Bu yurutme hata ile sonuclandi. Hatanin nedenini analiz et ve cozum oner.'
-      : 'Bu yurutme bekleme durumunda kaldi. Neden bekliyor, analiz et.';
+      ? 'Bu yürütme hata ile sonuçlandı. Hatanın nedenini analiz et ve çözüm öner.'
+      : 'Bu yürütme bekleme durumunda kaldı. Neden bekliyor, analiz et.';
     sendAiMessage(tenantId, autoMsg);
   }, [selectedExecution, tenantId, sendAiMessage]);
 
@@ -599,7 +599,7 @@ function MonitorAiPanel({ tenantId, selectedExecution }: AiPanelProps) {
         <div className="text-center px-6">
           <AiSparkleIcon />
           <h3 className="text-sm font-semibold text-slate-700 mb-1">AI Asistan</h3>
-          <p className="text-xs text-slate-400">Bir yurutme secin, AI analiz ve iyilestirme onerileri sunacak.</p>
+          <p className="text-xs text-slate-400">Bir yürütme seçin, AI analiz ve iyileştirme önerileri sunacak.</p>
         </div>
       </div>
     );
@@ -636,7 +636,7 @@ function MonitorAiPanel({ tenantId, selectedExecution }: AiPanelProps) {
         {isStreaming && !streamingText && (
           <div className="flex items-center gap-2 text-xs text-slate-400">
             <div className="animate-spin w-3.5 h-3.5 border border-indigo-300 border-t-indigo-600 rounded-full" />
-            <span>Dusunuyor...</span>
+            <span>Düşünüyor...</span>
           </div>
         )}
 
@@ -648,7 +648,7 @@ function MonitorAiPanel({ tenantId, selectedExecution }: AiPanelProps) {
         {/* Pending flow config — Accept/Reject buttons */}
         {pendingFlowConfig && (
           <div className="px-3 py-2.5 bg-violet-50 border border-violet-200 rounded-lg">
-            <div className="text-xs font-medium text-violet-700 mb-2">AI akis degisikligi onerdi</div>
+            <div className="text-xs font-medium text-violet-700 mb-2">AI akış değişikliği önerdi</div>
             <div className="flex gap-2">
               <button
                 onClick={() => acceptAiChanges(tenantId)}
@@ -695,7 +695,7 @@ function MonitorAiPanel({ tenantId, selectedExecution }: AiPanelProps) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Soru sor veya degisiklik iste..."
+            placeholder="Soru sor veya değişiklik iste..."
             rows={1}
             className="flex-1 text-xs border border-slate-200 rounded-md px-2.5 py-1.5 bg-white text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-400 resize-none"
             disabled={isStreaming}
@@ -704,7 +704,7 @@ function MonitorAiPanel({ tenantId, selectedExecution }: AiPanelProps) {
             onClick={handleSend}
             disabled={isStreaming || !input.trim()}
             className="p-1.5 rounded-md bg-indigo-500 text-white hover:bg-indigo-600 disabled:opacity-40 transition-colors"
-            title="Gonder"
+            title="Gönder"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
               <path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" />

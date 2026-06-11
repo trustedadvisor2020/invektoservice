@@ -73,7 +73,7 @@ export function FlowListPage() {
       const data = await api.listFlows(tenantId);
       setFlows(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Flow listesi alinamadi');
+      setError(err instanceof Error ? err.message : 'Flow listesi alınamadı');
     } finally {
       setLoading(false);
     }
@@ -105,14 +105,14 @@ export function FlowListPage() {
       setShowTemplateModal(false);
       navigate(`/flow-builder/editor/${created.flow_id}?template=${tpl.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sablon olusturma basarisiz');
+      setError(err instanceof Error ? err.message : 'Şablon oluşturma başarısız');
       setTemplateCreating(null);
     }
   };
 
   const handleCreate = async () => {
     if (!newFlowName.trim()) {
-      setNewFlowError('Flow adi bos olamaz.');
+      setNewFlowError('Flow adı boş olamaz.');
       return;
     }
     setCreating(true);
@@ -131,7 +131,7 @@ export function FlowListPage() {
       if (err instanceof ApiClientError && err.status === 409) {
         setNewFlowError('Bu isimde bir flow zaten mevcut.');
       } else {
-        setNewFlowError(err instanceof Error ? err.message : 'Olusturma basarisiz');
+        setNewFlowError(err instanceof Error ? err.message : 'Oluşturma başarısız');
       }
     } finally {
       setCreating(false);
@@ -146,9 +146,9 @@ export function FlowListPage() {
       setFlows((prev) => prev.filter((f) => f.flow_id !== flow.flow_id));
     } catch (err) {
       if (err instanceof ApiClientError && err.status === 409) {
-        setError('Aktif flow silinemez. Once deaktif edin.');
+        setError('Aktif flow silinemez. Önce deaktif edin.');
       } else {
-        setError(err instanceof Error ? err.message : 'Silme basarisiz');
+        setError(err instanceof Error ? err.message : 'Silme başarısız');
       }
     } finally {
       setActionLoading(null);
@@ -162,7 +162,7 @@ export function FlowListPage() {
       await api.activateFlow(tenantId, flowId);
       await fetchFlows();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Aktivasyon basarisiz');
+      setError(err instanceof Error ? err.message : 'Aktivasyon başarısız');
     } finally {
       setActionLoading(null);
     }
@@ -175,7 +175,7 @@ export function FlowListPage() {
       await api.deactivateFlow(tenantId, flowId);
       await fetchFlows();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Deaktivasyon basarisiz');
+      setError(err instanceof Error ? err.message : 'Deaktivasyon başarısız');
     } finally {
       setActionLoading(null);
     }
@@ -206,9 +206,9 @@ export function FlowListPage() {
       navigate(`/flow-builder/editor/${created.flow_id}`);
     } catch (err) {
       if (err instanceof ApiClientError && err.status === 409) {
-        setError('Bu isimde bir flow zaten mevcut. Lutfen tekrar deneyin.');
+        setError('Bu isimde bir flow zaten mevcut. Lütfen tekrar deneyin.');
       } else {
-        setError(err instanceof Error ? err.message : 'Kopyalama basarisiz');
+        setError(err instanceof Error ? err.message : 'Kopyalama başarısız');
       }
     } finally {
       setActionLoading(null);
@@ -224,7 +224,7 @@ export function FlowListPage() {
       const result = await startWizard(tenantId);
       navigate(`/flow-builder/wizard/${result.flow_id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'AI Wizard baslatilamadi');
+      setError(err instanceof Error ? err.message : 'AI Wizard başlatılamadı');
     } finally {
       setWizardLoading(false);
     }
@@ -291,14 +291,14 @@ export function FlowListPage() {
               className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 hover:from-violet-600 hover:via-purple-600 hover:to-fuchsia-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:shadow-md transition-all disabled:opacity-40 disabled:pointer-events-none"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              {wizardLoading ? 'Hazirlaniyor...' : 'AI ile Olustur'}
+              {wizardLoading ? 'Hazırlanıyor...' : 'AI ile Oluştur'}
             </button>
             <button
               onClick={openNewDialog}
               className="flex items-center gap-1.5 px-3.5 py-1.5 bg-navy-900 hover:bg-navy-800 text-white text-sm font-medium rounded-lg transition-colors"
             >
               <LayoutTemplate className="w-3.5 h-3.5" />
-              Sablondan Olustur
+              Şablondan Oluştur
             </button>
           </div>
         </div>
@@ -325,9 +325,9 @@ export function FlowListPage() {
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-100 to-brand-50 flex items-center justify-center mx-auto mb-4 shadow-sm">
               <Workflow className="w-7 h-7 text-brand-400" strokeWidth={1.5} />
             </div>
-            <h3 className="text-base font-display font-semibold text-navy-900 mb-1.5">Henuz flow yok</h3>
+            <h3 className="text-base font-display font-semibold text-navy-900 mb-1.5">Henüz flow yok</h3>
             <p className="text-sm text-navy-400 mb-5 leading-relaxed">
-              Ilk chatbot flow'unuzu olusturun.
+              İlk chatbot flow'unuzu oluşturun.
             </p>
             <div className="flex items-center justify-center gap-2.5">
               <button
@@ -336,14 +336,14 @@ export function FlowListPage() {
                 className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 hover:from-violet-600 hover:via-purple-600 hover:to-fuchsia-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:shadow-md transition-all disabled:opacity-40"
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                AI ile Baslat
+                AI ile Başlat
               </button>
               <button
                 onClick={openNewDialog}
                 className="flex items-center gap-1.5 px-4 py-2 bg-navy-900 hover:bg-navy-800 text-white text-sm font-medium rounded-lg transition-colors"
               >
                 <LayoutTemplate className="w-3.5 h-3.5" />
-                Sablondan Olustur
+                Şablondan Oluştur
               </button>
             </div>
           </div>
@@ -411,7 +411,7 @@ export function FlowListPage() {
                           <div className="flex items-center justify-end gap-0.5 opacity-70 group-hover:opacity-100 transition-opacity">
                             <IconBtn
                               icon={Pencil}
-                              title="Duzenle"
+                              title="Düzenle"
                               onClick={() => navigate(`/flow-builder/editor/${flow.flow_id}`)}
                               className="text-brand-500 hover:bg-brand-50"
                             />
@@ -462,7 +462,7 @@ export function FlowListPage() {
           <div className="text-center py-16 flow-card-enter">
             <Search className="w-8 h-8 text-navy-200 mx-auto mb-2" strokeWidth={1.5} />
             <p className="text-sm text-navy-400">
-              &ldquo;<span className="font-medium text-navy-500">{search}</span>&rdquo; ile eslesen flow bulunamadi
+              &ldquo;<span className="font-medium text-navy-500">{search}</span>&rdquo; ile eşleşen flow bulunamadı
             </p>
           </div>
         )}
@@ -476,7 +476,7 @@ export function FlowListPage() {
         >
           <div className="bg-white border border-navy-100 rounded-2xl w-full max-w-md p-6 shadow-elevated flow-card-enter">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-display font-semibold text-navy-900">Yeni Flow Olustur</h2>
+              <h2 className="text-lg font-display font-semibold text-navy-900">Yeni Flow Oluştur</h2>
               <button
                 onClick={() => setShowNewDialog(false)}
                 disabled={creating}
@@ -490,7 +490,7 @@ export function FlowListPage() {
               value={newFlowName}
               onChange={(e) => setNewFlowName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-              placeholder="Flow adi (ornek: Satis Chatbot)"
+              placeholder="Flow adı (örnek: Satış Chatbot)"
               className="w-full px-3.5 py-2.5 bg-white border border-navy-100 rounded-xl text-navy-900 placeholder-navy-300 focus:outline-none focus:border-brand-300 focus:shadow-focus transition-all mb-3"
               autoFocus
               disabled={creating}
@@ -504,7 +504,7 @@ export function FlowListPage() {
                 disabled={creating}
                 className="flex items-center gap-1.5 px-5 py-2.5 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-40"
               >
-                {creating ? 'Olusturuluyor...' : 'Olustur'}
+                {creating ? 'Oluşturuluyor...' : 'Oluştur'}
               </button>
             </div>
           </div>
@@ -528,7 +528,7 @@ export function FlowListPage() {
               </button>
             </div>
             <p className="text-sm text-navy-400 mb-5 leading-relaxed">
-              <strong className="text-navy-900">{deleteTarget.flow_name}</strong> flow'u kalici olarak silinecek. Bu islem geri alinamaz.
+              <strong className="text-navy-900">{deleteTarget.flow_name}</strong> flow'u kalıcı olarak silinecek. Bu işlem geri alınamaz.
             </p>
             <div className="flex justify-end">
               <button
@@ -568,8 +568,8 @@ export function FlowListPage() {
                     <LayoutTemplate className="w-4 h-4 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-display font-semibold text-navy-900">Sablondan Olustur</h2>
-                    <p className="text-xs text-navy-400">{FLOW_TEMPLATES.length} hazir sablon</p>
+                    <h2 className="text-lg font-display font-semibold text-navy-900">Şablondan Oluştur</h2>
+                    <p className="text-xs text-navy-400">{FLOW_TEMPLATES.length} hazır şablon</p>
                   </div>
                 </div>
                 <button
@@ -590,14 +590,14 @@ export function FlowListPage() {
                     className="w-full flex items-center gap-2 px-3 py-2 mb-3 border-2 border-dashed border-navy-200 rounded-lg text-navy-500 hover:border-brand-300 hover:text-brand-600 hover:bg-brand-50/30 transition-all text-xs font-medium"
                   >
                     <Plus className="w-3.5 h-3.5" strokeWidth={2} />
-                    Bos Akis
+                    Boş Akış
                   </button>
-                  <p className="text-[10px] font-bold uppercase text-navy-300 px-2 mb-1.5">Sektor</p>
+                  <p className="text-[10px] font-bold uppercase text-navy-300 px-2 mb-1.5">Sektör</p>
                   <button
                     onClick={() => { setSelectedNiche('all'); setSelectedTemplate(null); }}
                     className={`w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors mb-0.5 ${selectedNiche === 'all' ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-navy-500 hover:bg-navy-50'}`}
                   >
-                    Tumunu Goster
+                    Tümünü Göster
                   </button>
                   {niches.map(niche => {
                     const count = FLOW_TEMPLATES.filter(t => t.niche === niche).length;
@@ -622,7 +622,7 @@ export function FlowListPage() {
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-navy-300" />
                       <input
                         type="text"
-                        placeholder="Sablon ara..."
+                        placeholder="Şablon ara..."
                         value={templateSearch}
                         onChange={e => { setTemplateSearch(e.target.value); setSelectedTemplate(null); }}
                         className="w-full pl-9 pr-4 py-2 text-sm border border-navy-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-transparent"
@@ -662,7 +662,7 @@ export function FlowListPage() {
                     {filteredTemplates.length === 0 && (
                       <div className="text-center py-14">
                         <LayoutTemplate className="w-8 h-8 text-navy-200 mx-auto mb-2" />
-                        <p className="text-sm text-navy-400">Eslesen sablon bulunamadi</p>
+                        <p className="text-sm text-navy-400">Eşleşen şablon bulunamadı</p>
                       </div>
                     )}
                   </div>
@@ -690,25 +690,25 @@ export function FlowListPage() {
 
                       {/* Description */}
                       <div className="mb-5">
-                        <h4 className="text-xs font-bold uppercase text-navy-400 mb-1.5">Aciklama</h4>
+                        <h4 className="text-xs font-bold uppercase text-navy-400 mb-1.5">Açıklama</h4>
                         <p className="text-sm text-navy-600 leading-relaxed">{selectedTemplate.description}</p>
                       </div>
 
                       {/* Benefits */}
                       <div className="mb-5">
-                        <h4 className="text-xs font-bold uppercase text-navy-400 mb-1.5">Ne Kazandirir</h4>
+                        <h4 className="text-xs font-bold uppercase text-navy-400 mb-1.5">Ne Kazandırır</h4>
                         <ul className="space-y-1.5">
                           <li className="flex items-start gap-2 text-sm text-navy-600">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0" />
-                            Hazir akis — sifirdan tasarim gerektirmez
+                            Hazır akış — sıfırdan tasarım gerektirmez
                           </li>
                           <li className="flex items-start gap-2 text-sm text-navy-600">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0" />
-                            {selectedTemplate.nodeCount} adimlik senaryo kurulumu
+                            {selectedTemplate.nodeCount} adımlık senaryo kurulumu
                           </li>
                           <li className="flex items-start gap-2 text-sm text-navy-600">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0" />
-                            AI Wizard ile sektorunuze ozellestirilir
+                            AI Wizard ile sektörünüze özelleştirilir
                           </li>
                         </ul>
                       </div>
@@ -716,7 +716,7 @@ export function FlowListPage() {
                       {/* Node Types */}
                       {nodeTypes.length > 0 && (
                         <div className="mb-5">
-                          <h4 className="text-xs font-bold uppercase text-navy-400 mb-1.5">Kullanilan Node'lar</h4>
+                          <h4 className="text-xs font-bold uppercase text-navy-400 mb-1.5">Kullanılan Node'lar</h4>
                           <div className="flex flex-wrap gap-1.5">
                             {nodeTypes.map(t => (
                               <span key={t} className="text-[10px] px-2 py-0.5 bg-navy-50 text-navy-500 rounded-full border border-navy-100">
@@ -750,16 +750,16 @@ export function FlowListPage() {
                         className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white text-sm font-semibold rounded-xl shadow-sm hover:shadow-md transition-all disabled:opacity-50"
                       >
                         {templateCreating === selectedTemplate.id ? (
-                          'Olusturuluyor...'
+                          'Oluşturuluyor...'
                         ) : (
                           <>
                             <Sparkles className="w-4 h-4" />
-                            Sablonu Kullan
+                            Şablonu Kullan
                           </>
                         )}
                       </button>
                       <p className="text-[10px] text-navy-400 text-center mt-2">
-                        Sablon yuklenecek ve AI Wizard ile ozellestirmeye hazir olacak
+                        Şablon yüklenecek ve AI Wizard ile özelleştirmeye hazır olacak
                       </p>
                     </div>
                   </div>
@@ -804,18 +804,18 @@ function HealthBadge({ score, issues }: { score: number; issues: string[] | null
   let bg: string, text: string, border: string, label: string, summary: string;
 
   if (score >= 80) {
-    bg = 'bg-emerald-50'; text = 'text-emerald-600'; border = 'border-emerald-100'; label = 'Saglikli';
-    summary = 'Flow duzgun calisiyor, buyuk bir sorun yok.';
+    bg = 'bg-emerald-50'; text = 'text-emerald-600'; border = 'border-emerald-100'; label = 'Sağlıklı';
+    summary = 'Flow düzgün çalışıyor, büyük bir sorun yok.';
   } else if (score >= 50) {
     bg = 'bg-amber-50'; text = 'text-amber-600'; border = 'border-amber-100'; label = 'Dikkat';
-    summary = 'Flow calisiyor ama iyilestirme gereken noktalar var.';
+    summary = 'Flow çalışıyor ama iyileştirme gereken noktalar var.';
   } else {
     bg = 'bg-red-50'; text = 'text-red-600'; border = 'border-red-100'; label = 'Sorunlu';
-    summary = 'Flow\'da kritik sorunlar var, duzenlenmesi gerekiyor.';
+    summary = 'Flow\'da kritik sorunlar var, düzenlenmesi gerekiyor.';
   }
 
   const buildTooltip = (): string => {
-    const lines: string[] = [`Saglik Puani: ${score}/100 — ${summary}`];
+    const lines: string[] = [`Sağlık Puanı: ${score}/100 — ${summary}`];
 
     if (issues && issues.length > 0) {
       lines.push('');
@@ -829,13 +829,13 @@ function HealthBadge({ score, issues }: { score: number; issues: string[] | null
       }
       if (warnings.length > 0) {
         if (errors.length > 0) lines.push('');
-        lines.push(`Uyarilar (${warnings.length}):`);
+        lines.push(`Uyarılar (${warnings.length}):`);
         warnings.slice(0, 3).forEach(w => lines.push(`  • ${simplifyIssue(w)}`));
-        if (warnings.length > 3) lines.push(`  ... ve ${warnings.length - 3} uyari daha`);
+        if (warnings.length > 3) lines.push(`  ... ve ${warnings.length - 3} uyarı daha`);
       }
 
       lines.push('');
-      lines.push('Cift tiklayarak flow\'u duzenleyebilirsiniz.');
+      lines.push('Çift tıklayarak flow\'u düzenleyebilirsiniz.');
     }
 
     return lines.join('\n');
@@ -858,21 +858,21 @@ function simplifyIssue(raw: string): string {
   const nodeName = labelMatch?.[1];
 
   if (raw.includes('Trigger node bulunamadi'))
-    return 'Baslangic adimi eksik — flow\'un nereden baslayacagi belirsiz';
+    return 'Başlangıç adımı eksik — flow\'un nereden başlayacağı belirsiz';
   if (raw.includes('Birden fazla trigger'))
-    return 'Birden fazla baslangic adimi var — sadece 1 tane olmali';
+    return 'Birden fazla başlangıç adımı var — sadece 1 tane olmalı';
   if (raw.includes('Orphan'))
-    return nodeName ? `"${nodeName}" adimina hicbir yerden ulasilamiyor` : 'Erisilemeyen adim var';
+    return nodeName ? `"${nodeName}" adımına hiçbir yerden ulaşılamıyor` : 'Erişilemeyen adım var';
   if (raw.includes('Dead-end'))
-    return nodeName ? `"${nodeName}" adiminda akis duruyor, devami yok` : 'Akisin devam etmedigi adim var';
+    return nodeName ? `"${nodeName}" adımında akış duruyor, devamı yok` : 'Akışın devam etmediği adım var';
   if (raw.includes('Zorunlu alan eksik'))
-    return nodeName ? `"${nodeName}" adiminda eksik alan var` : 'Bir adimda zorunlu alan eksik';
+    return nodeName ? `"${nodeName}" adımında eksik alan var` : 'Bir adımda zorunlu alan eksik';
   if (raw.includes('baglantisiz'))
-    return nodeName ? `"${nodeName}" adiminda baglanti yapilmamis secenek var` : 'Baglantisiz secenek var';
+    return nodeName ? `"${nodeName}" adımında bağlantı yapılmamış seçenek var` : 'Bağlantısız seçenek var';
   if (raw.includes('sonsuz dongu'))
-    return nodeName ? `"${nodeName}" adiminda tekrar dongusu tespit edildi` : 'Tekrar dongusu tespit edildi';
+    return nodeName ? `"${nodeName}" adımında tekrar döngüsü tespit edildi` : 'Tekrar döngüsü tespit edildi';
   if (raw.includes('JSON parse'))
-    return 'Ayar formati bozuk — adimi tekrar duzenleyin';
+    return 'Ayar formatı bozuk — adımı tekrar düzenleyin';
 
   return raw.split('—')[0].trim();
 }

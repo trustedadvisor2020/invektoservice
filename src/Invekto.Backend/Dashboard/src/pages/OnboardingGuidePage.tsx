@@ -49,11 +49,11 @@ interface TabDef {
 }
 
 const TABS: TabDef[] = [
-  { id: 'overview', label: 'Genel Bakis', icon: BookOpen },
-  { id: 'onboarding', label: 'Onboarding Adimlari', icon: Target },
-  { id: 'features', label: 'Ozellik Rehberi', icon: Layers },
-  { id: 'sectors', label: 'Sektor Senaryolari', icon: Building2 },
-  { id: 'communication', label: 'Musteri Iletisimi', icon: MessageCircle },
+  { id: 'overview', label: 'Genel Bakış', icon: BookOpen },
+  { id: 'onboarding', label: 'Onboarding Adımları', icon: Target },
+  { id: 'features', label: 'Özellik Rehberi', icon: Layers },
+  { id: 'sectors', label: 'Sektör Senaryoları', icon: Building2 },
+  { id: 'communication', label: 'Müşteri İletişimi', icon: MessageCircle },
   { id: 'saas', label: 'SaaS Stratejisi', icon: TrendingUp },
   { id: 'actions', label: 'Aksiyon Listesi', icon: CheckSquare },
 ];
@@ -66,11 +66,11 @@ let _setActiveTabGlobal: ((tab: GuideTab) => void) | null = null;
 
 function TabLink({ to, children }: { to: GuideTab; children: React.ReactNode }) {
   const tabLabels: Record<GuideTab, string> = {
-    overview: 'Genel Bakis',
-    onboarding: 'Onboarding Adimlari',
-    features: 'Ozellik Rehberi',
-    sectors: 'Sektor Senaryolari',
-    communication: 'Musteri Iletisimi',
+    overview: 'Genel Bakış',
+    onboarding: 'Onboarding Adımları',
+    features: 'Özellik Rehberi',
+    sectors: 'Sektör Senaryoları',
+    communication: 'Müşteri İletişimi',
     saas: 'SaaS Stratejisi',
     actions: 'Aksiyon Listesi',
   };
@@ -156,11 +156,11 @@ function FeatureBlock({ title, problem, solution, howTo, when }: {
           <span className="text-navy-600">{problem}</span>
         </div>
         <div className="flex gap-2">
-          <span className="text-navy-400 w-20 flex-shrink-0 font-medium">Cozum:</span>
+          <span className="text-navy-400 w-20 flex-shrink-0 font-medium">Çözüm:</span>
           <span className="text-navy-700 font-medium">{solution}</span>
         </div>
         <div className="flex gap-2">
-          <span className="text-navy-400 w-20 flex-shrink-0 font-medium">Nasil:</span>
+          <span className="text-navy-400 w-20 flex-shrink-0 font-medium">Nasıl:</span>
           <span className="text-navy-600">{howTo}</span>
         </div>
         <div className="flex gap-2">
@@ -189,7 +189,7 @@ function SectorCard({ icon: Icon, title, primary, secondary, firstFlow }: {
       </div>
       <div className="space-y-2.5 text-sm">
         <div>
-          <span className="text-xs font-medium text-navy-400 uppercase tracking-wide">Once Ac</span>
+          <span className="text-xs font-medium text-navy-400 uppercase tracking-wide">Önce Aç</span>
           <div className="flex flex-wrap gap-1.5 mt-1">
             {primary.map(f => <Badge key={f} variant="success">{f}</Badge>)}
           </div>
@@ -201,7 +201,7 @@ function SectorCard({ icon: Icon, title, primary, secondary, firstFlow }: {
           </div>
         </div>
         <div className="pt-1 border-t border-navy-50">
-          <span className="text-xs text-navy-400">Ilk akis ornegi:</span>
+          <span className="text-xs text-navy-400">İlk akış örneği:</span>
           <p className="text-xs text-navy-700 font-medium mt-0.5">{firstFlow}</p>
         </div>
       </div>
@@ -221,56 +221,56 @@ interface ActionItem {
 
 const ACTIONS: ActionItem[] = [
   // Onboarding Hazırlık
-  { id: 'a1', category: 'Onboarding Hazirlik', text: 'Sektor bazli hazir flow template\u0027lari olustur', detail: 'En az 3 sektor: restoran, klinik, e-ticaret. Her biri calisan, test edilmis flow olmali.', priority: 'high' },
-  { id: 'a2', category: 'Onboarding Hazirlik', text: 'Her sektor icin 1 sayfa "Invekto sizin icin ne yapar" dokumani yaz', detail: 'A4, Turkce, teknik terim yok. Sorun-cozum formati. PDF veya gorselle destekle.', priority: 'high' },
-  { id: 'a3', category: 'Onboarding Hazirlik', text: '3 temel ozellik icin ekran kaydi videosu cek', detail: 'Flow olusturma, FAQ ekleme, kampanya gonderme. Her biri max 60 saniye.', priority: 'high' },
-  { id: 'a4', category: 'Onboarding Hazirlik', text: 'Yeni tenant icin varsayilan feature flag setini belirle', detail: 'Ilk hafta: FlowBuilder + Knowledge. 2. hafta: Analytics + Outbound. 3. hafta: Marketing + Integrations.', priority: 'medium' },
+  { id: 'a1', category: 'Onboarding Hazırlık', text: 'Sektör bazlı hazır flow template\u0027leri oluştur', detail: 'En az 3 sektör: restoran, klinik, e-ticaret. Her biri çalışan, test edilmiş flow olmalı.', priority: 'high' },
+  { id: 'a2', category: 'Onboarding Hazırlık', text: 'Her sektör için 1 sayfa "Invekto sizin için ne yapar" dokümanı yaz', detail: 'A4, Türkçe, teknik terim yok. Sorun-çözüm formatı. PDF veya görselle destekle.', priority: 'high' },
+  { id: 'a3', category: 'Onboarding Hazırlık', text: '3 temel özellik için ekran kaydı videosu çek', detail: 'Flow oluşturma, FAQ ekleme, kampanya gönderme. Her biri max 60 saniye.', priority: 'high' },
+  { id: 'a4', category: 'Onboarding Hazırlık', text: 'Yeni tenant için varsayılan feature flag setini belirle', detail: 'İlk hafta: FlowBuilder + Knowledge. 2. hafta: Analytics + Outbound. 3. hafta: Marketing + Integrations.', priority: 'medium' },
 
   // İlk Gün
-  { id: 'b1', category: 'Ilk Gun Checklist', text: 'Tenant olustur ve temel ayarlari yap', detail: 'Firma bilgileri, calisma saatleri, saat dilimi, kapali gunler.', priority: 'high' },
-  { id: 'b2', category: 'Ilk Gun Checklist', text: 'WhatsApp hattini bagla ve test et', detail: 'WapCRM API key gir, hatlari yenile, aktif hatti sec, test mesaji gonder.', priority: 'high' },
-  { id: 'b3', category: 'Ilk Gun Checklist', text: 'Ilk flow\u0027u kur ve canli test yap', detail: 'Basit bir "hos geldin + menu" akisi. Musterinin kendi telefonundan test etmesini sagla.', priority: 'high' },
-  { id: 'b4', category: 'Ilk Gun Checklist', text: 'Musteriye dashboard erisimi ver', detail: 'Kullanici adi ve sifre olustur, giris URL\u0027ini paylas.', priority: 'high' },
+  { id: 'b1', category: 'İlk Gün Checklist', text: 'Tenant oluştur ve temel ayarları yap', detail: 'Firma bilgileri, çalışma saatleri, saat dilimi, kapalı günler.', priority: 'high' },
+  { id: 'b2', category: 'İlk Gün Checklist', text: 'WhatsApp hattını bağla ve test et', detail: 'WapCRM API key gir, hatları yenile, aktif hattı seç, test mesajı gönder.', priority: 'high' },
+  { id: 'b3', category: 'İlk Gün Checklist', text: 'İlk flow\u0027u kur ve canlı test yap', detail: 'Basit bir "hoş geldin + menü" akışı. Müşterinin kendi telefonundan test etmesini sağla.', priority: 'high' },
+  { id: 'b4', category: 'İlk Gün Checklist', text: 'Müşteriye dashboard erişimi ver', detail: 'Kullanıcı adı ve şifre oluştur, giriş URL\u0027ini paylaş.', priority: 'high' },
 
   // İlk Hafta
-  { id: 'c1', category: 'Ilk Hafta', text: 'FAQ iceriklerini gir veya musteri ile birlikte olustur', detail: 'En sik sorulan 10-15 soruyu belirle, bilgi bankasina ekle. Kisa ve net cevaplar.', priority: 'high' },
-  { id: 'c2', category: 'Ilk Hafta', text: 'Calisma saatlerini yapilandir', detail: 'Mesai disi otomatik cevap akisini olustur ve test et.', priority: 'medium' },
-  { id: 'c3', category: 'Ilk Hafta', text: 'Ilk hafta sonunda musteri ile 15 dk gorusme yap', detail: 'Neler calisiyor, neler zor, soru var mi? Not al, gerekirse flow\u0027u ayarla.', priority: 'high' },
+  { id: 'c1', category: 'İlk Hafta', text: 'FAQ içeriklerini gir veya müşteri ile birlikte oluştur', detail: 'En sık sorulan 10-15 soruyu belirle, bilgi bankasına ekle. Kısa ve net cevaplar.', priority: 'high' },
+  { id: 'c2', category: 'İlk Hafta', text: 'Çalışma saatlerini yapılandır', detail: 'Mesai dışı otomatik cevap akışını oluştur ve test et.', priority: 'medium' },
+  { id: 'c3', category: 'İlk Hafta', text: 'İlk hafta sonunda müşteri ile 15 dk görüşme yap', detail: 'Neler çalışıyor, neler zor, soru var mı? Not al, gerekirse flow\u0027u ayarla.', priority: 'high' },
 
   // İkinci Hafta
-  { id: 'd1', category: 'Ikinci Hafta', text: 'Analytics modülünü ac ve musteriye goster', detail: 'Ilk hafta verisi birikti. "Bak su kadar mesaj geldi, su kadar otomatik cevaplandi" goster.', priority: 'medium' },
-  { id: 'd2', category: 'Ikinci Hafta', text: 'Outbound/Kampanya modulunu ac', detail: 'Ilk toplu mesaji birlikte gonderin. Opt-out yonetimini acikla.', priority: 'medium' },
-  { id: 'd3', category: 'Ikinci Hafta', text: 'Condition/Switch node\u0027larini ogret', detail: 'Basit bir senaryo: "Randevu mu yoksa fiyat mi soruyor?" dallanmasi.', priority: 'medium' },
+  { id: 'd1', category: 'İkinci Hafta', text: 'Analytics modülünü aç ve müşteriye göster', detail: 'İlk hafta verisi birikti. "Bak şu kadar mesaj geldi, şu kadar otomatik cevaplandı" göster.', priority: 'medium' },
+  { id: 'd2', category: 'İkinci Hafta', text: 'Outbound/Kampanya modülünü aç', detail: 'İlk toplu mesajı birlikte gönderin. Opt-out yönetimini açıkla.', priority: 'medium' },
+  { id: 'd3', category: 'İkinci Hafta', text: 'Condition/Switch node\u0027larını öğret', detail: 'Basit bir senaryo: "Randevu mu yoksa fiyat mı soruyor?" dallanması.', priority: 'medium' },
 
   // Üçüncü Hafta+
-  { id: 'e1', category: 'Ucuncu Hafta+', text: 'Gelismis ozellikleri kademeli ac', detail: 'Marketing (referral, review), Sentiment Analysis, API Call node\u0027u. Hepsini birden degil, ihtiyaca gore.', priority: 'low' },
-  { id: 'e2', category: 'Ucuncu Hafta+', text: 'Randevu modulunu ac (sektor uygunsa)', detail: 'Klinik, kuafor, restoran gibi sektorlerde. Hatirlatma akisini birlikte kur.', priority: 'low' },
-  { id: 'e3', category: 'Ucuncu Hafta+', text: 'Aylik performans raporu gonder', detail: 'Kac mesaj geldi, kaci otomatik cevaplandi, agent ihtiyaci ne kadar azaldi. Somut rakamlarla.', priority: 'low' },
+  { id: 'e1', category: 'Üçüncü Hafta+', text: 'Gelişmiş özellikleri kademeli aç', detail: 'Marketing (referral, review), Sentiment Analysis, API Call node\u0027u. Hepsini birden değil, ihtiyaca göre.', priority: 'low' },
+  { id: 'e2', category: 'Üçüncü Hafta+', text: 'Randevu modülünü aç (sektör uygunsa)', detail: 'Klinik, kuaför, restoran gibi sektörlerde. Hatırlatma akışını birlikte kur.', priority: 'low' },
+  { id: 'e3', category: 'Üçüncü Hafta+', text: 'Aylık performans raporu gönder', detail: 'Kaç mesaj geldi, kaçı otomatik cevaplandı, agent ihtiyacı ne kadar azaldı. Somut rakamlarla.', priority: 'low' },
 
   // Sürekli
-  { id: 'f1', category: 'Surekli', text: 'Yeni ozellik cikinca 30 sn video cek ve WhatsApp\u0027tan gonder', detail: 'Format: "Yeni ozellik: [ne yapar] — nasil acilir: [3 adim]". Kisa, gorsel, net.', priority: 'medium' },
-  { id: 'f2', category: 'Surekli', text: 'Kullanilmayan modulleri takip et', detail: 'Acik ama kullanilmayan feature var mi? Musteri ile konusup ya ogret ya kapat.', priority: 'medium' },
-  { id: 'f3', category: 'Surekli', text: 'Musteri memnuniyetini periyodik olarak sor', detail: 'Ayda 1 kere, kisa bir WhatsApp mesaji: "Nasilsiniz, eksik var mi?" Basit ama etkili.', priority: 'low' },
+  { id: 'f1', category: 'Sürekli', text: 'Yeni özellik çıkınca 30 sn video çek ve WhatsApp\u0027tan gönder', detail: 'Format: "Yeni özellik: [ne yapar] — nasıl açılır: [3 adım]". Kısa, görsel, net.', priority: 'medium' },
+  { id: 'f2', category: 'Sürekli', text: 'Kullanılmayan modülleri takip et', detail: 'Açık ama kullanılmayan feature var mı? Müşteri ile konuşup ya öğret ya kapat.', priority: 'medium' },
+  { id: 'f3', category: 'Sürekli', text: 'Müşteri memnuniyetini periyodik olarak sor', detail: 'Ayda 1 kere, kısa bir WhatsApp mesajı: "Nasılsınız, eksik var mı?" Basit ama etkili.', priority: 'low' },
 
   // SaaS Stratejisi — Fiyatlandırma
-  { id: 'g1', category: 'SaaS: Fiyatlandirma', text: 'Baslangic / Buyume / Profesyonel paket yapisini olustur', detail: 'Modul bazli degil, deger bazli paketleme. Her pakete somut bir sonuc esle.', priority: 'high' },
-  { id: 'g2', category: 'SaaS: Fiyatlandirma', text: 'Yillik odeme indirimi tanimla', detail: 'Aylik x12 yerine 10 aylik (2 ay bedava). Churn\u0027u %30-40 dusurur.', priority: 'high' },
+  { id: 'g1', category: 'SaaS: Fiyatlandırma', text: 'Başlangıç / Büyüme / Profesyonel paket yapısını oluştur', detail: 'Modül bazlı değil, değer bazlı paketleme. Her pakete somut bir sonuç eşle.', priority: 'high' },
+  { id: 'g2', category: 'SaaS: Fiyatlandırma', text: 'Yıllık ödeme indirimi tanımla', detail: 'Aylık x12 yerine 10 aylık (2 ay bedava). Churn\u0027u %30-40 düşürür.', priority: 'high' },
 
   // SaaS Stratejisi — Health Score
-  { id: 'h1', category: 'SaaS: Musteri Sagligi', text: 'Musteri Health Score formulu olustur', detail: 'Panel girisi, flow calisma, otomasyon orani, FAQ sayisi, destek talebi — agirlikli skor.', priority: 'high' },
-  { id: 'h2', category: 'SaaS: Musteri Sagligi', text: 'Health Score < 60 icin otomatik alarm kur', detail: 'Skor dusuk musterileri haftalik olarak kontrol et, proaktif iletisim kur.', priority: 'medium' },
+  { id: 'h1', category: 'SaaS: Müşteri Sağlığı', text: 'Müşteri Health Score formülü oluştur', detail: 'Panel girişi, flow çalışma, otomasyon oranı, FAQ sayısı, destek talebi — ağırlıklı skor.', priority: 'high' },
+  { id: 'h2', category: 'SaaS: Müşteri Sağlığı', text: 'Health Score < 60 için otomatik alarm kur', detail: 'Skor düşük müşterileri haftalık olarak kontrol et, proaktif iletişim kur.', priority: 'medium' },
 
   // SaaS Stratejisi — Ölçekleme
-  { id: 'i1', category: 'SaaS: Olcekleme', text: 'Sektor bazli template flow\u0027lari + FAQ paketleri olustur', detail: 'Yeni tenant acilirken "sektor sec" → hazir flow + FAQ otomatik yuklensin.', priority: 'high' },
-  { id: 'i2', category: 'SaaS: Olcekleme', text: 'Self-service kurulum wizard\u0027i planla', detail: '10+ musteride bizzat kurulum surekli olmaz. Adim adim wizard ile musterinin kendisi kursun.', priority: 'medium' },
+  { id: 'i1', category: 'SaaS: Ölçekleme', text: 'Sektör bazlı template flow\u0027ları + FAQ paketleri oluştur', detail: 'Yeni tenant açılırken "sektör seç" → hazır flow + FAQ otomatik yüklensin.', priority: 'high' },
+  { id: 'i2', category: 'SaaS: Ölçekleme', text: 'Self-service kurulum wizard\u0027ı planla', detail: '10+ müşteride bizzat kurulum sürekli olmaz. Adım adım wizard ile müşterinin kendisi kursun.', priority: 'medium' },
 
   // SaaS Stratejisi — Büyüme
-  { id: 'j1', category: 'SaaS: Buyume', text: 'Referral programi kur', detail: 'Mevcut musteri yeni getirir → 1 ay bedava. Gelen musteri → %20 indirim. Health score 80+ olanlara oner.', priority: 'medium' },
-  { id: 'j2', category: 'SaaS: Buyume', text: 'Upsell tetikleyicilerini belirle ve takip et', detail: 'Mesaj hacmi 500+, 3+ dallanma, FAQ yogunlugu → uygun modulu oner.', priority: 'medium' },
+  { id: 'j1', category: 'SaaS: Büyüme', text: 'Referral programı kur', detail: 'Mevcut müşteri yeni getirir → 1 ay bedava. Gelen müşteri → %20 indirim. Health score 80+ olanlara öner.', priority: 'medium' },
+  { id: 'j2', category: 'SaaS: Büyüme', text: 'Upsell tetikleyicilerini belirle ve takip et', detail: 'Mesaj hacmi 500+, 3+ dallanma, FAQ yoğunluğu → uygun modülü öner.', priority: 'medium' },
 
   // SaaS Stratejisi — Metrikler
-  { id: 'k1', category: 'SaaS: Metrikler', text: 'MRR, churn rate, time-to-value takibini baslat', detail: 'Excel bile olur. Her ay kaydet: toplam gelir, ayrilan musteri, ortalama kurulum suresi.', priority: 'high' },
-  { id: 'k2', category: 'SaaS: Metrikler', text: 'Destek taleplerini kayit altina al', detail: 'Hangi konuda en cok soru geldi? Tekrarlayan sorunlari FAQ veya rehbere ekle.', priority: 'medium' },
+  { id: 'k1', category: 'SaaS: Metrikler', text: 'MRR, churn rate, time-to-value takibini başlat', detail: 'Excel bile olur. Her ay kaydet: toplam gelir, ayrılan müşteri, ortalama kurulum süresi.', priority: 'high' },
+  { id: 'k2', category: 'SaaS: Metrikler', text: 'Destek taleplerini kayıt altına al', detail: 'Hangi konuda en çok soru geldi? Tekrarlayan sorunları FAQ veya rehbere ekle.', priority: 'medium' },
 ];
 
 function ActionList() {
@@ -293,15 +293,15 @@ function ActionList() {
     medium: 'bg-amber-50 text-amber-700 border-amber-100',
     low: 'bg-navy-50 text-navy-500 border-navy-100',
   };
-  const priorityLabels = { high: 'Yuksek', medium: 'Orta', low: 'Dusuk' };
+  const priorityLabels = { high: 'Yüksek', medium: 'Orta', low: 'Düşük' };
 
   return (
     <div className="space-y-6">
       {/* Progress */}
       <Card className="p-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-navy-700">Ilerleme</span>
-          <span className="text-sm text-navy-500">{done}/{total} tamamlandi</span>
+          <span className="text-sm font-medium text-navy-700">İlerleme</span>
+          <span className="text-sm text-navy-500">{done}/{total} tamamlandı</span>
         </div>
         <div className="h-2 bg-navy-100 rounded-full overflow-hidden">
           <div
@@ -380,110 +380,110 @@ function OverviewTab() {
   return (
     <div className="space-y-6">
       <div>
-        <SectionTitle icon={BookOpen}>Invekto Nedir — Tek Cumle</SectionTitle>
+        <SectionTitle icon={BookOpen}>Invekto Nedir — Tek Cümle</SectionTitle>
         <Card className="p-4">
           <p className="text-sm text-navy-700 leading-relaxed">
-            Invekto, isletmelerin WhatsApp uzerinden gelen musteri mesajlarini <strong>otomatik olarak yanitmasi</strong>,
-            sik sorulan sorulari <strong>yapay zeka ile cevaplatmasi</strong> ve toplu mesaj gondermesini saglayan bir platformdur.
-            Musteri hizmetini hizlandirir, insan ihtiyacini azaltir, hicbir mesaji kacirmaz.
+            Invekto, işletmelerin WhatsApp üzerinden gelen müşteri mesajlarını <strong>otomatik olarak yanıtması</strong>,
+            sık sorulan soruları <strong>yapay zeka ile cevaplatması</strong> ve toplu mesaj göndermesini sağlayan bir platformdur.
+            Müşteri hizmetini hızlandırır, insan ihtiyacını azaltır, hiçbir mesajı kaçırmaz.
           </p>
         </Card>
       </div>
 
       <div>
-        <SectionTitle icon={Target}>Musteriye Ne Satiyorsun?</SectionTitle>
+        <SectionTitle icon={Target}>Müşteriye Ne Satıyorsun?</SectionTitle>
         <div className="space-y-3">
           <Card className="p-4">
-            <h4 className="text-sm font-semibold text-navy-900 mb-2">Teknoloji Satma, Sonuc Sat</h4>
+            <h4 className="text-sm font-semibold text-navy-900 mb-2">Teknoloji Satma, Sonuç Sat</h4>
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-3">
                 <span className="text-red-500 line-through flex-shrink-0">"17 node tipimiz var"</span>
                 <ArrowRight className="w-3 h-3 text-navy-300 flex-shrink-0" />
-                <span className="text-emerald-700 font-medium">"Musteri seni arar, otomatik cevap verir"</span>
+                <span className="text-emerald-700 font-medium">"Müşteri seni arar, otomatik cevap verir"</span>
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-red-500 line-through flex-shrink-0">"AI intent detection"</span>
                 <ArrowRight className="w-3 h-3 text-navy-300 flex-shrink-0" />
-                <span className="text-emerald-700 font-medium">"Musteri ne istedigini otomatik anlar"</span>
+                <span className="text-emerald-700 font-medium">"Müşteri ne istediğini otomatik anlar"</span>
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-red-500 line-through flex-shrink-0">"pgvector embedding"</span>
                 <ArrowRight className="w-3 h-3 text-navy-300 flex-shrink-0" />
-                <span className="text-emerald-700 font-medium">"Soruya en yakin cevabi bulur"</span>
+                <span className="text-emerald-700 font-medium">"Soruya en yakın cevabı bulur"</span>
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-red-500 line-through flex-shrink-0">"Multi-tenant SaaS"</span>
                 <ArrowRight className="w-3 h-3 text-navy-300 flex-shrink-0" />
-                <span className="text-emerald-700 font-medium">"Her firma kendi panelini goruntuler"</span>
+                <span className="text-emerald-700 font-medium">"Her firma kendi panelini görüntüler"</span>
               </div>
             </div>
           </Card>
 
           <Tip>
-            Musteri teknolojiyi degil, kendi hayatinin kolaylasmasini satin aliyor.
-            Her ozelligi "bu sana ne kazandiriyor?" uzerinden anlat.
+            Müşteri teknolojiyi değil, kendi hayatının kolaylaşmasını satın alıyor.
+            Her özelliği "bu sana ne kazandırıyor?" üzerinden anlat.
           </Tip>
         </div>
       </div>
 
       <div>
-        <SectionTitle icon={AlertTriangle}>En Buyuk Risk: Bilgi Kirliligi</SectionTitle>
+        <SectionTitle icon={AlertTriangle}>En Büyük Risk: Bilgi Kirliliği</SectionTitle>
         <Card className="p-4">
           <p className="text-sm text-navy-600 mb-3">
-            Platform cok genis. Musteriye hepsini gosterirsen bunalir ve hicbirini kullanmaz.
-            <TabLink to="onboarding">Onboarding adimlari</TabLink> sekmesindeki kademeli acilim stratejisini uygula.
-            <TabLink to="sectors">Sektor senaryolari</TabLink> sekmesinden sektore uygun modulleri belirle.
+            Platform çok geniş. Müşteriye hepsini gösterirsen bunalır ve hiçbirini kullanmaz.
+            <TabLink to="onboarding">Onboarding adimlari</TabLink> sekmesindeki kademeli açılım stratejisini uygula.
+            <TabLink to="sectors">Sektör Senaryoları</TabLink> sekmesinden sektöre uygun modülleri belirle.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-100 text-center">
               <div className="text-lg font-bold text-emerald-700">Hafta 1</div>
               <div className="text-xs text-emerald-600 mt-1">Flow + FAQ</div>
-              <div className="text-xs text-navy-400 mt-0.5">Temeli ogrensin</div>
+              <div className="text-xs text-navy-400 mt-0.5">Temeli öğrensin</div>
             </div>
             <div className="p-3 bg-amber-50 rounded-lg border border-amber-100 text-center">
               <div className="text-lg font-bold text-amber-700">Hafta 2</div>
               <div className="text-xs text-amber-600 mt-1">Analytics + Kampanya</div>
-              <div className="text-xs text-navy-400 mt-0.5">Degeri gorsun</div>
+              <div className="text-xs text-navy-400 mt-0.5">Değeri görsün</div>
             </div>
             <div className="p-3 bg-brand-50 rounded-lg border border-brand-100 text-center">
               <div className="text-lg font-bold text-brand-700">Hafta 3+</div>
               <div className="text-xs text-brand-600 mt-1">Marketing + AI</div>
-              <div className="text-xs text-navy-400 mt-0.5">Gucunu kesfetsin</div>
+              <div className="text-xs text-navy-400 mt-0.5">Gücünü keşfetsin</div>
             </div>
           </div>
         </Card>
       </div>
 
       <div>
-        <SectionTitle icon={Users}>Ilk 5 Dakika Kurali</SectionTitle>
+        <SectionTitle icon={Users}>İlk 5 Dakika Kuralı</SectionTitle>
         <Card className="p-4">
           <p className="text-sm text-navy-600 mb-3">
-            Musteri platformu ilk actiginda <strong>5 dakika icinde somut bir deger gormeli</strong>.
-            Aksi halde "sonra bakarim" der ve bir daha acmaz.
-            Bunu <TabLink to="saas">SaaS Stratejisi</TabLink> sekmesinde "Aha Moment" olarak detaylandirdik.
+            Müşteri platformu ilk açtığında <strong>5 dakika içinde somut bir değer görmeli</strong>.
+            Aksi halde "sonra bakarım" der ve bir daha açmaz.
+            Bunu <TabLink to="saas">SaaS Stratejisi</TabLink> sekmesinde "Aha Moment" olarak detaylandırdık.
           </p>
           <div className="space-y-2 text-sm">
             <div className="flex items-start gap-2">
               <ChevronRight className="w-4 h-4 text-brand-500 flex-shrink-0 mt-0.5" />
-              <span className="text-navy-700"><strong>Hazir flow template:</strong> Tenant olusturulurken sektore uygun akis hazir gelsin</span>
+              <span className="text-navy-700"><strong>Hazır flow template:</strong> Tenant oluşturulurken sektöre uygun akış hazır gelsin</span>
             </div>
             <div className="flex items-start gap-2">
               <ChevronRight className="w-4 h-4 text-brand-500 flex-shrink-0 mt-0.5" />
-              <span className="text-navy-700"><strong>"Merhaba Dunya" testi:</strong> Ilk 2 dakikada kendi telefonundan test mesaji gondersin</span>
+              <span className="text-navy-700"><strong>"Merhaba Dünya" testi:</strong> İlk 2 dakikada kendi telefonundan test mesajı göndersin</span>
             </div>
             <div className="flex items-start gap-2">
               <ChevronRight className="w-4 h-4 text-brand-500 flex-shrink-0 mt-0.5" />
-              <span className="text-navy-700"><strong>Bos ekran yok:</strong> Ornek data veya demo verisiyle gelsin, bos dashboard moral bozar</span>
+              <span className="text-navy-700"><strong>Boş ekran yok:</strong> Örnek data veya demo verisiyle gelsin, boş dashboard moral bozar</span>
             </div>
           </div>
         </Card>
       </div>
 
       <Card className="p-4 bg-navy-50/50">
-        <h4 className="text-xs font-semibold text-navy-400 uppercase tracking-wide mb-2">Ilgili Sekmeler</h4>
+        <h4 className="text-xs font-semibold text-navy-400 uppercase tracking-wide mb-2">İlgili Sekmeler</h4>
         <div className="flex flex-wrap gap-3 text-sm">
-          <TabLink to="onboarding">Onboarding Adimlari</TabLink>
-          <TabLink to="features">Ozellik Rehberi</TabLink>
+          <TabLink to="onboarding">Onboarding Adımları</TabLink>
+          <TabLink to="features">Özellik Rehberi</TabLink>
           <TabLink to="saas">SaaS Stratejisi</TabLink>
           <TabLink to="actions">Aksiyon Listesi</TabLink>
         </div>
@@ -496,158 +496,158 @@ function OnboardingTab() {
   return (
     <div className="space-y-6">
       <div>
-        <SectionTitle icon={Target}>Musteri Onboarding Sureci</SectionTitle>
+        <SectionTitle icon={Target}>Müşteri Onboarding Süreci</SectionTitle>
         <p className="text-sm text-navy-500 mb-4">
-          Yeni bir musteri geldiginde asagidaki adimlari siraliyla takip et.
-          Her adimi tamamlamadan bir sonrakine gecme.
+          Yeni bir müşteri geldiğinde aşağıdaki adımları sırayla takip et.
+          Her adımı tamamlamadan bir sonrakine geçme.
         </p>
       </div>
 
       <Card className="p-5">
-        <h4 className="text-xs font-semibold text-navy-400 uppercase tracking-wide mb-4">Satis Oncesi</h4>
-        <StepCard step={1} title="Sektoru ve ihtiyaci anla" duration="15 dk">
-          <p>Musterinin sektorunu belirle (restoran, klinik, e-ticaret, hizmet, turizm).</p>
-          <p>Su sorulari sor:</p>
+        <h4 className="text-xs font-semibold text-navy-400 uppercase tracking-wide mb-4">Satış Öncesi</h4>
+        <StepCard step={1} title="Sektörü ve ihtiyacı anla" duration="15 dk">
+          <p>Müşterinin sektörünü belirle (restoran, klinik, e-ticaret, hizmet, turizm).</p>
+          <p>Şu soruları sor:</p>
           <ul className="list-disc pl-5 space-y-1 text-navy-600">
-            <li>Gunluk kac mesaj aliyorsun?</li>
-            <li>En cok hangi sorular soruluyor?</li>
-            <li>Mesajlara kac dakikada donuyorsun?</li>
-            <li>Randevu sistemi kullaniyormusun?</li>
-            <li>Toplu mesaj/kampanya gonderiyor musun?</li>
+            <li>Günlük kaç mesaj alıyorsun?</li>
+            <li>En çok hangi sorular soruluyor?</li>
+            <li>Mesajlara kaç dakikada dönüyorsun?</li>
+            <li>Randevu sistemi kullanıyor musun?</li>
+            <li>Toplu mesaj/kampanya gönderiyor musun?</li>
           </ul>
           <Tip>
-            Bu sorularin cevaplari hangi modulleri acik baslayacagini belirler.
-            Hepsini acma, sadece ihtiyaca gore. <TabLink to="sectors">Sektor senaryolari</TabLink> sekmesinde
-            sektore gore hangi modullerin acilacagi detayli anlatiyor.
+            Bu soruların cevapları hangi modülleri açık başlayacağını belirler.
+            Hepsini açma, sadece ihtiyaca göre. <TabLink to="sectors">Sektör Senaryoları</TabLink> sekmesinde
+            sektöre göre hangi modüllerin açılacağı detaylı anlatıyor.
           </Tip>
         </StepCard>
 
-        <StepCard step={2} title="Demo goster (kendi test ortaminda)" duration="20 dk">
-          <p>Musterinin sektorune uygun hazir flow ile canli demo yap.</p>
-          <p>Gosterim sirasi:</p>
+        <StepCard step={2} title="Demo göster (kendi test ortamında)" duration="20 dk">
+          <p>Müşterinin sektörüne uygun hazır flow ile canlı demo yap.</p>
+          <p>Gösterim sırası:</p>
           <ol className="list-decimal pl-5 space-y-1 text-navy-600">
-            <li>"Bir musteri mesaj yaziyor" — otomatik cevap donuyor</li>
-            <li>"Sik sorulan soru soruyor" — AI cevapliyor</li>
-            <li>"Yardim istiyor" — insana yonlendiriliyor</li>
+            <li>"Bir müşteri mesaj yazıyor" — otomatik cevap dönüyor</li>
+            <li>"Sık sorulan soru soruyor" — AI cevaplıyor</li>
+            <li>"Yardım istiyor" — insana yönlendiriliyor</li>
           </ol>
           <Warning>
-            Demo sirasinda arka plan teknolojisinden bahsetme (node, flow, API, embedding...).
-            Sadece sonucu goster.
+            Demo sırasında arka plan teknolojisinden bahsetme (node, flow, API, embedding...).
+            Sadece sonucu göster.
           </Warning>
         </StepCard>
       </Card>
 
       <Card className="p-5">
-        <h4 className="text-xs font-semibold text-navy-400 uppercase tracking-wide mb-4">Ilk Gun (Kurulum)</h4>
-        <StepCard step={3} title="Tenant olustur ve ayarlari yap" duration="10 dk">
-          <p>Firmalar sayfasindan yeni tenant olustur. Asagidakileri doldur:</p>
+        <h4 className="text-xs font-semibold text-navy-400 uppercase tracking-wide mb-4">İlk Gün (Kurulum)</h4>
+        <StepCard step={3} title="Tenant oluştur ve ayarları yap" duration="10 dk">
+          <p>Firmalar sayfasından yeni tenant oluştur. Aşağıdakileri doldur:</p>
           <ul className="list-disc pl-5 space-y-1 text-navy-600">
             <li>Firma adi ve kodu</li>
-            <li>Calisma saatleri ve kapali gunler</li>
+            <li>Çalışma saatleri ve kapalı günler</li>
             <li>Saat dilimi</li>
-            <li>Kullanici adi ve sifre (musteri icin)</li>
+            <li>Kullanıcı adı ve şifre (müşteri için)</li>
           </ul>
         </StepCard>
 
-        <StepCard step={4} title="WhatsApp hattini bagla" duration="10 dk">
-          <p>Musterinin WapCRM hesabindaki API key'i al ve sisteme gir.</p>
-          <p>Ayarlar &gt; Hatlar &gt; WapCRM'den Yenile butonuyla hatlari cek.</p>
-          <p>Kullanilacak hatti aktif et, diger hatlari kapat.</p>
+        <StepCard step={4} title="WhatsApp hattını bağla" duration="10 dk">
+          <p>Müşterinin WapCRM hesabındaki API key'i al ve sisteme gir.</p>
+          <p>Ayarlar &gt; Hatlar &gt; WapCRM'den Yenile butonuyla hatları çek.</p>
+          <p>Kullanılacak hattı aktif et, diğer hatları kapat.</p>
           <Tip>
-            Bu adimda musteri yaninda olsun. Kendi telefonundan test mesaji
-            gondererek "calisiyor!" momentini birlikte yasayin.
+            Bu adımda müşteri yanında olsun. Kendi telefonundan test mesajı
+            göndererek "çalışıyor!" momentini birlikte yaşayın.
           </Tip>
         </StepCard>
 
-        <StepCard step={5} title="Ilk akisi kur" duration="15 dk">
-          <p>Sektore uygun hazir template'i yukle veya sifirdan basit bir akis olustur:</p>
+        <StepCard step={5} title="İlk akışı kur" duration="15 dk">
+          <p>Sektöre uygun hazır template'i yükle veya sıfırdan basit bir akış oluştur:</p>
           <ul className="list-disc pl-5 space-y-1 text-navy-600">
-            <li><strong>Trigger Start:</strong> Musteri mesaj yazdiginda basla</li>
-            <li><strong>Mesaj Menu:</strong> "Merhaba! Size nasil yardimci olabilirim?" + 3-4 secenek</li>
-            <li><strong>FAQ Node:</strong> Sik sorulan sorulari otomatik cevapla</li>
-            <li><strong>Handoff:</strong> "Detayli bilgi icin sizi yetkilimize yonlendiriyorum"</li>
+            <li><strong>Trigger Start:</strong> Müşteri mesaj yazdığında başla</li>
+            <li><strong>Mesaj Menü:</strong> "Merhaba! Size nasıl yardımcı olabilirim?" + 3-4 seçenek</li>
+            <li><strong>FAQ Node:</strong> Sık sorulan soruları otomatik cevapla</li>
+            <li><strong>Handoff:</strong> "Detaylı bilgi için sizi yetkilimize yönlendiriyorum"</li>
           </ul>
           <Warning>
-            Ilk akis basit olmali. Condition, Switch, AI Intent gibi gelismis node'lari EKLEME.
-            Musteri once temel akisi ogrensin.
+            İlk akış basit olmalı. Condition, Switch, AI Intent gibi gelişmiş node'ları EKLEME.
+            Müşteri önce temel akışı öğrensin.
           </Warning>
         </StepCard>
 
-        <StepCard step={6} title="Canli test yap" duration="5 dk">
-          <p>Musterinin kendi telefonundan WhatsApp'a mesaj gondermesini sagla.</p>
-          <p>Birlikte izleyin: mesaj geldi → akis basladi → cevap gitti.</p>
-          <p>Bu "aha momenti" cok onemli. Musterinin gozleri parlayacak. (<TabLink to="saas">SaaS Stratejisi</TabLink> sekmesinde neden bu an kritik oldugunu oku.)</p>
+        <StepCard step={6} title="Canlı test yap" duration="5 dk">
+          <p>Müşterinin kendi telefonundan WhatsApp'a mesaj göndermesini sağla.</p>
+          <p>Birlikte izleyin: mesaj geldi → akış başladı → cevap gitti.</p>
+          <p>Bu "aha momenti" çok önemli. Müşterinin gözleri parlayacak. (<TabLink to="saas">SaaS Stratejisi</TabLink> sekmesinde neden bu anın kritik olduğunu oku.)</p>
         </StepCard>
       </Card>
 
       <Card className="p-5">
-        <h4 className="text-xs font-semibold text-navy-400 uppercase tracking-wide mb-4">Ilk Hafta (Alisma)</h4>
-        <StepCard step={7} title="FAQ iceriklerini doldur" duration="30 dk">
-          <p>Musteri ile birlikte en sik sorulan 10-15 soruyu belirle.</p>
-          <p>Bilgi Bankasi'na ekle. Kisa, net, konusma diliyle yaz.</p>
-          <p>Yanlis: "Isletmemiz 2005 yilinda kurulmus olup..." — Dogru: "Pazartesi-Cuma 09:00-18:00 arasi acigiz."</p>
+        <h4 className="text-xs font-semibold text-navy-400 uppercase tracking-wide mb-4">İlk Hafta (Alışma)</h4>
+        <StepCard step={7} title="FAQ içeriklerini doldur" duration="30 dk">
+          <p>Müşteri ile birlikte en sık sorulan 10-15 soruyu belirle.</p>
+          <p>Bilgi Bankası'na ekle. Kısa, net, konuşma diliyle yaz.</p>
+          <p>Yanlış: "İşletmemiz 2005 yılında kurulmuş olup..." — Doğru: "Pazartesi-Cuma 09:00-18:00 arası açığız."</p>
         </StepCard>
 
-        <StepCard step={8} title="Mesai disi akisini kur" duration="10 dk">
-          <p>Calisma saatleri disinda gelen mesajlara otomatik cevap:</p>
-          <p className="italic text-navy-500">"Su anda mesai saatlerimiz disindayiz. En kisa surede donecegiz."</p>
+        <StepCard step={8} title="Mesai dışı akışını kur" duration="10 dk">
+          <p>Çalışma saatleri dışında gelen mesajlara otomatik cevap:</p>
+          <p className="italic text-navy-500">"Şu anda mesai saatlerimiz dışındayız. En kısa sürede döneceğiz."</p>
         </StepCard>
 
-        <StepCard step={9} title="Hafta sonu takip gorusmesi" duration="15 dk">
-          <p>Ilk haftanin sonunda musteriye sor:</p>
+        <StepCard step={9} title="Hafta sonu takip görüşmesi" duration="15 dk">
+          <p>İlk haftanın sonunda müşteriye sor:</p>
           <ul className="list-disc pl-5 space-y-1 text-navy-600">
-            <li>Akis calisiyor mu, sorun var mi?</li>
-            <li>Musterilerin tepkisi nasil?</li>
-            <li>Eklemek istedigin bir soru/cevap var mi?</li>
-            <li>Paneli acip bakiyor musun?</li>
+            <li>Akış çalışıyor mu, sorun var mı?</li>
+            <li>Müşterilerin tepkisi nasıl?</li>
+            <li>Eklemek istediğin bir soru/cevap var mı?</li>
+            <li>Paneli açıp bakıyor musun?</li>
           </ul>
           <Tip>
-            Bu gorusme kritik. Musteri ilk haftada sikildiysa 2. haftada gelmez.
-            Sorunlari hemen coz.
+            Bu görüşme kritik. Müşteri ilk haftada sıkıldıysa 2. haftada gelmez.
+            Sorunları hemen çöz.
           </Tip>
         </StepCard>
       </Card>
 
       <Card className="p-5">
-        <h4 className="text-xs font-semibold text-navy-400 uppercase tracking-wide mb-4">Ikinci Hafta (Derinlesme)</h4>
-        <StepCard step={10} title="Analytics modulunu ac" duration="10 dk">
-          <p>Ilk hafta verisi birikti. Musteriye somut rakamlar goster:</p>
+        <h4 className="text-xs font-semibold text-navy-400 uppercase tracking-wide mb-4">İkinci Hafta (Derinleşme)</h4>
+        <StepCard step={10} title="Analytics modülünü aç" duration="10 dk">
+          <p>İlk hafta verisi birikti. Müşteriye somut rakamlar göster:</p>
           <ul className="list-disc pl-5 space-y-1 text-navy-600">
-            <li>"Bu hafta 47 mesaj geldi, 38'i otomatik cevaplandi"</li>
-            <li>"En cok sorulan konu: fiyat bilgisi"</li>
-            <li>"Ortalama cevap suresi: 3 saniye"</li>
+            <li>"Bu hafta 47 mesaj geldi, 38'i otomatik cevaplandı"</li>
+            <li>"En çok sorulan konu: fiyat bilgisi"</li>
+            <li>"Ortalama cevap süresi: 3 saniye"</li>
           </ul>
-          <p>Bu rakamlar musterinin "para ediyor mu?" sorusuna cevap verir.</p>
+          <p>Bu rakamlar müşterinin "para ediyor mu?" sorusuna cevap verir.</p>
         </StepCard>
 
-        <StepCard step={11} title="Kampanya modulunu ac (isteye bagli)" duration="15 dk">
-          <p>Eger musteri toplu mesaj gondermek istiyorsa Outbound modulunu ac.</p>
-          <p>Ilk kampanyayi birlikte gonderin. Opt-out (STOP) yonetimini acikla.</p>
+        <StepCard step={11} title="Kampanya modülünü aç (isteğe bağlı)" duration="15 dk">
+          <p>Eğer müşteri toplu mesaj göndermek istiyorsa Outbound modülünü aç.</p>
+          <p>İlk kampanyayı birlikte gönderin. Opt-out (STOP) yönetimini açıkla.</p>
           <Warning>
-            Toplu mesaj hassas bir konu. Spam riski var. Musteriye su kurallari anlat:
-            izinli kisi listesi, STOP yazanlari cikar, gunluk limit.
+            Toplu mesaj hassas bir konu. Spam riski var. Müşteriye şu kuralları anlat:
+            izinli kişi listesi, STOP yazanları çıkar, günlük limit.
           </Warning>
         </StepCard>
 
-        <StepCard step={12} title="Dallanma ogret (Condition/Switch)" duration="15 dk">
-          <p>Basit bir senaryo olustur:</p>
-          <p className="italic text-navy-500">"Musteri 'randevu' yazarsa → randevu akisina yonlendir. 'Fiyat' yazarsa → fiyat listesi gonder."</p>
-          <p>Bu adimda musteri akis tasariminin gucunu anlamaya baslar.</p>
+        <StepCard step={12} title="Dallanma öğret (Condition/Switch)" duration="15 dk">
+          <p>Basit bir senaryo oluştur:</p>
+          <p className="italic text-navy-500">"Müşteri 'randevu' yazarsa → randevu akışına yönlendir. 'Fiyat' yazarsa → fiyat listesi gönder."</p>
+          <p>Bu adımda müşteri akış tasarımının gücünü anlamaya başlar.</p>
         </StepCard>
       </Card>
 
       <Card className="p-5">
-        <h4 className="text-xs font-semibold text-navy-400 uppercase tracking-wide mb-4">Ucuncu Hafta ve Sonrasi</h4>
-        <StepCard step={13} title="Gelismis ozellikleri ihtiyaca gore ac" duration="Surekli">
-          <p>Her yeni ozelligi acmadan once musteriye sor: "Buna ihtiyacin var mi?"</p>
+        <h4 className="text-xs font-semibold text-navy-400 uppercase tracking-wide mb-4">Üçüncü Hafta ve Sonrası</h4>
+        <StepCard step={13} title="Gelişmiş özellikleri ihtiyaca göre aç" duration="Sürekli">
+          <p>Her yeni özelliği açmadan önce müşteriye sor: "Buna ihtiyacın var mı?"</p>
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <Badge variant="default">Marketing</Badge>
-              <span className="text-navy-500">→ Referral ve review isteme (hizmet sektoru icin)</span>
+              <span className="text-navy-500">→ Referral ve review isteme (hizmet sektörü için)</span>
             </div>
             <div className="flex items-center gap-2">
               <Badge variant="default">Sentiment</Badge>
-              <span className="text-navy-500">→ Musteri memnuniyeti takibi (yuksek hacim icin)</span>
+              <span className="text-navy-500">→ Müşteri memnuniyeti takibi (yüksek hacim için)</span>
             </div>
             <div className="flex items-center gap-2">
               <Badge variant="default">Appointments</Badge>
@@ -655,23 +655,23 @@ function OnboardingTab() {
             </div>
             <div className="flex items-center gap-2">
               <Badge variant="default">API Call</Badge>
-              <span className="text-navy-500">→ Dis sistem entegrasyonu (teknik musteri icin)</span>
+              <span className="text-navy-500">→ Dış sistem entegrasyonu (teknik müşteri için)</span>
             </div>
           </div>
         </StepCard>
 
-        <StepCard step={14} title="Aylik performans raporu gonder" duration="Ayda 1">
-          <p>Her ay musteriye kisa bir ozet gonder:</p>
+        <StepCard step={14} title="Aylık performans raporu gönder" duration="Ayda 1">
+          <p>Her ay müşteriye kısa bir özet gönder:</p>
           <ul className="list-disc pl-5 space-y-1 text-navy-600">
             <li>Toplam mesaj / otomatik cevaplanan oran</li>
-            <li>En cok sorulan konular</li>
+            <li>En çok sorulan konular</li>
             <li>Kampanya sonuclari (varsa)</li>
-            <li>Oneri: "Su FAQ'i eklesek %10 daha fazla otomatik cevap verebiliriz"</li>
+            <li>Öneri: "Şu FAQ'i eklesek %10 daha fazla otomatik cevap verebiliriz"</li>
           </ul>
           <Tip>
-            Bu rapor musterinin "neden para oduyorum?" sorusunu onler.
-            Somut rakam goster, genel laftan kacin. <TabLink to="communication">Musteri Iletisimi</TabLink> sekmesinde hazir rapor sablonlari var.
-            <TabLink to="saas">SaaS Stratejisi</TabLink> sekmesinde hangi metrikleri takip etmen gerektigini oku.
+            Bu rapor müşterinin "neden para ödüyorum?" sorusunu önler.
+            Somut rakam göster, genel laftan kaçın. <TabLink to="communication">Müşteri İletişimi</TabLink> sekmesinde hazır rapor şablonları var.
+            <TabLink to="saas">SaaS Stratejisi</TabLink> sekmesinde hangi metrikleri takip etmen gerektiğini oku.
           </Tip>
         </StepCard>
       </Card>
@@ -679,9 +679,9 @@ function OnboardingTab() {
       <Card className="p-4 bg-navy-50/50">
         <h4 className="text-xs font-semibold text-navy-400 uppercase tracking-wide mb-2">Ilgili Sekmeler</h4>
         <div className="flex flex-wrap gap-3 text-sm">
-          <TabLink to="sectors">Sektor Senaryolari</TabLink>
-          <TabLink to="features">Ozellik Rehberi</TabLink>
-          <TabLink to="communication">Iletisim Sablonlari</TabLink>
+          <TabLink to="sectors">Sektör Senaryoları</TabLink>
+          <TabLink to="features">Özellik Rehberi</TabLink>
+          <TabLink to="communication">İletişim Şablonları</TabLink>
           <TabLink to="saas">SaaS Stratejisi</TabLink>
           <TabLink to="actions">Aksiyon Listesi</TabLink>
         </div>
@@ -694,112 +694,112 @@ function FeaturesTab() {
   return (
     <div className="space-y-6">
       <div>
-        <SectionTitle icon={Layers}>Ozellik Rehberi — Anlatim Sirasi</SectionTitle>
+        <SectionTitle icon={Layers}>Özellik Rehberi — Anlatım Sırası</SectionTitle>
         <p className="text-sm text-navy-500 mb-4">
-          Ozellikleri teknoloji sirasina gore degil, <strong>musteri acisi sirasina gore</strong> anlat.
-          Asagidaki sira, musterinin "buna neden ihtiyacim var?" sorusunu en kolay anlayacagi siradir.
-          Her musteri her seyi kullanmayacak — <TabLink to="sectors">Sektor Senaryolari</TabLink> sekmesinden sektore uygun modulleri belirle.
+          Özellikleri teknoloji sırasına göre değil, <strong>müşteri açısı sırasına göre</strong> anlat.
+          Aşağıdaki sıra, müşterinin "buna neden ihtiyacım var?" sorusunu en kolay anlayacağı sıradır.
+          Her müşteri her şeyi kullanmayacak — <TabLink to="sectors">Sektör Senaryoları</TabLink> sekmesinden sektöre uygun modülleri belirle.
         </p>
       </div>
 
       <div className="space-y-3">
         <div className="flex items-center gap-2 mb-1">
-          <Badge variant="success">1. Oncelik — Ilk Gun</Badge>
+          <Badge variant="success">1. Öncelik — İlk Gün</Badge>
         </div>
         <FeatureBlock
           title="Flow Builder (Akis Tasarimi)"
-          problem="WhatsApp'tan cok mesaj geliyor, yetisemiyorum"
-          solution="Musteri yazinca otomatik cevap doner, menu gosterir, yonlendirir"
-          howTo="Flow Builder > Yeni Akis > Sablondan sec veya sifirdan olustur"
-          when="Ilk gun"
+          problem="WhatsApp'tan çok mesaj geliyor, yetişemiyorum"
+          solution="Müşteri yazınca otomatik cevap döner, menü gösterir, yönlendirir"
+          howTo="Flow Builder > Yeni Akış > Şablondan seç veya sıfırdan oluştur"
+          when="İlk gün"
         />
         <FeatureBlock
           title="Bilgi Bankasi + AI FAQ"
-          problem="Hep ayni sorulari soruyorlar, tek tek cevapliyorum"
-          solution="Sik sorulan sorulari bir kere yaz, AI otomatik cevaplar"
-          howTo="Bilgi Bankasi > Yeni Icerik > Soru-cevap ekle"
-          when="Ilk hafta"
+          problem="Hep aynı soruları soruyorlar, tek tek cevaplıyorum"
+          solution="Sık sorulan soruları bir kere yaz, AI otomatik cevaplar"
+          howTo="Bilgi Bankası > Yeni İçerik > Soru-cevap ekle"
+          when="İlk hafta"
         />
       </div>
 
       <div className="space-y-3">
         <div className="flex items-center gap-2 mb-1">
-          <Badge variant="warning">2. Oncelik — Ikinci Hafta</Badge>
+          <Badge variant="warning">2. Öncelik — İkinci Hafta</Badge>
         </div>
         <FeatureBlock
           title="Analizler"
-          problem="Kimin ne sordugunu, kac mesaj geldigini takip edemiyorum"
-          solution="Dashboard'dan mesaj trendlerini, otomatik cevap oranini gor"
-          howTo="Analizler sayfasina git, tarih araligiyla filtrele"
+          problem="Kimin ne sorduğunu, kaç mesaj geldiğini takip edemiyorum"
+          solution="Dashboard'dan mesaj trendlerini, otomatik cevap oranını gör"
+          howTo="Analizler sayfasına git, tarih aralığıyla filtrele"
           when="2. hafta (veri birikince)"
         />
         <FeatureBlock
           title="Kampanyalar (Outbound)"
-          problem="Musterilere toplu mesaj gonderemiyorum, tek tek ugrasamam"
-          solution="Kisi listesine toplu mesaj gonder, teslim durumunu takip et"
-          howTo="Kampanyalar > Yeni Kampanya > Sablon sec > Gonder"
+          problem="Müşterilere toplu mesaj gönderemiyorum, tek tek uğraşamam"
+          solution="Kişi listesine toplu mesaj gönder, teslim durumunu takip et"
+          howTo="Kampanyalar > Yeni Kampanya > Şablon seç > Gönder"
           when="2. hafta"
         />
         <FeatureBlock
           title="Dallanma (Condition/Switch)"
-          problem="Her musteri farkli sey soruyor, tek cevap yetmiyor"
-          solution="Musterinin ne istedigine gore farkli yollara yonlendir"
-          howTo="Akis icerisine Condition veya Switch node'u ekle"
-          when="2. hafta (temel akis ogrenildikten sonra)"
+          problem="Her müşteri farklı şey soruyor, tek cevap yetmiyor"
+          solution="Müşterinin ne istediğine göre farklı yollara yönlendir"
+          howTo="Akış içerisine Condition veya Switch node'u ekle"
+          when="2. hafta (temel akış öğrenildikten sonra)"
         />
       </div>
 
       <div className="space-y-3">
         <div className="flex items-center gap-2 mb-1">
-          <Badge variant="info">3. Oncelik — Ucuncu Hafta+</Badge>
+          <Badge variant="info">3. Öncelik — Üçüncü Hafta+</Badge>
         </div>
         <FeatureBlock
           title="Randevular"
-          problem="Randevu almak zahmetli, telefonla ugrasiyorum"
-          solution="Musteri WhatsApp'tan randevu alir, otomatik hatirlatma gider"
-          howTo="Ayarlar > Randevular modulu ac > Akisa randevu node'u ekle"
-          when="Sektor uygunsa (klinik, kuafor, restoran)"
+          problem="Randevu almak zahmetli, telefonla uğraşıyorum"
+          solution="Müşteri WhatsApp'tan randevu alır, otomatik hatırlatma gider"
+          howTo="Ayarlar > Randevular modülü aç > Akışa randevu node'u ekle"
+          when="Sektör uygunsa (klinik, kuaför, restoran)"
         />
         <FeatureBlock
           title="Marketing — Referral"
-          problem="Musterilerim beni tavsiye etmiyor, organik buyume yok"
-          solution="Referans linki olustur, paylasildiginda takip et"
-          howTo="Pazarlama > Referanslar > Yeni link olustur"
-          when="Aktif musteri tabani oldugunda"
+          problem="Müşterilerim beni tavsiye etmiyor, organik büyüme yok"
+          solution="Referans linki oluştur, paylaşıldığında takip et"
+          howTo="Pazarlama > Referanslar > Yeni link oluştur"
+          when="Aktif müşteri tabanı olduğunda"
         />
         <FeatureBlock
           title="Marketing — Review Isteme"
-          problem="Google/sosyal medya yorumlarim az"
-          solution="Mutlu musteri tespit et, otomatik yorum istegi gonder"
+          problem="Google/sosyal medya yorumlarım az"
+          solution="Mutlu müşteri tespit et, otomatik yorum isteği gönder"
           howTo="Pazarlama > Yorumlar > Yorum iste"
-          when="Hizmet sektoru icin"
+          when="Hizmet sektörü için"
         />
         <FeatureBlock
           title="AI Duygu Analizi (Sentiment)"
-          problem="Musteri kizgin mi memnun mu anlamiyorum"
-          solution="AI mesajin tonunu analiz eder, kizgin musterileri isaretle"
-          howTo="Akis icinde Sentiment node'u ekle veya Analytics'ten gor"
-          when="Yuksek mesaj hacmi oldugunda"
+          problem="Müşteri kızgın mı memnun mu anlamıyorum"
+          solution="AI mesajın tonunu analiz eder, kızgın müşterileri işaretle"
+          howTo="Akış içinde Sentiment node'u ekle veya Analytics'ten gör"
+          when="Yüksek mesaj hacmi olduğunda"
         />
         <FeatureBlock
           title="Entegrasyonlar (API Call)"
-          problem="Dis sistemlerle baglantiyi manuel yapiyorum"
-          solution="Akis icinden API cagirarak dis sisteme veri gonder/al"
-          howTo="Akis icinde API Call node'u ekle, endpoint ve parametreleri ayarla"
-          when="Teknik musteri ve ozel entegrasyon gerektiginde"
+          problem="Dış sistemlerle bağlantıyı manuel yapıyorum"
+          solution="Akış içinden API çağırarak dış sisteme veri gönder/al"
+          howTo="Akış içinde API Call node'u ekle, endpoint ve parametreleri ayarla"
+          when="Teknik müşteri ve özel entegrasyon gerektiğinde"
         />
       </div>
 
       <Tip>
-        Her ozellik icin basit bir kural: Musteri "buna ihtiyacim var" demeden acma.
-        Acilmamis ozellik kafa karistirmaz, acilip kullanilmayan ozellik karistirir.
-        Mevcut musterilere yeni ozellik onerme zamanlama stratejisi icin <TabLink to="saas">SaaS Stratejisi: Upsell</TabLink> bolumune bak.
+        Her özellik için basit bir kural: Müşteri "buna ihtiyacım var" demeden açma.
+        Açılmamış özellik kafa karıştırmaz, açılıp kullanılmayan özellik karıştırır.
+        Mevcut müşterilere yeni özellik önerme zamanlama stratejisi için <TabLink to="saas">SaaS Stratejisi: Upsell</TabLink> bolumune bak.
       </Tip>
 
       <Card className="p-4 bg-navy-50/50">
         <h4 className="text-xs font-semibold text-navy-400 uppercase tracking-wide mb-2">Ilgili Sekmeler</h4>
         <div className="flex flex-wrap gap-3 text-sm">
-          <TabLink to="sectors">Sektor Senaryolari</TabLink>
+          <TabLink to="sectors">Sektör Senaryoları</TabLink>
           <TabLink to="onboarding">Onboarding Adimlari</TabLink>
           <TabLink to="saas">SaaS Stratejisi</TabLink>
         </div>
@@ -812,10 +812,10 @@ function SectorsTab() {
   return (
     <div className="space-y-6">
       <div>
-        <SectionTitle icon={Building2}>Sektore Gore Ozellik Haritalamasi</SectionTitle>
+        <SectionTitle icon={Building2}>Sektöre Göre Özellik Haritalaması</SectionTitle>
         <p className="text-sm text-navy-500 mb-4">
-          Her musteri her ozelligi kullanmayacak. Sektore gore oncelikli modulleri ac,
-          gereksiz olanlari kapatik tut.
+          Her müşteri her özelliği kullanmayacak. Sektöre göre öncelikli modülleri aç,
+          gereksiz olanları kapalı tut.
         </p>
       </div>
 
@@ -825,57 +825,57 @@ function SectorsTab() {
           title="Restoran / Kafe"
           primary={['Flow Builder', 'Outbound', 'FAQ']}
           secondary={['Appointments', 'Marketing', 'Analytics']}
-          firstFlow="'Merhaba! Menumuzu gormek ister misiniz?' + gunun ozel menusu + rezervasyon yonlendirme"
+          firstFlow="'Merhaba! Menümüzü görmek ister misiniz?' + günün özel menüsü + rezervasyon yönlendirme"
         />
         <SectorCard
           icon={Stethoscope}
           title="Klinik / Saglik"
           primary={['Flow Builder', 'Appointments', 'FAQ']}
           secondary={['Analytics', 'Outbound', 'Sentiment']}
-          firstFlow="'Randevu almak icin 1, doktor bilgisi icin 2 yazin' + otomatik hatirlatma"
+          firstFlow="'Randevu almak için 1, doktor bilgisi için 2 yazın' + otomatik hatırlatma"
         />
         <SectorCard
           icon={ShoppingCart}
           title="E-Ticaret"
           primary={['Flow Builder', 'Outbound', 'Analytics']}
           secondary={['Marketing', 'Sentiment', 'Integrations']}
-          firstFlow="'Siparisinizi takip etmek icin siparis numaranizi yazin' + kampanya bildirimi"
+          firstFlow="'Siparişinizi takip etmek için sipariş numaranızı yazın' + kampanya bildirimi"
         />
         <SectorCard
           icon={Scissors}
           title="Hizmet (Kuafor, Berber, Oto Yikama)"
           primary={['Flow Builder', 'Appointments', 'Marketing']}
           secondary={['Outbound', 'Analytics', 'FAQ']}
-          firstFlow="'Randevu icin gun ve saat secin' + hatirlatma + hizmet sonrasi yorum isteme"
+          firstFlow="'Randevu için gün ve saat seçin' + hatırlatma + hizmet sonrası yorum isteme"
         />
         <SectorCard
           icon={Plane}
           title="Turizm / Otel"
           primary={['Flow Builder', 'FAQ', 'Outbound']}
           secondary={['Marketing', 'Analytics', 'Appointments']}
-          firstFlow="'Odalarimiz ve fiyatlarimiz...' + yardimci yonlendirme + kampanya bildirimi"
+          firstFlow="'Odalarımız ve fiyatlarımız...' + yardımcı yönlendirme + kampanya bildirimi"
         />
         <SectorCard
           icon={Building2}
           title="Genel Hizmet / Kurumsal"
           primary={['Flow Builder', 'FAQ', 'Analytics']}
           secondary={['Outbound', 'Marketing', 'Sentiment']}
-          firstFlow="'Size nasil yardimci olabiliriz?' + departmana yonlendirme + FAQ"
+          firstFlow="'Size nasıl yardımcı olabiliriz?' + departmana yönlendirme + FAQ"
         />
       </div>
 
       <Warning>
-        Sektor sablon akislari "ornek" olarak kullan, her musteriye birebir kopyalama.
-        Her isletmenin kendine ozgu sorulari ve surecleri var. Template'i baslangic noktasi yap,
-        musteri ile birlikte kisisellistir. <TabLink to="saas">SaaS Stratejisi</TabLink> sekmesinde olceklenebilir
-        onboarding icin template flow + FAQ paketi sistemini detayli anlatiyoruz.
+        Sektör şablon akışları "örnek" olarak kullan, her müşteriye birebir kopyalama.
+        Her işletmenin kendine özgü soruları ve süreçleri var. Template'i başlangıç noktası yap,
+        müşteri ile birlikte kişiselleştir. <TabLink to="saas">SaaS Stratejisi</TabLink> sekmesinde ölçeklenebilir
+        onboarding için template flow + FAQ paketi sistemini detaylı anlatıyoruz.
       </Warning>
 
       <div>
         <SectionTitle icon={Target}>Feature Flag Stratejisi</SectionTitle>
         <Card className="p-4">
           <p className="text-sm text-navy-600 mb-3">
-            Tenant olustururken sektore gore asagidaki flag'leri ac:
+            Tenant oluştururken sektöre göre aşağıdaki flag'leri aç:
           </p>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -916,19 +916,19 @@ function SectorsTab() {
                   <td className="py-2 pr-4">Marketing</td>
                   <td className="text-center py-2 px-2"><Badge variant="default">Kapali</Badge></td>
                   <td className="text-center py-2 px-2"><Badge variant="default">Kapali</Badge></td>
-                  <td className="text-center py-2 px-2"><Badge variant="warning">Ihtiyaca gore</Badge></td>
+                  <td className="text-center py-2 px-2"><Badge variant="warning">İhtiyaca göre</Badge></td>
                 </tr>
                 <tr className="border-b border-navy-50">
                   <td className="py-2 pr-4">Appointments</td>
                   <td className="text-center py-2 px-2"><Badge variant="default">Kapali</Badge></td>
                   <td className="text-center py-2 px-2"><Badge variant="default">Kapali</Badge></td>
-                  <td className="text-center py-2 px-2"><Badge variant="warning">Sektore gore</Badge></td>
+                  <td className="text-center py-2 px-2"><Badge variant="warning">Sektöre göre</Badge></td>
                 </tr>
                 <tr>
                   <td className="py-2 pr-4">Integrations</td>
                   <td className="text-center py-2 px-2"><Badge variant="default">Kapali</Badge></td>
                   <td className="text-center py-2 px-2"><Badge variant="default">Kapali</Badge></td>
-                  <td className="text-center py-2 px-2"><Badge variant="warning">Teknik musteri</Badge></td>
+                  <td className="text-center py-2 px-2"><Badge variant="warning">Teknik müşteri</Badge></td>
                 </tr>
               </tbody>
             </table>
@@ -939,9 +939,9 @@ function SectorsTab() {
       <Card className="p-4 bg-navy-50/50">
         <h4 className="text-xs font-semibold text-navy-400 uppercase tracking-wide mb-2">Ilgili Sekmeler</h4>
         <div className="flex flex-wrap gap-3 text-sm">
-          <TabLink to="features">Ozellik Rehberi</TabLink>
+          <TabLink to="features">Özellik Rehberi</TabLink>
           <TabLink to="onboarding">Onboarding Adimlari</TabLink>
-          <TabLink to="saas">SaaS Stratejisi (Olcekleme)</TabLink>
+          <TabLink to="saas">SaaS Stratejisi (Ölçekleme)</TabLink>
         </div>
       </Card>
     </div>
@@ -974,7 +974,7 @@ function TemplateCard({ label, variant, channel, content }: {
           title="Kopyala"
         >
           {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
-          {copied ? 'Kopyalandi' : 'Kopyala'}
+          {copied ? 'Kopyalandı' : 'Kopyala'}
         </button>
       </div>
       <div className={cn(
@@ -991,23 +991,23 @@ function CommunicationTab() {
   return (
     <div className="space-y-6">
       <div>
-        <SectionTitle icon={MessageCircle}>Musteri Iletisim Rehberi</SectionTitle>
+        <SectionTitle icon={MessageCircle}>Müşteri İletişim Rehberi</SectionTitle>
         <p className="text-sm text-navy-500 mb-4">
-          Ozellikleri nasil anlatirsaniz o kadar etkili olur. Asagida her durum icin hazir sablonlar var.
-          Kopyala butonuyla direkt alip kisisellestirebilirsin.
-          Hangi musteriye ne zaman mesaj atacagini <TabLink to="saas">SaaS Stratejisi: Health Score</TabLink> ile belirle.
+          Özellikleri nasıl anlatırsanız o kadar etkili olur. Aşağıda her durum için hazır şablonlar var.
+          Kopyala butonuyla direkt alıp kişiselleştirebilirsin.
+          Hangi müşteriye ne zaman mesaj atacağını <TabLink to="saas">SaaS Stratejisi: Health Score</TabLink> ile belirle.
         </p>
       </div>
 
       <div>
-        <h4 className="text-sm font-semibold text-navy-900 mb-3">Yeni Ozellik Duyurma Formati</h4>
+        <h4 className="text-sm font-semibold text-navy-900 mb-3">Yeni Özellik Duyurma Formatı</h4>
         <Card className="p-4 space-y-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Badge variant="error">Yanlis</Badge>
             </div>
             <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-sm text-navy-600 italic">
-              "v2.3 cikti! 14 yeni ozellik, 47 bug fix, 8 improvement. Detaylar icin changelog'a bakin..."
+              "v2.3 çıktı! 14 yeni özellik, 47 bug fix, 8 improvement. Detaylar için changelog'a bakın..."
             </div>
           </div>
           <div>
@@ -1015,13 +1015,13 @@ function CommunicationTab() {
               <Badge variant="success">Dogru</Badge>
             </div>
             <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-lg text-sm text-navy-600 italic">
-              "Artik musteriniz randevu aldiginda otomatik hatirlatma mesaji gidiyor.
-              Acmak icin: Ayarlar &gt; Randevular &gt; Hatirlatma &gt; Ac. 3 adim, 1 dakika."
+              "Artık müşteriniz randevu aldığında otomatik hatırlatma mesajı gidiyor.
+              Açmak için: Ayarlar &gt; Randevular &gt; Hatırlatma &gt; Aç. 3 adım, 1 dakika."
             </div>
           </div>
           <Tip>
-            <strong>Format:</strong> Problem → Cozum → Nasil (max 3 adim).
-            Teknik detay yok. Musteri ne kazaniyor, o kadar.
+            <strong>Format:</strong> Problem → Çözüm → Nasıl (max 3 adım).
+            Teknik detay yok. Müşteri ne kazanıyor, o kadar.
           </Tip>
         </Card>
       </div>
@@ -1031,43 +1031,43 @@ function CommunicationTab() {
       <div>
         <div className="flex items-center gap-2 mb-3">
           <h4 className="text-sm font-semibold text-navy-900">WhatsApp Mesaj Sablonlari</h4>
-          <Badge variant="success">8 Sablon</Badge>
+          <Badge variant="success">8 Şablon</Badge>
         </div>
         <div className="space-y-3">
           <TemplateCard
-            label="Ilk Gun — Hosgeldin"
+            label="İlk Gün — Hoşgeldiniz"
             variant="info"
             channel="whatsapp"
             content={`Merhaba [Firma Adi]!
 
-Invekto sisteminiz hazir. Ilk otomatik cevabiniz aktif.
+Invekto sisteminiz hazır. İlk otomatik cevabınız aktif.
 
-Simdi yapmaniz gereken:
+Şimdi yapmanız gereken:
 1. Telefonunuzdan [numara] numarasina "merhaba" yazin
-2. Otomatik cevabi gorun
-3. Degistirmek isterseniz beni arayin
+2. Otomatik cevabı görün
+3. Değiştirmek isterseniz beni arayın
 
-Panel giris bilgileriniz:
+Panel giriş bilgileriniz:
 Adres: [URL]
 Kullanici: [user]
 Sifre: [pass]
 
-Herhangi bir sorunuz olursa yazin!`}
+Herhangi bir sorunuz olursa yazın!`}
           />
 
           <TemplateCard
-            label="3. Gun — Kontrol"
+            label="3. Gün — Kontrol"
             variant="info"
             channel="whatsapp"
             content={`Merhaba [Firma Adi],
 
-Sisteminiz 3 gundur aktif. Hersey yolunda mi?
+Sisteminiz 3 gündür aktif. Her şey yolunda mı?
 
 Simdiye kadar:
 - [X] mesaj geldi
 - [Y] tanesi otomatik cevaplandi
 
-Sorun veya soru varsa hemen yazin, birlikte cozelim.`}
+Sorun veya soru varsa hemen yazın, birlikte çözelim.`}
           />
 
           <TemplateCard
@@ -1076,96 +1076,96 @@ Sorun veya soru varsa hemen yazin, birlikte cozelim.`}
             channel="whatsapp"
             content={`Merhaba [Firma Adi],
 
-Ilk haftaniz nasil gecti? Hizli bir ozet:
+İlk haftanız nasıl geçti? Hızlı bir özet:
 - Bu hafta [X] mesaj geldi
 - [Y] tanesi otomatik cevaplandi
-- En cok sorulan konu: [konu]
+- En çok sorulan konu: [konu]
 
-Eklemek istediginiz soru/cevap var mi?
-Degistirmek istediginiz bir sey varsa yazin, hemen ayarlayalim.`}
+Eklemek istediğiniz soru/cevap var mı?
+Değiştirmek istediğiniz bir şey varsa yazın, hemen ayarlayalım.`}
           />
 
           <TemplateCard
-            label="Yeni Ozellik Duyurusu"
+            label="Yeni Özellik Duyurusu"
             variant="info"
             channel="whatsapp"
             content={`Merhaba [Firma Adi]!
 
-Yeni ozellik: [tek cumle aciklama].
+Yeni özellik: [tek cümle açıklama].
 
-Ne ise yarar: [1 cumle — sorun ve cozum].
-Nasil acilir: [max 3 adim].
+Ne işe yarar: [1 cümle — sorun ve çözüm].
+Nasıl açılır: [max 3 adım].
 
-Birlikte kuralim mi? Musait oldugunuz bir zaman yazin.`}
+Birlikte kuralım mı? Müsait olduğunuz bir zaman yazın.`}
           />
 
           <TemplateCard
-            label="Aylik Rapor"
+            label="Aylık Rapor"
             variant="info"
             channel="whatsapp"
-            content={`[Firma Adi] — [Ay] Performans Ozeti
+            content={`[Firma Adı] — [Ay] Performans Özeti
 
 Toplam mesaj: [X]
 Otomatik cevaplanan: [Y] (%[Z])
-En cok sorulan: [konu1], [konu2], [konu3]
-Kampanya gonderilen: [varsa]
+En çok sorulan: [konu1], [konu2], [konu3]
+Kampanya gönderilen: [varsa]
 
-Onerimiz: "[oneri — ornegin yeni FAQ eklemek]"
-Bu ay [yeni ozellik] cikti, sizin icin uygun olabilir.
+Önerimiz: "[öneri — örneğin yeni FAQ eklemek]"
+Bu ay [yeni özellik] çıktı, sizin için uygun olabilir.
 
-Detayli gormek icin panelinize girin: [URL]`}
+Detaylı görmek için panelinize girin: [URL]`}
           />
 
           <TemplateCard
-            label="Odeme Hatirlatma"
+            label="Ödeme Hatırlatma"
             variant="warning"
             channel="whatsapp"
             content={`Merhaba [Firma Adi],
 
-[Ay] donemi icin faturaniz olusturulmustur.
+[Ay] dönemi için faturanız oluşturulmuştur.
 
 Tutar: [tutar] TL
-Son odeme tarihi: [tarih]
+Son ödeme tarihi: [tarih]
 
-Odeme bilgileri:
+Ödeme bilgileri:
 IBAN: [IBAN]
-Aciklama: [firma kodu]
+Açıklama: [firma kodu]
 
 Sorunuz varsa yazabilirsiniz.
-Iyi calismalar dileriz!`}
+İyi çalışmalar dileriz!`}
           />
 
           <TemplateCard
-            label="Churn Riski — Yeniden Baglanti"
+            label="Churn Riski — Yeniden Bağlantı"
             variant="error"
             channel="whatsapp"
             content={`Merhaba [Firma Adi],
 
-Bir suredir panelinize girmediginizi fark ettik. Umariz hersey yolundadir.
+Bir süredir panelinize girmediğinizi fark ettik. Umarız her şey yolundadır.
 
-Son 30 gunde sisteminiz sizin icin calismaya devam etti:
-- [X] mesaj otomatik cevaplandi
-- [Y] musteri yonlendirildi
+Son 30 günde sisteminiz sizin için çalışmaya devam etti:
+- [X] mesaj otomatik cevaplandı
+- [Y] müşteri yönlendirildi
 
-Kullanmakta zorluk yasiyorsaniz size ozel 15 dakikalik bir gorusme ayarlayalim.
-Hicbir sey sormak zorunda degilsiniz — sadece "uygun" yazin, ben ararim.`}
+Kullanmakta zorluk yaşıyorsanız size özel 15 dakikalık bir görüşme ayarlayalım.
+Hiçbir şey sormak zorunda değilsiniz — sadece "uygun" yazın, ben ararım.`}
           />
 
           <TemplateCard
-            label="Sozlesme Yenileme"
+            label="Sözleşme Yenileme"
             variant="default"
             channel="whatsapp"
             content={`Merhaba [Firma Adi],
 
-Sozlesmenizin yenileme zamani yaklasti ([tarih]).
+Sözleşmenizin yenileme zamanı yaklaştı ([tarih]).
 
-Son [donem] boyunca:
-- Toplam [X] mesaj islendi
+Son [dönem] boyunca:
+- Toplam [X] mesaj işlendi
 - %[Y] otomatik cevap orani
 - Tahmini tasarruf: [Z] saat/ay
 
-Yenileme icin herhangi bir islem yapmaniza gerek yok, otomatik devam eder.
-Soru veya degisiklik istegi varsa yazin.`}
+Yenileme için herhangi bir işlem yapmanıza gerek yok, otomatik devam eder.
+Soru veya değişiklik isteği varsa yazın.`}
           />
         </div>
       </div>
@@ -1175,39 +1175,39 @@ Soru veya degisiklik istegi varsa yazin.`}
       <div>
         <div className="flex items-center gap-2 mb-3">
           <h4 className="text-sm font-semibold text-navy-900">Email Sablonlari</h4>
-          <Badge variant="warning">6 Sablon</Badge>
+          <Badge variant="warning">6 Şablon</Badge>
         </div>
         <Tip>
-          Email sablonlari daha resmi ve detaylidir. Kurumsal musteriler veya
-          resmi yazisma gerektiren durumlarda kullan. WhatsApp kisa ve samimi,
-          email profesyonel ve dokumante edici olmali.
+          Email şablonları daha resmi ve detaylıdır. Kurumsal müşteriler veya
+          resmi yazışma gerektiren durumlarda kullan. WhatsApp kısa ve samimi,
+          email profesyonel ve dökümante edici olmalı.
         </Tip>
         <div className="space-y-3 mt-3">
           <TemplateCard
-            label="Hosgeldin — Kurulum Tamam"
+            label="Hoşgeldiniz — Kurulum Tamam"
             variant="info"
             channel="email"
-            content={`Konu: Invekto Sisteminiz Hazir — Giris Bilgileriniz
+            content={`Konu: Invekto Sisteminiz Hazır — Giriş Bilgileriniz
 
 Merhaba [Yetkili Adi],
 
-[Firma Adi] icin Invekto musteri iletisim sisteminiz basariyla kurulmustur.
+[Firma Adı] için Invekto müşteri iletişim sisteminiz başarıyla kurulmuştur.
 
 Sistem Bilgileri:
 - Panel Adresi: [URL]
 - Kullanici Adi: [user]
-- Sifre: [pass] (ilk giriste degistirmenizi oneririz)
+- Şifre: [pass] (ilk girişte değiştirmenizi öneririz)
 - WhatsApp Hatti: [numara]
 
-Ilk Adimlar:
-1. Telefonunuzdan [numara] numarasina "merhaba" yazarak sistemi test edin
-2. Panelden Bilgi Bankasi'na sik sorulan sorularinizi ekleyin
-3. Ayarlar > Calisma Saatleri bolumunden mesai saatlerinizi belirleyin
+İlk Adımlar:
+1. Telefonunuzdan [numara] numarasına "merhaba" yazarak sistemi test edin
+2. Panelden Bilgi Bankası'na sık sorulan sorularınızı ekleyin
+3. Ayarlar > Çalışma Saatleri bölümünden mesai saatlerinizi belirleyin
 
-Kurulum sirasinda olusturdigumuz otomatik cevap akisiniz aktiftir.
-Herhangi bir degisiklik veya ekleme ihtiyaciniz olursa benimle iletisime gecin.
+Kurulum sırasında oluşturduğumuz otomatik cevap akışınız aktiftir.
+Herhangi bir değişiklik veya ekleme ihtiyacınız olursa benimle iletişime geçin.
 
-Iyi calismalar,
+İyi çalışmalar,
 [Isim]
 Invekto Destek Ekibi
 [Telefon]`}
@@ -1217,168 +1217,168 @@ Invekto Destek Ekibi
             label="Haftalik Performans Raporu"
             variant="info"
             channel="email"
-            content={`Konu: [Firma Adi] — Haftalik Invekto Raporu ([tarih araligi])
+            content={`Konu: [Firma Adı] — Haftalık Invekto Raporu ([tarih aralığı])
 
 Merhaba [Yetkili Adi],
 
-Gectigimiz haftaya ait Invekto performans ozetiniz:
+Geçtiğimiz haftaya ait Invekto performans özetiniz:
 
-MESAJ ISTATISTIKLERI
+MESAJ İSTATİSTİKLERİ
 - Gelen mesaj: [X]
 - Otomatik cevaplanan: [Y] (%[oran])
-- Insana yonlendirilen: [Z]
-- Ortalama cevap suresi: [sure]
+- İnsana yönlendirilen: [Z]
+- Ortalama cevap süresi: [süre]
 
-EN COK SORULAN KONULAR
+EN ÇOK SORULAN KONULAR
 1. [Konu 1] — [adet] kez
 2. [Konu 2] — [adet] kez
 3. [Konu 3] — [adet] kez
 
-ONERIMIZ
-[Konu 1] ile ilgili bilgi bankasina su cevabi eklersek otomatik karsilama orani %[X] artabilir:
+ÖNERİMİZ
+[Konu 1] ile ilgili bilgi bankasına şu cevabı eklersek otomatik karşılama oranı %[X] artabilir:
 "[onerilen cevap]"
 
-Bu degisikligi yapmami ister misiniz? Tek kelimeyle "evet" yazmaniz yeterli.
+Bu değişikliği yapmamı ister misiniz? Tek kelimeyle "evet" yazmanız yeterli.
 
-Detayli istatistikler icin paneliniz: [URL]
+Detaylı istatistikler için paneliniz: [URL]
 
-Iyi calismalar,
+İyi çalışmalar,
 [Isim]`}
           />
 
           <TemplateCard
-            label="Aylik Performans Raporu"
+            label="Aylık Performans Raporu"
             variant="info"
             channel="email"
-            content={`Konu: [Firma Adi] — [Ay] Aylik Performans Raporu
+            content={`Konu: [Firma Adı] — [Ay] Aylık Performans Raporu
 
 Merhaba [Yetkili Adi],
 
-[Ay] ayina ait Invekto performans raporunuz:
+[Ay] ayına ait Invekto performans raporunuz:
 
-GENEL BAKIS
+GENEL BAKIŞ
 - Toplam mesaj: [X]
-- Otomatik cevap orani: %[Y]
-- Insana yonlendirme: [Z] mesaj
-- Ortalama ilk cevap suresi: [sure]
+- Otomatik cevap oranı: %[Y]
+- İnsana yönlendirme: [Z] mesaj
+- Ortalama ilk cevap süresi: [süre]
 
-ONCEKI AY KARSILASTIRMA
-- Mesaj hacmi: [artis/azalis]% [yonu]
-- Otomasyon orani: [onceki]% → [simdiki]%
-- Yonlendirme: [onceki] → [simdiki]
+ÖNCEKİ AY KARŞILAŞTIRMA
+- Mesaj hacmi: [artış/azalış]% [yönü]
+- Otomasyon oranı: [önceki]% → [şimdiki]%
+- Yönlendirme: [önceki] → [şimdiki]
 
-KAMPANYA SONUCLARI (varsa)
+KAMPANYA SONUÇLARI (varsa)
 - Gonderilen: [X]
 - Teslim edilen: [Y]
 - Cevap alan: [Z]
 
-EN COK SORULAN 5 KONU
+EN ÇOK SORULAN 5 KONU
 1. [Konu] — [adet] kez
 2. [Konu] — [adet] kez
 3. [Konu] — [adet] kez
 4. [Konu] — [adet] kez
 5. [Konu] — [adet] kez
 
-TAHMINI TASARRUF
-Otomatik cevaplanan [Y] mesaj, ortalama [A] dakika/mesaj hesabiyla ayda yaklasik [B] saat is gucunuz tasarruf edilmistir.
+TAHMİNİ TASARRUF
+Otomatik cevaplanan [Y] mesaj, ortalama [A] dakika/mesaj hesabıyla ayda yaklaşık [B] saat iş gücünüz tasarruf edilmiştir.
 
-ONERILER
-1. [Oneri 1 — ornegin eksik FAQ]
-2. [Oneri 2 — ornegin yeni modul acilimi]
+ÖNERİLER
+1. [Öneri 1 — örneğin eksik FAQ]
+2. [Öneri 2 — örneğin yeni modül açılımı]
 
-Detayli panele giris: [URL]
-Bir sonraki gorusmemiz: [tarih/saat]
+Detaylı panele giriş: [URL]
+Bir sonraki görüşmemiz: [tarih/saat]
 
-Iyi calismalar,
+İyi çalışmalar,
 [Isim]
 Invekto Destek Ekibi`}
           />
 
           <TemplateCard
-            label="Yeni Ozellik Duyurusu"
+            label="Yeni Özellik Duyurusu"
             variant="info"
             channel="email"
-            content={`Konu: Yeni Ozellik — [Ozellik Adi] Artik Kullanima Hazir
+            content={`Konu: Yeni Özellik — [Özellik Adı] Artık Kullanıma Hazır
 
 Merhaba [Yetkili Adi],
 
-Invekto sisteminize yeni bir ozellik eklendi: [Ozellik Adi].
+Invekto sisteminize yeni bir özellik eklendi: [Özellik Adı].
 
-NE ISE YARAR?
-[1-2 cumle: hangi sorunu cozer, ne kolaylastiriyor]
+NE İŞE YARAR?
+[1-2 cümle: hangi sorunu çözer, ne kolaylaştırıyor]
 
-SIZIN ICIN NE DEGISIR?
-[1-2 cumle: somut fayda, ornek senaryo]
+SİZİN İÇİN NE DEĞİŞİR?
+[1-2 cümle: somut fayda, örnek senaryo]
 
-NASIL ETKINLESTIRILIR?
+NASIL ETKİNLEŞTİRİLİR?
 1. [Adim 1]
 2. [Adim 2]
 3. [Adim 3]
 
-Bu ozelligi sizin icin etkinlestirmemi ister misiniz?
-Dilediginiz zaman donus yapabilirsiniz — birlikte ayarlayabiliriz.
+Bu özelliği sizin için etkinleştirmemi ister misiniz?
+Dilediğiniz zaman dönüş yapabilirsiniz — birlikte ayarlayabiliriz.
 
-Iyi calismalar,
+İyi çalışmalar,
 [Isim]`}
           />
 
           <TemplateCard
-            label="Odeme / Fatura"
+            label="Ödeme / Fatura"
             variant="warning"
             channel="email"
-            content={`Konu: [Firma Adi] — [Ay] Donemi Fatura Bildirimi
+            content={`Konu: [Firma Adı] — [Ay] Dönemi Fatura Bildirimi
 
 Merhaba [Yetkili Adi],
 
-[Ay] donemi icin Invekto hizmet faturaniz olusturulmustur.
+[Ay] dönemi için Invekto hizmet faturanız oluşturulmuştur.
 
 FATURA DETAYLARI
-- Donem: [baslangic] — [bitis]
+- Dönem: [başlangıç] — [bitiş]
 - Tutar: [tutar] TL (KDV dahil)
-- Son odeme tarihi: [tarih]
+- Son ödeme tarihi: [tarih]
 - Fatura no: [numara]
 
-ODEME BILGILERI
+ÖDEME BİLGİLERİ
 Banka: [banka]
 IBAN: [IBAN]
-Hesap Adi: [hesap adi]
-Aciklama: [firma kodu] — [ay]
+Hesap Adı: [hesap adı]
+Açıklama: [firma kodu] — [ay]
 
-Faturaniz ekte yer almaktadir.
-Odeme sonrasi dekont gondermenize gerek yoktur — otomatik eslestirme yapilmaktadir.
+Faturanız ekte yer almaktadır.
+Ödeme sonrası dekont göndermenize gerek yoktur — otomatik eşleştirme yapılmaktadır.
 
-Sorunuz varsa donus yapin.
+Sorunuz varsa dönüş yapın.
 
-Iyi calismalar,
+İyi çalışmalar,
 [Isim]`}
           />
 
           <TemplateCard
-            label="Sozlesme Yenileme"
+            label="Sözleşme Yenileme"
             variant="default"
             channel="email"
-            content={`Konu: [Firma Adi] — Sozlesme Yenileme Bildirimi
+            content={`Konu: [Firma Adı] — Sözleşme Yenileme Bildirimi
 
 Merhaba [Yetkili Adi],
 
-Invekto hizmet sozlesmenizin suresi [tarih] tarihinde dolmaktadir.
+Invekto hizmet sözleşmenizin süresi [tarih] tarihinde dolmaktadır.
 
-GECEN DONEM OZETI
-- Toplam islenen mesaj: [X]
+GEÇEN DÖNEM ÖZETİ
+- Toplam işlenen mesaj: [X]
 - Otomatik cevap orani: %[Y]
-- Kullanilan moduller: [modul listesi]
+- Kullanılan modüller: [modül listesi]
 - Tahmini tasarruf: [Z] saat/ay
 
-YENILEME KOSULLARI
-- Donem: [baslangic] — [bitis]
-- Aylik ucret: [tutar] TL
-- Degisiklik: [varsa belirt / "mevcut kosullar gecerlidir"]
+YENİLEME KOŞULLARI
+- Dönem: [başlangıç] — [bitiş]
+- Aylık ücret: [tutar] TL
+- Değişiklik: [varsa belirt / "mevcut koşullar geçerlidir"]
 
-Herhangi bir islem yapmaniza gerek yoktur — sozlesmeniz [tarih] itibariyle otomatik olarak yenilenir.
+Herhangi bir işlem yapmanıza gerek yoktur — sözleşmeniz [tarih] itibarıyla otomatik olarak yenilenir.
 
-Modul ekleme/cikarma veya plan degisikligi icin [tarih]'e kadar bize bildirebilirsiniz.
+Modül ekleme/çıkarma veya plan değişikliği için [tarih]'e kadar bize bildirebilirsiniz.
 
-Iyi calismalar,
+İyi çalışmalar,
 [Isim]
 Invekto Destek Ekibi`}
           />
@@ -1388,7 +1388,7 @@ Invekto Destek Ekibi`}
       {/* ─── İletişim Takvimi ─────────────────────────────── */}
 
       <div>
-        <h4 className="text-sm font-semibold text-navy-900 mb-3">Iletisim Takvimi</h4>
+        <h4 className="text-sm font-semibold text-navy-900 mb-3">İletişim Takvimi</h4>
         <Card className="p-4">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -1401,8 +1401,8 @@ Invekto Destek Ekibi`}
               </thead>
               <tbody className="text-navy-700">
                 <tr className="border-b border-navy-50">
-                  <td className="py-2 pr-4 font-medium">Ilk gun</td>
-                  <td className="py-2 pr-4">Hosgeldin mesaji + giris bilgileri</td>
+                  <td className="py-2 pr-4 font-medium">İlk gün</td>
+                  <td className="py-2 pr-4">Hoşgeldiniz mesajı + giriş bilgileri</td>
                   <td className="py-2">
                     <div className="flex gap-1">
                       <Badge variant="success">WhatsApp</Badge>
@@ -1411,13 +1411,13 @@ Invekto Destek Ekibi`}
                   </td>
                 </tr>
                 <tr className="border-b border-navy-50">
-                  <td className="py-2 pr-4 font-medium">3. gun</td>
-                  <td className="py-2 pr-4">"Nasil gidiyor?" kontrolu</td>
+                  <td className="py-2 pr-4 font-medium">3. gün</td>
+                  <td className="py-2 pr-4">"Nasıl gidiyor?" kontrolü</td>
                   <td className="py-2"><Badge variant="success">WhatsApp</Badge></td>
                 </tr>
                 <tr className="border-b border-navy-50">
-                  <td className="py-2 pr-4 font-medium">7. gun</td>
-                  <td className="py-2 pr-4">Haftalik rapor + takip gorusmesi</td>
+                  <td className="py-2 pr-4 font-medium">7. gün</td>
+                  <td className="py-2 pr-4">Haftalık rapor + takip görüşmesi</td>
                   <td className="py-2">
                     <div className="flex gap-1">
                       <Badge variant="warning">Email</Badge>
@@ -1426,18 +1426,18 @@ Invekto Destek Ekibi`}
                   </td>
                 </tr>
                 <tr className="border-b border-navy-50">
-                  <td className="py-2 pr-4 font-medium">14. gun</td>
-                  <td className="py-2 pr-4">Yeni modul acimlari + egitim</td>
+                  <td className="py-2 pr-4 font-medium">14. gün</td>
+                  <td className="py-2 pr-4">Yeni modül açılımları + eğitim</td>
                   <td className="py-2"><Badge variant="success">WhatsApp</Badge></td>
                 </tr>
                 <tr className="border-b border-navy-50">
                   <td className="py-2 pr-4 font-medium">Her hafta</td>
-                  <td className="py-2 pr-4">Haftalik performans raporu</td>
+                  <td className="py-2 pr-4">Haftalık performans raporu</td>
                   <td className="py-2"><Badge variant="warning">Email</Badge></td>
                 </tr>
                 <tr className="border-b border-navy-50">
                   <td className="py-2 pr-4 font-medium">Her ay</td>
-                  <td className="py-2 pr-4">Aylik performans raporu + fatura</td>
+                  <td className="py-2 pr-4">Aylık performans raporu + fatura</td>
                   <td className="py-2">
                     <div className="flex gap-1">
                       <Badge variant="warning">Email</Badge>
@@ -1446,8 +1446,8 @@ Invekto Destek Ekibi`}
                   </td>
                 </tr>
                 <tr className="border-b border-navy-50">
-                  <td className="py-2 pr-4 font-medium">Yeni ozellik</td>
-                  <td className="py-2 pr-4">Duyuru + nasil acilir</td>
+                  <td className="py-2 pr-4 font-medium">Yeni özellik</td>
+                  <td className="py-2 pr-4">Duyuru + nasıl açılır</td>
                   <td className="py-2">
                     <div className="flex gap-1">
                       <Badge variant="success">WhatsApp</Badge>
@@ -1456,8 +1456,8 @@ Invekto Destek Ekibi`}
                   </td>
                 </tr>
                 <tr className="border-b border-navy-50">
-                  <td className="py-2 pr-4 font-medium">Odeme zamani</td>
-                  <td className="py-2 pr-4">Fatura + odeme bilgileri</td>
+                  <td className="py-2 pr-4 font-medium">Ödeme zamanı</td>
+                  <td className="py-2 pr-4">Fatura + ödeme bilgileri</td>
                   <td className="py-2">
                     <div className="flex gap-1">
                       <Badge variant="warning">Email</Badge>
@@ -1466,8 +1466,8 @@ Invekto Destek Ekibi`}
                   </td>
                 </tr>
                 <tr>
-                  <td className="py-2 pr-4 font-medium">Sozlesme yenileme</td>
-                  <td className="py-2 pr-4">Donem ozeti + yenileme bildirimi</td>
+                  <td className="py-2 pr-4 font-medium">Sözleşme yenileme</td>
+                  <td className="py-2 pr-4">Dönem özeti + yenileme bildirimi</td>
                   <td className="py-2"><Badge variant="warning">Email</Badge></td>
                 </tr>
               </tbody>
@@ -1488,12 +1488,12 @@ Invekto Destek Ekibi`}
                 <span className="text-sm font-semibold text-navy-900">WhatsApp Kullan</span>
               </div>
               <ul className="text-sm text-navy-600 space-y-1 pl-6 list-disc">
-                <li>Hizli, kisa bilgilendirmeler</li>
-                <li>Gunluk/haftalik takip mesajlari</li>
-                <li>Yeni ozellik duyurulari (kisa versiyon)</li>
-                <li>Odeme hatirlatmalari (samimi ton)</li>
-                <li>Sorun/sikayet anlinda hizli donus</li>
-                <li>Video ve gorsel icerik paylasimi</li>
+                <li>Hızlı, kısa bilgilendirmeler</li>
+                <li>Günlük/haftalık takip mesajları</li>
+                <li>Yeni özellik duyuruları (kısa versiyon)</li>
+                <li>Ödeme hatırlatmaları (samimi ton)</li>
+                <li>Sorun/şikayet anında hızlı dönüş</li>
+                <li>Video ve görsel içerik paylaşımı</li>
               </ul>
             </div>
             <div className="space-y-2">
@@ -1502,19 +1502,19 @@ Invekto Destek Ekibi`}
                 <span className="text-sm font-semibold text-navy-900">Email Kullan</span>
               </div>
               <ul className="text-sm text-navy-600 space-y-1 pl-6 list-disc">
-                <li>Resmi bildirimler (fatura, sozlesme)</li>
-                <li>Detayli performans raporlari</li>
-                <li>Giris bilgileri ve teknik dokumantasyon</li>
-                <li>Yeni ozellik detayli aciklamalari</li>
-                <li>Kayit altinda olmasi gereken yazismalar</li>
-                <li>Ek dosya gondermek gerektiginde</li>
+                <li>Resmi bildirimler (fatura, sözleşme)</li>
+                <li>Detaylı performans raporları</li>
+                <li>Giriş bilgileri ve teknik dokümantasyon</li>
+                <li>Yeni özellik detaylı açıklamaları</li>
+                <li>Kayıt altında olması gereken yazışmalar</li>
+                <li>Ek dosya göndermek gerektiğinde</li>
               </ul>
             </div>
           </div>
           <Tip>
-            <strong>Altin kural:</strong> Ayni icerik icin ikisini birden gonderme.
-            WhatsApp kisa ozeti, email detayli versiyonu olsun.
-            Ornek: Odeme icin WhatsApp'tan hatirlatma, email'den fatura.
+            <strong>Altın kural:</strong> Aynı içerik için ikisini birden gönderme.
+            WhatsApp kısa özeti, email detaylı versiyonu olsun.
+            Örnek: Ödeme için WhatsApp'tan hatırlatma, email'den fatura.
           </Tip>
         </Card>
       </div>
@@ -1522,21 +1522,21 @@ Invekto Destek Ekibi`}
       {/* ─── Kriz Yönetimi ────────────────────────────────── */}
 
       <div>
-        <h4 className="text-sm font-semibold text-navy-900 mb-3">Krizimi Donustur</h4>
+        <h4 className="text-sm font-semibold text-navy-900 mb-3">Krizi Dönüştür</h4>
         <Card className="p-4">
           <p className="text-sm text-navy-600 mb-3">
-            Musteri "kullanmiyorum, iptal edecem" dediginde:
+            Müşteri "kullanmıyorum, iptal edeceğim" dediğinde:
           </p>
           <ol className="list-decimal pl-5 space-y-2 text-sm text-navy-700">
-            <li><strong>Dinle, savunma:</strong> "Hangi konuda zorluk yasiyorsunuz?"</li>
-            <li><strong>Veri goster:</strong> "Gecen ay [X] mesaj otomatik cevaplandi, bu [Y] saat tasarruf demek."</li>
-            <li><strong>Basitlestir:</strong> Kullanmadigi modulleri kapat, sadece calisanlari birak.</li>
-            <li><strong>Egitim teklif et:</strong> "15 dk'lik bir gorusme ile tekrar kuralim, ben yaninizdayim."</li>
-            <li><strong>Takip:</strong> 3 gun sonra tekrar sor, iyilesti mi?</li>
+            <li><strong>Dinle, savunma:</strong> "Hangi konuda zorluk yaşıyorsunuz?"</li>
+            <li><strong>Veri göster:</strong> "Geçen ay [X] mesaj otomatik cevaplandı, bu [Y] saat tasarruf demek."</li>
+            <li><strong>Basitleştir:</strong> Kullanmadığı modülleri kapat, sadece çalışanları bırak.</li>
+            <li><strong>Eğitim teklif et:</strong> "15 dk'lik bir görüşme ile tekrar kuralım, ben yanınızdayım."</li>
+            <li><strong>Takip:</strong> 3 gün sonra tekrar sor, iyileşti mi?</li>
           </ol>
           <Warning>
-            Asla "ama cok iyi ozelliklerimiz var" deme.
-            Musterinin sorununu coz, ozellik listesi sayma.
+            Asla "ama çok iyi özelliklerimiz var" deme.
+            Müşterinin sorununu çöz, özellik listesi sayma.
             Churn sinyallerini erken fark etmek icin <TabLink to="saas">SaaS Stratejisi: Churn Sinyalleri</TabLink> bolumunu oku.
           </Warning>
         </Card>
@@ -1558,26 +1558,26 @@ function SaasTab() {
   return (
     <div className="space-y-6">
       <div>
-        <SectionTitle icon={TrendingUp}>SaaS Buyume Stratejisi</SectionTitle>
+        <SectionTitle icon={TrendingUp}>SaaS Büyüme Stratejisi</SectionTitle>
         <p className="text-sm text-navy-500 mb-4">
-          Teknik olarak urunu yazmak isin yarisi. Diger yarisi: fiyatlandirma, musteri sagligi,
-          churn onleme, upsell ve olcekleme. Asagidaki stratejiler gercek SaaS deneyiminden geliyor.
+          Teknik olarak ürünü yazmak işin yarısı. Diğer yarısı: fiyatlandırma, müşteri sağlığı,
+          churn önleme, upsell ve ölçekleme. Aşağıdaki stratejiler gerçek SaaS deneyiminden geliyor.
         </p>
       </div>
 
       {/* ─── 1. Fiyatlandırma ─────────────────────────────── */}
 
       <div>
-        <SectionTitle icon={DollarSign}>1. Fiyatlandirma: Deger Bazli Paketleme</SectionTitle>
+        <SectionTitle icon={DollarSign}>1. Fiyatlandırma: Değer Bazlı Paketleme</SectionTitle>
         <Card className="p-4 space-y-4">
           <div>
-            <h4 className="text-sm font-semibold text-navy-900 mb-2">Modul Satma, Sonuc Sat</h4>
+            <h4 className="text-sm font-semibold text-navy-900 mb-2">Modül Satma, Sonuç Sat</h4>
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-3">
                 <span className="text-red-500 line-through flex-shrink-0">"Flow Builder 500, Analytics 200, Marketing 300..."</span>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-emerald-700 font-medium">"Baslangic: Mesajlara otomatik cevap / Buyume: Musteriyi geri getir / Pro: Tam CRM"</span>
+                <span className="text-emerald-700 font-medium">"Başlangıç: Mesajlara otomatik cevap / Büyüme: Müşteriyi geri getir / Pro: Tam CRM"</span>
               </div>
             </div>
           </div>
@@ -1588,19 +1588,19 @@ function SaasTab() {
                 <tr className="border-b border-navy-100">
                   <th className="text-left py-2 pr-4 font-medium text-navy-500">Paket</th>
                   <th className="text-left py-2 pr-4 font-medium text-navy-500">Icerik</th>
-                  <th className="text-left py-2 font-medium text-navy-500">Hedef Musteri</th>
+                  <th className="text-left py-2 font-medium text-navy-500">Hedef Müşteri</th>
                 </tr>
               </thead>
               <tbody className="text-navy-700">
                 <tr className="border-b border-navy-50">
-                  <td className="py-2 pr-4"><Badge variant="default">Baslangic</Badge></td>
-                  <td className="py-2 pr-4">Flow + FAQ + Calisma Saatleri</td>
-                  <td className="py-2">"Mesajlara yetisemiyorum"</td>
+                  <td className="py-2 pr-4"><Badge variant="default">Başlangıç</Badge></td>
+                  <td className="py-2 pr-4">Flow + FAQ + Çalışma Saatleri</td>
+                  <td className="py-2">"Mesajlara yetişemiyorum"</td>
                 </tr>
                 <tr className="border-b border-navy-50">
-                  <td className="py-2 pr-4"><Badge variant="info">Buyume</Badge></td>
+                  <td className="py-2 pr-4"><Badge variant="info">Büyüme</Badge></td>
                   <td className="py-2 pr-4">+ Analytics + Outbound + Kampanya</td>
-                  <td className="py-2">"Musterileri geri getirmek istiyorum"</td>
+                  <td className="py-2">"Müşterileri geri getirmek istiyorum"</td>
                 </tr>
                 <tr>
                   <td className="py-2 pr-4"><Badge variant="success">Profesyonel</Badge></td>
@@ -1612,16 +1612,16 @@ function SaasTab() {
           </div>
 
           <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-lg">
-            <h5 className="text-sm font-semibold text-emerald-800 mb-1">Yillik Odeme Indirimi</h5>
+            <h5 className="text-sm font-semibold text-emerald-800 mb-1">Yıllık Ödeme İndirimi</h5>
             <p className="text-sm text-emerald-700">
-              Aylik x12 yerine 10 aylik ucret al (2 ay bedava). Churn'u <strong>%30-40 dusurur</strong> cunku
-              musteri 12 ay boyunca cikmaz ve o surede alisir. Bu mevcut <TabLink to="sectors">feature flag stratejisi</TabLink> ile uyumlu calisiyor.
+              Aylık x12 yerine 10 aylık ücret al (2 ay bedava). Churn'u <strong>%30-40 düşürür</strong> çünkü
+              müşteri 12 ay boyunca çıkmaz ve o sürede alışır. Bu mevcut <TabLink to="sectors">feature flag stratejisi</TabLink> ile uyumlu çalışıyor.
             </p>
           </div>
 
           <Warning>
-            Musteri "bu kadar para neden oduyorum?" diye sordiginda, <TabLink to="communication">aylik rapor sablonu</TabLink> ile
-            somut tasarruf rakamlarini goster.
+            Müşteri "bu kadar para neden ödüyorum?" diye sorduğunda, <TabLink to="communication">aylık rapor şablonu</TabLink> ile
+            somut tasarruf rakamlarını göster.
           </Warning>
         </Card>
       </div>
@@ -1629,10 +1629,10 @@ function SaasTab() {
       {/* ─── 2. Müşteri Sağlık Skoru ─────────────────────── */}
 
       <div>
-        <SectionTitle icon={Activity}>2. Musteri Saglik Skoru (Health Score)</SectionTitle>
+        <SectionTitle icon={Activity}>2. Müşteri Sağlık Skoru (Health Score)</SectionTitle>
         <Card className="p-4 space-y-4">
           <p className="text-sm text-navy-600">
-            Bir musterinin "iyi" mi "kotu" mu oldugunu hislere birakma, veriyle ol. Basit bir formul:
+            Bir müşterinin "iyi" mi "kötü" mü olduğunu hislere bırakma, veriyle ölç. Basit bir formül:
           </p>
 
           <div className="overflow-x-auto">
@@ -1646,12 +1646,12 @@ function SaasTab() {
               </thead>
               <tbody className="text-navy-700">
                 <tr className="border-b border-navy-50">
-                  <td className="py-2 pr-4">Son 7 gunde panel girisi var mi?</td>
+                  <td className="py-2 pr-4">Son 7 günde panel girişi var mı?</td>
                   <td className="text-center py-2 px-2">%25</td>
-                  <td className="py-2">Evet=100, Hayir=0</td>
+                  <td className="py-2">Evet=100, Hayır=0</td>
                 </tr>
                 <tr className="border-b border-navy-50">
-                  <td className="py-2 pr-4">Bu hafta flow calisti mi?</td>
+                  <td className="py-2 pr-4">Bu hafta flow çalıştı mı?</td>
                   <td className="text-center py-2 px-2">%25</td>
                   <td className="py-2">Evet=100, Hayir=0</td>
                 </tr>
@@ -1666,9 +1666,9 @@ function SaasTab() {
                   <td className="py-2">Evet=100, Hayir=0</td>
                 </tr>
                 <tr>
-                  <td className="py-2 pr-4">Son 30 gunde destek talebi var mi?</td>
+                  <td className="py-2 pr-4">Son 30 günde destek talebi var mı?</td>
                   <td className="text-center py-2 px-2">%15</td>
-                  <td className="py-2">Evet=50, Hayir=100</td>
+                  <td className="py-2">Evet=50, Hayır=100</td>
                 </tr>
               </tbody>
             </table>
@@ -1677,23 +1677,23 @@ function SaasTab() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-100 text-center">
               <div className="text-lg font-bold text-emerald-700">80-100</div>
-              <div className="text-xs text-emerald-600">Saglikli</div>
-              <div className="text-xs text-navy-400 mt-0.5">Upsell zamani</div>
+              <div className="text-xs text-emerald-600">Sağlıklı</div>
+              <div className="text-xs text-navy-400 mt-0.5">Upsell zamanı</div>
             </div>
             <div className="p-3 bg-amber-50 rounded-lg border border-amber-100 text-center">
               <div className="text-lg font-bold text-amber-700">60-79</div>
               <div className="text-xs text-amber-600">Dikkat</div>
-              <div className="text-xs text-navy-400 mt-0.5">Takip mesaji gonder</div>
+              <div className="text-xs text-navy-400 mt-0.5">Takip mesajı gönder</div>
             </div>
             <div className="p-3 bg-red-50 rounded-lg border border-red-100 text-center">
               <div className="text-lg font-bold text-red-700">0-59</div>
               <div className="text-xs text-red-600">Risk</div>
-              <div className="text-xs text-navy-400 mt-0.5">Hemen ara, <TabLink to="communication">churn sablonunu</TabLink> kullan</div>
+              <div className="text-xs text-navy-400 mt-0.5">Hemen ara, <TabLink to="communication">churn şablonunu</TabLink> kullan</div>
             </div>
           </div>
 
           <Tip>
-            Bu veriler zaten DB'de var (login tarihi, flow execution, FAQ sayisi). Bir endpoint + dashboard widget'i yeter.
+            Bu veriler zaten DB'de var (login tarihi, flow execution, FAQ sayısı). Bir endpoint + dashboard widget'ı yeter.
             <TabLink to="actions">Aksiyon listesinde</TabLink> bu madde mevcut.
           </Tip>
         </Card>
@@ -1702,33 +1702,33 @@ function SaasTab() {
       {/* ─── 3. Aha Moment ───────────────────────────────── */}
 
       <div>
-        <SectionTitle icon={Zap}>3. "Aha Moment" Hizini Ol</SectionTitle>
+        <SectionTitle icon={Zap}>3. "Aha Moment" Hızını Ölç</SectionTitle>
         <Card className="p-4 space-y-3">
           <p className="text-sm text-navy-600">
-            SaaS'in en kritik metrigi: musteri ilk degeri ne kadar hizli gordu?
+            SaaS'in en kritik metriği: müşteri ilk değeri ne kadar hızlı gördü?
           </p>
           <div className="p-3 bg-brand-50 border border-brand-100 rounded-lg">
             <p className="text-sm text-brand-800 font-medium">
-              Invekto icin "aha moment" = Musterinin telefonundan gonderdigi mesaja otomatik cevap donmesi.
+              Invekto için "aha moment" = Müşterinin telefonundan gönderdiği mesaja otomatik cevap dönmesi.
             </p>
           </div>
           <div className="space-y-2 text-sm text-navy-700">
             <div className="flex items-start gap-2">
               <ChevronRight className="w-4 h-4 text-brand-500 flex-shrink-0 mt-0.5" />
-              <span><strong>Ol:</strong> Tenant olusturma → ilk flow aktif olma suresi</span>
+              <span><strong>Ölç:</strong> Tenant oluşturma → ilk flow aktif olma süresi</span>
             </div>
             <div className="flex items-start gap-2">
               <ChevronRight className="w-4 h-4 text-brand-500 flex-shrink-0 mt-0.5" />
-              <span><strong>Ol:</strong> Ilk flow aktif → ilk otomatik cevap suresi</span>
+              <span><strong>Ölç:</strong> İlk flow aktif → ilk otomatik cevap süresi</span>
             </div>
             <div className="flex items-start gap-2">
               <ChevronRight className="w-4 h-4 text-brand-500 flex-shrink-0 mt-0.5" />
-              <span><strong>Hedef:</strong> Ilk 1 saatte aha moment. 24 saatten uzunsa kayip riski cok yuksek.</span>
+              <span><strong>Hedef:</strong> İlk 1 saatte aha moment. 24 saatten uzunsa kayıp riski çok yüksek.</span>
             </div>
           </div>
           <Tip>
             <TabLink to="onboarding">Onboarding adimlari</TabLink> bu hedefe gore tasarlandi:
-            Adim 5 (ilk akis) + Adim 6 (canli test) = aha moment.
+            Adım 5 (ilk akış) + Adım 6 (canlı test) = aha moment.
           </Tip>
         </Card>
       </div>
@@ -1736,24 +1736,24 @@ function SaasTab() {
       {/* ─── 4. Ölçekleme ────────────────────────────────── */}
 
       <div>
-        <SectionTitle icon={Users}>4. Onboarding'i Olceklendir</SectionTitle>
+        <SectionTitle icon={Users}>4. Onboarding'i Ölçeklendir</SectionTitle>
         <Card className="p-4 space-y-4">
           <p className="text-sm text-navy-600">
-            Su anda her musteriye bizzat kurulum yapiyorsun. Bu 5 musteriye kadar calisir, 50'de coker.
+            Şu anda her müşteriye bizzat kurulum yapıyorsun. Bu 5 müşteriye kadar çalışır, 50'de çöker.
           </p>
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-navy-100">
-                  <th className="text-left py-2 pr-4 font-medium text-navy-500">Simdi (1-10)</th>
-                  <th className="text-left py-2 pr-4 font-medium text-navy-500">Yakinda (10-50)</th>
-                  <th className="text-left py-2 font-medium text-navy-500">Olcekte (50+)</th>
+                  <th className="text-left py-2 pr-4 font-medium text-navy-500">Şimdi (1-10)</th>
+                  <th className="text-left py-2 pr-4 font-medium text-navy-500">Yakında (10-50)</th>
+                  <th className="text-left py-2 font-medium text-navy-500">Ölçekte (50+)</th>
                 </tr>
               </thead>
               <tbody className="text-navy-700">
                 <tr className="border-b border-navy-50">
-                  <td className="py-2 pr-4">Her musteriye bizzat kurulum</td>
+                  <td className="py-2 pr-4">Her müşteriye bizzat kurulum</td>
                   <td className="py-2 pr-4">Template flow + self-service setup</td>
                   <td className="py-2">Tamamen self-service + otomatik onboarding</td>
                 </tr>
@@ -1763,17 +1763,17 @@ function SaasTab() {
                   <td className="py-2">In-app guided tour + email dizisi</td>
                 </tr>
                 <tr>
-                  <td className="py-2 pr-4">Manuel FAQ girisi</td>
-                  <td className="py-2 pr-4">Sektor bazli hazir FAQ paketleri</td>
-                  <td className="py-2">AI ile web sitesinden FAQ cekme</td>
+                  <td className="py-2 pr-4">Manuel FAQ girişi</td>
+                  <td className="py-2 pr-4">Sektör bazlı hazır FAQ paketleri</td>
+                  <td className="py-2">AI ile web sitesinden FAQ çekme</td>
                 </tr>
               </tbody>
             </table>
           </div>
 
           <Warning>
-            Acil: <TabLink to="sectors">Sektor senaryolari</TabLink> sekmesindeki her sektor icin
-            template flow + FAQ paketi olustur. Yeni tenant acilirken "sektor sec" → hazir set otomatik yuklensin.
+            Acil: <TabLink to="sectors">Sektör Senaryoları</TabLink> sekmesindeki her sektör için
+            template flow + FAQ paketi oluştur. Yeni tenant açılırken "sektör seç" → hazır set otomatik yüklensin.
           </Warning>
         </Card>
       </div>
@@ -1791,9 +1791,9 @@ function SaasTab() {
                 <span className="text-red-700 font-bold text-sm">1</span>
               </div>
               <div>
-                <h5 className="text-sm font-semibold text-red-800">Sessizlik: 2 haftadir panele girmemis</h5>
+                <h5 className="text-sm font-semibold text-red-800">Sessizlik: 2 haftadır panele girmemiş</h5>
                 <p className="text-xs text-red-700 mt-0.5">
-                  Yapilacak: <TabLink to="communication">Churn riski sablonunu</TabLink> gonder. "Sisteminiz sizin icin [X] mesaj cevapladi" de, "Neden girmiyorsunuz?" deme.
+                  Yapılacak: <TabLink to="communication">Churn riski şablonunu</TabLink> gönder. "Sisteminiz sizin için [X] mesaj cevapladı" de, "Neden girmiyorsunuz?" deme.
                 </p>
               </div>
             </div>
@@ -1802,9 +1802,9 @@ function SaasTab() {
                 <span className="text-amber-700 font-bold text-sm">2</span>
               </div>
               <div>
-                <h5 className="text-sm font-semibold text-amber-800">Sikayet artisi: "Calismiyor", "Anlamadim", "Zor"</h5>
+                <h5 className="text-sm font-semibold text-amber-800">Şikayet artışı: "Çalışmıyor", "Anlamadım", "Zor"</h5>
                 <p className="text-xs text-amber-700 mt-0.5">
-                  Yapilacak: Hemen basitlestir. Modulleri kapa, akisi sadece temel <TabLink to="features">ozelliklerle</TabLink> birak.
+                  Yapılacak: Hemen basitleştir. Modülleri kapa, akışı sadece temel <TabLink to="features">ozelliklerle</TabLink> bırak.
                 </p>
               </div>
             </div>
@@ -1813,25 +1813,25 @@ function SaasTab() {
                 <span className="text-navy-700 font-bold text-sm">3</span>
               </div>
               <div>
-                <h5 className="text-sm font-semibold text-navy-800">Odeme gecikmesi: Fatura 1 haftadir odenmemis</h5>
+                <h5 className="text-sm font-semibold text-navy-800">Ödeme gecikmesi: Fatura 1 haftadır ödenmemiş</h5>
                 <p className="text-xs text-navy-600 mt-0.5">
-                  Yapilacak: Direkt fatura konusu acma. "Nasilsiniz, bir sorun var mi?" de, fatura kendilginden acilir.
+                  Yapılacak: Direkt fatura konusu açma. "Nasılsınız, bir sorun var mı?" de, fatura kendiliğinden açılır.
                 </p>
               </div>
             </div>
           </div>
 
-          <Tip>Churn olustuktan sonra mudahale etmek cok gec. Sinyal gordugunde hareket et, bekleme.</Tip>
+          <Tip>Churn oluştuktan sonra müdahale etmek çok geç. Sinyal gördüğünde hareket et, bekleme.</Tip>
         </Card>
       </div>
 
       {/* ─── 6. Upsell ───────────────────────────────────── */}
 
       <div>
-        <SectionTitle icon={Repeat}>6. Upsell: Mevcut Musteriden Daha Fazla Gelir</SectionTitle>
+        <SectionTitle icon={Repeat}>6. Upsell: Mevcut Müşteriden Daha Fazla Gelir</SectionTitle>
         <Card className="p-4 space-y-3">
           <p className="text-sm text-navy-600">
-            Yeni musteri kazanmak, mevcut musteriye satmaktan <strong>5-7 kat daha pahali</strong>.
+            Yeni müşteri kazanmak, mevcut müşteriye satmaktan <strong>5-7 kat daha pahalı</strong>.
           </p>
 
           <div className="overflow-x-auto">
@@ -1844,16 +1844,16 @@ function SaasTab() {
               </thead>
               <tbody className="text-navy-700">
                 <tr className="border-b border-navy-50">
-                  <td className="py-2 pr-4">Aylik mesaj hacmi 500'u gecti</td>
-                  <td className="py-2">"Hacminiz artti, Analytics ile trendleri gorebilirsiniz"</td>
+                  <td className="py-2 pr-4">Aylık mesaj hacmi 500'u geçti</td>
+                  <td className="py-2">"Hacminiz arttı, Analytics ile trendleri görebilirsiniz"</td>
                 </tr>
                 <tr className="border-b border-navy-50">
                   <td className="py-2 pr-4">Flow'da 3+ dallanma var</td>
-                  <td className="py-2">"AI Intent ile otomatik dallandirma yapabiliriz"</td>
+                  <td className="py-2">"AI Intent ile otomatik dallandırma yapabiliriz"</td>
                 </tr>
                 <tr className="border-b border-navy-50">
                   <td className="py-2 pr-4">FAQ'dan cok cevap donuyor</td>
-                  <td className="py-2">"Knowledge Base genisletip Sentiment ile memnuniyeti olcelim"</td>
+                  <td className="py-2">"Knowledge Base genişletip Sentiment ile memnuniyeti ölçelim"</td>
                 </tr>
                 <tr>
                   <td className="py-2 pr-4">"Toplu mesaj atabilir miyim?" diye sordu</td>
@@ -1864,8 +1864,8 @@ function SaasTab() {
           </div>
 
           <Tip>
-            <strong>Zamanlama:</strong> <TabLink to="communication">Aylik rapor</TabLink> gonderdikten sonra.
-            "Bu ay 500 mesaj geldi, %60'i otomatik cevaplandi. Analytics ile bu orani %80'e cikarabiliriz." — veri + oneri + somut hedef.
+            <strong>Zamanlama:</strong> <TabLink to="communication">Aylık rapor</TabLink> gönderdikten sonra.
+            "Bu ay 500 mesaj geldi, %60'i otomatik cevaplandi. Analytics ile bu orani %80'e cikarabiliriz." — veri + öneri + somut hedef.
           </Tip>
         </Card>
       </div>
@@ -1873,22 +1873,22 @@ function SaasTab() {
       {/* ─── 7. Referral ─────────────────────────────────── */}
 
       <div>
-        <SectionTitle icon={UserPlus}>7. Referral: Musteri Musteri Getirsin</SectionTitle>
+        <SectionTitle icon={UserPlus}>7. Referral: Müşteri Müşteri Getirsin</SectionTitle>
         <Card className="p-4 space-y-3">
-          <p className="text-sm text-navy-600">En guclu satis kanali: memnun musterinin tavsiyesi.</p>
+          <p className="text-sm text-navy-600">En güçlü satış kanalı: memnun müşterinin tavsiyesi.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="p-3 bg-brand-50 rounded-lg border border-brand-100">
-              <h5 className="text-sm font-semibold text-brand-800">Getiren Musteri</h5>
-              <p className="text-xs text-brand-700 mt-1">1 ay ucretsiz veya %20 indirim</p>
+              <h5 className="text-sm font-semibold text-brand-800">Getiren Müşteri</h5>
+              <p className="text-xs text-brand-700 mt-1">1 ay ücretsiz veya %20 indirim</p>
             </div>
             <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-100">
-              <h5 className="text-sm font-semibold text-emerald-800">Gelen Musteri</h5>
-              <p className="text-xs text-emerald-700 mt-1">Ilk ay %20 indirim</p>
+              <h5 className="text-sm font-semibold text-emerald-800">Gelen Müşteri</h5>
+              <p className="text-xs text-emerald-700 mt-1">İlk ay %20 indirim</p>
             </div>
           </div>
           <Tip>
-            Ne zaman iste: Health Score 80+ olan musteriye <TabLink to="communication">aylik rapor</TabLink> sonrasinda.
-            "Cevrenizdeki isletmelere de onerebilirsiniz, referans linkiniz: [link]"
+            Ne zaman iste: Health Score 80+ olan müşteriye <TabLink to="communication">aylık rapor</TabLink> sonrasında.
+            "Çevrenizdeki işletmelere de önerebilirsiniz, referans linkiniz: [link]"
           </Tip>
         </Card>
       </div>
@@ -1896,10 +1896,10 @@ function SaasTab() {
       {/* ─── 8. Yapışkanlık ──────────────────────────────── */}
 
       <div>
-        <SectionTitle icon={Heart}>8. "Yapiskan" Urun Yap</SectionTitle>
+        <SectionTitle icon={Heart}>8. "Yapışkan" Ürün Yap</SectionTitle>
         <Card className="p-4 space-y-3">
           <p className="text-sm text-navy-600">
-            Musterinin ayrilma maliyetini "sozlesme cezasi" ile degil, <strong>biriken deger</strong> ile yukselt.
+            Müşterinin ayrılma maliyetini "sözleşme cezası" ile değil, <strong>biriken değer</strong> ile yükselt.
           </p>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -1912,25 +1912,25 @@ function SaasTab() {
               <tbody className="text-navy-700">
                 <tr className="border-b border-navy-50">
                   <td className="py-2 pr-4">50+ FAQ girisi</td>
-                  <td className="py-2">Baska yere tasimak zahmetli</td>
+                  <td className="py-2">Başka yere taşımak zahmetli</td>
                 </tr>
                 <tr className="border-b border-navy-50">
-                  <td className="py-2 pr-4">6 aylik analiz verisi</td>
+                  <td className="py-2 pr-4">6 aylık analiz verisi</td>
                   <td className="py-2">Gecmisi kaybeder</td>
                 </tr>
                 <tr className="border-b border-navy-50">
-                  <td className="py-2 pr-4">Ozellesmis 10+ flow</td>
-                  <td className="py-2">Sifirdan kurmak 2 hafta surer</td>
+                  <td className="py-2 pr-4">Özelleşmiş 10+ flow</td>
+                  <td className="py-2">Sıfırdan kurmak 2 hafta sürer</td>
                 </tr>
                 <tr>
-                  <td className="py-2 pr-4">Musteri aliskanligi</td>
-                  <td className="py-2">"WhatsApp'a yaziyorum, cevap geliyor" refleksi</td>
+                  <td className="py-2 pr-4">Müşteri alışkanlığı</td>
+                  <td className="py-2">"WhatsApp'a yazıyorum, cevap geliyor" refleksi</td>
                 </tr>
               </tbody>
             </table>
           </div>
           <Tip>
-            Ilk aydan FAQ doldurtmaya, flow ozellestirtmeye tesvik et. Ne kadar cok veri girerse, o kadar bagimli olur.
+            İlk aydan FAQ doldurtmaya, flow özelleştirtmeye teşvik et. Ne kadar çok veri girerse, o kadar bağımlı olur.
             <TabLink to="onboarding">Onboarding adim 7</TabLink> (FAQ doldurmak) bu yuzden kritik.
           </Tip>
         </Card>
@@ -1939,38 +1939,38 @@ function SaasTab() {
       {/* ─── 9. Rakip Sorusu ─────────────────────────────── */}
 
       <div>
-        <SectionTitle icon={Shield}>9. Rakip Sorusuyla Basa Cik</SectionTitle>
+        <SectionTitle icon={Shield}>9. Rakip Sorusuyla Başa Çık</SectionTitle>
         <Card className="p-4 space-y-3">
-          <p className="text-sm text-navy-600">Musteri "Neden sizi seceyim?" dediginde:</p>
+          <p className="text-sm text-navy-600">Müşteri "Neden sizi seçeyim?" dediğinde:</p>
           <div className="space-y-2 text-sm">
             <div className="flex items-center gap-3">
-              <span className="text-red-500 line-through flex-shrink-0">Rakibi kotuleme, ozellik listesi karsilastirma</span>
+              <span className="text-red-500 line-through flex-shrink-0">Rakibi kötüleme, özellik listesi karşılaştırma</span>
             </div>
             <div className="flex items-center gap-3">
               <ArrowRight className="w-3 h-3 text-emerald-500 flex-shrink-0" />
-              <span className="text-emerald-700 font-medium">Kendi farkini soyle:</span>
+              <span className="text-emerald-700 font-medium">Kendi farkını söyle:</span>
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
             <div className="p-2.5 bg-brand-50 rounded-lg border border-brand-100">
               <div className="text-xs font-semibold text-brand-700">Yerel Destek</div>
-              <div className="text-xs text-brand-600 mt-0.5">Turkce konusuyorsun, arayinca aciyorsun</div>
+              <div className="text-xs text-brand-600 mt-0.5">Türkçe konuşuyorsun, arayınca açıyorsun</div>
             </div>
             <div className="p-2.5 bg-brand-50 rounded-lg border border-brand-100">
               <div className="text-xs font-semibold text-brand-700">Hizli Kurulum</div>
-              <div className="text-xs text-brand-600 mt-0.5">1 saat icinde calisir durumda</div>
+              <div className="text-xs text-brand-600 mt-0.5">1 saat içinde çalışır durumda</div>
             </div>
             <div className="p-2.5 bg-brand-50 rounded-lg border border-brand-100">
               <div className="text-xs font-semibold text-brand-700">Kisisellestirme</div>
-              <div className="text-xs text-brand-600 mt-0.5">Musteriye ozel flow yaparsın</div>
+              <div className="text-xs text-brand-600 mt-0.5">Müşteriye özel flow yaparsın</div>
             </div>
             <div className="p-2.5 bg-brand-50 rounded-lg border border-brand-100">
               <div className="text-xs font-semibold text-brand-700">Fiyat</div>
-              <div className="text-xs text-brand-600 mt-0.5">Dolar bazli degil, TL bazli</div>
+              <div className="text-xs text-brand-600 mt-0.5">Dolar bazlı değil, TL bazlı</div>
             </div>
           </div>
           <div className="p-3 bg-navy-50 rounded-lg text-sm text-navy-700 italic">
-            "Digerleri de yapar ama ben 1 saatte kurar, sorun olursa WhatsApp'tan yazarsiniz, 5 dakikada donerim."
+            "Diğerleri de yapar ama ben 1 saatte kurar, sorun olursa WhatsApp'tan yazarsınız, 5 dakikada dönerim."
           </div>
         </Card>
       </div>
@@ -1978,32 +1978,32 @@ function SaasTab() {
       {/* ─── 10. Destek Süreci ───────────────────────────── */}
 
       <div>
-        <SectionTitle icon={Handshake}>10. Destek Surecini Yapilandir</SectionTitle>
+        <SectionTitle icon={Handshake}>10. Destek Sürecini Yapılandır</SectionTitle>
         <Card className="p-4 space-y-3">
           <p className="text-sm text-navy-600">
-            WhatsApp'tan destek vermek samimi ama olceklenmiyor ve kaybolur.
+            WhatsApp'tan destek vermek samimi ama ölçeklenmiyor ve kaybolur.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <h5 className="text-sm font-semibold text-navy-900 mb-2">Kisa Vadede</h5>
               <ul className="text-sm text-navy-600 space-y-1 pl-5 list-disc">
                 <li>Her destek talebini bir yere not et (Notion, Excel, hatta txt)</li>
-                <li>En cok hangi konuda soru geldigini takip et</li>
-                <li>Tekrarlayan sorular icin hazir cevap sablonlari olustur</li>
+                <li>En çok hangi konuda soru geldiğini takip et</li>
+                <li>Tekrarlayan sorular için hazır cevap şablonları oluştur</li>
               </ul>
             </div>
             <div>
               <h5 className="text-sm font-semibold text-navy-900 mb-2">Orta Vadede</h5>
               <ul className="text-sm text-navy-600 space-y-1 pl-5 list-disc">
                 <li>Dashboard'a "Destek Talebi" butonu ekle</li>
-                <li>Musterinin panelinden sorun bildirmesini sagla</li>
-                <li>Basit bir ticket sistemi (karmasik olmasin)</li>
+                <li>Müşterinin panelinden sorun bildirmesini sağla</li>
+                <li>Basit bir ticket sistemi (karmaşık olmasın)</li>
               </ul>
             </div>
           </div>
           <Tip>
-            Tekrarlayan destek konularini <TabLink to="features">FAQ ve Knowledge Base'e</TabLink> ekle.
-            En iyi destek, musterinin destek istemeye ihtiyac duymamasidir.
+            Tekrarlayan destek konularını <TabLink to="features">FAQ ve Knowledge Base'e</TabLink> ekle.
+            En iyi destek, müşterinin destek istemeye ihtiyaç duymamasıdır.
           </Tip>
         </Card>
       </div>
@@ -2014,7 +2014,7 @@ function SaasTab() {
         <SectionTitle icon={BarChart3}>11. Temel Metrikleri Takip Et</SectionTitle>
         <Card className="p-4 space-y-3">
           <p className="text-sm text-navy-600">
-            Baslangiçta olsan bile su 5 metrigi her ay bir kagida yaz. Olcmedigin seyi iyilestiremezsin.
+            Başlangıçta olsan bile şu 5 metriği her ay bir kağıda yaz. Ölçmediğin şeyi iyileştiremezsin.
           </p>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -2028,17 +2028,17 @@ function SaasTab() {
               <tbody className="text-navy-700">
                 <tr className="border-b border-navy-50">
                   <td className="py-2 pr-4 font-medium">MRR</td>
-                  <td className="py-2 pr-4">Aylik tekrarlayan gelir</td>
+                  <td className="py-2 pr-4">Aylık tekrarlayan gelir</td>
                   <td className="py-2"><Badge variant="success">Her ay artsin</Badge></td>
                 </tr>
                 <tr className="border-b border-navy-50">
                   <td className="py-2 pr-4 font-medium">Churn Rate</td>
-                  <td className="py-2 pr-4">Ayrilan musteri / toplam</td>
+                  <td className="py-2 pr-4">Ayrılan müşteri / toplam</td>
                   <td className="py-2"><Badge variant="warning">{'<'}%5/ay</Badge></td>
                 </tr>
                 <tr className="border-b border-navy-50">
                   <td className="py-2 pr-4 font-medium">Time-to-Value</td>
-                  <td className="py-2 pr-4">Kurulumdan ilk aha moment'e sure</td>
+                  <td className="py-2 pr-4">Kurulumdan ilk aha moment'e süre</td>
                   <td className="py-2"><Badge variant="warning">{'<'}1 saat</Badge></td>
                 </tr>
                 <tr className="border-b border-navy-50">
@@ -2048,15 +2048,15 @@ function SaasTab() {
                 </tr>
                 <tr>
                   <td className="py-2 pr-4 font-medium">DAU/MAU</td>
-                  <td className="py-2 pr-4">Son 7 gunde giris yapan / toplam</td>
+                  <td className="py-2 pr-4">Son 7 günde giriş yapan / toplam</td>
                   <td className="py-2"><Badge variant="warning">{'>'}%70</Badge></td>
                 </tr>
               </tbody>
             </table>
           </div>
           <Tip>
-            Bunu simdiye kadar Excel tablosuna bile yazsan yeter. Ama <strong>yaz</strong>.
-            Tum bu metriklerin iyilesmesi icin <TabLink to="actions">aksiyon listesini</TabLink> takip et.
+            Bunu şimdiye kadar Excel tablosuna bile yazsan yeter. Ama <strong>yaz</strong>.
+            Tüm bu metriklerin iyileşmesi için <TabLink to="actions">aksiyon listesini</TabLink> takip et.
           </Tip>
         </Card>
       </div>
@@ -2064,25 +2064,25 @@ function SaasTab() {
       {/* ─── Öncelik Sırası ──────────────────────────────── */}
 
       <div>
-        <SectionTitle icon={Target}>Oncelik Sirasi</SectionTitle>
+        <SectionTitle icon={Target}>Öncelik Sırası</SectionTitle>
         <Card className="p-4">
-          <p className="text-sm text-navy-600 mb-3">Bunlarin hepsini birden yapma. Sira:</p>
+          <p className="text-sm text-navy-600 mb-3">Bunların hepsini birden yapma. Sıra:</p>
           <div className="space-y-2">
             <div className="flex items-center gap-3">
               <Badge variant="error">Hemen</Badge>
-              <span className="text-sm text-navy-700">Sektor bazli template flow'lari olustur</span>
+              <span className="text-sm text-navy-700">Sektör bazlı template flow'ları oluştur</span>
             </div>
             <div className="flex items-center gap-3">
               <Badge variant="warning">Bu Ay</Badge>
-              <span className="text-sm text-navy-700">Fiyatlandirma paketlerini belirle (Baslangic/Buyume/Pro)</span>
+              <span className="text-sm text-navy-700">Fiyatlandırma paketlerini belirle (Başlangıç/Büyüme/Pro)</span>
             </div>
             <div className="flex items-center gap-3">
               <Badge variant="info">Bu Ceyrek</Badge>
-              <span className="text-sm text-navy-700">Health Score widget'ini dashboard'a ekle</span>
+              <span className="text-sm text-navy-700">Health Score widget'ını dashboard'a ekle</span>
             </div>
             <div className="flex items-center gap-3">
-              <Badge variant="default">Surekli</Badge>
-              <span className="text-sm text-navy-700">MRR ve churn takibi, aylik rapor disiplini</span>
+              <Badge variant="default">Sürekli</Badge>
+              <span className="text-sm text-navy-700">MRR ve churn takibi, aylık rapor disiplini</span>
             </div>
           </div>
         </Card>
@@ -2097,14 +2097,14 @@ function ActionsTab() {
       <div>
         <SectionTitle icon={CheckSquare}>Aksiyon Listesi</SectionTitle>
         <p className="text-sm text-navy-500 mb-4">
-          Asagidaki listeyi siraliyla takip et. Tikladigin maddeler isaretlenir (sadece bu oturum icin).
-          Onceligi yuksek olanlari once yap. SaaS stratejisi maddeleri de dahil.
+          Aşağıdaki listeyi sırayla takip et. Tıkladığın maddeler işaretlenir (sadece bu oturum için).
+          Önceliği yüksek olanları önce yap. SaaS stratejisi maddeleri de dahil.
         </p>
         <div className="flex flex-wrap gap-2 text-sm">
           <span className="text-navy-400">Ilgili sekmeler:</span>
           <TabLink to="onboarding">Onboarding Adimlari</TabLink>
           <TabLink to="saas">SaaS Stratejisi</TabLink>
-          <TabLink to="communication">Musteri Iletisimi</TabLink>
+          <TabLink to="communication">Müşteri İletişimi</TabLink>
         </div>
       </div>
       <ActionList />

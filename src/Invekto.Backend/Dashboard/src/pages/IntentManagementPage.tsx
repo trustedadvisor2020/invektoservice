@@ -21,7 +21,7 @@ export function IntentManagementPage() {
   useEffect(() => {
     api.getOpsTenants()
       .then(r => setTenants(r.tenants))
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Tenant listesi yuklenemedi'));
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Tenant listesi yüklenemedi'));
   }, []);
 
   const loadIntents = useCallback(async () => {
@@ -32,7 +32,7 @@ export function IntentManagementPage() {
       const r = await api.getIntents(selectedTenant);
       setIntents(r.intents);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Yuklenemedi');
+      setError(e instanceof Error ? e.message : 'Yüklenemedi');
     } finally {
       setLoading(false);
     }
@@ -59,7 +59,7 @@ export function IntentManagementPage() {
       setEditingId(null);
       await loadIntents();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Guncelleme basarisiz');
+      setError(e instanceof Error ? e.message : 'Güncelleme başarısız');
     }
   };
 
@@ -73,7 +73,7 @@ export function IntentManagementPage() {
       setNewKeywords('');
       await loadIntents();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Ekleme basarisiz');
+      setError(e instanceof Error ? e.message : 'Ekleme başarısız');
     }
   };
 
@@ -83,7 +83,7 @@ export function IntentManagementPage() {
       setDeleteConfirm(null);
       await loadIntents();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Silme basarisiz');
+      setError(e instanceof Error ? e.message : 'Silme başarısız');
     }
   };
 
@@ -93,7 +93,7 @@ export function IntentManagementPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold text-navy-900 flex items-center gap-2">
-            <Brain className="w-5 h-5" /> Intent Yonetimi
+            <Brain className="w-5 h-5" /> Intent Yönetimi
           </h1>
           <p className="text-xs text-navy-400">{intents.length} intent</p>
         </div>
@@ -119,7 +119,7 @@ export function IntentManagementPage() {
           onChange={e => { setSelectedTenant(Number(e.target.value)); setSearch(''); }}
           className="text-xs border border-navy-200 rounded px-2 py-1.5 bg-white min-w-[200px]"
         >
-          <option value={0}>Tenant sec...</option>
+          <option value={0}>Tenant seç...</option>
           {tenants.filter(t => t.isActive).map(t => (
             <option key={t.tenantId} value={t.tenantId}>{t.tenantName} ({t.tenantId})</option>
           ))}
@@ -155,14 +155,14 @@ export function IntentManagementPage() {
           </div>
           <input
             type="text"
-            placeholder="Intent adi (ornegin: product_inquiry)"
+            placeholder="Intent adı (örneğin: product_inquiry)"
             value={newName}
             onChange={e => setNewName(e.target.value)}
             className="w-full text-xs border border-navy-200 rounded px-2 py-1.5"
           />
           <input
             type="text"
-            placeholder="Keywords (virgul ile ayir: fiyat, ucret, para)"
+            placeholder="Keywords (virgül ile ayır: fiyat, ücret, para)"
             value={newKeywords}
             onChange={e => setNewKeywords(e.target.value)}
             className="w-full text-xs border border-navy-200 rounded px-2 py-1.5"
@@ -180,7 +180,7 @@ export function IntentManagementPage() {
       {/* No tenant selected */}
       {selectedTenant === 0 && (
         <div className="bg-white rounded-lg border border-navy-100 px-3 py-8 text-center text-xs text-navy-400">
-          Yukaridaki dropdown'dan bir tenant secin
+          Yukarıdaki dropdown'dan bir tenant seçin
         </div>
       )}
 
@@ -193,9 +193,9 @@ export function IntentManagementPage() {
                 <th className="text-left px-3 py-2 font-medium w-8">#</th>
                 <th className="text-left px-3 py-2 font-medium">Intent</th>
                 <th className="text-left px-3 py-2 font-medium">Keywords</th>
-                <th className="text-center px-3 py-2 font-medium w-16">Ornek</th>
-                <th className="text-center px-3 py-2 font-medium w-20">Guven</th>
-                <th className="text-right px-3 py-2 font-medium w-20">Islem</th>
+                <th className="text-center px-3 py-2 font-medium w-16">Örnek</th>
+                <th className="text-center px-3 py-2 font-medium w-20">Güven</th>
+                <th className="text-right px-3 py-2 font-medium w-20">İşlem</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-navy-50">
@@ -218,7 +218,7 @@ export function IntentManagementPage() {
                           value={editKeywords}
                           onChange={e => setEditKeywords(e.target.value)}
                           className="w-full text-xs border border-brand-300 rounded px-1.5 py-1"
-                          placeholder="virgul ile ayir"
+                          placeholder="virgül ile ayır"
                         />
                       </td>
                       <td className="px-3 py-2 text-center text-navy-400">{intent.sample_count}</td>
@@ -230,7 +230,7 @@ export function IntentManagementPage() {
                           <button onClick={handleSave} className="p-1 rounded hover:bg-emerald-50" title="Kaydet">
                             <Save className="w-3.5 h-3.5 text-emerald-600" />
                           </button>
-                          <button onClick={() => setEditingId(null)} className="p-1 rounded hover:bg-navy-50" title="Iptal">
+                          <button onClick={() => setEditingId(null)} className="p-1 rounded hover:bg-navy-50" title="İptal">
                             <X className="w-3.5 h-3.5 text-navy-400" />
                           </button>
                         </div>
@@ -291,7 +291,7 @@ export function IntentManagementPage() {
               {filtered.length === 0 && !loading && (
                 <tr>
                   <td colSpan={6} className="px-3 py-8 text-center text-navy-400">
-                    {intents.length === 0 ? 'Bu tenant icin intent bulunamadi' : 'Arama sonucu yok'}
+                    {intents.length === 0 ? 'Bu tenant için intent bulunamadı' : 'Arama sonucu yok'}
                   </td>
                 </tr>
               )}

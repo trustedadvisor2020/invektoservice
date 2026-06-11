@@ -36,7 +36,7 @@ export function DependencyMap({ services }: DependencyMapProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Servis Bagimliliklari</CardTitle>
+        <CardTitle>Servis Bağımlılıkları</CardTitle>
       </CardHeader>
       <CardContent>
         <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full" style={{ maxHeight: '420px' }}>
@@ -124,9 +124,9 @@ export function DependencyMap({ services }: DependencyMapProps) {
             <circle cx="6" cy="6" r="4" fill="#10b981" />
             <text x="16" y="10" fill="#6b7280" fontSize="11">OK</text>
             <circle cx="52" cy="6" r="4" fill="#f59e0b" />
-            <text x="62" y="10" fill="#6b7280" fontSize="11">Dusuk</text>
+            <text x="62" y="10" fill="#6b7280" fontSize="11">Düşük</text>
             <circle cx="120" cy="6" r="4" fill="#ef4444" />
-            <text x="130" y="10" fill="#6b7280" fontSize="11">Kapali</text>
+            <text x="130" y="10" fill="#6b7280" fontSize="11">Kapalı</text>
           </g>
         </svg>
       </CardContent>

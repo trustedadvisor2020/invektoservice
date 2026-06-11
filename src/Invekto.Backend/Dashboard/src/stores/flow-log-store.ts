@@ -37,7 +37,7 @@ export const useFlowLogStore = create<FlowLogState>((set, get) => ({
       const res = await api.getFlowExecutions(tenantId, flowId, { limit: 50 });
       set({ executions: res.items, total: res.total, isLoading: false });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '[INV-AT-041] Log listesi yuklenemedi';
+      const msg = err instanceof Error ? err.message : '[INV-AT-041] Log listesi yüklenemedi';
       set({ error: msg, isLoading: false });
     }
   },
@@ -48,7 +48,7 @@ export const useFlowLogStore = create<FlowLogState>((set, get) => ({
       const detail = await api.getFlowExecution(tenantId, flowId, logId);
       set({ selectedExecution: detail, isLoadingDetail: false });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '[INV-AT-041] Log detayi yuklenemedi';
+      const msg = err instanceof Error ? err.message : '[INV-AT-041] Log detayı yüklenemedi';
       set({ error: msg, isLoadingDetail: false });
     }
   },

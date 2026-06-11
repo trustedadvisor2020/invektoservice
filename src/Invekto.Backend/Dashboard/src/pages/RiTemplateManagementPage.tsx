@@ -43,7 +43,7 @@ export function RiTemplateManagementPage() {
         : 'followupTemplates';
       setItems((data[key] as RiTemplateItem[]) ?? []);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Yuklenemedi');
+      setError(e instanceof Error ? e.message : 'Yüklenemedi');
     } finally {
       setLoading(false);
     }
@@ -73,7 +73,7 @@ export function RiTemplateManagementPage() {
       setEditingId(null);
       await loadTemplates();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Guncelleme basarisiz');
+      setError(e instanceof Error ? e.message : 'Güncelleme başarısız');
     }
   };
 
@@ -84,7 +84,7 @@ export function RiTemplateManagementPage() {
       setNewData({});
       await loadTemplates();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Olusturma basarisiz');
+      setError(e instanceof Error ? e.message : 'Oluşturma başarısız');
     }
   };
 
@@ -94,7 +94,7 @@ export function RiTemplateManagementPage() {
       setDeleteConfirm(null);
       await loadTemplates();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Silme basarisiz');
+      setError(e instanceof Error ? e.message : 'Silme başarısız');
     }
   };
 
@@ -103,7 +103,7 @@ export function RiTemplateManagementPage() {
       await api.toggleRiTemplate(tenantId, activeTab, item.id, !(item.isActive as boolean));
       await loadTemplates();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Toggle basarisiz');
+      setError(e instanceof Error ? e.message : 'Toggle başarısız');
     }
   };
 
@@ -117,7 +117,7 @@ export function RiTemplateManagementPage() {
   return (
     <div style={{ padding: '2rem', maxWidth: 1200 }}>
       <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1rem' }}>
-        RI Sablon Yonetimi
+        RI Şablon Yönetimi
       </h1>
 
       {/* Sector selector */}
@@ -126,13 +126,13 @@ export function RiTemplateManagementPage() {
           value={sectorInput}
           onChange={e => setSectorInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleLoadSector()}
-          placeholder="Sektor girin (orn: moda, saglik)"
+          placeholder="Sektör girin (örn: moda, sağlık)"
           style={{ padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 6, width: 260 }}
         />
         <button onClick={handleLoadSector} style={btnStyle}>
-          Yukle
+          Yükle
         </button>
-        {sector && <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>Aktif sektor: <b>{sector}</b></span>}
+        {sector && <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>Aktif sektör: <b>{sector}</b></span>}
       </div>
 
       {/* Tabs */}
@@ -157,7 +157,7 @@ export function RiTemplateManagementPage() {
       </div>
 
       {!sector ? (
-        <p style={{ color: '#9ca3af', padding: '2rem', textAlign: 'center' }}>Sektor seciniz.</p>
+        <p style={{ color: '#9ca3af', padding: '2rem', textAlign: 'center' }}>Sektör seçiniz.</p>
       ) : (
         <>
           {/* Toolbar */}
@@ -177,11 +177,11 @@ export function RiTemplateManagementPage() {
             <button onClick={() => { setShowAdd(true); setNewData({}); }} style={{ ...btnStyle, background: '#3b82f6', color: '#fff' }}>
               <Plus size={16} /> Ekle
             </button>
-            <span style={{ color: '#9ca3af', fontSize: '0.8rem' }}>{filtered.length} kayit</span>
+            <span style={{ color: '#9ca3af', fontSize: '0.8rem' }}>{filtered.length} kayıt</span>
           </div>
 
           {error && <div style={{ background: '#fef2f2', color: '#dc2626', padding: '0.75rem', borderRadius: 6, marginBottom: '1rem' }}>{error}</div>}
-          {loading && <p style={{ color: '#9ca3af' }}>Yukleniyor...</p>}
+          {loading && <p style={{ color: '#9ca3af' }}>Yükleniyor...</p>}
 
           {/* Add row */}
           {showAdd && (
@@ -219,7 +219,7 @@ export function RiTemplateManagementPage() {
                 <th style={thStyle}>{tabConfig.keyField}</th>
                 <th style={thStyle}>{tabConfig.descField}</th>
                 <th style={thStyle}>Aktif</th>
-                <th style={{ ...thStyle, width: 120 }}>Islemler</th>
+                <th style={{ ...thStyle, width: 120 }}>İşlemler</th>
               </tr>
             </thead>
             <tbody>
@@ -274,8 +274,8 @@ export function RiTemplateManagementPage() {
                       </div>
                     ) : (
                       <div style={{ display: 'flex', gap: '0.25rem' }}>
-                        <button onClick={() => handleEdit(item)} style={btnSmall} title="Duzenle">
-                          Duzenle
+                        <button onClick={() => handleEdit(item)} style={btnSmall} title="Düzenle">
+                          Düzenle
                         </button>
                         <button onClick={() => setDeleteConfirm(item.id)} style={{ ...btnSmall, color: '#ef4444' }} title="Sil">
                           <Trash2 size={12} />
@@ -290,7 +290,7 @@ export function RiTemplateManagementPage() {
 
           {!loading && filtered.length === 0 && (
             <p style={{ color: '#9ca3af', textAlign: 'center', padding: '2rem' }}>
-              Bu sektor icin {tabConfig.label} sablonu bulunamadi.
+              Bu sektör için {tabConfig.label} şablonu bulunamadı.
             </p>
           )}
         </>

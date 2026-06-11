@@ -114,10 +114,10 @@ export function MessagesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-navy-900">Tum Mesajlar</h1>
+          <h1 className="text-2xl font-bold text-navy-900">Tüm Mesajlar</h1>
           <p className="text-sm text-navy-400">
-            Tum firmalara gelen ve giden WhatsApp mesajlari
-            {total > 0 && <span className="ml-2 text-navy-300">({total} kayit)</span>}
+            Tüm firmalara gelen ve giden WhatsApp mesajları
+            {total > 0 && <span className="ml-2 text-navy-300">({total} kayıt)</span>}
           </p>
         </div>
         <button
@@ -140,7 +140,7 @@ export function MessagesPage() {
               onChange={e => setFilterTenant(e.target.value)}
               className="w-44 px-2.5 py-1.5 text-sm border border-navy-100 rounded-md focus:outline-none focus:ring-1 focus:ring-brand-500 bg-white"
             >
-              <option value="">Tumu</option>
+              <option value="">Tümü</option>
               {tenants.map(t => (
                 <option key={t.tenantId} value={t.tenantId}>
                   #{t.tenantId} — {t.tenantName}
@@ -159,13 +159,13 @@ export function MessagesPage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-navy-400 mb-1">Yon</label>
+            <label className="block text-xs font-medium text-navy-400 mb-1">Yön</label>
             <select
               value={filterDirection}
               onChange={e => setFilterDirection(e.target.value)}
               className="w-28 px-2.5 py-1.5 text-sm border border-navy-100 rounded-md focus:outline-none focus:ring-1 focus:ring-brand-500 bg-white"
             >
-              <option value="">Tumu</option>
+              <option value="">Tümü</option>
               <option value="in">Gelen</option>
               <option value="out">Giden</option>
             </select>
@@ -177,7 +177,7 @@ export function MessagesPage() {
               onChange={e => setFilterChannel(e.target.value)}
               className="w-44 px-2.5 py-1.5 text-sm border border-navy-100 rounded-md focus:outline-none focus:ring-1 focus:ring-brand-500 bg-white"
             >
-              <option value="">Tumu</option>
+              <option value="">Tümü</option>
               {channels.map(ch => (
                 <option key={ch.instanceId} value={ch.instanceId}>
                   {ch.instanceName}
@@ -186,7 +186,7 @@ export function MessagesPage() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-navy-400 mb-1">Baslangic</label>
+            <label className="block text-xs font-medium text-navy-400 mb-1">Başlangıç</label>
             <input
               type="date"
               value={filterFrom}
@@ -195,7 +195,7 @@ export function MessagesPage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-navy-400 mb-1">Bitis</label>
+            <label className="block text-xs font-medium text-navy-400 mb-1">Bitiş</label>
             <input
               type="date"
               value={filterTo}
@@ -224,23 +224,23 @@ export function MessagesPage() {
                 <th className="text-left px-4 py-2.5 font-medium text-navy-500">Firma</th>
                 <th className="text-left px-4 py-2.5 font-medium text-navy-500">Kanal</th>
                 <th className="text-left px-4 py-2.5 font-medium text-navy-500">Telefon</th>
-                <th className="text-left px-4 py-2.5 font-medium text-navy-500">Yon</th>
-                <th className="text-left px-4 py-2.5 font-medium text-navy-500">Gonderen</th>
+                <th className="text-left px-4 py-2.5 font-medium text-navy-500">Yön</th>
+                <th className="text-left px-4 py-2.5 font-medium text-navy-500">Gönderen</th>
                 <th className="text-left px-4 py-2.5 font-medium text-navy-500 w-[35%]">Mesaj</th>
-                <th className="text-left px-4 py-2.5 font-medium text-navy-500">Tur</th>
+                <th className="text-left px-4 py-2.5 font-medium text-navy-500">Tür</th>
               </tr>
             </thead>
             <tbody>
               {loading && messages.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="text-center py-12 text-navy-300">
-                    Yukleniyor...
+                    Yükleniyor...
                   </td>
                 </tr>
               ) : messages.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="text-center py-12 text-navy-300">
-                    Mesaj bulunamadi
+                    Mesaj bulunamadı
                   </td>
                 </tr>
               ) : (
@@ -328,7 +328,7 @@ export function MessagesPage() {
                 className="flex items-center gap-1 px-3 py-1 text-xs border border-navy-100 rounded-md hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
-                Onceki
+                Önceki
               </button>
               <button
                 onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
@@ -352,7 +352,7 @@ function StoryTimeline({ loading, story }: { loading: boolean; story: MessageSto
     return (
       <div className="flex items-center gap-2 py-4 text-navy-300 text-sm">
         <Loader2 className="w-4 h-4 animate-spin" />
-        Hikaye yukleniyor...
+        Hikaye yükleniyor...
       </div>
     );
   }
@@ -360,7 +360,7 @@ function StoryTimeline({ loading, story }: { loading: boolean; story: MessageSto
   if (!story || story.timeline.length === 0) {
     return (
       <div className="py-4 text-sm text-navy-300">
-        Bu mesaj icin hikaye bulunamadi. (Henuz islem yapilmamis olabilir)
+        Bu mesaj için hikaye bulunamadı. (Henüz işlem yapılmamış olabilir)
       </div>
     );
   }
@@ -391,7 +391,7 @@ function StoryTimeline({ loading, story }: { loading: boolean; story: MessageSto
       {/* Summary card */}
       {story.summary && (
         <div className="w-56 shrink-0 bg-white rounded-lg border border-navy-100 p-3 h-fit">
-          <h4 className="text-xs font-semibold text-navy-700 mb-2">Ozet</h4>
+          <h4 className="text-xs font-semibold text-navy-700 mb-2">Özet</h4>
           <dl className="space-y-1.5 text-xs">
             {story.summary.flow_name && (
               <>
@@ -413,7 +413,7 @@ function StoryTimeline({ loading, story }: { loading: boolean; story: MessageSto
             )}
             {story.summary.processing_time_ms != null && (
               <>
-                <dt className="text-navy-300">Sure</dt>
+                <dt className="text-navy-300">Süre</dt>
                 <dd className="text-navy-500 font-medium">{story.summary.processing_time_ms}ms</dd>
               </>
             )}

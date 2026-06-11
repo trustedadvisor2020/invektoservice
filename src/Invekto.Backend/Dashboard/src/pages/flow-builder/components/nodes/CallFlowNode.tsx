@@ -34,7 +34,7 @@ function CallFlowNodeComponent(props: NodeProps) {
           Flow #{flowId}
         </span>
       ) : (
-        <span className="text-navy-400 italic text-xs">Flow seciniz</span>
+        <span className="text-navy-400 italic text-xs">Flow seçiniz</span>
       )}
     </BaseNode>
   );

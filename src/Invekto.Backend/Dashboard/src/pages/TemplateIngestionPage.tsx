@@ -5,9 +5,9 @@ import {
 } from 'lucide-react';
 
 const TYPE_BADGES: Record<string, { color: string; label: string }> = {
-  new: { color: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'YENI' },
-  update: { color: 'bg-amber-50 text-amber-700 border-amber-200', label: 'GUNCELLEME' },
-  merge: { color: 'bg-slate-50 text-slate-600 border-slate-200', label: 'DOGRULAMA' },
+  new: { color: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'YENİ' },
+  update: { color: 'bg-amber-50 text-amber-700 border-amber-200', label: 'GÜNCELLEME' },
+  merge: { color: 'bg-slate-50 text-slate-600 border-slate-200', label: 'DOĞRULAMA' },
 };
 
 export function TemplateIngestionPage() {
@@ -46,7 +46,7 @@ export function TemplateIngestionPage() {
       setSuggestionsTotal(result.total);
     } catch (err) {
       console.error('Failed to fetch suggestions:', err);
-      setSuggestionsError('Oneriler yuklenirken hata olustu. Tekrar deneyin.');
+      setSuggestionsError('Öneriler yüklenirken hata oluştu. Tekrar deneyin.');
     } finally {
       setLoading(false);
     }
@@ -83,7 +83,7 @@ export function TemplateIngestionPage() {
       fetchSuggestions();
     } catch (err) {
       console.error('Review failed:', err);
-      setSuggestionsError('Oneri incelemesi basarisiz oldu. Tekrar deneyin.');
+      setSuggestionsError('Öneri incelemesi başarısız oldu. Tekrar deneyin.');
     }
   };
 
@@ -100,7 +100,7 @@ export function TemplateIngestionPage() {
       fetchSuggestions();
     } catch (err) {
       console.error('Bulk review failed:', err);
-      setSuggestionsError('Toplu inceleme basarisiz oldu. Tekrar deneyin.');
+      setSuggestionsError('Toplu inceleme başarısız oldu. Tekrar deneyin.');
     }
   };
 
@@ -110,14 +110,14 @@ export function TemplateIngestionPage() {
       <div>
         <h1 className="text-lg font-semibold text-navy-900 flex items-center gap-2">
           <Upload className="w-5 h-5" />
-          Veri Besleme & Sablon Cikarimi
+          Veri Besleme & Şablon Çıkarımı
         </h1>
-        <p className="text-xs text-navy-400">WA analiz sonuclarindan sablon cikar, mevcut katalogla karsilastir</p>
+        <p className="text-xs text-navy-400">WA analiz sonuçlarından şablon çıkar, mevcut katalogla karşılaştır</p>
       </div>
 
       {/* Step 1: Extract */}
       <div className="bg-white rounded-lg border border-navy-100 p-4">
-        <h2 className="text-sm font-medium text-navy-800 mb-3">1. Analiz Sonucu Karsilastir</h2>
+        <h2 className="text-sm font-medium text-navy-800 mb-3">1. Analiz Sonucu Karşılaştır</h2>
         <div className="grid grid-cols-4 gap-3">
           <div>
             <label className="text-[10px] text-navy-400 block mb-1">Analiz ID</label>
@@ -125,31 +125,31 @@ export function TemplateIngestionPage() {
               type="number"
               value={analysisId}
               onChange={e => setAnalysisId(e.target.value)}
-              placeholder="orn: 1"
+              placeholder="örn: 1"
               className="w-full text-xs border border-navy-200 rounded px-2 py-1.5"
             />
           </div>
           <div>
-            <label className="text-[10px] text-navy-400 block mb-1">Firma Adi</label>
+            <label className="text-[10px] text-navy-400 block mb-1">Firma Adı</label>
             <input
               type="text"
               value={tenantName}
               onChange={e => setTenantName(e.target.value)}
-              placeholder="orn: ebrumoda"
+              placeholder="örn: ebrumoda"
               className="w-full text-xs border border-navy-200 rounded px-2 py-1.5"
             />
           </div>
           <div>
-            <label className="text-[10px] text-navy-400 block mb-1">Sektor</label>
+            <label className="text-[10px] text-navy-400 block mb-1">Sektör</label>
             <select
               value={sector}
               onChange={e => setSector(e.target.value)}
               className="w-full text-xs border border-navy-200 rounded px-2 py-1.5"
             >
               <option value="eticaret">E-Ticaret</option>
-              <option value="dis_klinik">Dis Klinigi</option>
+              <option value="dis_klinik">Diş Kliniği</option>
               <option value="estetik">Estetik</option>
-              <option value="">Diger</option>
+              <option value="">Diğer</option>
             </select>
           </div>
           <div className="flex items-end">
@@ -159,7 +159,7 @@ export function TemplateIngestionPage() {
               className="w-full flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-medium rounded bg-navy-800 text-white hover:bg-navy-700 disabled:opacity-50"
             >
               {step === 'extracting' ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-              {step === 'extracting' ? 'Cikariliyor...' : 'Cikar & Karsilastir'}
+              {step === 'extracting' ? 'Çıkarılıyor...' : 'Çıkar & Karşılaştır'}
             </button>
           </div>
         </div>
@@ -173,27 +173,27 @@ export function TemplateIngestionPage() {
       {/* Step 2: Compare Results */}
       {compareResult && (
         <div className="bg-white rounded-lg border border-navy-100 p-4">
-          <h2 className="text-sm font-medium text-navy-800 mb-3">2. Karsilastirma Sonucu</h2>
+          <h2 className="text-sm font-medium text-navy-800 mb-3">2. Karşılaştırma Sonucu</h2>
           <div className="grid grid-cols-4 gap-3 mb-3">
             <div className="bg-emerald-50 rounded-lg p-3 text-center">
               <div className="text-2xl font-bold text-emerald-700">{compareResult.new_count}</div>
-              <div className="text-[10px] text-emerald-600">Yeni Sablon</div>
+              <div className="text-[10px] text-emerald-600">Yeni Şablon</div>
             </div>
             <div className="bg-amber-50 rounded-lg p-3 text-center">
               <div className="text-2xl font-bold text-amber-700">{compareResult.update_count}</div>
-              <div className="text-[10px] text-amber-600">Guncelleme</div>
+              <div className="text-[10px] text-amber-600">Güncelleme</div>
             </div>
             <div className="bg-slate-50 rounded-lg p-3 text-center">
               <div className="text-2xl font-bold text-slate-700">{compareResult.confirm_count}</div>
-              <div className="text-[10px] text-slate-600">Dogrulama</div>
+              <div className="text-[10px] text-slate-600">Doğrulama</div>
             </div>
             <div className="bg-navy-50 rounded-lg p-3 text-center">
               <div className="text-2xl font-bold text-navy-700">{compareResult.duration_ms}</div>
-              <div className="text-[10px] text-navy-500">ms sure</div>
+              <div className="text-[10px] text-navy-500">ms süre</div>
             </div>
           </div>
           <p className="text-xs text-navy-400">
-            {compareResult.total_clusters_processed} FAQ cluster + {compareResult.total_intents_processed} intent islendi
+            {compareResult.total_clusters_processed} FAQ cluster + {compareResult.total_intents_processed} intent işlendi
           </p>
         </div>
       )}
@@ -202,7 +202,7 @@ export function TemplateIngestionPage() {
       <div className="bg-white rounded-lg border border-navy-100 p-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-medium text-navy-800">
-            3. Oneri Inceleme Kuyrugu
+            3. Öneri İnceleme Kuyruğu
             <span className="text-navy-400 font-normal ml-1">({suggestionsTotal} bekleyen)</span>
           </h2>
           <div className="flex items-center gap-2">
@@ -216,7 +216,7 @@ export function TemplateIngestionPage() {
               onClick={() => handleBulkReview('approved')}
               className="px-2 py-1 text-[10px] rounded bg-emerald-600 text-white hover:bg-emerald-500"
             >
-              Tumunu Onayla
+              Tümünü Onayla
             </button>
             <button onClick={fetchSuggestions} className="p-1 hover:bg-navy-50 rounded">
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -284,7 +284,7 @@ export function TemplateIngestionPage() {
 
           {suggestions.length === 0 && !loading && (
             <div className="text-center py-6 text-navy-400 text-xs">
-              Bekleyen oneri yok. Yukaridaki formu kullanarak yeni bir cikarim baslatin.
+              Bekleyen öneri yok. Yukarıdaki formu kullanarak yeni bir çıkarım başlatın.
             </div>
           )}
         </div>

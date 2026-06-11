@@ -291,11 +291,11 @@ export function HealthCard({ service, onRestart, isRestarting }: HealthCardProps
               {loading ? (
                 <div className="flex items-center justify-center py-8 text-navy-300">
                   <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                  <span>Yukleniyor...</span>
+                  <span>Yükleniyor...</span>
                 </div>
               ) : endpoints.length === 0 ? (
                 <div className="text-center py-8 text-navy-300 text-sm">
-                  Endpoint bulunamadi
+                  Endpoint bulunamadı
                 </div>
               ) : (
                 <div className="space-y-4">

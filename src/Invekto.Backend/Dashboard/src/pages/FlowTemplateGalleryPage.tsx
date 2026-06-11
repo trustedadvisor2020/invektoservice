@@ -6,12 +6,12 @@ import { api } from '../lib/api';
 import { FLOW_TEMPLATES, NICHE_LABELS, type FlowTemplate } from '../data/flow-templates';
 
 const NICHE_TABS = [
-  { key: '', label: 'Tumunu', icon: LayoutTemplate },
+  { key: '', label: 'Tümünü', icon: LayoutTemplate },
   { key: 'ecommerce', label: 'E-Ticaret', icon: ShoppingCart },
-  { key: 'health', label: 'Saglik', icon: Activity, niches: ['health', 'dental', 'aesthetic'] },
+  { key: 'health', label: 'Sağlık', icon: Activity, niches: ['health', 'dental', 'aesthetic'] },
   { key: 'hotel', label: 'Otel', icon: Building2 },
-  { key: 'beauty', label: 'Guzellik', icon: Sparkles },
-  { key: 'education', label: 'Egitim', icon: GraduationCap },
+  { key: 'beauty', label: 'Güzellik', icon: Sparkles },
+  { key: 'education', label: 'Eğitim', icon: GraduationCap },
   { key: 'mobile', label: 'Mobil', icon: Smartphone },
   { key: 'universal', label: 'Evrensel', icon: Shield, niches: ['universal', 'crossSector'] },
 ] as const;
@@ -68,8 +68,8 @@ export function FlowTemplateGalleryPage() {
     <div className="max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900">Sablon Galerisi</h1>
-        <p className="text-sm text-slate-500 mt-1">Hazir sablonlardan secin, AI ile isletmenize gore ozellestirin.</p>
+        <h1 className="text-2xl font-bold text-slate-900">Şablon Galerisi</h1>
+        <p className="text-sm text-slate-500 mt-1">Hazır şablonlardan seçin, AI ile işletmenize göre özelleştirin.</p>
       </div>
 
       {/* Filter bar */}
@@ -78,7 +78,7 @@ export function FlowTemplateGalleryPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Sablon ara..."
+            placeholder="Şablon ara..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
@@ -107,7 +107,7 @@ export function FlowTemplateGalleryPage() {
       </div>
 
       {/* Count */}
-      <p className="text-xs text-slate-400 mb-4">{filtered.length} sablon</p>
+      <p className="text-xs text-slate-400 mb-4">{filtered.length} şablon</p>
 
       {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -139,7 +139,7 @@ export function FlowTemplateGalleryPage() {
               disabled={!!creating}
               className="w-full py-2 text-xs font-bold rounded-lg border transition-colors bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-600 hover:text-white hover:border-teal-600 disabled:opacity-50"
             >
-              {creating === tpl.id ? 'Olusturuluyor...' : 'Bu Sablonu Kullan'}
+              {creating === tpl.id ? 'Oluşturuluyor...' : 'Bu Şablonu Kullan'}
             </button>
           </div>
         ))}
@@ -148,7 +148,7 @@ export function FlowTemplateGalleryPage() {
       {filtered.length === 0 && (
         <div className="text-center py-20 text-slate-400">
           <LayoutTemplate className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p className="text-sm">Aramanizla eslesen sablon bulunamadi.</p>
+          <p className="text-sm">Aramanızla eşleşen şablon bulunamadı.</p>
         </div>
       )}
     </div>

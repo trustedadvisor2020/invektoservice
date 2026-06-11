@@ -48,18 +48,18 @@ export function ApiKeyManagerCard({ settings, onRotate, onRevoke, busy }: ApiKey
     <Card className="p-5">
       <CardTitle className="flex items-center gap-2 mb-4">
         <KeyRound className="w-4 h-4 text-navy-600" />
-        API Anahtari
+        API Anahtarı
       </CardTitle>
 
       {!hasKey ? (
         <div>
           <p className="text-sm text-navy-500 mb-3 leading-relaxed">
-            Bu tenant icin henuz bir landing API anahtari olusturulmamis. Anahtar olusturduktan
-            sonra asagida maskelenmis hali gorunecek ve &#34;Yenile&#34; ile 24 saatlik gecis
-            suresiyle yenileyebilirsiniz.
+            Bu tenant için henüz bir landing API anahtarı oluşturulmamış. Anahtar oluşturulduktan
+            sonra aşağıda maskelenmiş hali görünecek ve &#34;Yenile&#34; ile 24 saatlik geçiş
+            süresiyle yenileyebilirsiniz.
           </p>
           <Button variant="primary" onClick={handleFirstTimeGenerate} disabled={busy}>
-            {busy ? 'Olusturuluyor...' : 'Yeni API Anahtari Olustur'}
+            {busy ? 'Oluşturuluyor...' : 'Yeni API Anahtarı Oluştur'}
           </Button>
         </div>
       ) : (
@@ -71,7 +71,7 @@ export function ApiKeyManagerCard({ settings, onRotate, onRevoke, busy }: ApiKey
             </div>
             {settings.updated_at && (
               <div className="text-xs text-navy-400 mt-1">
-                Son guncelleme: {new Date(settings.updated_at).toLocaleString('tr-TR')}
+                Son güncelleme: {new Date(settings.updated_at).toLocaleString('tr-TR')}
               </div>
             )}
           </div>
@@ -82,7 +82,7 @@ export function ApiKeyManagerCard({ settings, onRotate, onRevoke, busy }: ApiKey
               <span>
                 Eski anahtar: <code className="font-mono">{settings.masked_old_key}</code>
                 {' — '}
-                {graceHoursLeft} saat icinde gecersiz
+                {graceHoursLeft} saat içinde geçersiz
               </span>
             </div>
           )}
@@ -94,7 +94,7 @@ export function ApiKeyManagerCard({ settings, onRotate, onRevoke, busy }: ApiKey
             </Button>
             <Button variant="danger" onClick={() => setConfirmMode('revoke')} disabled={busy}>
               <ShieldOff className="w-4 h-4 mr-1" />
-              Iptal Et
+              İptal Et
             </Button>
           </div>
         </div>
@@ -118,23 +118,23 @@ export function ApiKeyManagerCard({ settings, onRotate, onRevoke, busy }: ApiKey
               <X className="w-4 h-4" />
             </button>
             <h3 className="text-lg font-semibold text-navy-900 mb-2">
-              {confirmMode === 'rotate' ? 'Anahtari yenilemek istiyor musunuz?' : 'Anahtari iptal etmek istiyor musunuz?'}
+              {confirmMode === 'rotate' ? 'Anahtarı yenilemek istiyor musunuz?' : 'Anahtarı iptal etmek istiyor musunuz?'}
             </h3>
             <p className="text-sm text-navy-500 mb-5 leading-relaxed">
               {confirmMode === 'rotate'
-                ? 'Mevcut anahtar 24 saat boyunca calismaya devam edecek, bu sure icinde landing sayfanizi yeni anahtarla guncelleyin.'
-                : 'Bu tenant artik landing webhook uzerinden lead alamayacak. Field map ve welcome slug ayarlariniz korunacak; yeniden aktiflestirmek icin yeni anahtar olusturmaniz gerekecek.'}
+                ? 'Mevcut anahtar 24 saat boyunca çalışmaya devam edecek, bu süre içinde landing sayfanızı yeni anahtarla güncelleyin.'
+                : 'Bu tenant artık landing webhook üzerinden lead alamayacak. Field map ve welcome slug ayarlarınız korunacak; yeniden aktifleştirmek için yeni anahtar oluşturmanız gerekecek.'}
             </p>
             <div className="flex justify-end gap-3">
               <Button variant="secondary" onClick={() => setConfirmMode(null)} disabled={busy}>
-                Vazgec
+                Vazgeç
               </Button>
               <Button
                 variant={confirmMode === 'rotate' ? 'primary' : 'danger'}
                 onClick={handleConfirmedAction}
                 disabled={busy}
               >
-                {busy ? 'Isleniyor...' : confirmMode === 'rotate' ? 'Evet, Yenile' : 'Evet, Iptal Et'}
+                {busy ? 'İşleniyor...' : confirmMode === 'rotate' ? 'Evet, Yenile' : 'Evet, İptal Et'}
               </Button>
             </div>
           </div>

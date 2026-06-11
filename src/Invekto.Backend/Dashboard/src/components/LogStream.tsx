@@ -82,7 +82,7 @@ function formatSmartSummary(group: LogGroup): { service: string; action: string;
   const isError = group.level === 'ERROR';
 
   // Count step entries for detail
-  const stepCount = group.entryCount > 1 ? `${group.entryCount} adim` : '';
+  const stepCount = group.entryCount > 1 ? `${group.entryCount} adım` : '';
 
   let detail: string;
   if (isError) {
@@ -183,7 +183,7 @@ export function LogStream({ initialFilter }: LogStreamProps) {
                 onClick={() => setViewMode('business')}
               >
                 <Activity className="w-3 h-3" />
-                Is Sureci
+                İş Süreci
               </button>
               <button
                 className={cn(
@@ -195,7 +195,7 @@ export function LogStream({ initialFilter }: LogStreamProps) {
                 onClick={() => setViewMode('all')}
               >
                 <List className="w-3 h-3" />
-                Tumu
+                Tümü
               </button>
             </div>
             <Button variant="ghost" size="sm" onClick={fetchLogs} disabled={isLoading}>
@@ -258,7 +258,7 @@ export function LogStream({ initialFilter }: LogStreamProps) {
             value={service}
             onChange={e => setService(e.target.value)}
             options={[
-              { value: '', label: 'Tum Servisler' },
+              { value: '', label: 'Tüm Servisler' },
               { value: 'Invekto.Backend', label: 'Backend' },
               { value: 'Invekto.ChatAnalysis', label: 'ChatAnalysis' },
               { value: 'Invekto.Automation', label: 'Automation' },
@@ -289,11 +289,11 @@ export function LogStream({ initialFilter }: LogStreamProps) {
       <CardContent className="flex-1 overflow-auto">
         {isLoading && groups.length === 0 ? (
           <div className="flex items-center justify-center h-32 text-navy-400">
-            Yukleniyor...
+            Yükleniyor...
           </div>
         ) : groups.length === 0 ? (
           <div className="flex items-center justify-center h-32 text-navy-400">
-            Log bulunamadi
+            Log bulunamadı
           </div>
         ) : (
           <div className="space-y-2">

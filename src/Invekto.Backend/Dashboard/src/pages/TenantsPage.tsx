@@ -33,10 +33,10 @@ export function TenantsPage() {
         alert(`${service.name} yeniden başlatıldı.`);
         setTimeout(refreshHealth, 5000);
       } else {
-        alert(`Yeniden baslatma basarisiz: ${result.message}`);
+        alert(`Yeniden başlatma başarısız: ${result.message}`);
       }
     } catch (error) {
-      alert(`Yeniden baslatma hatasi: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}`);
+      alert(`Yeniden başlatma hatası: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}`);
     } finally {
       setRestartingService(null);
     }
@@ -78,7 +78,7 @@ export function TenantsPage() {
         <div className="flex items-center justify-between mb-3">
           <div>
             <h2 className="text-lg font-semibold text-navy-900">Servis Durumu</h2>
-            <p className="text-xs text-navy-400">Servis sagligi ve metrikler</p>
+            <p className="text-xs text-navy-400">Servis sağlığı ve metrikler</p>
           </div>
           <div className="flex gap-2">
             <Button
@@ -113,7 +113,7 @@ export function TenantsPage() {
             <div className="w-7 h-7 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
               <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
             </div>
-            <span className="text-sm text-red-600 font-medium">Bazi servisler calismiyor!</span>
+            <span className="text-sm text-red-600 font-medium">Bazı servisler çalışmıyor!</span>
           </div>
         )}
 
@@ -131,7 +131,7 @@ export function TenantsPage() {
           ) : (
             <Card className="col-span-full">
               <CardContent className="py-6 text-center text-navy-300 text-sm">
-                {healthLoading ? 'Servisler yukleniyor...' : 'Servis bulunamadi'}
+                {healthLoading ? 'Servisler yükleniyor...' : 'Servis bulunamadı'}
               </CardContent>
             </Card>
           )}
@@ -144,7 +144,7 @@ export function TenantsPage() {
           <div>
             <h1 className="text-xl font-semibold text-navy-900">Firmalar</h1>
             <p className="text-sm text-navy-400">
-              Tum kayitli firmalar — firma admini olarak giris yapin
+              Tüm kayıtlı firmalar — firma admini olarak giriş yapın
               {tenants.length > 0 && (
                 <span className="ml-2 text-navy-300">({tenants.length} firma)</span>
               )}
@@ -167,25 +167,25 @@ export function TenantsPage() {
               <thead>
                 <tr className="bg-navy-50 border-b border-navy-100">
                   <th className="text-left px-4 py-2.5 font-medium text-navy-500">ID</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-navy-500">Firma Adi</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-navy-500">Firma Adı</th>
                   <th className="text-left px-4 py-2.5 font-medium text-navy-500">Durum</th>
                   <th className="text-left px-4 py-2.5 font-medium text-navy-500">Sektor</th>
                   <th className="text-left px-4 py-2.5 font-medium text-navy-500">Plan</th>
                   <th className="text-left px-4 py-2.5 font-medium text-navy-500">Kayit Tarihi</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-navy-500">Islem</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-navy-500">İşlem</th>
                 </tr>
               </thead>
               <tbody>
                 {loading && tenants.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="text-center py-12 text-navy-300">
-                      Yukleniyor...
+                      Yükleniyor...
                     </td>
                   </tr>
                 ) : tenants.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="text-center py-12 text-navy-300">
-                      Firma bulunamadi
+                      Firma bulunamadı
                     </td>
                   </tr>
                 ) : (
@@ -231,10 +231,10 @@ export function TenantsPage() {
                             className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium bg-brand-500 text-white rounded-md hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <LogIn className="w-3 h-3" />
-                            {impersonating === t.tenantId ? 'Giriliyor...' : 'Giris Yap'}
+                            {impersonating === t.tenantId ? 'Giriliyor...' : 'Giriş Yap'}
                           </button>
                         ) : (
-                          <span className="text-xs text-navy-300">Devre disi</span>
+                          <span className="text-xs text-navy-300">Devre dışı</span>
                         )}
                       </td>
                     </tr>

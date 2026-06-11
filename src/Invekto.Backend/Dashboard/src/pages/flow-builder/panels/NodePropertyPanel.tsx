@@ -199,7 +199,7 @@ function MessageLengthCounter({ text }: { text: string }) {
     <div className="mt-1">
       <div className="flex justify-between items-center mb-0.5">
         <span className={`text-[10px] ${color}`}>{len} / {WA_MAX_LENGTH}</span>
-        {len > WA_MAX_LENGTH && <span className="text-[10px] text-red-600 font-medium">Limit asildi!</span>}
+        {len > WA_MAX_LENGTH && <span className="text-[10px] text-red-600 font-medium">Limit aşıldı!</span>}
       </div>
       <div className="w-full h-1 bg-navy-100 rounded-full overflow-hidden">
         <div className={`h-full ${barColor} transition-all duration-200 rounded-full`} style={{ width: `${pct}%` }} />
@@ -214,7 +214,7 @@ function NodeOutputVarsSection({ nodeType }: { nodeType: FlowNodeType }) {
 
   return (
     <div className="pt-2 border-t border-navy-100">
-      <p className="text-[10px] font-medium text-navy-400 uppercase tracking-wider mb-1.5">Cikti Degiskenleri</p>
+      <p className="text-[10px] font-medium text-navy-400 uppercase tracking-wider mb-1.5">Çıktı Değişkenleri</p>
       <div className="space-y-1">
         {vars.map((v) => (
           <div key={v.name} className="flex items-start gap-1.5 group">
@@ -239,7 +239,7 @@ function VariableExplorerSection() {
         <svg className={`w-3 h-3 transition-transform ${open ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
         </svg>
-        Kullanilabilir Degiskenler
+        Kullanılabilir Değişkenler
       </button>
       {open && (
         <div className="mt-1.5 space-y-1">
@@ -249,7 +249,7 @@ function VariableExplorerSection() {
               <span className="text-[10px] text-navy-400 leading-tight">{v.description}</span>
             </div>
           ))}
-          <p className="text-[10px] text-navy-300 mt-1">Degisken Ata ve API Cagrisi node\'lari ek degiskenler olusturur.</p>
+          <p className="text-[10px] text-navy-300 mt-1">Değişken Ata ve API Çağrısı node\'ları ek değişkenler oluşturur.</p>
         </div>
       )}
     </div>
@@ -273,7 +273,7 @@ function NodeHelpSection({ nodeType }: { nodeType: FlowNodeType }) {
         <svg className="w-3.5 h-3.5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
         </svg>
-        <span className="text-sm text-navy-500 group-hover:text-navy-700 transition-colors">Kullanim Kilavuzu</span>
+        <span className="text-sm text-navy-500 group-hover:text-navy-700 transition-colors">Kullanım Kılavuzu</span>
       </button>
       {open && (
         <div className="mt-2 space-y-3 text-sm text-navy-600 bg-navy-25 rounded-lg p-3">
@@ -282,13 +282,13 @@ function NodeHelpSection({ nodeType }: { nodeType: FlowNodeType }) {
 
           {/* Detail */}
           <div>
-            <p className="text-[10px] font-medium text-navy-400 uppercase tracking-wider mb-1">Detayli Aciklama</p>
+            <p className="text-[10px] font-medium text-navy-400 uppercase tracking-wider mb-1">Detaylı Açıklama</p>
             <p className="whitespace-pre-line leading-relaxed">{guide.detail}</p>
           </div>
 
           {/* Scenarios */}
           <div>
-            <p className="text-[10px] font-medium text-navy-400 uppercase tracking-wider mb-1">Kullanim Senaryolari</p>
+            <p className="text-[10px] font-medium text-navy-400 uppercase tracking-wider mb-1">Kullanım Senaryoları</p>
             <p className="whitespace-pre-line leading-relaxed">{guide.scenarios}</p>
           </div>
 
@@ -371,7 +371,7 @@ function HeadersEditor({
             value={value}
             onChange={(e) => updateEntry(idx, key, e.target.value)}
             className="flex-1 bg-navy-50 border border-navy-200 rounded px-1.5 py-1 text-[10px] text-navy-700 outline-none focus:border-brand-500 font-mono"
-            placeholder="Deger"
+            placeholder="Değer"
           />
           <button
             onClick={() => removeEntry(idx)}
@@ -435,8 +435,8 @@ function TriggerStartProps({ data, onChange }: { data: Record<string, unknown>; 
   if (instances.length === 0 && !loading) {
     return (
       <p className="text-sm text-navy-300">
-        Musteri mesaj gonderdiginde bu node'dan akis baslar.
-        {tenantId && <span className="block mt-1 text-navy-200">Hat secimi icin Ayarlar sayfasindan WapCRM hatlarini yukleyin.</span>}
+        Müşteri mesaj gönderdiğinde bu node'dan akış başlar.
+        {tenantId && <span className="block mt-1 text-navy-200">Hat seçimi için Ayarlar sayfasından WapCRM hatlarını yükleyin.</span>}
       </p>
     );
   }
@@ -444,7 +444,7 @@ function TriggerStartProps({ data, onChange }: { data: Record<string, unknown>; 
   return (
     <FieldGroup label={`Hatlar (${selectedIds.length}/${instances.length})`}>
       {loading ? (
-        <p className="text-sm text-navy-300">Yukleniyor...</p>
+        <p className="text-sm text-navy-300">Yükleniyor...</p>
       ) : (
         <div className="space-y-1.5">
           {instances.map(inst => {
@@ -463,12 +463,12 @@ function TriggerStartProps({ data, onChange }: { data: Record<string, unknown>; 
                       {inst.instanceName}
                     </span>
                     <span className="text-[10px] text-navy-300 flex-shrink-0">
-                      {INSTANCE_TYPE_LABELS[inst.instanceType] || 'Diger'}
+                      {INSTANCE_TYPE_LABELS[inst.instanceType] || 'Diğer'}
                     </span>
                   </div>
                   {isOtherFlow && (
                     <span className="text-[10px] text-amber-600 leading-tight block">
-                      {inst.assignedFlowName ?? 'Baska akis'} akisinda
+                      {inst.assignedFlowName ?? 'Başka akış'} akışında
                     </span>
                   )}
                 </div>
@@ -478,7 +478,7 @@ function TriggerStartProps({ data, onChange }: { data: Record<string, unknown>; 
         </div>
       )}
       <p className="text-sm text-navy-300 mt-2">
-        Secili hatlardan gelen mesajlar bu akisa yonlendirilir.
+        Seçili hatlardan gelen mesajlar bu akışa yönlendirilir.
       </p>
     </FieldGroup>
   );
@@ -526,14 +526,14 @@ function MessageTextProps({
           onChange={(e) => onChange({ text: e.target.value })}
           rows={4}
           className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500 resize-none"
-          placeholder="Gonderilecek mesaj..."
+          placeholder="Gönderilecek mesaj..."
         />
         <div className="flex items-center justify-between mt-1">
           <MessageLengthCounter text={data.text ?? ''} />
           <PlaceholderPicker onInsert={insertPlaceholder} position="above" tfmAware />
         </div>
       </FieldGroup>
-      <FieldGroup label="Davranis">
+      <FieldGroup label="Davranış">
         <label className="flex items-center gap-2 cursor-pointer">
           <input
             type="checkbox"
@@ -541,12 +541,12 @@ function MessageTextProps({
             onChange={(e) => onChange({ wait_for_input: e.target.checked })}
             className="w-4 h-4 rounded border-navy-200 text-blue-600 focus:ring-blue-500 accent-blue-500"
           />
-          <span className="text-sm text-navy-500">Kullanici yanitini bekle</span>
+          <span className="text-sm text-navy-500">Kullanıcı yanıtını bekle</span>
         </label>
         {waitForInput && (
           <p className="text-[10px] text-navy-400 mt-1">
-            Mesaj gonderildikten sonra akis durur ve kullanicinin yanitini bekler.
-            Yanit, sonraki node'larda {'{{user_input}}'} olarak kullanilabilir.
+            Mesaj gönderildikten sonra akış durur ve kullanıcının yanıtını bekler.
+            Yanıt, sonraki node'larda {'{{user_input}}'} olarak kullanılabilir.
           </p>
         )}
       </FieldGroup>
@@ -573,7 +573,7 @@ function MessageMenuProps({
     const nextKey = String(options.length + 1);
     const newOpt = {
       key: nextKey,
-      label: `Secenek ${nextKey}`,
+      label: `Seçenek ${nextKey}`,
       handle_id: `opt_${nextKey}`,
     };
     onChange({ options: [...options, newOpt] });
@@ -585,18 +585,18 @@ function MessageMenuProps({
 
   return (
     <>
-      <FieldGroup label="Menu Metni">
+      <FieldGroup label="Menü Metni">
         <input
           type="text"
           value={data.text ?? ''}
           onChange={(e) => onChange({ text: e.target.value })}
           className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
-          placeholder="Secim yapin:"
+          placeholder="Seçim yapın:"
         />
         <MessageLengthCounter text={data.text ?? ''} />
       </FieldGroup>
 
-      <FieldGroup label="Secenekler">
+      <FieldGroup label="Seçenekler">
         <div className="space-y-2">
           {options.map((opt, idx) => (
             <div key={opt.handle_id} className="flex items-center gap-1">
@@ -629,7 +629,7 @@ function MessageMenuProps({
           onClick={addOption}
           className="mt-2 w-full px-2 py-1 rounded border border-dashed border-navy-200 text-sm text-navy-400 hover:border-brand-500 hover:text-brand-600 transition-colors"
         >
-          + Secenek Ekle
+          + Seçenek Ekle
         </button>
       </FieldGroup>
     </>
@@ -644,13 +644,13 @@ function ActionHandoffProps({
   onChange: (d: Record<string, unknown>) => void;
 }) {
   return (
-    <FieldGroup label="Ozet Sablonu">
+    <FieldGroup label="Özet Şablonu">
       <textarea
         value={data.summary_template ?? ''}
         onChange={(e) => onChange({ summary_template: e.target.value })}
         rows={3}
         className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500 resize-none"
-        placeholder="Temsilciye aktarilacak ozet..."
+        placeholder="Temsilciye aktarılacak özet..."
       />
     </FieldGroup>
   );
@@ -664,24 +664,24 @@ function LogicConditionProps({
   onChange: (d: Record<string, unknown>) => void;
 }) {
   const operators = [
-    { value: 'equals', label: 'Esittir (=)' },
-    { value: 'contains', label: 'Icerir' },
-    { value: 'starts_with', label: 'Baslar' },
-    { value: 'greater_than', label: 'Buyuktur (>)' },
-    { value: 'less_than', label: 'Kucuktur (<)' },
-    { value: 'is_empty', label: 'Bos mu' },
+    { value: 'equals', label: 'Eşittir (=)' },
+    { value: 'contains', label: 'İçerir' },
+    { value: 'starts_with', label: 'Başlar' },
+    { value: 'greater_than', label: 'Büyüktür (>)' },
+    { value: 'less_than', label: 'Küçüktür (<)' },
+    { value: 'is_empty', label: 'Boş mu' },
     { value: 'regex', label: 'Regex' },
   ];
 
   return (
     <>
-      <FieldGroup label="Degisken">
+      <FieldGroup label="Değişken">
         <input
           type="text"
           value={data.variable ?? ''}
           onChange={(e) => onChange({ variable: e.target.value })}
           className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
-          placeholder="ornek: __last_input"
+          placeholder="örnek: __last_input"
         />
       </FieldGroup>
       <FieldGroup label="Operator">
@@ -696,13 +696,13 @@ function LogicConditionProps({
         </select>
       </FieldGroup>
       {data.operator !== 'is_empty' && (
-        <FieldGroup label="Deger">
+        <FieldGroup label="Değer">
           <input
             type="text"
             value={data.value ?? ''}
             onChange={(e) => onChange({ value: e.target.value })}
             className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
-            placeholder="Karsilastirilacak deger"
+            placeholder="Karşılaştırılacak değer"
           />
         </FieldGroup>
       )}
@@ -739,13 +739,13 @@ function LogicSwitchProps({
 
   return (
     <>
-      <FieldGroup label="Degisken">
+      <FieldGroup label="Değişken">
         <input
           type="text"
           value={data.variable ?? ''}
           onChange={(e) => onChange({ variable: e.target.value })}
           className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
-          placeholder="ornek: musteri_tipi"
+          placeholder="örnek: musteri_tipi"
         />
       </FieldGroup>
 
@@ -759,7 +759,7 @@ function LogicSwitchProps({
                 value={c.value}
                 onChange={(e) => updateCase(idx, e.target.value)}
                 className="flex-1 bg-navy-50 border border-navy-200 rounded px-2 py-1 text-sm text-navy-700 outline-none focus:border-brand-500"
-                placeholder="Deger..."
+                placeholder="Değer..."
               />
               <button
                 onClick={() => removeCase(idx)}
@@ -785,7 +785,7 @@ function LogicSwitchProps({
       </FieldGroup>
 
       <p className="text-sm text-navy-300">
-        Hicbir durum eslesmediyse <strong>VARSAYILAN</strong> dala gider.
+        Hiçbir durum eşleşmediyse <strong>VARSAYILAN</strong> dala gider.
       </p>
     </>
   );
@@ -799,7 +799,7 @@ function ActionDelayProps({
   onChange: (d: Record<string, unknown>) => void;
 }) {
   return (
-    <FieldGroup label="Bekleme Suresi (saniye)">
+    <FieldGroup label="Bekleme Süresi (saniye)">
       <input
         type="number"
         min={1}
@@ -825,25 +825,25 @@ function UtilitySetVariableProps({
 }) {
   return (
     <>
-      <FieldGroup label="Degisken Adi">
+      <FieldGroup label="Değişken Adı">
         <input
           type="text"
           value={data.variable_name ?? ''}
           onChange={(e) => onChange({ variable_name: e.target.value })}
           className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
-          placeholder="ornek: musteri_tipi"
+          placeholder="örnek: musteri_tipi"
         />
       </FieldGroup>
-      <FieldGroup label="Deger Ifadesi">
+      <FieldGroup label="Değer İfadesi">
         <textarea
           value={data.value_expression ?? ''}
           onChange={(e) => onChange({ value_expression: e.target.value })}
           rows={3}
           className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500 resize-none font-mono"
-          placeholder="ornek: {{__last_input}}"
+          placeholder="örnek: {{__last_input}}"
         />
         <p className="text-sm text-navy-300 mt-1">
-          {"{{degisken}}"} ile mevcut degiskenlere referans verebilirsiniz.
+          {"{{değişken}}"} ile mevcut değişkenlere referans verebilirsiniz.
         </p>
       </FieldGroup>
     </>
@@ -884,7 +884,7 @@ function AiIntentProps({
 
   return (
     <>
-      <FieldGroup label="Konusma Ayarlari">
+      <FieldGroup label="Konuşma Ayarları">
         <label className="flex items-center gap-2 cursor-pointer">
           <input
             type="checkbox"
@@ -892,10 +892,10 @@ function AiIntentProps({
             onChange={(e) => onChange({ ask_name: e.target.checked })}
             className="w-4 h-4 rounded border-navy-200 text-purple-600 focus:ring-purple-500 accent-purple-500"
           />
-          <span className="text-sm text-navy-500">Musteri ismini sor</span>
+          <span className="text-sm text-navy-500">Müşteri ismini sor</span>
         </label>
         <p className="text-[10px] text-navy-300 mt-1">
-          Acikken musteri ismini sorar, dogrular ve isimle hitap eder. Anlayamadigi mesajlarda sohbete devam eder.
+          Açıkken müşteri ismini sorar, doğrular ve isimle hitap eder. Anlayamadığı mesajlarda sohbete devam eder.
         </p>
         {askName && (
           <div className="mt-2">
@@ -904,9 +904,9 @@ function AiIntentProps({
               value={data.greeting_message ?? ''}
               onChange={(e) => onChange({ greeting_message: e.target.value || undefined })}
               className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-purple-500"
-              placeholder="Merhaba! Isminizi ogrenebilir miyim?"
+              placeholder="Merhaba! İsminizi öğrenebilir miyim?"
             />
-            <p className="text-[10px] text-navy-300 mt-0.5">Karsilama mesaji (bos = varsayilan)</p>
+            <p className="text-[10px] text-navy-300 mt-0.5">Karşılama mesajı (boş = varsayılan)</p>
           </div>
         )}
       </FieldGroup>
@@ -920,7 +920,7 @@ function AiIntentProps({
                 value={intent}
                 onChange={(e) => updateIntent(idx, e.target.value)}
                 className="flex-1 bg-navy-50 border border-navy-200 rounded px-2 py-1 text-sm text-navy-700 outline-none focus:border-purple-500 font-mono"
-                placeholder="ornek: satin_alma"
+                placeholder="örnek: satin_alma"
               />
               <button
                 onClick={() => removeIntent(idx)}
@@ -943,7 +943,7 @@ function AiIntentProps({
         </button>
       </FieldGroup>
 
-      <FieldGroup label={`Guven Esigi (${(threshold * 100).toFixed(0)}%)`}>
+      <FieldGroup label={`Güven Eşiği (${(threshold * 100).toFixed(0)}%)`}>
         <input
           type="range"
           min={0}
@@ -960,7 +960,7 @@ function AiIntentProps({
       </FieldGroup>
 
       <p className="text-sm text-navy-300">
-        Musteri mesaji Claude AI ile analiz edilir. Orta guvendeki intent'ler icin &quot;bunu mu demek istiyorsunuz?&quot; onay sorusu sorulur. Dusuk guvende sohbet devam eder.
+        Müşteri mesajı Claude AI ile analiz edilir. Orta güvendeki intent'ler için &quot;bunu mu demek istiyorsunuz?&quot; onay sorusu sorulur. Düşük güvende sohbet devam eder.
       </p>
     </>
   );
@@ -978,7 +978,7 @@ function AiFaqProps({
 
   return (
     <>
-      <FieldGroup label={`Min Guven (${(minConf * 100).toFixed(0)}%)`}>
+      <FieldGroup label={`Min Güven (${(minConf * 100).toFixed(0)}%)`}>
         <input
           type="range"
           min={0}
@@ -994,19 +994,19 @@ function AiFaqProps({
         </div>
       </FieldGroup>
 
-      <FieldGroup label="Arama Kaynagi">
+      <FieldGroup label="Arama Kaynağı">
         <select
           value={searchSource}
           onChange={(e) => onChange({ search_source: e.target.value })}
           className="w-full rounded-md border border-navy-600 bg-navy-700 text-navy-100 px-3 py-1.5 text-sm focus:ring-1 focus:ring-purple-500"
         >
-          <option value="all">FAQ + Dokumanlar</option>
+          <option value="all">FAQ + Dökümanlar</option>
           <option value="faq_only">Sadece FAQ</option>
         </select>
       </FieldGroup>
 
       <p className="text-sm text-navy-300">
-        Bilgi bankasinda semantik arama yapilir. FAQ eslesirse cevap otomatik gonderilir. Dokuman eslesirse AI ile ozetlenip gonderilir. Esik altindaki sonuclar <strong>ESLESMEDI</strong> dalina yonlenir.
+        Bilgi bankasında semantik arama yapılır. FAQ eşleşirse cevap otomatik gönderilir. Döküman eşleşirse AI ile özetlenip gönderilir. Eşik altındaki sonuçlar <strong>EŞLEŞMEDİ</strong> dalına yönlenir.
       </p>
     </>
   );
@@ -1046,7 +1046,7 @@ function ActionApiCallProps({
           placeholder="https://api.example.com/endpoint"
         />
         <p className="text-sm text-navy-300 mt-0.5">
-          {"{{degisken}}"} destekler
+          {"{{değişken}}"} destekler
         </p>
       </FieldGroup>
 
@@ -1067,7 +1067,7 @@ function ActionApiCallProps({
         />
       </FieldGroup>
 
-      <FieldGroup label="Response Degiskeni">
+      <FieldGroup label="Response Değişkeni">
         <input
           type="text"
           value={data.response_variable ?? 'api_response'}
@@ -1077,7 +1077,7 @@ function ActionApiCallProps({
         />
       </FieldGroup>
 
-      <FieldGroup label={`Zaman Asimi (${timeoutMs}ms)`}>
+      <FieldGroup label={`Zaman Aşımı (${timeoutMs}ms)`}>
         <input
           type="range"
           min={100}
@@ -1108,7 +1108,7 @@ function AiSentimentProps({
 
   return (
     <>
-      <FieldGroup label={`Duygu Esigi (${(threshold * 100).toFixed(0)}%)`}>
+      <FieldGroup label={`Duygu Eşiği (${(threshold * 100).toFixed(0)}%)`}>
         <input
           type="range"
           min={0}
@@ -1125,7 +1125,7 @@ function AiSentimentProps({
       </FieldGroup>
 
       <p className="text-sm text-navy-300">
-        Musteri mesaji Claude AI ile analiz edilir. Skor esik uzerindeyse <strong>POZITIF</strong>, altindaysa <strong>NEGATIF</strong> dalina yonlenir.
+        Müşteri mesajı Claude AI ile analiz edilir. Skor eşik üzerindeyse <strong>POZİTİF</strong>, altındaysa <strong>NEGATİF</strong> dalına yönlenir.
       </p>
     </>
   );
@@ -1149,7 +1149,7 @@ function WebhookTriggerProps({
             <code className="text-[10px] text-navy-600 font-mono truncate flex-1 select-all">{webhookUrl}</code>
             <CopyButton text={webhookUrl} />
           </div>
-          <p className="text-[10px] text-navy-300 mt-0.5">Bu URL'ye POST istegi gondererek akisi tetikleyebilirsiniz.</p>
+          <p className="text-[10px] text-navy-300 mt-0.5">Bu URL'ye POST isteği göndererek akışı tetikleyebilirsiniz.</p>
         </FieldGroup>
       )}
 
@@ -1159,11 +1159,11 @@ function WebhookTriggerProps({
           value={data.secret_key ?? ''}
           onChange={(e) => onChange({ secret_key: e.target.value })}
           className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500 font-mono"
-          placeholder="HMAC-SHA256 dogrulama anahtari"
+          placeholder="HMAC-SHA256 doğrulama anahtarı"
         />
       </FieldGroup>
 
-      <FieldGroup label="Payload Degiskeni">
+      <FieldGroup label="Payload Değişkeni">
         <input
           type="text"
           value={data.payload_variable ?? 'webhook_payload'}
@@ -1174,7 +1174,7 @@ function WebhookTriggerProps({
       </FieldGroup>
 
       <p className="text-sm text-navy-300">
-        Dis sistemlerden gelen HTTP POST istekleriyle tetiklenir. Payload belirtilen degiskene atanir.
+        Dış sistemlerden gelen HTTP POST istekleriyle tetiklenir. Payload belirtilen değişkene atanır.
       </p>
     </>
   );
@@ -1183,7 +1183,7 @@ function WebhookTriggerProps({
 function OutboundTriggerProps() {
   return (
     <p className="text-sm text-navy-300">
-      Outbound kampanyasi bu flow'u tetiklediginde akis baslar. Kampanya bilgileri <code className="bg-navy-100 px-1 rounded">campaign_id</code> degiskenine atanir.
+      Outbound kampanyası bu flow'u tetiklediğinde akış başlar. Kampanya bilgileri <code className="bg-navy-100 px-1 rounded">campaign_id</code> değişkenine atanır.
     </p>
   );
 }
@@ -1196,7 +1196,7 @@ function ScheduleTriggerProps({
   onChange: (d: Record<string, unknown>) => void;
 }) {
   const timezones = [
-    { value: 'Europe/Istanbul', label: 'Turkiye (UTC+3)' },
+    { value: 'Europe/Istanbul', label: 'Türkiye (UTC+3)' },
     { value: 'UTC', label: 'UTC' },
     { value: 'Europe/London', label: 'Londra (UTC+0/+1)' },
     { value: 'Europe/Berlin', label: 'Berlin (UTC+1/+2)' },
@@ -1204,7 +1204,7 @@ function ScheduleTriggerProps({
 
   return (
     <>
-      <FieldGroup label="Cron Ifadesi">
+      <FieldGroup label="Cron İfadesi">
         <input
           type="text"
           value={data.cron_expression ?? ''}
@@ -1222,11 +1222,11 @@ function ScheduleTriggerProps({
           ) : null;
         })()}
         <p className="text-[10px] text-navy-300 mt-1">
-          Format: dakika saat gun ay haftanin_gunu
+          Format: dakika saat gün ay haftanın_günü
         </p>
         <div className="text-[10px] text-navy-300 mt-0.5 space-y-0.5">
-          <p><code className="bg-navy-100 px-0.5 rounded">0 9 * * *</code> Her gun 09:00</p>
-          <p><code className="bg-navy-100 px-0.5 rounded">0 9 * * 1-5</code> Hafta ici 09:00</p>
+          <p><code className="bg-navy-100 px-0.5 rounded">0 9 * * *</code> Her gün 09:00</p>
+          <p><code className="bg-navy-100 px-0.5 rounded">0 9 * * 1-5</code> Hafta içi 09:00</p>
           <p><code className="bg-navy-100 px-0.5 rounded">*/30 * * * *</code> Her 30 dk</p>
         </div>
       </FieldGroup>
@@ -1244,7 +1244,7 @@ function ScheduleTriggerProps({
       </FieldGroup>
 
       <p className="text-sm text-navy-300">
-        Belirtilen cron zamanlamasina gore otomatik tetiklenir.
+        Belirtilen cron zamanlamasına göre otomatik tetiklenir.
       </p>
     </>
   );
@@ -1258,10 +1258,10 @@ function UtilityNoteProps({
   onChange: (d: Record<string, unknown>) => void;
 }) {
   const colors = [
-    { label: 'Sari', value: '#fef3c7' },
+    { label: 'Sarı', value: '#fef3c7' },
     { label: 'Mavi', value: '#dbeafe' },
-    { label: 'Yesil', value: '#dcfce7' },
-    { label: 'Kirmizi', value: '#fee2e2' },
+    { label: 'Yeşil', value: '#dcfce7' },
+    { label: 'Kırmızı', value: '#fee2e2' },
     { label: 'Mor', value: '#ede9fe' },
   ];
 
@@ -1382,14 +1382,14 @@ function CallFlowProps({
     <>
       <FieldGroup label="Hedef Flow">
         {loading ? (
-          <p className="text-sm text-navy-300">Yukleniyor...</p>
+          <p className="text-sm text-navy-300">Yükleniyor...</p>
         ) : (
           <select
             value={data.flow_id ?? ''}
             onChange={(e) => onChange({ flow_id: e.target.value })}
             className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
           >
-            <option value="">Flow seciniz...</option>
+            <option value="">Flow seçiniz...</option>
             {flows.map((f) => (
               <option key={f.flow_id} value={String(f.flow_id)}>
                 {f.flow_name} {!f.is_active ? '(pasif)' : ''}
@@ -1404,7 +1404,7 @@ function CallFlowProps({
         )}
       </FieldGroup>
 
-      <FieldGroup label={`Girdi Esleme (${inputEntries.length})`}>
+      <FieldGroup label={`Girdi Eşleme (${inputEntries.length})`}>
         <div className="space-y-1.5">
           {inputEntries.map(([parentVar, childVar], idx) => (
             <div key={idx} className="flex items-center gap-1">
@@ -1443,11 +1443,11 @@ function CallFlowProps({
           + Girdi Ekle
         </button>
         <p className="text-[10px] text-navy-300 mt-0.5">
-          Parent degisken &rarr; Alt flow degisken
+          Parent değişken &rarr; Alt flow değişken
         </p>
       </FieldGroup>
 
-      <FieldGroup label={`Cikti Esleme (${outputEntries.length})`}>
+      <FieldGroup label={`Çıktı Eşleme (${outputEntries.length})`}>
         <div className="space-y-1.5">
           {outputEntries.map(([childVar, parentVar], idx) => (
             <div key={idx} className="flex items-center gap-1">
@@ -1483,29 +1483,29 @@ function CallFlowProps({
           onClick={() => addMapEntry('output_map', outputEntries)}
           className="mt-1.5 w-full px-2 py-1 rounded border border-dashed border-navy-200 text-xs text-navy-400 hover:border-red-400 hover:text-red-500 transition-colors"
         >
-          + Cikti Ekle
+          + Çıktı Ekle
         </button>
         <p className="text-[10px] text-navy-300 mt-0.5">
-          Alt flow degisken &rarr; Parent degisken
+          Alt flow değişken &rarr; Parent değişken
         </p>
       </FieldGroup>
 
       <p className="text-sm text-navy-300">
-        Alt flow tamamlandiginda <strong>completed</strong>, hata olursa <strong>error</strong> dalina yonlenir.
+        Alt flow tamamlandığında <strong>completed</strong>, hata olursa <strong>error</strong> dalına yönlenir.
       </p>
     </>
   );
 }
 
 const ECOM_OPERATIONS: { value: EcommerceOperation; label: string }[] = [
-  { value: 'list_orders', label: 'Siparisleri Listele' },
-  { value: 'get_order', label: 'Siparis Detay' },
-  { value: 'list_products', label: 'Urunleri Listele' },
-  { value: 'get_product', label: 'Urun Detay' },
-  { value: 'list_customers', label: 'Musterileri Listele' },
-  { value: 'fulfill_order', label: 'Siparisi Kargola' },
-  { value: 'update_order_status', label: 'Siparis Durumu Guncelle' },
-  { value: 'refund_order_line', label: 'Iade Yap' },
+  { value: 'list_orders', label: 'Siparişleri Listele' },
+  { value: 'get_order', label: 'Sipariş Detay' },
+  { value: 'list_products', label: 'Ürünleri Listele' },
+  { value: 'get_product', label: 'Ürün Detay' },
+  { value: 'list_customers', label: 'Müşterileri Listele' },
+  { value: 'fulfill_order', label: 'Siparişi Kargola' },
+  { value: 'update_order_status', label: 'Sipariş Durumu Güncelle' },
+  { value: 'refund_order_line', label: 'İade Yap' },
 ];
 
 function ActionEcommerceProps({
@@ -1527,7 +1527,7 @@ function ActionEcommerceProps({
 
   return (
     <>
-      <FieldGroup label="Saglayici">
+      <FieldGroup label="Sağlayıcı">
         <input
           type="text"
           value={data.provider || 'ikas'}
@@ -1536,7 +1536,7 @@ function ActionEcommerceProps({
         />
       </FieldGroup>
 
-      <FieldGroup label="Islem">
+      <FieldGroup label="İşlem">
         <select
           value={op}
           onChange={(e) => onChange({ operation: e.target.value })}
@@ -1549,7 +1549,7 @@ function ActionEcommerceProps({
       </FieldGroup>
 
       {needsOrderId && (
-        <FieldGroup label="Siparis ID">
+        <FieldGroup label="Sipariş ID">
           <input
             type="text"
             value={data.order_id ?? ''}
@@ -1561,7 +1561,7 @@ function ActionEcommerceProps({
       )}
 
       {needsProductId && (
-        <FieldGroup label="Urun ID">
+        <FieldGroup label="Ürün ID">
           <input
             type="text"
             value={data.product_id ?? ''}
@@ -1601,7 +1601,7 @@ function ActionEcommerceProps({
               value={data.filter_search ?? ''}
               onChange={(e) => onChange({ filter_search: e.target.value })}
               className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
-              placeholder="Isim veya anahtar kelime"
+              placeholder="İsim veya anahtar kelime"
             />
           </FieldGroup>
         </>
@@ -1627,7 +1627,7 @@ function ActionEcommerceProps({
               value={data.filter_search ?? ''}
               onChange={(e) => onChange({ filter_search: e.target.value })}
               className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
-              placeholder="Urun adi"
+              placeholder="Ürün adı"
             />
           </FieldGroup>
           <FieldGroup label="Durum Filtre">
@@ -1653,7 +1653,7 @@ function ActionEcommerceProps({
               placeholder="{{takip_kodu}}"
             />
           </FieldGroup>
-          <FieldGroup label="Kargo Firmasi">
+          <FieldGroup label="Kargo Firması">
             <input
               type="text"
               value={data.cargo_provider ?? ''}
@@ -1688,7 +1688,7 @@ function ActionEcommerceProps({
               placeholder="{{kalem_id}}"
             />
           </FieldGroup>
-          <FieldGroup label="Iade Adedi">
+          <FieldGroup label="İade Adedi">
             <input
               type="text"
               value={data.refund_quantity ?? ''}
@@ -1697,19 +1697,19 @@ function ActionEcommerceProps({
               placeholder="1"
             />
           </FieldGroup>
-          <FieldGroup label="Iade Nedeni">
+          <FieldGroup label="İade Nedeni">
             <input
               type="text"
               value={data.refund_reason ?? ''}
               onChange={(e) => onChange({ refund_reason: e.target.value })}
               className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
-              placeholder="Musteri iade talebi"
+              placeholder="Müşteri iade talebi"
             />
           </FieldGroup>
         </>
       )}
 
-      <FieldGroup label="Sonuc Degiskeni">
+      <FieldGroup label="Sonuç Değişkeni">
         <input
           type="text"
           value={data.response_variable ?? 'ecom_result'}
@@ -1720,7 +1720,7 @@ function ActionEcommerceProps({
       </FieldGroup>
 
       <p className="text-sm text-navy-300">
-        Basarili sonuc <strong>success</strong>, hata ise <strong>error</strong> dalina yonlenir.
+        Başarılı sonuç <strong>success</strong>, hata ise <strong>error</strong> dalına yönlenir.
       </p>
     </>
   );
@@ -1730,8 +1730,8 @@ function LogicWorkingHoursProps() {
   return (
     <div className="p-2 rounded-md bg-amber-50 border border-amber-100">
       <p className="text-sm text-amber-700">
-        Bu node tenant ayarlarindaki mesai saatlerini kullanir.
-        Cikis: <strong>within_hours</strong> (mesai ici) / <strong>outside_hours</strong> (mesai disi).
+        Bu node tenant ayarlarındaki mesai saatlerini kullanır.
+        Çıkış: <strong>within_hours</strong> (mesai içi) / <strong>outside_hours</strong> (mesai dışı).
       </p>
     </div>
   );
@@ -1755,20 +1755,20 @@ function ActionAssignGroupProps({
           className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500 font-mono"
         />
       </FieldGroup>
-      <FieldGroup label="Grup Adi (Gorsel)">
+      <FieldGroup label="Grup Adı (Görsel)">
         <input
           type="text"
           value={data.group_name ?? ''}
           onChange={(e) => onChange({ group_name: e.target.value })}
-          placeholder="Ornegin: Satis Ekibi"
+          placeholder="Örneğin: Satış Ekibi"
           className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
         />
       </FieldGroup>
-      <FieldGroup label="Ozet Sablonu (Opsiyonel)">
+      <FieldGroup label="Özet Şablonu (Opsiyonel)">
         <textarea
           value={data.summary_template ?? ''}
           onChange={(e) => onChange({ summary_template: e.target.value })}
-          placeholder="Degisken kullanabilirsiniz: {{musteri_adi}}"
+          placeholder="Değişken kullanabilirsiniz: {{musteri_adi}}"
           rows={3}
           className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500 resize-none"
         />

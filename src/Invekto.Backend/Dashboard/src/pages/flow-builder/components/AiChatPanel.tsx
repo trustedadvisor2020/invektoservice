@@ -26,12 +26,12 @@ const TEXTAREA_MIN_HEIGHT = 44; // ~2 lines
 const TEXTAREA_MAX_HEIGHT = 160; // ~7 lines
 
 const thinkingMessages = [
-  'Bir saniye, dusunuyorum...',
-  'Hmm, guzel bir seyler geliyor...',
+  'Bir saniye, düşünüyorum...',
+  'Hmm, güzel bir şeyler geliyor...',
   'Fikirlerimi topluyorum...',
-  'Yaratici moduma gectim...',
-  'Hemen hazirliyorum...',
-  'Sizin icin en iyisini dusunuyorum...',
+  'Yaratıcı moduma geçtim...',
+  'Hemen hazırlıyorum...',
+  'Sizin için en iyisini düşünüyorum...',
 ];
 
 interface SlashCommand {
@@ -42,12 +42,12 @@ interface SlashCommand {
 }
 
 const SLASH_COMMANDS: SlashCommand[] = [
-  { key: 'yeni', label: '/yeni', description: 'Sifirdan yeni bir akis olusturmak istiyorum', prompt: 'Sifirdan yeni bir akis olusturmak istiyorum.' },
-  { key: 'duzelt', label: '/duzelt', description: 'Akistaki hatalari ve eksikleri duzelt', prompt: 'Akistaki hatalari ve eksik baglantilari duzelt.' },
-  { key: 'optimize', label: '/optimize', description: 'Akisi sadelestir ve performansini iyilestir', prompt: 'Akisi sadelestir, gereksiz dugumleri kaldir ve performansini iyilestir.' },
-  { key: 'aciklat', label: '/aciklat', description: 'Mevcut akisi adim adim aciklat', prompt: 'Mevcut akisi adim adim, sade bir dille aciklat.' },
-  { key: 'dal', label: '/dal', description: 'Yeni bir dal/senaryo ekle', prompt: 'Mevcut akisa yeni bir dal ekleyelim. Once ne tur bir senaryo eklemek istedigimi sor.' },
-  { key: 'faq', label: '/faq', description: 'FAQ dugumu ve bilgi bankasi entegre et', prompt: 'Akisa bir FAQ dugumu ekle ve dogru baglantilari kur.' },
+  { key: 'yeni', label: '/yeni', description: 'Sıfırdan yeni bir akış oluşturmak istiyorum', prompt: 'Sıfırdan yeni bir akış oluşturmak istiyorum.' },
+  { key: 'duzelt', label: '/duzelt', description: 'Akıştaki hataları ve eksikleri düzelt', prompt: 'Akıştaki hataları ve eksik bağlantıları düzelt.' },
+  { key: 'optimize', label: '/optimize', description: 'Akışı sadeleştir ve performansını iyileştir', prompt: 'Akışı sadeleştir, gereksiz düğümleri kaldır ve performansını iyileştir.' },
+  { key: 'aciklat', label: '/aciklat', description: 'Mevcut akışı adım adım açıkla', prompt: 'Mevcut akışı adım adım, sade bir dille açıkla.' },
+  { key: 'dal', label: '/dal', description: 'Yeni bir dal/senaryo ekle', prompt: 'Mevcut akışa yeni bir dal ekleyelim. Önce ne tür bir senaryo eklemek istediğimi sor.' },
+  { key: 'faq', label: '/faq', description: 'FAQ düğümü ve bilgi bankası entegre et', prompt: 'Akışa bir FAQ düğümü ekle ve doğru bağlantıları kur.' },
 ];
 
 function getStoredWidth(): number {
@@ -67,9 +67,9 @@ function formatTimestamp(iso?: string): string {
   const t = new Date(iso).getTime();
   if (Number.isNaN(t)) return '';
   const diffSec = Math.floor((Date.now() - t) / 1000);
-  if (diffSec < 60) return 'simdi';
-  if (diffSec < 3600) return `${Math.floor(diffSec / 60)} dk once`;
-  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)} sa once`;
+  if (diffSec < 60) return 'şimdi';
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)} dk önce`;
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)} sa önce`;
   return new Date(iso).toLocaleString('tr-TR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
@@ -91,33 +91,33 @@ function useContextualSuggestions(): SuggestionChip[] {
 
     if (nodes.length === 0) {
       out.push(
-        { label: 'Karsilama akisi olustur', prompt: 'Yeni musteri icin sade bir karsilama akisi olustur.', tone: 'default' },
-        { label: 'FAQ botu kur', prompt: 'Sik sorulan sorulara cevap veren bir FAQ botu olustur.', tone: 'default' },
-        { label: 'Randevu alma akisi', prompt: 'Musteriden ad, telefon ve tarih alip temsilciye aktaran randevu akisi olustur.', tone: 'default' },
+        { label: 'Karşılama akışı oluştur', prompt: 'Yeni müşteri için sade bir karşılama akışı oluştur.', tone: 'default' },
+        { label: 'FAQ botu kur', prompt: 'Sık sorulan sorulara cevap veren bir FAQ botu oluştur.', tone: 'default' },
+        { label: 'Randevu alma akışı', prompt: 'Müşteriden ad, telefon ve tarih alıp temsilciye aktaran randevu akışı oluştur.', tone: 'default' },
       );
       return out;
     }
 
     if (errorCount > 0) {
       out.push({
-        label: `${errorCount} hatayi duzelt`,
-        prompt: 'Akistaki tum hatalari ve eksik baglantilari duzelt.',
+        label: `${errorCount} hatayı düzelt`,
+        prompt: 'Akıştaki tüm hataları ve eksik bağlantıları düzelt.',
         tone: 'warning',
       });
     }
 
     if (selectedNodeId) {
       const sel = nodes.find(n => n.id === selectedNodeId);
-      const label = (sel?.data as { label?: string } | undefined)?.label ?? sel?.type ?? 'secili dugum';
+      const label = (sel?.data as { label?: string } | undefined)?.label ?? sel?.type ?? 'seçili düğüm';
       out.push(
-        { label: `"${label}" dugumune dal ekle`, prompt: `Secili dugume (${sel?.type}, "${label}") bir alternatif dal ekle.`, tone: 'default' },
-        { label: `"${label}" sonrasi yeni adim`, prompt: `Secili dugumden (${sel?.type}, "${label}") sonra mantikli bir sonraki adim ekle.`, tone: 'default' },
+        { label: `"${label}" düğümüne dal ekle`, prompt: `Seçili düğüme (${sel?.type}, "${label}") bir alternatif dal ekle.`, tone: 'default' },
+        { label: `"${label}" sonrası yeni adım`, prompt: `Seçili düğümden (${sel?.type}, "${label}") sonra mantıklı bir sonraki adım ekle.`, tone: 'default' },
       );
     }
 
     out.push(
-      { label: 'FAQ dugumu ekle', prompt: 'Akisin uygun bir yerine FAQ dugumu ekle.', tone: 'default' },
-      { label: 'Akisi optimize et', prompt: 'Akisi sadelestir ve gereksiz dugumleri birlestir.', tone: 'success' },
+      { label: 'FAQ düğümü ekle', prompt: 'Akışın uygun bir yerine FAQ düğümü ekle.', tone: 'default' },
+      { label: 'Akışı optimize et', prompt: 'Akışı sadeleştir ve gereksiz düğümleri birleştir.', tone: 'success' },
     );
 
     return out.slice(0, 5);
@@ -392,14 +392,14 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
           </svg>
         </div>
-        <span className="text-white text-xs font-medium flex-1 truncate">AI ile Gelistir</span>
+        <span className="text-white text-xs font-medium flex-1 truncate">AI ile Geliştir</span>
 
         {/* Undo last AI change */}
         {lastAppliedSnapshot && (
           <button
             onClick={handleUndoLastApply}
             className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-500 hover:bg-purple-400 text-white text-[10px] font-medium transition-colors"
-            title="Son AI degisikligini geri al"
+            title="Son AI değişikliğini geri al"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3">
               <path d="M3 7v6h6" />
@@ -413,8 +413,8 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
         <button
           onClick={handleToggleExpand}
           className="p-1 rounded hover:bg-purple-500 transition-colors text-purple-200 hover:text-white"
-          title={isExpanded ? 'Paneli daralt' : 'Paneli genislet'}
-          aria-label={isExpanded ? 'Paneli daralt' : 'Paneli genislet'}
+          title={isExpanded ? 'Paneli daralt' : 'Paneli genişlet'}
+          aria-label={isExpanded ? 'Paneli daralt' : 'Paneli genişlet'}
           aria-pressed={isExpanded}
         >
           {isExpanded ? (
@@ -445,7 +445,7 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
               ? 'bg-red-500 hover:bg-red-400 text-white'
               : 'hover:bg-purple-500 text-purple-200 hover:text-white',
           )}
-          title={showResetConfirm ? 'Tikrar tikla, sohbet silinecek' : 'Sohbeti sifirla'}
+          title={showResetConfirm ? 'Tekrar tıkla, sohbet silinecek' : 'Sohbeti sıfırla'}
         >
           {showResetConfirm ? (
             <span className="text-[10px] font-medium px-1">Emin misin?</span>
@@ -477,7 +477,7 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" />
           </svg>
           <div className="flex-1 min-w-0">
-            <div className="text-[9px] uppercase tracking-wide text-purple-500 font-semibold leading-none">Sablon</div>
+            <div className="text-[9px] uppercase tracking-wide text-purple-500 font-semibold leading-none">Şablon</div>
             <div className="text-[11px] text-purple-800 font-medium truncate leading-tight mt-0.5">{templateContext.title}</div>
           </div>
         </div>
@@ -570,7 +570,7 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
             ))}
             <div className="flex items-center gap-2 pt-0.5">
               <div className="flex-1 h-px bg-navy-100" />
-              <span className="text-[10px] text-navy-300">veya kendi cevabin</span>
+              <span className="text-[10px] text-navy-300">veya kendi cevabın</span>
               <div className="flex-1 h-px bg-navy-100" />
             </div>
             <div className="flex gap-1.5">
@@ -578,7 +578,7 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
                 value={freeInput}
                 onChange={e => setFreeInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleFreeSend(); } }}
-                placeholder="Kendi cevabinizi yazin..."
+                placeholder="Kendi cevabınızı yazın..."
                 className="flex-1 px-2.5 py-1.5 bg-white border border-navy-100 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-300 placeholder:text-navy-300"
               />
               <button
@@ -621,7 +621,7 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
               value={input}
               onChange={e => { setInput(e.target.value); detectPopup(e.target.value); }}
               onKeyDown={handleKeyDown}
-              placeholder="Ne degistirmek istiyorsunuz? ( / komutlar  ·  @ dugum )"
+              placeholder="Ne değiştirmek istiyorsunuz? ( / komutlar  ·  @ düğüm )"
               rows={2}
               disabled={isStreaming}
               style={{ minHeight: TEXTAREA_MIN_HEIGHT, maxHeight: TEXTAREA_MAX_HEIGHT }}
@@ -636,7 +636,7 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
                   ? 'bg-purple-500 hover:bg-purple-600 text-white'
                   : 'bg-navy-100 text-navy-200 cursor-not-allowed',
               )}
-              title="Gonder (Enter)"
+              title="Gönder (Enter)"
             >
               <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
                 <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
@@ -648,12 +648,12 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
         {/* Keyboard hint */}
         <div className="px-3 pb-1.5 flex items-center gap-2 text-[9px] text-navy-300 leading-none">
           <Kbd>Enter</Kbd>
-          <span>gonder</span>
+          <span>gönder</span>
           <span className="text-navy-200">·</span>
           <Kbd>Shift</Kbd>
           <span>+</span>
           <Kbd>Enter</Kbd>
-          <span>yeni satir</span>
+          <span>yeni satır</span>
           <span className="text-navy-200">·</span>
           <Kbd>/</Kbd>
           <span>komut</span>
@@ -690,9 +690,9 @@ function EmptyState({ suggestions, onPick }: { suggestions: SuggestionChip[]; on
   const errorCount = useFlowStore(s => Array.from(s.validationErrors.values()).reduce((a, b) => a + b.length, 0));
 
   let contextLabel: string;
-  if (nodeCount === 0) contextLabel = 'Bos canvas';
-  else if (errorCount > 0) contextLabel = `${nodeCount} dugum · ${errorCount} hata`;
-  else contextLabel = `${nodeCount} dugum`;
+  if (nodeCount === 0) contextLabel = 'Boş canvas';
+  else if (errorCount > 0) contextLabel = `${nodeCount} düğüm · ${errorCount} hata`;
+  else contextLabel = `${nodeCount} düğüm`;
 
   return (
     <div className="flex flex-col items-center justify-center h-full text-center px-2 py-6">
@@ -701,7 +701,7 @@ function EmptyState({ suggestions, onPick }: { suggestions: SuggestionChip[]; on
           <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
         </svg>
       </div>
-      <p className="text-xs text-navy-500 font-medium mb-0.5">AI ile akisinizi gelistirin</p>
+      <p className="text-xs text-navy-500 font-medium mb-0.5">AI ile akışınızı geliştirin</p>
       <p className="text-[10px] text-navy-300 mb-3">{contextLabel}</p>
 
       <div className="w-full space-y-1.5">
@@ -722,7 +722,7 @@ function EmptyState({ suggestions, onPick }: { suggestions: SuggestionChip[]; on
       </div>
 
       <p className="text-[9px] text-navy-300 mt-3">
-        Ipucu: <Kbd>/</Kbd> ile hizli komutlar, <Kbd>@</Kbd> ile dugum bahsedebilirsin
+        İpucu: <Kbd>/</Kbd> ile hızlı komutlar, <Kbd>@</Kbd> ile düğüm bahsedebilirsin
       </p>
     </div>
   );
@@ -743,7 +743,7 @@ function CommandPopup({ kind, slashItems, mentionItems, activeIndex, onHover, on
   return (
     <div className="absolute bottom-full left-3 right-3 mb-1 bg-white border border-navy-200 rounded-lg shadow-elevated max-h-56 overflow-y-auto z-20">
       <div className="px-2 py-1 bg-navy-25 border-b border-navy-100 text-[9px] uppercase tracking-wide text-navy-400 font-semibold">
-        {kind === 'slash' ? 'Hizli komut' : 'Dugum bahset'}
+        {kind === 'slash' ? 'Hızlı komut' : 'Düğüm bahset'}
       </div>
       {kind === 'slash' && slashItems.map((cmd, i) => (
         <button
@@ -819,7 +819,7 @@ function CopyButton({ text, position }: { text: string; position: 'left' | 'righ
     }, 1800);
   }, [text]);
 
-  const baseTitle = state === 'success' ? 'Kopyalandi' : state === 'error' ? 'Kopyalanamadi — manuel sec' : 'Mesaji kopyala';
+  const baseTitle = state === 'success' ? 'Kopyalandı' : state === 'error' ? 'Kopyalanamadı — manuel seç' : 'Mesajı kopyala';
   const tone =
     state === 'success'
       ? 'border-emerald-300 text-emerald-600 bg-emerald-50'
@@ -905,7 +905,7 @@ function ChatBubble({ message, showOptions = true }: { message: WizardMessage; s
             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            Degisiklik uygulandi
+            Değişiklik uygulandı
           </div>
         )}
         {ts && (
