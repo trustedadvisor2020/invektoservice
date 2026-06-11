@@ -233,6 +233,17 @@
         "total": 10885
       },
       "notes": "12/12 CQ + 4/4 CoVe, blocking NONE. Fix'ler: catch'e console.warn + removeItem cleanup; (companyName ?? string.Empty).Trim(). Build Backend 0E + SPA 0E (final bundle index-4QK6z2_3.js)."
+    },
+    {
+      "ts": "2026-06-11T13:48:00Z",
+      "event": "COMMITTED",
+      "commit_sha": "4fe70e65",
+      "notes": "3 kaynak + plan JSON + SPA asset rotasyonu (index-4QK6z2_3.js) tek feat commit. UI test Q karariyla skip. NOT: ilk commit denemesi here-string icindeki cift tirnaklarla bozuldu -> git commit -F dosya (shared-lesson kaydedildi)."
+    },
+    {
+      "ts": "2026-06-11T13:53:00Z",
+      "event": "DEPLOYED",
+      "notes": "Backend server-deploy (config-restore'lu), 10/10 HEALTHY, canli bundle index-4QK6z2_3.js dogrulandi. Migration yok, gate'ler degismedi. Medipol kullanicisi yeniden giriste adini gorur."
     }
   ],
   "verdict": {
