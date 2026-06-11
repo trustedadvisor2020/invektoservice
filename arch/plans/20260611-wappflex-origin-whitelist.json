@@ -7,7 +7,14 @@
   "risk": "LOW",
   "status": "DONE",
   "created_at": "2026-06-11T15:50:00+03:00",
-  "updated_at": "2026-06-11T16:20:00+03:00",
+  "updated_at": "2026-06-11T16:45:00+03:00",
+  "status_log": [
+    {"status": "PLANNING", "at": "2026-06-11T15:50:00+03:00", "note": "Medipol wappflex login-screen incident — 5-agent workflow root-cause + prod verification"},
+    {"status": "IN_PROGRESS", "at": "2026-06-11T15:55:00+03:00", "note": "3-nokta fix: bridge origins + InmaNavCors + apiBaseUrl regex + INMA notice doc"},
+    {"status": "REVIEW", "at": "2026-06-11T16:10:00+03:00", "note": "Backend build PASS + Dashboard tsc clean + Codex submitted"},
+    {"status": "DONE", "at": "2026-06-11T16:20:00+03:00", "note": "Codex iter0 PASS 12/12 CQ + 3/3 CoVe — COMMITTED bfafdfdf (pathspec-scoped, paralel login-UI paketi korundu)"},
+    {"status": "DONE", "at": "2026-06-11T16:45:00+03:00", "note": "DEPLOYED ~16:16 TR: SPA index-B0mSILRy.js + Backend, health OK; smoke: prod bundle wappflex ✓ + preflight 204 Allow-Origin wappflex ✓; migration yok (062 zaten uygulanmış doğrulandı)"}
+  ],
   "plan": {
     "summary": "Medipol WapCRM'in white-label domain'i app.wappflex.com uzerinden INSE dashboard'u embed ediyor; inmaBridge.ts origin whitelist'i ve InmaNavCors CORS policy'si bu origin'i tanimadigi icin inma:auth postMessage sessizce dusuyor (login ekrani) ve /api/v1/inma/nav CORS'a takiliyor. Fix: app.wappflex.com her iki whitelist'e eklenir + INMA_API_BASE_URL_REGEX *.wappflex.com'u da kabul edecek sekilde genisletilir (parent'in wappflex-branded apiBaseUrl gondermesi ihtimaline karsi defensif).",
     "q_intent": "medipol wapcrm den linke tikladiginda login ekrani geliyor. dashboard cikmiyor. [konsol: CORS error /api/v1/inma/nav origin app.wappflex.com] -> app.wappflex.com origin'ine izin ver",
