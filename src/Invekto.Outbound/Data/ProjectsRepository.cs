@@ -683,10 +683,15 @@ public class ProjectsRepository
     /// </summary>
     public virtual async Task<bool> IsCloudApiInstanceOwnedAsync(int tenantId, int instanceId, CancellationToken ct = default)
     {
+        // STRICT WABA gate (migration 063): cxapi gives instance_type=1 to BOTH WABA and QR-Code
+        // lines, so type alone is not a Cloud-API proof — connection_type='WABA' is. NULL does NOT
+        // authorize (a stale pre-063 cache row must be backfilled/refreshed, never trusted): this
+        // guard is the authoritative server-side check for direct API callers, so unknown = reject.
         const string sql = @"
             SELECT EXISTS(
                 SELECT 1 FROM tenant_instances
-                WHERE tenant_id = @tid AND instance_id = @inst AND instance_type = 1)";
+                WHERE tenant_id = @tid AND instance_id = @inst AND instance_type = 1
+                  AND UPPER(TRIM(connection_type)) = 'WABA')";
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("tid", tenantId);

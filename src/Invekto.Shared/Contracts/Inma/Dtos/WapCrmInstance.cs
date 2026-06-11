@@ -9,6 +9,13 @@ public sealed class WapCrmInstanceDto
     public required string InstanceName { get; init; }
     public string? Account { get; init; }
     public int InstanceType { get; init; }
+
+    /// <summary>
+    /// WapCRM connectionType ('WABA' | 'QR Code' | 'SMS' | 'Voip' | ...) — vendor-defined open set.
+    /// instanceType=1 covers BOTH WABA and QR lines; this is the only reliable WABA discriminator.
+    /// Trimmed, empty mapped to null by the fetch.
+    /// </summary>
+    public string? ConnectionType { get; init; }
 }
 
 /// <summary>
@@ -30,4 +37,5 @@ public sealed class WapCrmRawInstance
     public string? InstanceName { get; set; }
     public string? Account { get; set; }
     public int InstanceType { get; set; }
+    public string? ConnectionType { get; set; }
 }

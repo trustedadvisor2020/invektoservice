@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS tenant_instances (
     instance_id     VARCHAR(100) NOT NULL,          -- WapCRM instanceID (string form)
     instance_name   VARCHAR(200) NOT NULL,          -- WapCRM instanceName (display label)
     account         VARCHAR(50),                    -- WapCRM account (telefon numarasi)
-    instance_type   INTEGER NOT NULL DEFAULT 1,     -- WapCRM instanceType (1=Cloud API, 2=Web, 5=Kanal, 6=SMS)
+    instance_type   INTEGER NOT NULL DEFAULT 1,     -- WapCRM instanceType (1=Cloud API/QR, 2=Web, 5=Kanal, 6=SMS) — WABA ayrimi YAPMAZ
+    connection_type TEXT,                           -- WapCRM connectionType ('WABA'|'QR Code'|'SMS'|'Voip'|...) — vendor open-set, migration 063; WABA'nin tek guvenilir ayirt edicisi
     is_enabled      BOOLEAN NOT NULL DEFAULT true,  -- Tenant-controlled on/off
     flow_id         INTEGER,                        -- Assigned flow (NULL = unassigned)
     fetched_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),

@@ -3649,6 +3649,10 @@ async Task<List<WapCrmInstanceDto>> FetchWapCrmInstances(string secretKey, JsonL
         InstanceName = i.InstanceName ?? $"Instance {i.InstanceId}",
         Account = i.Account,
         InstanceType = i.InstanceType,
+        // instanceType=1 covers BOTH WABA and QR lines; connectionType is the only reliable
+        // WABA discriminator. Empty/whitespace -> null so the upsert's COALESCE keeps a
+        // previously known value instead of erasing it on a degraded vendor response.
+        ConnectionType = string.IsNullOrWhiteSpace(i.ConnectionType) ? null : i.ConnectionType.Trim(),
     }).ToList();
 }
 

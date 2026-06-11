@@ -1,0 +1,265 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260611-projeler-waba-only-dropdown",
+  "risk": "HIGH",
+  "status": "DONE",
+  "created_at": "2026-06-11T14:35:00Z",
+  "updated_at": "2026-06-11T15:25:00Z",
+  "gr_list": [
+    {
+      "id": "GR-1",
+      "description": "Migration 063: tenant_instances += connection_type TEXT NULL (additive, idempotent, INV-SEED-063 verifier; TEXT cunku vendor open-set — plan-review bulgusu, VARCHAR(30) cap'i celiskiliydi) + canonical arch/db/tenant-instances.sql senkron",
+      "services_affected": ["db"]
+    },
+    {
+      "id": "GR-2",
+      "description": "Shared DTO additive: WapCrmRawInstance.ConnectionType (string?) + WapCrmInstanceDto.ConnectionType (string?) — cxapi /api/Instances 'connectionType' alanini tasi",
+      "services_affected": ["Invekto.Shared"]
+    },
+    {
+      "id": "GR-3",
+      "description": "Backend: FetchWapCrmInstances ConnectionType map (trim, bos->null); InstanceRepository Upsert insert + ON CONFLICT connection_type = COALESCE(NULLIF(TRIM(EXCLUDED.connection_type),''), tenant_instances.connection_type) — vendor alani gecici gondermezse bilinen iyi deger korunur (plan-review bulgusu: NULL'a ezme + fallback kombinasyonu en kotu durumdu); ListInstancesAsync select + InstanceEntry.ConnectionType (API response'a camelCase connectionType olarak akar)",
+      "services_affected": ["Invekto.Backend"]
+    },
+    {
+      "id": "GR-4",
+      "description": "Outbound server parity STRICT: IsCloudApiInstanceOwnedAsync WHERE'e AND UPPER(TRIM(connection_type)) = 'WABA' — NULL GECMEZ (Codex plan-review: NULL fallback stale-cache QR yetkisini suresiz acik birakirdi; Q ikinci interview'da strict'i onayladi). Guvenli cunku: tenant_instances'ta yalniz 5050+100000001 var, ikisi de servis deploy'undan ONCE backfill edilir; QR'a bagli mevcut proje yok (tek proje 6570=WABA)",
+      "services_affected": ["Invekto.Outbound"]
+    },
+    {
+      "id": "GR-5",
+      "description": "SPA: api.ts InstanceDto += connectionType: string | null; ProjectsPage whatsappInstances filtresi: connectionType doluysa normalize karsilastirma (trim+upper === 'WABA'), null ise instanceType === 1 fallback (Q karari — UI fallback kalir, server strict; backfill sonrasi fallback pratikte inert). Settings sayfasi DEGISMEZ",
+      "services_affected": ["Dashboard SPA"]
+    }
+  ],
+  "plan": {
+    "summary": "Projeler modalindaki WhatsApp Kanali dropdown'i yalniz gercek WABA hatlarini gostersin: cxapi /api/Instances'in dondurdugu connectionType alani tenant_instances'a persist edilir (migration 063), UI filtresi instanceType=1 yerine connectionType='WABA' olur (NULL fallback ile), Outbound'daki instance sahiplik guard'i ayni invarianti server-side uygular.",
+    "q_intent": "dropdown da da yalniz waba hatlarini goster",
+    "interview_notes": "Q onaylari (AskUserQuestion, 2026-06-11): (1) migration 063 connection_type kolonu ONAY; (2) eski cache NULL satirlar icin fallback (instanceType=1) + deploy sonrasi 5050+100000001 icin canli cxapi degerlerinden tek seferlik data backfill ONAY; (3) server parity (IsCloudApiInstanceOwnedAsync WABA sarti) ONAY; (4) AC seti ONAY. Kanit: 5050 canli cxapi cekimi — instanceType=1 ama connectionType cesitli: 2131 'QR Code', 8523 'QR Code', 4708/5623/6570/7495 'WABA'; medipol (100000001): 8784 'WABA', 7041 'QR Code' (ikisi de type=1, cache 14:15Z'de connection_type'siz dolmus). OPS NOTU (kod disi, plan-review sonrasi guncel sira): migration 063 -> DATA BACKFILL (servis deploy'undan ONCE: 5050'nin 14 cache satiri + 100000001'in 2 satiri canli cxapi degerlerinden UPDATE; dogrulama sorgusu instance_type=1 AND connection_type IS NULL = 0 satir) -> Outbound -> Backend+SPA. PLAN-REVIEW (codex_consult, verdict: modify) UYGULANANLAR: (1) server guard strict — NULL gecmez (Q ikinci interview onayi; tenant_instances yalniz 2 tenant, QR'a bagli proje yok [tek proje 6570=WABA], Projects gate zaten allowlist'li); (2) kolon TEXT (VARCHAR(30) open-set ile celiskiliydi); (3) deger normalizasyonu: C# trim+bos->null, SQL UPPER(TRIM()), SPA trim().toUpperCase(); (4) upsert COALESCE — vendor alani gondermezse onceki iyi deger korunur. REDDEDILEN: UI'da da strict (Q karari: UI fallback kalir — backfill sonrasi pratikte inert, server taraf kapali). FUTURE: Settings'te connectionType rozeti; NULL satirlar icin otomatik re-fetch.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Medipol (tenant 100000001) Yeni Proje modalinda WhatsApp Kanali dropdown'inda YALNIZ 'Medipol API' (8784) gorunur; QR 'medipol' (7041) gorunmez (data backfill sonrasi).",
+        "verified": true,
+        "verification_note": "Logic-level: filtre connectionType normalize ==='WABA'; canli veri 8784='WABA', 7041='QR Code' (backfill degerleri). Prod gorsel dogrulama deploy sonrasi."
+      },
+      {
+        "id": "AC2",
+        "criterion": "5050 dropdown'inda yalniz 4 WABA hatti (4708, 5623, 6570, 7495) gorunur; QR/SMS/Voip/Instagram/Telegram hatlari gorunmez (data backfill sonrasi).",
+        "verified": true,
+        "verification_note": "Logic-level: 5050 canli cxapi seti uzerinde masa testi — yalniz 4708/5623/6570/7495 connectionType='WABA'. Prod gorsel dogrulama deploy sonrasi."
+      },
+      {
+        "id": "AC3",
+        "criterion": "Ayarlar sayfasi instance listesi davranisi DEGISMEZ — tum hatlar turleriyle listelenmeye devam eder.",
+        "verified": true,
+        "verification_note": "SettingsPage.tsx dokunulmadi; ListInstancesAsync filtre eklemedi (yalniz kolon select). Codex CQ10 PASS."
+      },
+      {
+        "id": "AC4",
+        "criterion": "connection_type NULL olan cache satirlarinda eski davranis korunur (instanceType=1 fallback) — hicbir tenant'in dropdown'i deploy aninda bosalmaz.",
+        "verified": true,
+        "verification_note": "ProjectsPage filtresi null dalinda instanceType===1. Codex Q1 PASS (display-only fallback dogrulandi)."
+      },
+      {
+        "id": "AC5",
+        "criterion": "Server parity STRICT: connection_type 'WABA' olmayan (QR/SMS/NULL dahil) bir instance_id ile test-send/proje send-config API cagrisi IsCloudApiInstanceOwnedAsync'te reddedilir (mevcut INV-OB hata yollari). Backfill servis deploy'undan once kostugu icin mesru WABA satirlari hicbir an reddedilmez.",
+        "verified": true,
+        "verification_note": "SQL: AND UPPER(TRIM(connection_type))='WABA' (NULL ucu-degerli mantikla gecmez). Codex Q1+Q2 PASS, CQ9 PASS."
+      }
+    ]
+  },
+  "spec_acceptance_criteria": [],
+  "spec_architectural_decisions": [
+    {
+      "decision": "connection_type icin CHECK constraint YOK — vendor (cxapi) acik kume donduruyor ('WABA','QR Code','SMS','Voip','Instagram','Telegram', gelecekte yenileri olabilir); kolon serbest VARCHAR(30) NULL.",
+      "reason": "Vendor-defined domain; CHECK eklemek yeni vendor degeri geldiginde fetch'i kirar.",
+      "codex_note": "EXPECTED: CQ domain-constraint bulgusu ACMA — open-set bilincli karar, Q onayli."
+    },
+    {
+      "decision": "Asimetrik fallback (plan-review sonrasi): UI'da connectionType==null ise eski instanceType===1 filtresi KALIR (Q karari — dropdown aniden bosalmasin); server guard'da NULL GECMEZ (strict UPPER(TRIM(connection_type))='WABA'). Gecis penceresi yok: backfill servis deploy'undan once kosar, tenant_instances'ta yalniz 5050+100000001 var.",
+      "reason": "Codex plan-review: server'da NULL toleransi stale-cache QR yetkisini suresiz acik birakirdi; UI fallback ise sadece gorunum — secilse bile server reddeder.",
+      "codex_note": "EXPECTED: 'UI-server tutarsizligi' bulgusu ACMA — bilincli asimetri, Q onayli; NULL satirli tenant'in UI'da gordugu stale QR hatti save/test aninda server tarafindan reddedilir (fail-closed)."
+    },
+    {
+      "decision": "Shared DTO (WapCrmInstance.cs) degisikligi additive nullable property — tek consumer Invekto.Backend (FetchWapCrmInstances).",
+      "reason": "cxapi response alani zaten geliyor; PropertyNameCaseInsensitive deserialize mevcut.",
+      "codex_note": "EXPECTED: cross-service isolation bulgusu ACMA — Shared uzerinden iletisim sanctioned pattern, baska servis bu DTO'yu tuketmiyor."
+    },
+    {
+      "decision": "Eski cache satirlarinin dolmasi icin kod ici otomatik re-fetch YOK; migration sonrasi + servis deploy'u ONCESI tek seferlik ops UPDATE (5050 + 100000001, canli cxapi degerlerinden — tum tenant_instances satirlarini kapsar) + tenant'in manuel 'Instance yenile' butonu.",
+      "reason": "GET endpoint'ine 'NULL varsa re-fetch' eklemek her sayfa yuklemesinde vendor cagrisi riski yaratir; mevcut hasRecords semantigi korunur.",
+      "codex_note": "EXPECTED: 'stale cache otomatik yenilenmiyor' bulgusu ACMA — bilincli scope karari, Q onayli ops adimi var; backfill TUM mevcut satirlari kapsiyor (yalniz 2 tenant var, DB sorgusuyla kanitli)."
+    },
+    {
+      "decision": "Upsert ON CONFLICT: connection_type = COALESCE(NULLIF(TRIM(EXCLUDED.connection_type),''), tenant_instances.connection_type) — vendor alani gecici olarak gondermez/bos gonderirse bilinen iyi deger korunur.",
+      "reason": "Plan-review bulgusu: NULL'a ezme + (UI) fallback kombinasyonu QR deligini yeniden acabilirdi; strict server tarafinda ise mesru WABA'yi gecici kaybettirirdi. Vendor normalde alani gonderiyor — yokluk transient sinyali.",
+      "codex_note": "EXPECTED: 'stale deger korunuyor' bulgusu ACMA — vendor YENI deger gonderdiginde (orn. WABA->QR yeniden siniflama) COALESCE'in ilk kolu dolu oldugu icin guncelleme AYNEN islenir; koruma yalniz bos/eksik deger durumunda devreye girer."
+    }
+  ],
+  "allowed_files": [
+    "arch/db/migrations/063-tenant-instances-connection-type.sql",
+    "arch/db/tenant-instances.sql",
+    "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmInstance.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Data/InstanceRepository.cs",
+    "src/Invekto.Outbound/Data/ProjectsRepository.cs",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx",
+    "arch/plans/20260611-projeler-waba-only-dropdown.json"
+  ],
+  "files_changed": [
+    { "path": "arch/db/migrations/063-tenant-instances-connection-type.sql", "change": "YENI: tenant_instances += connection_type TEXT NULL (additive, idempotent) + INV-SEED-063 verifier", "is_new": true },
+    { "path": "arch/db/tenant-instances.sql", "change": "Canonical senkron: connection_type kolonu + instance_type yorumu duzeltildi (WABA ayrimi yapmaz)", "is_new": false },
+    { "path": "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmInstance.cs", "change": "WapCrmInstanceDto.ConnectionType + WapCrmRawInstance.ConnectionType (additive nullable; tek consumer Backend)", "is_new": false },
+    { "path": "src/Invekto.Backend/Program.cs", "change": "FetchWapCrmInstances: ConnectionType map (trim, bos->null)", "is_new": false },
+    { "path": "src/Invekto.Backend/Data/InstanceRepository.cs", "change": "Upsert: connection_type insert + ON CONFLICT COALESCE(EXCLUDED, mevcut); ListInstancesAsync: select + InstanceEntry.ConnectionType", "is_new": false },
+    { "path": "src/Invekto.Outbound/Data/ProjectsRepository.cs", "change": "IsCloudApiInstanceOwnedAsync STRICT: AND UPPER(TRIM(connection_type))='WABA' (NULL gecmez) + doc comment", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "change": "InstanceDto += connectionType: string | null", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx", "change": "whatsappInstances filtresi: connectionType doluysa normalize WABA karsilastirma, null ise instanceType===1 fallback (display-only)", "is_new": false }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "4904509981C82B63686D4D121B70C096EF3E56E308BC9A678316ADBC1A33A29A",
+    "full_path": "arch/plans/diffs/20260611-projeler-waba-only-dropdown.diff",
+    "stats": {
+      "insertions": 103,
+      "deletions": 11,
+      "files_count": 8
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q (0 error / 42 warning - baseline) + Dashboard npm run build (vite, 7.12s OK)",
+    "timestamp": "2026-06-11T15:00:00Z",
+    "duration_ms": 16000,
+    "output_tail": "0 Error(s). SPA: built in 7.12s (chunk-size uyarisi pre-existing).",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Backend", "Invekto.Outbound", "Dashboard SPA"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Asimetrik fallback dogru mu kurulmus? UI: connectionType==null -> instanceType===1 (gorunum toleransi); Outbound SQL: STRICT UPPER(TRIM(connection_type))='WABA' (NULL gecmez). UI'nin gosterdigi stale satir server'da kesin reddediliyor mu (fail-closed)?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "IsCloudApiInstanceOwnedAsync degisikligi tenant izolasyonunu koruyor mu — tenant_id scoped WHERE aynen duruyor, WABA sarti yalnizca ek daraltma mi, foreign-tenant instance hala reddediliyor mu?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Upsert ON CONFLICT yolunda connection_type EXCLUDED ile guncelleniyor mu — tenant 'Instance yenile' yaptiginda NULL satirlar WABA/QR degerleriyle dolup filtre otomatik sikilasiyor mu; is_enabled/flow_id korunuyor mu (mevcut sozlesme)?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "Migration 063 additive nullable mi — eski binary yeni kolonla calisir mi (deploy sirasi migration -> servisler), INV-SEED-063 verifier kolon varligini dogruluyor mu, canonical tenant-instances.sql senkron mu?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "SettingsPage.tsx instance listesi davranisi (AC3 — tum hatlar gorunmeye devam)",
+      "BulkSend/CxapiSend/Projects gate config'leri (bu pakette config degisikligi yok)",
+      "WapCrmSendClient wire format ve bridge route",
+      "tenant_instances'in is_enabled/flow_id semantigi (flow routing)"
+    ],
+    "non_goals": [
+      "Settings sayfasinda connectionType rozeti/kolonu gosterimi",
+      "Dropdown acilisinda canli cxapi fetch (cache mimarisi degismiyor)",
+      "mlpcm (15702882) tenant'inin wapcrm provisioning'i",
+      "Medipol webhook/ack kurulumu (ayri INMA adimi)"
+    ],
+    "intentional_exclusions": [
+      "connection_type CHECK constraint yok (vendor open-set, spec_architectural_decisions #1)",
+      "NULL satirlar icin otomatik re-fetch yok (ops backfill + manuel refresh, karar #4)",
+      "INV-OB hata mesaji metinleri degismiyor ('Cloud API hatti' ifadesi WABA'yi kapsiyor)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "src/Invekto.Backend/Program.cs:3088 (instance auto-fetch catch — mevcut, degismiyor)",
+      "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx:297 (loadInstances catch — mevcut, degismiyor)"
+    ],
+    "user_facing_errors": [
+      "INV-OB-086 ProjectTestSendInvalidPayload: 'Secilen kanal bu hesaba ait bir Cloud API hatti degil.' (mevcut metin, QR reddi artik buradan da doner)",
+      "ProjectInvalidSendConfig: 'Secilen WhatsApp kanali bu hesaba ait degil veya bir Cloud API hatti degil.' (mevcut)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Vendor connectionType gondermezse deserialize null -> NULL fallback eski davranisi korur (dropdown bosalmaz, sessizce yanlis filtreleme olmaz — en kotu durumda bugunku davranis). Fetch hatalari mevcut catch'lerde loglanip bos listeye duser (degismedi)."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Operator dropdown'da QR hattini secip sablon listesinin neden bos kaldigini anlamiyor",
+      "suggestion": "Dropdown yalniz WABA hatlarini gosterir — yanlis kanal secimi fiziksel olarak imkansiz",
+      "aha_moment": "Kanal listesinde sadece gonderim yapabilecegim hatlar var, dusunmeme gerek yok"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "'Sablonlarim gelmiyor' destek taleplerinin koku QR/SMS hatti secimi",
+      "suggestion": "Kaynagindaki filtre ile bu destek talebi sinifi tamamen ortadan kalkar",
+      "aha_moment": "Destek ekibi ayni sorunun tekrarini bir daha gormez"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Direkt API cagrisiyla QR instance_id'li proje konfigurasyonu olusturulabilir, kampanya calismaz",
+      "suggestion": "Server-side WABA sarti (IsCloudApiInstanceOwnedAsync) yanlis konfigurasyonu kayit aninda reddeder",
+      "aha_moment": "Bozuk send-config hic olusamiyor — kampanya gunu surpriz yok"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Cok hatli firmalarda (5050'de 18 instance) operator dogru hatti listeden ayiklamak zorunda",
+      "suggestion": "Liste 18'den 4'e iner — tek bakista dogru kanal",
+      "aha_moment": "Kampanya kurulumu saniyeler icinde, hat secim hatasi sifir"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Demo sirasinda QR/SMS hatlarinin dropdown'da gorunmesi 'bu urun WhatsApp Business API'yi anlamiyor' izlenimi verir",
+      "suggestion": "WABA-only liste urunun Meta onayli kanal disiplinini gosterir",
+      "aha_moment": "Musteri demoda yalniz resmi WABA hatlarini gorunce urune guvenir"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-06-11T15:25:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-06-11T15:25:00Z",
+    "raw_text": "ITER2 PASS — 12/12 CQ + 5/5 CoVe, blocking yok (gpt-5.5). ITER GECMISI: iter0 FAIL (CQ3/CQ8/CQ9 — diff'e paralel session'in [20260611-list-record-add-remove] henuz commit edilmemis Program.cs proxy-route hunk'i pathspec diff'iyle karismisti; bizim kod bulgusu DEGIL, diff hijyeni) -> iter1 hunk-scoped diff FAIL (CQ9/CQ11/Q1/Q2 tek kok: 'varchar=int binding' iddiasi FALSE-POSITIVE — pre-existing satir 698 instanceId.ToString(CultureInfo.InvariantCulture) TEXT binding; dar U3 context satiri gostermiyordu) -> iter2 -U14 genis context ile ayni kod PASS. Kod iter0'dan beri degismedi; iki FAIL de kod hatasi degildi.",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "INV-SEED-063 verifier; yeni hata yolu yok" },
+      "CQ2": { "result": "PASS", "evidence": "Yeni catch/swallow yok; null fallback dokumante" },
+      "CQ3": { "result": "PASS", "evidence": "Diff plan kapsamiyla birebir; Program.cs tek hunk" },
+      "CQ4": { "result": "PASS", "evidence": "Zararli duplikasyon yok; asimetri bilincli" },
+      "CQ5": { "result": "PASS", "evidence": "snake_case + parametrik SQL + nullable additive DTO" },
+      "CQ6": { "result": "PASS", "evidence": "Yeni perf riski yok; await using korunur" },
+      "CQ7": { "result": "PASS", "evidence": "TODO/HACK/FIXME yok" },
+      "CQ8": { "result": "PASS", "evidence": "Shared DTO additive nullable; ToString TEXT binding korunur, breaking yok" }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "UI fallback display-only; server strict NULL reddeder; @inst TEXT binding (satir 698)" },
+      "Q2": { "result": "PASS", "reasoning": "tenant_id scope aynen; WABA sarti yalnizca daraltma; foreign-tenant reddi korunur" },
+      "Q3": { "result": "PASS", "reasoning": "COALESCE(EXCLUDED, mevcut); yeni deger kazanir; is_enabled/flow_id korunur" },
+      "Q4": { "result": "PASS", "reasoning": "Additive nullable + IF NOT EXISTS; INV-SEED-063; canonical senkron" },
+      "Q5": { "result": "PASS", "reasoning": "Program.cs tek hunk (FetchWapCrmInstances); kapsam disi degisiklik yok" }
+    },
+    "blocking_issues": [],
+    "iteration": 2,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}

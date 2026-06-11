@@ -75,16 +75,20 @@ public class InstanceRepository
     {
         if (instances.Count == 0) return;
 
+        // connection_type: COALESCE keeps the previously known value when the vendor response
+        // omits/blanks connectionType (transient/degraded fetch). A real new value (e.g. a line
+        // reclassified by the vendor) always wins because EXCLUDED is non-null in that case.
         const string sql = @"
             INSERT INTO tenant_instances
-                (tenant_id, instance_id, instance_name, account, instance_type, fetched_at)
+                (tenant_id, instance_id, instance_name, account, instance_type, connection_type, fetched_at)
             VALUES
-                (@tid, @iid, @name, @account, @itype, NOW())
+                (@tid, @iid, @name, @account, @itype, @ctype, NOW())
             ON CONFLICT (tenant_id, instance_id) DO UPDATE SET
-                instance_name = EXCLUDED.instance_name,
-                account       = EXCLUDED.account,
-                instance_type = EXCLUDED.instance_type,
-                fetched_at    = NOW()";
+                instance_name   = EXCLUDED.instance_name,
+                account         = EXCLUDED.account,
+                instance_type   = EXCLUDED.instance_type,
+                connection_type = COALESCE(EXCLUDED.connection_type, tenant_instances.connection_type),
+                fetched_at      = NOW()";
 
         await using var conn = await _db.OpenConnectionAsync(ct);
 
@@ -96,6 +100,7 @@ public class InstanceRepository
             cmd.Parameters.AddWithValue("name", inst.InstanceName);
             cmd.Parameters.AddWithValue("account", (object?)inst.Account ?? DBNull.Value);
             cmd.Parameters.AddWithValue("itype", inst.InstanceType);
+            cmd.Parameters.AddWithValue("ctype", (object?)inst.ConnectionType ?? DBNull.Value);
             await cmd.ExecuteNonQueryAsync(ct);
         }
     }
@@ -110,7 +115,7 @@ public class InstanceRepository
         const string sql = @"
             SELECT ti.id, ti.instance_id, ti.instance_name, ti.account,
                    ti.instance_type, ti.is_enabled, ti.flow_id, cf.flow_name,
-                   ti.fetched_at
+                   ti.fetched_at, ti.connection_type
             FROM tenant_instances ti
             LEFT JOIN chatbot_flows cf ON cf.flow_id = ti.flow_id AND cf.tenant_id = ti.tenant_id
             WHERE ti.tenant_id = @tid
@@ -135,6 +140,7 @@ public class InstanceRepository
                 FlowId = reader.IsDBNull(6) ? null : reader.GetInt32(6),
                 FlowName = reader.IsDBNull(7) ? null : reader.GetString(7),
                 FetchedAt = reader.GetDateTime(8),
+                ConnectionType = reader.IsDBNull(9) ? null : reader.GetString(9),
             });
         }
 
@@ -280,6 +286,9 @@ public sealed class InstanceEntry
     public int? FlowId { get; init; }
     public string? FlowName { get; init; }
     public DateTime FetchedAt { get; init; }
+
+    /// <summary>WapCRM connectionType ('WABA'|'QR Code'|...). NULL on rows cached before migration 063.</summary>
+    public string? ConnectionType { get; init; }
 }
 
 /// <summary>
