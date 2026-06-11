@@ -1,0 +1,250 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260611-dashboard-user-tenant-name",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-11T14:05:00Z",
+  "updated_at": "2026-06-11T15:05:00Z",
+  "gr_list": [
+    {
+      "id": "GR-1",
+      "description": "FE api.ts: 'Demo User' hardcode kaldir — login/exchange yanitindaki full_name localStorage'a yazilir (setSession + runInmaExchange), getSession INSE dalinda oncelik: ops source etiketleri (Super Admin/SuperAdmin, bit-identik) -> saklanan full_name -> ''. removeTokens saklanan ismi temizler.",
+      "services_affected": ["Dashboard SPA"]
+    },
+    {
+      "id": "GR-2",
+      "description": "FE TenantDashboardPage: 'Firma #' satiri (companyCode — Firma #tenantId paragrafi) tamamen kaldirilir; hosgeldin basligi ve istatistikler aynen.",
+      "services_affected": ["Dashboard SPA"]
+    },
+    {
+      "id": "GR-3",
+      "description": "BE Program.cs: tenant auto-provision firma adi kaynagi — ResolveInmaTenantAsync'e provisionDisplayName parametresi. login caller: kullanicinin yazdigi company_name (INMA dogrulamis); exchange + bearer caller'lari: inmaCtx.CompanyCode. Kullanicinin FullName'i ASLA tenant_name olmaz. Repository fast path (mevcut tenant) dokunulmaz — mevcut adlar degismez.",
+      "services_affected": ["Backend"]
+    },
+    {
+      "id": "GR-4",
+      "description": "DATA (prod, Q onayli): tenant_registry tenant_id=100000001 'Admin' -> 'Medipol' + tenant_id=100000000 'zübeyde ebrumoda' -> 'Ebrumoda' (PR-008 taramasi ikinci bozuk satiri buldu, Q ayrica onayladi). Oncesi SELECT snapshot, id-pinli UPDATE'ler, affected-rows=1 assert, read-back verify.",
+      "services_affected": ["PostgreSQL prod"]
+    }
+  ],
+  "plan": {
+    "summary": "Dashboard kimlik gosterimi + tenant provisioning adi duzeltmesi (3 kod GR + 1 prod data fix): (1) hosgeldin basliginda hardcoded 'Demo User' yerine INMA FullName (login/exchange yanitindan persist edilir); (2) 'Firma #' satiri kaldirilir; (3) tenant auto-provision'da firma adi kaynagi duzeltilir (kullanici FullName'i degil: login'de yazilan firma adi, SSO'da CompanyCode); (4) bugun 'Admin' adiyla acilan Medipol tenant'i (100000001) 'Medipol' yapilir.",
+    "q_intent": "dashboarddan demouser kaldir kullanici adi neyse onu bas. firma no satirini kaldir. + firma adi da admin olmus, firma adi medipol, kullanici adi admin",
+    "interview_notes": "Q kararlari (AskUserQuestion): (1) isim kaynagi = INMA FullName (login yanitindan saklanir; 'giristeki kullanici adi' secenegi reddedildi); (2) prod data fix degeri = 'Medipol' (buyuk harfle); (3) provision tasarimi onaylandi: login->yazilan firma adi, exchange/bearer->CompanyCode, FullName asla. KOK NEDENLER: (a) INSE JWT'de isim claim'i yok -> getSession INSE dali 'Demo User' hardcode gosteriyordu (login yanitindaki full_name cope gidiyordu); (b) ResolveInmaTenantAsync provisioning'e inmaCtx.FullName'i firma adi olarak geciyordu -> Medipol SSO ilk girisinde tenant_name='Admin' yazildi (kanit: tenant_registry 100000001, inma_code='medipol', created 2026-06-11T13:17Z).",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "INMA girisi (form + SSO/exchange) sonrasi dashboard hosgeldin basligi 'Demo User' DEGIL, INMA FullName gosterir; sayfa yenilemede (localStorage'dan) korunur; logout/removeTokens saklanan ismi temizler; ops quicklogin 'Super Admin' / impersonate 'SuperAdmin' etiketleri bit-identik kalir.",
+        "verified": true,
+        "verification_note": "setSession + runInmaExchange full_name'i kimlik-bagli ({name,tid,uid}) persist eder (token'dan once); getSession yalniz inma_exchange/inma_mock source'unda + kimlik eslesirse kullanir; ops etiketleri ternary'de oncelikli aynen; removeTokens FULL_NAME key'ini siler. SPA build 0E."
+      },
+      {
+        "id": "AC2",
+        "criterion": "TenantDashboardPage'de 'Firma #' satiri ({companyCode} — Firma #{tenantId} paragrafi) render edilmez; hosgeldin basligi, istatistik kartlari ve feature kartlari degismez.",
+        "verified": true,
+        "verification_note": "Sadece 3 satirlik <p> blogu silindi (diff -3); h1 + istatistik/feature kartlari dokunulmadi."
+      },
+      {
+        "id": "AC3",
+        "criterion": "Yeni tenant auto-provision'da tenant_name kullanici FullName'i OLAMAZ: form login akisi yazilan company_name'i, exchange/bearer akislari CompanyCode'u gecer; mevcut tenant'larin adi degismez (repository fast path'ine dokunulmaz, sadece Program.cs caller'lari).",
+        "verified": true,
+        "verification_note": "ResolveInmaTenantAsync provisionDisplayName parametresi; inmaCtx.FullName provisioning'de hicbir caller'da gecmiyor (grep: 3/3 caller yeni imzada). TenantRegistryRepository.cs diff'te YOK."
+      },
+      {
+        "id": "AC4",
+        "criterion": "Prod: tenant_registry 100000001='Medipol' ve 100000000='Ebrumoda' (UPDATE oncesi snapshot, sonrasi read-back); baska satir etkilenmez (WHERE tenant_id pinli, her UPDATE affected rows=1).",
+        "verified": true,
+        "verification_note": "Snapshot alindi (Admin/medipol + zübeyde ebrumoda/ebrumoda); id+eski-ad pinli iki UPDATE, her biri '1 row affected'; read-back: Medipol + Ebrumoda dogrulandi (2026-06-11 ~14:45Z)."
+      },
+      {
+        "id": "AC5",
+        "criterion": "Full solution build (dotnet) PASS + Dashboard SPA build (tsc && vite) PASS, 0 hata.",
+        "verified": true,
+        "verification_note": "dotnet sln: 0 Error / 42 pre-existing warning (41.9s); iter1 Backend re-build 0E. SPA: tsc clean + vite, final bundle index-4QK6z2_3.js."
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/TenantDashboardPage.tsx"
+  ],
+  "files_changed": [
+    {
+      "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+      "change": "TOKEN_KEYS.FULL_NAME + storeFullName/getStoredFullName (kimlik-bagli {name,tid,uid}); setSession + runInmaExchange isim persist (token'dan ONCE); removeTokens temizler; getSession INSE dali: ops source etiketleri (bit-identik) -> saklanan isim (yalniz inma_exchange/inma_mock + kimlik eslesirse) -> '' — 'Demo User' hardcode kalkti.",
+      "is_new": false
+    },
+    {
+      "path": "src/Invekto.Backend/Dashboard/src/pages/TenantDashboardPage.tsx",
+      "change": "'{companyCode} — Firma #{tenantId}' alt baslik paragrafi kaldirildi; hosgeldin basligi ve sayfa geri kalani aynen.",
+      "is_new": false
+    },
+    {
+      "path": "src/Invekto.Backend/Program.cs",
+      "change": "ResolveInmaTenantAsync += provisionDisplayName parametresi (FullName provisioning'den cikti); 3 caller: login=companyName.Trim() + 200 cap, exchange=CompanyCode, bearer=CompanyCode. Error mapping/introspection bit-identik.",
+      "is_new": false
+    }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "133fa161163b1a50bfc5057fea880dc3470146c81be9077963a910e608ef6cf3",
+    "full_path": "arch/plans/diffs/20260611-dashboard-user-tenant-name.diff",
+    "stats": {
+      "insertions": 64,
+      "deletions": 11,
+      "files_count": 3
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln + npm run build (Dashboard SPA)",
+    "timestamp": "2026-06-11T14:40:00Z",
+    "duration_ms": 52000,
+    "output_tail": "dotnet: 42 Warning(s) 0 Error(s) 41.86s (iter1 re-build Backend 13.6s 0E). SPA: tsc clean + vite (iter1 re-build 11.71s), final bundle index-4QK6z2_3.js.",
+    "error_summary": null,
+    "services": ["Backend", "Dashboard SPA"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "ResolveInmaTenantAsync imza degisikligi 3 caller'da da (login/exchange/bearer) dogru displayName ile cagriliyor mu; auth karar mantigi (introspection, tenant resolve, error mapping INV-AUTH-009) bit-identik mi? (auth-adjacent negatif-dogrulama)",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "full_name localStorage persist'i token yasam donguseyle tutarli mi: setSession + runInmaExchange yazar, removeTokens temizler; ops quicklogin/impersonate source etiketleri saklanan isme OVERRIDE edilmiyor mu (oncelik sirasi dogru mu); stale isim baska kullanicinin oturumuna sizamaz mi?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Mevcut tenant'larin adi degisiyor mu — repository fast path (SELECT by inma_code) dokunulmadan kaldi mi; provisioning yalnizca ILK olusturmada displayName kullanir mi? (regression guard)",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "TenantDashboardPage'den Firma satiri kaldirilirken hosgeldin basligi/istatistik/feature kartlari ve session null guard'lari degismeden korunuyor mu?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Backend/Data/TenantRegistryRepository.cs (fast path + insert SQL aynen — name kaynagi caller'da duzeltilir)",
+      "src/Invekto.Shared/Auth/* (InmaTokenContext/Introspector degismez)",
+      "useAuth.ts login akislari (sadece api.ts katmani)",
+      "SettingsPage 'Firma ID' satiri (Q istegi dashboard'a ozgu)",
+      "Prod config/gate'ler"
+    ],
+    "non_goals": [
+      "INMA welcome yanitindan firma adi cekme (sema bilinmiyor, INMA bagimliligi — CompanyCode yeterli)",
+      "Var olan tenant adlarinin sonraki girislerde otomatik guncellenmesi (bilincli: ops manuel yonetir)",
+      "INSE JWT'ye full_name claim'i ekleme (token sema degisikligi — frontend persist yeterli)"
+    ],
+    "intentional_exclusions": [
+      "Giriste yazilan kullanici adinin gosterimi (Q INMA FullName'i secti)",
+      "SettingsPage oturum bilgileri tablosu aynen kalir (fullName fix'inden otomatik faydalanir)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "api.ts getSession: localStorage erisimi mevcut try/catch'siz pattern'de (jwt decode try/catch'i ayni kalir)",
+      "Program.cs ResolveInmaTenantAsync: mevcut typed catch'ler (NpgsqlException 503, Argument/InvalidOperation 500) AYNEN"
+    ],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Isim gosterimi salt-render; isim yoksa '' fallback (bos hosgeldin). Provisioning hata yollari mevcut INV-AUTH-009 envelope'unda degismeden kalir."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Gercek musteri (Medipol admin) dashboard'da 'Hosgeldiniz, Demo User!' goruyor — urun test/demo izlenimi veriyor.",
+      "suggestion": "INMA'daki gercek ad gosterilsin.",
+      "aha_moment": "Kullanici ilk saniyede kendi adini gorur — 'bu benim panelim' hissi."
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Firmalar listesinde musteri 'Admin' adiyla gorunuyor — ops ekibi hangi firmanin hangi satir oldugunu bilemiyor.",
+      "suggestion": "Provision'da gercek firma adi/kodu yazilsin + Medipol satiri duzeltilsin.",
+      "aha_moment": "Ops listede 'Medipol'u tek bakista bulur."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Her yeni SSO musterisi 'Admin' gibi anlamsiz tenant adiyla aciliyor — kirli veri birikiyor.",
+      "suggestion": "FullName'i firma adi olarak kullanan kok neden kapatilsin.",
+      "aha_moment": "Yeni musteri onboard oldugunda listede dogru adla belirir, kimse elle duzeltmez."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Musteri 'panelimde Demo User yaziyor, hesabim yanlis mi?' diye destek acabilir.",
+      "suggestion": "Gercek ad + sade baslik (Firma # teknik detayi kalkti).",
+      "aha_moment": "Kimlik karmasasi kaynakli destek talebi hic dogmaz."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Operator tenant_id'yi baslikta gorup not aliyordu ama musteriye anlamsiz — teknik detay UI'da gurultu.",
+      "suggestion": "Firma # satiri kalksin; id zaten ops ekranlarinda var.",
+      "aha_moment": "Dashboard basligi temiz: ad + istatistikler, gereksiz teknik kimlik yok."
+    }
+  ],
+  "status_log": [
+    {
+      "ts": "2026-06-11T14:05:00Z",
+      "event": "PLAN_CREATED",
+      "notes": "Kok neden kesfi tamam: (a) INSE JWT isim tasimiyor -> api.ts:897 'Demo User' hardcode; (b) ResolveInmaTenantAsync FullName'i firma adi yapiyor -> Medipol 'Admin' oldu (DB kaniti). Q 3 karar verdi: INMA FullName goster, 'Medipol' yaz, provision tasarimi onayli."
+    },
+    {
+      "ts": "2026-06-11T14:18:00Z",
+      "event": "PLAN_REVIEW_CODEX_CONSULT",
+      "model_used": "gpt-5.5-2026-04-23",
+      "notes": "8 bulgu. APPLIED: PR-001 (blocker — saklanan isim tenant_id:user_id kimligine baglanir, eslesmezse ''), PR-002 (refresh'te exchange yaniti ayni kimlikle yeniden yazar; mismatch '' degrade), PR-003 (saklanan isim yalniz source inma_exchange/inma_mock'ta kullanilir), PR-004 (isim token'dan ONCE yazilir — swap aninda hazir), PR-006 (login provision adi Trim + 200 cap), PR-008 (tarama: ikinci bozuk satir 100000000 'zübeyde ebrumoda' bulundu -> Q onayiyla 'Ebrumoda' fix'e eklendi). REJECTED: PR-005 (localStorage PII — tokenlar zaten orada, kabul edilen risk), PR-007 (CompanyCode placeholder ad — bilincli tasarim, ops rename eder; Q onayladi)."
+    },
+    {
+      "ts": "2026-06-11T14:20:00Z",
+      "event": "PLAN_APPROVED",
+      "notes": "Q onaylari: INMA FullName kaynagi + 'Medipol' + provision tasarimi + 'Ebrumoda' ek fix. Implementasyon basliyor."
+    },
+    {
+      "ts": "2026-06-11T14:45:00Z",
+      "event": "DATA_FIX_APPLIED",
+      "notes": "Prod tenant_registry: 100000001 'Admin'->'Medipol' + 100000000 'zübeyde ebrumoda'->'Ebrumoda' (id+eski-ad pinli, 1'er satir affected, read-back verified)."
+    },
+    {
+      "ts": "2026-06-11T14:55:00Z",
+      "event": "CODEX_ITER0_FAIL",
+      "model_used": "gpt-5.5-2026-04-23",
+      "notes": "2 blocker (gercek bulgular): CQ2 getStoredFullName sessiz catch (log+cleanup yok) + CQ5 companyName! null-forgiving operator (proje yasagi)."
+    },
+    {
+      "ts": "2026-06-11T15:02:00Z",
+      "event": "CODEX_ITER1_PASS",
+      "model_used": "gpt-5.5-2026-04-23",
+      "tokens": {
+        "total": 10885
+      },
+      "notes": "12/12 CQ + 4/4 CoVe, blocking NONE. Fix'ler: catch'e console.warn + removeItem cleanup; (companyName ?? string.Empty).Trim(). Build Backend 0E + SPA 0E (final bundle index-4QK6z2_3.js)."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_MCP",
+    "received_at": "2026-06-11T15:02:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-06-11T15:03:00Z",
+    "raw_text": "OVERALL_VERDICT: PASS | 12/12 CQ PASS + 4/4 CoVe PASS | BLOCKING_ISSUES: NONE | model gpt-5.5-2026-04-23 | iter1 (iter0 FAIL: CQ2 sessiz catch + CQ5 null-forgiving -> fixed).",
+    "blocking_issues": [],
+    "iteration": 1,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}

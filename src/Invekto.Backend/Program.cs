@@ -2969,12 +2969,16 @@ async Task<(int TenantId, IResult? Failure)> ResolveInmaTenantAsync(
     HttpContext ctx,
     TenantRegistryRepository tenantRepo,
     InmaTokenContext inmaCtx,
+    string provisionDisplayName,
     string requestId)
 {
     try
     {
+        // provisionDisplayName = ILK provision'da yazilacak tenant_name. Kullanicinin
+        // FullName'i ASLA firma adi olarak kullanilmaz (Medipol 'Admin' vakasi):
+        // login akisi kullanicinin yazdigi firma adini, exchange/bearer CompanyCode'u gecer.
         var tenantId = await tenantRepo.ResolveOrCreateByInmaCodeAsync(
-            inmaCtx.CompanyCode, inmaCtx.FullName, ctx.RequestAborted);
+            inmaCtx.CompanyCode, provisionDisplayName, ctx.RequestAborted);
         return (tenantId, null);
     }
     catch (Npgsql.NpgsqlException ex)
@@ -3044,7 +3048,7 @@ async Task<(TenantContext? Tenant, IResult? Failure)> ExtractTenantFromBearer(Ht
         {
             // CompanyCode is opaque string — resolve to INSE int tenant_id (lazy auto-provision).
             var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
-            var (tenantId, resolveFailure) = await ResolveInmaTenantAsync(ctx, tenantRepo, result.Context, requestId);
+            var (tenantId, resolveFailure) = await ResolveInmaTenantAsync(ctx, tenantRepo, result.Context, result.Context.CompanyCode, requestId);
             if (resolveFailure != null) return (null, resolveFailure);
             tenantContext = new TenantContext { TenantId = tenantId, UserId = result.Context.UserId, Role = result.Context.Role };
         }
@@ -8070,7 +8074,8 @@ app.MapPost("/api/v1/inma/auth/exchange", async (HttpContext ctx, IHttpClientFac
         // CompanyCode (opaque string) → INSE int tenant_id. Shared helper maps repository
         // exceptions to the standard INV-AUTH-009 envelope (503 for NpgsqlException,
         // 500 for Argument/InvalidOperation — see ResolveInmaTenantAsync).
-        var (tenantId, resolveFailure) = await ResolveInmaTenantAsync(ctx, tenantRepo, inmaCtx, requestId);
+        // Exchange akisinda firma adi bilgisi yok — placeholder olarak CompanyCode yazilir.
+        var (tenantId, resolveFailure) = await ResolveInmaTenantAsync(ctx, tenantRepo, inmaCtx, inmaCtx.CompanyCode, requestId);
         if (resolveFailure != null) return resolveFailure;
 
         var tokenExpiry = TimeSpan.FromHours(8);
@@ -8213,7 +8218,12 @@ app.MapPost("/api/v1/inma/auth/login", async (HttpContext ctx, IHttpClientFactor
         }
 
         // CompanyCode (opaque string) → INSE int tenant_id via shared helper.
-        var (tenantId, resolveFailure) = await ResolveInmaTenantAsync(ctx, tenantRepo, inmaCtx, requestId);
+        // Provision adi = kullanicinin yazdigi firma adi (INMA login'i kabul etti;
+        // yukarida IsNullOrWhiteSpace guard'i 400 dondurur). Trim + 200 cap hijyeni;
+        // bos kalirsa repository inma_code'a duser.
+        var provisionName = (companyName ?? string.Empty).Trim();
+        if (provisionName.Length > 200) provisionName = provisionName[..200];
+        var (tenantId, resolveFailure) = await ResolveInmaTenantAsync(ctx, tenantRepo, inmaCtx, provisionName, requestId);
         if (resolveFailure != null) return resolveFailure;
 
         // UP0.6: server-side feature flag cache (5dk TTL) populated from the inma token claim.

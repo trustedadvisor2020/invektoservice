@@ -87,9 +87,6 @@ export function TenantDashboardPage() {
         <h1 className="text-xl font-semibold text-navy-900">
           Hosgeldiniz{session?.fullName ? `, ${session.fullName}` : ''}!
         </h1>
-        <p className="text-sm text-navy-400 mt-1">
-          {session?.companyCode ? `${session.companyCode} — ` : ''}Firma #{session?.tenantId}
-        </p>
       </div>
 
       {/* Istatistikler */}

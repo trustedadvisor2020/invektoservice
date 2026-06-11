@@ -641,6 +641,9 @@ interface RefreshResponse {
 const TOKEN_KEYS = {
   ACCESS_TOKEN: 'access_token',
   REFRESH_TOKEN: 'refresh_token',
+  // INSE JWT isim claim'i tasimaz — login/exchange yanitindaki full_name burada
+  // kimlige bagli ({name, tid, uid}) saklanir; token degisiminde bayat isim sizamaz.
+  FULL_NAME: 'inse_full_name',
 } as const;
 
 // FlowBuilder API types
@@ -827,7 +830,38 @@ class OpsApiClient {
   removeTokens(): void {
     localStorage.removeItem(TOKEN_KEYS.ACCESS_TOKEN);
     localStorage.removeItem(TOKEN_KEYS.REFRESH_TOKEN);
+    localStorage.removeItem(TOKEN_KEYS.FULL_NAME);
     sessionStorage.removeItem('inse_session');
+  }
+
+  // --- Full name persistence (INSE JWT isim claim'i tasimaz) ---
+
+  private storeFullName(fullName: string, tenantId: number, userId: number): void {
+    if (!fullName) {
+      localStorage.removeItem(TOKEN_KEYS.FULL_NAME);
+      return;
+    }
+    localStorage.setItem(
+      TOKEN_KEYS.FULL_NAME,
+      JSON.stringify({ name: fullName, tid: tenantId, uid: userId })
+    );
+  }
+
+  private getStoredFullName(tenantId: number, userId: number): string {
+    const raw = localStorage.getItem(TOKEN_KEYS.FULL_NAME);
+    if (!raw) return '';
+    try {
+      const parsed = JSON.parse(raw) as { name?: unknown; tid?: unknown; uid?: unknown };
+      // Kimlik eslesmiyorsa isim kullanilmaz — farkli token'a bayat isim gosterilmez.
+      return parsed.tid === tenantId && parsed.uid === userId && typeof parsed.name === 'string'
+        ? parsed.name
+        : '';
+    } catch (err) {
+      // Bozuk kayit: logla + temizle ki her getSession cagrisinda parse denenmesin.
+      console.warn('[api] inse_full_name parse failed, clearing stored name:', err);
+      localStorage.removeItem(TOKEN_KEYS.FULL_NAME);
+      return '';
+    }
   }
 
   // --- JWT decode ---
@@ -851,6 +885,8 @@ class OpsApiClient {
   // --- Session info (backward compatible) ---
 
   setSession(resp: InmaAuthResponse): void {
+    // Isim token'dan ONCE yazilir — token swap aninda getSession dogru ismi bulur.
+    this.storeFullName(resp.full_name ?? '', resp.tenant_id, resp.user_id);
     this.storeTokens(resp.token, resp.refresh_token ?? '');
   }
 
@@ -886,15 +922,22 @@ class OpsApiClient {
       };
     }
 
-    // INSE JWT (mock/quicklogin): use inse claim names
+    // INSE JWT (exchange/mock/quicklogin): use inse claim names
+    const inseTenantId = parseInt(decoded.tenant_id ?? '0') || 0;
+    const inseUserId = parseInt(decoded.user_id ?? '0') || 0;
+    // Saklanan isim yalniz INMA kaynakli tokenlarda ve ayni kimlikte kullanilir;
+    // ops source etiketleri her zaman oncelikli (mevcut davranis korunur).
+    const storedName = decoded.source === 'inma_exchange' || decoded.source === 'inma_mock'
+      ? this.getStoredFullName(inseTenantId, inseUserId)
+      : '';
     return {
       token,
-      tenantId: parseInt(decoded.tenant_id ?? '0') || 0,
-      userId: parseInt(decoded.user_id ?? '0') || 0,
+      tenantId: inseTenantId,
+      userId: inseUserId,
       role: decoded.role ?? 'agent',
       fullName: decoded.source === 'ops_quicklogin' ? 'Super Admin'
         : decoded.source === 'ops_impersonate' ? 'SuperAdmin'
-        : 'Demo User',
+        : storedName,
       lang: 'tr',
       inseFeatures: features,
       expiresAt: decoded.exp * 1000,
@@ -976,6 +1019,9 @@ class OpsApiClient {
 
     // Replace primary token with INSE JWT so all API calls (including
     // FlowBuilder endpoints protected by JwtAuthMiddleware) work correctly.
+    // Isim once: INSE JWT isim claim'i tasimadigindan exchange yanitindaki
+    // full_name kimlige bagli saklanir (refresh dongusu de buradan gecer).
+    this.storeFullName(data.full_name ?? '', data.tenant_id, data.user_id);
     this.storeTokens(data.token, data.refresh_token ?? '');
   }
 
