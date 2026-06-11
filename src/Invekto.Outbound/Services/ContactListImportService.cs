@@ -216,6 +216,108 @@ public sealed class ContactListImportService
     }
 
     // ------------------------------------------------------------------
+    // Single-record mutations (list-viewer popup) — manual add + permanent delete.
+    // Existence/status/cap decisions live INSIDE the repo's locked transaction
+    // (data_lists FOR UPDATE — plan-consult PR-001/PR-002); this layer only
+    // gates the feature, validates the payload, and maps outcomes to INV codes.
+    // ------------------------------------------------------------------
+    private const int MaxNameLength = 255;     // list_records.name / surname VARCHAR(255)
+    private const int MaxEmailLength = 320;    // list_records.email VARCHAR(320)
+
+    /// <summary>
+    /// Manually add ONE record. Unlike bulk import, an invalid phone is REJECTED (047) instead
+    /// of stored sendable=false, and a duplicate phone is REJECTED (088) — Q decision 2026-06-11:
+    /// no silent-broken rows from the manual path.
+    /// </summary>
+    public async Task<(AddListRecordResponse? response, string? errorCode, string? message)> AddRecordAsync(
+        int tenantId, long listId, AddListRecordRequest? request, CancellationToken ct)
+    {
+        if (!Allowed(tenantId)) return (null, ErrorCodes.ContactListDisabled, "Contact lists not enabled for this tenant");
+        if (request == null) return (null, ErrorCodes.ContactListInvalidPayload, "Request body is required");
+
+        var phone = _normalizer.Normalize(request.Phone);
+        if (phone == null)
+            return (null, ErrorCodes.ContactListInvalidPayload, "Phone could not be normalized; expected a valid number like 905xxxxxxxxx");
+
+        var name = Cap(request.Name, MaxNameLength);
+        var surname = Cap(request.Surname, MaxNameLength);
+        var email = Cap(request.Email, MaxEmailLength);
+
+        try
+        {
+            var result = await _repo.InsertRecordAsync(tenantId, listId, phone, name, surname, email, _options.MaxRecordsPerList, ct);
+            return result.Outcome switch
+            {
+                DataListRepository.RecordMutationOutcome.Ok => (new AddListRecordResponse
+                {
+                    Record = new ListRecordDto
+                    {
+                        Id = result.RecordId, Phone = phone, Name = name, Surname = surname,
+                        Email = email, Sendable = true
+                    },
+                    TotalRecords = result.TotalRecords,
+                    SendableCount = result.SendableCount
+                }, null, null),
+                DataListRepository.RecordMutationOutcome.ListNotFound =>
+                    (null, ErrorCodes.ContactListNotFound, $"List {listId} not found"),
+                DataListRepository.RecordMutationOutcome.ListNotReady =>
+                    (null, ErrorCodes.ContactListNotReady, "List is not ready (import in progress or failed); retry when it is ready"),
+                DataListRepository.RecordMutationOutcome.CapExceeded =>
+                    (null, ErrorCodes.ContactListCapExceeded, $"List is at the per-list cap of {_options.MaxRecordsPerList} records"),
+                DataListRepository.RecordMutationOutcome.Duplicate =>
+                    (null, ErrorCodes.ContactListRecordDuplicate, "This phone already exists in the list"),
+                _ => (null, ErrorCodes.ContactListDbError, "Record could not be added; please retry.")
+            };
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"data-list record add failed (tenant={tenantId}, list={listId}): {ex.Message}");
+            return (null, ErrorCodes.ContactListDbError, "Record could not be added due to a database error; the change was not confirmed — please retry.");
+        }
+    }
+
+    /// <summary>Permanently delete ONE record (viewer popup trash action, 2-stage confirm client-side).</summary>
+    public async Task<(DeleteListRecordResponse? response, string? errorCode, string? message)> DeleteRecordAsync(
+        int tenantId, long listId, long recordId, CancellationToken ct)
+    {
+        if (!Allowed(tenantId)) return (null, ErrorCodes.ContactListDisabled, "Contact lists not enabled for this tenant");
+
+        try
+        {
+            var result = await _repo.DeleteRecordAsync(tenantId, listId, recordId, ct);
+            return result.Outcome switch
+            {
+                DataListRepository.RecordMutationOutcome.Ok => (new DeleteListRecordResponse
+                {
+                    Deleted = true,
+                    TotalRecords = result.TotalRecords,
+                    SendableCount = result.SendableCount
+                }, null, null),
+                DataListRepository.RecordMutationOutcome.ListNotFound =>
+                    (null, ErrorCodes.ContactListNotFound, $"List {listId} not found"),
+                DataListRepository.RecordMutationOutcome.ListNotReady =>
+                    (null, ErrorCodes.ContactListNotReady, "List is not ready (import in progress or failed); retry when it is ready"),
+                DataListRepository.RecordMutationOutcome.RecordNotFound =>
+                    (null, ErrorCodes.ContactListRecordNotFound, $"Record {recordId} not found in list {listId}"),
+                _ => (null, ErrorCodes.ContactListDbError, "Record could not be deleted; please retry.")
+            };
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"data-list record delete failed (tenant={tenantId}, list={listId}, record={recordId}): {ex.Message}");
+            return (null, ErrorCodes.ContactListDbError, "Record could not be deleted due to a database error; the change was not confirmed — please retry.");
+        }
+    }
+
+    /// <summary>Trim + length-cap an optional text field (empty -> null; SQL NULLIF is the second guard).</summary>
+    private static string? Cap(string? value, int max)
+    {
+        var trimmed = value?.Trim();
+        if (string.IsNullOrEmpty(trimmed)) return null;
+        return trimmed.Length <= max ? trimmed : trimmed[..max];
+    }
+
+    // ------------------------------------------------------------------
     // import
     // ------------------------------------------------------------------
     public async Task<(ImportBatchResponse? response, string? errorCode, string? message)> ImportAsync(

@@ -347,15 +347,27 @@ export function DataImportPage() {
     try {
       const res = await api.deleteDataListRecord(viewerList.id, record.id);
       // Deleting the only row of page>1 -> step back; batched with the counter patch below
-      // so the effect refetches once.
-      if ((viewerPage?.records.length ?? 0) === 1 && viewerPageNum > 1) setViewerPageNum(p => p - 1);
+      // so the effect refetches once. Math.max guards the stale-closure race (user paged
+      // while the DELETE was in flight) from pushing the page number to 0.
+      if ((viewerPage?.records.length ?? 0) === 1 && viewerPageNum > 1) setViewerPageNum(p => Math.max(1, p - 1));
       applyRecordCounters(viewerList.id, res.total_records, res.sendable_count);
     } catch (e) {
       setRowError(recordErrText(e, 'Kayıt silinemedi'));
       if (e instanceof ApiClientError && e.errorCode === 'INV-OB-089') {
-        // Another user/tab already removed it — refresh the page + main table counters.
-        setViewerList(v => (v ? { ...v } : v));
-        void loadLists();
+        // Another user/tab already removed it — pull fresh summaries so the popup header
+        // counters match the refetched rows (a bare refetch would keep stale header counts).
+        try {
+          const fresh = await api.listDataLists();
+          setLists(fresh);
+          const cur = fresh.find(l => l.id === viewerList.id);
+          setViewerList(v => (v ? (cur ? { ...v, total_records: cur.total_records, sendable_count: cur.sendable_count } : { ...v }) : v));
+        } catch (refreshErr) {
+          // Refresh itself failed: say so — the 089 message above claims "Liste yenilendi",
+          // which would be false; tell the operator the counts may be stale instead.
+          console.warn('list summary refresh after INV-OB-089 failed', refreshErr);
+          setRowError('Kayıt zaten silinmiş; liste sayıları yenilenemedi — listeyi kapatıp yeniden açın.');
+          setViewerList(v => (v ? { ...v } : v)); // rows still refetch
+        }
       }
     } finally {
       setDeletingId(null);
@@ -1249,14 +1261,14 @@ export function DataImportPage() {
               <div className="flex items-center gap-1.5">
                 <Button
                   size="sm" variant="ghost"
-                  disabled={viewerLoading || viewerPageNum <= 1}
+                  disabled={viewerLoading || deletingId !== null || viewerPageNum <= 1}
                   onClick={() => setViewerPageNum(p => Math.max(1, p - 1))}
                 >
                   <ChevronLeft className="w-4 h-4" /> Önceki
                 </Button>
                 <Button
                   size="sm" variant="ghost"
-                  disabled={viewerLoading || !viewerPage || viewerPage.page * viewerPage.page_size >= viewerPage.total}
+                  disabled={viewerLoading || deletingId !== null || !viewerPage || viewerPage.page * viewerPage.page_size >= viewerPage.total}
                   onClick={() => setViewerPageNum(p => p + 1)}
                 >
                   Sonraki <ChevronRight className="w-4 h-4" />

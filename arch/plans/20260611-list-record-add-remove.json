@@ -1,0 +1,270 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260611-list-record-add-remove",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-11T17:05:00+03:00",
+  "updated_at": "2026-06-11T18:25:00+03:00",
+  "gr_list": [
+    {
+      "id": "GR-1",
+      "description": "Shared DTOs + error codes: ListRecordDto += id (long, JsonPropertyName 'id'); new AddListRecordRequest {phone, name?, surname?, email?}, AddListRecordResponse {record, total_records, sendable_count}, DeleteListRecordResponse {deleted, total_records, sendable_count} in DataListDtos.cs. ErrorCodes.cs += ContactListRecordDuplicate=INV-OB-088 (409), ContactListRecordNotFound=INV-OB-089 (404).",
+      "services_affected": ["Invekto.Shared"]
+    },
+    {
+      "id": "GR-2",
+      "description": "DataListRepository: records-page SELECT += id column (and the shared MapRecord — if preview-sample shares the mapper, its SELECT gets id too, ordinal-consistent). New InsertRecordAsync + DeleteRecordAsync, HER IKISI tek tx ve LOCK-FIRST sirayla (Codex PR-001/PR-002 fix): (1) SELECT status, total_records FROM data_lists WHERE tenant_id=@tid AND id=@lid FOR UPDATE -> satir yoksa ListNotFound, status!='ready' NotReady, (insert'te) total_records+1>cap CapExceeded — hepsi KILIT ALTINDA karar verilir (parent-lock mutasyon+recompute'u serialize eder, READ COMMITTED recompute anomalisi kapanir); (2) INSERT (NULLIF empties, sendable=TRUE, custom_fields NULL, status'a dokunulmaz) veya DELETE WHERE tenant_id AND list_id AND id (0 rows -> RecordNotFound); (3) ayni tx'te COUNT(*) tabanli sayac recompute UPDATE RETURNING total_records/sendable_count. INSERT'te PostgresException 23505 SADECE ConstraintName=='uq_list_record_list_phone' ise Duplicate outcome (Codex PR-003 fix), diger unique ihlalleri rethrow. Repo typed outcome enum + counters doner; SELECT pre-check YOK.",
+      "services_affected": ["Invekto.Outbound"]
+    },
+    {
+      "id": "GR-3",
+      "description": "ContactListImportService: AddRecordAsync (gate Allowed->046; payload null / phone-normalize fail via PhoneNormalizer.Normalize -> 047; trim+length-cap name/surname 255, email 320; sonra repo cagrisi) ve DeleteRecordAsync (gate->046; repo cagrisi). Varlik/status/cap kararlari ARTIK REPO TX'INDE (FOR UPDATE altinda) — servis repo outcome'unu INV koduna map eder: ListNotFound->049, NotReady->051, CapExceeded->048, Duplicate->088, RecordNotFound->089, NpgsqlException->053. Same (response, errorCode, message) tuple pattern as RecordsPageAsync; ayri GetAsync on-sorgusu YOK (tek otorite = kilitli tx).",
+      "services_affected": ["Invekto.Outbound"]
+    },
+    {
+      "id": "GR-4",
+      "description": "Outbound Program.cs: POST /api/v1/data-lists/{id:long}/records (201) + DELETE /api/v1/data-lists/{id:long}/records/{recordId:long} (200), TenantContext + X-Request-Id pattern identical to siblings; ContactListStatus switch += 088->409, 089->404.",
+      "services_affected": ["Invekto.Outbound"]
+    },
+    {
+      "id": "GR-5",
+      "description": "Backend Program.cs: two proxies — MapPost /api/v1/outbound/data-lists/{id:long}/records -> OutboundProxyPost, MapDelete /api/v1/outbound/data-lists/{id:long}/records/{recordId:long} -> OutboundProxyDelete (existing helpers, verbatim path forward).",
+      "services_affected": ["Invekto.Backend"]
+    },
+    {
+      "id": "GR-6",
+      "description": "api.ts: ListRecord interface += id: number; AddListRecordPayload/AddListRecordResponse/DeleteListRecordResponse types; addDataListRecord(listId, payload) + deleteDataListRecord(listId, recordId) methods on the existing JWT client.",
+      "services_affected": ["Invekto.Backend/Dashboard"]
+    },
+    {
+      "id": "GR-7",
+      "description": "DataImportPage.tsx viewer popup: (a) 'Yeni Kayit' toggle -> inline panel (Telefon zorunlu + Ad/Soyad/E-posta, Ekle button, busy state, code->Turkish error map: 088 duplicate, 047 invalid phone, 048 cap, 051 not-ready, fallback errText); success -> form clear + counters from response (setViewerList + setLists patch) + GAP-HUNT FIX: ORDER BY id nedeniyle yeni kayit SON sayfaya duser -> basarida arama temizlenir ve viewer son sayfaya atlar (ceil(yeni total / pageSize)) ki eklenen kayit GORUNUR olsun (AC2). (b) Per-row trash icon, 2-stage confirm (first click arms red 'Emin misin?' state for 3s, second click deletes; per-row busy). (c) Page clamp: deleting the last row of page>1 -> setViewerPageNum(p-1). (d) Add panel + trash hidden/disabled when viewerList.status!=='ready'. Row key switches to record id.",
+      "services_affected": ["Invekto.Backend/Dashboard"]
+    },
+    {
+      "id": "GR-8",
+      "description": "arch/errors.md: INV-OB-088 + INV-OB-089 entries (EN description + TR user_message, existing YAML format).",
+      "services_affected": ["arch"]
+    }
+  ],
+  "plan": {
+    "summary": "Veri Yonetimi > Veri Iceri Aktarma list-viewer popup'ina tekil kayit silme (kalici DELETE, 2 asamali satir-ici onay) ve tekil kayit ekleme (telefon zorunlu + ad/soyad/e-posta, PhoneNormalizer + duplicate reject) eklenir; yeni Outbound endpoint ciftiyle sayaclar atomik recompute edilir ve UI senkron kalir.",
+    "q_intent": "veri yonetimi veri iceri aktarma sayfasinda, cift tiklandiginda acilan liste icini gosteren popup a bir telefonu listeden cikartma ve yeni ekleme ozellikleri ekle",
+    "interview_notes": "Q secimleri (2026-06-11): (1) Silme = KALICI DELETE + sayac guncelleme (soft degil). (2) Silme UX = satirda 2 asamali cop ikonu onayi (3sn pencere), ekstra modal yok. (3) Ekleme formu = telefon zorunlu + ad/soyad/e-posta opsiyonel. (4) Gecersiz telefon VE duplicate IKISI DE reddedilir (import'un 'gecersizi sendable=false kaydet' davranisindan bilincli ayrisma — manuel eklemede sessiz-bozuk kayit istenmiyor). (5) status='importing' listede ekleme/silme backend'de 409 INV-OB-051 ile reddedilir (sayac yarisi onlenir). Dogrulama: build + Codex PASS; deploy sonrasi prod smoke Q'da.",
+    "plan_review_status": "completed",
+    "plan_review_applied": [
+      { "id": "PR-001", "severity": "blocker", "what_changed": "Status/cap/existence kararlari repo tx'ine tasindi: data_lists FOR UPDATE row-lock ALTINDA karar + yazma + recompute (check-then-write TOCTOU penceresi kapatildi). GR-2/GR-3 revize." },
+      { "id": "PR-002", "severity": "blocker", "what_changed": "Ayni FOR UPDATE lock-first sirasi sayac recompute'unu serialize eder (READ COMMITTED'da bloklanan UPDATE'in subquery'leri yeniden degerlendirmemesi anomalisi kapandi)." },
+      { "id": "PR-003", "severity": "major", "what_changed": "23505 catch'i ConstraintName=='uq_list_record_list_phone' filtresiyle daraltildi; diger unique ihlalleri rethrow -> 053." },
+      { "id": "PR-005", "severity": "major", "what_changed": "Zaten plandaydi; netlestirildi: add basarisinda lastPage=ceil(AddResponse.total_records/50), viewerSearch='' + viewerPageNum=lastPage AYNI handler'da set edilir (tek batched refetch)." }
+    ],
+    "plan_review_rejected": [
+      { "id": "PR-004", "severity": "major", "why": "Corrected premise: list_id = data_lists.id BIGSERIAL global PK (globally unique), UNIQUE(list_id,normalized_phone) tenant sizdirmaz; ayrica her sorgu tenant_id ile de filtreli. ignore_if kosulu saglandi." },
+      { "id": "PR-006", "severity": "major", "why": "Dogrulandi (grep arch/db): list_records'a inbound FK YOK (057 sadece yorum); broadcast alicilari dispatch'te outbound_messages'a snapshot'lanir. ignore_if kosulu saglandi." },
+      { "id": "PR-007", "severity": "minor", "why": "preview-sample ayni tenant-gate arkasinda (JWT + Allowed), id additive ve opak; mevcut tuketicisi id kullanmaz. ignore_if kosulu saglandi." }
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Viewer popup'ta her satirda cop ikonu vardir; 2 asamali onayla kayit DB'den kalici silinir; tablo, popup basligindaki kayit/gonderilebilir sayilari ve ana liste tablosundaki sayaclar guncellenir.",
+        "verified": true,
+        "verification_note": "Kod-dogrulama: armDelete/confirmDeleteRecord + applyRecordCounters (response sayaclari header+ana tablo) + tek-tx DELETE+recompute (repo). Codex chunk-1+3 PASS. Prod runtime smoke deploy sonrasi Q'da."
+      },
+      {
+        "id": "AC2",
+        "criterion": "Popup'taki 'Yeni Kayit' formu (telefon zorunlu + ad/soyad/e-posta) ile eklenen kayit normalize E.164 telefonla tabloda gorunur ve sayaclar artar.",
+        "verified": true,
+        "verification_note": "Kod-dogrulama: submitAddRecord -> arama temizle + son sayfaya atla (ORDER BY id) -> kayit GORUNUR; sayaclar response'tan. Codex chunk-3 Q1 PASS."
+      },
+      {
+        "id": "AC3",
+        "criterion": "Gecersiz telefon (PhoneNormalizer reject) veya listede zaten var olan telefon eklenmeye calisildiginda kayit yazilmaz ve Turkce net hata gosterilir (duplicate icin ayri mesaj).",
+        "verified": true,
+        "verification_note": "Backend 047 (normalize reject, yazim oncesi) + 088 (constraint-filtered 23505, tx rollback); UI recordErrText ayri TR mesajlar. Codex chunk-1 Q3 + chunk-3 Q3 PASS."
+      },
+      {
+        "id": "AC4",
+        "criterion": "Full solution build PASS + Codex review PASS; her iki endpoint tenant-scoped'tir (baska tenantin listesi/kaydi 404 doner, varlik sizdirmaz).",
+        "verified": true,
+        "verification_note": "dotnet build exit 0 + tsc exit 0; Codex 3-chunk merge PASS (c1 iter0, c2 iter0, c3 iter1); chunk-1 Q1 tenant-scoping PASS; pre-rev 5-lens adversarial verify tenant lens: ihlal yok."
+      },
+      {
+        "id": "AC5",
+        "criterion": "status != 'ready' (importing/failed) listede tekil ekleme/silme backend'de INV-OB-051 / 409 ile reddedilir; UI bu durumda ekleme panelini ve cop ikonlarini gostermez.",
+        "verified": true,
+        "verification_note": "Repo tx'inde FOR UPDATE altinda status karari (TOCTOU yok, chunk-1 Q4 PASS); UI status!=='ready' gating (chunk-3 Q3 PASS)."
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/DTOs/Outbound/DataListDtos.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Outbound/Data/DataListRepository.cs",
+    "src/Invekto.Outbound/Services/ContactListImportService.cs",
+    "src/Invekto.Outbound/Program.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/DataImportPage.tsx",
+    "arch/errors.md",
+    "arch/plans/20260611-list-record-add-remove.json",
+    "arch/plans/diffs/20260611-list-record-add-remove.diff"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/DTOs/Outbound/DataListDtos.cs", "change": "ListRecordDto += Id (additive); +AddListRecordRequest/AddListRecordResponse/DeleteListRecordResponse", "is_new": false },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "change": "+ContactListRecordDuplicate INV-OB-088, +ContactListRecordNotFound INV-OB-089", "is_new": false },
+    { "path": "src/Invekto.Outbound/Data/DataListRepository.cs", "change": "records-page + preview-sample SELECT += id (MapRecord 13 kolon); +InsertRecordAsync/DeleteRecordAsync (FOR UPDATE lock-first tek tx + COUNT recompute + constraint-filtered 23505) + LockListRowAsync/RecomputeCountersAsync helpers", "is_new": false },
+    { "path": "src/Invekto.Outbound/Services/ContactListImportService.cs", "change": "+AddRecordAsync/DeleteRecordAsync (gate + normalize + trim/cap; repo outcome -> INV map) + Cap helper", "is_new": false },
+    { "path": "src/Invekto.Outbound/Program.cs", "change": "+POST /data-lists/{id}/records (201) + DELETE /data-lists/{id}/records/{recordId}; ContactListStatus += 088->409, 089->404", "is_new": false },
+    { "path": "src/Invekto.Backend/Program.cs", "change": "+2 proxy (OutboundProxyPost/Delete, sibling pattern)", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "change": "ListRecord += id; +AddListRecordPayload/AddListRecordResponse/DeleteListRecordResponse; +addDataListRecord/deleteDataListRecord. NOT: paralel-session sweep'i nedeniyle bu degisiklik HEAD'e c8a20e04/e516a1df uzerinden onceden girdi — bu paketin commit'inde diff'i yok, review diff'inde 171beaf2-bazli bulk olarak yer aliyor", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/DataImportPage.tsx", "change": "Viewer popup: Yeni Kayit paneli (telefon*+ad/soyad/e-posta, kod->TR hata map, basarida son sayfaya atlama) + satirda 2 asamali cop ikonu (3s disarm) + sayac senkron (response'tan) + page clamp + status!=='ready' gizleme + row key=id. NOT: bulk kisim paralel-session diakritik commit'ine (c8a20e04) suprulerek HEAD'e onceden girdi; bu paketin commit'i yalniz pre-rev verify fixlerini (089 header-sayac senkronu + Math.max page clamp + delete-sirasinda sayfalama kilidi) tasir", "is_new": false },
+    { "path": "arch/errors.md", "change": "+INV-OB-088/089 kayitlari (EN description + TR user_message)", "is_new": false },
+    { "path": "arch/plans/20260611-list-record-add-remove.json", "change": "plan JSON", "is_new": true }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "13408e0535beda5eefb37fd64758082927453e1c8fe215397a3aad35115c4ee2",
+    "full_path": "arch/plans/diffs/20260611-list-record-add-remove.diff (gitignore'lu lokal kayit; icerik = 171beaf2..HEAD UI bulk [240+/6-] + staged backend+UI-fix [360+/22-])",
+    "stats": { "insertions": 600, "deletions": 28, "files_count": 10 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q (exit 0) + Dashboard npx tsc --noEmit (exit 0)",
+    "timestamp": "2026-06-11T17:42:00+03:00",
+    "duration_ms": null,
+    "output_tail": "exit 0 — yalniz pre-existing uyarilar (VoiceRuntime CS0618, Automation CS8600, test Npgsql MSB3277); degisen dosyalarda 0 uyari/0 hata",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Outbound", "Invekto.Backend", "Dashboard (tsc)"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Are both new endpoints tenant-scoped end-to-end — list ownership enforced via tenant_id in every SQL WHERE (insert, delete, recompute) — so a foreign tenant's listId/recordId yields 404 without leaking existence?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Are single-record INSERT/DELETE and the data_lists counter recompute executed in ONE transaction with full COUNT(*)-based recompute, so total_records/sendable_count can never drift from actual rows even under concurrent mutations?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Is duplicate-phone detection race-safe — relying on the uq_list_record_list_phone unique constraint (PostgresException 23505 typed catch) rather than a non-locking SELECT pre-check?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "Are status/cap/existence decisions taken INSIDE the mutation transaction under a data_lists FOR UPDATE row lock (no check-then-write TOCTOU window at all), so a concurrent import flipping status to 'importing' can never interleave with a single-record mutation or its counter recompute?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q5",
+      "question": "Do all failure paths return typed INV-OB codes via the existing tuple pattern (no broad catch(Exception), NpgsqlException base caught -> INV-OB-053), and does the UI map 088/047/048/051 to specific Turkish messages instead of a generic error?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Bulk import pipeline (ImportAsync/ImportRecordsAsync scenarios) — davranisi degismez",
+      "Broadcast/run/send yollari (outbound_messages, bulk_send_jobs) — kayit silme calisan run snapshot'larini etkilemez, dokunulmaz",
+      "DB schema/migration — mevcut 052 semasi yeterli, yeni migration YOK",
+      "Feature gate'ler (ContactListOptions allowlist, BulkSend/Projects/CxapiSend) — degismez",
+      "deploy_output/, temp/"
+    ],
+    "non_goals": [
+      "Kayit DUZENLEME (edit) — sadece ekle/sil",
+      "Coklu secim / toplu silme",
+      "alan1-5, etiket, not alanlarinin ekleme formuna dahil edilmesi (Q karari: telefon+temel alanlar)",
+      "Undo/geri alma",
+      "E-posta format validasyonu (import paritesi — import da dogrulamiyor, oldugu gibi saklanir)"
+    ],
+    "intentional_exclusions": [
+      "Gecersiz telefonu sendable=false olarak kaydetme (import boyle yapar) — Q karari: manuel eklemede REJECT, sessiz-bozuk kayit istenmiyor",
+      "first_contact_at set edilmez (import INSERT'i de set etmiyor — parite)",
+      "Recompute UPDATE'i status kolonuna dokunmaz (import'taki recompute status='ready' yazar; tekil mutasyon icin gereksiz ve 'failed' listeyi diriltme riski tasirdi — non-ready zaten tx icinde FOR UPDATE altinda reddedilir)",
+      "Viewer'in arama/sayfalama mimarisi degismez; mevcut useEffect refetch zinciri kullanilir (setViewerList yeni referans -> effect tetiklenir)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "ContactListImportService.AddRecordAsync — catch (NpgsqlException) -> INV-OB-053 (PostgresException 23505 repo'da typed yakalanir -> duplicate flag -> 088)",
+      "ContactListImportService.DeleteRecordAsync — catch (NpgsqlException) -> INV-OB-053",
+      "DataImportPage.tsx add/delete handler'lari — try/catch -> code->TR mesaj map + errText fallback"
+    ],
+    "user_facing_errors": [
+      "INV-OB-088 -> 'Bu numara listede zaten var.' (409)",
+      "INV-OB-047 -> 'Gecersiz telefon numarasi. Ornek format: 905xxxxxxxxx' (400)",
+      "INV-OB-089 -> 'Kayit bulunamadi (silinmis olabilir). Liste yenilendi.' (404)",
+      "INV-OB-051 -> 'Liste su anda ice aktarim isleminde — bitince tekrar deneyin.' (409)",
+      "INV-OB-048 -> 'Liste kayit limitine ulasti.' (422)",
+      "INV-OB-053 -> 'Veritabani hatasi — islem yapilmadi, tekrar deneyin.' (503)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Her iki mutasyon da typed tuple pattern doner; repo 0-row DELETE not-found olarak yukari tasinir (silent no-op yok); duplicate DB constraint'ten typed yakalanir; UI her hata kodunu gorunur mesaja map eder. Sayac drift riski tek-tx full-recompute ile kapatilir."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Operator tek yanlis numara icin tum CSV'yi duzeltip yeniden import etmek zorunda kaliyordu.",
+      "suggestion": "Popup icinde satir-ici cop ikonu + 2 asamali onay; ekleme paneli acildiginda telefon input'una auto-focus + Enter ile submit.",
+      "aha_moment": "Yanlis numarayi gordugum anda iki tikla sildim, dosyaya hic donmedim."
+    },
+    {
+      "category": "UX",
+      "user_pain": "Eklenen kaydin gercekten listeye girdigini anlamak icin tabloyu gozle taramak gerekiyor.",
+      "suggestion": "Basarili eklemede form temizlenir, sayaclar aninda artar ve tablo yeniden yuklenir; basari durumu kisa yesil onay metniyle gosterilir.",
+      "aha_moment": "Ekle'ye bastim, ust sayac 192'den 193'e dondu — kaydin girdigini saniyesinde gordum."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Her mutasyon sonrasi tum liste tablosunu ayri istekle yenilemek yavas.",
+      "suggestion": "Add/delete response'lari guncel total_records + sendable_count dondurur; UI ekstra round-trip olmadan hem popup basligini hem ana tabloyu patch'ler.",
+      "aha_moment": "Sildim ve ana sayfadaki sayac ayni anda degisti — sayfa yenilemeye gerek kalmadi."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Sayac (total/sendable) ile gercek kayit sayisi zamanla uyumsuzlasirsa kampanya erisim tahmini yanlis olur.",
+      "suggestion": "Insert/delete + COUNT(*) tabanli recompute TEK transaction'da; duplicate kontrolu DB unique constraint'te (pre-check yarisi yok).",
+      "aha_moment": "Es zamanli iki kullanici ayni listeye dokundu, sayaclar yine de dogru kaldi."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "'Numarayi ekledim ama gozukmuyor' destek cagrilari — sebep gecersiz format ya da duplicate ama kullanici bilmiyor.",
+      "suggestion": "Duplicate (088) ve gecersiz telefon (047) icin ayri, eylem oneren Turkce mesajlar; cap (048) ve importing (051) durumlari da acik metinle.",
+      "aha_moment": "Hata mesaji 'bu numara zaten listede' deyince kullanici destege yazmadan kendisi cozdu."
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Kampanya hazirliginda demo sirasinda liste duzeltilemeyince urun 'kaba import araci' gibi gorunuyor.",
+      "suggestion": "Canli demo'da tek numara ekle/sil akisi gosterilebilir — liste hijyeni re-import'suz yonetiliyor mesaji.",
+      "aha_moment": "Demo'da musteri kendi numarasini saniyeler icinde ekleyip test listesine aldi."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": null,
+    "received_at": "2026-06-11T18:25:00+03:00",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-06-11T18:25:00+03:00",
+    "raw_text": "3-chunk MCP codex_review (gpt-5.5) merge = PASS. chunk-1of3 Outbound (repo/service/endpoints): PASS iter0 — 12/12 CQ + 5/5 CoVe. chunk-2of3 Shared DTO + ErrorCodes + Backend proxy + errors.md: PASS iter0 — 12/12 CQ + 3/3 CoVe. chunk-3of3 UI (api.ts + DataImportPage): iter0 FAIL (tek kok neden: INV-OB-089 recovery'de bare catch{} — CQ1/CQ2/CQ12+Q2/Q3; GERCEK bulgu) -> fix (catch(refreshErr) + console.warn + aksiyonel TR rowError 'liste sayilari yenilenemedi') -> iter1 PASS — 12/12 CQ + 3/3 CoVe. Ek kalite katmani: /rev oncesi 5-lens adversarial verify workflow'u (tenant-auth/tx-atomicity/error-mapping/ui-state/contract-parity) 9 bulgu uretti; 2 gercek UI bulgusu (089 header-sayac stale + page-clamp) commit ONCESI fixlendi, paralel-session ConnectionType hunk sizintisi diff'ten cikarildi (kendi-basina-derlenir commit garantisi).",
+    "code_quality_gate": {},
+    "cove_verification": {},
+    "blocking_issues": [],
+    "iteration": 1,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}

@@ -544,7 +544,7 @@ public class DataListRepository
             WHERE tenant_id=@tid AND list_id = ANY(@ids) AND sendable = TRUE";
 
         const string sampleSql = @"
-            SELECT normalized_phone, name, surname, email, field1, field2, field3, field4, field5, tags, note, sendable
+            SELECT id, normalized_phone, name, surname, email, field1, field2, field3, field4, field5, tags, note, sendable
             FROM list_records
             WHERE tenant_id=@tid AND list_id=@first AND sendable = TRUE
             ORDER BY id
@@ -598,7 +598,7 @@ public class DataListRepository
 
         const string countSql = $"SELECT COUNT(*)::int FROM list_records {where}";
         const string pageSql = $@"
-            SELECT normalized_phone, name, surname, email, field1, field2, field3, field4, field5, tags, note, sendable
+            SELECT id, normalized_phone, name, surname, email, field1, field2, field3, field4, field5, tags, note, sendable
             FROM list_records
             {where}
             ORDER BY id
@@ -631,22 +631,164 @@ public class DataListRepository
         return response;
     }
 
-    /// <summary>Maps the shared 12-column record projection (phone..note + sendable).</summary>
+    /// <summary>Maps the shared 13-column record projection (id + phone..note + sendable).</summary>
     private static ListRecordDto MapRecord(NpgsqlDataReader reader) => new()
     {
-        Phone = reader.IsDBNull(0) ? null : reader.GetString(0),
-        Name = reader.IsDBNull(1) ? null : reader.GetString(1),
-        Surname = reader.IsDBNull(2) ? null : reader.GetString(2),
-        Email = reader.IsDBNull(3) ? null : reader.GetString(3),
-        Field1 = reader.IsDBNull(4) ? null : reader.GetString(4),
-        Field2 = reader.IsDBNull(5) ? null : reader.GetString(5),
-        Field3 = reader.IsDBNull(6) ? null : reader.GetString(6),
-        Field4 = reader.IsDBNull(7) ? null : reader.GetString(7),
-        Field5 = reader.IsDBNull(8) ? null : reader.GetString(8),
-        Tags = reader.IsDBNull(9) ? null : reader.GetString(9),
-        Note = reader.IsDBNull(10) ? null : reader.GetString(10),
-        Sendable = reader.GetBoolean(11)
+        Id = reader.GetInt64(0),
+        Phone = reader.IsDBNull(1) ? null : reader.GetString(1),
+        Name = reader.IsDBNull(2) ? null : reader.GetString(2),
+        Surname = reader.IsDBNull(3) ? null : reader.GetString(3),
+        Email = reader.IsDBNull(4) ? null : reader.GetString(4),
+        Field1 = reader.IsDBNull(5) ? null : reader.GetString(5),
+        Field2 = reader.IsDBNull(6) ? null : reader.GetString(6),
+        Field3 = reader.IsDBNull(7) ? null : reader.GetString(7),
+        Field4 = reader.IsDBNull(8) ? null : reader.GetString(8),
+        Field5 = reader.IsDBNull(9) ? null : reader.GetString(9),
+        Tags = reader.IsDBNull(10) ? null : reader.GetString(10),
+        Note = reader.IsDBNull(11) ? null : reader.GetString(11),
+        Sendable = reader.GetBoolean(12)
     };
+
+    // ------------------------------------------------------------------
+    // Single-record mutations (list-viewer popup) — permanent delete + manual add.
+    //
+    // LOCK-FIRST transaction shape (plan-consult PR-001/PR-002): the data_lists
+    // parent row is locked (FOR UPDATE) BEFORE any decision, so status/cap checks,
+    // the write, and the COUNT(*)-based counter recompute are all serialized
+    // against concurrent imports and other single-record mutations. Under READ
+    // COMMITTED a blocked counter UPDATE would NOT re-evaluate its subqueries,
+    // so taking the parent lock first is what makes the counters exact.
+    // Early returns dispose the transaction => rollback, lock released.
+    // ------------------------------------------------------------------
+
+    public enum RecordMutationOutcome { Ok, ListNotFound, ListNotReady, CapExceeded, Duplicate, RecordNotFound }
+
+    public sealed class RecordMutationResult
+    {
+        public RecordMutationOutcome Outcome { get; init; }
+        public long RecordId { get; init; }
+        public int TotalRecords { get; init; }
+        public int SendableCount { get; init; }
+    }
+
+    /// <summary>
+    /// Insert ONE manually-entered record (phone already E.164-normalized by the service;
+    /// invalid phones are rejected upstream — unlike bulk import, no sendable=false rows here).
+    /// Duplicate = uq_list_record_list_phone unique violation, constraint-name filtered, so
+    /// detection is race-safe without a SELECT pre-check.
+    /// </summary>
+    public virtual async Task<RecordMutationResult> InsertRecordAsync(
+        int tenantId, long listId, string normalizedPhone, string? name, string? surname, string? email,
+        int maxRecordsPerList, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
+
+        var (found, status, total) = await LockListRowAsync(conn, tx, tenantId, listId, ct);
+        if (!found) return new RecordMutationResult { Outcome = RecordMutationOutcome.ListNotFound };
+        if (status != "ready") return new RecordMutationResult { Outcome = RecordMutationOutcome.ListNotReady };
+        if (total + 1 > maxRecordsPerList) return new RecordMutationResult { Outcome = RecordMutationOutcome.CapExceeded };
+
+        long recordId;
+        try
+        {
+            await using var ins = new NpgsqlCommand(@"
+                INSERT INTO list_records (list_id, tenant_id, normalized_phone, name, surname, email, sendable)
+                VALUES (@lid, @tid, @phone, NULLIF(@name,''), NULLIF(@surname,''), NULLIF(@email,''), TRUE)
+                RETURNING id", conn, tx);
+            ins.Parameters.AddWithValue("lid", listId);
+            ins.Parameters.AddWithValue("tid", tenantId);
+            ins.Parameters.AddWithValue("phone", normalizedPhone);
+            ins.Parameters.AddWithValue("name", name ?? "");
+            ins.Parameters.AddWithValue("surname", surname ?? "");
+            ins.Parameters.AddWithValue("email", email ?? "");
+            recordId = Convert.ToInt64(await ins.ExecuteScalarAsync(ct));
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation
+                                           && ex.ConstraintName == "uq_list_record_list_phone")
+        {
+            return new RecordMutationResult { Outcome = RecordMutationOutcome.Duplicate };
+        }
+
+        var (totalRecords, sendableCount) = await RecomputeCountersAsync(conn, tx, tenantId, listId, ct);
+        await tx.CommitAsync(ct);
+        return new RecordMutationResult
+        {
+            Outcome = RecordMutationOutcome.Ok,
+            RecordId = recordId,
+            TotalRecords = totalRecords,
+            SendableCount = sendableCount
+        };
+    }
+
+    /// <summary>Permanently delete ONE record of the tenant's list (viewer popup trash action).</summary>
+    public virtual async Task<RecordMutationResult> DeleteRecordAsync(
+        int tenantId, long listId, long recordId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
+
+        var (found, status, _) = await LockListRowAsync(conn, tx, tenantId, listId, ct);
+        if (!found) return new RecordMutationResult { Outcome = RecordMutationOutcome.ListNotFound };
+        if (status != "ready") return new RecordMutationResult { Outcome = RecordMutationOutcome.ListNotReady };
+
+        await using (var del = new NpgsqlCommand(
+            "DELETE FROM list_records WHERE tenant_id=@tid AND list_id=@lid AND id=@rid", conn, tx))
+        {
+            del.Parameters.AddWithValue("tid", tenantId);
+            del.Parameters.AddWithValue("lid", listId);
+            del.Parameters.AddWithValue("rid", recordId);
+            if (await del.ExecuteNonQueryAsync(ct) == 0)
+                return new RecordMutationResult { Outcome = RecordMutationOutcome.RecordNotFound };
+        }
+
+        var (totalRecords, sendableCount) = await RecomputeCountersAsync(conn, tx, tenantId, listId, ct);
+        await tx.CommitAsync(ct);
+        return new RecordMutationResult
+        {
+            Outcome = RecordMutationOutcome.Ok,
+            RecordId = recordId,
+            TotalRecords = totalRecords,
+            SendableCount = sendableCount
+        };
+    }
+
+    /// <summary>Locks the parent data_lists row (FOR UPDATE) and returns its status + total.</summary>
+    private static async Task<(bool found, string status, int totalRecords)> LockListRowAsync(
+        NpgsqlConnection conn, NpgsqlTransaction tx, int tenantId, long listId, CancellationToken ct)
+    {
+        await using var cmd = new NpgsqlCommand(@"
+            SELECT status, total_records FROM data_lists
+            WHERE tenant_id=@tid AND id=@lid AND deleted_at IS NULL
+            FOR UPDATE", conn, tx);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("lid", listId);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        if (!await reader.ReadAsync(ct)) return (false, "", 0);
+        return (true, reader.GetString(0), reader.GetInt32(1));
+    }
+
+    /// <summary>
+    /// COUNT(*)-based counter recompute inside the caller's transaction. Deliberately does NOT
+    /// touch status (import's recompute sets status='ready'; a single-record mutation must never
+    /// resurrect a non-ready list — non-ready is already rejected under the same lock).
+    /// </summary>
+    private static async Task<(int totalRecords, int sendableCount)> RecomputeCountersAsync(
+        NpgsqlConnection conn, NpgsqlTransaction tx, int tenantId, long listId, CancellationToken ct)
+    {
+        await using var cmd = new NpgsqlCommand(@"
+            UPDATE data_lists SET
+                total_records = (SELECT COUNT(*)::int FROM list_records WHERE tenant_id=@tid AND list_id=@lid),
+                sendable_count = (SELECT COUNT(*)::int FROM list_records WHERE tenant_id=@tid AND list_id=@lid AND sendable=TRUE),
+                updated_at = NOW()
+            WHERE tenant_id=@tid AND id=@lid
+            RETURNING total_records, sendable_count", conn, tx);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("lid", listId);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        await reader.ReadAsync(ct);
+        return (reader.GetInt32(0), reader.GetInt32(1));
+    }
 
     /// <summary>Custom-scenario update of existing records, gated by flags.</summary>
     private async Task<int> UpdateExistingCustomAsync(

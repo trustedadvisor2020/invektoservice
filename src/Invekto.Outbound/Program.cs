@@ -496,8 +496,10 @@ static int ContactListStatus(string? code) => code switch
 {
     ErrorCodes.ContactListDisabled => 403,
     ErrorCodes.ContactListNotFound => 404,
+    ErrorCodes.ContactListRecordNotFound => 404,
     ErrorCodes.ContactListNameConflict => 409,
     ErrorCodes.ContactListNotReady => 409,
+    ErrorCodes.ContactListRecordDuplicate => 409,
     ErrorCodes.ContactListCapExceeded => 422,
     ErrorCodes.ContactListDbError => 503,   // transient DB failure — import rolled back, safe to retry
     _ => 400
@@ -618,6 +620,37 @@ app.MapGet("/api/v1/data-lists/{id:long}/records", async (HttpContext ctx, Conta
     var (response, errorCode, message) = await svc.RecordsPageAsync(tenantContext.TenantId, id, search, page, pageSize, ctx.RequestAborted);
     if (response == null)
         return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "Records could not be loaded; please retry.", requestId), statusCode: ContactListStatus(errorCode));
+    return Results.Ok(response);
+});
+
+// Single-record mutations from the list-viewer popup (Veri Yönetimi).
+// POST /api/v1/data-lists/{id}/records — manual add (invalid phone + duplicate REJECTED).
+app.MapPost("/api/v1/data-lists/{id:long}/records", async (HttpContext ctx, ContactListImportService svc, long id, AddListRecordRequest? request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (request == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.ContactListInvalidPayload, "Request body is required", requestId), statusCode: 400);
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (response, errorCode, message) = await svc.AddRecordAsync(tenantContext.TenantId, id, request, ctx.RequestAborted);
+    if (response == null)
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "Record could not be added; please retry.", requestId), statusCode: ContactListStatus(errorCode));
+    return Results.Json(response, statusCode: 201);
+});
+
+// DELETE /api/v1/data-lists/{id}/records/{recordId} — permanent single-record delete.
+app.MapDelete("/api/v1/data-lists/{id:long}/records/{recordId:long}", async (HttpContext ctx, ContactListImportService svc, long id, long recordId) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (response, errorCode, message) = await svc.DeleteRecordAsync(tenantContext.TenantId, id, recordId, ctx.RequestAborted);
+    if (response == null)
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "Record could not be deleted; please retry.", requestId), statusCode: ContactListStatus(errorCode));
     return Results.Ok(response);
 });
 

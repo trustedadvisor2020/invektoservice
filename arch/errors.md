@@ -1116,6 +1116,12 @@ errors:
   - code: INV-OB-087
     description: "FEAT-PROJELER UI/UX pack — project-modal TEST send throttled: per-tenant fixed-window cap (5/min) exceeded. Test send is a REAL send surface (one plain-text message to one number via the shared broadcast path: opt-out/consent filters + KVKK disclaimer identical to real sends), so it is rate-capped against abuse. (429)"
     user_message: Çok sık test gönderimi. Biraz bekleyip tekrar deneyin.
+  - code: INV-OB-088
+    description: "Contact lists — manual single-record add (list-viewer popup): the normalized phone already exists in this list. Detected race-safely via the uq_list_record_list_phone unique constraint (constraint-name-filtered 23505 catch, no SELECT pre-check); nothing is written. Unlike bulk import (which stores invalid rows sendable=false), the manual path REJECTS duplicates outright. (409)"
+    user_message: Bu numara listede zaten var.
+  - code: INV-OB-089
+    description: "Contact lists — single-record delete (list-viewer popup): record id not found in this tenant's list (already deleted by another user/tab, or a foreign tenant's record — same 404, no existence leak). Decided inside the locked mutation transaction (data_lists FOR UPDATE); nothing is changed. (404)"
+    user_message: Kayıt bulunamadı (silinmiş olabilir). Listeyi yenileyip tekrar deneyin.
 
   # ── IG — Integrations (GR-3.4/3.6) ──
   - code: INV-IG-001

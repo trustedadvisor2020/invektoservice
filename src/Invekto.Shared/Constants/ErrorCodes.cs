@@ -570,6 +570,10 @@ public static class ErrorCodes
     public const string ProjectTestSendInvalidPayload = "INV-OB-086";      // Test send: phone fails PhoneNormalizer OR message_text empty / over the plain-text cap. Typed reject before any side effect. 422.
     public const string ProjectTestSendThrottled = "INV-OB-087";           // Test send: per-tenant fixed-window throttle exceeded (test send is a REAL send surface — anti-abuse cap). 429.
 
+    // Contact Lists — single-record mutations from the list-viewer popup (INV-OB-088+)
+    public const string ContactListRecordDuplicate = "INV-OB-088";         // Manual add: the normalized phone already exists in this list (uq_list_record_list_phone, constraint-name-filtered 23505 — race-safe, no SELECT pre-check). 409.
+    public const string ContactListRecordNotFound = "INV-OB-089";          // Single-record delete: record id not in this tenant's list (already deleted, or foreign — no existence leak). 404.
+
     // Lead Management errors (INV-LD-xxx) -- GR-3.13
     public const string LeadInvalidPayload = "INV-LD-001";
     public const string LeadNotFound = "INV-LD-002";

@@ -3852,6 +3852,13 @@ app.MapGet("/api/v1/outbound/data-lists/preview-sample", async (HttpContext ctx,
 app.MapGet("/api/v1/outbound/data-lists/{id:long}/records", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
     await OutboundProxyGet(ctx, obClient, jsonLog, $"/api/v1/data-lists/{id}/records{ctx.Request.QueryString.Value}"));
 
+// Single-record mutations from the list-viewer popup (manual add + permanent delete).
+app.MapPost("/api/v1/outbound/data-lists/{id:long}/records", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, $"/api/v1/data-lists/{id}/records"));
+
+app.MapDelete("/api/v1/outbound/data-lists/{id:long}/records/{recordId:long}", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id, long recordId) =>
+    await OutboundProxyDelete(ctx, obClient, jsonLog, $"/api/v1/data-lists/{id}/records/{recordId}"));
+
 // Export Manager (FEAT-OBI Phase 1A Plan B). File downloads are STREAMED through
 // (ResponseHeadersRead -> CopyToAsync) so a 50k-row XLSX/CSV never buffers in Backend
 // memory, preserving Content-Type + Content-Disposition + the no-store/nosniff headers.

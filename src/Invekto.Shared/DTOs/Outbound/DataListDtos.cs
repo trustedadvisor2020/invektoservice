@@ -147,6 +147,7 @@ public sealed class PreviewFromListRequest
 /// <summary>One list_records row as shown to the operator (viewer table + preview sample).</summary>
 public sealed class ListRecordDto
 {
+    [JsonPropertyName("id")] public long Id { get; set; }                     // list_records PK (single-record delete target)
     [JsonPropertyName("phone")] public string? Phone { get; set; }            // normalized_phone (null = invalid row)
     [JsonPropertyName("name")] public string? Name { get; set; }
     [JsonPropertyName("surname")] public string? Surname { get; set; }
@@ -193,4 +194,35 @@ public sealed class ListRecordsPageResponse
     [JsonPropertyName("total")] public int Total { get; set; }                // rows matching the search
     [JsonPropertyName("page")] public int Page { get; set; }                  // 1-based
     [JsonPropertyName("page_size")] public int PageSize { get; set; }
+}
+
+// =============================================================
+// Single-record mutations from the list-viewer popup (Veri Yönetimi).
+// Permanent delete + manual add; invalid phone and duplicates are
+// REJECTED (unlike bulk import, which stores invalid rows sendable=false).
+// =============================================================
+
+/// <summary>POST /api/v1/data-lists/{id}/records — manually add one record to a ready list.</summary>
+public sealed class AddListRecordRequest
+{
+    [JsonPropertyName("phone")] public string? Phone { get; set; }            // required; must pass PhoneNormalizer
+    [JsonPropertyName("name")] public string? Name { get; set; }
+    [JsonPropertyName("surname")] public string? Surname { get; set; }
+    [JsonPropertyName("email")] public string? Email { get; set; }
+}
+
+/// <summary>POST /api/v1/data-lists/{id}/records response — the stored record + fresh counters.</summary>
+public sealed class AddListRecordResponse
+{
+    [JsonPropertyName("record")] public ListRecordDto Record { get; set; } = new();
+    [JsonPropertyName("total_records")] public int TotalRecords { get; set; }
+    [JsonPropertyName("sendable_count")] public int SendableCount { get; set; }
+}
+
+/// <summary>DELETE /api/v1/data-lists/{id}/records/{recordId} response — fresh counters.</summary>
+public sealed class DeleteListRecordResponse
+{
+    [JsonPropertyName("deleted")] public bool Deleted { get; set; }
+    [JsonPropertyName("total_records")] public int TotalRecords { get; set; }
+    [JsonPropertyName("sendable_count")] public int SendableCount { get; set; }
 }
