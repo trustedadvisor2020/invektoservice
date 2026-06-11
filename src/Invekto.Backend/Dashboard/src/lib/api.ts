@@ -287,6 +287,8 @@ export interface InstanceDto {
   flowId: number | null;
   flowName: string | null;
   fetchedAt: string;
+  // WapCRM connectionType ('WABA' | 'QR Code' | 'SMS' | ...). null on rows cached before migration 063.
+  connectionType: string | null;
 }
 
 // Working Hours types (Settings)
@@ -2345,6 +2347,21 @@ class OpsApiClient {
     return this.request<ListRecordsPage>(`/api/v1/outbound/data-lists/${listId}/records?${p.toString()}`);
   }
 
+  // Viewer popup single-record mutations: manual add (invalid phone + duplicate rejected
+  // server-side) and permanent delete (2-stage confirm lives in the UI).
+  async addDataListRecord(listId: number, payload: AddListRecordPayload): Promise<AddListRecordResponse> {
+    return this.request<AddListRecordResponse>(`/api/v1/outbound/data-lists/${listId}/records`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteDataListRecord(listId: number, recordId: number): Promise<DeleteListRecordResponse> {
+    return this.request<DeleteListRecordResponse>(
+      `/api/v1/outbound/data-lists/${listId}/records/${recordId}`, { method: 'DELETE' });
+  }
+
   async previewFromList(req: PreviewFromListRequest): Promise<BulkSendPreviewResponse> {
     return this.request<BulkSendPreviewResponse>('/api/v1/outbound/bulk-send/preview-from-list', {
       method: 'POST',
@@ -2540,6 +2557,7 @@ export interface OutboundTemplateDto {
 
 // FEAT-PROJELER PKT-14 — read-only list insights (preview-sample + viewer records).
 export interface ListRecord {
+  id: number;               // list_records PK (single-record delete target)
   phone: string | null;     // normalized E.164; null = invalid row
   name: string | null;
   surname: string | null;
@@ -2564,6 +2582,26 @@ export interface ListRecordsPage {
   total: number;
   page: number;       // 1-based
   page_size: number;
+}
+
+// Single-record mutations from the list-viewer popup (manual add + permanent delete).
+// Both responses carry fresh counters so the UI syncs popup header + main table
+// without an extra round-trip.
+export interface AddListRecordPayload {
+  phone: string;
+  name?: string;
+  surname?: string;
+  email?: string;
+}
+export interface AddListRecordResponse {
+  record: ListRecord;
+  total_records: number;
+  sendable_count: number;
+}
+export interface DeleteListRecordResponse {
+  deleted: boolean;
+  total_records: number;
+  sendable_count: number;
 }
 
 export interface DataListSummary {
