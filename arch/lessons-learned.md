@@ -347,6 +347,8 @@
 | IHostedService for cleanup timers | Background services | Clean shutdown |
 | SET DEADLOCK_PRIORITY LOW + backoff + jitter | Non-critical jobs | Deadlock'ta victim olur |
 | Deadlock retry with error code check | SQL retry | Sadece deadlock'a retry |
+| Recovery sweep TÜM non-terminal lease state'lerini kapsamalı (yalnız 'posting' değil, 'sending' de) | MessageSenderService cxapi (2026-06-12 incident) | Periyodik sweep yalnız 'posting'i kurtarıyor; 'sending' reset STARTUP-only. Restart tam gönderim ortasına denk gelince mesaj dequeue→'sending' alınıp posting'e geçemeden strand oldu → dequeue döngüsü ('queued' seçer) görmez, periyodik sweep ('posting' süpürür) dokunmaz → restart'a kadar öksüz. Lease eden her ara-state, restart-bağımsız bir staleness-gated kurtarma yoluna sahip olmalı |
+| 'sending'+attempt_count=0+last_attempt_at=NULL = HİÇ POST edilmemiş kanıtı → duplicate-safe requeue | Outbound bulk strand kurtarma | Strand olan satırları `UPDATE status='sending'→'queued'` ile çalışan worker'a geri ver (restart gerekmez, ~1sn'de dequeue). POST izi (provider_request_id/last_attempt_at) boşsa duplicate riski sıfır. 'posting'/'ambiguous' satırlar İÇİN GEÇERSİZ (teslim belirsiz, manuel) |
 
 ### UI/UX & Frontend
 
