@@ -221,7 +221,11 @@ builder.Services.AddHttpClient<WapCrmSendClient>()
     {
         var opts = sp.GetRequiredService<WapCrmSendOptions>();
         http.BaseAddress = new Uri(opts.BaseUrl.TrimEnd('/') + "/");
-        http.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
+        // FINITE backstop (was Timeout.InfiniteTimeSpan): the per-attempt linked CTS in SendCoreAsync is the
+        // primary timeout, but a stuck socket it fails to cancel must NEVER wedge the single-threaded
+        // MessageSenderService (incident 2026-06-12: a hung POST froze the sender 4h). Backstop > TimeoutMs
+        // so the CTS still fires first under normal load.
+        http.Timeout = TimeSpan.FromMilliseconds(opts.HttpClientBackstopMs);
     })
     .AddTypedClient((http, sp) => new WapCrmSendClient(
         http,
@@ -233,7 +237,7 @@ builder.Services.AddHttpClient<WapCrmSendClient>()
 // again before a fresh confirm (ownership + required-param coverage; hard-fail when the
 // catalog is unreachable). Mirrors the Backend registration: per-request X-CIB-SecretKey,
 // FIXED base URL (SSRF mitigation), AllowAutoRedirect=false (cxapi 301/302 = rate-limit),
-// per-attempt timeout inside the client (HttpClient timeout Infinite). The CxapiSend
+// per-attempt timeout inside the client + a FINITE HttpClient.Timeout backstop. The CxapiSend
 // allowlist is checked BEFORE any call — with the allowlist empty (P0-3) this client
 // never fires in prod.
 var wapCrmTemplateOptions = new WapCrmTemplateOptions();
@@ -249,7 +253,9 @@ builder.Services.AddHttpClient<WapCrmTemplateClient>()
     {
         var opts = sp.GetRequiredService<WapCrmTemplateOptions>();
         http.BaseAddress = new Uri(opts.BaseUrl.TrimEnd('/') + "/");
-        http.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
+        // FINITE backstop (was Timeout.InfiniteTimeSpan): same hung-socket guard as WapCrmSendClient — a
+        // stuck template fetch must not hang the request thread past this ceiling. Backstop > TimeoutMs.
+        http.Timeout = TimeSpan.FromMilliseconds(opts.HttpClientBackstopMs);
     });
 
 builder.Services.AddAuthorization();

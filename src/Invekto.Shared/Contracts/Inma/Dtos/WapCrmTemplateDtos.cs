@@ -186,6 +186,16 @@ public sealed class WapCrmTemplateOptions
     /// <summary>cxapi base URL. The client posts to <c>api/templates</c> relative to this.</summary>
     public string BaseUrl { get; set; } = "https://cxapi.wapcrm.net/";
 
-    /// <summary>Per-attempt timeout (ms). Enforced by a linked CTS — the underlying HttpClient timeout is Infinite.</summary>
+    /// <summary>Per-attempt timeout (ms). PRIMARY control: a per-attempt linked CTS. HttpClient.Timeout is set to a
+    /// FINITE hard backstop (<see cref="HttpClientBackstopMs"/>) — never Infinite — so a stuck socket the linked CTS
+    /// fails to cancel cannot hang the request thread (same class of bug as WapCrmSendClient, incident 2026-06-12).</summary>
     public int TimeoutMs { get; set; } = 10_000;
+
+    /// <summary>Buffer (ms) added to <see cref="TimeoutMs"/> to derive the FINITE HttpClient.Timeout backstop.
+    /// Clamped to a 1s floor so the backstop is ALWAYS &gt; the per-attempt CTS (which therefore fires first).</summary>
+    public int HttpClientBackstopBufferMs { get; set; } = 5_000;
+
+    /// <summary>FINITE HttpClient.Timeout hard backstop (ms) = TimeoutMs + buffer (buffer floored at 1s). Used at
+    /// DI registration instead of Timeout.InfiniteTimeSpan so no template fetch can hang past this ceiling.</summary>
+    public int HttpClientBackstopMs => TimeoutMs + Math.Max(HttpClientBackstopBufferMs, 1_000);
 }

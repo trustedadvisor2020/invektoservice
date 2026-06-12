@@ -26,6 +26,9 @@ public sealed class MessageSenderService : IHostedService, IDisposable
 
     private Timer? _timer;
     private int _isProcessing; // 0 = idle, 1 = processing (interlocked)
+    // Periodic stranded-'posting' recovery throttle. Read/written ONLY inside ProcessQueue, which is serialized
+    // by _isProcessing, so a plain field is safe (no Interlocked). See TryRecoverStrandedAsync.
+    private long _lastSweepTicks;  // Environment.TickCount64 at the last periodic sweep (0 = not yet)
     private CancellationTokenSource? _cts;
 
     public MessageSenderService(
@@ -71,6 +74,10 @@ public sealed class MessageSenderService : IHostedService, IDisposable
             _logger.SystemError($"[cxapi-send] startup recovery failed (non-fatal, retried next start): {ex.Message}");
         }
 
+        // The startup sweep above just ran; stamp it so the FIRST periodic sweep is one interval later
+        // (TryRecoverStrandedAsync throttles on this), avoiding a redundant sweep right after boot.
+        _lastSweepTicks = Environment.TickCount64;
+
         _timer = new Timer(ProcessQueue, null, _intervalMs, _intervalMs);
     }
 
@@ -115,6 +122,11 @@ public sealed class MessageSenderService : IHostedService, IDisposable
         {
             var ct = _cts?.Token ?? CancellationToken.None;
             if (ct.IsCancellationRequested) return;
+
+            // Periodic stranded-'posting' recovery (throttled) so a stranded run heals to 'ambiguous' WITHOUT a
+            // restart. Runs inside the _isProcessing guard => serialized with sends and covered by the typed
+            // catches below; the finite HttpClient.Timeout backstop already prevents the send loop from wedging.
+            await TryRecoverStrandedAsync(ct);
 
             // Dequeue a small batch
             var messages = await _repository.DequeueMessagesAsync(10, ct);
@@ -170,6 +182,45 @@ public sealed class MessageSenderService : IHostedService, IDisposable
         finally
         {
             Interlocked.Exchange(ref _isProcessing, 0);
+        }
+    }
+
+    /// <summary>
+    /// FEAT-PROJELER / cxapi: periodic stranded-'posting' recovery, throttled to
+    /// <see cref="CxapiSendOptions.RecoverySweepIntervalMs"/>. Mirrors the StartAsync startup sweep
+    /// (<see cref="OutboundRepository.SweepStrandedPostingAsync"/>) but runs while the worker is UP, so a row
+    /// crash-stranded mid-run resolves to 'ambiguous' (+ completes its broadcast) WITHOUT a service restart
+    /// (incident 2026-06-12). Staleness-gated in SQL (only 'posting' older than StalePostingMinutes) → an
+    /// in-flight POST is never touched. Called INSIDE the _isProcessing guard (serialized with sends), so it
+    /// needs no own overlap guard; only the 'posting' sweep is periodic — the 'sending' reset stays
+    /// startup-only (no staleness gate, would race a live send). A caller-cancellation (shutdown) and any
+    /// unexpected throw propagate to ProcessQueue's typed catches; only the DB-transient case is handled here.
+    /// </summary>
+    private async Task TryRecoverStrandedAsync(CancellationToken ct)
+    {
+        var now = Environment.TickCount64;
+        if (now - _lastSweepTicks < _cxapiOptions.RecoverySweepIntervalMs)
+            return; // throttled — not yet due
+        _lastSweepTicks = now;
+
+        try
+        {
+            var swept = await _repository.SweepStrandedPostingAsync(_cxapiOptions.StalePostingMinutes, ct);
+            foreach (var bid in swept)
+                await TryCompleteBroadcastAsync(bid, ct);
+            if (swept.Count > 0)
+                _logger.SystemWarn(
+                    $"[cxapi-send] periodic recovery swept {swept.Count} stranded 'posting' broadcast(s) to 'ambiguous' (no restart needed)");
+        }
+        catch (NpgsqlException ex)
+        {
+            // Recovery touches only Postgres; a transient DB hiccup is non-fatal — the row stays safely
+            // 'posting' and recovery retries next interval. INV-OB-065 = the same stranded-posting/ambiguous
+            // recovery domain as SweepStrandedPostingAsync's own marker. OperationCanceledException (shutdown)
+            // and any unexpected exception are intentionally NOT caught here — ProcessQueue's typed catches own
+            // those, keeping this to typed-only catches per codebase policy.
+            _logger.SystemError(
+                $"[{ErrorCodes.CxapiSendAmbiguous}] periodic recovery sweep failed (non-fatal, retried next interval): {ex.Message}");
         }
     }
 

@@ -39,5 +39,13 @@ public sealed class CxapiSendOptions
     /// </summary>
     public int StalePostingMinutes { get; set; } = 5;
 
+    /// <summary>
+    /// How often (ms) the RUNNING worker re-runs the stranded-'posting' recovery sweep, IN ADDITION to the
+    /// startup sweep — so a row stranded mid-run (e.g. a crash-killed POST) recovers to 'ambiguous' WITHOUT a
+    /// service restart (incident 2026-06-12: a stranded run sat frozen until manual restart). The sweep stays
+    /// staleness-gated by <see cref="StalePostingMinutes"/>, so an in-flight POST is never swept. Default 2 min.
+    /// </summary>
+    public int RecoverySweepIntervalMs { get; set; } = 120_000;
+
     public bool IsTenantAllowed(int tenantId) => Enabled && AllowedTenantIds.Contains(tenantId);
 }

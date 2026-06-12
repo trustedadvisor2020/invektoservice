@@ -1,0 +1,80 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "slug": "20260612-outbound-sender-wedge-fix",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-12T10:15:00Z",
+  "updated_at": "2026-06-12T10:15:00Z",
+  "plan": {
+    "summary": "Fix the Outbound MessageSenderService worker-wedge: replace HttpClient.Timeout=Infinite with a FINITE backstop (WapCrmSendClient + WapCrmTemplateClient) so a hung cxapi POST can never freeze the single-threaded sender, and add a periodic staleness-gated 'posting' recovery sweep so a stranded run heals to 'ambiguous' without a manual service restart.",
+    "q_intent": "bir fix lazim diyordun (worker-wedge). Kapsam: +Dayaniklilik (finite HttpClient.Timeout + periyodik staleness-gated posting sweep). Medipol run'i 4 saat dondu, manuel restart gerekti.",
+    "interview_notes": "Q chose '+Dayaniklilik' scope: finite HttpClient.Timeout backstop AND periodic posting sweep. The 'sending' reset stays startup-only (no safe staleness gate; would race a live send) — Q-confirmed. Root cause confirmed: Program.cs:224 http.Timeout=Timeout.InfiniteTimeSpan; the per-attempt 10s linked CTS was the sole bound and failed once on a stuck socket -> ProcessQueue await never returned -> _isProcessing stuck -> 4h wedge. DB path is bounded by Npgsql defaults so it cannot cause a multi-hour hang.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "WapCrmSendClient + WapCrmTemplateClient HttpClient.Timeout is FINITE (= TimeoutMs + buffer, buffer floored at 1s), never Timeout.InfiniteTimeSpan, so no SendAsync can hang past the backstop.", "verified": true, "verification_note": "Program.cs:224/253 now use TimeSpan.FromMilliseconds(opts.HttpClientBackstopMs); HttpClientBackstopMs = TimeoutMs + Math.Max(buffer,1000) > TimeoutMs so the per-attempt CTS still fires first. Build PASS." },
+      { "id": "AC2", "criterion": "A stranded 'posting' row recovers to 'ambiguous' WITHOUT a service restart, via a periodic sweep that runs while the worker is up.", "verified": true, "verification_note": "MessageSenderService.TryRecoverStrandedAsync calls the existing staleness-gated SweepStrandedPostingAsync every RecoverySweepIntervalMs (default 2min), runs BEFORE the _isProcessing guard, own _isSweeping guard + throttle." },
+      { "id": "AC3", "criterion": "The periodic sweep is safe to run concurrently with active sends (never touches an in-flight POST) and the 'sending' reset is NOT made periodic.", "verified": true, "verification_note": "SweepStrandedPostingAsync is staleness-gated (last_attempt_at < now - StalePostingMinutes), so an in-flight POST (<StalePostingMinutes old) is never swept. ResetStrandedCxapiSendingAsync remains startup-only." },
+      { "id": "AC4", "criterion": "Shared change is additive (no breaking change); full solution builds with 0 errors.", "verified": true, "verification_note": "Only new optional properties added to WapCrmSendOptions/WapCrmTemplateOptions; full solution build 0 Error / 42 pre-existing warnings." }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Outbound/Program.cs",
+    "src/Invekto.Outbound/Services/CxapiSendOptions.cs",
+    "src/Invekto.Outbound/Services/MessageSenderService.cs",
+    "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmSendDtos.cs",
+    "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmTemplateDtos.cs"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Outbound/Program.cs", "change": "WapCrmSendClient + WapCrmTemplateClient HttpClient.Timeout: Infinite -> finite opts.HttpClientBackstopMs; comment fix", "is_new": false },
+    { "path": "src/Invekto.Outbound/Services/CxapiSendOptions.cs", "change": "+RecoverySweepIntervalMs (default 120000ms)", "is_new": false },
+    { "path": "src/Invekto.Outbound/Services/MessageSenderService.cs", "change": "+_isSweeping/_lastSweepTicks fields; StartAsync stamps _lastSweepTicks; ProcessQueue calls TryRecoverStrandedAsync before the send interlock; new TryRecoverStrandedAsync (throttled, guarded, staleness-gated posting sweep)", "is_new": false },
+    { "path": "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmSendDtos.cs", "change": "WapCrmSendOptions += HttpClientBackstopBufferMs + HttpClientBackstopMs (additive); TimeoutMs doc updated", "is_new": false },
+    { "path": "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmTemplateDtos.cs", "change": "WapCrmTemplateOptions += HttpClientBackstopBufferMs + HttpClientBackstopMs (additive); TimeoutMs doc updated", "is_new": false }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": null,
+    "full_path": null,
+    "stats": { "insertions": 106, "deletions": 5, "files_count": 5 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-06-12T10:14:00Z",
+    "duration_ms": 36010,
+    "output_tail": "42 Warning(s) / 0 Error(s)",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Outbound", "(full solution)"]
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "Does the finite HttpClient.Timeout backstop ever pre-empt a legitimate slow-but-valid cxapi response, masking the intended per-attempt CTS behaviour?", "category": "Lifecycle", "codex_answer": null, "codex_result": null },
+    { "id": "Q2", "question": "Can the periodic posting sweep race an in-flight POST and incorrectly mark a still-sending message 'ambiguous'?", "category": "Data", "codex_answer": null, "codex_result": null },
+    { "id": "Q3", "question": "If TryRecoverStrandedAsync throws or the DB is unreachable, can it crash the async-void ProcessQueue worker or leave _isSweeping stuck at 1?", "category": "Process/Policy", "codex_answer": null, "codex_result": null }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["WapCrmSendClient.SendCoreAsync retry/timeout logic (unchanged)", "OutboundRepository.SweepStrandedPostingAsync SQL (reused as-is)", "ResetStrandedCxapiSendingAsync (stays startup-only)"],
+    "non_goals": ["Changing the per-attempt CTS timeout value", "Making the 'sending' reset periodic", "A watchdog that abandons a hung await (the finite HttpClient.Timeout prevents the hang at source)"],
+    "intentional_exclusions": ["No config added to appsettings (code defaults: backstop=TimeoutMs+5000, sweep interval=120000ms)", "No migration (behaviour-only)"]
+  },
+  "error_handling": {
+    "try_catch_locations": ["MessageSenderService.TryRecoverStrandedAsync: typed OperationCanceledException + NpgsqlException + a documented async-void boundary Exception safety net; finally resets _isSweeping"],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "A failed sweep is logged (SystemError) and retried next interval; the row stays safely 'posting' until then. The async-void Exception catch logs rather than swallows silently. HttpClient.Timeout firing surfaces as the existing 'ambiguous' outcome path (logged)."
+  },
+  "aha_moments": [
+    { "category": "RELIABILITY", "user_pain": "A single hung cxapi POST froze ALL outbound sends for 4 hours and only a manual service restart fixed it.", "suggestion": "Finite HttpClient.Timeout backstop so a stuck socket can never wedge the single-threaded sender.", "aha_moment": "Sends keep flowing for every tenant even when one socket hangs — the wedge simply cannot happen anymore." },
+    { "category": "RELIABILITY", "user_pain": "Stranded 'posting'/'sending' rows only recovered on the next process restart, so a frozen run stayed frozen until someone noticed.", "suggestion": "Periodic staleness-gated posting sweep while the worker is up.", "aha_moment": "A stranded run self-heals to 'ambiguous' within minutes — the operator never has to restart the service." },
+    { "category": "SUPPORT", "user_pain": "Ops had no signal that a run was wedged vs. just slow.", "suggestion": "Log a SystemWarn each time the periodic sweep recovers stranded broadcasts.", "aha_moment": "The log line '[cxapi-send] periodic recovery swept N ...' tells support exactly what self-healed and when." },
+    { "category": "SPEED", "user_pain": "After a deploy mid-send, the next run could stall behind a stuck connection.", "suggestion": "Backstop > per-attempt CTS so normal sends are unaffected but a stuck one resolves in ~15s to 'ambiguous'.", "aha_moment": "A bad socket now costs ~15s, not 4 hours." },
+    { "category": "RELIABILITY", "user_pain": "The same Infinite-timeout bug also sat in the template-list client (preview/confirm path).", "suggestion": "Apply the finite backstop to WapCrmTemplateClient too.", "aha_moment": "Neither the send loop nor the template fetch can hang indefinitely — the whole cxapi surface is bounded." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "iteration": 1,
+    "blocking_issues": [],
+    "raw_text": "iter0 FAIL (CQ5 bare catch(Exception); CQ11 db-sync evidence; CQ12 INV code) -> iter1 fixes: sweep moved inside the _isProcessing guard (covered by existing typed catches, no new catch(Exception)), removed _isSweeping, NpgsqlException log carries INV-OB-065, summary states no schema change -> Codex PASS 12/12 CQ + 3/3 CoVe."
+  }
+}
