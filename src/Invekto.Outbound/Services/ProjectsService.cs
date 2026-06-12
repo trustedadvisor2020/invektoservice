@@ -33,6 +33,9 @@ public sealed class ProjectsService
     // and the WapCRM creds reader (same shared-Postgres read the send path uses, PR-3a precedent).
     private readonly CxapiSendOptions _cxapiOptions;
     private readonly WapCrmTemplateClient _templateClient;
+    // FEATURE B (status-pull): the cxapi send client also carries the message-status pull
+    // (POST /api/message-status). Same pooled HttpClient + per-request secret pattern as send.
+    private readonly WapCrmSendClient _wapCrmSendClient;
     private readonly OutboundRepository _outboundRepo;
     // GR-8 (test send): the SAME inline-text broadcast path every real broadcast uses — test send
     // is a thin wrapper around it (opt-out/consent filters, KVKK disclaimer, route decision all
@@ -44,7 +47,8 @@ public sealed class ProjectsService
     public ProjectsService(
         ProjectsRepository repo, ProjectsOptions options,
         BulkSendRepository bulkRepo, BulkSendOrchestrator bulkOrch, BulkSendOptions bulkOptions,
-        CxapiSendOptions cxapiOptions, WapCrmTemplateClient templateClient, OutboundRepository outboundRepo,
+        CxapiSendOptions cxapiOptions, WapCrmTemplateClient templateClient, WapCrmSendClient wapCrmSendClient,
+        OutboundRepository outboundRepo,
         BroadcastOrchestrator broadcastOrch, PhoneNormalizer phoneNormalizer,
         JsonLinesLogger logger)
     {
@@ -55,6 +59,7 @@ public sealed class ProjectsService
         _bulkOptions = bulkOptions;
         _cxapiOptions = cxapiOptions;
         _templateClient = templateClient;
+        _wapCrmSendClient = wapCrmSendClient;
         _outboundRepo = outboundRepo;
         _broadcastOrch = broadcastOrch;
         _phoneNormalizer = phoneNormalizer;
@@ -668,6 +673,96 @@ public sealed class ProjectsService
             _logger.SystemError($"project resend failed (tenant={tenantId}, project={projectId}, message={messageId}): {ex.Message}");
             return (null, ErrorCodes.ProjectDbError, "Veritabanı hatası; lütfen tekrar deneyin.");
         }
+    }
+
+    /// <summary>FEATURE B (status-pull): cap on the number of vendor message-status calls one "Durumu Yenile" makes.</summary>
+    private const int StatusPullCap = 200;
+
+    /// <summary>
+    /// FEATURE B (status-pull): for up to <see cref="StatusPullCap"/> of a project's wamid-bearing, non-terminal
+    /// recipients (optionally scoped to one run), pull the LIVE cxapi message-status, map it via
+    /// <c>WapCrmAckMapping.MapStatus</c>, and apply it through the idempotent, monotonic
+    /// <c>ApplyDeliveryStatusAsync</c> (the SAME path the ack webhook uses). The ack webhook stays the primary
+    /// mechanism; this is a manual complement ("Durumu Yenile"). Gated by the SAME CxapiSend allowlist as send
+    /// (INV-OB-094 when off / no creds — ZERO vendor calls, P0-3 inert). Best-effort per message: a
+    /// transport/timeout/no-status pull is simply not counted. Returns {checked, updated}; recomputes the
+    /// roll-up only when something advanced.
+    /// </summary>
+    public async Task<(ProjectStatusPullResultDto? result, string? errorCode, string? message)> RefreshRunStatusAsync(
+        int tenantId, long projectId, string? campaignId, CancellationToken ct)
+    {
+        if (!Allowed(tenantId)) return (null, ErrorCodes.ProjectDisabled, "Projeler bu hesap için etkin değil.");
+
+        // Vendor-call gate: same allowlist as the send path (P0-3 inert for non-allowlisted tenants).
+        if (!_cxapiOptions.IsTenantAllowed(tenantId))
+            return (null, ErrorCodes.ProjectStatusPullNotEnabled, "Canlı durum sorgulama bu hesapta henüz açık değil.");
+
+        List<(long MessageId, string ExternalMessageId, int? InstanceId)> pending;
+        int? defaultInstanceId;
+        string secretKey; // captured non-null below (the guard's IsNullOrWhiteSpace narrows it)
+        try
+        {
+            var detail = await _repo.GetAsync(tenantId, projectId, ct); // 404 ownership probe
+            if (detail == null) return (null, ErrorCodes.ProjectNotFound, $"Proje {projectId} bulunamadı.");
+
+            var wap = await _outboundRepo.GetWapCrmSettingsAsync(tenantId, ct);
+            if (wap == null || string.IsNullOrWhiteSpace(wap.SecretKey) || wap.UserId <= 0)
+                return (null, ErrorCodes.ProjectStatusPullNotEnabled,
+                    "WapCRM bağlantı ayarları eksik; canlı durum sorgulanamıyor.");
+            secretKey = wap.SecretKey;            // non-null here (IsNullOrWhiteSpace guard above)
+            defaultInstanceId = wap.InstanceId;   // tenant default instance (fallback when a row has none)
+
+            pending = await _repo.GetPendingForStatusPullAsync(tenantId, projectId, campaignId, StatusPullCap, ct);
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"project status-pull read failed (tenant={tenantId}, project={projectId}): {ex.Message}");
+            return (null, ErrorCodes.ProjectStatusPullDbError, "Veritabanı hatası; lütfen tekrar deneyin.");
+        }
+
+        var updated = 0;
+        var checkedCount = 0;
+        foreach (var row in pending)
+        {
+            ct.ThrowIfCancellationRequested();
+            // Prefer the wamid's own captured instance; fall back to the tenant default. Skip when neither resolves.
+            var instanceId = row.InstanceId is int iid && iid > 0 ? iid : defaultInstanceId ?? 0;
+            if (instanceId <= 0) continue;
+
+            checkedCount++;
+            var pull = await _wapCrmSendClient.GetMessageStatusAsync(instanceId, row.ExternalMessageId, secretKey, tenantId, ct);
+            if (!pull.Ok || pull.MessageStatus is not int rawStatus) continue;
+
+            var mapped = WapCrmAckMapping.MapStatus(rawStatus);
+            if (mapped == null) continue; // 0=Pending / 5=Deleted / unknown → ignore (same as the ack path)
+
+            try
+            {
+                var apply = await _outboundRepo.ApplyDeliveryStatusAsync(tenantId, row.ExternalMessageId, mapped, failedReason: null, ct: ct);
+                if (apply.Applied) updated++;
+            }
+            catch (NpgsqlException ex)
+            {
+                _logger.SystemError($"project status-pull apply failed (tenant={tenantId}, project={projectId}, message={row.MessageId}): {ex.Message}");
+                return (null, ErrorCodes.ProjectStatusPullDbError, "Veritabanı hatası; lütfen tekrar deneyin.");
+            }
+        }
+
+        if (updated > 0)
+        {
+            try { await _repo.RecomputeRollupAsync(tenantId, projectId, ct); }
+            catch (NpgsqlException ex)
+            {
+                // The statuses ARE applied (idempotent); only the roll-up refresh failed. Surface a DB error so
+                // the operator retries — a re-pull re-applies nothing new but does refresh the roll-up.
+                _logger.SystemError($"project status-pull rollup failed (tenant={tenantId}, project={projectId}): {ex.Message}");
+                return (null, ErrorCodes.ProjectStatusPullDbError, "Durumlar güncellendi ancak özet yenilenemedi; tekrar deneyin.");
+            }
+        }
+
+        _logger.SystemInfo(
+            $"project status-pull done: tenant={tenantId}, project={projectId}, campaign={campaignId ?? "-"}, checked={checkedCount}, updated={updated}");
+        return (new ProjectStatusPullResultDto { Checked = checkedCount, Updated = updated }, null, null);
     }
 
     // ------------------------------------------------------------------

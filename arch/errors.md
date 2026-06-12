@@ -1134,6 +1134,12 @@ errors:
   - code: INV-OB-093
     description: "Feature A cxapi message-webhook reconciliation — cxapi returned HTTP 509: the Outbound server IP is not whitelisted at cxapi for this tenant. Ops-actionable (whitelist the IP); kept distinct from a generic transport error so the log names the real remedy. (internal/log-only)"
     user_message: null
+  - code: INV-OB-094
+    description: "FEATURE B — Rapor (delivery report) status-pull ('Durumu Yenile'): the tenant is not in the CxapiSend allowlist (P0-3 inert) OR has no WapCRM creds (secret/userId/instance). Checked BEFORE any vendor call, so a non-allowlisted tenant makes ZERO cxapi message-status requests (same gate as the HSM send path). (403)"
+    user_message: Canlı durum sorgulama bu hesapta henüz açık değil.
+  - code: INV-OB-095
+    description: "FEATURE B — Rapor status-pull: an NpgsqlException while reading the project's pending wamid-bearing recipients OR applying a pulled status via ApplyDeliveryStatusAsync (or recomputing the roll-up after applies). The pulled statuses that already committed stay applied (idempotent); a retry re-applies nothing new. (503, retryable)"
+    user_message: Veritabanı hatası; lütfen tekrar deneyin.
 
   # ── IG — Integrations (GR-3.4/3.6) ──
   - code: INV-IG-001

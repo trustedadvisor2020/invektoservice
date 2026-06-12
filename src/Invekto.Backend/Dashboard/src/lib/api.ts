@@ -2479,6 +2479,16 @@ class OpsApiClient {
     });
   }
 
+  // FEATURE B: pull live cxapi message-status for the run's pending recipients (optional run scope).
+  // Returns {checked, updated}. Gated server-side by the CxapiSend allowlist (403 INV-OB-094 when off).
+  async projectRefreshReportStatus(projectId: number, campaignId?: string): Promise<ProjectStatusPullResult> {
+    return this.request<ProjectStatusPullResult>(`/api/v1/outbound/projects/${projectId}/report/refresh-status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ campaign_id: campaignId ?? null }),
+    });
+  }
+
   // GR-8: one plain-text test message to one number, from the project modal. Dual-gated
   // server-side (Projects + BulkSend) + per-tenant throttle; not tied to a saved project.
   async projectTestSend(req: ProjectTestSendRequest): Promise<ProjectTestSendResponse> {
@@ -2765,6 +2775,7 @@ export interface ProjectRecipient {
   phone: string;
   status: string;
   error: string | null;
+  sent_at: string | null;
   delivered_at: string | null;
   read_at: string | null;
   last_attempt_at: string | null;
@@ -2776,6 +2787,12 @@ export interface ProjectRecipientsPage {
   total: number;
   page: number;
   page_size: number;
+}
+
+// FEATURE B (status-pull): result of a "Durumu Yenile" run — pending recipients queried vs. actually advanced.
+export interface ProjectStatusPullResult {
+  checked: number;
+  updated: number;
 }
 
 // Send-config fields are OPTIONAL. template_kind is the DRIVER: when set, the whole config block

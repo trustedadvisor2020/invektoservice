@@ -923,7 +923,7 @@ public class ProjectsRepository
         var pageSql = cte + @"
             SELECT m.id, p.campaign_id, m.recipient_phone, m.status,
                    COALESCE(m.failed_reason, m.provider_error_message) AS error,
-                   m.delivered_at, m.read_at, m.last_attempt_at,
+                   m.sent_at, m.delivered_at, m.read_at, m.last_attempt_at,
                    (m.status IN ('failed','ambiguous')) AS can_resend" + filter + @"
             ORDER BY m.id DESC
             LIMIT @limit OFFSET @offset";
@@ -945,15 +945,63 @@ public class ProjectsRepository
                     Phone = reader.GetString(2),
                     Status = reader.GetString(3),
                     Error = reader.IsDBNull(4) ? null : reader.GetString(4),
-                    DeliveredAt = reader.IsDBNull(5) ? null : reader.GetDateTime(5),
-                    ReadAt = reader.IsDBNull(6) ? null : reader.GetDateTime(6),
-                    LastAttemptAt = reader.IsDBNull(7) ? null : reader.GetDateTime(7),
-                    CanResend = reader.GetBoolean(8)
+                    SentAt = reader.IsDBNull(5) ? null : reader.GetDateTime(5),
+                    DeliveredAt = reader.IsDBNull(6) ? null : reader.GetDateTime(6),
+                    ReadAt = reader.IsDBNull(7) ? null : reader.GetDateTime(7),
+                    LastAttemptAt = reader.IsDBNull(8) ? null : reader.GetDateTime(8),
+                    CanResend = reader.GetBoolean(9)
                 });
             }
         }
 
         return new ProjectRecipientsPage { Items = items, Total = total, Page = page, PageSize = pageSize };
+    }
+
+    /// <summary>
+    /// FEATURE B (status-pull): the project's wamid-bearing, not-yet-terminal recipients whose live status is
+    /// worth re-pulling from cxapi — status IN ('sent','delivered','ambiguous') AND external_message_id IS NOT NULL.
+    /// ('read'/'failed'/'cancelled' are terminal-for-display; 'queued'/'sending'/'posting' have no wamid yet.)
+    /// Tenant + project scoped via the same broadcasts CTE the recipients page uses; optional campaign filter.
+    /// Bounded by <paramref name="cap"/> (newest first) to keep the vendor fan-out finite. Returns
+    /// (message_id, external_message_id (wamid), instance_id) tuples.
+    /// </summary>
+    public virtual async Task<List<(long MessageId, string ExternalMessageId, int? InstanceId)>> GetPendingForStatusPullAsync(
+        int tenantId, long projectId, string? campaignId, int cap, CancellationToken ct = default)
+    {
+        if (cap < 1) cap = 1;
+        const string sql = @"
+            WITH proj AS (
+                SELECT DISTINCT bb.bid, j.campaign_id
+                FROM bulk_send_jobs j
+                CROSS JOIN LATERAL unnest(j.broadcast_ids) AS bb(bid)
+                WHERE j.tenant_id = @tid AND j.project_id = @pid
+            )
+            SELECT m.id, m.external_message_id, m.instance_id
+            FROM outbound_messages m
+            JOIN proj p ON p.bid = m.broadcast_id
+            WHERE m.tenant_id = @tid
+              AND m.external_message_id IS NOT NULL
+              AND m.status IN ('sent','delivered','ambiguous')
+              AND (@campaign::text IS NULL OR p.campaign_id = @campaign::text)
+            ORDER BY m.id DESC
+            LIMIT @cap";
+
+        var rows = new List<(long, string, int?)>();
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("pid", projectId);
+        cmd.Parameters.AddWithValue("campaign", (object?)campaignId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("cap", cap);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            var wamid = reader.IsDBNull(1) ? null : reader.GetString(1);
+            if (string.IsNullOrWhiteSpace(wamid)) continue; // guarded by the WHERE, belt-and-suspenders
+            var instanceId = reader.IsDBNull(2) ? (int?)null : reader.GetInt32(2);
+            rows.Add((reader.GetInt64(0), wamid, instanceId));
+        }
+        return rows;
     }
 
     /// <summary>

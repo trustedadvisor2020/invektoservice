@@ -734,6 +734,8 @@ static int ProjectSendStatus(string? code) => code switch
     ErrorCodes.ProjectRunNotCancellable => 409,
     ErrorCodes.ProjectRunInProgress => 409,
     ErrorCodes.ProjectResendNotEligible => 409,   // Rapor resend: not failed/ambiguous or not this project's
+    ErrorCodes.ProjectStatusPullNotEnabled => 403, // FEATURE B status-pull: not allowlisted / no creds
+    ErrorCodes.ProjectStatusPullDbError => 503,    // FEATURE B status-pull: DB read/apply failure
     ErrorCodes.ProjectNoContent => 422,
     ErrorCodes.ProjectNoTargets => 422,
     ErrorCodes.ProjectHsmSendNotSupported => 422,
@@ -981,6 +983,23 @@ app.MapPost("/api/v1/projects/{id:long}/report/resend", async (HttpContext ctx, 
     if (detail == null)
         return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "Yeniden gönderilemedi.", requestId), statusCode: ProjectSendStatus(errorCode));
     return Results.Ok(detail);
+});
+
+// FEATURE B (status-pull): pull live cxapi message-status for the run's pending (wamid-bearing) recipients
+// and apply it via the idempotent ApplyDeliveryStatusAsync. Gated by the CxapiSend allowlist (INV-OB-094 inert).
+app.MapPost("/api/v1/projects/{id:long}/report/refresh-status", async (HttpContext ctx, [FromServices] ProjectsService svc, long id, ProjectStatusPullRequest? request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var campaignId = request?.CampaignId?.Trim();
+    if (string.IsNullOrEmpty(campaignId)) campaignId = null;
+    var (result, errorCode, message) = await svc.RefreshRunStatusAsync(tenantContext.TenantId, id, campaignId, ctx.RequestAborted);
+    if (result == null)
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "Durum sorgulanamadı.", requestId), statusCode: ProjectSendStatus(errorCode));
+    return Results.Ok(result);
 });
 
 // ============================================================

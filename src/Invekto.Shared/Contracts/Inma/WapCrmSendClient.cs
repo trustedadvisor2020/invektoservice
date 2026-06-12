@@ -40,6 +40,7 @@ public sealed class WapCrmSendClient
 
     private const string SecretKeyHeader = "X-CIB-SecretKey";
     private const string ChatOperationPath = "api/chatoperation";
+    private const string MessageStatusPath = "api/message-status"; // FEATURE B: live status pull (instanceID + messageID/wamid)
     private const int TextMessageType = 1; // 1 = text (2 = image), per the cxapi guide
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -161,6 +162,121 @@ public sealed class WapCrmSendClient
         }, PayloadJsonOptions);
 
         return await SendCoreAsync(payloadJson, request.SecretKey, request.TenantId, request.InstanceId, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// FEATURE B (status-pull): pulls the LIVE provider status of one already-sent message via
+    /// <c>POST /api/message-status</c> ({instanceID, messageID=wamid}). Single attempt, bounded by the
+    /// same per-request timeout as a send; NOT retried (best-effort — the ack webhook is the primary
+    /// mechanism, this is a manual "Durumu Yenile" complement). Returns a typed
+    /// <see cref="WapCrmMessageStatusResult"/>: <c>Ok</c>+<c>MessageStatus</c> only when the envelope was
+    /// accepted (status==true) AND a numeric status was parsed; otherwise Ok=false with a short diagnostic.
+    /// Throws ONLY on a caller-contract violation or caller cancellation (async kept so those surface as a
+    /// faulted task, send parity). The secret is attached PER REQUEST, never on DefaultRequestHeaders, never logged.
+    /// </summary>
+    public async Task<WapCrmMessageStatusResult> GetMessageStatusAsync(
+        int instanceId, string messageId, string secretKey, int tenantId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(secretKey))
+            throw new ArgumentException("SecretKey is required.", nameof(secretKey));
+        if (string.IsNullOrWhiteSpace(messageId))
+            throw new ArgumentException("MessageId (wamid) is required.", nameof(messageId));
+        if (instanceId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(instanceId), "InstanceId must be a positive integer.");
+
+        var payloadJson = JsonSerializer.Serialize(new MessageStatusPayload
+        {
+            InstanceId = instanceId,
+            MessageId = messageId
+        });
+
+        using var req = new HttpRequestMessage(HttpMethod.Post, MessageStatusPath)
+        {
+            Content = new StringContent(payloadJson, Encoding.UTF8, "application/json")
+        };
+        if (!req.Headers.TryAddWithoutValidation(SecretKeyHeader, secretKey))
+            throw new InvalidOperationException("Failed to attach the WapCRM secret header.");
+
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeoutCts.CancelAfter(_options.TimeoutMs);
+
+        try
+        {
+            using var response = await _httpClient.SendAsync(req, timeoutCts.Token).ConfigureAwait(false);
+            var http = (int)response.StatusCode;
+            var body = await response.Content.ReadAsStringAsync(timeoutCts.Token).ConfigureAwait(false);
+
+            WapCrmApiResponse<JsonElement>? env;
+            try
+            {
+                env = JsonSerializer.Deserialize<WapCrmApiResponse<JsonElement>>(body, JsonOptions);
+            }
+            catch (JsonException)
+            {
+                env = null;
+            }
+
+            if (env == null)
+                return new WapCrmMessageStatusResult { Ok = false, Error = $"Unparseable message-status response (HTTP {http})." };
+
+            if (!response.IsSuccessStatusCode || !env.Status)
+                return new WapCrmMessageStatusResult { Ok = false, Error = $"message-status not accepted (HTTP {http}, statusCode {env.StatusCode ?? "-"})." };
+
+            var status = ExtractMessageStatus(env.Data);
+            if (status == null)
+            {
+                _logger.SystemWarn(
+                    $"[cxapi-status] accepted but no numeric messageStatus in data: tenant={tenantId}, instance={instanceId}");
+                return new WapCrmMessageStatusResult { Ok = false, Error = "No numeric messageStatus in response data." };
+            }
+
+            return new WapCrmMessageStatusResult { Ok = true, MessageStatus = status };
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw; // caller cancellation / shutdown — propagate
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.SystemWarn(
+                $"[cxapi-status] timeout after {_options.TimeoutMs}ms: tenant={tenantId}, instance={instanceId}");
+            return new WapCrmMessageStatusResult { Ok = false, Error = "Request timed out." };
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.SystemWarn(
+                $"[cxapi-status] transport error: tenant={tenantId}, instance={instanceId}, error={ex.Message}");
+            return new WapCrmMessageStatusResult { Ok = false, Error = $"Transport error: {ex.Message}" };
+        }
+    }
+
+    /// <summary>
+    /// FEATURE B: extract the provider message status int from the message-status envelope <c>data</c>.
+    /// The wire shape is not formally documented, so this is defensive: <c>data</c> may be a bare number,
+    /// or an object carrying <c>messageStatus</c> / <c>status</c> / <c>messageStatusCode</c> (case-insensitive).
+    /// Returns null when no numeric status is present (caller no-ops it).
+    /// </summary>
+    private static int? ExtractMessageStatus(JsonElement? data)
+    {
+        if (data is not { } el)
+            return null;
+        if (el.ValueKind == JsonValueKind.Number && el.TryGetInt32(out var bare))
+            return bare;
+        if (el.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var prop in el.EnumerateObject())
+            {
+                if (!prop.Name.Equals("messageStatus", StringComparison.OrdinalIgnoreCase)
+                    && !prop.Name.Equals("status", StringComparison.OrdinalIgnoreCase)
+                    && !prop.Name.Equals("messageStatusCode", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                if (prop.Value.ValueKind == JsonValueKind.Number && prop.Value.TryGetInt32(out var n))
+                    return n;
+                if (prop.Value.ValueKind == JsonValueKind.String && int.TryParse(prop.Value.GetString(), out var s))
+                    return s;
+            }
+        }
+        return null;
     }
 
     /// <summary>
@@ -453,6 +569,13 @@ public sealed class WapCrmSendClient
         [JsonPropertyName("chatPhoneNumber")] public required string ChatPhoneNumber { get; init; }
         [JsonPropertyName("messageType")] public int MessageType { get; init; }
         [JsonPropertyName("messageText")] public required string MessageText { get; init; }
+    }
+
+    /// <summary>cxapi /message-status wire body (FEATURE B). instanceID + messageID (the sent message's wamid).</summary>
+    private sealed class MessageStatusPayload
+    {
+        [JsonPropertyName("instanceID")] public int InstanceId { get; init; }
+        [JsonPropertyName("messageID")] public required string MessageId { get; init; }
     }
 
     /// <summary>cxapi /chatoperation approved-template wire body (PR-4). NO language field — language is embedded in the templateId slug (INMA 2026-06-08).</summary>

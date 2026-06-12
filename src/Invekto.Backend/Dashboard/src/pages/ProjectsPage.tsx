@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Briefcase, X, Plus, Pencil, Archive, Loader2, Info, ListChecks, FileText, Send, Users, CheckCircle2,
   ExternalLink, Phone, Reply, Image as ImageIcon, Pause, Play, Ban, AlertTriangle, RefreshCw,
-  Search, Download, BarChart3,
+  Search, Download, BarChart3, Activity,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -67,6 +68,29 @@ function MsgStatusBadge({ status }: { status: string }) {
   return <span className={cn('inline-block px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap', meta.cls)}>{meta.label}</span>;
 }
 
+// Structured WhatsApp-style preview of an approved (HSM) template — header / body / footer / buttons.
+// Pure (takes a WaTemplate); shared by the Gönder modal content block and the table hover card.
+function WaTemplatePreview({ t, className }: { t: WaTemplate; className?: string }) {
+  const h = t.preview?.header;
+  const btns = (t.preview?.buttons ?? []).map(b => b?.text?.trim()).filter((x): x is string => !!x);
+  const empty = !h?.text && !h?.type && !t.preview?.body && !t.preview?.footer && btns.length === 0;
+  return (
+    <div className={cn('rounded-lg bg-[#f6faf2] border border-green-100 px-3 py-2 text-sm text-navy-800 space-y-1.5', className)}>
+      {h?.text
+        ? <div className="font-semibold whitespace-pre-wrap break-words">{h.text}</div>
+        : h?.type ? <div className="text-xs italic text-navy-400">[{h.type} başlık]</div> : null}
+      {t.preview?.body && <div className="whitespace-pre-wrap break-words leading-relaxed">{t.preview.body}</div>}
+      {t.preview?.footer && <div className="text-xs text-navy-400 whitespace-pre-wrap break-words">{t.preview.footer}</div>}
+      {btns.length > 0 && (
+        <div className="flex flex-wrap gap-x-3 gap-y-1 pt-1.5 border-t border-green-100">
+          {btns.map((b, i) => <span key={i} className="text-xs text-green-700 font-medium">▸ {b}</span>)}
+        </div>
+      )}
+      {empty && <div className="text-xs italic text-navy-400">Şablon içeriği boş</div>}
+    </div>
+  );
+}
+
 function fmtDateTime(iso: string | null): string {
   if (!iso) return '—';
   try { return new Date(iso).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' }); }
@@ -88,11 +112,12 @@ function csvCell(v: string | number | null): string {
 }
 
 function recipientsToCsv(rows: ProjectRecipient[]): string {
-  const header = ['Numara', 'Durum', 'Hata', 'İletildi', 'Okundu', 'Son Deneme', 'Mesaj ID'];
+  const header = ['Numara', 'Durum', 'Hata', 'Gönderim', 'İletildi', 'Okundu', 'Son Deneme', 'Mesaj ID'];
   const lines = rows.map((r) => [
     csvCell(r.phone),
     csvCell(MSG_STATUS_META[r.status]?.label ?? r.status),
     csvCell(r.error),
+    csvCell(fmtDateTime(r.sent_at)),
     csvCell(fmtDateTime(r.delivered_at)),
     csvCell(fmtDateTime(r.read_at)),
     csvCell(fmtDateTime(r.last_attempt_at)),
@@ -302,6 +327,13 @@ export default function ProjectsPage() {
   // the id fallback, the tooltip says so, and the next projects reload (Yenile) retries.
   const [rowTemplates, setRowTemplates] = useState<Record<number, WaTemplate[] | 'error'>>({});
   const rowTplFetchedRef = useRef<Set<number>>(new Set());
+  // Rich hover preview (portal-positioned so it escapes the table's overflow-hidden). Anchored to the
+  // hovered content line's bounding rect; cleared on mouseleave.
+  const [rowHover, setRowHover] = useState<{ project: ProjectSummary; rect: DOMRect } | null>(null);
+
+  // ---- FEATURE B (status-pull): "Durumu Yenile" pulls live cxapi message-status for pending recipients.
+  const [reportStatusPulling, setReportStatusPulling] = useState(false);
+  const [reportPullNote, setReportPullNote] = useState<string | null>(null);
 
   // ---- Test send (GR-8): one plain-text message to one number, from the CURRENT form state.
   // testResult.ok: true=delivered (green), false=failed (red), null=pending/inconclusive (neutral).
@@ -898,8 +930,14 @@ export default function ProjectsPage() {
     setReportPage(1);
     setReportData(null);
     setReportError(null);
+    setReportPullNote(null);
     void api.getProjectReportRuns(p.id)
-      .then(setReportRuns)
+      .then((runs) => {
+        setReportRuns(runs);
+        // On first open default to the LATEST run (runs are created_at DESC), not "Tüm gönderimler".
+        // The operator can still pick "Tüm gönderimler" from the dropdown.
+        if (runs.length > 0) setReportCampaign(runs[0].campaign_id);
+      })
       .catch((e) => setReportError(errText(e, 'Gönderimler yüklenemedi')));
   }
 
@@ -907,6 +945,29 @@ export default function ProjectsPage() {
     setReportProject(null);
     setReportData(null);
     setReportError(null);
+    setReportPullNote(null);
+  }
+
+  // FEATURE B (status-pull): pull live cxapi message-status for the current run's pending recipients,
+  // then reload runs + the recipient page + the project table so advanced statuses surface immediately.
+  async function refreshReportStatus() {
+    if (!reportProject) return;
+    setReportStatusPulling(true);
+    setReportPullNote(null);
+    setReportError(null);
+    try {
+      const res = await api.projectRefreshReportStatus(reportProject.id, reportCampaign || undefined);
+      setReportPullNote(`${res.updated.toLocaleString('tr-TR')} / ${res.checked.toLocaleString('tr-TR')} kayıt güncellendi.`);
+      // Secondary refreshes — a failure here must not mask the successful pull.
+      try { setReportRuns(await api.getProjectReportRuns(reportProject.id)); }
+      catch (e) { console.warn('[rapor] status-pull sonrası gönderimler yenilenemedi:', errText(e, 'runs refresh failed')); }
+      setReportReloadTick((t) => t + 1);
+      void loadProjects();
+    } catch (e) {
+      setReportError(errText(e, 'Canlı durum sorgulanamadı'));
+    } finally {
+      setReportStatusPulling(false);
+    }
   }
 
   // Debounce the search box (300ms) into the applied filter; reset to page 1 on any new term.
@@ -1028,6 +1089,15 @@ export default function ProjectsPage() {
     const btns = (t.preview?.buttons ?? []).map(b => b?.text).filter((x): x is string => !!x);
     if (btns.length) parts.push(`[${btns.join(' | ')}]`);
     return parts.join('\n\n') || 'Şablon içeriği boş';
+  }
+
+  // Resolve a project's approved (HSM) template from the loaded per-instance catalog, or null
+  // (not a wapcrm_template project, no template id, or the catalog isn't loaded/failed). Used for
+  // the structured preview in the Gönder modal + the table hover card.
+  function resolveWaTemplate(p: ProjectSummary): WaTemplate | null {
+    if (p.template_kind !== 'wapcrm_template' || !p.wa_template_id?.trim()) return null;
+    const catalog = p.instance_id != null ? rowTemplates[p.instance_id] : undefined;
+    return Array.isArray(catalog) ? (catalog.find(t => t.templateId === p.wa_template_id) ?? null) : null;
   }
 
   // Row content line: the assigned content's NAME for the cell + full content for the tooltip.
@@ -1198,8 +1268,9 @@ export default function ProjectsPage() {
                 <th className="text-left font-medium px-4 py-2">Proje</th>
                 <th className="text-left font-medium px-4 py-2">Durum</th>
                 <th className="text-right font-medium px-4 py-2">Liste</th>
-                <th className="text-right font-medium px-4 py-2">Gönderildi</th>
-                <th className="text-right font-medium px-4 py-2">İletildi</th>
+                <th className="text-right font-medium px-4 py-2" title="Şu an 'gönderildi' durumunda bekleyen mesaj sayısı (iletilen/okunan ayrı kolonlarda)">Gönderildi</th>
+                <th className="text-right font-medium px-4 py-2" title="Şu an 'iletildi' durumundaki mesaj sayısı (henüz okunmamış)">İletildi</th>
+                <th className="text-right font-medium px-4 py-2" title="Okundu olarak işaretlenen mesaj sayısı">Okundu</th>
                 <th className="text-right font-medium px-4 py-2">Başarısız</th>
                 <th className="text-right font-medium px-4 py-2">İşlem</th>
               </tr>
@@ -1224,8 +1295,13 @@ export default function ProjectsPage() {
                     <div className="text-navy-900">{p.name}</div>
                     {p.description && <div className="text-xs text-navy-400 truncate max-w-xs">{p.description}</div>}
                     {contentInfo && (
-                      <div className="text-[11px] text-navy-400 truncate max-w-xs" title={contentInfo.hover}>
-                        {contentInfo.label}
+                      <div
+                        className="text-[11px] text-navy-400 truncate max-w-xs cursor-help inline-flex items-center gap-1"
+                        onMouseEnter={e => setRowHover({ project: p, rect: e.currentTarget.getBoundingClientRect() })}
+                        onMouseLeave={() => setRowHover(prev => (prev?.project.id === p.id ? null : prev))}
+                      >
+                        <Info className="w-3 h-3 shrink-0 text-navy-300" />
+                        <span className="truncate">{contentInfo.label}</span>
                       </div>
                     )}
                   </td>
@@ -1238,6 +1314,7 @@ export default function ProjectsPage() {
                   <td className="px-4 py-2.5 text-right tabular-nums">{p.target_count.toLocaleString('tr-TR')}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums">{p.sent_count.toLocaleString('tr-TR')}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums">{p.delivered_count.toLocaleString('tr-TR')}</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums text-green-600">{p.read_count.toLocaleString('tr-TR')}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums">{p.failed_count.toLocaleString('tr-TR')}</td>
                   <td className="px-4 py-2.5">
                     {p.status === 'archived' ? (
@@ -1795,12 +1872,26 @@ export default function ProjectsPage() {
             </div>
 
             <div className="px-5 py-4 space-y-4">
-              {/* Content summary — what will be sent */}
+              {/* Content summary — what will be sent: approved-template NAME + structured full preview,
+                  else the plain text summary (gallery / free-text). */}
               <div className="rounded-lg bg-navy-50/60 border border-navy-100 px-3 py-2">
                 <div className="text-[11px] font-medium text-navy-400 mb-0.5">Gönderilecek içerik</div>
-                <div className="text-sm text-navy-700 whitespace-pre-wrap break-words line-clamp-4">
-                  {sendContentSummary(sendProject)}
-                </div>
+                {(() => {
+                  const tpl = resolveWaTemplate(sendProject);
+                  if (tpl) return (
+                    <>
+                      <div className="text-sm font-medium text-navy-800 mb-1.5">
+                        Şablon: {tpl.name?.trim() || sendProject.wa_template_id}
+                      </div>
+                      <WaTemplatePreview t={tpl} />
+                    </>
+                  );
+                  return (
+                    <div className="text-sm text-navy-700 whitespace-pre-wrap break-words line-clamp-4">
+                      {sendContentSummary(sendProject)}
+                    </div>
+                  );
+                })()}
               </div>
 
               {sendPhase === 'previewing' && (
@@ -1940,7 +2031,7 @@ export default function ProjectsPage() {
               <select
                 className="border border-navy-100 rounded-lg px-2.5 py-1.5 text-sm text-navy-700 bg-white max-w-[260px]"
                 value={reportCampaign}
-                onChange={(e) => { setReportCampaign(e.target.value); setReportPage(1); }}
+                onChange={(e) => { setReportCampaign(e.target.value); setReportPage(1); setReportPullNote(null); }}
                 title="Gönderim seç"
               >
                 <option value="">Tüm gönderimler ({reportRuns.length})</option>
@@ -1957,8 +2048,17 @@ export default function ProjectsPage() {
                   onChange={(e) => setReportSearchDraft(e.target.value)}
                 />
               </div>
-              <Button variant="secondary" size="sm" onClick={() => setReportReloadTick((t) => t + 1)} title="Yenile" disabled={reportLoading}>
+              <Button variant="secondary" size="sm" onClick={() => setReportReloadTick((t) => t + 1)} title="Tabloyu veritabanından yenile" disabled={reportLoading}>
                 <RefreshCw className={cn('w-3.5 h-3.5', reportLoading && 'animate-spin')} /> Yenile
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={refreshReportStatus}
+                disabled={reportStatusPulling || reportLoading}
+                title="Bekleyen kayıtların iletim/okundu durumunu sağlayıcıdan canlı sorgula"
+              >
+                {reportStatusPulling ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Activity className="w-3.5 h-3.5" />} Durumu Yenile
               </Button>
               <Button
                 variant="secondary"
@@ -1993,6 +2093,12 @@ export default function ProjectsPage() {
               );
             })()}
 
+            {reportPullNote && (
+              <div className="px-5 py-1.5 bg-green-50/70 text-green-700 text-xs flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> {reportPullNote}
+              </div>
+            )}
+
             {reportError && (
               <div className="px-5 py-2 bg-red-50 text-red-700 text-sm flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 shrink-0" /> {reportError}
@@ -2011,7 +2117,10 @@ export default function ProjectsPage() {
                     <tr>
                       <th className="px-4 py-2 text-left font-medium">Numara</th>
                       <th className="px-4 py-2 text-left font-medium">Durum</th>
-                      <th className="px-4 py-2 text-left font-medium">Detay</th>
+                      <th className="px-4 py-2 text-left font-medium whitespace-nowrap">Gönderim</th>
+                      <th className="px-4 py-2 text-left font-medium whitespace-nowrap">İletildi</th>
+                      <th className="px-4 py-2 text-left font-medium whitespace-nowrap">Okundu</th>
+                      <th className="px-4 py-2 text-left font-medium">Hata</th>
                       <th className="px-4 py-2 text-right font-medium">İşlem</th>
                     </tr>
                   </thead>
@@ -2020,12 +2129,12 @@ export default function ProjectsPage() {
                       <tr key={r.message_id} className="hover:bg-navy-50/40">
                         <td className="px-4 py-2 text-navy-800 tabular-nums whitespace-nowrap">{r.phone}</td>
                         <td className="px-4 py-2"><MsgStatusBadge status={r.status} /></td>
-                        <td className="px-4 py-2 text-xs text-navy-500 max-w-sm truncate">
+                        <td className="px-4 py-2 text-xs text-navy-500 tabular-nums whitespace-nowrap">{fmtDateTime(r.sent_at)}</td>
+                        <td className="px-4 py-2 text-xs text-navy-500 tabular-nums whitespace-nowrap">{fmtDateTime(r.delivered_at)}</td>
+                        <td className="px-4 py-2 text-xs text-green-600 tabular-nums whitespace-nowrap">{fmtDateTime(r.read_at)}</td>
+                        <td className="px-4 py-2 text-xs text-navy-500 max-w-xs truncate">
                           {r.error
                             ? <span className="text-red-600" title={r.error}>{r.error}</span>
-                            : r.read_at ? `Okundu · ${fmtDateTime(r.read_at)}`
-                            : r.delivered_at ? `İletildi · ${fmtDateTime(r.delivered_at)}`
-                            : r.last_attempt_at ? `Denendi · ${fmtDateTime(r.last_attempt_at)}`
                             : '—'}
                         </td>
                         <td className="px-4 py-2 text-right">
@@ -2065,6 +2174,27 @@ export default function ProjectsPage() {
           </div>
         </div>
       )}
+
+      {/* ---- Table content hover: rich preview card (portal → escapes the table overflow-hidden) ---- */}
+      {rowHover && createPortal((() => {
+        const tpl = resolveWaTemplate(rowHover.project);
+        const info = rowContentInfo(rowHover.project);
+        const r = rowHover.rect;
+        const below = r.bottom < window.innerHeight / 2;
+        const style: CSSProperties = {
+          position: 'fixed',
+          left: Math.max(8, Math.min(r.left, window.innerWidth - 360)),
+          ...(below ? { top: r.bottom + 6 } : { bottom: window.innerHeight - r.top + 6 }),
+        };
+        return (
+          <div style={style} className="z-[60] w-[340px] rounded-xl bg-white border border-navy-100 shadow-soft p-3 pointer-events-none">
+            <div className="text-[11px] font-medium text-navy-400 mb-1.5 truncate">{info?.label ?? 'İçerik önizleme'}</div>
+            {tpl
+              ? <WaTemplatePreview t={tpl} />
+              : <div className="text-sm text-navy-700 whitespace-pre-wrap break-words max-h-72 overflow-auto">{info?.hover ?? '—'}</div>}
+          </div>
+        );
+      })(), document.body)}
     </div>
   );
 }

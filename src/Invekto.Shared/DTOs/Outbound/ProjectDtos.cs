@@ -259,10 +259,20 @@ public sealed class ProjectRecipientDto
     [JsonPropertyName("status")] public string Status { get; set; } = "";
     /// <summary>failed_reason (preferred) or provider_error_message; null for non-error states.</summary>
     [JsonPropertyName("error")] public string? Error { get; set; }
+    /// <summary>sent_at — when the message left for the provider (first 'sent' transition); null while still queued/sending.</summary>
+    [JsonPropertyName("sent_at")] public DateTime? SentAt { get; set; }
     [JsonPropertyName("delivered_at")] public DateTime? DeliveredAt { get; set; }
     [JsonPropertyName("read_at")] public DateTime? ReadAt { get; set; }
     [JsonPropertyName("last_attempt_at")] public DateTime? LastAttemptAt { get; set; }
     [JsonPropertyName("can_resend")] public bool CanResend { get; set; }
+}
+
+/// <summary>FEATURE B (status-pull): result of a "Durumu Yenile" run — how many pending recipients were
+/// queried against cxapi and how many actually advanced status (monotonic apply; a no-op ack counts as 0).</summary>
+public sealed class ProjectStatusPullResultDto
+{
+    [JsonPropertyName("checked")] public int Checked { get; set; }
+    [JsonPropertyName("updated")] public int Updated { get; set; }
 }
 
 /// <summary>Server-paged recipient page for GET .../report/recipients. <see cref="Total"/> is the full
@@ -280,4 +290,11 @@ public sealed class ProjectRecipientsPage
 public sealed class ProjectResendRequest
 {
     [JsonPropertyName("message_id")] public long MessageId { get; set; }
+}
+
+/// <summary>POST .../report/refresh-status — FEATURE B status-pull. Optional run scope: when
+/// <see cref="CampaignId"/> is set only that run's pending recipients are pulled; null = all runs.</summary>
+public sealed class ProjectStatusPullRequest
+{
+    [JsonPropertyName("campaign_id")] public string? CampaignId { get; set; }
 }

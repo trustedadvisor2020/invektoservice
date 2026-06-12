@@ -168,6 +168,25 @@ public sealed class WapCrmSendResult
 }
 
 /// <summary>
+/// FEAT-PROJELER FEATURE B (status-pull): the typed outcome of a single cxapi
+/// <c>POST /api/message-status</c> pull. <see cref="MessageStatus"/> is the raw provider
+/// status int (0..5; same semantics as the delivery-ack <c>Status</c> — map via
+/// <c>WapCrmAckMapping.MapStatus</c>). It is null when the provider returned no parseable
+/// status (best-effort: the caller no-ops it). NO secret is ever carried here.
+/// </summary>
+public sealed class WapCrmMessageStatusResult
+{
+    /// <summary>True only when the provider envelope was accepted (status==true) AND a numeric messageStatus was parsed.</summary>
+    public bool Ok { get; init; }
+
+    /// <summary>Raw provider message status int (0=Pending,1=Sent,2=Delivered,3=Viewed/read,4=NotSent/failed,5=Deleted); null when absent/unparseable.</summary>
+    public int? MessageStatus { get; init; }
+
+    /// <summary>Short diagnostic for a non-Ok outcome (transport/timeout/provider-fail/unparseable). NEVER contains the secret.</summary>
+    public string? Error { get; init; }
+}
+
+/// <summary>
 /// Tuning for <see cref="WapCrmSendClient"/>. Bound from the optional
 /// "WapCrmSend" config section; safe defaults apply when absent. Carries NO
 /// secrets (the secret lives only in tenant_registry.settings_json).

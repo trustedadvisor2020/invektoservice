@@ -3961,6 +3961,10 @@ app.MapGet("/api/v1/outbound/projects/{id:long}/report/recipients", async (HttpC
 app.MapPost("/api/v1/outbound/projects/{id:long}/report/resend", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
     await OutboundProxyPost(ctx, obClient, jsonLog, $"/api/v1/projects/{id}/report/resend"));
 
+// FEATURE B — Rapor status-pull: pull live cxapi message-status for the run's pending recipients (gated inert).
+app.MapPost("/api/v1/outbound/projects/{id:long}/report/refresh-status", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, $"/api/v1/projects/{id}/report/refresh-status"));
+
 // ============================================
 // FLOW BUILDER PROXY ENDPOINTS
 // ============================================

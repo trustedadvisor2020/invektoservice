@@ -582,6 +582,10 @@ public static class ErrorCodes
     public const string CxapiWebhookForeignUrl = "INV-OB-092";             // Reconcile: tenant's cxapi messages-webhook points to a NON-Invekto (foreign) URL — left UNTOUCHED (never clobber a customer's own integration). ACKs will NOT reach Invekto until an operator redirects it. Logged with tenant + foreign host ONLY (never the full URL — may carry tokens).
     public const string CxapiWebhookIpNotWhitelisted = "INV-OB-093";       // Reconcile: cxapi returned HTTP 509 — the Outbound server IP is not whitelisted at cxapi for this tenant. Ops-actionable (whitelist the IP); distinct from a generic transport error.
 
+    // FEATURE B — Rapor (delivery report) status-pull: "Durumu Yenile" pulls live cxapi message-status (INV-OB-094+)
+    public const string ProjectStatusPullNotEnabled = "INV-OB-094";        // Status-pull: tenant not in the CxapiSend allowlist (P0-3 inert) OR no WapCRM creds (secret/userId/instance). No vendor call made. 403.
+    public const string ProjectStatusPullDbError = "INV-OB-095";           // Status-pull: NpgsqlException reading the pending recipient set or applying a pulled status. 503.
+
     // Lead Management errors (INV-LD-xxx) -- GR-3.13
     public const string LeadInvalidPayload = "INV-LD-001";
     public const string LeadNotFound = "INV-LD-002";

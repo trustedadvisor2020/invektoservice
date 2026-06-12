@@ -1,0 +1,66 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": "PKT-14",
+  "spec_ref": null,
+  "spec_architectural_decisions": [
+    {
+      "decision": "Table count columns (Gönderildi/İletildi/Okundu/Başarısız) stay DISJOINT current-status buckets, not a cumulative funnel. Only the Okundu (read_count) column is added.",
+      "reason": "Q decision 2026-06-12. The broadcast counters move forward (OutboundRepository.ApplyDeliveryStatusAsync GREATESTs sent-- when delivered++), so a message lives in exactly one bucket by its current status. Each column maps 1:1 to its projects.* rollup field; the funnel reinterpretation was explicitly declined.",
+      "codex_note": "EXPECTED: 'Gönderildi' shows only messages currently stuck at 'sent' (drops as they progress) — this is intentional per Q, not a bug. Each th maps to the correct ProjectSummary.*_count field."
+    },
+    {
+      "decision": "FEATURE B status-pull is gated behind the SAME CxapiSend allowlist as the send path (_cxapiOptions.IsTenantAllowed). A non-allowlisted tenant gets INV-OB-094 and ZERO vendor calls (P0-3 inert).",
+      "reason": "POST /api/message-status is a real cxapi vendor call. Reusing the send gate keeps the whole pull path prod-inert for non-allowlisted tenants, exactly like SendTemplate/SendPlainText. Bridge-routed (non-cxapi) sends have no wamid to pull anyway.",
+      "codex_note": "EXPECTED: status-pull endpoint is inert for non-CxapiSend tenants by design (same gate as send). It only pulls messages with a non-null external_message_id (wamid)."
+    },
+    {
+      "decision": "NO DB migration — every column the new queries reference already exists in arch/db/outbound.sql (canonical). outbound_messages: sent_at (line 104), external_message_id (103), instance_id (119), broadcast_id (98), status/tenant_id/recipient_phone/failed_reason/provider_error_message; bulk_send_jobs: tenant_id/project_id/broadcast_ids (289)/campaign_id (259). GetPendingForStatusPullAsync reuses the SAME broadcasts-CTE + outbound_messages JOIN that the pre-existing GetRecipientsAsync uses; the only newly surfaced column in code is m.sent_at, which the schema already has. ApplyDeliveryStatusAsync (external_message_id correlation) is unchanged.",
+      "reason": "db_code_sync evidence for the MEDIUM-risk gate: the change is additive in code only; no schema drift, no migration, no new index needed (idx on external_message_id already exists, line 158/164).",
+      "codex_note": "EXPECTED: CQ11 db_code_sync — all referenced columns (outbound_messages.sent_at/external_message_id/instance_id, bulk_send_jobs.broadcast_ids/campaign_id) are present in arch/db/outbound.sql; build PASS + this citation is the evidence. No *.sql change in the diff because none is required."
+    },
+    {
+      "decision": "The cxapi POST /api/message-status RESPONSE shape is not formally documented; the response data is parsed defensively (messageStatus int from envelope data object, or a bare numeric data) and mapped via the SAME WapCrmAckMapping.MapStatus(int) used by the webhook ack path.",
+      "reason": "session-memory 2026-06-12: messageStatus 0-5, messageID==wamid==ack InstanceMessageID. The 0-5 integer semantics are identical to the ack Status int, so the proven mapping is reused. Defensive parse so a shape surprise no-ops (logged) instead of throwing.",
+      "codex_note": "EXPECTED: message-status response parse is defensive (handles data-as-object and data-as-number). Live contract verification is a deploy-time follow-up; gated inert until then."
+    }
+  ],
+  "slug": "20260612-projeler-report-ux-statuspull",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "review_result": { "verdict": "PASS", "iteration": 1, "cq": "12/12", "cove": "3/3", "model": "gpt-5.5-2026-04-23" },
+  "created_at": "2026-06-12T00:00:00Z",
+  "updated_at": "2026-06-12T13:30:00Z",
+  "build": { "status": "PASS", "timestamp": "2026-06-12T13:25:00Z", "errors": 0, "warnings": 42 },
+  "git_diff": {
+    "sha256": "064059ca802592296d4474a06006c22f6fda439748d4fb2951d43ff9b2d3a962",
+    "full_path": "arch/plans/diffs/20260612-projeler-report-ux-statuspull.diff",
+    "stats": { "insertions": 561, "deletions": 26, "files_count": 12 }
+  },
+  "plan": {
+    "summary": "FEAT-PROJELER report/send UX pack + FEATURE B (status-pull). (1) Gönder modal: show the approved-template NAME + a structured full preview (header/body/footer/buttons) instead of the raw template id. (2) Projeler table: a rich hover preview card (portal-positioned, escapes the table overflow-hidden) for the assigned content. (3) Add an Okundu (read_count) column to the table. (4) Report drawer: add Gönderim (sent_at) / İletildi (delivered_at) / Okundu (read_at) datetime columns (+ sent_at to the recipients query/DTO/api type + CSV), and default the run dropdown to the LATEST run on open (not 'Tüm gönderimler'). (5) FEATURE B: a 'Durumu Yenile' button that pulls live cxapi message-status for the run's pending (sent/delivered/ambiguous, wamid-bearing) recipients via POST /api/message-status, maps 0-5 through WapCrmAckMapping, and applies it through the existing idempotent ApplyDeliveryStatusAsync. Gated behind CxapiSend allowlist (P0-3 inert).",
+    "q_intent": "1. Gönder popup: şablon adını + full preview göster. 2. Projeler tablosunda şablon bilgisini hover'da full preview. 3. Tabloya Okundu kolonu + kolon rakamları doğru. 4. Drawer raporunda gönderim/delivery/read tarih-saat kolonları + ilk açılışta son gönderimi aç (tümünü değil). 5. Backlog'daki bekleyen iş (FEATURE B RAPOR STATUS-PULL) ekle.",
+    "interview_notes": "Q decisions 2026-06-12 (AskUserQuestion): (1) Column logic = DISJOINT buckets (mevcut), sadece Okundu eklenir. (2) Backlog item = FEATURE B (RAPOR STATUS-PULL). (3) Hover = zengin hover kartı (portal).",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "Gönder modal: for a wapcrm_template project whose template is in the loaded catalog, the content block shows 'Şablon: {name}' + a structured preview (header/body/footer/buttons). Falls back to the previous text summary for gallery/free_text or when the catalog isn't loaded.", "verified": false, "verification_note": null },
+      { "id": "AC2", "criterion": "Projeler table content line shows a rich hover preview card (portal-positioned so it is NOT clipped by the table's overflow-hidden), rendering the structured WA preview for templates and plain text for gallery/free_text. Dismisses on mouseleave.", "verified": false, "verification_note": null },
+      { "id": "AC3", "criterion": "Table has an Okundu column bound to p.read_count, placed between İletildi and Başarısız; every count column maps to its correct ProjectSummary field.", "verified": false, "verification_note": null },
+      { "id": "AC4", "criterion": "Report drawer recipient table has Gönderim (sent_at) / İletildi (delivered_at) / Okundu (read_at) datetime columns; ProjectRecipientDto + GetRecipientsAsync + api.ts ProjectRecipient carry sent_at; CSV gains a Gönderim column. On open the run dropdown defaults to the latest run (runs[0]), not 'Tüm gönderimler' (which stays selectable).", "verified": false, "verification_note": null },
+      { "id": "AC5", "criterion": "FEATURE B: POST /api/v1/projects/{id}/report/refresh-status (Outbound) + Backend proxy. Gated by CxapiSend allowlist (INV-OB-094 when not allowed). Pulls cxapi message-status for up to N pending wamid-bearing recipients (status in sent/delivered/ambiguous), maps via WapCrmAckMapping.MapStatus, applies via ApplyDeliveryStatusAsync (idempotent, monotonic). Returns {checked, updated}. A 'Durumu Yenile' button in the drawer triggers it then reloads runs+recipients+project table. Build PASS (full solution, Shared changed).", "verified": false, "verification_note": null }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Shared/DTOs/Outbound/ProjectDtos.cs",
+    "src/Invekto.Shared/Contracts/Inma/WapCrmSendClient.cs",
+    "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmSendDtos.cs",
+    "src/Invekto.Outbound/Data/ProjectsRepository.cs",
+    "src/Invekto.Outbound/Services/ProjectsService.cs",
+    "src/Invekto.Outbound/Program.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx",
+    "arch/errors.md",
+    "arch/plans/20260612-projeler-report-ux-statuspull.json"
+  ]
+}
