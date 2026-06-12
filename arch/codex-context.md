@@ -29,10 +29,11 @@ These are hard codebase conventions. Violations = automatic FAIL:
 - NOTE: Intentional code duplication across services is an ARCHITECTURAL DECISION, not a DRY violation
 
 ### Tenant Isolation (CRITICAL)
-- Every DB query MUST filter by tenant_id
+- Every **request-path** DB query MUST filter by tenant_id
 - Cross-tenant data leak = automatic FAIL
 - JWT auth middleware must be active on all routes
 - tenant_id from JWT claim must match request context
+- **SANCTIONED EXCEPTION — background/hosted sweep jobs:** an `IHostedService`/timer worker that has NO per-request tenant context and never returns data to a caller (it iterates all tenants to maintain internal/partner state) is EXEMPT from the per-request tenant_id filter. These read all-tenant rows to act on each tenant's own data; there is no cross-tenant leak surface. Precedents in prod: `OutboundRepository.FetchPendingOutboxBatchAsync` (InmaOptOutSyncJob drains every tenant's outbox), `ResetSendingMessagesAsync`, `SweepStrandedPostingAsync`, `GetWapCrmConfiguredTenantsAsync` (CxapiWebhookReconcileJob). Do NOT FAIL these for a missing tenant_id predicate — that is the design.
 
 ### Code Quality
 - Error messages must be specific and actionable (not generic "An error occurred")
@@ -54,7 +55,7 @@ These are hard codebase conventions. Violations = automatic FAIL:
 ### CQ9: Business Logic Consistency
 - Microservice isolation: no direct DB access between services, API/event only
 - Invekto.Shared DTOs must be the single communication contract
-- Tenant scoping (tenant_id filter) must be present in ALL data queries
+- Tenant scoping (tenant_id filter) must be present in ALL **request-path** data queries — but background/hosted sweep jobs are the SANCTIONED EXCEPTION (see Tenant Isolation above): they legitimately read all-tenant rows to act per-tenant, with no caller-facing leak surface
 - Backend proxy changes must match target service's actual API contract
 
 ### CQ10: UX Consistency

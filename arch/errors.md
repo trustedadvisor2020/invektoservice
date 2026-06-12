@@ -1125,6 +1125,15 @@ errors:
   - code: INV-OB-090
     description: "FEAT-PROJELER Rapor (delivery report) drawer — single-recipient resend not eligible: the message id is not found, not in a resendable terminal state ('failed'/'ambiguous'), or not one of THIS project's recipients (same 409, no existence leak). Only undelivered terminal rows are resendable; resend re-queues the message in place for the existing worker. (409)"
     user_message: Bu mesaj yeniden gönderilemez (yalnız başarısız/belirsiz durumdakiler yeniden gönderilebilir).
+  - code: INV-OB-091
+    description: "Feature A cxapi message-webhook reconciliation (CxapiWebhookReconcileJob, background sweep) — a cxapi webhook-settings GET/POST failed (rate-limit 301/302, timeout, transport, provider status!=true, or unparseable envelope). Logged with the tenant id + provider requestID; the tenant is NOT marked done and is retried on the next sweep tick. No throw — one tenant's failure never blocks the others. (internal/log-only)"
+    user_message: null
+  - code: INV-OB-092
+    description: "Feature A cxapi message-webhook reconciliation — the tenant's cxapi messages webhook points to a NON-Invekto (foreign) URL. Left UNTOUCHED (never clobber a customer's own integration); delivery/read acks will NOT reach Invekto until an operator redirects it. Logged with the tenant id + foreign HOST ONLY (never the full URL — it may carry tokens). (internal/log-only)"
+    user_message: null
+  - code: INV-OB-093
+    description: "Feature A cxapi message-webhook reconciliation — cxapi returned HTTP 509: the Outbound server IP is not whitelisted at cxapi for this tenant. Ops-actionable (whitelist the IP); kept distinct from a generic transport error so the log names the real remedy. (internal/log-only)"
+    user_message: null
 
   # ── IG — Integrations (GR-3.4/3.6) ──
   - code: INV-IG-001

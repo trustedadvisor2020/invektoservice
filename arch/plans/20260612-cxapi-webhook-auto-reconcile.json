@@ -1,0 +1,90 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "slug": "20260612-cxapi-webhook-auto-reconcile",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-12T13:30:00Z",
+  "updated_at": "2026-06-12T13:30:00Z",
+  "plan": {
+    "summary": "Feature A: a background reconciliation sweep in Outbound that points each allowlisted, WapCRM-configured tenant's cxapi MESSAGES webhook at our delivery-ack ingress ({PublicBaseUrl}/api/v1/webhook/event?companyId={tenant_id}) so delivery/read acks flow — backfilling existing configured tenants (5050, 100000001) and any future ones without manual panel/API steps.",
+    "q_intent": "FEATURE A — tenant wapcrm-config yazımında otomatik webhook-set (POST /api/webhook-settings/messages, companyId=tenant_id; trigger=config yazımı, mevcut configli tenant'lara backfill; sahip Outbound). Doküman: temp/invekto-api-webhook-settings-and-message-status-for-agents.md",
+    "interview_notes": "There is NO programmatic wapcrm-config write path (config is written by manual SQL), so there is no 'write moment' to hook. Q chose (1) a reconciliation SWEEP (startup + periodic, idempotent) over a write-trigger or one-shot backfill, and (2) do-not-clobber-foreign-URL + warn-log (only set when current is empty or already ours). Codex plan-consult (critique) added: dropped the in-memory confirmed-cache (drift-masking hazard; full reconcile every tick — tenant set is tiny); added an explicit allowlist gate (AllowAllConfigured flag + AllowedTenantIds, mirroring BulkSendOptions) so rollout scope is controlled, not just 'has a secret'; 'ours' is matched on host+path+companyId (not exact string) so a future PublicBaseUrl host migration does not self-classify the old URL as foreign; clear customHeaders:[] when we set (omitting would PRESERVE stale headers per the partner contract, not clear them); classify HTTP 509 IP-denial explicitly (INV-OB-093); never log full URLs or the secret (foreign log carries host only).",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "When enabled + allowlisted, the sweep sets a configured tenant's cxapi messages webhook to {PublicBaseUrl}/api/v1/webhook/event?companyId={tenant_id} with isActive=true when the current webhook is empty or already ours-but-inactive/old-host; it is idempotent (no redundant POST when already exactly ours + active).", "verified": true, "verification_note": "CxapiWebhookReconcileJob.ReconcileTenantAsync: empty->SetAsync('empty'); owned+desired+active->return (no POST); owned+inactive/old-host->SetAsync; build PASS." },
+      { "id": "AC2", "criterion": "A tenant whose messages webhook points to a NON-Invekto (foreign) URL is left UNTOUCHED and warn-logged (INV-OB-092) with host only — never clobbered.", "verified": true, "verification_note": "IsOwnedWebhook returns false for a foreign host/path/companyId; the else branch logs INV-OB-092 with SafeHost(current) and performs no write." },
+      { "id": "AC3", "criterion": "Production-safe default OFF (Enabled=false) + explicit allowlist; the /events HMAC channel is NEVER touched (only /messages).", "verified": true, "verification_note": "Options.Enabled default false (StartAsync returns without scheduling); IsTenantAllowed gates on Enabled && (AllowAllConfigured || AllowedTenantIds.Contains). Client only ever calls GET /api/webhook-settings + POST /api/webhook-settings/messages; no /events path exists in the client." },
+      { "id": "AC4", "criterion": "Per-tenant isolation + no silent failure: one tenant's transport/timeout/509/provider fault never aborts the sweep; every failure is coded-logged (INV-OB-091/093) and retried next tick; the async-void Tick never crashes the process (typed catches only, no bare catch(Exception)); finally resets the overlap guard.", "verified": true, "verification_note": "ReconcileTenantAsync wraps each tenant in typed catches (OperationCanceledException/HttpRequestException); the client returns typed outcomes (no throw on provider/transport); Tick catches OperationCanceledException + NpgsqlException only and resets _isProcessing in finally." },
+      { "id": "AC5", "criterion": "Shared change is additive (new client + DTOs + 3 error constants, no existing type modified); full solution builds 0 errors.", "verified": true, "verification_note": "New WapCrmWebhookSettingsClient.cs + new INV-OB-091/092/093 constants only; full solution build 0 Error / 42 pre-existing Warning." }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/Contracts/Inma/WapCrmWebhookSettingsClient.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Outbound/Services/CxapiWebhookReconcileJob.cs",
+    "src/Invekto.Outbound/Data/OutboundRepository.cs",
+    "src/Invekto.Outbound/Program.cs",
+    "src/Invekto.Outbound/appsettings.json",
+    "arch/errors.md",
+    "arch/codex-context.md"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/Contracts/Inma/WapCrmWebhookSettingsClient.cs", "change": "NEW: typed cxapi webhook-settings client (GET read + POST /messages set; per-request X-CIB-SecretKey; 509=IpDenied, 301/302=RateLimited; customHeaders:[] clears; typed outcome, no throw) + read/write result DTOs + WapCrmWebhookOutcome enum", "is_new": true },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "change": "+INV-OB-091 (reconcile call failed/transient) +INV-OB-092 (foreign webhook left untouched) +INV-OB-093 (509 IP not whitelisted)", "is_new": false },
+    { "path": "src/Invekto.Outbound/Services/CxapiWebhookReconcileJob.cs", "change": "NEW: Timer IHostedService (InmaOptOutSyncJob shape) — startup+periodic sweep; per-tenant GET->decide->SET; owned-vs-foreign host/path/companyId match; CxapiWebhookReconcileOptions (Enabled/AllowAllConfigured/AllowedTenantIds/PublicBaseUrl/OwnedWebhookHosts/BaseUrl/intervals/timeouts)", "is_new": true },
+    { "path": "src/Invekto.Outbound/Data/OutboundRepository.cs", "change": "+GetWapCrmConfiguredTenantsAsync (cross-tenant: active tenants with non-empty wapcrm secret_key) + WapCrmConfiguredTenant record", "is_new": false },
+    { "path": "src/Invekto.Outbound/Program.cs", "change": "+bind CxapiWebhookReconcileOptions + AddHttpClient<WapCrmWebhookSettingsClient> (AllowAutoRedirect=false, finite backstop) + AddHostedService<CxapiWebhookReconcileJob>", "is_new": false },
+    { "path": "src/Invekto.Outbound/appsettings.json", "change": "+CxapiWebhookReconcile section (FAIL-SAFE default Enabled=false, documented rollout)", "is_new": false }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "a82a0ca39cdb3f7b83a759958a8cd9ba8704a6ecb3d4ddd5648fa1b4d0b508ed",
+    "full_path": "arch/plans/diffs/20260612-cxapi-webhook-auto-reconcile.diff",
+    "stats": { "insertions": 104, "deletions": 2, "files_count": 8 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-06-12T13:25:00Z",
+    "duration_ms": 29650,
+    "output_tail": "42 Warning(s) / 0 Error(s)",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Outbound", "(full solution)"]
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "Can the reconcile job ever WRITE (clobber) a tenant's existing third-party messages webhook, given the partner's null-preserves customHeaders contract and the owned-vs-foreign decision?", "category": "Data", "codex_answer": null, "codex_result": null },
+    { "id": "Q2", "question": "Is the secret handled safely (per-request header only, never on DefaultRequestHeaders, never logged) and are foreign URLs logged without leaking the full URL or any token?", "category": "Auth", "codex_answer": null, "codex_result": null },
+    { "id": "Q3", "question": "If a single tenant's GET/SET times out, returns 509, or throws, can it abort the whole sweep or crash the async-void Tick, or leave the _isProcessing overlap guard stuck at 1?", "category": "Lifecycle", "codex_answer": null, "codex_result": null },
+    { "id": "Q4", "question": "Is the feature truly inert in production until explicitly enabled (Enabled=false default), and is the rollout scope bounded by the allowlist rather than firing for every tenant that merely has a secret?", "category": "Process/Policy", "codex_answer": null, "codex_result": null }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["Backend /api/v1/webhook/event ingress (unchanged — we only point cxapi at it)", "WapCrmSendClient / WapCrmTemplateClient (untouched)", "The /api/webhook-settings/events HMAC channel (NEVER called)", "CxapiSend/BulkSend/Projects gates (unchanged)"],
+    "non_goals": ["Feature B (message-status pull in the Rapor drawer) — separate queued packet", "A programmatic wapcrm-config write endpoint", "DB-backed reconciliation status table / metrics infra (warn-coded logs are the visibility surface in this stack)", "Cross-process advisory lock (Outbound is single-instance NSSM)"],
+    "intentional_exclusions": ["No in-memory confirmed-cache (full reconcile each tick — avoids drift-masking; tenant set is tiny)", "No migration (no schema change)", "Prod enablement is a config step (Enabled=true + AllowedTenantIds on the server), not part of this code change — mirrors how CxapiSend was enabled"]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "CxapiWebhookReconcileJob.Tick: typed OperationCanceledException + Npgsql.NpgsqlException (no bare catch(Exception)); finally resets _isProcessing",
+      "CxapiWebhookReconcileJob.ReconcileTenantAsync: typed OperationCanceledException (rethrow on shutdown) + OperationCanceledException (timeout) + HttpRequestException — per-tenant isolation",
+      "WapCrmWebhookSettingsClient.Get/SetMessageWebhookAsync: typed OperationCanceledException (rethrow on caller-cancel) + OperationCanceledException (timeout->Outcome.Timeout) + HttpRequestException (->Outcome.TransportError); JsonException->null envelope->Outcome.Unparseable"
+    ],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Every non-success path is coded-logged: reconcile call failures INV-OB-091, foreign-URL skip INV-OB-092 (host only), 509 IP-denial INV-OB-093. A failed tenant is NOT marked done (no confirmed-cache) so it is retried next tick. The client returns typed outcomes rather than swallowing exceptions; the only swallowed thing is a JsonException mapped to an explicit Unparseable outcome (logged). No write happens on any non-Ok read outcome."
+  },
+  "aha_moments": [
+    { "category": "RELIABILITY", "user_pain": "Every new WapCRM tenant needed someone to remember to set the cxapi ack-webhook by hand (panel or one-off API), and Medipol's panel attempt silently never persisted — so delivery/read acks just didn't arrive.", "suggestion": "A reconciliation sweep that self-heals the webhook for every allowlisted configured tenant at startup + on an interval.", "aha_moment": "A tenant's acks start flowing without anyone touching the panel — and stay correct even if the webhook drifts." },
+    { "category": "SUPPORT", "user_pain": "When acks weren't arriving, support had no signal whether the webhook was missing, foreign, or just inactive.", "suggestion": "Coded logs: INV-OB-092 names a tenant whose webhook points somewhere foreign; INV-OB-093 names a 509 IP-whitelist gap.", "aha_moment": "The log line tells support exactly which tenant is mis-wired and why, instead of guessing." },
+    { "category": "RELIABILITY", "user_pain": "Auto-managing a partner webhook risks silently overwriting a customer's own integration URL.", "suggestion": "Owned-vs-foreign match on host+path+companyId; foreign URLs are left untouched, only warned.", "aha_moment": "The job is safe to leave on — it can fix our own wiring but will never clobber a customer's." },
+    { "category": "SPEED", "user_pain": "Onboarding a tenant for live cxapi delivery tracking was a multi-step manual checklist.", "suggestion": "Add the tenant id to the allowlist (or flip AllowAllConfigured) and the webhook is set within one sweep.", "aha_moment": "Go-live for ack tracking is now one config line, not a panel walkthrough." },
+    { "category": "RELIABILITY", "user_pain": "A future host migration (services.invekto.com -> api.invekto.com) would make every existing webhook look 'foreign' and get abandoned.", "suggestion": "Treat any host in OwnedWebhookHosts as ours and normalize to the new desired URL.", "aha_moment": "A domain migration becomes a config change the sweep rolls out automatically, with zero foreign-flag false alarms." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "iteration": 1,
+    "blocking_issues": [],
+    "raw_text": "iter0 FAIL (CQ9 cross-tenant query w/o tenant_id; CQ12 INV-OB codes not in arch/errors.md; Q3 unexpected typed exception could escape async-void Tick) -> iter1 fixes: (CQ9) registered the background/hosted-sweep sanctioned exception in arch/codex-context.md with in-prod precedents (FetchPendingOutboxBatchAsync/ResetSendingMessagesAsync); (CQ12) registered INV-OB-091/092/093 in arch/errors.md; (Q3) client header-attach throw -> typed TransportError outcome so the awaited surface is exactly {OperationCanceledException, HttpRequestException}, both caught -> nothing escapes Tick. Codex PASS 12/12 CQ + 4/4 CoVe, model gpt-5.5."
+  }
+}

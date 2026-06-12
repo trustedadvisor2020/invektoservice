@@ -889,6 +889,38 @@ public class OutboundRepository
         return result;
     }
 
+    /// <summary>
+    /// Feature A (cxapi webhook reconcile): list every ACTIVE tenant that carries a non-empty
+    /// WapCRM <c>secret_key</c> in <c>settings_json->'wapcrm'</c>. Cross-tenant by design — this is an
+    /// admin reconciliation sweep (same shape as InmaOptOutSyncJob draining all tenants'
+    /// outbox), not a per-tenant request path. Only the tenant_id + secret are returned (instance_id is
+    /// NOT needed: the cxapi messages-webhook is firm-level, keyed by the secret alone). The secret stays
+    /// in memory only for the reconcile call and is never logged or persisted.
+    /// </summary>
+    public virtual async Task<List<WapCrmConfiguredTenant>> GetWapCrmConfiguredTenantsAsync(CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT tenant_id, settings_json->'wapcrm'->>'secret_key' AS secret_key
+            FROM tenant_registry
+            WHERE is_active = true
+              AND NULLIF(settings_json->'wapcrm'->>'secret_key', '') IS NOT NULL
+            ORDER BY tenant_id";
+
+        var result = new List<WapCrmConfiguredTenant>();
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            var tenantId = reader.GetInt32(0);
+            var secret = reader.IsDBNull(1) ? null : reader.GetString(1);
+            if (!string.IsNullOrWhiteSpace(secret))
+                result.Add(new WapCrmConfiguredTenant(tenantId, secret));
+        }
+        return result;
+    }
+
     private WapCrmSettings? ParseWapCrmSettings(object? raw, int tenantId)
     {
         if (raw is null or DBNull) return null;
@@ -1909,3 +1941,9 @@ public sealed class QueuedMessage
     /// <summary>Send attempt counter (PR-3 idempotency). 0 in PR-1.</summary>
     public int AttemptCount { get; set; }
 }
+
+/// <summary>
+/// Feature A: a tenant that carries a WapCRM secret and is therefore a candidate for cxapi
+/// message-webhook reconciliation. Only the id + secret are needed (firm-level webhook).
+/// </summary>
+public sealed record WapCrmConfiguredTenant(int TenantId, string SecretKey);

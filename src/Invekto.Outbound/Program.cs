@@ -258,6 +258,34 @@ builder.Services.AddHttpClient<WapCrmTemplateClient>()
         http.Timeout = TimeSpan.FromMilliseconds(opts.HttpClientBackstopMs);
     });
 
+// ─── Feature A — cxapi message-webhook reconciliation (WapCrmWebhookSettingsClient + job) ───
+// Background sweep that points each allowlisted, WapCRM-configured tenant's cxapi MESSAGES webhook
+// at our delivery-ack ingress so acks flow. Production-safe default OFF (Enabled=false) — the hosted
+// service does not even schedule a sweep until enabled via config. Same client doctrine as the send
+// client: per-request X-CIB-SecretKey, fixed base URL, AllowAutoRedirect=false (301/302 = rate-limit),
+// per-request CTS timeout + a FINITE HttpClient.Timeout backstop.
+var cxapiWebhookReconcileOptions = new CxapiWebhookReconcileOptions();
+builder.Configuration.GetSection(CxapiWebhookReconcileOptions.SectionName).Bind(cxapiWebhookReconcileOptions);
+builder.Services.AddSingleton(cxapiWebhookReconcileOptions);
+builder.Services.AddHttpClient<WapCrmWebhookSettingsClient>()
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        AllowAutoRedirect = false,
+        UseCookies = false
+    })
+    .ConfigureHttpClient((sp, http) =>
+    {
+        var opts = sp.GetRequiredService<CxapiWebhookReconcileOptions>();
+        http.BaseAddress = new Uri(opts.BaseUrl.TrimEnd('/') + "/");
+        http.Timeout = TimeSpan.FromMilliseconds(opts.HttpClientBackstopMs);
+    })
+    .AddTypedClient((http, sp) => new WapCrmWebhookSettingsClient(
+        http,
+        sp.GetRequiredService<JsonLinesLogger>(),
+        sp.GetRequiredService<CxapiWebhookReconcileOptions>().TimeoutMs));
+builder.Services.AddSingleton<CxapiWebhookReconcileJob>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<CxapiWebhookReconcileJob>());
+
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
