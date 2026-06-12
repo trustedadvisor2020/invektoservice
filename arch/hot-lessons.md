@@ -11,6 +11,7 @@
 - Routing değişikliği auto-escalate LOW→MEDIUM; MEDIUM CoVe ≥3 VQ + Auth/Data/Lifecycle span.
 - Codex MEDIUM+ client/integration işinde implementasyon ÖNCESİ `codex_consult(critique)` ile planı strestle.
 - Codex "project rule" iddiasını codebase prevalence + review-policy.md ile doğrula, yoksa corrected-premise ile reddet.
+- Hosted/background SWEEP job'unda cross-tenant query (tüm tenantları tara) → CQ9 "tenant_id filter yok = FAIL" verir (summary'deki precedent iddiası TEK BAŞINA yetmez). Fix: sanctioned-exception'ı `arch/codex-context.md`'ye KAYITLA (Tenant Isolation + CQ9: request-path ≠ background sweep; precedent FetchPendingOutboxBatchAsync) → diff'e dahil et → iter1 PASS. Yeni INV kodu eklerken AYNI commit'te `arch/errors.md`'ye yaz (CQ12).
 
 ## Deploy & prod-truth
 - "DONE/committed ≠ deployed": roadmap'te DONE migration prod'a HİÇ uygulanmamış olabilir → multi-paket deploy ÖNCESİ prod DB pre-flight (2x keşif).
