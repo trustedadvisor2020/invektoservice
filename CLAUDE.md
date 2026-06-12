@@ -155,13 +155,14 @@ Bu skill'ler tüm projelerde ortak çalışır, local karşılığı YOKTUR.
 
 Birden fazla servisi arastiran sorgularda `Explore` subagent kullan.
 Ana context sadece sonuclari alir, arastirma detaylarini degil.
+**Model:** Bu grep+ozet isi icin `model: "haiku"` override gec (`Agent(subagent_type="Explore", model="haiku", ...)`) — ana model (pahali) gereksiz, kalite kapisi zaten senin review'un.
 
 ### Lesson Lookup via Sub-Agent
 
 Karmasik debug baslarken (incident, crash, regression, Codex review FAIL root cause arama) **once Explore sub-agent** ile lesson/history taramasi yap — main context'i kirletmeden:
 
 ```
-Agent(subagent_type="Explore", description="Lesson scan for <problem>",
+Agent(subagent_type="Explore", model="haiku", description="Lesson scan for <problem>",
   prompt="arch/lessons-learned.md + arch/lessons-learned-archive.md + arch/session-memory-archive.md tara.
           Problem: <kisa aciklama + semptom + hata kodu>.
           Relevant olanlarin baslik + 1-2 cumle ozeti + tarih dondur.
