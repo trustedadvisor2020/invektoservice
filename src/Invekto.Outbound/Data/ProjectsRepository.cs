@@ -897,12 +897,15 @@ public class ProjectsRepository
                 CROSS JOIN LATERAL unnest(j.broadcast_ids) AS bb(bid)
                 WHERE j.tenant_id = @tid AND j.project_id = @pid
             )";
+        // ::text casts give the nullable @campaign/@search parameters an explicit type — without them a
+        // DBNull parameter first seen in `@x IS NULL` leaves Postgres unable to infer its type (42P08
+        // "could not determine data type of parameter"). The cast is a no-op for a real text value.
         const string filter = @"
             FROM outbound_messages m
             JOIN proj p ON p.bid = m.broadcast_id
             WHERE m.tenant_id = @tid
-              AND (@campaign IS NULL OR p.campaign_id = @campaign)
-              AND (@search IS NULL OR m.recipient_phone ILIKE @search)";
+              AND (@campaign::text IS NULL OR p.campaign_id = @campaign::text)
+              AND (@search::text IS NULL OR m.recipient_phone ILIKE @search::text)";
 
         await using var conn = await _db.OpenConnectionAsync(ct);
 
