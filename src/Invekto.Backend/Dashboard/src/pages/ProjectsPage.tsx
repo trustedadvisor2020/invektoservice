@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Briefcase, X, Plus, Pencil, Archive, Loader2, Info, ListChecks, FileText, Send, Users, CheckCircle2,
   ExternalLink, Phone, Reply, Image as ImageIcon, Pause, Play, Ban, AlertTriangle, RefreshCw,
+  Search, Download, BarChart3,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -13,6 +14,7 @@ import {
   type ProjectContentMode, type OutboundTemplateDto,
   type BulkSendPreviewResponse, type BulkSendStatusResponse,
   type DataListPreviewSample, type ListRecord, type ProjectTestSendRequest,
+  type ProjectRun, type ProjectRecipient, type ProjectRecipientsPage,
 } from '../lib/api';
 
 // =============================================================
@@ -43,6 +45,63 @@ function StatusBadge({ status }: { status: ProjectStatus }) {
   const meta = STATUS_META[status] ?? STATUS_META.draft;
   return <span className={cn('inline-block px-2 py-0.5 rounded-full text-xs font-medium', meta.cls)}>{meta.label}</span>;
 }
+
+// Per-message (recipient) delivery status — the report drawer's row status. Mirrors
+// chk_message_status (migrations 055/056/061): queued/sending/posting/sent/delivered/read/failed/
+// ambiguous/cancelled/paused. 'sending'+'posting' collapse to one "Gönderiliyor" label for operators.
+const MSG_STATUS_META: Record<string, { label: string; cls: string }> = {
+  queued:    { label: 'Kuyrukta',     cls: 'bg-navy-50 text-navy-500' },
+  sending:   { label: 'Gönderiliyor', cls: 'bg-navy-50 text-navy-500' },
+  posting:   { label: 'Gönderiliyor', cls: 'bg-navy-50 text-navy-500' },
+  sent:      { label: 'Gönderildi',   cls: 'bg-indigo-50 text-indigo-600' },
+  delivered: { label: 'İletildi',     cls: 'bg-blue-50 text-blue-600' },
+  read:      { label: 'Okundu',       cls: 'bg-green-50 text-green-600' },
+  failed:    { label: 'Başarısız',    cls: 'bg-red-50 text-red-600' },
+  ambiguous: { label: 'Belirsiz',     cls: 'bg-amber-50 text-amber-600' },
+  cancelled: { label: 'İptal',        cls: 'bg-navy-50 text-navy-400' },
+  paused:    { label: 'Duraklatıldı', cls: 'bg-amber-50 text-amber-600' },
+};
+
+function MsgStatusBadge({ status }: { status: string }) {
+  const meta = MSG_STATUS_META[status] ?? { label: status, cls: 'bg-navy-50 text-navy-500' };
+  return <span className={cn('inline-block px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap', meta.cls)}>{meta.label}</span>;
+}
+
+function fmtDateTime(iso: string | null): string {
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' }); }
+  catch { return iso; }
+}
+
+// One run dropdown label: "12.06.2026 09:47 · 8 alıcı".
+function runLabel(r: ProjectRun): string {
+  return `${fmtDateTime(r.created_at)} · ${r.total.toLocaleString('tr-TR')} alıcı`;
+}
+
+// CSV cell escape (RFC 4180): wrap in quotes + double any embedded quote. Always quote so commas /
+// newlines / leading +90 phones survive Excel. A leading '=','+','-','@' is prefixed with a tab to
+// neutralize CSV formula injection while staying readable in Excel.
+function csvCell(v: string | number | null): string {
+  let s = v == null ? '' : String(v);
+  if (/^[=+\-@]/.test(s)) s = '\t' + s;
+  return '"' + s.replace(/"/g, '""') + '"';
+}
+
+function recipientsToCsv(rows: ProjectRecipient[]): string {
+  const header = ['Numara', 'Durum', 'Hata', 'İletildi', 'Okundu', 'Son Deneme', 'Mesaj ID'];
+  const lines = rows.map((r) => [
+    csvCell(r.phone),
+    csvCell(MSG_STATUS_META[r.status]?.label ?? r.status),
+    csvCell(r.error),
+    csvCell(fmtDateTime(r.delivered_at)),
+    csvCell(fmtDateTime(r.read_at)),
+    csvCell(fmtDateTime(r.last_attempt_at)),
+    csvCell(r.message_id),
+  ].join(','));
+  return [header.map(csvCell).join(','), ...lines].join('\r\n');
+}
+
+const REPORT_PAGE_SIZE = 50;
 
 const MAX_NAME = 120;
 const MAX_DESC = 500;
@@ -217,6 +276,21 @@ export default function ProjectsPage() {
   // ---- Run lifecycle (SS-D): pause / resume / cancel ----
   const [lifecycleBusyId, setLifecycleBusyId] = useState<number | null>(null);
   const [cancelTarget, setCancelTarget] = useState<ProjectSummary | null>(null);
+
+  // ---- Rapor (delivery report) drawer ----
+  const [reportProject, setReportProject] = useState<ProjectSummary | null>(null);
+  const [reportRuns, setReportRuns] = useState<ProjectRun[]>([]);
+  const [reportCampaign, setReportCampaign] = useState<string>(''); // '' = Tümü (all runs)
+  const [reportSearch, setReportSearch] = useState('');
+  const [reportSearchDraft, setReportSearchDraft] = useState('');
+  const [reportPage, setReportPage] = useState(1);
+  const [reportData, setReportData] = useState<ProjectRecipientsPage | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [resendingId, setResendingId] = useState<number | null>(null);
+  const [reportExporting, setReportExporting] = useState(false);
+  // Bumped on resend to force a recipients re-fetch (status changed server-side).
+  const [reportReloadTick, setReportReloadTick] = useState(0);
 
   // ---- Status filter (GR-9): single dropdown over the full set (single includeArchived fetch).
   // 'all' = everything EXCEPT archived; 'archived' is its own explicit option.
@@ -814,6 +888,104 @@ export default function ProjectsPage() {
     setCancelTarget(null);
   }
 
+  // ---- Rapor (delivery report) drawer ----
+  function openReport(p: ProjectSummary) {
+    setReportProject(p);
+    setReportRuns([]);
+    setReportCampaign('');
+    setReportSearch('');
+    setReportSearchDraft('');
+    setReportPage(1);
+    setReportData(null);
+    setReportError(null);
+    void api.getProjectReportRuns(p.id)
+      .then(setReportRuns)
+      .catch((e) => setReportError(errText(e, 'Gönderimler yüklenemedi')));
+  }
+
+  function closeReport() {
+    setReportProject(null);
+    setReportData(null);
+    setReportError(null);
+  }
+
+  // Debounce the search box (300ms) into the applied filter; reset to page 1 on any new term.
+  useEffect(() => {
+    const t = setTimeout(() => { setReportSearch(reportSearchDraft.trim()); setReportPage(1); }, 300);
+    return () => clearTimeout(t);
+  }, [reportSearchDraft]);
+
+  // Load the recipient page whenever the open project / run filter / search / page / reload tick change.
+  useEffect(() => {
+    if (!reportProject) return;
+    let cancelled = false;
+    setReportLoading(true);
+    setReportError(null);
+    api.getProjectReportRecipients(reportProject.id, {
+      campaignId: reportCampaign || undefined,
+      search: reportSearch || undefined,
+      page: reportPage,
+      pageSize: REPORT_PAGE_SIZE,
+    })
+      .then((res) => { if (!cancelled) setReportData(res); })
+      .catch((e) => { if (!cancelled) setReportError(errText(e, 'Rapor yüklenemedi')); })
+      .finally(() => { if (!cancelled) setReportLoading(false); });
+    return () => { cancelled = true; };
+  }, [reportProject, reportCampaign, reportSearch, reportPage, reportReloadTick]);
+
+  // Resend ONE undelivered (failed/ambiguous) recipient; refresh runs + recipients + the project table.
+  async function doResend(messageId: number) {
+    if (!reportProject) return;
+    setResendingId(messageId);
+    try {
+      await api.projectReportResend(reportProject.id, messageId);
+      // Refresh the run counters (secondary to the resend itself). A failure here must NOT fail the
+      // resend or be swallowed silently: log it and keep the prior counters; the recipient table still
+      // reloads below so the operator sees the row's new status either way.
+      try {
+        setReportRuns(await api.getProjectReportRuns(reportProject.id));
+      } catch (e) {
+        console.warn('[rapor] resend sonrası gönderim sayaçları yenilenemedi:', errText(e, 'runs refresh failed'));
+      }
+      setReportReloadTick((t) => t + 1); // re-fetch the current recipient page (status changed server-side)
+      void loadProjects();               // the project row counters/status changed too
+    } catch (e) {
+      setReportError(errText(e, 'Yeniden gönderilemedi'));
+    } finally {
+      setResendingId(null);
+    }
+  }
+
+  // Export ALL rows matching the active filter (run + search), not just the visible page: re-fetch with a
+  // large page size, build the CSV client-side, and download. The server caps pageSize at 5000.
+  async function exportReportCsv() {
+    if (!reportProject) return;
+    setReportExporting(true);
+    try {
+      const all = await api.getProjectReportRecipients(reportProject.id, {
+        campaignId: reportCampaign || undefined,
+        search: reportSearch || undefined,
+        page: 1,
+        pageSize: 5000,
+      });
+      const csv = recipientsToCsv(all.items);
+      const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const safeName = (reportProject.name || 'proje').replace(/[^a-zA-Z0-9_-]+/g, '_').slice(0, 40);
+      a.href = url;
+      a.download = `rapor_${safeName}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setReportError(errText(e, 'CSV dışa aktarılamadı'));
+    } finally {
+      setReportExporting(false);
+    }
+  }
+
   // ---- Run dispatch (Gönder) ----
   // Client mirror of the server eligibility (ProjectsService.ResolveSendContent/ResolveHsmContent +
   // target check). PR-4: an HSM (onaylı şablon) project is dispatchable once it carries a template +
@@ -1124,6 +1296,9 @@ export default function ProjectsPage() {
                           </Button>
                         );
                       })()}
+                      <Button size="sm" variant="secondary" onClick={() => openReport(p)} title="Gönderim raporu (kişi bazlı durum)">
+                        <BarChart3 className="w-3.5 h-3.5" /> Rapor
+                      </Button>
                       <Button size="sm" variant="secondary" onClick={() => openEdit(p)}>
                         <Pencil className="w-3.5 h-3.5" /> Düzenle
                       </Button>
@@ -1737,6 +1912,156 @@ export default function ProjectsPage() {
                   : <><Ban className="w-4 h-4 text-red-500" /> Gönderimi iptal et</>}
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---- Rapor (delivery report) right drawer: run dropdown + searchable status table + resend + CSV ---- */}
+      {reportProject && (
+        <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true">
+          <div
+            className="absolute inset-0 bg-navy-900/30"
+            onMouseDown={(e) => { if (e.target === e.currentTarget) closeReport(); }}
+          />
+          <div className="relative w-full max-w-4xl h-full bg-white shadow-2xl flex flex-col">
+            {/* header */}
+            <div className="px-5 py-4 border-b border-navy-50 flex items-center justify-between">
+              <div className="min-w-0">
+                <div className="text-xs text-navy-400">Gönderim Raporu</div>
+                <div className="text-lg font-semibold text-navy-900 truncate">{reportProject.name}</div>
+              </div>
+              <button onClick={closeReport} className="p-1.5 rounded hover:bg-navy-50 text-navy-400" title="Kapat" aria-label="Kapat">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* filters: run dropdown + phone search + refresh + CSV */}
+            <div className="px-5 py-3 border-b border-navy-50 flex flex-wrap items-center gap-2">
+              <select
+                className="border border-navy-100 rounded-lg px-2.5 py-1.5 text-sm text-navy-700 bg-white max-w-[260px]"
+                value={reportCampaign}
+                onChange={(e) => { setReportCampaign(e.target.value); setReportPage(1); }}
+                title="Gönderim seç"
+              >
+                <option value="">Tüm gönderimler ({reportRuns.length})</option>
+                {reportRuns.map((r) => (
+                  <option key={r.campaign_id} value={r.campaign_id}>{runLabel(r)}</option>
+                ))}
+              </select>
+              <div className="relative flex-1 min-w-[160px]">
+                <Search className="w-4 h-4 text-navy-300 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Input
+                  className="pl-8"
+                  placeholder="Numara ara…"
+                  value={reportSearchDraft}
+                  onChange={(e) => setReportSearchDraft(e.target.value)}
+                />
+              </div>
+              <Button variant="secondary" size="sm" onClick={() => setReportReloadTick((t) => t + 1)} title="Yenile" disabled={reportLoading}>
+                <RefreshCw className={cn('w-3.5 h-3.5', reportLoading && 'animate-spin')} /> Yenile
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={exportReportCsv}
+                disabled={reportExporting || !reportData || reportData.total === 0}
+                title="Filtrelenmiş tüm satırları CSV olarak indir"
+              >
+                {reportExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />} CSV
+              </Button>
+            </div>
+
+            {/* summary chips for the selected run (or all runs) */}
+            {(() => {
+              const sel = reportCampaign ? reportRuns.find((r) => r.campaign_id === reportCampaign) : null;
+              const agg = sel ?? reportRuns.reduce(
+                (a, r) => ({
+                  total: a.total + r.total, sent: a.sent + r.sent, delivered: a.delivered + r.delivered,
+                  read: a.read + r.read, failed: a.failed + r.failed, ambiguous: a.ambiguous + r.ambiguous,
+                }),
+                { total: 0, sent: 0, delivered: 0, read: 0, failed: 0, ambiguous: 0 },
+              );
+              return (
+                <div className="px-5 py-2 border-b border-navy-50 flex flex-wrap gap-x-4 gap-y-1 text-xs text-navy-500 tabular-nums">
+                  <span>Toplam <b className="text-navy-800">{agg.total.toLocaleString('tr-TR')}</b></span>
+                  <span>Gönderildi <b className="text-indigo-600">{agg.sent.toLocaleString('tr-TR')}</b></span>
+                  <span>İletildi <b className="text-blue-600">{agg.delivered.toLocaleString('tr-TR')}</b></span>
+                  <span>Okundu <b className="text-green-600">{agg.read.toLocaleString('tr-TR')}</b></span>
+                  <span>Başarısız <b className="text-red-600">{agg.failed.toLocaleString('tr-TR')}</b></span>
+                  <span>Belirsiz <b className="text-amber-600">{agg.ambiguous.toLocaleString('tr-TR')}</b></span>
+                </div>
+              );
+            })()}
+
+            {reportError && (
+              <div className="px-5 py-2 bg-red-50 text-red-700 text-sm flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0" /> {reportError}
+              </div>
+            )}
+
+            {/* recipient table */}
+            <div className="flex-1 overflow-auto">
+              {reportLoading && !reportData ? (
+                <div className="flex items-center justify-center py-16 text-navy-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
+              ) : !reportData || reportData.items.length === 0 ? (
+                <div className="py-16 text-center text-navy-400 text-sm">Bu filtreye uygun kayıt yok.</div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-navy-50/90 backdrop-blur text-navy-500 text-xs">
+                    <tr>
+                      <th className="px-4 py-2 text-left font-medium">Numara</th>
+                      <th className="px-4 py-2 text-left font-medium">Durum</th>
+                      <th className="px-4 py-2 text-left font-medium">Detay</th>
+                      <th className="px-4 py-2 text-right font-medium">İşlem</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-navy-50">
+                    {reportData.items.map((r) => (
+                      <tr key={r.message_id} className="hover:bg-navy-50/40">
+                        <td className="px-4 py-2 text-navy-800 tabular-nums whitespace-nowrap">{r.phone}</td>
+                        <td className="px-4 py-2"><MsgStatusBadge status={r.status} /></td>
+                        <td className="px-4 py-2 text-xs text-navy-500 max-w-sm truncate">
+                          {r.error
+                            ? <span className="text-red-600" title={r.error}>{r.error}</span>
+                            : r.read_at ? `Okundu · ${fmtDateTime(r.read_at)}`
+                            : r.delivered_at ? `İletildi · ${fmtDateTime(r.delivered_at)}`
+                            : r.last_attempt_at ? `Denendi · ${fmtDateTime(r.last_attempt_at)}`
+                            : '—'}
+                        </td>
+                        <td className="px-4 py-2 text-right">
+                          {r.can_resend && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              disabled={resendingId === r.message_id}
+                              onClick={() => doResend(r.message_id)}
+                              title="Bu numaraya projenin içeriğiyle yeniden gönder"
+                            >
+                              {resendingId === r.message_id
+                                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                : <Reply className="w-3.5 h-3.5" />} Tekrar Gönder
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* pagination footer */}
+            {reportData && reportData.total > 0 && (
+              <div className="px-5 py-3 border-t border-navy-50 flex items-center justify-between text-sm text-navy-500">
+                <span className="tabular-nums">
+                  Toplam {reportData.total.toLocaleString('tr-TR')} · sayfa {reportData.page}
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" variant="secondary" disabled={reportPage <= 1 || reportLoading} onClick={() => setReportPage((p) => Math.max(1, p - 1))}>Önceki</Button>
+                  <Button size="sm" variant="secondary" disabled={reportLoading || reportPage * REPORT_PAGE_SIZE >= reportData.total} onClick={() => setReportPage((p) => p + 1)}>Sonraki</Button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

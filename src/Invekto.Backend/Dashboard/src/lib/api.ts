@@ -2453,6 +2453,32 @@ class OpsApiClient {
     return this.request<ProjectDetail>(`/api/v1/outbound/projects/${projectId}/send/cancel`, { method: 'POST' });
   }
 
+  // FEAT-PROJELER Rapor (delivery report) drawer.
+  async getProjectReportRuns(projectId: number): Promise<ProjectRun[]> {
+    return this.request<ProjectRun[]>(`/api/v1/outbound/projects/${projectId}/report/runs`);
+  }
+
+  async getProjectReportRecipients(
+    projectId: number,
+    opts: { campaignId?: string; search?: string; page?: number; pageSize?: number } = {},
+  ): Promise<ProjectRecipientsPage> {
+    const qs = new URLSearchParams();
+    if (opts.campaignId) qs.set('campaignId', opts.campaignId);
+    if (opts.search) qs.set('search', opts.search);
+    qs.set('page', String(opts.page ?? 1));
+    qs.set('pageSize', String(opts.pageSize ?? 50));
+    return this.request<ProjectRecipientsPage>(`/api/v1/outbound/projects/${projectId}/report/recipients?${qs.toString()}`);
+  }
+
+  // Resend ONE undelivered (failed/ambiguous) recipient; returns the fresh project detail.
+  async projectReportResend(projectId: number, messageId: number): Promise<ProjectDetail> {
+    return this.request<ProjectDetail>(`/api/v1/outbound/projects/${projectId}/report/resend`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message_id: messageId }),
+    });
+  }
+
   // GR-8: one plain-text test message to one number, from the project modal. Dual-gated
   // server-side (Projects + BulkSend) + per-tenant throttle; not tied to a saved project.
   async projectTestSend(req: ProjectTestSendRequest): Promise<ProjectTestSendResponse> {
@@ -2716,6 +2742,40 @@ export interface ProjectTargetDto {
 export interface ProjectDetail {
   project: ProjectSummary;
   targets: ProjectTargetDto[];
+}
+
+// FEAT-PROJELER Rapor (delivery report) drawer.
+export interface ProjectRun {
+  campaign_id: string;
+  status: string;
+  created_at: string;
+  total: number;
+  queued: number;
+  sent: number;
+  delivered: number;
+  read: number;
+  failed: number;
+  ambiguous: number;
+  cancelled: number;
+}
+
+export interface ProjectRecipient {
+  message_id: number;
+  campaign_id: string;
+  phone: string;
+  status: string;
+  error: string | null;
+  delivered_at: string | null;
+  read_at: string | null;
+  last_attempt_at: string | null;
+  can_resend: boolean;
+}
+
+export interface ProjectRecipientsPage {
+  items: ProjectRecipient[];
+  total: number;
+  page: number;
+  page_size: number;
 }
 
 // Send-config fields are OPTIONAL. template_kind is the DRIVER: when set, the whole config block

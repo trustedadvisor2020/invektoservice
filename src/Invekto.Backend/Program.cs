@@ -3950,6 +3950,17 @@ app.MapPost("/api/v1/outbound/projects/{id:long}/send/cancel", async (HttpContex
 app.MapPost("/api/v1/outbound/projects/send/test", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
     await OutboundProxyPost(ctx, obClient, jsonLog, "/api/v1/projects/send/test"));
 
+// FEAT-PROJELER Rapor (delivery report) drawer proxies — runs dropdown + paged recipients (query
+// string forwarded verbatim) + single-recipient resend. Tenant resolved by Outbound from the token.
+app.MapGet("/api/v1/outbound/projects/{id:long}/report/runs", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
+    await OutboundProxyGet(ctx, obClient, jsonLog, $"/api/v1/projects/{id}/report/runs"));
+
+app.MapGet("/api/v1/outbound/projects/{id:long}/report/recipients", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
+    await OutboundProxyGet(ctx, obClient, jsonLog, $"/api/v1/projects/{id}/report/recipients{ctx.Request.QueryString.Value}"));
+
+app.MapPost("/api/v1/outbound/projects/{id:long}/report/resend", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, $"/api/v1/projects/{id}/report/resend"));
+
 // ============================================
 // FLOW BUILDER PROXY ENDPOINTS
 // ============================================

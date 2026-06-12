@@ -1122,6 +1122,9 @@ errors:
   - code: INV-OB-089
     description: "Contact lists — single-record delete (list-viewer popup): record id not found in this tenant's list (already deleted by another user/tab, or a foreign tenant's record — same 404, no existence leak). Decided inside the locked mutation transaction (data_lists FOR UPDATE); nothing is changed. (404)"
     user_message: Kayıt bulunamadı (silinmiş olabilir). Listeyi yenileyip tekrar deneyin.
+  - code: INV-OB-090
+    description: "FEAT-PROJELER Rapor (delivery report) drawer — single-recipient resend not eligible: the message id is not found, not in a resendable terminal state ('failed'/'ambiguous'), or not one of THIS project's recipients (same 409, no existence leak). Only undelivered terminal rows are resendable; resend re-queues the message in place for the existing worker. (409)"
+    user_message: Bu mesaj yeniden gönderilemez (yalnız başarısız/belirsiz durumdakiler yeniden gönderilebilir).
 
   # ── IG — Integrations (GR-3.4/3.6) ──
   - code: INV-IG-001

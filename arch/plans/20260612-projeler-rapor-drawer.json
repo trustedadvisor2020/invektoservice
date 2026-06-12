@@ -1,0 +1,87 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "slug": "20260612-projeler-rapor-drawer",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-12T11:00:00Z",
+  "updated_at": "2026-06-12T11:00:00Z",
+  "plan": {
+    "summary": "Projeler delivery-report drawer: a 'Rapor' button per project opens a wide right drawer with a run (gönderim) dropdown, a server-paged + phone-searchable per-recipient status table, a Resend button on undelivered (failed/ambiguous) rows, and a CSV export of ALL filtered rows. Read paths aggregate existing rows; resend re-queues the message in place via the existing worker (no new send-orchestration path).",
+    "q_intent": "projenin sağına bir rapor düğmesi ekle, sağdan drawer aç geniş geniş. içine her bir gönderim için dropdown ekle. ve bu filtreye uygun her numara için durumu ile beraber gösteren tablo ekle. search de ekle. her numara yanına gitmediyse hatayı yaz, resend düğmesi ekle. filtrelenmiş tablo için export to csv düğmesi koy.",
+    "interview_notes": "Q decisions: Resend ONLY on failed+ambiguous ('gitmeyenler'); CSV exports ALL filtered rows (not just the visible page). Summary counters stay PARTITION (Q chose 'partition kalsın') — the drawer shows each recipient's real status, the report is where delivered/read is visible per-number.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "Each non-archived project row has a 'Rapor' button opening a wide right-side drawer (X-close + backdrop) scoped to that project.", "verified": true, "verification_note": "ProjectsPage: openReport(p) + fixed right drawer max-w-4xl; SPA build OK." },
+      { "id": "AC2", "criterion": "The drawer has a run (gönderim) dropdown ('Tümü' + each run), a phone search box, and a server-paged status table showing each recipient's number + delivery status + (when undelivered) the error.", "verified": true, "verification_note": "GET report/runs (dropdown) + report/recipients (campaignId/search/page filters); MsgStatusBadge + error/detail column." },
+      { "id": "AC3", "criterion": "Undelivered recipients (failed/ambiguous ONLY) show a Resend button that re-sends to that number; delivered/sent/read rows do NOT.", "verified": true, "verification_note": "can_resend = status IN (failed,ambiguous) computed server-side; RequeueForResendAsync flips the message -> queued (worker re-sends via preserved route) + counter fix; INV-OB-090 if not eligible." },
+      { "id": "AC4", "criterion": "A CSV export button downloads ALL rows matching the active filter (run + search), not only the visible page.", "verified": true, "verification_note": "exportReportCsv re-fetches pageSize=5000 (server cap) with the active filters, builds RFC-4180 CSV (formula-injection guarded, BOM), triggers download." },
+      { "id": "AC5", "criterion": "Full solution + SPA build pass with no errors; Shared changes additive (no breaking change).", "verified": true, "verification_note": "Vite build OK (ProjectsPage-Jfm7pBUb.js); dotnet full solution 0 errors; ProjectDtos/ErrorCodes additions are additive." }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/DTOs/Outbound/ProjectDtos.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Outbound/Data/ProjectsRepository.cs",
+    "src/Invekto.Outbound/Services/ProjectsService.cs",
+    "src/Invekto.Outbound/Program.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/DTOs/Outbound/ProjectDtos.cs", "change": "+ProjectRunDto/ProjectRecipientDto/ProjectRecipientsPage/ProjectResendRequest (additive)", "is_new": false },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "change": "+ProjectResendNotEligible INV-OB-090 (additive)", "is_new": false },
+    { "path": "src/Invekto.Outbound/Data/ProjectsRepository.cs", "change": "+GetRunsAsync (aggregate), +GetRecipientsAsync (paged+filtered, parameterized ILIKE), +RequeueForResendAsync (atomic re-queue + counter fix)", "is_new": false },
+    { "path": "src/Invekto.Outbound/Services/ProjectsService.cs", "change": "+GetReportRunsAsync/GetReportRecipientsAsync (gated+404-probed) +ResendAsync (re-queue + recompute rollup)", "is_new": false },
+    { "path": "src/Invekto.Outbound/Program.cs", "change": "+3 endpoints (report/runs, report/recipients, report/resend) + INV-OB-090 -> 409 in ProjectSendStatus", "is_new": false },
+    { "path": "src/Invekto.Backend/Program.cs", "change": "+3 proxy routes (report/runs, report/recipients [query forwarded], report/resend)", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "change": "+ProjectRun/ProjectRecipient/ProjectRecipientsPage types + getProjectReportRuns/getProjectReportRecipients/projectReportResend", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx", "change": "+Rapor button + right drawer (run dropdown + search + paged status table + per-row resend + filtered CSV export); MsgStatusBadge + CSV helpers", "is_new": false }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": null,
+    "full_path": "arch/plans/diffs/20260612-projeler-rapor-drawer.diff",
+    "stats": { "insertions": 761, "deletions": 0, "files_count": 8 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "npm run build (Dashboard SPA) + dotnet build InvektoServis.sln",
+    "timestamp": "2026-06-12T10:58:00Z",
+    "duration_ms": 16880,
+    "output_tail": "SPA: built in 7.34s; solution: 41 Warning(s) / 0 Error(s)",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Outbound", "Invekto.Backend (+SPA)"]
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "Is the recipients query tenant + project scoped so it can never list another tenant's or another project's outbound messages, and is the phone search injection-safe?", "category": "Data" },
+    { "id": "Q2", "question": "Does RequeueForResendAsync keep the broadcast counters partition-correct (old bucket --, queued ++) and refuse a message that is not failed/ambiguous or not one of this project's recipients?", "category": "Lifecycle" },
+    { "id": "Q3", "question": "Can the resend re-send a message that was actually delivered (double-send), or resend a recipient outside the eligible states, given the operator-initiated nature of resend?", "category": "Process/Policy" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["The send/preview/confirm pipeline (unchanged)", "BroadcastOrchestrator / MessageSenderService (the worker re-sends the re-queued row unchanged)", "RecomputeRollupAsync SQL (reused)"],
+    "non_goals": ["Cumulative summary counters (Q chose partition)", "Resend on delivered/sent/read rows", "A new resend send-orchestration path (re-queue reuses the worker)"],
+    "intentional_exclusions": ["No migration (reads existing rows; reuses existing columns)", "CSV export capped at the server's 5000 pageSize (well above the per-campaign hard cap)"]
+  },
+  "error_handling": {
+    "try_catch_locations": ["ProjectsService.GetReportRunsAsync/GetReportRecipientsAsync/ResendAsync: typed NpgsqlException -> INV-OB-071; resend not-eligible -> INV-OB-090", "ProjectsPage: per-call try/catch -> errText into the drawer error banner"],
+    "user_facing_errors": ["INV-OB-090 'Bu mesaj yeniden gönderilemez…'", "drawer error banner for runs/recipients/resend/CSV failures"],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Every backend path returns a typed code; the drawer surfaces failures in a red banner. The recipients useEffect uses a cancelled flag to avoid stale-state writes, not to swallow errors."
+  },
+  "aha_moments": [
+    { "category": "SUPPORT", "user_pain": "Operators couldn't see WHY a campaign number didn't receive the message.", "suggestion": "Per-recipient status table with the exact failure reason inline.", "aha_moment": "The operator opens Rapor and instantly sees which numbers failed and why." },
+    { "category": "RELIABILITY", "user_pain": "A failed/ambiguous number had no recovery short of re-running the whole campaign.", "suggestion": "Per-row Resend that re-queues just that number via the worker.", "aha_moment": "One click re-sends the missed number; the row flips to Gönderildi." },
+    { "category": "UX", "user_pain": "The same project ran multiple times and the operator couldn't tell the runs apart.", "suggestion": "A run dropdown (date + recipient count) filtering the table.", "aha_moment": "Selecting a run isolates exactly that send's recipients." },
+    { "category": "SPEED", "user_pain": "Finding one number among thousands was impossible.", "suggestion": "Debounced server-side phone search + pagination.", "aha_moment": "Typing a number jumps straight to its delivery status." },
+    { "category": "SALES", "user_pain": "Proving campaign delivery to a client required DB access.", "suggestion": "CSV export of all filtered rows with status + timestamps.", "aha_moment": "One CSV download is a shareable delivery report." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "iteration": 1,
+    "blocking_issues": [],
+    "raw_text": "iter0 FAIL (CQ2 silent catch on post-resend runs refresh; CQ5 null-forgiving on COUNT scalar; CQ11 db-sync UNKNOWN; CQ12 resend bad-input 409-should-be-400 + INV-OB-090 not in arch/errors.md) -> iter1: console.warn the non-fatal runs refresh; COUNT via pattern-match (no !); bad-input 400/ProjectInvalidPayload; INV-OB-090 added to arch/errors.md; summary documents no-schema-change (all columns pre-existing) -> Codex PASS 12/12 CQ + 3/3 CoVe."
+  }
+}

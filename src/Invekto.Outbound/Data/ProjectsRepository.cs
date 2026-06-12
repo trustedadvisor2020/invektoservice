@@ -816,4 +816,192 @@ public class ProjectsRepository
         PlainTextBody = reader.IsDBNull(23) ? null : reader.GetString(23),
         CancelledCount = reader.GetInt32(24)
     };
+
+    // ------------------------------------------------------------------
+    // FEAT-PROJELER — Rapor (delivery report) — 2026-06-12
+    // ------------------------------------------------------------------
+
+    /// <summary>
+    /// List a project's runs (bulk_send_jobs) newest-first with their LIVE partition counters (summed
+    /// over each run's broadcasts). Drives the report drawer's run dropdown. Tenant + project scoped.
+    /// </summary>
+    public virtual async Task<List<ProjectRunDto>> GetRunsAsync(
+        int tenantId, long projectId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT j.campaign_id, j.status, j.created_at,
+                   COALESCE(SUM(b.total_recipients),0)::int AS total,
+                   COALESCE(SUM(b.queued),0)::int    AS queued,
+                   COALESCE(SUM(b.sent),0)::int      AS sent,
+                   COALESCE(SUM(b.delivered),0)::int AS delivered,
+                   COALESCE(SUM(b.read),0)::int      AS rd,
+                   COALESCE(SUM(b.failed),0)::int    AS failed,
+                   COALESCE(SUM(b.ambiguous),0)::int AS ambiguous,
+                   COALESCE(SUM(b.cancelled),0)::int AS cancelled
+            FROM bulk_send_jobs j
+            LEFT JOIN outbound_broadcasts b ON b.tenant_id = j.tenant_id AND b.id = ANY(j.broadcast_ids)
+            WHERE j.tenant_id = @tid AND j.project_id = @pid
+            GROUP BY j.id, j.campaign_id, j.status, j.created_at
+            ORDER BY j.created_at DESC, j.id DESC";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("pid", projectId);
+
+        var runs = new List<ProjectRunDto>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            runs.Add(new ProjectRunDto
+            {
+                CampaignId = reader.GetString(0),
+                Status = reader.GetString(1),
+                CreatedAt = reader.GetDateTime(2),
+                Total = reader.GetInt32(3),
+                Queued = reader.GetInt32(4),
+                Sent = reader.GetInt32(5),
+                Delivered = reader.GetInt32(6),
+                Read = reader.GetInt32(7),
+                Failed = reader.GetInt32(8),
+                Ambiguous = reader.GetInt32(9),
+                Cancelled = reader.GetInt32(10)
+            });
+        }
+        return runs;
+    }
+
+    /// <summary>
+    /// Server-paged per-recipient report for a project, newest message first. Joins the project's runs'
+    /// broadcasts to outbound_messages; optional campaign_id + phone-substring filters. The error column
+    /// prefers failed_reason then provider_error_message; can_resend is true only for failed/ambiguous.
+    /// Returns the page + the full filtered total (drives pagination + the export-all CSV). Tenant-scoped;
+    /// fully parameterized (ILIKE arg passed as a value, no string interpolation).
+    /// </summary>
+    public virtual async Task<ProjectRecipientsPage> GetRecipientsAsync(
+        int tenantId, long projectId, string? campaignId, string? search,
+        int page, int pageSize, CancellationToken ct = default)
+    {
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 50;
+        if (pageSize > 5000) pageSize = 5000; // headroom for the export-all-filtered CSV
+        var offset = (page - 1) * pageSize;
+        var searchArg = string.IsNullOrWhiteSpace(search) ? null : "%" + search.Trim() + "%";
+
+        // The project's broadcasts (+ each broadcast's run campaign_id), built once and reused for both
+        // the count and the page. A broadcast maps to exactly one job, so campaign_id is unambiguous.
+        const string cte = @"
+            WITH proj AS (
+                SELECT DISTINCT bb.bid, j.campaign_id
+                FROM bulk_send_jobs j
+                CROSS JOIN LATERAL unnest(j.broadcast_ids) AS bb(bid)
+                WHERE j.tenant_id = @tid AND j.project_id = @pid
+            )";
+        const string filter = @"
+            FROM outbound_messages m
+            JOIN proj p ON p.bid = m.broadcast_id
+            WHERE m.tenant_id = @tid
+              AND (@campaign IS NULL OR p.campaign_id = @campaign)
+              AND (@search IS NULL OR m.recipient_phone ILIKE @search)";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+
+        int total;
+        await using (var countCmd = new NpgsqlCommand(cte + "\nSELECT COUNT(*)::int" + filter, conn))
+        {
+            countCmd.Parameters.AddWithValue("tid", tenantId);
+            countCmd.Parameters.AddWithValue("pid", projectId);
+            countCmd.Parameters.AddWithValue("campaign", (object?)campaignId ?? DBNull.Value);
+            countCmd.Parameters.AddWithValue("search", (object?)searchArg ?? DBNull.Value);
+            total = (await countCmd.ExecuteScalarAsync(ct)) is int n ? n : 0; // COUNT(*)::int is never null; defensive cast (no null-forgiving)
+        }
+
+        var items = new List<ProjectRecipientDto>();
+        var pageSql = cte + @"
+            SELECT m.id, p.campaign_id, m.recipient_phone, m.status,
+                   COALESCE(m.failed_reason, m.provider_error_message) AS error,
+                   m.delivered_at, m.read_at, m.last_attempt_at,
+                   (m.status IN ('failed','ambiguous')) AS can_resend" + filter + @"
+            ORDER BY m.id DESC
+            LIMIT @limit OFFSET @offset";
+        await using (var cmd = new NpgsqlCommand(pageSql, conn))
+        {
+            cmd.Parameters.AddWithValue("tid", tenantId);
+            cmd.Parameters.AddWithValue("pid", projectId);
+            cmd.Parameters.AddWithValue("campaign", (object?)campaignId ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("search", (object?)searchArg ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("limit", pageSize);
+            cmd.Parameters.AddWithValue("offset", offset);
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                items.Add(new ProjectRecipientDto
+                {
+                    MessageId = reader.GetInt64(0),
+                    CampaignId = reader.GetString(1),
+                    Phone = reader.GetString(2),
+                    Status = reader.GetString(3),
+                    Error = reader.IsDBNull(4) ? null : reader.GetString(4),
+                    DeliveredAt = reader.IsDBNull(5) ? null : reader.GetDateTime(5),
+                    ReadAt = reader.IsDBNull(6) ? null : reader.GetDateTime(6),
+                    LastAttemptAt = reader.IsDBNull(7) ? null : reader.GetDateTime(7),
+                    CanResend = reader.GetBoolean(8)
+                });
+            }
+        }
+
+        return new ProjectRecipientsPage { Items = items, Total = total, Page = page, PageSize = pageSize };
+    }
+
+    /// <summary>
+    /// Re-queue ONE undelivered recipient (by message id) of a project for a real re-send: flip the
+    /// message 'failed'/'ambiguous' -> 'queued' (reset attempt + provider fields + captured wamid +
+    /// delivery timestamps) so the EXISTING worker re-sends it via its PRESERVED route/template, and fix
+    /// the broadcast counters in the SAME tx — old bucket --, queued ++ (the exact inverse of the
+    /// terminal transition in IncrementBroadcastCounterAsync/MarkCxapiOutcomeAsync) — and reopen a
+    /// 'completed' broadcast to 'sending'. Single atomic statement under a FOR UPDATE row lock. Tenant +
+    /// project scoped via the message's broadcast. Returns the broadcast id on success, null if the
+    /// message is missing / not eligible (not failed|ambiguous) / not one of THIS project's recipients.
+    /// </summary>
+    public virtual async Task<Guid?> RequeueForResendAsync(
+        int tenantId, long projectId, long messageId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            WITH tgt AS (
+                SELECT m.id, m.broadcast_id, m.status AS old_status
+                FROM outbound_messages m
+                WHERE m.id = @mid AND m.tenant_id = @tid
+                  AND m.status IN ('failed','ambiguous')
+                  AND m.broadcast_id IN (
+                      SELECT unnest(broadcast_ids) FROM bulk_send_jobs
+                      WHERE tenant_id = @tid AND project_id = @pid)
+                FOR UPDATE
+            ), upd AS (
+                UPDATE outbound_messages m
+                SET status = 'queued', attempt_count = 0,
+                    provider_status_code = NULL, provider_status = NULL, provider_request_id = NULL,
+                    provider_error_message = NULL, failed_reason = NULL, external_message_id = NULL,
+                    delivered_at = NULL, read_at = NULL, last_attempt_at = NULL
+                FROM tgt WHERE m.id = tgt.id
+                RETURNING tgt.broadcast_id AS broadcast_id, tgt.old_status AS old_status
+            ), bc AS (
+                UPDATE outbound_broadcasts b
+                SET queued    = b.queued + 1,
+                    failed    = GREATEST(b.failed    - (CASE WHEN upd.old_status = 'failed'    THEN 1 ELSE 0 END), 0),
+                    ambiguous = GREATEST(b.ambiguous - (CASE WHEN upd.old_status = 'ambiguous' THEN 1 ELSE 0 END), 0),
+                    status    = CASE WHEN b.status = 'completed' THEN 'sending' ELSE b.status END,
+                    completed_at = CASE WHEN b.status = 'completed' THEN NULL ELSE b.completed_at END
+                FROM upd WHERE b.id = upd.broadcast_id AND b.tenant_id = @tid
+                RETURNING b.id
+            )
+            SELECT broadcast_id FROM upd";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("mid", messageId);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("pid", projectId);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is Guid g ? g : (Guid?)null;
+    }
 }

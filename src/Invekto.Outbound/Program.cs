@@ -705,6 +705,7 @@ static int ProjectSendStatus(string? code) => code switch
     ErrorCodes.ProjectRunNotResumable => 409,
     ErrorCodes.ProjectRunNotCancellable => 409,
     ErrorCodes.ProjectRunInProgress => 409,
+    ErrorCodes.ProjectResendNotEligible => 409,   // Rapor resend: not failed/ambiguous or not this project's
     ErrorCodes.ProjectNoContent => 422,
     ErrorCodes.ProjectNoTargets => 422,
     ErrorCodes.ProjectHsmSendNotSupported => 422,
@@ -904,6 +905,54 @@ app.MapPost("/api/v1/projects/send/test", async (HttpContext ctx, [FromServices]
     if (response == null)
         return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "Test mesajı gönderilemedi.", requestId), statusCode: ProjectSendStatus(errorCode));
     return Results.Json(response, statusCode: 202);
+});
+
+// ─── FEAT-PROJELER Rapor (delivery report) drawer: runs dropdown + paged recipient table + resend ───
+// Read paths are gated (Projects) + 404-ownership-probed in the service. Resend re-queues ONE
+// undelivered (failed/ambiguous) recipient via its PRESERVED route (the existing worker re-sends).
+
+app.MapGet("/api/v1/projects/{id:long}/report/runs", async (HttpContext ctx, [FromServices] ProjectsService svc, long id) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (runs, errorCode, message) = await svc.GetReportRunsAsync(tenantContext.TenantId, id, ctx.RequestAborted);
+    if (runs == null)
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "Rapor okunamadı.", requestId), statusCode: ProjectSendStatus(errorCode));
+    return Results.Ok(runs);
+});
+
+app.MapGet("/api/v1/projects/{id:long}/report/recipients", async (
+    HttpContext ctx, [FromServices] ProjectsService svc, long id,
+    string? campaignId, string? search, int page, int pageSize) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (pageData, errorCode, message) = await svc.GetReportRecipientsAsync(
+        tenantContext.TenantId, id, campaignId, search, page < 1 ? 1 : page, pageSize < 1 ? 50 : pageSize, ctx.RequestAborted);
+    if (pageData == null)
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "Rapor okunamadı.", requestId), statusCode: ProjectSendStatus(errorCode));
+    return Results.Ok(pageData);
+});
+
+app.MapPost("/api/v1/projects/{id:long}/report/resend", async (HttpContext ctx, [FromServices] ProjectsService svc, long id, ProjectResendRequest? request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+    if (request == null || request.MessageId <= 0)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.ProjectInvalidPayload, "message_id gerekli (pozitif tamsayı).", requestId), statusCode: 400);
+
+    var (detail, errorCode, message) = await svc.ResendAsync(tenantContext.TenantId, id, request.MessageId, ctx.RequestAborted);
+    if (detail == null)
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "Yeniden gönderilemedi.", requestId), statusCode: ProjectSendStatus(errorCode));
+    return Results.Ok(detail);
 });
 
 // ============================================================

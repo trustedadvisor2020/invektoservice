@@ -599,6 +599,78 @@ public sealed class ProjectsService
     }
 
     // ------------------------------------------------------------------
+    // Rapor (delivery report) drawer — runs dropdown + paged recipient table + single-recipient resend.
+    // Read paths are gated (Projects) + 404-ownership-probed so a foreign/archived project leaks nothing.
+    // ------------------------------------------------------------------
+
+    /// <summary>Report run dropdown: the project's runs (newest first) with their live partition counters.</summary>
+    public async Task<(List<ProjectRunDto>? runs, string? errorCode, string? message)> GetReportRunsAsync(
+        int tenantId, long projectId, CancellationToken ct)
+    {
+        if (!Allowed(tenantId)) return (null, ErrorCodes.ProjectDisabled, "Projeler bu hesap için etkin değil.");
+        try
+        {
+            var detail = await _repo.GetAsync(tenantId, projectId, ct); // 404 ownership probe
+            if (detail == null) return (null, ErrorCodes.ProjectNotFound, $"Proje {projectId} bulunamadı.");
+            return (await _repo.GetRunsAsync(tenantId, projectId, ct), null, null);
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"project report runs failed (tenant={tenantId}, project={projectId}): {ex.Message}");
+            return (null, ErrorCodes.ProjectDbError, "Veritabanı hatası; lütfen tekrar deneyin.");
+        }
+    }
+
+    /// <summary>Report recipient table: server-paged status rows, optional run (campaign_id) + phone-substring filters.</summary>
+    public async Task<(ProjectRecipientsPage? page, string? errorCode, string? message)> GetReportRecipientsAsync(
+        int tenantId, long projectId, string? campaignId, string? search, int page, int pageSize, CancellationToken ct)
+    {
+        if (!Allowed(tenantId)) return (null, ErrorCodes.ProjectDisabled, "Projeler bu hesap için etkin değil.");
+        try
+        {
+            var detail = await _repo.GetAsync(tenantId, projectId, ct); // 404 ownership probe
+            if (detail == null) return (null, ErrorCodes.ProjectNotFound, $"Proje {projectId} bulunamadı.");
+            return (await _repo.GetRecipientsAsync(tenantId, projectId, campaignId, search, page, pageSize, ct), null, null);
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"project report recipients failed (tenant={tenantId}, project={projectId}): {ex.Message}");
+            return (null, ErrorCodes.ProjectDbError, "Veritabanı hatası; lütfen tekrar deneyin.");
+        }
+    }
+
+    /// <summary>
+    /// Resend ONE undelivered recipient (failed/ambiguous) of a project: re-queue the message for a real
+    /// re-send via its PRESERVED route (the worker picks it up — no new send-orchestration path), then
+    /// recompute the project roll-up so its status reflects the re-opened run. Returns the fresh detail.
+    /// INV-OB-090 if the message is not resend-eligible / not this project's (no existence leak).
+    /// </summary>
+    public async Task<(ProjectDetail? detail, string? errorCode, string? message)> ResendAsync(
+        int tenantId, long projectId, long messageId, CancellationToken ct)
+    {
+        if (!Allowed(tenantId)) return (null, ErrorCodes.ProjectDisabled, "Projeler bu hesap için etkin değil.");
+        try
+        {
+            var broadcastId = await _repo.RequeueForResendAsync(tenantId, projectId, messageId, ct);
+            if (broadcastId == null)
+                return (null, ErrorCodes.ProjectResendNotEligible,
+                    "Bu mesaj yeniden gönderilemez (yalnız başarısız/belirsiz durumdakiler yeniden gönderilebilir).");
+
+            await _repo.RecomputeRollupAsync(tenantId, projectId, ct);
+            var detail = await _repo.GetAsync(tenantId, projectId, ct);
+            if (detail == null) return (null, ErrorCodes.ProjectNotFound, $"Proje {projectId} bulunamadı.");
+            _logger.SystemInfo(
+                $"project resend re-queued: tenant={tenantId}, project={projectId}, message={messageId}, broadcast={broadcastId}");
+            return (detail, null, null);
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"project resend failed (tenant={tenantId}, project={projectId}, message={messageId}): {ex.Message}");
+            return (null, ErrorCodes.ProjectDbError, "Veritabanı hatası; lütfen tekrar deneyin.");
+        }
+    }
+
+    // ------------------------------------------------------------------
     // Run lifecycle — pause / resume / cancel (SS-D). Each is gated (Projects) + atomic in the repo;
     // on success the rollup is recomputed so the returned ProjectDetail reflects the new status/counters.
     // ------------------------------------------------------------------

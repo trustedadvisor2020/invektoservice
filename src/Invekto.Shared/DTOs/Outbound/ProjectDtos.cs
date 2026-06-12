@@ -222,3 +222,62 @@ public sealed class ProjectTestSendRequest
     /// <summary>HSM test: dynamic HEADER media public URL (template.headerMedia). Null = omitted.</summary>
     [JsonPropertyName("template_header_media_url")] public string? TemplateHeaderMediaUrl { get; set; }
 }
+
+// =============================================================
+// FEAT-PROJELER — Rapor (per-run delivery report) — 2026-06-12
+// A project's runs (bulk_send_jobs) -> broadcasts -> per-recipient outbound_messages.
+// The report drawer lists each run (dropdown) and a searchable/paged per-recipient status
+// table; an undelivered recipient (failed/ambiguous) can be resent. Read-only aggregation
+// over existing rows + an in-place re-queue for resend (no new send-orchestration path).
+// =============================================================
+
+/// <summary>One run (gönderim) of a project — a dropdown entry in the report drawer. Counters are
+/// the live partition sums over the run's broadcasts (a recipient is in exactly one bucket).</summary>
+public sealed class ProjectRunDto
+{
+    [JsonPropertyName("campaign_id")] public string CampaignId { get; set; } = "";
+    [JsonPropertyName("status")] public string Status { get; set; } = "";
+    [JsonPropertyName("created_at")] public DateTime CreatedAt { get; set; }
+    [JsonPropertyName("total")] public int Total { get; set; }
+    [JsonPropertyName("queued")] public int Queued { get; set; }
+    [JsonPropertyName("sent")] public int Sent { get; set; }
+    [JsonPropertyName("delivered")] public int Delivered { get; set; }
+    [JsonPropertyName("read")] public int Read { get; set; }
+    [JsonPropertyName("failed")] public int Failed { get; set; }
+    [JsonPropertyName("ambiguous")] public int Ambiguous { get; set; }
+    [JsonPropertyName("cancelled")] public int Cancelled { get; set; }
+}
+
+/// <summary>One recipient row in the report table: the message's current status + (when undelivered)
+/// the failure reason, plus the delivery timestamps. <see cref="CanResend"/> is true only for the
+/// resend-eligible terminal states (failed / ambiguous) — the UI shows the Resend button on those.</summary>
+public sealed class ProjectRecipientDto
+{
+    [JsonPropertyName("message_id")] public long MessageId { get; set; }
+    [JsonPropertyName("campaign_id")] public string CampaignId { get; set; } = "";
+    [JsonPropertyName("phone")] public string Phone { get; set; } = "";
+    [JsonPropertyName("status")] public string Status { get; set; } = "";
+    /// <summary>failed_reason (preferred) or provider_error_message; null for non-error states.</summary>
+    [JsonPropertyName("error")] public string? Error { get; set; }
+    [JsonPropertyName("delivered_at")] public DateTime? DeliveredAt { get; set; }
+    [JsonPropertyName("read_at")] public DateTime? ReadAt { get; set; }
+    [JsonPropertyName("last_attempt_at")] public DateTime? LastAttemptAt { get; set; }
+    [JsonPropertyName("can_resend")] public bool CanResend { get; set; }
+}
+
+/// <summary>Server-paged recipient page for GET .../report/recipients. <see cref="Total"/> is the full
+/// filtered count (drives pagination + the "export all filtered" CSV which re-fetches with a big page).</summary>
+public sealed class ProjectRecipientsPage
+{
+    [JsonPropertyName("items")] public List<ProjectRecipientDto> Items { get; set; } = new();
+    [JsonPropertyName("total")] public int Total { get; set; }
+    [JsonPropertyName("page")] public int Page { get; set; }
+    [JsonPropertyName("page_size")] public int PageSize { get; set; }
+}
+
+/// <summary>POST .../report/resend — re-queue ONE undelivered recipient (by message id) for a real
+/// re-send via the project's preserved send config. Only 'failed'/'ambiguous' rows are eligible.</summary>
+public sealed class ProjectResendRequest
+{
+    [JsonPropertyName("message_id")] public long MessageId { get; set; }
+}

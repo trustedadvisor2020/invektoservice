@@ -574,6 +574,9 @@ public static class ErrorCodes
     public const string ContactListRecordDuplicate = "INV-OB-088";         // Manual add: the normalized phone already exists in this list (uq_list_record_list_phone, constraint-name-filtered 23505 — race-safe, no SELECT pre-check). 409.
     public const string ContactListRecordNotFound = "INV-OB-089";          // Single-record delete: record id not in this tenant's list (already deleted, or foreign — no existence leak). 404.
 
+    // FEAT-PROJELER — Rapor (delivery report) drawer: single-recipient resend (INV-OB-090+)
+    public const string ProjectResendNotEligible = "INV-OB-090";           // Report resend: message not found / not 'failed'|'ambiguous' / not one of this project's recipients (no existence leak). Only undelivered terminal rows are resendable. 409.
+
     // Lead Management errors (INV-LD-xxx) -- GR-3.13
     public const string LeadInvalidPayload = "INV-LD-001";
     public const string LeadNotFound = "INV-LD-002";
