@@ -3961,6 +3961,10 @@ app.MapGet("/api/v1/outbound/projects/{id:long}/report/recipients", async (HttpC
 app.MapPost("/api/v1/outbound/projects/{id:long}/report/resend", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
     await OutboundProxyPost(ctx, obClient, jsonLog, $"/api/v1/projects/{id}/report/resend"));
 
+// Bulk resend: re-queue EVERY undelivered (failed/ambiguous) recipient of the project at once (no payload).
+app.MapPost("/api/v1/outbound/projects/{id:long}/report/resend-bulk", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, $"/api/v1/projects/{id}/report/resend-bulk"));
+
 // FEATURE B — Rapor status-pull: pull live cxapi message-status for the run's pending recipients (gated inert).
 app.MapPost("/api/v1/outbound/projects/{id:long}/report/refresh-status", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
     await OutboundProxyPost(ctx, obClient, jsonLog, $"/api/v1/projects/{id}/report/refresh-status"));

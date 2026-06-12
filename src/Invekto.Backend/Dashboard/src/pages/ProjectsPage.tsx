@@ -314,6 +314,10 @@ export default function ProjectsPage() {
   const [reportError, setReportError] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<number | null>(null);
   const [reportExporting, setReportExporting] = useState(false);
+  // Bulk resend (ALL project errors): confirm gate + in-flight flag. The count shown in the confirm is the
+  // sum of failed+ambiguous across all runs (the bulk scope is the whole project, not the selected run).
+  const [bulkResendConfirm, setBulkResendConfirm] = useState(false);
+  const [bulkResending, setBulkResending] = useState(false);
   // Bumped on resend to force a recipients re-fetch (status changed server-side).
   const [reportReloadTick, setReportReloadTick] = useState(0);
 
@@ -946,6 +950,7 @@ export default function ProjectsPage() {
     setReportData(null);
     setReportError(null);
     setReportPullNote(null);
+    setBulkResendConfirm(false);
   }
 
   // FEATURE B (status-pull): pull live cxapi message-status for the current run's pending recipients,
@@ -1014,6 +1019,36 @@ export default function ProjectsPage() {
       setReportError(errText(e, 'Yeniden gönderilemedi'));
     } finally {
       setResendingId(null);
+    }
+  }
+
+  // Resend EVERY undelivered (failed/ambiguous) recipient of the WHOLE project in one server-side transaction,
+  // then refresh runs + recipients + the project table (same trio as the single resend). A 0-requeued result is
+  // a successful no-op (nothing was eligible) — surfaced as an info note, not an error.
+  async function doResendAll() {
+    if (!reportProject) return;
+    setBulkResending(true);
+    setReportError(null);
+    setReportPullNote(null);
+    try {
+      const { requeued } = await api.projectReportResendBulk(reportProject.id);
+      setBulkResendConfirm(false);
+      setReportPullNote(
+        requeued > 0
+          ? `${requeued.toLocaleString('tr-TR')} hatalı kayıt yeniden gönderim için kuyruğa alındı.`
+          : 'Yeniden gönderilecek hatalı kayıt bulunamadı.');
+      try {
+        setReportRuns(await api.getProjectReportRuns(reportProject.id));
+      } catch (e) {
+        console.warn('[rapor] toplu resend sonrası gönderim sayaçları yenilenemedi:', errText(e, 'runs refresh failed'));
+      }
+      setReportReloadTick((t) => t + 1);
+      void loadProjects();
+    } catch (e) {
+      setBulkResendConfirm(false);
+      setReportError(errText(e, 'Hatalı kayıtlar yeniden gönderilemedi'));
+    } finally {
+      setBulkResending(false);
     }
   }
 
@@ -2069,6 +2104,26 @@ export default function ProjectsPage() {
               >
                 {reportExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />} CSV
               </Button>
+              {(() => {
+                // Bulk resend scope is the WHOLE project (Q kararı), so the eligible count is failed+ambiguous
+                // summed across ALL runs — independent of the selected run / phone filter.
+                const bulkEligible = reportRuns.reduce((a, r) => a + r.failed + r.ambiguous, 0);
+                return (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="ml-auto text-red-600 border-red-200 hover:bg-red-50"
+                    onClick={() => { setReportError(null); setBulkResendConfirm(true); }}
+                    disabled={bulkResending || reportLoading || bulkEligible === 0}
+                    title={bulkEligible === 0
+                      ? 'Yeniden gönderilecek hatalı kayıt yok'
+                      : 'Projedeki tüm başarısız/belirsiz kayıtları tek seferde yeniden gönder'}
+                  >
+                    {bulkResending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Reply className="w-3.5 h-3.5" />}
+                    {bulkEligible > 0 ? `Hataları Tekrar Gönder (${bulkEligible.toLocaleString('tr-TR')})` : 'Hataları Tekrar Gönder'}
+                  </Button>
+                );
+              })()}
             </div>
 
             {/* summary chips for the selected run (or all runs) */}
@@ -2172,6 +2227,48 @@ export default function ProjectsPage() {
               </div>
             )}
           </div>
+
+          {/* Bulk resend confirm — sits ABOVE the drawer (z-60). Real WhatsApp sends, so it is gated. */}
+          {bulkResendConfirm && (() => {
+            const bulkEligible = reportRuns.reduce((a, r) => a + r.failed + r.ambiguous, 0);
+            return (
+              <div
+                className="fixed inset-0 z-[60] flex items-center justify-center bg-navy-900/40 p-4"
+                onMouseDown={e => { if (e.target === e.currentTarget && !bulkResending) setBulkResendConfirm(false); }}
+              >
+                <div className="bg-white border border-navy-100 rounded-xl shadow-soft relative w-full max-w-md">
+                  <button
+                    onClick={() => setBulkResendConfirm(false)}
+                    disabled={bulkResending}
+                    className="absolute right-3 top-3 text-navy-300 hover:text-navy-600 disabled:opacity-40"
+                    aria-label="Kapat"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                  <div className="px-5 py-4 border-b border-navy-50">
+                    <h3 className="text-base font-semibold text-navy-900 flex items-center gap-2">
+                      <Reply className="w-4 h-4 text-red-500" /> Hataları tekrar gönder
+                    </h3>
+                    <p className="text-sm text-navy-500 mt-0.5 truncate">{reportProject.name}</p>
+                  </div>
+                  <div className="px-5 py-4 space-y-2 text-sm text-navy-700">
+                    <p>
+                      Bu projedeki <b className="text-red-600 tabular-nums">{bulkEligible.toLocaleString('tr-TR')}</b> başarısız/belirsiz
+                      kayıt, projenin içeriğiyle yeniden gönderim için kuyruğa alınacak.
+                    </p>
+                    <p className="text-[12px] text-navy-400">Tüm gönderimler kapsanır — seçili gönderim veya numara filtresi dikkate alınmaz.</p>
+                  </div>
+                  <div className="px-5 py-4 border-t border-navy-50 flex justify-end gap-2">
+                    <Button variant="ghost" disabled={bulkResending} onClick={doResendAll}>
+                      {bulkResending
+                        ? <><Loader2 className="w-4 h-4 animate-spin" /> Kuyruğa alınıyor…</>
+                        : <><Reply className="w-4 h-4 text-red-500" /> Tümünü tekrar gönder</>}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 

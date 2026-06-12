@@ -675,6 +675,37 @@ public sealed class ProjectsService
         }
     }
 
+    /// <summary>
+    /// Bulk resend: re-queue EVERY undelivered (failed/ambiguous) recipient of a project in one transaction,
+    /// each via its PRESERVED route (the worker re-sends — no new send-orchestration path), then recompute the
+    /// roll-up so the project status reflects the re-opened runs. Returns how many rows were re-queued; 0 is a
+    /// successful no-op (nothing was eligible), NOT an error. Same eligibility/ownership scoping as the
+    /// single-recipient <see cref="ResendAsync"/> (bulk_send_jobs.project_id), so nothing foreign is touched.
+    /// </summary>
+    public async Task<(ProjectResendBulkResultDto? result, string? errorCode, string? message)> ResendAllAsync(
+        int tenantId, long projectId, CancellationToken ct)
+    {
+        if (!Allowed(tenantId)) return (null, ErrorCodes.ProjectDisabled, "Projeler bu hesap için etkin değil.");
+        try
+        {
+            var detail = await _repo.GetAsync(tenantId, projectId, ct); // 404 ownership probe
+            if (detail == null) return (null, ErrorCodes.ProjectNotFound, $"Proje {projectId} bulunamadı.");
+
+            var requeued = await _repo.RequeueAllForResendAsync(tenantId, projectId, ct);
+            if (requeued > 0)
+                await _repo.RecomputeRollupAsync(tenantId, projectId, ct);
+
+            _logger.SystemInfo(
+                $"project bulk resend re-queued: tenant={tenantId}, project={projectId}, requeued={requeued}");
+            return (new ProjectResendBulkResultDto { Requeued = requeued }, null, null);
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"project bulk resend failed (tenant={tenantId}, project={projectId}): {ex.Message}");
+            return (null, ErrorCodes.ProjectDbError, "Veritabanı hatası; lütfen tekrar deneyin.");
+        }
+    }
+
     /// <summary>FEATURE B (status-pull): cap on the number of wamids one "Durumu Yenile" pulls a live status for.</summary>
     private const int StatusPullCap = 200;
 

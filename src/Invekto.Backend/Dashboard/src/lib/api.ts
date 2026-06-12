@@ -2479,6 +2479,13 @@ class OpsApiClient {
     });
   }
 
+  // Resend EVERY undelivered (failed/ambiguous) recipient of the project at once; returns {requeued}.
+  async projectReportResendBulk(projectId: number): Promise<ProjectResendBulkResult> {
+    return this.request<ProjectResendBulkResult>(`/api/v1/outbound/projects/${projectId}/report/resend-bulk`, {
+      method: 'POST',
+    });
+  }
+
   // FEATURE B: pull live cxapi message-status for the run's pending recipients (optional run scope).
   // Returns {checked, updated}. Gated server-side by the CxapiSend allowlist (403 INV-OB-094 when off).
   async projectRefreshReportStatus(projectId: number, campaignId?: string): Promise<ProjectStatusPullResult> {
@@ -2793,6 +2800,11 @@ export interface ProjectRecipientsPage {
 export interface ProjectStatusPullResult {
   checked: number;
   updated: number;
+}
+
+// Bulk resend result: how many failed/ambiguous recipients were re-queued (0 = nothing was eligible).
+export interface ProjectResendBulkResult {
+  requeued: number;
 }
 
 // Send-config fields are OPTIONAL. template_kind is the DRIVER: when set, the whole config block

@@ -985,6 +985,21 @@ app.MapPost("/api/v1/projects/{id:long}/report/resend", async (HttpContext ctx, 
     return Results.Ok(detail);
 });
 
+// Bulk resend: re-queue EVERY undelivered (failed/ambiguous) recipient of the project at once (no payload).
+// Same preserved-route re-send as the single resend; returns {requeued} (0 = nothing eligible, still 200 OK).
+app.MapPost("/api/v1/projects/{id:long}/report/resend-bulk", async (HttpContext ctx, [FromServices] ProjectsService svc, long id) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (result, errorCode, message) = await svc.ResendAllAsync(tenantContext.TenantId, id, ctx.RequestAborted);
+    if (result == null)
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "Yeniden gönderilemedi.", requestId), statusCode: ProjectSendStatus(errorCode));
+    return Results.Ok(result);
+});
+
 // FEATURE B (status-pull): pull live cxapi message-status for the run's pending (wamid-bearing) recipients
 // and apply it via the idempotent ApplyDeliveryStatusAsync. Gated by the CxapiSend allowlist (INV-OB-094 inert).
 app.MapPost("/api/v1/projects/{id:long}/report/refresh-status", async (HttpContext ctx, [FromServices] ProjectsService svc, long id, ProjectStatusPullRequest? request) =>

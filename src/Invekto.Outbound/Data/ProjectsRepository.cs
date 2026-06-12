@@ -1055,4 +1055,59 @@ public class ProjectsRepository
         var result = await cmd.ExecuteScalarAsync(ct);
         return result is Guid g ? g : (Guid?)null;
     }
+
+    /// <summary>
+    /// Bulk variant of <see cref="RequeueForResendAsync"/>: re-queue EVERY 'failed'/'ambiguous' recipient that
+    /// belongs to ANY of this project's runs, in one transaction via each row's PRESERVED route (the worker
+    /// re-sends — no new send-orchestration path). The broadcast counters are decremented in aggregate per
+    /// broadcast (failed/ambiguous → queued) and any 'completed' broadcast is re-opened to 'sending'. Returns
+    /// the number of rows actually re-queued (0 when nothing was eligible — caller treats that as a no-op).
+    /// </summary>
+    public virtual async Task<int> RequeueAllForResendAsync(
+        int tenantId, long projectId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            WITH tgt AS (
+                SELECT m.id, m.broadcast_id, m.status AS old_status
+                FROM outbound_messages m
+                WHERE m.tenant_id = @tid
+                  AND m.status IN ('failed','ambiguous')
+                  AND m.broadcast_id IN (
+                      SELECT unnest(broadcast_ids) FROM bulk_send_jobs
+                      WHERE tenant_id = @tid AND project_id = @pid)
+                FOR UPDATE
+            ), upd AS (
+                UPDATE outbound_messages m
+                SET status = 'queued', attempt_count = 0,
+                    provider_status_code = NULL, provider_status = NULL, provider_request_id = NULL,
+                    provider_error_message = NULL, failed_reason = NULL, external_message_id = NULL,
+                    delivered_at = NULL, read_at = NULL, last_attempt_at = NULL
+                FROM tgt WHERE m.id = tgt.id
+                RETURNING tgt.broadcast_id AS broadcast_id, tgt.old_status AS old_status
+            ), agg AS (
+                SELECT broadcast_id,
+                       COUNT(*)::int                                              AS requeued,
+                       COUNT(*) FILTER (WHERE old_status = 'failed')::int         AS failed_dec,
+                       COUNT(*) FILTER (WHERE old_status = 'ambiguous')::int      AS ambiguous_dec
+                FROM upd
+                GROUP BY broadcast_id
+            ), bc AS (
+                UPDATE outbound_broadcasts b
+                SET queued    = b.queued + agg.requeued,
+                    failed    = GREATEST(b.failed    - agg.failed_dec,    0),
+                    ambiguous = GREATEST(b.ambiguous - agg.ambiguous_dec, 0),
+                    status    = CASE WHEN b.status = 'completed' THEN 'sending' ELSE b.status END,
+                    completed_at = CASE WHEN b.status = 'completed' THEN NULL ELSE b.completed_at END
+                FROM agg WHERE b.id = agg.broadcast_id AND b.tenant_id = @tid
+                RETURNING b.id
+            )
+            SELECT COUNT(*)::int FROM upd";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("pid", projectId);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is int n ? n : 0;
+    }
 }

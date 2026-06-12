@@ -298,3 +298,11 @@ public sealed class ProjectStatusPullRequest
 {
     [JsonPropertyName("campaign_id")] public string? CampaignId { get; set; }
 }
+
+/// <summary>POST .../report/resend-bulk — re-queue EVERY undelivered (failed/ambiguous) recipient of the
+/// project in one transaction via its preserved send config. <see cref="Requeued"/> is how many rows were
+/// actually re-queued (0 when nothing was eligible — an empty bulk is a no-op, not an error).</summary>
+public sealed class ProjectResendBulkResultDto
+{
+    [JsonPropertyName("requeued")] public int Requeued { get; set; }
+}
