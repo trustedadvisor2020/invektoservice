@@ -1,0 +1,72 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "slug": "20260612-cxapi-stranded-sending-recovery",
+  "risk": "MEDIUM",
+  "status": "PLANNING",
+  "created_at": "2026-06-12T11:36:00Z",
+  "updated_at": "2026-06-12T11:36:00Z",
+  "plan": {
+    "summary": "FEATURE C: add a periodic, route-scoped, staleness-gated stranded-'sending' recovery to MessageSenderService so a cxapi row leased ('sending') but never POSTed (claimed→crash mid-run, no restart) is reset to 'queued' WITHOUT waiting for a service restart. Complements the e62ce0e8 worker-wedge fix (which made the periodic 'posting'→'ambiguous' sweep restart-free) and closes the gap exposed by the 2026-06-12 second incident where 3 messages stranded in 'sending' (attempt_count=0) after a mid-dispatch JWT-crash restart.",
+    "q_intent": "FEATURE C — recovery sweep 'sending' kapsamı (2026-06-12 ikinci incident'tan): MessageSenderService.TryRecoverStrandedAsync'e route-scoped + staleness-gated stale-'sending' reset ekle (şu an yalnız 'posting'→'ambiguous' periyodik kurtarılıyor; 'sending' reset STARTUP-only → restart-ortası strand'lar restart'a kadar öksüz kalıyor).",
+    "interview_notes": "AskUserQuestion 2/2 gri nokta (2026-06-12): (1) STALENESS ANCHOR = Q 'yeni claimed_at kolonu (migration)' seçti — dequeue claim 'sending' yaparken hiçbir timestamp damgalamıyordu; last_attempt_at yeniden-kullanım yerine temiz semantikli ayrı claimed_at TIMESTAMPTZ kolonu (last_attempt_at saf 'son POST denemesi' kalır). (2) StaleSendingMinutes = Q '3 dk' seçti (posting=5'ten ayrı; 'sending' pre-POST + duplicate-safe olduğundan düşük eşik güvenli, strand'ı daha hızlı kurtarır). KARARLAR (planlama): (a) 'sending'→'queued' broadcast counter DEĞİŞTİRMEZ — claim broadcast.queued'ı azaltmıyor (DequeueMessagesAsync sadece status set ediyor), yani 'queued'/'sending'/'posting' hepsi broadcast.queued (non-terminal) sayılıyor → reset counter-neutral, posting sweep'in CTE/completion'ı GEREKMEZ. (b) route-scoped (send_route='wapcrm_cxapi') — startup reset ile tutarlı, bridge'e dokunmaz. (c) startup ResetStrandedCxapiSendingAsync (ungated, tüm 'sending') AYNEN kalır — boot'ta live send yok, gate gereksiz. (d) periyodik sweep mevcut RecoverySweepIntervalMs (2dk) throttle'ı paylaşır, _isProcessing guard içinde (send'lerle serialize). (e) partial index idx_outbound_messages_cxapi_sending (idx_..._queued precedent'i) periyodik sweep'in full-table-scan'ini önler. (f) INV-OB-096 = sending-recovery domain marker (kendi try/catch'i, 065 ambiguous/posting domain'iyle karışmasın).",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "Migration 064-cxapi-stranded-sending-recovery.sql: additive + idempotent — (a) ALTER TABLE outbound_messages ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMPTZ; (b) CREATE INDEX IF NOT EXISTS idx_outbound_messages_cxapi_sending ON outbound_messages (claimed_at) WHERE send_route='wapcrm_cxapi' AND status='sending'; (c) DO $verify$ INV-SEED-064 fails loud if claimed_at column absent; (d) canonical arch/db/outbound.sql synced (claimed_at column + index). No CHECK-constraint change.", "verified": false },
+      { "id": "AC2", "criterion": "DequeueMessagesAsync claim UPDATE stamps claimed_at = NOW() alongside status='sending' (hot-path, additive — claim-time anchor for staleness). No other dequeue behaviour changes; claimed_at NOT added to RETURNING.", "verified": false },
+      { "id": "AC3", "criterion": "New OutboundRepository.SweepStrandedSendingAsync(int staleSendingMinutes) resets cxapi 'sending'→'queued' WHERE send_route='wapcrm_cxapi' AND status='sending' AND claimed_at IS NOT NULL AND claimed_at < NOW() - make_interval(mins => @mins) (parameterized, no string interpolation), returns affected row count. No broadcast counter touch.", "verified": false },
+      { "id": "AC4", "criterion": "CxapiSendOptions.StaleSendingMinutes (default 3) added; MessageSenderService.TryRecoverStrandedAsync calls the sending sweep inside the existing throttle + _isProcessing guard, in its own try/catch(NpgsqlException)→INV-OB-096, logging a SystemWarn with the reset count when >0. INV-OB-096 registered in ErrorCodes.cs + errors.md. Full solution builds clean.", "verified": false }
+    ]
+  "allowed_files": [
+    "arch/db/migrations/064-cxapi-stranded-sending-recovery.sql",
+    "arch/db/outbound.sql",
+    "src/Invekto.Outbound/Services/CxapiSendOptions.cs",
+    "src/Invekto.Outbound/Data/OutboundRepository.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "arch/errors.md",
+    "src/Invekto.Outbound/Services/MessageSenderService.cs"
+  ],
+  "files_changed": [],
+  "git_diff": { "stats": { "insertions": 0, "deletions": 0, "files_count": 0 } },
+  "build": { "status": null },
+  "verification_questions": [
+    { "id": "Q1", "question": "Is the periodic 'sending'→'queued' reset duplicate-safe — can a message that was already POSTed to cxapi ever be reset and re-sent, causing a double delivery?", "category": "Data" },
+    { "id": "Q2", "question": "Can the staleness-gated periodic sweep race a legitimately in-flight send and wrongly reset a row that is about to be POSTed within the current dispatch cycle?", "category": "Lifecycle" },
+    { "id": "Q3", "question": "Does resetting 'sending'→'queued' keep the per-broadcast counters consistent (no double-count, no orphaned non-terminal counter), and is migration 064 additive/idempotent with the canonical outbound.sql kept in sync?", "category": "Data" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "MainAppCallbackClient / bridge path (mainapp_bridge rows must never be touched — route-scoped to wapcrm_cxapi only)",
+      "SweepStrandedPostingAsync 'posting'→'ambiguous' logic and its broadcast-completion CTE (unchanged)",
+      "Startup ResetStrandedCxapiSendingAsync (ungated all-'sending' reset stays as-is)",
+      "SetMessagePostingAsync CAS and the send/outcome path",
+      "chk_message_status CHECK constraint (no new status value — 'sending' and 'queued' already exist)"
+    ],
+    "non_goals": [
+      "No new message status value (reuses existing 'sending'/'queued')",
+      "No broadcast counter / completion change for the sending reset (counter-neutral)",
+      "No unit tests (DB-bound repo SQL; CLAUDE.md: no tests unless requested)",
+      "No change to message-status (FEATURE B) or the bridge",
+      "No clearing of claimed_at on non-'sending' transitions (harmless stale value, only read for status='sending')"
+    ],
+    "intentional_exclusions": [
+      "claimed_at NOT added to DequeueMessagesAsync RETURNING projection (worker does not consume it; only the sweep reads it in SQL)",
+      "No backfill of claimed_at for pre-existing rows (legacy 'sending' rows are cleared by the ungated startup reset on first deploy; the sweep guards claimed_at IS NOT NULL)"
+    ]
+  },
+  "error_handling": {
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "The periodic sending sweep has its own try/catch(NpgsqlException) that logs INV-OB-096 and is non-fatal: a transient DB error leaves the row safely 'sending' (never duplicated — pre-POST) and recovery retries next interval. OperationCanceledException (shutdown) and unexpected exceptions are intentionally NOT caught here — they propagate to ProcessQueue's typed catches (codebase policy). A non-zero reset is logged as a SystemWarn with the count.",
+    "try_catch_locations": [
+      "MessageSenderService.TryRecoverStrandedAsync (sending sweep — dedicated try/catch NpgsqlException → INV-OB-096)"
+    ]
+  },
+  "aha_moments": [
+    { "category": "RELIABILITY", "user_pain": "Bir restart gönderim ortasına denk geldiğinde mesajlar 'Gönderiliyor'da öksüz kalıp bir sonraki restart'a kadar hiç gönderilmiyordu (2026-06-12 incident: 3 mesaj 4+ saat askıda).", "suggestion": "Periyodik staleness-gated 'sending'→'queued' reset — strand 3 dk içinde otomatik kuyruğa döner, restart gerekmez.", "aha_moment": "Operatör hiçbir şey fark etmeden: askıda kalan mesaj birkaç dakika içinde kendiliğinden gönderiliyor." },
+    { "category": "RELIABILITY", "user_pain": "Servis /health'te HEALTHY görünürken gönderim sessizce donuyordu; manuel SQL requeue gerekiyordu.", "suggestion": "Self-healing recovery worker UP iken çalışır — manuel müdahale ortadan kalkar.", "aha_moment": "Q artık gece yarısı 'sending'de takılan satırları elle UPDATE etmek zorunda değil." },
+    { "category": "SPEED", "user_pain": "3 dk eşik posting'in 5 dk'sından daha hızlı — pre-POST strand'lar duplicate riski olmadan daha çabuk kurtulur.", "suggestion": "StaleSendingMinutes=3 ile bekleme süresi minimize.", "aha_moment": "Kampanya teslimi, bir node hıçkırığında bile neredeyse kesintisiz devam eder." },
+    { "category": "SUPPORT", "user_pain": "Destek, 'neden bu mesaj gitmedi' sorusunda strand'ı teşhis etmek için log kazıyordu.", "suggestion": "INV-OB-096 + SystemWarn count log'u recovery'yi görünür kılar.", "aha_moment": "Log'da '[cxapi-send] periodic recovery reset N stranded sending message(s)' satırını görüp olayı saniyede anlıyorsun." },
+    { "category": "RELIABILITY", "user_pain": "claimed_at olmadan staleness ölçülemez, taze-claim satır yanlışlıkla reset edilebilirdi.", "suggestion": "Ayrı claimed_at kolonu + staleness gate → taze satır asla resetlenmez.", "aha_moment": "Gerçek strand ile aktif gönderim arasındaki fark net: yalnızca 3 dk+ askıda kalan resetlenir." }
+  ],
+  "verdict": { "status": null, "iteration": 0 }
+}

@@ -187,6 +187,37 @@ public sealed class WapCrmMessageStatusResult
 }
 
 /// <summary>
+/// FEATURE B (BATCH status-pull): result of <c>WapCrmSendClient.GetMessageStatusesAsync</c>. <see cref="Ok"/>
+/// is true when the request was accepted — either the provider envelope returned <c>status==true</c> OR it
+/// returned <c>statusCode 626</c> ("no message found", a graceful empty, NOT an error). <see cref="Messages"/>
+/// carries one entry per wamid the provider returned; on 626 it is empty. <see cref="Error"/> is set only on a
+/// real failure (transport/timeout/unparseable/506/404) and NEVER contains the secret.
+/// </summary>
+public sealed class WapCrmBatchStatusResult
+{
+    public bool Ok { get; init; }
+    public IReadOnlyList<WapCrmMessageStatusEntry> Messages { get; init; } = Array.Empty<WapCrmMessageStatusEntry>();
+    public string? Error { get; init; }
+}
+
+/// <summary>
+/// One wamid's live status row from the batch message-status response (<c>data.messages[]</c>).
+/// When <see cref="Found"/> is false the provider had no record for that wamid on the queried channel and
+/// <see cref="MessageStatus"/> is null — the caller skips it (no status to apply).
+/// </summary>
+public sealed class WapCrmMessageStatusEntry
+{
+    /// <summary>The wamid this row answers (echoes the requested messageID).</summary>
+    public required string MessageId { get; init; }
+
+    /// <summary>True when the provider found this wamid on the queried instance.</summary>
+    public bool Found { get; init; }
+
+    /// <summary>Provider message status int (0=Pending,1=Sent,2=Delivered,3=Viewed/read,4=NotSent/failed,5=Deleted); null when not found.</summary>
+    public int? MessageStatus { get; init; }
+}
+
+/// <summary>
 /// Tuning for <see cref="WapCrmSendClient"/>. Bound from the optional
 /// "WapCrmSend" config section; safe defaults apply when absent. Carries NO
 /// secrets (the secret lives only in tenant_registry.settings_json).

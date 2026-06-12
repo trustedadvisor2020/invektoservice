@@ -41,6 +41,8 @@ public sealed class WapCrmSendClient
     private const string SecretKeyHeader = "X-CIB-SecretKey";
     private const string ChatOperationPath = "api/chatoperation";
     private const string MessageStatusPath = "api/message-status"; // FEATURE B: live status pull (instanceID + messageID/wamid)
+    private const int MessageStatusBatchMax = 100;                 // FEATURE B (batch): provider cap of messageIDs per /api/message-status call
+    private const string MessageStatusNotFoundCode = "626";        // FEATURE B (batch): "no message found" — graceful empty, not an error
     private const int TextMessageType = 1; // 1 = text (2 = image), per the cxapi guide
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -277,6 +279,115 @@ public sealed class WapCrmSendClient
             }
         }
         return null;
+    }
+
+    /// <summary>
+    /// FEATURE B (BATCH status-pull): pulls the LIVE provider status of up to <see cref="MessageStatusBatchMax"/>
+    /// already-sent messages in ONE call via <c>POST /api/message-status</c> ({instanceID, messageIDs:[wamid…]}).
+    /// Single attempt, bounded by the same per-request linked-CTS timeout as a send + the finite HttpClient.Timeout
+    /// backstop; NOT retried (best-effort — the ack webhook is the primary mechanism, this is the "Durumu Yenile"
+    /// complement). Parses the documented live shape <c>data.messages[]</c> ({messageID, found, messageStatus}).
+    /// Returns <see cref="WapCrmBatchStatusResult"/>: Ok=true with the rows when the envelope was accepted
+    /// (status==true) OR when the provider returned <c>statusCode 626</c> ("none found" → Ok=true, empty list,
+    /// graceful — NOT an error); Ok=false with a short diagnostic for any other rejection / transport / timeout.
+    /// Throws ONLY on a caller-contract violation or caller cancellation. The secret is attached PER REQUEST,
+    /// never on DefaultRequestHeaders, never logged.
+    /// </summary>
+    public async Task<WapCrmBatchStatusResult> GetMessageStatusesAsync(
+        int instanceId, IReadOnlyList<string> messageIds, string secretKey, int tenantId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(secretKey))
+            throw new ArgumentException("SecretKey is required.", nameof(secretKey));
+        if (messageIds == null || messageIds.Count == 0)
+            throw new ArgumentException("At least one messageId (wamid) is required.", nameof(messageIds));
+        if (messageIds.Count > MessageStatusBatchMax)
+            throw new ArgumentOutOfRangeException(nameof(messageIds), $"At most {MessageStatusBatchMax} messageIds per batch (provider limit).");
+        if (instanceId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(instanceId), "InstanceId must be a positive integer.");
+
+        var payloadJson = JsonSerializer.Serialize(new MessageStatusBatchPayload
+        {
+            InstanceId = instanceId,
+            MessageIds = messageIds
+        });
+
+        using var req = new HttpRequestMessage(HttpMethod.Post, MessageStatusPath)
+        {
+            Content = new StringContent(payloadJson, Encoding.UTF8, "application/json")
+        };
+        if (!req.Headers.TryAddWithoutValidation(SecretKeyHeader, secretKey))
+            throw new InvalidOperationException("Failed to attach the WapCRM secret header.");
+
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeoutCts.CancelAfter(_options.TimeoutMs);
+
+        try
+        {
+            using var response = await _httpClient.SendAsync(req, timeoutCts.Token).ConfigureAwait(false);
+            var http = (int)response.StatusCode;
+            var body = await response.Content.ReadAsStringAsync(timeoutCts.Token).ConfigureAwait(false);
+
+            WapCrmApiResponse<JsonElement>? env;
+            try
+            {
+                env = JsonSerializer.Deserialize<WapCrmApiResponse<JsonElement>>(body, JsonOptions);
+            }
+            catch (JsonException)
+            {
+                env = null;
+            }
+
+            if (env == null)
+                return new WapCrmBatchStatusResult { Ok = false, Error = $"Unparseable message-status response (HTTP {http})." };
+
+            if (!response.IsSuccessStatusCode || !env.Status)
+            {
+                // 626 = "no message found for any requested id" — a GRACEFUL empty result, not a failure
+                // (the caller applies nothing and the rows remain pullable). Any other status:false (e.g. 506
+                // channel mismatch, 404 bad request) is a real rejection.
+                if (string.Equals(env.StatusCode, MessageStatusNotFoundCode, StringComparison.Ordinal))
+                    return new WapCrmBatchStatusResult { Ok = true };
+                return new WapCrmBatchStatusResult { Ok = false, Error = $"message-status not accepted (HTTP {http}, statusCode {env.StatusCode ?? "-"})." };
+            }
+
+            var data = env.Data.Deserialize<MessageStatusBatchData>(JsonOptions);
+            if (data?.Messages == null || data.Messages.Count == 0)
+            {
+                _logger.SystemWarn(
+                    $"[cxapi-status] batch accepted but no messages in data: tenant={tenantId}, instance={instanceId}, requested={messageIds.Count}");
+                return new WapCrmBatchStatusResult { Ok = true };
+            }
+
+            var entries = new List<WapCrmMessageStatusEntry>(data.Messages.Count);
+            foreach (var m in data.Messages)
+            {
+                if (string.IsNullOrWhiteSpace(m.MessageId)) continue; // unusable row — no key to apply against
+                entries.Add(new WapCrmMessageStatusEntry
+                {
+                    MessageId = m.MessageId,
+                    Found = m.Found,
+                    MessageStatus = m.Found ? m.MessageStatus : null
+                });
+            }
+
+            return new WapCrmBatchStatusResult { Ok = true, Messages = entries };
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw; // caller cancellation / shutdown — propagate
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.SystemWarn(
+                $"[cxapi-status] batch timeout after {_options.TimeoutMs}ms: tenant={tenantId}, instance={instanceId}, requested={messageIds.Count}");
+            return new WapCrmBatchStatusResult { Ok = false, Error = "Request timed out." };
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.SystemWarn(
+                $"[cxapi-status] batch transport error: tenant={tenantId}, instance={instanceId}, error={ex.Message}");
+            return new WapCrmBatchStatusResult { Ok = false, Error = $"Transport error: {ex.Message}" };
+        }
     }
 
     /// <summary>
@@ -576,6 +687,27 @@ public sealed class WapCrmSendClient
     {
         [JsonPropertyName("instanceID")] public int InstanceId { get; init; }
         [JsonPropertyName("messageID")] public required string MessageId { get; init; }
+    }
+
+    /// <summary>cxapi /message-status BATCH wire body (FEATURE B). instanceID + messageIDs[] (the sent messages' wamids, ≤100).</summary>
+    private sealed class MessageStatusBatchPayload
+    {
+        [JsonPropertyName("instanceID")] public int InstanceId { get; init; }
+        [JsonPropertyName("messageIDs")] public required IReadOnlyList<string> MessageIds { get; init; }
+    }
+
+    /// <summary>cxapi /message-status BATCH response <c>data</c> envelope (FEATURE B): one row per requested wamid.</summary>
+    private sealed class MessageStatusBatchData
+    {
+        [JsonPropertyName("messages")] public List<MessageStatusRow>? Messages { get; init; }
+    }
+
+    /// <summary>One row of the batch message-status <c>data.messages[]</c> array.</summary>
+    private sealed class MessageStatusRow
+    {
+        [JsonPropertyName("messageID")] public string? MessageId { get; init; }
+        [JsonPropertyName("found")] public bool Found { get; init; }
+        [JsonPropertyName("messageStatus")] public int? MessageStatus { get; init; }
     }
 
     /// <summary>cxapi /chatoperation approved-template wire body (PR-4). NO language field — language is embedded in the templateId slug (INMA 2026-06-08).</summary>

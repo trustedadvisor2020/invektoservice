@@ -1,0 +1,78 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "slug": "20260612-cxapi-message-status-batch",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-12T11:48:00Z",
+  "updated_at": "2026-06-12T12:00:00Z",
+  "plan": {
+    "summary": "FEATURE B rework: add a BATCH message-status client method (GetMessageStatusesAsync — instanceID + messageIDs[] up to 100) parsing the CONFIRMED-LIVE response shape data.messages[] (found + messageStatus), and switch the ProjectsService status-pull caller to group pending wamids by resolved instance, chunk ≤100, and apply per-message via the existing idempotent monotonic ApplyDeliveryStatusAsync. Fixes a confirmed defect: the singular ExtractMessageStatus parsed a top-level data.messageStatus that the live endpoint never returns (it nests under data.messages[]), so 'Durumu Yenile' never applied anything.",
+    "q_intent": "dosya güncellendi. birden fazla mesajı aynı anda sorgula şeklinde düzeltildi dökümanda — messagestatus alanın tekrar yap",
+    "interview_notes": "LIVE-DOĞRULAMA (2026-06-12, server-exec curl -d @file ile): Önceki tüm '401 Invalid Request Model' = PowerShell'in curl gövdesini quote-mangling'i (gövde sunucuya bozuk ulaşıyordu = vendor'ın 'body didn't reach' guard'ı); endpoint BAŞTAN BERİ SAĞLAM. Gövde dosyadan gönderilince: 5050/instance-6570 (QR test) → 626 'Message(s) not found' (model KABUL, sadece QR mesajları WABA store'da yok); Medipol/instance-8784 (WABA) → status:true, data.messages[0].messageStatus=3 'Viewed' (DB'de 'sent' iken canlı 'read' — tam 'Durumu Yenile' senaryosu). C# HttpClient düzgün gövde gönderdiğinden 401 yaşamaz. AskUserQuestion 2/2 (2026-06-12): (1) Q 'batch metodu EKLE, tekili koru' seçti — GetMessageStatusAsync(singular) + ExtractMessageStatus AYNEN kalır (backward-compat, artık tüketilmiyor); yeni GetMessageStatusesAsync(batch) eklenir, caller batch'e geçer. (2) Q FEATURE C'yi DURAKLAT dedi (plan 20260612-cxapi-stranded-sending-recovery.json PLANNING'de bekliyor). KARARLAR: (a) request body {instanceID, messageIDs:[...]} JsonPropertyName 'messageIDs'; (b) response data.messages[] typed DTO ile parse (JsonOptions PropertyNameCaseInsensitive=true zaten açık) — found+messageStatus(0..5 nullable); (c) 626 (status:false) = 'hiçbiri bulunamadı' → Ok=true boş liste (HATA DEĞİL, graceful no-op); 506/404 vb. status:false → Ok=false error; (d) caller resolved-instance'a göre grupla (row.InstanceId ?? defaultInstanceId), ≤100 chunk, MapStatus + ApplyDeliveryStatusAsync DEĞİŞMEZ; (e) MapStatus aynı (1=sent,2=delivered,3=read,4=failed; 0=Pending/5=Deleted→null ignore); (f) yeni error code GEREKMEZ (mevcut INV-OB-094/095 caller'da).",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "New WapCrmSendClient.GetMessageStatusesAsync(int instanceId, IReadOnlyList<string> messageIds, string secret, int tenantId) POSTs {instanceID, messageIDs:[...]} (JsonPropertyName 'messageIDs'), attaches X-CIB-SecretKey per-request, bounded by the same linked-CTS timeout + finite backstop as the send. Guards: empty list and >100 throw ArgumentException/ArgumentOutOfRangeException; instanceId<=0 and blank secret throw.", "verified": false },
+      { "id": "AC2", "criterion": "Response parse reads the live shape: envelope WapCrmApiResponse<JsonElement>; status==true → deserialize data into {messages:[{messageID,found,messageStatus}]} (typed, case-insensitive). Returns WapCrmBatchStatusResult{Ok=true, Messages=[entries]}. found:false / null messageStatus entries are carried as found=false/null (caller skips), never applied as a status.", "verified": false },
+      { "id": "AC3", "criterion": "status:false with statusCode '626' → Ok=true with an EMPTY Messages list (graceful 'none found', not an error). Any other status:false (e.g. 506/404) or non-success HTTP or unparseable body → Ok=false with a short non-secret Error. Timeout/transport → Ok=false (mirror singular), secret never logged.", "verified": false },
+      { "id": "AC4", "criterion": "ProjectsService.RefreshRunStatusAsync groups pending wamids by resolved instanceId (row.InstanceId ?? defaultInstanceId; skip <=0), chunks ≤100, calls the batch method, and for each found entry with a non-null status applies WapCrmAckMapping.MapStatus via ApplyDeliveryStatusAsync (idempotent monotonic, UNCHANGED). checked = wamids queried, updated = applied; rollup recomputed only when updated>0. CxapiSend allowlist gate unchanged. Full solution builds clean (Shared changed → full build).", "verified": false }
+    ]
+  "allowed_files": [
+    "src/Invekto.Shared/Contracts/Inma/WapCrmSendClient.cs",
+    "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmSendDtos.cs",
+    "src/Invekto.Outbound/Services/ProjectsService.cs"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmSendDtos.cs", "change": "ADD WapCrmBatchStatusResult + WapCrmMessageStatusEntry DTOs (additive, no breaking change).", "is_new": false },
+    { "path": "src/Invekto.Shared/Contracts/Inma/WapCrmSendClient.cs", "change": "ADD GetMessageStatusesAsync (batch) + MessageStatusBatchMax/NotFoundCode consts + MessageStatusBatchPayload/MessageStatusBatchData/MessageStatusRow private DTOs. Singular GetMessageStatusAsync + ExtractMessageStatus UNCHANGED (preserved per Q).", "is_new": false },
+    { "path": "src/Invekto.Outbound/Services/ProjectsService.cs", "change": "RefreshRunStatusAsync: group pending by resolved instance, chunk ≤100, batch pull, apply per found entry via ApplyDeliveryStatusAsync (unchanged). +MessageStatusBatchSize const.", "is_new": false }
+  ],
+  "git_diff": { "stats": { "insertions": 0, "deletions": 0, "files_count": 3 } },
+  "build": { "status": "PASS", "command": "dotnet build InvektoServis.sln --no-restore -v q", "services": ["Invekto.Shared", "Invekto.Outbound", "Invekto.Backend (full solution)"] },
+  "verification_questions": [
+    { "id": "Q1", "question": "Does the batch parse correctly read the live shape data.messages[] (found + messageStatus 0..5), and does a found:false / messageStatus:null entry get skipped rather than wrongly applied as a status?", "category": "Data" },
+    { "id": "Q2", "question": "Is statusCode 626 ('none found') treated as a graceful empty result (Ok=true, no updates) and NOT as an error, while 506/404/transport failures keep the chunk uncounted-as-updated without throwing?", "category": "Process/Policy" },
+    { "id": "Q3", "question": "Does grouping pending wamids by resolved instanceId and chunking ≤100 preserve the original per-message idempotent monotonic apply (ApplyDeliveryStatusAsync) and the checked/updated accounting, with the secret never logged and the CxapiSend allowlist gate unchanged?", "category": "Lifecycle" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "GetMessageStatusAsync (singular) + ExtractMessageStatus — PRESERVED unchanged per Q (kept for backward-compat, no longer consumed)",
+      "ApplyDeliveryStatusAsync apply path + WapCrmAckMapping.MapStatus (reused as-is)",
+      "CxapiSend allowlist gate / InstanceId resolution semantics (row.InstanceId ?? defaultInstanceId)",
+      "Send path (chatoperation) + bridge",
+      "Any DB schema / migration (none needed)"
+    ],
+    "non_goals": [
+      "No removal/behaviour-change of the singular status method",
+      "No new error code (existing INV-OB-094/095 cover the caller)",
+      "No change to StatusPullCap (200) or the SQL pending-set query",
+      "No unit tests beyond optional mapper coverage (DB/HTTP-bound; CLAUDE.md: no tests unless requested)"
+    ],
+    "intentional_exclusions": [
+      "Singular method's now-stale top-level parse left intact (inert; no consumer) rather than fixed, per Q's 'preserve singular' choice",
+      "No retry/backoff on the batch status call (best-effort complement to the ack webhook; a failed chunk simply applies nothing and is re-pullable)"
+    ]
+  },
+  "error_handling": {
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Batch fetch failures are best-effort by design (the ack webhook is primary): a transport/timeout/non-626 status:false makes the chunk Ok=false and applies nothing (re-pullable), logged via the client's existing SystemWarn. 626 is an explicit graceful empty (no updates). DB errors on apply/rollup surface INV-OB-095 to the operator (unchanged). The secret is attached per-request, never logged. No path swallows an error silently.",
+    "try_catch_locations": [
+      "WapCrmSendClient.GetMessageStatusesAsync (timeout/transport typed catches — mirror singular)",
+      "ProjectsService.RefreshRunStatusAsync (NpgsqlException on apply/rollup → INV-OB-095)"
+    ]
+  },
+  "aha_moments": [
+    { "category": "RELIABILITY", "user_pain": "'Durumu Yenile' butonu hiçbir şeyi güncellemiyordu — parse canlı response şekline uymuyordu, sessizce 0 güncelliyordu.", "suggestion": "Canlı data.messages[] şeklini doğru parse et + Medipol WABA ile doğrulanmış mapping.", "aha_moment": "Operatör 'Durumu Yenile'ye basınca 'sent' satırların gerçek 'okundu' durumuna atladığını görüyor." },
+    { "category": "SPEED", "user_pain": "200 alıcılık projede tek tek sorgu 200 ayrı HTTP çağrısı = yavaş + rate-limit riski.", "suggestion": "100'lük batch ile en fazla 2 çağrı/instance.", "aha_moment": "Büyük kampanyada durum yenileme saniyeler değil, bir-iki istek." },
+    { "category": "UX", "user_pain": "Ack webhook'u kaçan mesajlar raporda yanlış (eski) durumda kalıyordu.", "suggestion": "Manuel toplu canlı çekim kaçan ack'leri tek tıkla kapatır.", "aha_moment": "Rapor ekranı bir tıkla provider'daki gerçek teslim/okundu ile hizalanıyor." },
+    { "category": "SUPPORT", "user_pain": "'Bu mesaj gitti mi okundu mu' sorusunda destek log/DB kazıyordu.", "suggestion": "found + messageStatusText canlı doğrunun tek kaynağı.", "aha_moment": "Destek butona basıp anında gerçek durumu okur." },
+    { "category": "RELIABILITY", "user_pain": "Provider 'hiçbiri bulunamadı' (626) dönünce hata gibi davranılırsa buton kullanıcıya hata gösterirdi.", "suggestion": "626'yı graceful boş sonuç olarak ele al (0 güncelleme, hata değil).", "aha_moment": "QR/eski mesajlarda buton sessizce '0 güncellendi' der, kullanıcıyı korkutmaz." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "iteration": 0,
+    "blocking_issues": [],
+    "raw_text": "Codex gpt-5.5 iter0: 12/12 CQ PASS + 3/3 CoVe PASS, BLOCKING_ISSUES: NONE. Live-verified against Medipol WABA instance 8784 (messageStatus=3 Viewed) + tenant 5050 instance 6570 (626 none-found). tokens=9261."
+  }
+}

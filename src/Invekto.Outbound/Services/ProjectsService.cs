@@ -675,8 +675,11 @@ public sealed class ProjectsService
         }
     }
 
-    /// <summary>FEATURE B (status-pull): cap on the number of vendor message-status calls one "Durumu Yenile" makes.</summary>
+    /// <summary>FEATURE B (status-pull): cap on the number of wamids one "Durumu Yenile" pulls a live status for.</summary>
     private const int StatusPullCap = 200;
+
+    /// <summary>FEATURE B (batch status-pull): wamids per /api/message-status call (provider cap is 100).</summary>
+    private const int MessageStatusBatchSize = 100;
 
     /// <summary>
     /// FEATURE B (status-pull): for up to <see cref="StatusPullCap"/> of a project's wamid-bearing, non-terminal
@@ -722,29 +725,52 @@ public sealed class ProjectsService
 
         var updated = 0;
         var checkedCount = 0;
+
+        // Group the pending wamids by their RESOLVED instance (the wamid's own captured instance, else the
+        // tenant default) — /api/message-status is per-instance and batched (≤100 ids/call). Rows with no
+        // resolvable instance are skipped (cannot be queried). One batch pull replaces N singular calls.
+        var byInstance = new Dictionary<int, List<string>>();
         foreach (var row in pending)
         {
-            ct.ThrowIfCancellationRequested();
-            // Prefer the wamid's own captured instance; fall back to the tenant default. Skip when neither resolves.
             var instanceId = row.InstanceId is int iid && iid > 0 ? iid : defaultInstanceId ?? 0;
             if (instanceId <= 0) continue;
-
-            checkedCount++;
-            var pull = await _wapCrmSendClient.GetMessageStatusAsync(instanceId, row.ExternalMessageId, secretKey, tenantId, ct);
-            if (!pull.Ok || pull.MessageStatus is not int rawStatus) continue;
-
-            var mapped = WapCrmAckMapping.MapStatus(rawStatus);
-            if (mapped == null) continue; // 0=Pending / 5=Deleted / unknown → ignore (same as the ack path)
-
-            try
+            if (!byInstance.TryGetValue(instanceId, out var wamids))
             {
-                var apply = await _outboundRepo.ApplyDeliveryStatusAsync(tenantId, row.ExternalMessageId, mapped, failedReason: null, ct: ct);
-                if (apply.Applied) updated++;
+                wamids = new List<string>();
+                byInstance[instanceId] = wamids;
             }
-            catch (NpgsqlException ex)
+            wamids.Add(row.ExternalMessageId);
+        }
+
+        foreach (var (instanceId, wamids) in byInstance)
+        {
+            for (var offset = 0; offset < wamids.Count; offset += MessageStatusBatchSize)
             {
-                _logger.SystemError($"project status-pull apply failed (tenant={tenantId}, project={projectId}, message={row.MessageId}): {ex.Message}");
-                return (null, ErrorCodes.ProjectStatusPullDbError, "Veritabanı hatası; lütfen tekrar deneyin.");
+                ct.ThrowIfCancellationRequested();
+                var chunk = wamids.GetRange(offset, Math.Min(MessageStatusBatchSize, wamids.Count - offset));
+                checkedCount += chunk.Count;
+
+                var pull = await _wapCrmSendClient.GetMessageStatusesAsync(instanceId, chunk, secretKey, tenantId, ct);
+                if (!pull.Ok) continue; // whole chunk failed (transport/timeout/rejection) — best-effort, re-pullable
+
+                foreach (var entry in pull.Messages)
+                {
+                    // found:false / no numeric status (Pending/Deleted/unknown) → nothing to apply (ack-path parity).
+                    if (!entry.Found || entry.MessageStatus is not int rawStatus) continue;
+                    var mapped = WapCrmAckMapping.MapStatus(rawStatus);
+                    if (mapped == null) continue; // 0=Pending / 5=Deleted / unknown → ignore (same as the ack path)
+
+                    try
+                    {
+                        var apply = await _outboundRepo.ApplyDeliveryStatusAsync(tenantId, entry.MessageId, mapped, failedReason: null, ct: ct);
+                        if (apply.Applied) updated++;
+                    }
+                    catch (NpgsqlException ex)
+                    {
+                        _logger.SystemError($"project status-pull apply failed (tenant={tenantId}, project={projectId}, message={entry.MessageId}): {ex.Message}");
+                        return (null, ErrorCodes.ProjectStatusPullDbError, "Veritabanı hatası; lütfen tekrar deneyin.");
+                    }
+                }
             }
         }
 
