@@ -180,6 +180,7 @@
 
 | Date | Mistake | Solution | Prevention |
 |------|---------|----------|------------|
+| 2026-06-12 | `invekto-ops server-deploy` mid-flight SSH "channel open failure" — servis stop + dizin temizlik yapıldı ama extract/config-restore/start ÇALIŞMADI → Marketing prod DOWN (boş `current/`). | Re-run YAPMA (re-run'ın config-backup adımı boş `current/`'ı okur, config'siz deploy eder). MANUEL kurtar: yüklenmiş `deploy-<Svc>-<ts>.zip`'i `[IO.Compression.ZipFile]::ExtractToDirectory($zip,$cur)` (PS 5.1 = .NET FW: 3. arg `entryNameEncoding`'dir, overwrite DEĞİL → 2-arg overload kullan) → `previous/appsettings.Production.json` (bilinen-iyi prod config) geri yaz → `nssm start` → health. | Çok servisli full deploy'da art arda hızlı SSH kanalı açma SSH session-limit'i tetikleyebilir. Fail olursa ÖNCE `server-status` + `current/` içeriğini TEŞHİS et, asla kör re-run/start. `server-deploy` ATOMİK DEĞİL (stop→clean→upload→extract→restore→start; ortada kopabilir). |
 
 ### DB & Schema
 
