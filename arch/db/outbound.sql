@@ -127,6 +127,10 @@ CREATE TABLE IF NOT EXISTS outbound_messages (
     provider_error_message  TEXT,
     last_attempt_at         TIMESTAMPTZ,
     attempt_count           INTEGER NOT NULL DEFAULT 0,
+    -- FEATURE C (migration 064): claim-time anchor stamped alongside status='sending'
+    -- in DequeueMessagesAsync. Staleness source for the periodic stranded-'sending'
+    -- recovery sweep (distinct from last_attempt_at, which stays pure 'last POST attempt').
+    claimed_at              TIMESTAMPTZ,
 
     -- status values: queued, sending, sent, delivered, read, failed, blocked
     -- broadcast_id is NULL for trigger-based single messages
@@ -149,6 +153,11 @@ CREATE INDEX IF NOT EXISTS idx_outbound_messages_broadcast_status
 
 CREATE INDEX IF NOT EXISTS idx_outbound_messages_queued
     ON outbound_messages (status, created_at) WHERE status = 'queued';
+
+-- FEATURE C (migration 064): keeps the periodic stranded-'sending' recovery sweep
+-- off a full-table scan (route + status scoped, like idx_outbound_messages_queued).
+CREATE INDEX IF NOT EXISTS idx_outbound_messages_cxapi_sending
+    ON outbound_messages (claimed_at) WHERE send_route = 'wapcrm_cxapi' AND status = 'sending';
 
 -- Single-column ext-id index (legacy). PR-3b-2 made the delivery-status lookup tenant-scoped
 -- (ApplyDeliveryStatusAsync queries WHERE tenant_id = $ AND external_message_id = $), which is served by

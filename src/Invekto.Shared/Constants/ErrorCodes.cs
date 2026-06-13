@@ -586,6 +586,9 @@ public static class ErrorCodes
     public const string ProjectStatusPullNotEnabled = "INV-OB-094";        // Status-pull: tenant not in the CxapiSend allowlist (P0-3 inert) OR no WapCRM creds (secret/userId/instance). No vendor call made. 403.
     public const string ProjectStatusPullDbError = "INV-OB-095";           // Status-pull: NpgsqlException reading the pending recipient set or applying a pulled status. 503.
 
+    // FEATURE C — cxapi stranded-'sending' periodic recovery (MessageSenderService.TryRecoverStrandedAsync, migration 064)
+    public const string CxapiSendingRecoveryFailed = "INV-OB-096";         // Periodic 'sending'->'queued' recovery sweep hit an NpgsqlException. Non-fatal: row stays safely 'sending' (pre-POST, never duplicated), retried next interval. Distinct from INV-OB-065 (posting/ambiguous). Internal/log.
+
     // Lead Management errors (INV-LD-xxx) -- GR-3.13
     public const string LeadInvalidPayload = "INV-LD-001";
     public const string LeadNotFound = "INV-LD-002";

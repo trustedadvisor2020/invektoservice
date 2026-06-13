@@ -418,9 +418,13 @@ public class OutboundRepository
         // switches routing onto send_route/message_kind; the columns are surfaced now
         // so that change stays a one-file edit (and to prove the schema is live, not
         // a dead field). All new columns carry safe defaults / NULL today.
+        // FEATURE C (migration 064): stamp claimed_at = NOW() on the same claim UPDATE so the
+        // periodic stranded-'sending' recovery sweep has a claim-time staleness anchor (a row
+        // claimed here but never POSTed — crash mid-run — is reset to 'queued' after the gate).
+        // claimed_at is read only by the sweep's SQL, so it is NOT added to the RETURNING set.
         const string sql = @"
             UPDATE outbound_messages
-            SET status = 'sending'
+            SET status = 'sending', claimed_at = NOW()
             WHERE id IN (
                 SELECT id FROM outbound_messages
                 WHERE status = 'queued'
@@ -1110,6 +1114,45 @@ public class OutboundRepository
         if (ids.Count > 0)
             _logger.SystemWarn($"[cxapi-send] swept stranded 'posting' rows to 'ambiguous' across {ids.Count} broadcast(s) on startup");
         return ids;
+    }
+
+    /// <summary>
+    /// FEATURE C (migration 064): periodic recovery for cxapi rows stranded in 'sending' — claimed by
+    /// <see cref="DequeueMessagesAsync"/> but never POSTed (worker crashed between claim and send, then
+    /// restarted mid-queue). Resets them to 'queued' so the dequeue worker picks them up again, WITHOUT
+    /// waiting for the next service restart (the ungated <see cref="ResetStrandedCxapiSendingAsync"/> only
+    /// runs at boot). Staleness-gated in SQL on <c>claimed_at</c> (only rows claimed more than
+    /// <paramref name="staleSendingMinutes"/> ago), so a row claimed in the current dispatch cycle and about
+    /// to be POSTed is never reset.
+    /// <para>DUPLICATE-SAFETY — two independent guards, NO distributed lock needed (single-instance NSSM
+    /// singleton in prod): (1) the sender is a SINGLE-FLIGHT worker — this sweep runs INSIDE the same
+    /// <c>_isProcessing</c> critical section as the sends (MessageSenderService.ProcessQueue runs recovery
+    /// first, THEN dequeues+sends, all serialized; a concurrent timer tick is skipped via CompareExchange),
+    /// so the sweep can never run while a send is mid-flight in this instance — the only 'sending' rows it
+    /// sees are leftovers from a prior cycle no longer running (genuinely stranded). (2) Even a wrongly-reset
+    /// row is HARMLESS: the cxapi send path does a CAS 'sending'->'posting' immediately before the POST
+    /// (SetMessagePostingAsync, MessageSenderService.cs ~385) and on a CAS miss it skips the POST and returns,
+    /// so a row reset back to 'queued' can NEVER be double-POSTed. 'sending' is strictly PRE-POST. This is the
+    /// SAME safety basis the accepted ungated startup reset and the 'posting' sweep already rely on.</para>
+    /// <para>Counter-neutral: a claim never decremented broadcast.queued (DequeueMessagesAsync only sets
+    /// status), so 'queued'/'sending' both count as broadcast.queued — the reset needs no broadcast-counter
+    /// or completion update (unlike the 'posting'->'ambiguous' sweep). Route-scoped to 'wapcrm_cxapi'
+    /// (bridge rows untouched). Tenant-BLIND like the sibling startup sweeps (singleton worker, each row
+    /// carries its own tenant_id — same documented exception as DequeueMessagesAsync). Returns affected rows.</para>
+    /// </summary>
+    public virtual async Task<int> SweepStrandedSendingAsync(int staleSendingMinutes, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE outbound_messages SET status = 'queued'
+            WHERE send_route = 'wapcrm_cxapi'
+              AND status = 'sending'
+              AND claimed_at IS NOT NULL
+              AND claimed_at < NOW() - make_interval(mins => @mins)";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("mins", staleSendingMinutes);
+        return await cmd.ExecuteNonQueryAsync(ct);
     }
 
     // ================================================================

@@ -222,6 +222,28 @@ public sealed class MessageSenderService : IHostedService, IDisposable
             _logger.SystemError(
                 $"[{ErrorCodes.CxapiSendAmbiguous}] periodic recovery sweep failed (non-fatal, retried next interval): {ex.Message}");
         }
+
+        // FEATURE C (migration 064): periodic stranded-'sending' recovery — a row claimed by the dequeue
+        // worker but never POSTed (crash between claim and send, then restart mid-queue) is reset to 'queued'
+        // WITHOUT a restart (the ungated startup reset in StartAsync runs only at boot). Staleness-gated on
+        // claimed_at in SQL (StaleSendingMinutes), so a row claimed in this dispatch cycle is never reset, and
+        // duplicate-safe because 'sending' is strictly pre-POST. Its OWN try/catch with a distinct marker
+        // (INV-OB-096) so a sending-recovery DB hiccup never masks or is masked by the 'posting' sweep above.
+        try
+        {
+            var resetCount = await _repository.SweepStrandedSendingAsync(_cxapiOptions.StaleSendingMinutes, ct);
+            if (resetCount > 0)
+                _logger.SystemWarn(
+                    $"[cxapi-send] periodic recovery reset {resetCount} stranded 'sending' message(s) to 'queued' (no restart needed)");
+        }
+        catch (NpgsqlException ex)
+        {
+            // Non-fatal: the row stays safely 'sending' (pre-POST, never duplicated) and recovery retries next
+            // interval. INV-OB-096 = the dedicated sending-recovery marker (kept apart from INV-OB-065's
+            // posting/ambiguous domain). Shutdown-cancellation and unexpected throws propagate to ProcessQueue.
+            _logger.SystemError(
+                $"[{ErrorCodes.CxapiSendingRecoveryFailed}] periodic 'sending' recovery sweep failed (non-fatal, retried next interval): {ex.Message}");
+        }
     }
 
     private async Task SendMessageAsync(QueuedMessage msg, CancellationToken ct)

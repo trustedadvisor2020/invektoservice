@@ -47,5 +47,14 @@ public sealed class CxapiSendOptions
     /// </summary>
     public int RecoverySweepIntervalMs { get; set; } = 120_000;
 
+    /// <summary>
+    /// FEATURE C (migration 064): a cxapi row stuck in 'sending' (claimed by the dequeue worker but never
+    /// POSTed — crash between claim and send) older than this many minutes is reset to 'queued' by the
+    /// periodic recovery sweep, WITHOUT a service restart. 'sending' is strictly pre-POST (duplicate-safe),
+    /// so this threshold is lower than <see cref="StalePostingMinutes"/> (5) to recover strands faster while
+    /// still never racing a row claimed in the current dispatch cycle. Default 3 min.
+    /// </summary>
+    public int StaleSendingMinutes { get; set; } = 3;
+
     public bool IsTenantAllowed(int tenantId) => Enabled && AllowedTenantIds.Contains(tenantId);
 }
