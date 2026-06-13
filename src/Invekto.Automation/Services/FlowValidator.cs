@@ -43,6 +43,7 @@ public sealed class FlowValidator
         ["webhook_trigger"] = new[] { "label" },
         ["outbound_trigger"] = new[] { "label" },
         ["schedule_trigger"] = new[] { "label", "cron_expression" },
+        ["customer_status_changed"] = new[] { "label" }, // FEAT-INMA-PIPELINE-V2 C3a — feature_group_id optional (empty = match any group)
         ["action_call_flow"] = new[] { "label", "flow_id" }
     };
 

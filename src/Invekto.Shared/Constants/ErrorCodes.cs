@@ -182,6 +182,7 @@ public static class ErrorCodes
     public const string InmaWebhookPhoneUnmatched = "INV-INM-005";        // WARN (still 2xx): no tenant-scoped lead matched any normalized phone in phones[] — raw event retained, no lead-create, no cxapi
     public const string InmaWebhookDuplicateDivergentBody = "INV-INM-006"; // WARN (still 2xx): same (tenant_id,event_id) already stored but raw_body_sha256 differs — INMA anomaly/replay, not silently ignored
     public const string InmaWebhookBodyTooLarge = "INV-INM-007";          // 413: request body exceeds the configured cap before parse (DoS guard on the shared signed/unsigned URL)
+    public const string InmaWebhookFlowEnqueueFailed = "INV-INM-008";     // WARN (still 2xx): FEAT-INMA-PIPELINE-V2 C3a customer_status_changed flow-trigger Hangfire enqueue failed (BackgroundJobClientException / NpgsqlException / InvalidOperationException) AFTER the C2 persist already committed — best-effort, automation may be missed (AutomaticRetry=0); status is NOT re-applied and the webhook still returns 200.
 
     // Automation errors (INV-AT-xxx) -- GR-1.1
     public const string AutomationInvalidFlowConfig = "INV-AT-001";
@@ -314,6 +315,9 @@ public static class ErrorCodes
     public const string PhotoRequestRejectedLock = "INV-AT-085";               // PhotoEndpoints POST /photos/request — lead photo_status='rejected' lock'unda; 'Tekrar Iste' butonu opt-out override yapamaz. 409 user-facing; koordinator manuel inceleyecek.
     public const string PhotoRequestLeadResolveSkip = "INV-AT-086";            // FEAT-PHOTO wire-up patch (2026-04-28, iter 1): SADECE semantic "lead not matched" skip — Backend /api/v1/appointments/book proxy ve /api/v1/webhook/event media hop'ta patient_phone leads tablosunda eslesmedi. Booking 201 korunur, foto dispatch atlanir (manuel koordinator booking veya FlowBuilder disi kanal veya phone normalization mismatch). Non-blocking; ops audit signal. Transient/infra failure ICIN INV-AT-087 KULLAN (Codex iter 0 CQ12 split).
     public const string PhotoRequestHookTransient = "INV-AT-087";              // FEAT-PHOTO wire-up patch (2026-04-28, iter 1): infra/state transient failure — JsonException (request body parse), InvalidOperationException (Hangfire JobStorage not initialised veya DI mis-config), benzeri non-DB hook failure'lari. NpgsqlException icin INV-AT-078 PhotoInboundHandlerDbError, OperationCanceledException icin INV-AT-082 PhotoInboundCancelled kullanilir. Non-blocking; ops audit signal — sonraki request retry'inda kendiliginden duzelir.
+
+    // FEAT-INMA-PIPELINE-V2 C3a: customer_status_changed flow trigger dispatch (Automation Hangfire job)
+    public const string AutomationCustomerStatusFlowDispatchFailed = "INV-AT-088"; // TriggerCustomerStatusFlowJob execution-time failure: NpgsqlException (flow lookup/session DB error), FlowGraphV2.Build null (malformed/wrong-version flow_config), OperationCanceledException (graceful shutdown race), or InvalidOperationException during FlowEngineV2.ExecuteAsync. AutomaticRetry=0 — no retry; synthetic session closed 'error'. Distinct from the benign "no customer_status_changed flow configured for tenant" info no-op (NOT an error).
 
     // FEAT-PILOT-KANBAN: SuperAdmin pilot tracking board (Migration 035, 2026-04-28) — INV-KB-xxx
     public const string KanbanStatusUnknown   = "INV-KB-001";                  // KanbanStatusExtensions.ToDbValue defensive guard; enum dışı değer (sistem hatası — PATCH endpoint TryParse zaten INV-KB-003 ile reddediyor). Internal serialization/refactor bug indikatoru.

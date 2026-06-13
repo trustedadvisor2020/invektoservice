@@ -872,6 +872,9 @@ errors:
   - code: INV-INM-007
     description: Request body exceeds the configured size cap before JSON parse (DoS guard on the shared signed/unsigned webhook URL). 413.
     user_message: (internal; request body too large)
+  - code: INV-INM-008
+    description: FEAT-INMA-PIPELINE-V2 C3a — customer_status_changed flow-trigger Hangfire enqueue failed (BackgroundJobClientException / NpgsqlException / InvalidOperationException) AFTER the C2 persist already committed. WARN, best-effort: the automation may be missed (AutomaticRetry=0; replay dedupe is upstream in C2 so no duplicate vector); the status is NOT re-applied and the webhook still returns 200 (a non-2xx would make INMA retry and re-apply).
+    user_message: (internal; flow-trigger enqueue failed — automation best-effort)
 
   # ── OB — Outbound (GR-1.3) ──
   - code: INV-OB-001
@@ -1696,6 +1699,9 @@ errors:
   - code: INV-AT-087
     description: FEAT-PHOTO wire-up patch (2026-04-28, iter 1) — infra/state transient failure (non-DB). Backend /api/v1/appointments/book proxy hook veya /api/v1/webhook/event media hop'unda JsonException (request body parse) VEYA InvalidOperationException (Hangfire JobStorage not initialised, DI mis-config). NpgsqlException icin INV-AT-078, OperationCanceledException icin INV-AT-082 kullanilir. Non-blocking; ops audit signal — sonraki request retry'inde kendiliginden duzelir.
     user_message: (yok — backend audit only; user-facing not surfaced)
+  - code: INV-AT-088
+    description: FEAT-INMA-PIPELINE-V2 C3a — TriggerCustomerStatusFlowJob execution-time failure. NpgsqlException (flow lookup veya synthetic session DB hatasi), FlowGraphV2.Build null (bozuk/yanlis-versiyon flow_config), OperationCanceledException (graceful-shutdown race) VEYA InvalidOperationException (FlowEngineV2.ExecuteAsync). AutomaticRetry=0 — retry YOK; synthetic session 'error' ile kapatilir. "tenant'ta customer_status_changed flow YOK" benign info no-op'tan (hata DEGIL) ayridir.
+    user_message: (yok — automation audit only; user-facing not surfaced)
   - code: INV-AP-021
     description: FEAT-PHOTO wire-up patch (2026-04-28, iter 2) — Backend /api/v1/appointments/book proxy hop'unda Appointments servisine cagri HttpRequestException (transport error) VEYA TaskCanceledException (timeout). 503/504 user-facing; SPA caller'a actionable INV code doner. Distinct from INV-AP-010 AppointmentOutboundUnavailable (Appointments tarafindan outbound).
     user_message: Appointments servisi gecici olarak kullanilamiyor; birkac saniye sonra tekrar deneyin.

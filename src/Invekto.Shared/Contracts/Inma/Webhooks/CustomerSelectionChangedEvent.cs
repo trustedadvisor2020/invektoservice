@@ -139,3 +139,53 @@ public static class CustomerStatusMapping
         return string.Join(MultiSeparator, names.OrderBy(n => n, StringComparer.OrdinalIgnoreCase));
     }
 }
+
+/// <summary>The dispatch decision for a customer.selection_changed event (FEAT-INMA-PIPELINE-V2 C3a).</summary>
+public enum FlowSuppressionDecision
+{
+    /// <summary>Fire the customer_status_changed flow trigger (explicit human 'user' actor).</summary>
+    Fire,
+    /// <summary>Suppress: the change echoes OUR own write-back (originRequestId carries the invekto- prefix) — loop kill.</summary>
+    SuppressLoop,
+    /// <summary>Suppress: the actor is not an explicit human 'user' (api / zoho-webhook / system / null / unknown) — fail-closed.</summary>
+    SuppressActor
+}
+
+/// <summary>
+/// FEAT-INMA-PIPELINE-V2 C3a — pure, host-free LOOP-GUARD decision for the customer_status_changed
+/// flow trigger. Extracted as a tested static (mirrors <see cref="CustomerStatusMapping"/>) so the
+/// security-relevant suppression branch is unit-covered without a Backend test host.
+///
+/// FAIL CLOSED: the trigger fires ONLY for an explicit human panel agent (actor.type == "user").
+/// Everything else is suppressed — api (incl. our own future C4 write-back), zoho-webhook, system,
+/// and null/unknown. This guarantees the C2 → C3 → C4 → C2 cycle cannot loop even if a future C4
+/// write-back's <c>originRequestId</c> echo is ever missing or truncated (the actor would still be
+/// "api", or null, and both are suppressed). The <c>invekto-</c> prefix is the primary, redundant
+/// loop kill — kept as defence-in-depth and shared with C4 via <see cref="OriginRequestIdPrefix"/>.
+/// </summary>
+public static class CustomerStatusFlowSuppression
+{
+    /// <summary>
+    /// The single source of truth for the ClientRequestID prefix C4 sends to INMA
+    /// (<c>invekto-{flowRunUuid}</c>) and that echoes back as <c>data.originRequestId</c>.
+    /// Shared so C3 (this check) and C4 (the sender) cannot drift.
+    /// </summary>
+    public const string OriginRequestIdPrefix = "invekto-";
+
+    /// <summary>The one actor type that fires a flow. Anything else is suppressed (fail-closed).</summary>
+    public const string FireActorType = "user";
+
+    public static FlowSuppressionDecision Evaluate(string? actorType, string? originRequestId)
+    {
+        // L1 (loop kill): our own write-back echo, regardless of actor.
+        if (!string.IsNullOrEmpty(originRequestId)
+            && originRequestId.StartsWith(OriginRequestIdPrefix, StringComparison.Ordinal))
+            return FlowSuppressionDecision.SuppressLoop;
+
+        // L2 (fail closed): fire ONLY on an explicit human 'user' actor.
+        var actor = actorType?.Trim().ToLowerInvariant();
+        return actor == FireActorType
+            ? FlowSuppressionDecision.Fire
+            : FlowSuppressionDecision.SuppressActor;
+    }
+}

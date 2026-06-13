@@ -156,6 +156,7 @@ builder.Services.AddSingleton<INodeHandler, AiSentimentHandler>();
 builder.Services.AddSingleton<INodeHandler, WebhookTriggerHandler>();
 builder.Services.AddSingleton<INodeHandler, OutboundTriggerHandler>();
 builder.Services.AddSingleton<INodeHandler, ScheduleTriggerHandler>();
+builder.Services.AddSingleton<INodeHandler, CustomerStatusChangedTriggerHandler>(); // FEAT-INMA-PIPELINE-V2 C3a
 builder.Services.AddSingleton<INodeHandler, CallFlowHandler>();
 builder.Services.AddSingleton<INodeHandler, LogicWorkingHoursHandler>();
 builder.Services.AddSingleton<INodeHandler, ActionAssignGroupHandler>();

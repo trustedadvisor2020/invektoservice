@@ -1,0 +1,134 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260613-feat-inma-pipeline-v2-c3a-flow-trigger",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-13T18:40:00+03:00",
+  "updated_at": "2026-06-13T19:35:00+03:00",
+  "plan": {
+    "summary": "FEAT-INMA-PIPELINE-V2 C3a (backend-only): a new 'customer_status_changed' flow trigger. When C2 APPLIES a customer_status change (StoredApplied), Backend captures each affected lead's old→new status atomically, fires ONLY for leads whose status actually changed (old IS DISTINCT FROM new), applies a fail-closed loop-guard, and enqueues one Automation Hangfire job per changed lead. The job resolves the tenant's customer_status_changed flow(s) with most-specific-wins featureGroupId matching and runs FlowEngineV2 with the change context. C3b (Flow Builder UI node + cxapi catalog) and C4 (Set Customer Status write-back) are deferred.",
+    "q_intent": "Resume FEAT-INMA-PIPELINE-V2: start C3 — Flow Builder customer_status_changed trigger (C2 already persists actor_type + origin_request_id for suppression).",
+    "interview_notes": "Q AskUserQuestion 4/4: split C3a backend / C3b UI; extend C2 repo for per-lead old→new context (1 flow per lead); match on featureGroupId only; hardcode suppression defaults. Codex critique (gpt-5.5, mode=critique) hardened the plan and I ADOPTED: (1) CTE FOR UPDATE+MATERIALIZED+ORDER BY id+tenant_id-in-UPDATE to keep C2's monotonic guard under concurrency; (2) enqueue ONLY when old_status IS DISTINCT FROM new_status (a re-selection to the same opaque status must not fire a fake trigger); (3) loop guard FAILS CLOSED — fire only on actor.type=='user', suppress api/zoho-webhook/system/null/unknown; (4) most-specific-wins featureGroupId matching (no catch-all double-fire); (5) structured observability. Q reliability decision: AutomaticRetry=0, NO dedupe table (matches shipped TriggerWelcomeFlowJob/CronSchedulerJob; replay already deduped upstream by C2; bounded-retry+idempotency = recorded hardening backlog before real-flow go-live). Self-decided defaults: queue='automation'; synthetic chat_id range -4_000_000; fire on StoredApplied only; fire-and-forget enqueue (log+200); INV-INM-008 (Backend enqueue) + INV-AT-088 (Automation job).",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "FlowGraphV2.TriggerTypes includes 'customer_status_changed' so a v2 flow whose entry node is that type resolves graph.TriggerStart (non-null); FlowValidator.RequiredFields gains ['customer_status_changed'] = ['label'].", "verified": false, "verification_note": null },
+      { "id": "AC2", "criterion": "New CustomerStatusChangedTriggerHandler : INodeHandler (NodeType='customer_status_changed') registered as Singleton in Automation DI; maps the seeded __-prefixed session variables to the contract flow vars {{customer_status_group}}, {{old_customer_status}}, {{new_customer_status}}, {{customer_status_changed_by}}; returns Action=Continue, MessageText=null (pure — no DB/HTTP/WA send).", "verified": false, "verification_note": null },
+      { "id": "AC3", "criterion": "InmaWebhookEventRepository apply step becomes a single CTE+UPDATE: WITH affected AS MATERIALIZED (SELECT id, customer_status AS old_status FROM leads WHERE <tenant + phone match + monotonic guard> ORDER BY id FOR UPDATE) UPDATE leads l SET customer_status=@status, customer_status_occurred_at=COALESCE(@occ,l...) FROM affected a WHERE l.id=a.id AND l.tenant_id=@tid RETURNING l.id, a.old_status, l.customer_status AS new_status. Result struct gains AppliedLeads (List<AppliedLead{LeadId, OldStatus, NewStatus}>); MatchedLeadCount == rows updated == AppliedLeads.Count; duplicate/phone-unmatched/stale-skip return empty list. C2 HMAC/dedupe/audit/guard logic otherwise untouched.", "verified": false, "verification_note": null },
+      { "id": "AC4", "criterion": "Backend HandleCustomerSelectionChangedAsync, ONLY in StoredApplied: evaluate shared static CustomerStatusFlowSuppression.Evaluate(actorType, originRequestId) → {Fire | SuppressLoop | SuppressActor}. Suppress (no enqueue) if originRequestId starts with shared const 'invekto-' OR actorType != 'user' (api/zoho-webhook/system/null/unknown all suppressed — FAIL CLOSED). When Fire: enqueue one TriggerCustomerStatusFlowJob per AppliedLead WHERE OldStatus IS DISTINCT FROM NewStatus, via IBackgroundJobClient from ctx.RequestServices. Enqueue wrapped in typed catches (BackgroundJobClientException/NpgsqlException/InvalidOperationException) → INV-INM-008 WARN, still HTTP 200. Log an anomaly WARN when an event has an 'invekto-' originRequestId but actor != 'api' (INMA echo weirdness detector). Stale/duplicate/phone-unmatched never enqueue.", "verified": false, "verification_note": null },
+      { "id": "AC5", "criterion": "TriggerCustomerStatusFlowJob ([Queue('automation')], [AutomaticRetry(Attempts=0)]) resolves the tenant's active v2 customer_status_changed flows via NEW tenant-scoped AutomationRepository.GetActiveCustomerStatusFlowsAsync (WHERE tenant_id=@tid AND is_active AND flow_config->>'version'='2' AND EXISTS node type='customer_status_changed'). Reads feature_group_id from graph.TriggerStart (the single trigger node; FlowGraphV2 + UI maxInstances:1 guarantee one). MOST-SPECIFIC-WINS: if any flow's trigger feature_group_id equals the event featureGroupId, run only those; else run catch-all flows (empty/null node feature_group_id). event.featureGroupId null (text mode) → only catch-all matches. Per matched flow: synthetic session (chat_id range -4_000_000), seed 4 __-prefixed vars into SessionStateV2.Variables, FlowEngineV2.ExecuteAsync, EndSession. No matching flow = benign info no-op. Failures (Npgsql/OperationCanceled/InvalidOperation, FlowGraphV2.Build null) → INV-AT-088, no retry, session closed 'error'.", "verified": false, "verification_note": null },
+      { "id": "AC6", "criterion": "Loop-guard provably breaks C2→C3→(C4)→C2: an event echoing our future C4 write (originRequestId='invekto-{flowRunUuid}', actor 'api') is suppressed at dispatch BOTH by the prefix AND by the fire-only-on-'user' rule — and a missing/truncated echo (actor api/system/null) is still suppressed (fail-closed). The 'invekto-' prefix is a SINGLE shared constant (Invekto.Shared) reused by C4 — no duplicate literal.", "verified": false, "verification_note": null },
+      { "id": "AC7", "criterion": "No DB migration (leads.customer_status + customer_status_occurred_at exist from Migration 065); no frontend/TS changes (C3b). The Shared edit (suppression static + prefix const + new codes) triggers a full-solution build + microservice-isolation check; build PASS, 0 errors.", "verified": false, "verification_note": null },
+      { "id": "AC8", "criterion": "Change-detection gate verified end-to-end: an event that re-applies the SAME derived opaque status to a lead (occurred_at advances, status unchanged) is counted in MatchedLeadCount but its AppliedLead has OldStatus == NewStatus → NO job enqueued for it (no fake trigger). Only genuine status transitions fire.", "verified": false, "verification_note": null },
+      { "id": "AC9", "criterion": "Structured logs at dispatch (eventId, tenantId, matchedLeadCount, changedLeadCount, suppress decision+reason, enqueuedCount) and in the job (matched flow count, specific-vs-catchall, per-flow fire/skip, execution status). A 'why didn't my flow fire' question is answerable from logs alone.", "verified": false, "verification_note": null }
+    ]
+  },
+  "spec_architectural_decisions": [
+    { "decision": "AutomaticRetry=0 on TriggerCustomerStatusFlowJob; NO durable trigger-dedupe table in C3a.", "reason": "Event-replay/redelivery double-fire is prevented UPSTREAM by C2's dedupe(tenant_id,event_id) — C3 runs only on a freshly-inserted StoredApplied event, never a duplicate. With no Hangfire retry there is no retry-duplicate vector, so no dedupe table is needed. Matches the shipped TriggerWelcomeFlowJob/CronSchedulerJob posture. Real flows are not live yet (C3b deferred); Q-approved MVP tradeoff.", "codex_note": "EXPECTED: do NOT FAIL for 'AutomaticRetry=0 without idempotency table'. Replay dedupe is upstream (C2); no retry => no duplicate vector. Bounded-retry+idempotency is a recorded hardening backlog item, not a C3a blocker." },
+    { "decision": "Enqueue happens AFTER C2's transaction commits (PersistAndApplyAsync commits internally before returning); no same-tx enqueue, no transactional outbox.", "reason": "Enqueue-after-commit prevents fire-on-rollback and stale reads. The residual crash-window (commit succeeds, process dies before enqueue) loses at most one trigger and matches the shipped LeadIntakeService→TriggerWelcomeFlowJob pattern.", "codex_note": "EXPECTED: do NOT FAIL for 'no transactional outbox'. Enqueue is strictly post-commit; residual loss-window is the accepted platform posture (LIW precedent)." },
+    { "decision": "One Hangfire job per CHANGED lead (per-lead fan-out), gated on OldStatus IS DISTINCT FROM NewStatus.", "reason": "Q decision: per-lead context. Change-gate stops fake triggers from a same-status re-selection. Distinct lead ids come from UPDATE...RETURNING (each row once) so a lead matched by two phones is not enqueued twice.", "codex_note": "EXPECTED: per-lead fanout is intentional. One-phone→N-leads customer-level duplicate-message risk is documented; channel-level dedup is out of C3a scope." },
+    { "decision": "Loop guard fails CLOSED: fire only on actor.type=='user'; suppress api/zoho-webhook/system/null/unknown + any 'invekto-' originRequestId prefix.", "reason": "Loop safety dominates: if a future C4 write-back's originRequestId echo is missing/truncated, actor=='api' (and null) still suppress. INMA contract populates actor.type='user' for human panel changes (the intended trigger).", "codex_note": "EXPECTED: firing only on 'user' is a deliberate fail-closed loop guard, not a missed-case bug. 'invekto-' prefix is a shared Invekto.Shared constant reused by C4." },
+    { "decision": "Synthetic chat_session mirrors the shipped TriggerWelcomeFlowJob/CronSchedulerJob exactly (CreateSessionAsync phone:null, currentNode 'v2_active', negative chat_id range -4_000_000).", "reason": "Proven production pattern for non-message flow dispatch; message-delivery semantics for synthetic-session flows are inherited unchanged (C3a adds no new send path).", "codex_note": "EXPECTED: synthetic session is the established welcome/cron pattern, not an ad-hoc invention." },
+    { "decision": "Tenant-scoped flow resolution (GetActiveCustomerStatusFlowsAsync WHERE tenant_id=@tid first), NOT the cron's cross-tenant scan.", "reason": "C3 dispatch is caused by ONE tenant's event; tenant-first predicate then JSONB EXISTS only within that tenant's flows.", "codex_note": "EXPECTED: CQ9 tenant-isolation PASS — request-path query is tenant-scoped. The cross-tenant precedent (GetActiveScheduleFlowsAsync) is a background SWEEP, deliberately NOT mirrored here." }
+  ],
+  "allowed_files": [
+    "src/Invekto.Backend/Data/InmaWebhookEventRepository.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Shared/Contracts/Inma/Webhooks/CustomerSelectionChangedEvent.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Automation/Services/FlowGraphV2.cs",
+    "src/Invekto.Automation/Services/FlowValidator.cs",
+    "src/Invekto.Automation/Services/NodeHandlers/CustomerStatusChangedTriggerHandler.cs",
+    "src/Invekto.Automation/Services/Jobs/TriggerCustomerStatusFlowJob.cs",
+    "src/Invekto.Automation/Data/AutomationRepository.cs",
+    "src/Invekto.Automation/Program.cs",
+    "arch/errors.md",
+    "tests/InvektoServis.Tests/Shared/Inma/CustomerStatusFlowSuppressionTests.cs"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/Contracts/Inma/Webhooks/CustomerSelectionChangedEvent.cs", "change": "Add pure static CustomerStatusFlowSuppression.Evaluate(actorType, originRequestId)->enum{Fire,SuppressLoop,SuppressActor} + OriginRequestIdPrefix const 'invekto-' (shared with C4).", "is_new": false },
+    { "path": "src/Invekto.Backend/Data/InmaWebhookEventRepository.cs", "change": "CTE FOR UPDATE+MATERIALIZED+ORDER BY id captures pre-update status per lead; RETURNING id/old/new; add AppliedLead record + AppliedLeads to result; update all construction sites.", "is_new": false },
+    { "path": "src/Invekto.Backend/Program.cs", "change": "StoredApplied branch: suppression eval + per-changed-lead enqueue via IBackgroundJobClient; typed-catch INV-INM-008 WARN, still 200; anomaly + structured logs.", "is_new": false },
+    { "path": "src/Invekto.Automation/Services/FlowGraphV2.cs", "change": "TriggerTypes += 'customer_status_changed'.", "is_new": false },
+    { "path": "src/Invekto.Automation/Services/FlowValidator.cs", "change": "RequiredFields += ['customer_status_changed'] = ['label'].", "is_new": false },
+    { "path": "src/Invekto.Automation/Services/NodeHandlers/CustomerStatusChangedTriggerHandler.cs", "change": "New pure INodeHandler: maps __-prefixed seeds to the 4 contract vars, returns Continue.", "is_new": true },
+    { "path": "src/Invekto.Automation/Services/Jobs/TriggerCustomerStatusFlowJob.cs", "change": "New Hangfire job: tenant flow resolve, most-specific-wins featureGroupId match, synthetic session, FlowEngineV2 run, INV-AT-088 typed catches.", "is_new": true },
+    { "path": "src/Invekto.Automation/Data/AutomationRepository.cs", "change": "New tenant-scoped GetActiveCustomerStatusFlowsAsync (JSONB scan) + CustomerStatusFlowInfo type.", "is_new": false },
+    { "path": "src/Invekto.Automation/Program.cs", "change": "Register CustomerStatusChangedTriggerHandler in INodeHandler DI block.", "is_new": false },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "change": "Add INV-INM-008 (C3 enqueue fail) + INV-AT-088 (job execution fail).", "is_new": false },
+    { "path": "arch/errors.md", "change": "Register INV-INM-008 + INV-AT-088.", "is_new": false },
+    { "path": "tests/InvektoServis.Tests/Shared/Inma/CustomerStatusFlowSuppressionTests.cs", "change": "Truth-table unit test for the suppression static (user fires; api/zoho/system/null + invekto- prefix suppress).", "is_new": true }
+  ],
+  "git_diff": { "patch_truncated": null, "sha256": null, "full_path": null, "stats": { "insertions": 607, "deletions": 16, "files_count": 12 } },
+  "build": { "status": "PASS", "command": "dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q", "timestamp": "2026-06-13T19:20:00+03:00", "duration_ms": 35220, "output_tail": "0 Error(s), 42 Warning(s) (all pre-existing: MSB3277 dep-version unification + 1 xUnit1013 in unrelated LogReaderTests). Unit test CustomerStatusFlowSuppressionTests: 18/18 passed.", "error_summary": null, "services": ["Invekto.Shared", "Invekto.Backend", "Invekto.Automation", "InvektoServis.Tests", "(full solution — all 11 services built clean)"] },
+  "verification_questions": [
+    { "id": "Q1", "question": "Does the CTE+UPDATE with MATERIALIZED + FOR UPDATE + ORDER BY id capture each lead's PRE-update customer_status atomically (one statement/snapshot, rows locked before action, no TOCTOU) AND preserve C2's monotonic guard so an older-occurredAt event cannot overwrite newer state, while MatchedLeadCount stays equal to rows updated?", "category": "Data", "codex_answer": null, "codex_result": null },
+    { "id": "Q2", "question": "Is the enqueue reached ONLY on StoredApplied (never StoredStaleSkipped/StoredPhoneUnmatched/DuplicateSameBody/DuplicateDivergentBody), only for leads where OldStatus IS DISTINCT FROM NewStatus, and is it fire-and-forget so a Hangfire/Npgsql/InvalidOperation failure is caught+logged (INV-INM-008) WITHOUT changing the HTTP 200 — so INMA's at-least-once retry never re-applies?", "category": "Lifecycle", "codex_answer": null, "codex_result": null },
+    { "id": "Q3", "question": "Does the fail-closed suppression provably break the C2→C3→C4→C2 loop — fire only on actor.type=='user', suppress api/zoho-webhook/system/null/unknown AND any 'invekto-' originRequestId — with the prefix as a single shared Invekto.Shared constant (no duplicate literal) so C3 and the future C4 cannot drift?", "category": "Process/Policy", "codex_answer": null, "codex_result": null },
+    { "id": "Q4", "question": "Is GetActiveCustomerStatusFlowsAsync tenant-scoped (tenant_id leading predicate) so the job only resolves/executes flows of the triggering event's tenant (no cross-tenant execution), and is feature_group_id read from graph.TriggerStart (this flow's own trigger node), with most-specific-wins so a catch-all flow does not double-fire alongside a specific one?", "category": "Auth", "codex_answer": null, "codex_result": null }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "C2 HMAC verify / dedupe / raw-audit / occurredAt monotonic-guard logic (only the additive CTE FOR UPDATE + RETURNING change is allowed on the apply step)",
+      "Existing inbound-message and delivery-ack webhook paths in Program.cs (type-branch stays byte-identical for non-customer.selection_changed bodies)",
+      "FlowEngineV2 core execution loop and all other INodeHandlers",
+      "AutomationOrchestrator (the new job bypasses it, like TriggerWelcomeFlowJob/CronSchedulerJob)",
+      "Frontend / Dashboard TypeScript (FlowNodeType, NODE_TYPE_REGISTRY, node components) — C3b",
+      "arch/db/migrations (no schema change in C3a)"
+    ],
+    "non_goals": [
+      "C4 'Set Customer Status' write-back to INMA",
+      "Flow Builder UI node + cxapi feature-group catalog dropdown (C3b)",
+      "Per-tenant suppression config toggles",
+      "from/to specific featureId transition filter on the trigger node",
+      "Durable trigger-dedupe table + bounded retry + transactional outbox (recorded hardening backlog)",
+      "EnforceTimestampFreshness / inma_webhook_events retention job"
+    ],
+    "intentional_exclusions": [
+      "No DB migration — leads.customer_status + customer_status_occurred_at already exist (Migration 065)",
+      "Idempotency posture: event-replay deduped upstream by C2(tenant_id,event_id); change-gate (old≠new) prevents fake fires; AutomaticRetry=0 (Q decision, matches welcome/cron) => no retry-duplicate vector; commit-before-enqueue residual crash-window accepted (LIW precedent). Bounded-retry+dedupe-table+outbox = named hardening backlog before real-flow go-live.",
+      "Per-lead fan-out can send N messages to a customer whose one phone maps to N leads (Q-chosen per-lead semantic); channel-level dedup deferred",
+      "system actor is suppressed (safe fail-closed default beyond the contract's user/api/zoho list)",
+      "Text-mode events (selectionMode='text', no featureGroupId) match only catch-all (empty-group) trigger nodes; documented MVP limitation",
+      "Message DELIVERY for synthetic-session flows inherits the existing welcome/cron path unchanged — C3a adds no new WhatsApp send path (verify item, not new code)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "src/Invekto.Backend/Program.cs HandleCustomerSelectionChangedAsync StoredApplied enqueue (BackgroundJobClientException / NpgsqlException / InvalidOperationException → INV-INM-008 WARN, return 200)",
+      "src/Invekto.Automation/Services/Jobs/TriggerCustomerStatusFlowJob.cs per-flow loop + ExecuteFlowAsync (NpgsqlException / OperationCanceledException / InvalidOperationException → INV-AT-088, TryEndSessionOnError)",
+      "src/Invekto.Backend/Data/InmaWebhookEventRepository.cs unchanged — NpgsqlException still bubbles to existing caller catch (INV-INM-004 / 500)"
+    ],
+    "user_facing_errors": [],
+    "silent_failure_risk": true,
+    "silent_failure_explanation": "Enqueue and job execution are fire-and-forget but NOT silent: enqueue failures log INV-INM-008 (WARN), job execution failures log INV-AT-088, and fire/suppress(reason)/changedLeadCount/matched-flow-count are all logged. 'No customer_status_changed flow configured' is a legitimate info no-op. The change-gate prevents fake fires. C2 commits before any of this, so the worst case is an observable missed/dropped trigger on a transient blip (accepted MVP tradeoff, AutomaticRetry=0) — never silent data loss, double-apply, or a loop."
+  },
+  "aha_moments": [
+    { "category": "RELIABILITY", "user_pain": "A status→action automation (C4) could re-trigger itself forever, hammering INMA and re-running flows.", "suggestion": "Fail-closed loop guard: fire only on a human 'user' actor and suppress any 'invekto-' originRequestId, via a single shared constant reused by C4.", "aha_moment": "A clinic builds a status-driven automation that itself sets a status and it just works once per real human change — no runaway loop, no incident." },
+    { "category": "UX", "user_pain": "A clinic agent moves a patient to 'Uçak Bileti' in INMA but must manually remember to send the travel-info WhatsApp.", "suggestion": "Fire the matching customer_status_changed flow the instant C2 applies the change.", "aha_moment": "The agent changes the status and the follow-up is already on its way — zero extra clicks." },
+    { "category": "RELIABILITY", "user_pain": "Re-saving the same status (no real change) would spam a fake 'status changed' automation.", "suggestion": "Capture old→new per lead and only fire where old IS DISTINCT FROM new.", "aha_moment": "Agents can click around without fear — only genuine status transitions ever trigger a flow." },
+    { "category": "SUPPORT", "user_pain": "'Why didn't my status-change flow fire?' is unanswerable if dispatch decisions are invisible.", "suggestion": "Log fire / suppress(reason) / changedLeadCount / matched-flow-count / per-flow result with tenant+lead+status.", "aha_moment": "Support reads one log line and sees instantly whether it was suppressed, unmatched, unchanged, or a real failure." },
+    { "category": "SALES", "user_pain": "Non-technical clinics can't script 'when status becomes X, do Y' without engineering.", "suggestion": "Make customer_status_changed a first-class flow trigger (plumbing here; the visual node lands in C3b).", "aha_moment": "A clinic drags a 'Müşteri Durumu Değişti' trigger onto the canvas and wires its own automation — no dev needed." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "iteration": 0,
+    "updated_by": "DevAgent",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS" }, "CQ2": { "result": "PASS" }, "CQ3": { "result": "PASS" },
+      "CQ4": { "result": "PASS" }, "CQ5": { "result": "PASS" }, "CQ6": { "result": "PASS" },
+      "CQ7": { "result": "PASS" }, "CQ8": { "result": "PASS" }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "CTE MATERIALIZED+FOR UPDATE+ORDER BY id captures pre-update status atomically, preserves monotonic guard, MatchedLeadCount==rows updated." },
+      "Q2": { "result": "PASS", "reasoning": "Enqueue only on StoredApplied + only changed leads; typed-catch INV-INM-008, HTTP 200 preserved." },
+      "Q3": { "result": "PASS", "reasoning": "Fail-closed suppress (fire only on user; invekto- prefix loop kill) via single shared constant; 18-case test covers it." },
+      "Q4": { "result": "PASS", "reasoning": "GetActiveCustomerStatusFlowsAsync tenant_id-leading; feature_group_id from graph.TriggerStart; most-specific-wins prevents catch-all double-fire." }
+    },
+    "blocking_issues": [],
+    "escalation_required": false,
+    "note": "Codex gpt-5.5 iter 0 PASS — 12/12 CQ + 4/4 CoVe, 0 blockers (CODEX UTANSIN). Build PASS (0 errors), suppression unit test 18/18. Plan stress-tested pre-implementation via codex_consult(critique) — 3 real findings adopted (CTE FOR UPDATE concurrency, change-gate old≠new, fail-closed loop guard) + most-specific-wins matching. NOT YET DEPLOYED: needs Shared+Backend+Automation redeploy (full — Shared.dll changed)."
+  }
+}

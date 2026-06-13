@@ -79,14 +79,15 @@ public sealed class InmaWebhookEventRepository
                 string.Equals(storedSha, row.RawBodySha256, StringComparison.Ordinal)
                     ? InmaWebhookPersistOutcome.DuplicateSameBody
                     : InmaWebhookPersistOutcome.DuplicateDivergentBody,
-                0);
+                0,
+                Array.Empty<AppliedLead>());
         }
 
         // (3) No usable phone -> store-only, no apply.
         if (normalizedPhones.Count == 0)
         {
             await tx.CommitAsync(ct);
-            return new InmaWebhookPersistResult(InmaWebhookPersistOutcome.StoredPhoneUnmatched, 0);
+            return new InmaWebhookPersistResult(InmaWebhookPersistOutcome.StoredPhoneUnmatched, 0, Array.Empty<AppliedLead>());
         }
 
         // (4) Apply status to matching leads under the occurredAt monotonic guard.
@@ -96,26 +97,52 @@ public sealed class InmaWebhookEventRepository
         //    NO prior timestamp, and it NEVER resets an existing one (COALESCE keeps the stored value).
         //    This prevents a late/untimed event from overwriting newer state or disabling future
         //    stale-protection by nulling the anchor.
+        //
+        // C3a (FEAT-INMA-PIPELINE-V2): a single CTE+UPDATE statement also captures each affected lead's
+        // PRE-update customer_status so the C3 flow trigger can pass {{old_customer_status}} and fire ONLY
+        // on a genuine transition (caller gates on OldStatus IS DISTINCT FROM NewStatus). FOR UPDATE locks
+        // the matched rows BEFORE the guard's decision so a concurrent same-lead event cannot slip the
+        // monotonic guard (the guard now binds the locked target row, not just the snapshot); MATERIALIZED
+        // pins the CTE against planner inlining; ORDER BY id reduces deadlock risk on multi-lead matches.
+        // RETURNING surfaces id + old (from the CTE, pre-update) + new (l.customer_status, post-update).
         const string updateSql = @"
-            UPDATE leads
+            WITH affected AS MATERIALIZED (
+                SELECT id, customer_status AS old_status
+                  FROM leads
+                 WHERE tenant_id = @tid
+                   AND regexp_replace(phone, '\D', '', 'g') = ANY(@phones)
+                   AND (
+                        (@occ IS NOT NULL AND (customer_status_occurred_at IS NULL OR customer_status_occurred_at <= @occ))
+                     OR (@occ IS NULL AND customer_status_occurred_at IS NULL)
+                   )
+                 ORDER BY id
+                 FOR UPDATE
+            )
+            UPDATE leads l
                SET customer_status = @status,
-                   customer_status_occurred_at = COALESCE(@occ, customer_status_occurred_at)
-             WHERE tenant_id = @tid
-               AND regexp_replace(phone, '\D', '', 'g') = ANY(@phones)
-               AND (
-                    (@occ IS NOT NULL AND (customer_status_occurred_at IS NULL OR customer_status_occurred_at <= @occ))
-                 OR (@occ IS NULL AND customer_status_occurred_at IS NULL)
-               )";
+                   customer_status_occurred_at = COALESCE(@occ, l.customer_status_occurred_at)
+              FROM affected a
+             WHERE l.id = a.id
+               AND l.tenant_id = @tid
+            RETURNING l.id, a.old_status, l.customer_status";
 
-        int updated;
+        var appliedLeads = new List<AppliedLead>();
         await using (var updateCmd = new NpgsqlCommand(updateSql, conn, (NpgsqlTransaction)tx))
         {
             updateCmd.Parameters.AddWithValue("status", (object?)row.DerivedStatus ?? DBNull.Value);
             updateCmd.Parameters.AddWithValue("occ", (object?)row.OccurredAt ?? DBNull.Value);
             updateCmd.Parameters.AddWithValue("tid", row.TenantId);
             updateCmd.Parameters.AddWithValue("phones", normalizedPhones.ToArray());
-            updated = await updateCmd.ExecuteNonQueryAsync(ct);
+            await using var reader = await updateCmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                appliedLeads.Add(new AppliedLead(
+                    reader.GetInt32(0),
+                    reader.IsDBNull(1) ? null : reader.GetString(1),
+                    reader.IsDBNull(2) ? null : reader.GetString(2)));
+            }
         }
+        int updated = appliedLeads.Count;
 
         InmaWebhookPersistOutcome outcome;
         if (updated > 0)
@@ -151,7 +178,7 @@ public sealed class InmaWebhookEventRepository
         }
 
         await tx.CommitAsync(ct);
-        return new InmaWebhookPersistResult(outcome, updated);
+        return new InmaWebhookPersistResult(outcome, updated, appliedLeads);
     }
 }
 
@@ -185,4 +212,14 @@ public enum InmaWebhookPersistOutcome
     DuplicateDivergentBody
 }
 
-public readonly record struct InmaWebhookPersistResult(InmaWebhookPersistOutcome Outcome, int MatchedLeadCount);
+public readonly record struct InmaWebhookPersistResult(
+    InmaWebhookPersistOutcome Outcome,
+    int MatchedLeadCount,
+    IReadOnlyList<AppliedLead> AppliedLeads);
+
+/// <summary>
+/// FEAT-INMA-PIPELINE-V2 C3a — one lead whose customer_status was applied by a customer.selection_changed
+/// event, with its PRE-update (<see cref="OldStatus"/>) and POST-update (<see cref="NewStatus"/>) value.
+/// The C3 dispatcher fires a flow trigger only when <c>OldStatus</c> IS DISTINCT FROM <c>NewStatus</c>.
+/// </summary>
+public sealed record AppliedLead(int LeadId, string? OldStatus, string? NewStatus);

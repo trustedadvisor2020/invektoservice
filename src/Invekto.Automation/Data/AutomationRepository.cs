@@ -280,6 +280,47 @@ public sealed class AutomationRepository
     }
 
     /// <summary>
+    /// FEAT-INMA-PIPELINE-V2 C3a: resolve a SINGLE tenant's active v2 flows that contain a
+    /// customer_status_changed trigger node. TENANT-SCOPED (unlike <see cref="GetActiveScheduleFlowsAsync"/>,
+    /// a cross-tenant cron sweep) because this is driven by one tenant's inbound customer.selection_changed
+    /// event — request-path tenant isolation. The caller (TriggerCustomerStatusFlowJob) builds the graph,
+    /// reads feature_group_id from graph.TriggerStart, and does most-specific-wins matching in code (status
+    /// names are opaque; matching is featureGroupId-based). tenant_id is the leading predicate so the JSONB
+    /// EXISTS only expands the tenant's own (small) flow set.
+    /// Schema: chatbot_flows (flow_id, tenant_id, flow_config JSONB, is_active).
+    /// </summary>
+    public async Task<List<CustomerStatusFlowInfo>> GetActiveCustomerStatusFlowsAsync(int tenantId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT flow_id, flow_config::text
+            FROM chatbot_flows
+            WHERE tenant_id = @tid
+              AND is_active = true
+              AND flow_config->>'version' = '2'
+              AND EXISTS (
+                  SELECT 1
+                  FROM jsonb_array_elements(flow_config->'nodes') AS node
+                  WHERE node->>'type' = 'customer_status_changed'
+              )";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+
+        var result = new List<CustomerStatusFlowInfo>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            result.Add(new CustomerStatusFlowInfo
+            {
+                FlowId = reader.GetInt32(0),
+                FlowConfigJson = reader.GetString(1)
+            });
+        }
+        return result;
+    }
+
+    /// <summary>
     /// Create a new flow for a tenant. Returns the new flow_id.
     /// New flows start as inactive (draft).
     /// </summary>
@@ -1629,6 +1670,16 @@ public sealed class ScheduleFlowInfo
 {
     public int FlowId { get; init; }
     public int TenantId { get; init; }
+    public required string FlowConfigJson { get; init; }
+}
+
+/// <summary>
+/// FEAT-INMA-PIPELINE-V2 C3a: a single tenant's active v2 flow that contains a customer_status_changed
+/// trigger node. Tenant is the caller's (the query is tenant-scoped), so it is not repeated here.
+/// </summary>
+public sealed class CustomerStatusFlowInfo
+{
+    public int FlowId { get; init; }
     public required string FlowConfigJson { get; init; }
 }
 

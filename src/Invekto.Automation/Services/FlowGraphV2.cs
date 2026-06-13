@@ -12,7 +12,8 @@ public sealed class FlowGraphV2
     /// <summary>All trigger types recognized as flow entry points.</summary>
     internal static readonly HashSet<string> TriggerTypes = new(StringComparer.Ordinal)
     {
-        "trigger_start", "webhook_trigger", "outbound_trigger", "schedule_trigger"
+        "trigger_start", "webhook_trigger", "outbound_trigger", "schedule_trigger",
+        "customer_status_changed" // FEAT-INMA-PIPELINE-V2 C3a — INMA customer_status change entry point
     };
 
     public IReadOnlyDictionary<string, FlowNodeV2> NodesById { get; }
