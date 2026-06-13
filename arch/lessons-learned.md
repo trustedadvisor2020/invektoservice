@@ -10,6 +10,24 @@
 
 ---
 
+## Codex review: diff-disi garanti kodunu doc-comment'te alintila (2026-06-13, FEATURE C)
+
+**Baglam:** FEATURE C (cxapi 'sending' recovery sweep) Codex iter0 FAIL — CQ9/Q1/Q2 "age-only reset bir in-flight gonderimle yarisip cift gonderim yapabilir" dedi. Gercekte duplicate-safety, gonderim yolundaki **posting CAS**'i (`SetMessagePostingAsync`, reset olmus satirda POST'u atlar) tarafindan garanti ediliyordu — ama o kod diff'te DEGILDI, Codex goremedi → false-positive FAIL.
+
+**Ders (universal, Codex review):** Bir diff'in guvenligi, **degismeyen mevcut kod**taki bir invariant'a dayaniyorsa (CAS, lock, guard, FK), o kodu yeni kodun **doc-comment'inde dosya:satir ile acikca alintila**. Reviewer in-diff dogrulayabilir → false-positive FAIL'i onler, iter dusurur. Kaniti plan summary + verification_questions'a da koy (refutation cumlesi). **Why:** Codex sadece diff'i gorur; "baska yerde garanti var" iddiasi kanitsiz reddedilir.
+
+## Codex MEDIUM+ risk: Tenant/Auth verification sorusu ZORUNLU (2026-06-13)
+
+**Baglam:** FEATURE C iter1 = 12/12 CQ PASS + 3/3 CoVe PASS ama yine FAIL: tek blocker `VQ-COVERAGE` — MEDIUM risk icin Codex Data + **Tenant/Auth** + Lifecycle kategorilerinin ucunu de ister; bende Data+Lifecycle vardi, Tenant/Auth yoktu.
+
+**Ders:** MEDIUM+ risk plan JSON'unda `verification_questions`'a **mutlaka bir `"category": "Tenant/Auth"` sorusu** koy (tenant izolasyonu / cross-contamination / route-scope). Background/tenant-blind sweep'lerde bile: "tenant_id reassign etmiyor + route-scoped" sorusu yeterli. **Why:** Kod %100 temiz olsa da bu coverage gate tek basina FAIL verdirir → gereksiz iterasyon.
+
+## Deploy: publish'teki appsettings.Production.json'u ZIP'ten CIKAR (2026-06-13)
+
+**Baglam:** `dotnet publish` ciktisi dev placeholder `appsettings.Production.json` iceriyordu; `Expand-Archive -Force` prod config'i (secret + gate flag'leri) ezecekti.
+
+**Ders:** Zip'lemeden ONCE publish output'tan `appsettings.Production.json`'u **sil**, sonra zip'le. Boylece extract prod config'e hic dokunmaz — backup-and-restore'dan daha temiz (race yok). Backup yine al (`bak-{tarih}-{slug}`). Config degisikligi gerekiyorsa sunucuda targeted text-replace + ConvertFrom-Json validate + UTF8-no-BOM write. deploy_config_backup kuralinin zip-exclude refine'i.
+
 ## âš  Zoho-Bound Lessons DEPRECATED Banner (2026-05-12, FEAT-INMA-PIPELINE-V2 C1 Zoho-out)
 
 **BaÄŸlam:** Zoho INSE'den TAMAMEN Ã§Ä±karÄ±ldÄ± (commit `0c0733b`, Migration 048 archive + DROP). AÅŸaÄŸÄ±daki lesson'larda "Zoho" geÃ§en entry'lerin **purely Zoho-bound** olanlarÄ± V2 ile irrelevant, **evrensel pattern** iÃ§erenler hÃ¢lÃ¢ geÃ§erlidir.
