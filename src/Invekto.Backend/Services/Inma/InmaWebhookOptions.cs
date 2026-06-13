@@ -12,16 +12,16 @@ public sealed class InmaWebhookOptions
     public const string SectionName = "InmaWebhook";
 
     /// <summary>Preferred digest encoding of the X-Invekto-Signature value. "base64" or "hex".</summary>
-    public string SignatureDigestEncoding { get; set; } = "base64";
+    public string SignatureDigestEncoding { get; set; } = "hex";
 
     /// <summary>Verify-live mode: if the preferred encoding fails, also try the other and log which matched. Default ON until the format is confirmed.</summary>
-    public bool AcceptEitherEncoding { get; set; } = true;
+    public bool AcceptEitherEncoding { get; set; } = false;
 
     /// <summary>How the stored secret is encoded. "base64" (INMA shows a base64 32-byte key) decodes to raw key bytes; "utf8" uses the string bytes verbatim.</summary>
-    public string KeyEncoding { get; set; } = "base64";
+    public string KeyEncoding { get; set; } = "utf8";
 
     /// <summary>Optional prefix stripped from the signature header before decoding (e.g. "sha256="). Empty = raw digest.</summary>
-    public string SignaturePrefix { get; set; } = "";
+    public string SignaturePrefix { get; set; } = "sha256=";
 
     /// <summary>Hard cap on the raw request body read into memory before parse (DoS guard on the shared webhook URL). 1 MB — far above any real INMA message/ack/event payload, so the existing paths are unaffected.</summary>
     public int MaxBodyBytes { get; set; } = 1_048_576;
