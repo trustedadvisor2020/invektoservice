@@ -157,7 +157,44 @@ export const useFlowStore = create<FlowState>((set, get) => ({
 
     const state = get();
 
-    // Check maxInstances
+    // Single-trigger slot (FEAT-INMA-PIPELINE-V2 C3b): a flow may have EXACTLY ONE trigger
+    // (the backend FlowValidator rejects 0 or >1 trigger nodes). Every new flow is seeded with
+    // an undeletable trigger_start, so when a trigger-category node is dropped onto a flow that
+    // already has a (different) trigger we REPLACE the existing trigger instead of adding a
+    // second one — otherwise the flow becomes unsaveable and alternative triggers (incl.
+    // customer_status_changed) would be unusable. Preserves the old trigger's outgoing edges +
+    // canvas position; selects the new node; undoable via pushHistory.
+    if (info.category === 'trigger') {
+      const existingTrigger = state.nodes.find(
+        (n) => getNodeTypeInfo(n.type as FlowNodeType)?.category === 'trigger'
+      );
+      if (existingTrigger) {
+        // Re-dropping the SAME trigger type is a no-op (it is already the active trigger).
+        if (existingTrigger.type === type) return;
+
+        get().pushHistory();
+        const replacedId = generateNodeId(type);
+        const replacementNode: Node = {
+          id: replacedId,
+          type,
+          position: existingTrigger.position,
+          data: { ...info.defaultData } as Record<string, unknown>,
+        };
+        set({
+          nodes: state.nodes.map((n) => (n.id === existingTrigger.id ? replacementNode : n)),
+          // Re-point edges leaving the old trigger to the new one (triggers are source-only).
+          edges: state.edges.map((e) =>
+            e.source === existingTrigger.id ? { ...e, source: replacedId } : e
+          ),
+          selectedNodeId: replacedId,
+          isDirty: true,
+        });
+        queueMicrotask(() => get().revalidate());
+        return;
+      }
+    }
+
+    // Check maxInstances (non-trigger nodes, or the FIRST trigger when a flow has none yet)
     if (info.maxInstances) {
       const count = state.nodes.filter((n) => n.type === type).length;
       if (count >= info.maxInstances) return;

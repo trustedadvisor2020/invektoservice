@@ -59,7 +59,8 @@ export type FlowNodeType =
   | 'utility_note'
   | 'action_call_flow'
   | 'action_assign_group'
-  | 'action_ecommerce';
+  | 'action_ecommerce'
+  | 'customer_status_changed';
 
 // Union type for all node data shapes
 export type NodeData =
@@ -82,7 +83,8 @@ export type NodeData =
   | UtilityNoteData
   | ActionCallFlowData
   | ActionAssignGroupData
-  | ActionEcommerceData;
+  | ActionEcommerceData
+  | CustomerStatusChangedData;
 
 /** Base interface with index signature for React Flow compatibility */
 interface BaseNodeData {
@@ -109,6 +111,20 @@ export interface ScheduleTriggerData extends BaseNodeData {
   label: string;
   cron_expression: string;
   timezone?: string;
+}
+
+/**
+ * FEAT-INMA-PIPELINE-V2 C3b: INMA customer_status (feature-group) change trigger.
+ * `feature_group_id` is OPTIONAL and serialized as a NUMERIC STRING (the cxapi catalog group id):
+ *   - '' or absent => catch-all: the flow fires on ANY customer-status group change.
+ *   - '<numeric id>' => fires only when that specific feature group changes.
+ * The backend (C3a) reads this via GetData('feature_group_id') as a Dictionary<string,string>;
+ * a NON-numeric value is silently skipped, so the picker only ever emits '' or a numeric string.
+ * Matching is GROUP-level (fires on any change in the group) — there is NO from/to filtering.
+ */
+export interface CustomerStatusChangedData extends BaseNodeData {
+  label: string;
+  feature_group_id?: string;
 }
 
 export interface AiSentimentData extends BaseNodeData {
@@ -290,6 +306,16 @@ export const NODE_TYPE_REGISTRY: NodeTypeInfo[] = [
     color: '#10b981',
     maxInstances: 1,
     defaultData: { label: 'Zamanlayıcı', cron_expression: '0 9 * * *' } as ScheduleTriggerData,
+  },
+  {
+    type: 'customer_status_changed',
+    category: 'trigger',
+    label: 'Müşteri Durumu Değişti',
+    description: 'INMA müşteri durumu (feature grubu) değiştiğinde tetikler',
+    color: '#10b981',
+    maxInstances: 1,
+    // defaultData carries ONLY label → fresh node = catch-all (no feature_group_id key).
+    defaultData: { label: 'Müşteri Durumu Değişti' } as CustomerStatusChangedData,
   },
   {
     type: 'message_text',

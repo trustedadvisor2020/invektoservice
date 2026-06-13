@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useFlowStore } from '../../../stores/flow-store';
 import { useAuth } from '../../../hooks/useAuth';
 import { getNodeTypeInfo, type FlowNodeType } from '../../../types/flow';
-import { api, type FbAvailableInstance, type FlowSummary } from '../../../lib/api';
+import { api, ApiClientError, type FbAvailableInstance, type FlowSummary, type CustomerFeatureGroup } from '../../../lib/api';
 import { PlaceholderPicker } from '../../../components/PlaceholderPicker';
 import {
   NODE_GUIDES,
@@ -21,6 +21,7 @@ import type {
   AiSentimentData,
   WebhookTriggerData,
   ScheduleTriggerData,
+  CustomerStatusChangedData,
   ActionApiCallData,
   ActionDelayData,
   ActionHandoffData,
@@ -138,6 +139,9 @@ export function NodePropertyPanel() {
         {nodeType === 'schedule_trigger' && (
           <ScheduleTriggerProps data={selectedNode.data as ScheduleTriggerData} onChange={update} />
         )}
+        {nodeType === 'customer_status_changed' && (
+          <CustomerStatusChangedProps data={selectedNode.data as CustomerStatusChangedData} onChange={update} />
+        )}
         {nodeType === 'action_call_flow' && (
           <CallFlowProps data={selectedNode.data as ActionCallFlowData} onChange={update} />
         )}
@@ -152,7 +156,7 @@ export function NodePropertyPanel() {
         <VariableExplorerSection />
 
         {/* Delete button (not for trigger types) */}
-        {nodeType !== 'trigger_start' && nodeType !== 'webhook_trigger' && nodeType !== 'outbound_trigger' && nodeType !== 'schedule_trigger' && (
+        {nodeType !== 'trigger_start' && nodeType !== 'webhook_trigger' && nodeType !== 'outbound_trigger' && nodeType !== 'schedule_trigger' && nodeType !== 'customer_status_changed' && (
           <div className="pt-3 border-t border-navy-100">
             <button
               onClick={() => deleteNode(selectedNode.id)}
@@ -396,6 +400,139 @@ function HeadersEditor({
 }
 
 const INSTANCE_TYPE_LABELS: Record<number, string> = { 1: 'WhatsApp', 2: 'Web', 5: 'Kanal', 6: 'SMS' };
+
+// FEAT-INMA-PIPELINE-V2 C3b: customer_status_changed trigger config — a feature-group picker fed
+// by the cached cxapi catalog proxy. Catch-all = '' (backend-sanctioned); a specific group = the
+// numeric id as a string. Text-mode (selectionMode===3) groups are shown disabled AND blocked in
+// onChange (they arrive as featureGroupId=null so a specific match never fires). Tenants without a
+// WapCRM secret get an info note + the node works as catch-all.
+function CustomerStatusChangedProps({ data, onChange }: { data: Record<string, unknown>; onChange: (d: Record<string, unknown>) => void }) {
+  const { session } = useAuth();
+  const tenantId = session?.tenantId;
+
+  const [groups, setGroups] = useState<CustomerFeatureGroup[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [notConfigured, setNotConfigured] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Current selection. '' = catch-all. Defensive read-normalize (a stored number -> string);
+  // the picker only ever WRITES '' or a numeric string, so this is just belt-and-suspenders.
+  const rawFg = data.feature_group_id;
+  const currentFg = typeof rawFg === 'number'
+    ? String(rawFg)
+    : (typeof rawFg === 'string' ? rawFg.trim() : '');
+
+  const loadGroups = useCallback(async () => {
+    if (!tenantId) return;
+    setLoading(true);
+    setNotConfigured(false);
+    setFetchError(false);
+    try {
+      const result = await api.getCustomerFeatureGroups();
+      setGroups(result.data ?? []);
+    } catch (err: unknown) {
+      // 422 INV-BE-132 = tenant has no WapCRM secret (distinct from a transient fetch failure).
+      if (err instanceof ApiClientError && err.status === 422) {
+        setNotConfigured(true);
+      } else {
+        setFetchError(true);
+        console.warn('[CustomerStatusChangedProps] catalog fetch failed:', err instanceof Error ? err.message : err);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [tenantId]);
+
+  useEffect(() => { loadGroups(); }, [loadGroups]);
+
+  const refresh = async () => {
+    setRefreshing(true);
+    try {
+      await api.invalidateCustomerFeatureGroupsCache();
+    } catch (err: unknown) {
+      console.warn('[CustomerStatusChangedProps] cache invalidate failed:', err instanceof Error ? err.message : err);
+    } finally {
+      setRefreshing(false);
+    }
+    await loadGroups();
+  };
+
+  const handleSelect = (value: string) => {
+    if (value === '') { onChange({ feature_group_id: '' }); return; }
+    // Hard-guard: ignore unknown / text-mode (selectionMode===3) selections so a never-fires group
+    // can never be committed even if the disabled <option> is bypassed.
+    const grp = groups.find((g) => String(g.id) === value);
+    if (!grp || grp.selectionMode === 3) return;
+    onChange({ feature_group_id: value });
+  };
+
+  const selectedGroup = currentFg !== '' ? groups.find((g) => String(g.id) === currentFg) : undefined;
+
+  return (
+    <div className="space-y-3">
+      {notConfigured ? (
+        <p className="text-sm text-navy-300">
+          WapCRM bağlantısı yok. Akış <strong>her durum değişikliğinde</strong> tetiklenir.
+          <span className="block mt-1 text-navy-200">
+            Belirli bir gruba bağlamak için Ayarlar &gt; Entegrasyon bölümünden WapCRM bağlantısını tamamlayın.
+          </span>
+        </p>
+      ) : (
+        <FieldGroup label="Durum Grubu">
+          {loading ? (
+            <p className="text-sm text-navy-300">Yükleniyor...</p>
+          ) : (
+            <>
+              <select
+                value={currentFg}
+                onChange={(e) => handleSelect(e.target.value)}
+                className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
+              >
+                <option value="">Tüm durum değişiklikleri (her grup)</option>
+                {groups.map((g) => (
+                  <option key={g.id} value={String(g.id)} disabled={g.selectionMode === 3}>
+                    {g.name}{g.selectionMode === 3 ? ' (metin — tetiklenemez)' : ''}
+                  </option>
+                ))}
+              </select>
+              {fetchError && (
+                <p className="text-sm text-amber-600 mt-1">Gruplar yüklenemedi — Yenile ile tekrar deneyin.</p>
+              )}
+              <button
+                type="button"
+                onClick={refresh}
+                disabled={refreshing}
+                className="text-xs text-brand-600 hover:text-brand-700 mt-1.5 disabled:opacity-50"
+              >
+                {refreshing ? 'Yenileniyor...' : 'Kataloğu yenile'}
+              </button>
+            </>
+          )}
+        </FieldGroup>
+      )}
+
+      {selectedGroup ? (
+        <div className="text-xs text-navy-400 bg-navy-50 rounded p-2 space-y-1">
+          <p>
+            Bu tetikleyici <strong>{selectedGroup.name}</strong> grubundaki <strong>herhangi bir</strong> durum
+            değişikliğinde çalışır. Tek bir durum seçilemez.
+          </p>
+          {selectedGroup.features.length > 0 && (
+            <p className="text-navy-300">
+              Gruptaki durumlar: {selectedGroup.features.map((f) => f.name).join(', ')}
+            </p>
+          )}
+        </div>
+      ) : (!notConfigured && !loading && (
+        <p className="text-xs text-navy-300">
+          Grup seçilmezse akış her durum değişikliğinde tetiklenir. Sonraki adımda
+          {' '}<code className="text-navy-400">{'{{new_customer_status}}'}</code> ile dallanabilirsiniz.
+        </p>
+      ))}
+    </div>
+  );
+}
 
 function TriggerStartProps({ data, onChange }: { data: Record<string, unknown>; onChange: (d: Record<string, unknown>) => void }) {
   const { session } = useAuth();

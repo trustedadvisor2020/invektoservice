@@ -619,6 +619,12 @@ errors:
   - code: INV-BE-131
     description: "FEAT-PROJELER / cxapi PR-3b-2 — a cxapi delivery ack discriminated at Backend /webhook/event could not be forwarded to Outbound's /webhook/delivery-status (timeout/5xx/non-2xx, incl. 404 when the wamid is not yet/never correlated: gate closed, bridge, or non-cxapi send) OR mapped to a no-op (unsupported Status 0/5, blank InstanceMessageID). Internal/log only. The public /webhook/event ALWAYS returns 202 to WapCRM so the provider does not retry-storm the shared webhook; WapCRM at-least-once redelivery re-drives it and the Outbound apply is idempotent. Never propagated to the provider."
     user_message: null
+  - code: INV-BE-132
+    description: "FEAT-INMA-PIPELINE-V2 C3b — the tenant has no WapCRM settings (tenant_registry.settings_json->'wapcrm'), an empty secret_key, OR a malformed secret (the WapCrmFeatureGroupCatalogClient contract-guard rejects control chars / an unattachable X-CIB-SecretKey header — caught by the endpoint as a typed backstop, never an unhandled 500), so the customer-feature-groups catalog cannot be fetched (422). The Flow Builder customer_status_changed trigger still works as a catch-all (fires on any customer-status change); the tenant must complete/repair the WapCRM connection to use the feature-group picker."
+    user_message: WapCRM bağlantısı gerekli — akış her durum değişikliğinde tetiklenir. Grup seçmek için Ayarlar > Entegrasyon bölümünden bağlantınızı tamamlayın.
+  - code: INV-BE-133
+    description: "FEAT-INMA-PIPELINE-V2 C3b — cxapi POST /api/customer-feature-groups/catalog round-trip failed (transport/connection error, unparseable envelope, provider envelope status=false, per-attempt linked-CTS timeout, or a provider-documented 301/302 rate-limit) -> 503. Read-only: no side-effect, safe to retry; the 24h cache does NOT cache failures. The raw provider message is logged internally (length-capped; the X-CIB-SecretKey is a header so it can never appear) and is NEVER returned to the SPA. Distinct from INV-BE-127 (templates) + INV-BE-001 so dashboards isolate catalog-fetch outages."
+    user_message: Durum grupları şu anda alınamıyor; birkaç saniye sonra tekrar deneyin.
 
   # ── AA — AgentAI ──
   - code: INV-AA-001

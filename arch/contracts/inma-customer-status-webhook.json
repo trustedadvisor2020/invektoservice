@@ -27,7 +27,10 @@
       "path": "https://cxapi.wapcrm.net/api/customer-feature-groups/catalog",
       "owner": "INMA (MEVCUT — PDF SS6.1)",
       "auth": "X-CIB-SecretKey + IP whitelist",
-      "consumer_use": "Flow Builder durum dropdown'u: Backend proxy + cache. Catalog-degisiklik event'i YOK (INMA cevabi soru 9) → periyodik refresh (gunluk + akis editoru acilisinda). featureGroupId/featureIds STABIL; isimler event uretim aninda cozulur → trigger eslesmesi ID ile."
+      "request_body": "OPSIYONEL kanal filtresi { InstanceID }. C3b proxy global liste icin bos {} gonderir (InstanceID YOK = tum gruplar).",
+      "response_shape": "Standart zarf { status, message, statusCode, requestID, data }; data = grup DIZISI. Her grup: { id:int (=featureGroupId; trigger node feature_group_id olarak SAKLAR), systemKey:string (orn 'customer_stage'), name:string (orn 'Lead Aşaması'), selectionMode:int (1=çoklu/multi, 2=tek/single, 3=metin/text), sortOrder:int, features:[{ id:int, name:string, rgbCode:string }], instanceIDs:int[] (bos = tum kanallar) }. DIKKAT: katalog grup-id alani 'id' (camelCase 'featureGroupID' DEGIL — o customer-selections endpoint'inde); selectionMode katalogda INT, webhook event'inde STRING. Kaynak: WapCRM-External-API-Documentation.pdf §6.1 (gitignored temp/wapcrm-doc.txt'ten cikarildi).",
+      "consumer_use": "Flow Builder durum dropdown'u: Backend proxy + cache. Catalog-degisiklik event'i YOK (INMA cevabi soru 9) → periyodik refresh (gunluk + akis editoru acilisinda). featureGroupId/featureIds STABIL; isimler event uretim aninda cozulur → trigger eslesmesi ID ile.",
+      "c3b_implementation": "DONE 2026-06-13. Backend-direct proxy GET /api/v1/customer-feature-groups (JWT-gated, tenant signed-claim) → WapCrmFeatureGroupCatalogCache (24h, single-flight) → WapCrmFeatureGroupCatalogClient (POST {} + X-CIB-SecretKey per-request, SSRF-fixed base, AllowAutoRedirect=false). SPA'ya TRIMMED projeksiyon { id, name, selectionMode, features:[{id,name}] } doner (instanceIDs/rgbCode/systemKey/sortOrder atilir). no-secret=422 INV-BE-132, upstream-fail=503 INV-BE-133."
     },
     "customer_selections_read": {
       "method": "POST",

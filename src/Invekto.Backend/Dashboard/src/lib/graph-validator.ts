@@ -41,6 +41,7 @@ const SOURCE_NODE_TYPES: Set<FlowNodeType> = new Set([
   'webhook_trigger',
   'outbound_trigger',
   'schedule_trigger',
+  'customer_status_changed',
 ]);
 
 /** Node types that are NOT expected to have output edges (terminal nodes) */

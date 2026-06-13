@@ -73,6 +73,27 @@ INV-INM-008 (Backend enqueue fail, WARN/200) · INV-AT-088 (Automation job exec 
 - **Medipol (100000001):** `webhook_secret` set DEĞİL → C2 event'i 401; C3 prereq.
 - **text-mode event (featureGroupId null):** yalnız catch-all (boş feature_group_id) flow eşleşir.
 
+## C3b — Flow Builder UI node + cxapi katalog dropdown ✅ DONE (Codex PASS iter 0)
+
+> **Slug:** `20260613-feat-inma-pipeline-v2-c3b-flow-node-catalog` | **Risk:** MEDIUM | **Codex:** PASS iter 0 (12/12 CQ + 4/4 CoVe, 0 blocker)
+> **Plan:** `arch/plans/20260613-feat-inma-pipeline-v2-c3b-flow-node-catalog.json` | **Build:** .NET exit 0 + SPA tsc/vite exit 0 (bundle `index-E1nc-dJ3.js`)
+
+C3a backend trigger borusunu **görünür + kurulabilir** yaptı. SPA `customer_status_changed` trigger node (webhook_trigger aynası) + Backend-direct, tenant-scoped, **24h cache**'li cxapi katalog proxy (`GET /api/v1/customer-feature-groups`) → feature_group_id picker.
+
+**Kararlar (interview + Codex critique):**
+- **node.data.feature_group_id** = numeric STRING (catch-all = `''`, backend C3a empty=catch-all; non-numeric sessizce skip → picker yalnız `''` veya sayısal yazar). defaultData yalnız `{label}` → fresh node = catch-all.
+- **Single-trigger slot fix** (Codex zorunlu): her flow undeletable `trigger_start` seed eder → `flow-store.addNode` trigger-kategori node bırakılınca mevcut trigger'ı DEĞİŞTİRİR (outgoing edge + pozisyon korunur, undoable). Yoksa customer_status_changed kullanılamaz olurdu.
+- **Metin-modu (selectionMode=3) gruplar** dropdown'da disabled + not + onChange hard-guard (featureGroupId=null gelir → özel eşleşme asla tetiklemez).
+- **WapCRM'siz tenant** (katalog 422 INV-BE-132) → bilgi notu + node catch-all çalışır.
+- **features[] read-only** gösterilir ("gruptaki HERHANGİ bir değişiklikte tetikler, tek durum seçilemez").
+- **TTL 24h** (Q notu; isimler nadiren değişir, ids stabil, change-event YOK) + manuel "Kataloğu yenile" butonu + cache-invalidate endpoint. (Codex 1h önerdi — Q kararı bekliyor.)
+
+**Mimari:** Backend BFF zaten cxapi'yi direkt proxy'liyor (wa-templates prod'da canlı → egress IP whitelisted) — izolasyon ihlali yok. Yeni Shared `WapCrmFeatureGroupCatalogClient` (WapCrmTemplateClient aynası: per-request X-CIB-SecretKey, SSRF-fixed base, AllowAutoRedirect=false, throw-on-failure) + `WapCrmFeatureGroupCatalogCache` (InmaDynamicFieldsCache aynası: single-flight + Invalidate, failures NOT cached). INV-BE-132 (not-configured 422) + INV-BE-133 (upstream-fail 503).
+
+**Files (16):** Shared DTOs/client/cache + ErrorCodes; Backend Program.cs (DI + jwt prefix + 2 endpoint); SPA flow.ts/graph-validator/node-metadata/NodePalette/nodes-index/CustomerStatusTriggerNode.tsx/flow-store/api.ts/NodePropertyPanel; arch errors.md + contract. **No migration.** Additive Shared → diğer 10 servis inert.
+
+**Deploy:** PENDING (Q-gated; Backend yeniden deploy + SPA bundle). **Smoke (AC10):** 5050 hand-seed customer_status_changed flow (SQL) + uçtan uca tetik doğrula; Medipol secret'a dokunma (Q kararı).
+
 ## Sıradaki
 
-**C3b** Flow Builder UI node (`customer_status_changed` — FlowNodeType/NODE_TYPE_REGISTRY/NODE_GUIDES/icon/node component) + cxapi feature-group katalog dropdown (featureGroupId picker) → **C4** `Set Customer Status` action (INMA update endpoint + `invekto-{flowRunUuid}` ClientRequestID loop-guard, `OriginRequestIdPrefix` const'ını reuse eder).
+**C4** `Set Customer Status` action (INMA `customer-feature-groups/update` endpoint + `invekto-{flowRunUuid}` ClientRequestID loop-guard, `CustomerStatusFlowSuppression.OriginRequestIdPrefix` const'ını reuse eder).

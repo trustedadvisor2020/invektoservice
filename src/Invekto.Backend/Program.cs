@@ -190,6 +190,33 @@ builder.Services.AddHttpClient<WapCrmTemplateClient>()
         client.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
     });
 
+// FEAT-INMA-PIPELINE-V2 C3b: cxapi customer-feature-groups CATALOG client + 24h cache (READ-ONLY).
+// Mirrors the FEAT-DMP dynamic-fields wiring (named HttpClient + SINGLETON client wrapping
+// IHttpClientFactory.CreateClient) so the SINGLETON cache holds a singleton client — NOT a captive
+// transient typed-client. Per-request X-CIB-SecretKey (never DefaultRequestHeaders); FIXED cxapi
+// BaseUrl from WapCrmFeatureGroupCatalogOptions (never the tenant ApiUrl — SSRF); AllowAutoRedirect=false
+// (cxapi 301/302 = rate-limit); FINITE backstop timeout (never Infinite).
+var wapCrmFeatureGroupOptions = new WapCrmFeatureGroupCatalogOptions();
+builder.Configuration.GetSection(WapCrmFeatureGroupCatalogOptions.SectionName).Bind(wapCrmFeatureGroupOptions);
+builder.Services.AddSingleton(wapCrmFeatureGroupOptions);
+builder.Services.AddHttpClient("wapcrm_featuregroups")
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        AllowAutoRedirect = false,
+        UseCookies = false
+    })
+    .ConfigureHttpClient((sp, client) =>
+    {
+        var opts = sp.GetRequiredService<WapCrmFeatureGroupCatalogOptions>();
+        client.BaseAddress = new Uri(opts.BaseUrl.TrimEnd('/') + "/");
+        client.Timeout = TimeSpan.FromMilliseconds(opts.HttpClientBackstopMs);
+    });
+builder.Services.AddSingleton(sp => new Invekto.Shared.Contracts.Inma.WapCrmFeatureGroupCatalogClient(
+    sp.GetRequiredService<IHttpClientFactory>().CreateClient("wapcrm_featuregroups"),
+    sp.GetRequiredService<WapCrmFeatureGroupCatalogOptions>(),
+    sp.GetRequiredService<JsonLinesLogger>()));
+builder.Services.AddSingleton<Invekto.Shared.Services.WapCrmFeatureGroupCatalogCache>();
+
 // Configure Knowledge HTTP client (30s timeout for PDF uploads)
 builder.Services.AddHttpClient<KnowledgeClient>(client =>
 {
@@ -672,6 +699,10 @@ if (jwtValidator != null)
         // JWT or not). Reintroduced after latent-bug smoke revealed path-skip behavior.
         "/api/v1/tenant-settings/",
         "/api/v1/dynamic-fields",
+        // FEAT-INMA-PIPELINE-V2 C3b: cxapi customer-feature-groups catalog proxy (GET) +
+        // cache-invalidate (POST). Tenant identity from the signed claim via TenantContext;
+        // no trailing slash so it covers both the list and the /cache-invalidate sub-path.
+        "/api/v1/customer-feature-groups",
         "/api/v1/optout",
         "/api/v1/payment/",
         // FEAT-EFS Drip Sequence: SPA-facing run history proxy. Sequence CRUD lives
@@ -9203,6 +9234,93 @@ app.MapPost("/api/v1/dynamic-fields/cache-invalidate", (
 
     cache.Invalidate(tenantId);
     jsonLog.StepInfo($"/api/v1/dynamic-fields cache invalidated (tenant={tenantId})", requestId);
+    return Results.Ok(new { invalidated = true });
+});
+
+// ============================================
+// FEAT-INMA-PIPELINE-V2 C3b: cxapi customer-feature-groups CATALOG proxy (tenant-scoped, 24h cache)
+// ============================================
+// JWT-gated by the same global middleware as /api/v1/dynamic-fields (the prefix
+// "/api/v1/customer-feature-groups" is in jwtRequiredPrefixes above). Tenant identity comes ONLY
+// from the signed claim via ctx.Items["TenantContext"] — never from query/header/body. Powers the
+// Flow Builder customer_status_changed trigger's feature_group_id picker. READ-ONLY; no send/write.
+// Failure semantics:
+//   - no WapCRM secret -> 422 INV-BE-132 (the trigger still works as catch-all; UI shows an info note)
+//   - malformed stored secret (control chars) -> 422 INV-BE-132 (typed ArgumentException backstop, secret never logged)
+//   - upstream fail (timeout/transport/provider status=false/301-302) -> 503 INV-BE-133 (not cached)
+//   - ok -> 200 + { data: [{ id, name, selectionMode, features:[{id,name}] }] } (empty list is a valid tenant state)
+app.MapGet("/api/v1/customer-feature-groups", async (
+    HttpContext ctx,
+    JsonLinesLogger jsonLog,
+    [FromServices] Invekto.Shared.Services.WapCrmFeatureGroupCatalogCache catalogCache,
+    [FromServices] TenantRegistryRepository tenantRepo) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+
+    if (ctx.Items["TenantContext"] is not TenantContext fgGetTenantCtx)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+    var tenantId = fgGetTenantCtx.TenantId;
+
+    var wapcrm = await tenantRepo.GetWapCrmSettingsAsync(tenantId, ctx.RequestAborted);
+    if (wapcrm == null || string.IsNullOrWhiteSpace(wapcrm.SecretKey))
+    {
+        jsonLog.StepWarn($"[{ErrorCodes.FeatureGroupsCatalogNotConfigured}] /api/v1/customer-feature-groups: no WapCRM secret for tenant {tenantId}", requestId);
+        return Results.Json(
+            ErrorResponse.Create(
+                ErrorCodes.FeatureGroupsCatalogNotConfigured,
+                "WapCRM baglantisi gerekli — akis her durum degisikliginde tetiklenir. Grup secmek icin Ayarlar > Entegrasyon bolumunden baglantinizi tamamlayin.",
+                requestId),
+            statusCode: 422);
+    }
+
+    try
+    {
+        var groups = await catalogCache.GetOrFetchAsync(tenantId, wapcrm.SecretKey, ctx.RequestAborted);
+        return Results.Json(new { data = groups });
+    }
+    catch (ArgumentException ex)
+    {
+        // Malformed stored secret (control chars) rejected by the client contract-guard. Treat as
+        // not-configured; the secret is NEVER logged (only the exception type name).
+        jsonLog.StepWarn($"[{ErrorCodes.FeatureGroupsCatalogNotConfigured}] /api/v1/customer-feature-groups: malformed WapCRM secret for tenant {tenantId} ({ex.GetType().Name})", requestId);
+        return Results.Json(
+            ErrorResponse.Create(
+                ErrorCodes.FeatureGroupsCatalogNotConfigured,
+                "WapCRM API anahtari gecersiz veya yapilandirilmamis. Ayarlar > Entegrasyon bolumunden baglantinizi kontrol edin.",
+                requestId),
+            statusCode: 422);
+    }
+    catch (Invekto.Shared.Contracts.Inma.WapCrmFeatureGroupCatalogFetchException ex)
+    {
+        jsonLog.StepWarn(
+            $"[{ErrorCodes.FeatureGroupsCatalogUpstreamFailed}] /api/v1/customer-feature-groups upstream fail " +
+            $"(tenant={tenantId}, providerCode={ex.ProviderStatusCode ?? "-"}, http={ex.HttpStatusCode?.ToString() ?? "-"}): {ex.Message}",
+            requestId);
+        return Results.Json(
+            ErrorResponse.Create(
+                ErrorCodes.FeatureGroupsCatalogUpstreamFailed,
+                "Durum gruplari su anda alinamiyor; birkac saniye sonra tekrar deneyin.",
+                requestId),
+            statusCode: 503);
+    }
+});
+
+// Cache drop endpoint — powers the manual "Kataloglu yenile" button in the trigger property panel.
+// Tenant-scoped by design: a tenant can only invalidate its OWN slot (next GET does one extra cxapi
+// fetch, bounded by the client timeout). No super-admin role check needed; the handler only logs.
+app.MapPost("/api/v1/customer-feature-groups/cache-invalidate", (
+    HttpContext ctx,
+    JsonLinesLogger jsonLog,
+    Invekto.Shared.Services.WapCrmFeatureGroupCatalogCache catalogCache) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+
+    if (ctx.Items["TenantContext"] is not TenantContext fgInvTenantCtx)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+    var tenantId = fgInvTenantCtx.TenantId;
+
+    catalogCache.Invalidate(tenantId);
+    jsonLog.StepInfo($"/api/v1/customer-feature-groups cache invalidated (tenant={tenantId})", requestId);
     return Results.Ok(new { invalidated = true });
 });
 

@@ -720,6 +720,20 @@ export interface FbAvailableInstance {
   assignedFlowName?: string | null;
 }
 
+// FEAT-INMA-PIPELINE-V2 C3b: cxapi customer-feature-groups catalog (trimmed Backend projection).
+// Powers the customer_status_changed trigger's feature_group_id picker.
+export interface CustomerFeatureOption {
+  id: number;
+  name: string;
+}
+
+export interface CustomerFeatureGroup {
+  id: number;
+  name: string;
+  selectionMode: number; // 1 = multi (çoklu), 2 = single (tek), 3 = text (metin)
+  features: CustomerFeatureOption[];
+}
+
 export interface FbWorkingHoursInfo {
   configured: boolean;
   start?: string;
@@ -1775,6 +1789,15 @@ class OpsApiClient {
   async getFlowBuilderInstances(flowId?: number): Promise<{ instances: FbAvailableInstance[] }> {
     const params = flowId ? `?flow_id=${flowId}` : '';
     return this.request<{ instances: FbAvailableInstance[] }>(`/api/v1/flow-builder/instances/available${params}`);
+  }
+
+  // FEAT-INMA-PIPELINE-V2 C3b: cxapi customer-feature-groups catalog (24h cached Backend proxy).
+  async getCustomerFeatureGroups(): Promise<{ data: CustomerFeatureGroup[] }> {
+    return this.request<{ data: CustomerFeatureGroup[] }>('/api/v1/customer-feature-groups');
+  }
+
+  async invalidateCustomerFeatureGroupsCache(): Promise<{ invalidated: boolean }> {
+    return this.request<{ invalidated: boolean }>('/api/v1/customer-feature-groups/cache-invalidate', { method: 'POST' });
   }
 
   async getFlowBuilderWorkingHours(): Promise<FbWorkingHoursInfo> {

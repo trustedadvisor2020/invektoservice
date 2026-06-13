@@ -133,6 +133,10 @@ public static class ErrorCodes
     // FEAT-PROJELER / cxapi PR-3b-2: delivery-ack ingress on /webhook/event (INV-BE-131).
     public const string CxapiDeliveryAckForwardFailed = "INV-BE-131"; // A discriminated cxapi delivery ack could not be forwarded to Outbound's /webhook/delivery-status (timeout/5xx/non-2xx) OR mapped to a no-op (unsupported Status 0/5, blank InstanceMessageID). Logged; the public /webhook/event still returns 202 to WapCRM (at-least-once redelivery re-drives; apply is idempotent). Never propagated to the provider.
 
+    // FEAT-INMA-PIPELINE-V2 C3b: cxapi customer-feature-groups catalog proxy (INV-BE-132..133).
+    public const string FeatureGroupsCatalogNotConfigured = "INV-BE-132"; // No tenant WapCRM settings / empty secret_key in tenant_registry.settings_json->'wapcrm', OR a MALFORMED secret (control chars caught from the client contract-guard) -> 422. The Flow Builder customer_status_changed trigger still works as catch-all; the tenant must finish/repair the WapCRM connection to use the group picker.
+    public const string FeatureGroupsCatalogUpstreamFailed = "INV-BE-133"; // cxapi POST /api/customer-feature-groups/catalog round-trip failed (timeout / transport / malformed envelope / provider status=false / 301-302 rate-limit) -> 503. Read-only -> retry-safe; the cache does NOT cache failures. Raw provider message logged internally (length-capped), never returned to the SPA.
+
     // ChatAnalysis errors (INV-CA-xxx)
     public const string ChatAnalysisInvalidPayload = "INV-CA-001";
     public const string ChatAnalysisProcessingFailed = "INV-CA-002";

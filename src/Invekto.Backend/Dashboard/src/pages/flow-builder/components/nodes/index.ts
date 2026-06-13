@@ -3,6 +3,7 @@ import { TriggerStartNode } from './TriggerStartNode';
 import { WebhookTriggerNode } from './WebhookTriggerNode';
 import { OutboundTriggerNode } from './OutboundTriggerNode';
 import { ScheduleTriggerNode } from './ScheduleTriggerNode';
+import { CustomerStatusTriggerNode } from './CustomerStatusTriggerNode';
 import { MessageTextNode } from './MessageTextNode';
 import { MessageMenuNode } from './MessageMenuNode';
 import { LogicConditionNode } from './LogicConditionNode';
@@ -25,6 +26,7 @@ export const nodeTypes: NodeTypes = {
   webhook_trigger: WebhookTriggerNode,
   outbound_trigger: OutboundTriggerNode,
   schedule_trigger: ScheduleTriggerNode,
+  customer_status_changed: CustomerStatusTriggerNode,
   message_text: MessageTextNode,
   message_menu: MessageMenuNode,
   logic_condition: LogicConditionNode,

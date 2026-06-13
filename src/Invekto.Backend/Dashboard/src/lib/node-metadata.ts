@@ -321,6 +321,21 @@ export const NODE_GUIDES: Record<FlowNodeType, NodeGuide> = {
       '- Hata dalını bağlantısız bırakmayın — API hatası akışı kırar\n' +
       '- Çok fazla e-ticaret node\'u art arda koymayın — her biri API çağrısı yapar',
   },
+  customer_status_changed: {
+    summary: 'Bir müşterinin INMA durumu (feature grubu) değiştiğinde akışı başlatır. Örneğin müşteri "Teklif Verildi" olduğunda otomatik WhatsApp gönderebilirsiniz.',
+    detail:
+      'Müşteri Durumu Değişti tetikleyicisi, INMA panelinde bir müşterinin durumu (feature grubu seçimi) değiştiğinde akışı başlatır. Bir feature grubu seçerseniz, akış SADECE o gruptaki herhangi bir durum değiştiğinde tetiklenir.\n\n' +
+      'Grup seçmezseniz (varsayılan), akış HERHANGİ bir durum değişikliğinde tetiklenir. Önemli: tetikleme grup seviyesindedir — gruptaki tek bir duruma (örneğin sadece "Teklif Verildi" olduğunda) göre filtreleme yapılamaz; gruptaki her değişiklikte çalışır.\n\n' +
+      'Tetiklendiğinde eski durum, yeni durum, grup adı ve değişikliği yapan kişi otomatik olarak değişkenlere atanır ve sonraki adımlarda kullanılabilir. Yalnızca panel kullanıcılarının (operatör) yaptığı değişiklikler tetikler; sistemin/API\'nin kendi yazdığı değişiklikler sonsuz döngüyü önlemek için tetiklemez.',
+    scenarios:
+      '- Satış takibi: Müşteri "Teklif Verildi" olunca → "Teklifinizle ilgili sorularınız mı var?" mesajı\n' +
+      '- Onboarding: Müşteri "Yeni Müşteri" olunca → Karşılama + sonraki adımlar\n' +
+      '- Kaybedilen fırsat: Durum "Kaybedildi" grubuna geçince → Geri kazanım kampanyası',
+    antiPatterns:
+      '- Tek bir duruma göre filtrelemek istemeyin — tetikleme grup seviyesindedir, sonraki adımda {{new_customer_status}} ile dallanın\n' +
+      '- Metin tipli grupları seçmeyin — onlar otomasyon tetikleyemez (bilgi notu gösterilir)\n' +
+      '- WapCRM bağlantısı yoksa grup listesi gelmez; akış yine de "her değişiklikte" çalışır',
+  },
 };
 
 // ============================================================
@@ -377,6 +392,12 @@ export const NODE_OUTPUT_VARS: Partial<Record<FlowNodeType, NodeOutputVar[]>> = 
   ],
   utility_set_variable: [
     { name: '(kullanıcı tanımlı)', description: 'Atanan değişken adı ve değeri' },
+  ],
+  customer_status_changed: [
+    { name: 'customer_status_group', description: 'Değişen feature grubu adı' },
+    { name: 'old_customer_status', description: 'Önceki durum' },
+    { name: 'new_customer_status', description: 'Yeni durum' },
+    { name: 'customer_status_changed_by', description: 'Değişikliği yapan kişi' },
   ],
 };
 
