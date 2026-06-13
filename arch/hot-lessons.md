@@ -6,7 +6,7 @@
 - Shared-Postgres read (tenant_registry/tenant_instances) PR'ında /rev summary'ye BAŞTAN yaz: "single shared Postgres + Outbound zaten okur=precedent + query tenant-scoped + schema=<file:line>" → CQ5/CQ9/CQ11 FP döngüsünü iter0'da kapat.
 - `null-forgiving operator (!)` = HARD CQ5 FAIL bu projede; pattern-bind/non-null guard kullan.
 - Prior-slice şemasına CRUD yazarken migration diff'te olmaz → CQ11 FAIL: /rev summary'ye migration no + constraint adı + commit attest et.
-- `git_diff` arg'ına placeholder/"SEE diff_file_path"/parafraz YAZMA → tüm CQ UNKNOWN→FAIL; EXACT `git diff` çıktısını VERBATIM geç.
+- `git_diff` arg'ına placeholder/"SEE diff_file_path"/parafraz/ABBREVIATED YAZMA → tüm CQ UNKNOWN→FAIL; EXACT `git diff` çıktısını VERBATIM geç. **MCP `codex_review` `diff_file_path` param'ını OTOMATİK OKUMAZ — inline `git_diff` TEK kaynak** (C2 iter0 bundan FAIL: migration kısaltıp "see file" notu koydum → 10 CQ UNKNOWN). 52KB diff bile inline geç; tek cohesive feature'ı CHUNK'lama (cross-chunk evidence FP).
 - Staged dosyayı edit edince staged kopya GÜNCELLENMEZ → /rev öncesi yeniden `git add`.
 - Routing değişikliği auto-escalate LOW→MEDIUM; MEDIUM CoVe ≥3 VQ + Auth/Data/Lifecycle span.
 - Codex MEDIUM+ client/integration işinde implementasyon ÖNCESİ `codex_consult(critique)` ile planı strestle.
@@ -28,6 +28,7 @@
 - Snapshot-tabanlı confirm/dispatch'te parent-state (proje archived/HSM) confirm-zamanı atomik re-validate + claim.
 - Yeni DB tablosu = ZORUNLU `GRANT ALL ON {table} TO invekto`; COUNT(*) bigint → `GetInt32` InvalidCastException, `::int` cast veya `GetInt64`.
 - Delivery counter FUNNEL (+1) değil PARTITION (yeni bucket +1, canlı eski −1); webhook ack "her zaman 2xx" + cross-service forward typed-catch.
+- Monotonic/ordering guard'da ordering-key (occurredAt/version) NULL olabiliyorsa: NULL event newer state'i EZMESİN + anchor'ı NULL'a RESETLEMESİN. `SET ts=COALESCE(@k, ts)` + WHERE `(@k IS NOT NULL AND (ts IS NULL OR ts<=@k)) OR (@k IS NULL AND ts IS NULL)` (NULL = only-fill-if-empty, lowest priority). Naif `@k IS NULL OR ts<=@k` = stale-overwrite + anchor reset → CQ9 FAIL (C2 iter2 bundan).
 
 ## Silent-failure / audit
 - Silent success > silent reject TEHLİKELİ; "specific error code döndürüyor" ≠ "silent değil" — audit-table contract varsa HER reddedilen deneme AUDIT-BEFORE-SERVE throwing-insert.
