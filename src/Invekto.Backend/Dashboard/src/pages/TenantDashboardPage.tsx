@@ -10,10 +10,6 @@ import {
   TrendingUp,
   GitBranch,
   BookOpen,
-  Megaphone,
-  CalendarDays,
-  BarChart3,
-  Star,
 } from 'lucide-react';
 
 // --- Stat Card ---
@@ -56,13 +52,11 @@ interface FeatureCardDef {
   bgColor: string;
 }
 
+// NOTE: Sol nav'dan kaldırılan menülerle (commit f1d1dd41: Kampanyalar/Pazarlama/
+// Randevular/Analizler) hizalı tutulur — quick-access kartları nav ile senkron.
 const FEATURE_CARDS: FeatureCardDef[] = [
   { feature: 'FlowBuilder', path: '/flow-builder', label: 'Flow Builder', desc: 'Akış tasarımı', icon: GitBranch, color: 'text-brand-500', bgColor: 'bg-brand-50' },
   { feature: 'Knowledge', path: '/knowledge', label: 'Bilgi Bankası', desc: 'Doküman ve SSS', icon: BookOpen, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
-  { feature: 'Outbound', path: '/campaigns', label: 'Kampanyalar', desc: 'Toplu mesaj gönderin', icon: Megaphone, color: 'text-violet-600', bgColor: 'bg-violet-50' },
-  { feature: 'Appointments', path: '/appointments', label: 'Randevular', desc: 'Randevu yönetimi', icon: CalendarDays, color: 'text-amber-600', bgColor: 'bg-amber-50' },
-  { feature: 'Analytics', path: '/analytics', label: 'Analizler', desc: 'Performans raporları', icon: BarChart3, color: 'text-cyan-600', bgColor: 'bg-cyan-50' },
-  { feature: 'Marketing', path: '/marketing', label: 'Pazarlama', desc: 'Yorum ve yönlendirme', icon: Star, color: 'text-rose-600', bgColor: 'bg-rose-50' },
 ];
 
 // --- Page ---
