@@ -190,7 +190,7 @@ builder.Services.AddHttpClient<WapCrmTemplateClient>()
         client.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
     });
 
-// FEAT-INMA-PIPELINE-V2 C3b: cxapi customer-feature-groups CATALOG client + 24h cache (READ-ONLY).
+// FEAT-INMA-PIPELINE-V2 C3b: cxapi customer-feature-groups CATALOG client + 1h cache (READ-ONLY).
 // Mirrors the FEAT-DMP dynamic-fields wiring (named HttpClient + SINGLETON client wrapping
 // IHttpClientFactory.CreateClient) so the SINGLETON cache holds a singleton client — NOT a captive
 // transient typed-client. Per-request X-CIB-SecretKey (never DefaultRequestHeaders); FIXED cxapi
@@ -9238,7 +9238,7 @@ app.MapPost("/api/v1/dynamic-fields/cache-invalidate", (
 });
 
 // ============================================
-// FEAT-INMA-PIPELINE-V2 C3b: cxapi customer-feature-groups CATALOG proxy (tenant-scoped, 24h cache)
+// FEAT-INMA-PIPELINE-V2 C3b: cxapi customer-feature-groups CATALOG proxy (tenant-scoped, 1h cache)
 // ============================================
 // JWT-gated by the same global middleware as /api/v1/dynamic-fields (the prefix
 // "/api/v1/customer-feature-groups" is in jwtRequiredPrefixes above). Tenant identity comes ONLY

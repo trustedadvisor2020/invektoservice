@@ -7,7 +7,8 @@ namespace Invekto.Shared.Services;
 
 /// <summary>
 /// FEAT-INMA-PIPELINE-V2 C3b: tenant-scoped IMemoryCache wrapper for the cxapi
-/// customer-feature-groups catalog. 24h TTL + manual <c>Invalidate</c> entry point
+/// customer-feature-groups catalog. 1h TTL (parity with InmaDynamicFieldsCache; Codex
+/// recommendation for fresher config after a WapCRM reconfig) + manual <c>Invalidate</c> entry point
 /// (cxapi exposes NO catalog-change event, so the dropdown polls/caches; ids are stable,
 /// only display names drift). Cache miss → <see cref="WapCrmFeatureGroupCatalogClient.GetCatalogAsync"/>
 /// → populate + return. Failures are NOT cached (the client throws; the cache does not swallow).
@@ -26,7 +27,7 @@ public sealed class WapCrmFeatureGroupCatalogCache
     private readonly IMemoryCache _cache;
     private readonly WapCrmFeatureGroupCatalogClient _client;
     private readonly ConcurrentDictionary<int, Task<IReadOnlyList<CustomerFeatureGroupView>>> _inflight = new();
-    private static readonly TimeSpan Ttl = TimeSpan.FromHours(24);
+    private static readonly TimeSpan Ttl = TimeSpan.FromHours(1);
 
     public WapCrmFeatureGroupCatalogCache(IMemoryCache cache, WapCrmFeatureGroupCatalogClient client)
     {
