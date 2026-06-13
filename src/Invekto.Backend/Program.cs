@@ -406,6 +406,12 @@ var inmaConnectionString = builder.Configuration.GetConnectionString("InmaManage
     // SuperAdmin: Tenant registry (list + impersonate)
     builder.Services.AddSingleton<TenantRegistryRepository>();
 
+    // FEAT-INMA-PIPELINE-V2 C2: signed customer.selection_changed consumer (dedupe + raw audit + opaque customer_status).
+    builder.Services.AddSingleton<InmaWebhookEventRepository>();
+    var inmaWebhookOptions = new Invekto.Backend.Services.Inma.InmaWebhookOptions();
+    builder.Configuration.GetSection(Invekto.Backend.Services.Inma.InmaWebhookOptions.SectionName).Bind(inmaWebhookOptions);
+    builder.Services.AddSingleton(inmaWebhookOptions);
+
     // FEAT-VFB F-VR-B: voice_tenant_profile read (VoiceRuntime reads it over HTTP via /api/ops/tenants/{id}/voice-profile).
     builder.Services.AddSingleton<VoiceTenantProfileRepository>();
 
@@ -1984,8 +1990,24 @@ app.MapPost("/api/v1/webhook/event", async (HttpContext ctx, JsonLinesLogger jso
     // a root Status/InstanceMessageID with NO messages[] => delivery ack. The typed framework binder is
     // dropped on purpose — the ack's InstanceID is an INT while the inbound envelope's is a STRING, so the
     // two shapes can never bind into one model; discrimination must happen BEFORE typed deserialization.
+    // C2: capture the body ONCE as raw bytes (size-capped DoS guard) so HMAC can verify the VERBATIM
+    // bytes of signed system events; the existing message/ack paths parse from these same bytes, so
+    // their behavior is byte-for-byte unchanged.
+    var inmaWebhookOptions = ctx.RequestServices.GetService<Invekto.Backend.Services.Inma.InmaWebhookOptions>()
+        ?? new Invekto.Backend.Services.Inma.InmaWebhookOptions();
+    var rawBody = await ReadRawBodyAsync(inmaWebhookOptions.MaxBodyBytes);
+    if (rawBody == null)
+    {
+        sw.Stop();
+        var reqCtx = RequestContext.Create(tenantContext.TenantId.ToString(), "-");
+        jsonLogger.RequestError("Webhook: request body exceeds size cap", reqCtx, "/api/v1/webhook/event", sw.ElapsedMilliseconds, ErrorCodes.InmaWebhookBodyTooLarge);
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.InmaWebhookBodyTooLarge, "request body too large", requestId),
+            statusCode: 413);
+    }
+
     IncomingWebhookEvent? webhookEvent;
-    using (var bodyDoc = await TryParseWebhookBodyAsync())
+    using (var bodyDoc = TryParseWebhookBody(rawBody))
     {
         if (bodyDoc == null)
         {
@@ -1998,6 +2020,20 @@ app.MapPost("/api/v1/webhook/event", async (HttpContext ctx, JsonLinesLogger jso
         }
 
         var root = bodyDoc.RootElement;
+
+        // C2 (FEAT-INMA-PIPELINE-V2): INMA's SIGNED system event carries a root "type" ==
+        // "customer.selection_changed". Inbound messages carry root "messages[]" and delivery acks carry
+        // "Status"/"InstanceMessageID" — neither has a root "type", so this branch is unambiguous and is
+        // evaluated BEFORE the message/ack discrimination per the contract.
+        if (root.ValueKind == JsonValueKind.Object
+            && root.TryGetProperty("type", out var sysTypeEl)
+            && sysTypeEl.ValueKind == JsonValueKind.String
+            && sysTypeEl.GetString() == CustomerSelectionChangedEvent.TypeValue)
+        {
+            sw.Stop();
+            return await HandleCustomerSelectionChangedAsync(root, rawBody);
+        }
+
         // Discriminate strictly by the INMA shape contract (tested in WapCrmAckMappingTests): an inbound
         // message ALWAYS carries a root "messages" property; a delivery ack NEVER does. An ambiguous body
         // that has BOTH (e.g. {"messages":[],"Status":1}) is NOT a clean ack — it falls through to the
@@ -2271,19 +2307,186 @@ app.MapPost("/api/v1/webhook/event", async (HttpContext ctx, JsonLinesLogger jso
         message = "Event accepted for processing"
     }, statusCode: 202);
 
-    // PR-3b-2 local helpers (hoisted) -------------------------------------------------------------
-    // Parse the request body once; return null on malformed/empty JSON so the caller maps it to the
-    // same 400 as before. OperationCanceledException (client abort) intentionally propagates.
-    async Task<JsonDocument?> TryParseWebhookBodyAsync()
+    // PR-3b-2 / C2 local helpers (hoisted) --------------------------------------------------------
+    // Read the request body ONCE as raw bytes, capped at maxBytes (DoS guard on the shared signed/
+    // unsigned webhook URL). Returns null when the cap is exceeded (caller -> 413). Honors RequestAborted;
+    // OperationCanceledException (client abort) intentionally propagates.
+    async Task<byte[]?> ReadRawBodyAsync(int maxBytes)
     {
+        if (ctx.Request.ContentLength is long declared && declared > maxBytes)
+            return null;
+
+        using var ms = new MemoryStream();
+        var buffer = new byte[8192];
+        int read;
+        while ((read = await ctx.Request.Body.ReadAsync(buffer, ctx.RequestAborted)) > 0)
+        {
+            if (ms.Length + read > maxBytes)
+                return null;
+            ms.Write(buffer, 0, read);
+        }
+        return ms.ToArray();
+    }
+
+    // Parse the captured bytes; return null on malformed/empty JSON so the caller maps it to the same 400.
+    static JsonDocument? TryParseWebhookBody(byte[] body)
+    {
+        if (body.Length == 0) return null;
         try
         {
-            return await JsonDocument.ParseAsync(ctx.Request.Body, default, ctx.RequestAborted);
+            return JsonDocument.Parse(body);
         }
         catch (JsonException)
         {
             return null;
         }
+    }
+
+    // C2 (FEAT-INMA-PIPELINE-V2): handle INMA's signed customer.selection_changed system event.
+    // Fail-closed HMAC verify -> dedupe + durable audit -> derive + apply opaque leads.customer_status.
+    // Tenant is the authenticated TenantContext (?companyId), NEVER the body companyId.
+    async Task<IResult> HandleCustomerSelectionChangedAsync(JsonElement evtRoot, byte[] body)
+    {
+        var sigHeader = ctx.Request.Headers[Invekto.Backend.Services.Inma.InmaWebhookSignatureValidator.SignatureHeader].FirstOrDefault();
+        var tsHeader = ctx.Request.Headers[Invekto.Backend.Services.Inma.InmaWebhookSignatureValidator.TimestampHeader].FirstOrDefault();
+        var eventIdHeader = ctx.Request.Headers[Invekto.Backend.Services.Inma.InmaWebhookSignatureValidator.EventIdHeader].FirstOrDefault();
+
+        var tenantRegistry = ctx.RequestServices.GetService<TenantRegistryRepository>();
+        var eventRepo = ctx.RequestServices.GetService<InmaWebhookEventRepository>();
+        if (tenantRegistry == null || eventRepo == null)
+        {
+            jsonLogger.SystemWarn($"[{ErrorCodes.InmaWebhookPersistFailed}] C2 consumer DI not configured (tenantRegistry={tenantRegistry != null}, eventRepo={eventRepo != null}) tenant={tenantContext.TenantId}");
+            return Results.Json(ErrorResponse.Create(ErrorCodes.InmaWebhookPersistFailed, "consumer not configured", requestId), statusCode: 500);
+        }
+
+        // (1) Fetch the per-tenant secret. Fail-closed when missing.
+        string? secret;
+        try
+        {
+            secret = await tenantRegistry.GetInmaWebhookSecretAsync(tenantContext.TenantId, ctx.RequestAborted);
+        }
+        catch (Npgsql.NpgsqlException ex)
+        {
+            jsonLogger.SystemWarn($"[{ErrorCodes.InmaWebhookPersistFailed}] secret lookup DB error tenant={tenantContext.TenantId}: {ex.Message}");
+            return Results.Json(ErrorResponse.Create(ErrorCodes.InmaWebhookPersistFailed, "persist failure", requestId), statusCode: 500);
+        }
+        if (string.IsNullOrEmpty(secret))
+        {
+            jsonLogger.SystemWarn($"[{ErrorCodes.InmaWebhookSecretNotConfigured}] no inma webhook secret for tenant={tenantContext.TenantId} (event rejected, fail-closed)");
+            return Results.Json(ErrorResponse.Create(ErrorCodes.InmaWebhookSecretNotConfigured, "webhook secret not configured", requestId), statusCode: 401);
+        }
+
+        // (2) Verify signature (fail-closed). Then optional freshness (config-gated until live format confirmed).
+        if (!Invekto.Backend.Services.Inma.InmaWebhookSignatureValidator.Verify(secret, tsHeader, body, sigHeader, inmaWebhookOptions, out var matchedEncoding))
+        {
+            jsonLogger.SystemWarn($"[{ErrorCodes.InmaWebhookSignatureInvalid}] signature invalid tenant={tenantContext.TenantId} eventId={eventIdHeader ?? "-"} (fail-closed)");
+            return Results.Json(ErrorResponse.Create(ErrorCodes.InmaWebhookSignatureInvalid, "invalid signature", requestId), statusCode: 401);
+        }
+        if (inmaWebhookOptions.EnforceTimestampFreshness && !IsTimestampFresh(tsHeader, inmaWebhookOptions))
+        {
+            jsonLogger.SystemWarn($"[{ErrorCodes.InmaWebhookSignatureInvalid}] timestamp outside freshness window tenant={tenantContext.TenantId} eventId={eventIdHeader ?? "-"}");
+            return Results.Json(ErrorResponse.Create(ErrorCodes.InmaWebhookSignatureInvalid, "stale timestamp", requestId), statusCode: 401);
+        }
+
+        // (3) Parse the event. Required: id + data.
+        CustomerSelectionChangedEvent? evt;
+        try
+        {
+            evt = evtRoot.Deserialize<CustomerSelectionChangedEvent>(BackendWebhookJson.Options);
+        }
+        catch (JsonException)
+        {
+            evt = null;
+        }
+        var eventId = evt?.Id;
+        if (evt == null || evt.Data == null || string.IsNullOrWhiteSpace(eventId))
+        {
+            jsonLogger.SystemWarn($"[{ErrorCodes.InmaWebhookInvalidPayload}] malformed customer.selection_changed tenant={tenantContext.TenantId} eventId={eventIdHeader ?? "-"}");
+            return Results.Json(ErrorResponse.Create(ErrorCodes.InmaWebhookInvalidPayload, "malformed payload", requestId), statusCode: 400);
+        }
+        // eventId is non-null here: string.IsNullOrWhiteSpace is [NotNullWhen(false)] (no null-forgiving operator).
+
+        // (4) Derive opaque status + normalized phones; persist + apply in one tx.
+        var derived = CustomerStatusMapping.Derive(evt.Data.SelectionMode, evt.Data.After);
+        var normalizedPhones = NormalizePhones(evt.Data);
+        var row = new InmaWebhookEventRow(
+            tenantContext.TenantId,
+            eventId,
+            evt.Type ?? CustomerSelectionChangedEvent.TypeValue,
+            evt.OccurredAt,
+            evt.Actor?.Type,
+            evt.Data.OriginRequestId,
+            evt.CompanyId,
+            evt.Data.CustomerId,
+            evt.Data.FeatureGroupId,
+            evt.Data.SelectionMode,
+            derived,
+            System.Text.Encoding.UTF8.GetString(body),
+            Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(body)).ToLowerInvariant());
+
+        InmaWebhookPersistResult result;
+        try
+        {
+            result = await eventRepo.PersistAndApplyAsync(row, normalizedPhones, ctx.RequestAborted);
+        }
+        catch (Npgsql.NpgsqlException ex)
+        {
+            jsonLogger.SystemWarn($"[{ErrorCodes.InmaWebhookPersistFailed}] persist/apply DB error tenant={tenantContext.TenantId} eventId={evt.Id}: {ex.Message}");
+            return Results.Json(ErrorResponse.Create(ErrorCodes.InmaWebhookPersistFailed, "persist failure", requestId), statusCode: 500);
+        }
+
+        switch (result.Outcome)
+        {
+            case InmaWebhookPersistOutcome.StoredApplied:
+                jsonLogger.SystemInfo($"C2 customer_status applied tenant={tenantContext.TenantId} eventId={evt.Id} fg={evt.Data.FeatureGroupId} mode={evt.Data.SelectionMode} leads={result.MatchedLeadCount} sigEnc={matchedEncoding}");
+                break;
+            case InmaWebhookPersistOutcome.StoredStaleSkipped:
+                jsonLogger.SystemInfo($"C2 customer_status stale-skipped (older occurredAt) tenant={tenantContext.TenantId} eventId={evt.Id}");
+                break;
+            case InmaWebhookPersistOutcome.StoredPhoneUnmatched:
+                jsonLogger.SystemWarn($"[{ErrorCodes.InmaWebhookPhoneUnmatched}] no lead matched phones tenant={tenantContext.TenantId} eventId={evt.Id} customerId={evt.Data.CustomerId} (event retained, no lead-create)");
+                break;
+            case InmaWebhookPersistOutcome.DuplicateSameBody:
+                jsonLogger.SystemInfo($"C2 duplicate event (idempotent no-op) tenant={tenantContext.TenantId} eventId={evt.Id}");
+                break;
+            case InmaWebhookPersistOutcome.DuplicateDivergentBody:
+                jsonLogger.SystemWarn($"[{ErrorCodes.InmaWebhookDuplicateDivergentBody}] duplicate eventId with DIFFERENT body tenant={tenantContext.TenantId} eventId={evt.Id}");
+                break;
+        }
+
+        return Results.Json(new { status = "accepted", request_id = requestId, outcome = result.Outcome.ToString(), matched_leads = result.MatchedLeadCount }, statusCode: 200);
+    }
+
+    // Digit-only normalization across phones[] + the single phone fallback (INMA does NOT guarantee a
+    // country code). Distinct, non-empty digit strings only.
+    static List<string> NormalizePhones(SelectionData data)
+    {
+        var set = new HashSet<string>(StringComparer.Ordinal);
+        void Add(string? p)
+        {
+            if (string.IsNullOrEmpty(p)) return;
+            var digits = new string(p.Where(char.IsDigit).ToArray());
+            if (digits.Length > 0) set.Add(digits);
+        }
+        if (data.Phones != null)
+            foreach (var p in data.Phones) Add(p);
+        Add(data.Phone);
+        return set.ToList();
+    }
+
+    // Config-gated replay window. Parses X-Invekto-Timestamp per configured format; false on unparseable.
+    static bool IsTimestampFresh(string? ts, Invekto.Backend.Services.Inma.InmaWebhookOptions opts)
+    {
+        if (string.IsNullOrEmpty(ts)) return false;
+        DateTimeOffset? when = opts.TimestampFormat?.ToLowerInvariant() switch
+        {
+            "unixmilliseconds" => long.TryParse(ts, out var ms) ? DateTimeOffset.FromUnixTimeMilliseconds(ms) : null,
+            "iso8601" => DateTimeOffset.TryParse(ts, out var dt) ? dt : null,
+            _ => long.TryParse(ts, out var s) ? DateTimeOffset.FromUnixTimeSeconds(s) : null
+        };
+        if (when == null) return false;
+        var age = (DateTimeOffset.UtcNow - when.Value).Duration();
+        return age.TotalSeconds <= opts.FreshnessMaxAgeSeconds;
     }
 
     // cxapi delivery ack: map the PascalCase WapCRM ack -> snake_case DeliveryStatusRequest and forward

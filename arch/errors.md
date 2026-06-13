@@ -847,6 +847,32 @@ errors:
     description: FEAT-VCP Chunk B — Internal shared-secret authentication rejected the inbound hop on POST /internal/video/meetings. Emitted for missing X-Internal-Service-Token header (401), invalid header value (403), and server-side InternalServices:SharedSecret misconfiguration (500). Distinct from INV-INT-142 (business state: provider not configured) so operators can distinguish "caller authentication failed" from "tenant hasn't picked a provider." Not customer-facing — the Appointments job treats any 4xx/5xx as a retriable hop failure and surfaces INV-INT-144 in its own logs.
     user_message: (internal; service-to-service auth rejected)
 
+  # INMA inbound pipeline (INV-INM-xxx) — FEAT-INMA-PIPELINE-V2 C2: signed customer.selection_changed consumer
+  # Channel: INMA posts a SIGNED system event (root "type"=="customer.selection_changed") to the EXISTING
+  # /api/v1/webhook/event?companyId=X. HMAC-SHA256 over "{X-Invekto-Timestamp}.{rawBody}", key = the per-tenant
+  # base64 secret in settings_json->'inma'->>'webhook_secret'. Fail-closed: unsigned/unverified is NOT processed.
+  - code: INV-INM-001
+    description: customer.selection_changed signature missing or invalid (X-Invekto-Signature absent/malformed or HMAC-SHA256 mismatch). Uniform reject across all branches (no timing/branch leak), fail-closed — no customer_status write or derivation occurs. 401.
+    user_message: (internal; webhook signature rejected)
+  - code: INV-INM-002
+    description: Tenant has no INMA webhook secret configured (settings_json->'inma'->>'webhook_secret' missing/empty) so the signature cannot be verified. Fail-closed 401 — distinct from INV-INM-001 so ops can tell "tenant not onboarded" from "wrong key/forgery" via the event audit.
+    user_message: (internal; tenant webhook secret not configured)
+  - code: INV-INM-003
+    description: customer.selection_changed payload malformed — missing required id/type/data or unparseable after signature passed. 400 (INMA caller/contract bug; at-least-once redelivery will also fail until fixed).
+    user_message: (internal; malformed system-event payload)
+  - code: INV-INM-004
+    description: NpgsqlException persisting inma_webhook_events or updating leads.customer_status. 500 so INMA's at-least-once retry re-delivers — never swallowed.
+    user_message: (internal; persist failure, retry expected)
+  - code: INV-INM-005
+    description: No tenant-scoped lead matched any digit-normalized phone in data.phones[]. WARN + the raw event is retained in inma_webhook_events (replayable); NO lead auto-create, NO cxapi fetch. Still 2xx (best-effort lead annotation per C2 MVP). matched_lead_count logged (0 here).
+    user_message: (internal; no matching lead — event retained)
+  - code: INV-INM-006
+    description: Same (tenant_id,event_id) already stored but raw_body_sha256 differs — an INMA anomaly, replay, or id collision. WARN (not silently passed); customer_status NOT re-applied; still 2xx.
+    user_message: (internal; duplicate event id with divergent body)
+  - code: INV-INM-007
+    description: Request body exceeds the configured size cap before JSON parse (DoS guard on the shared signed/unsigned webhook URL). 413.
+    user_message: (internal; request body too large)
+
   # ── OB — Outbound (GR-1.3) ──
   - code: INV-OB-001
     description: Invalid broadcast payload

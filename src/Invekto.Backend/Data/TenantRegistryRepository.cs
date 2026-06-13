@@ -110,6 +110,31 @@ public class TenantRegistryRepository
     }
 
     /// <summary>
+    /// FEAT-INMA-PIPELINE-V2 C2: per-tenant HMAC secret for verifying INMA's signed
+    /// customer.selection_changed events, from settings_json->'inma'->>'webhook_secret'.
+    /// Returns null if tenant inactive/missing or the secret is unset — the caller treats
+    /// that as INV-INM-002 (fail-closed 401). ->> extracts the JSON string value verbatim.
+    /// </summary>
+    public virtual async Task<string?> GetInmaWebhookSecretAsync(int tenantId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT settings_json->'inma'->>'webhook_secret'
+            FROM tenant_registry
+            WHERE tenant_id = @tid AND is_active = true";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+
+        var result = await cmd.ExecuteScalarAsync(ct);
+        if (result is null or DBNull)
+            return null;
+
+        var secret = result.ToString();
+        return string.IsNullOrWhiteSpace(secret) ? null : secret;
+    }
+
+    /// <summary>
     /// Get working_hours sub-object from settings_json for a tenant.
     /// Returns null if tenant not found, inactive, or no working_hours configured.
     /// </summary>

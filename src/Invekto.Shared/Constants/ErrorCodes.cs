@@ -174,6 +174,15 @@ public static class ErrorCodes
     public const string IntegrationUnknownEventType = "INV-INT-003";
     public const string IntegrationTenantNotFound = "INV-INT-004";
 
+    // INMA inbound pipeline (INV-INM-xxx) — FEAT-INMA-PIPELINE-V2 C2: signed customer.selection_changed consumer
+    public const string InmaWebhookSignatureInvalid = "INV-INM-001";      // 401: X-Invekto-Signature missing/malformed or HMAC mismatch (uniform reject, fail-closed)
+    public const string InmaWebhookSecretNotConfigured = "INV-INM-002";   // 401: tenant_registry.settings_json->'inma'->>'webhook_secret' missing/empty — cannot verify, fail-closed
+    public const string InmaWebhookInvalidPayload = "INV-INM-003";        // 400: customer.selection_changed body missing required fields (id/type/data) or unparseable
+    public const string InmaWebhookPersistFailed = "INV-INM-004";         // 500: NpgsqlException writing inma_webhook_events / leads.customer_status — INMA at-least-once retries
+    public const string InmaWebhookPhoneUnmatched = "INV-INM-005";        // WARN (still 2xx): no tenant-scoped lead matched any normalized phone in phones[] — raw event retained, no lead-create, no cxapi
+    public const string InmaWebhookDuplicateDivergentBody = "INV-INM-006"; // WARN (still 2xx): same (tenant_id,event_id) already stored but raw_body_sha256 differs — INMA anomaly/replay, not silently ignored
+    public const string InmaWebhookBodyTooLarge = "INV-INM-007";          // 413: request body exceeds the configured cap before parse (DoS guard on the shared signed/unsigned URL)
+
     // Automation errors (INV-AT-xxx) -- GR-1.1
     public const string AutomationInvalidFlowConfig = "INV-AT-001";
     public const string AutomationFlowNotFound = "INV-AT-002";

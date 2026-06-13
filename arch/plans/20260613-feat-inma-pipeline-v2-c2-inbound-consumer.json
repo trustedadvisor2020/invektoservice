@@ -1,0 +1,128 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "spec_architectural_decisions": [
+    { "decision": "C2 reuses the EXISTING /api/v1/webhook/event?companyId=X endpoint (new 'type' branch) instead of a dedicated signed-events route.", "reason": "Q decision 2026-06-10 superseded the dedicated-endpoint idea; the INMA subscription is ALREADY LIVE pointing at this exact URL (MSSQL CompanyWebhookEndpoints ID=1, companyId=5050). A new route would require re-subscription and break the live wiring.", "codex_note": "EXPECTED: signed + unsigned channels share one URL. This is intentional and immovable (live subscription). Mitigation: strict request-body size cap (413 INV-INM-007) BEFORE JsonDocument.Parse; HMAC binds each system event to the tenant whose settings_json secret validates, so a forged ?companyId cannot target another tenant on this branch." },
+    { "decision": "Phone matching is digit-only normalization (regexp_replace(phone,'\\D','','g')) within data.phones[], backed by a functional expression index on leads(tenant_id, normalized).", "reason": "INMA contract v2.0 states country code is NOT guaranteed (WhatsApp leads 905..., manual entries 0555...). Full E.164 is impossible from INMA's data; the contract's sanctioned approach is digit-match across ALL active phones in phones[].", "codex_note": "EXPECTED: no E.164 normalization. Authoritative customerId->customer-selections fetch-verify (handles country-code drift) is explicitly C3. Functional index added so this is NOT a per-tenant table scan." },
+    { "decision": "Phone-miss = drop-with-audit + WARN (INV-INM-005), still 2xx; no lead auto-create, no standalone selection-state table.", "reason": "Q MVP decision. The raw event is durably persisted in inma_webhook_events (replayable), so state is not lost forever — a backfill can re-apply when a lead later appears.", "codex_note": "EXPECTED: best-effort lead annotation, not authoritative current-state store. Raw retained for replay; a dedicated inma_customer_selection_state table is deferred hardening." },
+    { "decision": "Numeric timestamp-freshness/replay check is implemented but config-gated OFF by default; signature verification itself is always fail-closed.", "reason": "The exact X-Invekto-Timestamp FORMAT (unix s/ms vs ISO8601) is in a PDF we don't yet have; enabling freshness with a wrong parse would reject all events. Signature is fail-closed regardless; dedupe(UNIQUE tenant_id,event_id) blocks same-id replay.", "codex_note": "EXPECTED: replay window not enforced at launch. Enabled (with confirmed format + window > 7.5h retry horizon + skew) after the first live 5050 event confirms the timestamp format. Consistent with Q's fail-closed-verify-live decision." }
+  ],
+  "slug": "20260613-feat-inma-pipeline-v2-c2-inbound-consumer",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-13T13:10:00Z",
+  "updated_at": "2026-06-13T13:55:00Z",
+  "plan": {
+    "summary": "FEAT-INMA-PIPELINE-V2 C2: consume INMA's signed 'customer.selection_changed' system event on the EXISTING /api/v1/webhook/event?companyId=X handler (new shape branch BEFORE message/ack checks). HMAC-SHA256 verify (mandatory, fail-closed) -> dedupe(tenant_id,event_id,30d) + durable raw-event audit -> derive opaque leads.customer_status from after-state -> 2xx. MVP: NO flow-trigger forward (C3) and NO cxapi customer-selections fetch-verify (phone-miss = drop-with-audit + WARN).",
+    "q_intent": "devam (FEAT-PIPELINE C2 — INMA inbound consumer: customer.selection_changed, HMAC + idempotency, opaque customer_status store). Q interview: MVP scope, new customer_status TEXT column, secret from settings_json->'inma'->>'webhook_secret', phone-miss drop-with-audit. HMAC recipe unknown -> build fail-closed + configurable, verify against first live 5050 event.",
+    "interview_notes": "AskUserQuestion 4/4 (all recommended): (1) Scope=MVP ingress+store+audit, defer flow-trigger to C3. (2) Storage=new leads.customer_status TEXT (leave pipeline_status untouched). (3) HMAC secret=tenant_registry.settings_json->'inma'->>'webhook_secret' (Q pastes from INMA panel; NO MSSQL fallback). (4) Phone miss=drop-with-audit+WARN (no lead-create, no cxapi). HMAC FORMAT decision: fail-closed + verify live (key=base64-decoded 32 bytes primary, digest=base64 primary, both configurable via InmaWebhook options; wrong guess => events rejected safely, INMA retries ~7.5h until corrected). New INV-INM-* namespace for INMA inbound pipeline. Contract: arch/contracts/inma-customer-status-webhook.json v2.0 FINAL (subscription LIVE on 5050 companyId=11). Discriminator: root 'type' field present (system event), NO 'messages'[] and NO 'Status'/'InstanceMessageID'.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "Migration 065 adds leads.customer_status TEXT NULL + inma_webhook_events table (UNIQUE(tenant_id,event_id), raw_body, received_at index) + GRANT ALL ON inma_webhook_events TO invekto; idempotent (IF NOT EXISTS); leads.pipeline_status untouched.", "verified": true },
+      { "id": "AC2", "criterion": "/api/v1/webhook/event handler gains a 'type'=='customer.selection_changed' branch evaluated BEFORE IsDeliveryAckShape and the inbound messages path; raw body bytes captured once and reused by all three paths (existing msg/ack behavior byte-identical).", "verified": true },
+      { "id": "AC3", "criterion": "HMAC-SHA256 verification is mandatory and fail-closed: missing/invalid signature OR missing tenant secret returns 401 and does NOT write/derive; verifier is constant-time over '{X-Invekto-Timestamp}.{rawBody}' with configurable key/digest encoding (base64 primary).", "verified": true },
+      { "id": "AC4", "criterion": "Idempotency in ONE tx: event_id (body 'id', NOT NULL) de-duplicated via INSERT ... ON CONFLICT(tenant_id,event_id) DO NOTHING; insert+UPDATE share one transaction (no commit between). Duplicate (0 rows) returns 2xx without re-applying customer_status. raw_body_sha256 stored; on conflict the stored hash is compared and a DIVERGENT body (same id, different hash) logs INV-INM-006 WARN rather than silently passing.", "verified": true },
+      { "id": "AC5", "criterion": "customer_status derivation is exact per contract (single->after.featureNames[0]; []->NULL; multi->featureNames alphabetical CSV; text->after.textValue, missing->NULL); applied to leads matched by digit-normalized phone within phones[] (functional-indexed, tenant_id-scoped). Matched-count logged (0/1/>1); empty/no-usable-phones guarded before UPDATE; phone-miss = WARN INV-INM-005 + audit kept (no lead-create, no cxapi). DB persist failure -> 5xx (INMA retries).", "verified": true },
+      { "id": "AC6", "criterion": "Out-of-order safety: leads.customer_status_occurred_at gates the UPDATE (SET only when customer_status_occurred_at IS NULL OR <= event.occurredAt) so a late-delivered older event cannot overwrite newer state. Read-once body refactor caps size (413 INV-INM-007) and honors ctx.RequestAborted; existing ack + inbound-message paths stay byte-identical.", "verified": true }
+    ]
+  },
+  "allowed_files": [
+    "arch/db/migrations/065-inma-customer-status-inbound.sql",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Shared/Contracts/Inma/Webhooks/CustomerSelectionChangedEvent.cs",
+    "src/Invekto.Backend/Services/Inma/InmaWebhookSignatureValidator.cs",
+    "src/Invekto.Backend/Services/Inma/InmaWebhookOptions.cs",
+    "src/Invekto.Backend/Data/InmaWebhookEventRepository.cs",
+    "src/Invekto.Backend/Data/TenantRegistryRepository.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/appsettings.json",
+    "arch/errors.md"
+  ],
+  "files_changed": [
+    { "path": "arch/db/migrations/065-inma-customer-status-inbound.sql", "change": "leads.customer_status TEXT + inma_webhook_events table + GRANT", "is_new": true },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "change": "INV-INM-001..005 consts", "is_new": false },
+    { "path": "src/Invekto.Shared/Contracts/Inma/Webhooks/CustomerSelectionChangedEvent.cs", "change": "event DTO + CustomerStatusMapping pure derivation", "is_new": true },
+    { "path": "src/Invekto.Backend/Services/Inma/InmaWebhookSignatureValidator.cs", "change": "fail-closed constant-time HMAC verifier", "is_new": true },
+    { "path": "src/Invekto.Backend/Services/Inma/InmaWebhookOptions.cs", "change": "config options (encoding flags)", "is_new": true },
+    { "path": "src/Invekto.Backend/Data/InmaWebhookEventRepository.cs", "change": "dedupe insert + customer_status update (tx)", "is_new": true },
+    { "path": "src/Invekto.Backend/Data/TenantRegistryRepository.cs", "change": "GetInmaWebhookSecretAsync", "is_new": false },
+    { "path": "src/Invekto.Backend/Program.cs", "change": "handler type-branch + HandleCustomerSelectionChangedAsync + DI", "is_new": false },
+    { "path": "src/Invekto.Backend/appsettings.json", "change": "InmaWebhook config section", "is_new": false },
+    { "path": "arch/errors.md", "change": "INV-INM inbound pipeline section", "is_new": false }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": null,
+    "full_path": "arch/plans/diffs/20260613-feat-inma-pipeline-v2-c2-inbound-consumer.diff",
+    "stats": { "insertions": 0, "deletions": 0, "files_count": 0 }
+  },
+  "build": { "status": "PASS", "command": "dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q", "timestamp": "2026-06-13T13:34:00Z", "duration_ms": 47660, "output_tail": "42 Warning(s) 0 Error(s)", "error_summary": null, "services": ["Invekto.Shared", "Invekto.Backend", "(full solution)"] },
+  "verification_questions": [
+    { "id": "Q1", "question": "Is the HMAC verification fail-closed in ALL rejection branches (missing X-Invekto-Signature header, missing/empty tenant webhook secret, malformed digest, digest mismatch) such that NO customer_status write or derivation occurs and the response is 401, with constant-time comparison preventing a timing side-channel?", "category": "Auth" },
+    { "id": "Q2", "question": "Does idempotency correctly use INSERT ... ON CONFLICT(tenant_id,event_id) DO NOTHING so a retried/byte-identical event (INMA at-least-once, stable id over ~7.5h) is persisted exactly once and does NOT re-apply the customer_status UPDATE, while a genuine DB error during persist surfaces 5xx (not a silent swallow) so INMA retries?", "category": "Data" },
+    { "id": "Q3", "question": "Is the new 'type'=='customer.selection_changed' branch evaluated strictly BEFORE IsDeliveryAckShape and the inbound messages[] validation, and is the raw request body captured ONCE as bytes and reused for both HMAC and JSON parse so the existing delivery-ack and inbound-message paths remain byte-for-byte behaviorally unchanged?", "category": "Lifecycle" },
+    { "id": "Q4", "question": "Does the tenant resolve strictly from the authenticated TenantContext (?companyId / JWT) — NOT from the body companyId (which is the INMA Company ID, e.g. 11, and is only cross-checked/audited) — and is the customer_status UPDATE scoped by tenant_id so a payload cannot mutate another tenant's leads?", "category": "Auth" },
+    { "id": "Q5", "question": "Is the customer_status derivation exactly per contract (single->featureNames[0]; empty featureIds->NULL; multi->alphabetical CSV of featureNames; text->after.textValue, absent->NULL) and does a phone non-match produce INV-INM-005 WARN + retained audit row (no lead auto-create, no cxapi call) while still returning 2xx?", "category": "Process/Policy" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Automation/** (flow-trigger forward is C3, NOT C2)",
+      "src/Invekto.Backend/Dashboard/** (status dropdown / flow UI is C3/C4)",
+      "leads.pipeline_status (existing INSE funnel enum — untouched; customer_status is a SEPARATE opaque column)",
+      "cxapi customer-feature-groups/* clients (fetch-verify + Set Customer Status action are C3/C4)",
+      "existing delivery-ack (HandleDeliveryAckAsync) + inbound message paths (behavior must stay identical)"
+    ],
+    "non_goals": [
+      "Flow Builder 'customer_status_changed' trigger channel (C3)",
+      "'Set Customer Status' flow action / loop-guard via ClientRequestID (C4)",
+      "cxapi customer-selections authoritative fetch-verify on phone-miss (deferred hardening)",
+      "Automated 30-day retention cleanup job for inma_webhook_events (deferred hardening — see intentional_exclusions)",
+      "ChangeVersion ordering counter (INMA Faz 2; occurredAt guard not required for C2 store-only)"
+    ],
+    "intentional_exclusions": [
+      "Ordering fallback recipe (occurredAt guard / chain check / authoritative fetch) — store-last-write-wins is acceptable for C2 since the trigger logic that needs ordering lives in C3; raw events are fully audited for later replay.",
+      "30-day cleanup automation — inma_webhook_events volume is tiny (a couple of tenants' status changes); received_at index is added now so a cleanup job (or LogCleanupService-style sweep) can be added in a hardening pass. Documented, not silently dropped.",
+      "Trigger suppression (originRequestId / actor.type==api|zoho-webhook) — C3; C2 still PERSISTS actor_type + origin_request_id in the audit row so C3 can consume them."
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "Program.cs HandleCustomerSelectionChangedAsync: typed catch NpgsqlException -> INV-INM-004 500 (INMA retries); JsonException on event deserialize -> INV-INM-003 400",
+      "InmaWebhookEventRepository: NpgsqlException propagates to handler typed catch (no bare catch)",
+      "TenantRegistryRepository.GetInmaWebhookSecretAsync: JsonException-safe (returns null -> handler treats as INV-INM-002 401)"
+    ],
+    "user_facing_errors": [
+      "401 INV-INM-001 invalid/missing signature (uniform — no branch leak)",
+      "401 INV-INM-002 tenant webhook secret not configured",
+      "400 INV-INM-003 malformed customer.selection_changed payload",
+      "500 INV-INM-004 persist failure (triggers INMA retry)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Every rejection emits a distinct INV-INM code to the JSONL audit AND the durable inma_webhook_events row is written before the customer_status UPDATE. Phone-miss is NOT silent: INV-INM-005 WARN + the raw event is retained for inspection/replay. Dedupe duplicate returns 2xx by design (idempotent), logged at INFO. DB persist failure returns 5xx (never swallowed) so INMA's at-least-once retry re-delivers."
+  },
+  "aha_moments": [
+    { "category": "RELIABILITY", "user_pain": "INMA fires customer.selection_changed but if our handler 400s the unknown shape, INMA marks it a PERMANENT fail and the status silently never lands.", "suggestion": "Land the 'type' branch + durable raw-event store FIRST so even a phone-miss or downstream gap keeps the event for replay; only signature/secret problems reject.", "aha_moment": "Agent flips a customer's stage in INMA and it shows up in INSE within seconds — and nothing is ever lost even when a lead isn't matched yet." },
+    { "category": "SALES", "user_pain": "Sales ops can't see which CRM stage a WhatsApp lead is in without opening INMA.", "suggestion": "Persist the INMA-authoritative customer_status onto the lead so it's queryable in INSE for future dashboards/flows.", "aha_moment": "A lead's INMA stage is visible directly in InvektoServis data — the single-source-of-truth pivot becomes real." },
+    { "category": "SUPPORT", "user_pain": "When a webhook 'doesn't work', support has no way to see what INMA actually sent.", "suggestion": "Store raw_body + headers-derived fields (event_id, actor_type, origin_request_id) in inma_webhook_events.", "aha_moment": "Support pulls the exact raw event by event_id and sees precisely what arrived and why it matched (or didn't)." },
+    { "category": "RELIABILITY", "user_pain": "A wrong HMAC format guess could silently corrupt or accept forged events.", "suggestion": "Fail-closed + constant-time verify + configurable encoding; first real 5050 event in logs confirms the format before any tenant relies on it.", "aha_moment": "We flip one config value once we see the live signature and every event validates — zero risk of accepting a forgery in the meantime." },
+    { "category": "SPEED", "user_pain": "Re-deliveries (at-least-once, ~7.5h window) could double-apply status or double-process.", "suggestion": "UNIQUE(tenant_id,event_id) + ON CONFLICT DO NOTHING makes the consumer naturally idempotent.", "aha_moment": "INMA can retry as many times as it likes and the customer_status stays exactly correct — no dupes, no drift." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "iteration": 2,
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS" }, "CQ2": { "result": "PASS" }, "CQ3": { "result": "PASS" },
+      "CQ4": { "result": "PASS" }, "CQ5": { "result": "PASS", "evidence": "iter1 fix: evt.Id! removed -> var eventId = evt?.Id guarded by IsNullOrWhiteSpace ([NotNullWhen(false)])" },
+      "CQ6": { "result": "PASS" }, "CQ7": { "result": "PASS" }, "CQ8": { "result": "PASS" },
+      "CQ9": { "result": "PASS", "evidence": "iter2 fix: NULL-occurredAt event only fills empty anchor (COALESCE preserves), never overwrites newer state" },
+      "CQ10": { "result": "PASS" }, "CQ11": { "result": "PASS" }, "CQ12": { "result": "PASS" }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS" }, "Q2": { "result": "PASS" }, "Q3": { "result": "PASS" },
+      "Q4": { "result": "PASS" }, "Q5": { "result": "PASS" }
+    },
+    "blocking_issues": []
+  }
+}
