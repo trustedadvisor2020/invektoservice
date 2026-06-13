@@ -129,6 +129,6 @@
     },
     "blocking_issues": [],
     "escalation_required": false,
-    "note": "Codex gpt-5.5 iter 0 PASS — 12/12 CQ + 4/4 CoVe, 0 blockers (CODEX UTANSIN). Build PASS (0 errors), suppression unit test 18/18. Plan stress-tested pre-implementation via codex_consult(critique) — 3 real findings adopted (CTE FOR UPDATE concurrency, change-gate old≠new, fail-closed loop guard) + most-specific-wins matching. NOT YET DEPLOYED: needs Shared+Backend+Automation redeploy (full — Shared.dll changed)."
+    "note": "Codex gpt-5.5 iter 0 PASS — 12/12 CQ + 4/4 CoVe, 0 blockers (CODEX UTANSIN). Build PASS (0 errors), suppression unit test 18/18. Plan stress-tested pre-implementation via codex_consult(critique) — 3 real findings adopted (CTE FOR UPDATE concurrency, change-gate old≠new, fail-closed loop guard) + most-specific-wins matching. DEPLOYED 2026-06-13: commits d9a2ecc6 (feat) + 665a50e7 (spa rebuild); Backend+Automation deployed (C3a code only in those two; additive Shared inert for other 9), 10/10 HEALTHY, config-restored, SPA index-DB6P83VO.js. Live but inert (no customer_status_changed flow seeded yet — C3b UI deferred)."
   }
 }

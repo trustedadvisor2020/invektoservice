@@ -1,7 +1,8 @@
 # FEAT-INMA-PIPELINE-V2 Chunk 3a — customer_status_changed flow trigger (backend)
 
-> **Slug:** `20260613-feat-inma-pipeline-v2-c3a-flow-trigger` | **Risk:** MEDIUM | **Status:** DONE (code) — Codex PASS iter 0, **NOT YET DEPLOYED**
-> **Plan:** `arch/plans/20260613-feat-inma-pipeline-v2-c3a-flow-trigger.json` | **Diff:** `arch/plans/diffs/20260613-feat-inma-pipeline-v2-c3a-flow-trigger.diff`
+> **Slug:** `20260613-feat-inma-pipeline-v2-c3a-flow-trigger` | **Risk:** MEDIUM | **Status:** ✅ DONE+DEPLOYED — Codex PASS iter 0
+> **Commits:** `d9a2ecc6` (feat) · `665a50e7` (spa rebuild) | **Deploy:** 2026-06-13, Backend+Automation, 10/10 HEALTHY, config-restore'lu, SPA `index-DB6P83VO.js`
+> **Plan:** `arch/plans/20260613-feat-inma-pipeline-v2-c3a-flow-trigger.json` | **Diff:** `arch/plans/diffs/20260613-feat-inma-pipeline-v2-c3a-flow-trigger.diff` (gitignored)
 > **Parent:** [FEAT-INMA-PIPELINE-V2](README.md#feat-inma-pipeline-v2) (5 chunk) | **Contract:** `arch/contracts/inma-customer-status-webhook.json` v2.0 (c3_trigger)
 > **Önceki:** [C2 inbound consumer](feat-inma-pipeline-v2-c2.md) DONE+VERIFY-LIVE
 
@@ -60,9 +61,9 @@ INV-INM-008 (Backend enqueue fail, WARN/200) · INV-AT-088 (Automation job exec 
 
 `{{customer_status_group}}` · `{{old_customer_status}}` · `{{new_customer_status}}` · `{{customer_status_changed_by}}`
 
-## Deploy (BEKLİYOR)
+## Deploy ✅ DONE (2026-06-13)
 
-**Shared.dll değişti → FULL deploy:** Backend + Automation (+ Shared bağımlısı tüm servisler binary-consistency). Migration YOK. Deploy sonrası 5050'de hand-seed bir `customer_status_changed` flow ile smoke (UI C3b gelmeden flow'u SQL ile seed et).
+**Backend + Automation deploy edildi** (C3a kodu yalnız bu iki serviste; additive Shared değişikliği diğer 9 servis için inert + canlı Outbound'u gereksiz restart riski yok). Migration YOK. `server-deploy` (stop→zip→upload→extract→start→health, appsettings.Production.json korunur) → **10/10 HEALTHY**, SPA `index-DB6P83VO.js`. Webhook AllowedIps (78.135.105.25 events kanalı) + cxapi gate'leri config-restore ile korundu. **CANLI ama inert** — henüz `customer_status_changed` trigger node'lu flow yok (C3b UI gelmeden SQL ile hand-seed edilebilir; smoke ertelendi). SPA rebuild bundle'ları git rename (97-99% identical) = source değişmedi, sadece hash churn.
 
 ## Bilinen Açık Uçlar / Backlog (C3a DIŞI)
 
