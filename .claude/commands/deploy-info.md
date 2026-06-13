@@ -43,3 +43,10 @@ Her yeni mikroservis oluşturulduğunda Q'ya OTOMATIK sun:
 3. install-services.bat güncelle
 4. restart-services.bat güncelle
 5. firewall-rules.bat güncelle
+
+
+## Webhook AllowedIps (PROD-ONLY — appsettings.Production.json, git'te YOK!)
+> **DR/fresh-deploy UYARISI:** Bu IP'ler git'teki appsettings.json'da DEĞİL (boş array). Yeni sunucu/DR'da elle set edilmeli yoksa INMA webhook'ları auth-gate'inde 401 alır.
+- `91.151.84.79`, `78.135.105.53` — INMA **mesaj/ack** kanalı (eski)
+- `78.135.105.25` — INMA **events** kanalı (`customer.selection_changed`), 2026-06-13 eklendi (FEAT-INMA-PIPELINE-V2 C2). Events outbox mesaj kanalından FARKLI IP'den gelir.
+- **NOT:** INMA gelecekte ek outbox IP kullanabilir → events 401 başlarsa yeni IP'yi whitelist'e ekle (netstat :443 same-subnet ile yakala).

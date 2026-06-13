@@ -12,12 +12,12 @@
 - `appsettings.Production.json` → `InmaAuth` bloğu: `SecretKey`, `LoginUrl`, `RefreshUrl`, `ApiBaseUrl`, `ClockSkewSeconds`, `MockEnabled`
 - Backend Program.cs:247 — validator DI registered, mock fallback mevcut
 
-### INMA Webhook Inbound (UP0.7 hazır)
-- Backend `POST /api/v1/webhook/event` (Program.cs:1410)
-- Model: `IncomingWebhookEvent` → `List<WebhookMessage>`
-- Auth: JWT Bearer + IP whitelist fallback
-- Tenant scoping: JWT claim'den `TenantContext`
-- Handler: fire-and-forget `MessageLogRepository.InsertAsync()`
+### INMA Webhook Inbound (UP0.7 hazır; C2 2026-06-13 ile DUAL-PURPOSE)
+- Backend `POST /api/v1/webhook/event` (Program.cs MapPost ~1973)
+- **İKİ dal:** (1) inbound mesaj/ack (legacy); (2) **INMA imzalı `customer.selection_changed` system event (C2)** — root `type` ile ayrılır, mesaj/ack kontrolünden ÖNCE.
+- Model: `IncomingWebhookEvent` (mesaj) / `CustomerSelectionChangedEvent` (system event)
+- Auth: JWT Bearer + IP whitelist (events kanalı ayrıca fail-closed HMAC-SHA256)
+- C2 handler: dedupe(tenant_id,event_id) + durable audit `inma_webhook_events` + opaque `leads.customer_status` derivation
 
 ### INMA Client (read-only, UP0.5 temel)
 - `Invekto.ChatAnalysis/Services/WapCrmClient.cs`

@@ -238,7 +238,7 @@ Her chunk: 12/12 CQ + 5+/5+ CoVe + 0 blocker hedef. Iter trail ~2-3 expected (CO
 
 | Chunk | Scope | Status |
 |-------|-------|--------|
-| **C2** | INSE inbound endpoint `POST /api/v1/inbound/inma/customer-status-change` (HMAC + idempotency + opaque TEXT store) | BLOCKED (INMA contract) |
-| **C3** | Flow Builder 4. trigger kanalı `customer_status_changed` | BLOCKED |
-| **C4** | Flow Builder yeni action node `Set Customer Status` (INSE → INMA POST) | BLOCKED |
+| **C2** | INSE inbound consumer — MEVCUT `POST /api/v1/webhook/event?companyId=X` type-branch (dedike endpoint SUPERSEDED): fail-closed HMAC-SHA256 + dedupe + raw audit + opaque `leads.customer_status` | ✅ DONE+DEPLOYED+VERIFY-LIVE 2026-06-13 (ab2e644e, 3667f0ca) — tracking/feat-inma-pipeline-v2-c2.md |
+| **C3** | Flow Builder 4. trigger kanalı `customer_status_changed` | UNBLOCKED — SIRADAKİ |
+| **C4** | Flow Builder yeni action node `Set Customer Status` (INSE → INMA POST) | UNBLOCKED — PENDING |
 | **C5** | Dashboard pilot doc cleanup + DentAdavista/plan refresh | PENDING (C1 sonrası) |

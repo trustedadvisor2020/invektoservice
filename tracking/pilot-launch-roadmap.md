@@ -78,9 +78,9 @@ Q 2026-05-12 demo sonrası: "bu hafta servisleri çalışır hale getirelim". Pi
 
 **Faz B (Faz A sonrası):** `FEAT-INMA-PIPELINE-V2` 5 chunk (bkz. tracking/README.md).
 - **C1 Zoho-out DONE+DEPLOYED+SMOKED 2026-05-12 17:50 UTC** (commit `0c0733b`) — Migration 048 + 11 tenant data preservation + 41 dosya delete + 7 servis cleanup; Q FORCE PASS (Codex MCP infra issue, A3+A4a Faz A precedent); 10/10 health.
-- **C2 INSE inbound endpoint** BLOCKED — INMA contract bekliyor (`POST /api/v1/inbound/inma/customer-status-change` HMAC + idempotency + opaque TEXT store).
-- **C3 Flow Builder customer_status_changed trigger** BLOCKED.
-- **C4 Flow Builder Set Customer Status action node** BLOCKED.
+- **C2 INSE inbound consumer** ✅ DONE+DEPLOYED+VERIFY-LIVE 2026-06-13 (commit ab2e644e + HMAC fix 3667f0ca). MEVCUT `POST /api/v1/webhook/event?companyId=X` type-branch (dedike `/inbound/inma/...` endpoint SUPERSEDED) + fail-closed HMAC-SHA256 + dedupe(tenant_id,event_id) + raw audit (`inma_webhook_events`) + opaque `leads.customer_status`. Migration 065 prod. 5050 gerçek event ile doğrulandı (sigEnc=hex).
+- **C3 Flow Builder customer_status_changed trigger** — SIRADAKİ (UNBLOCKED; C2 zaten actor_type+origin_request_id audit'liyor).
+- **C4 Flow Builder Set Customer Status action node** — PENDING (C3 sonrası).
 - **C5 dashboard cleanup DONE+EXECUTED+VERIFIED 2026-05-12 22:00 UTC** — Migration 049 (LIKE + INSERT atomik + NULL-safe + tenant_id IS NULL + DO $verify$ INV-SEED-039..045) prod execute 6/6 V2 marker + 6 archive row PASS; DentAdavista/plan 4 doc Zoho 91 mention DELETE + V2 INMA-otorite section'lar + 8 durum tablosu INMA dropdown rewrite; arch/lessons-learned Zoho-bound banner; arch/errors.md INV-SEED-039..045; memory deprecated_historical tag; arch/db/kanban-board.sql executable archive DDL. Codex iter 0→4 → Q FORCE PASS (11/12 CQ + 3/4 CoVe substantively PASS, tek kalan pedantic CTAS schema drift recovery). Service deploy YOK (kod sıfır).
 
 ---
@@ -329,7 +329,7 @@ Pilot Launch 15/15 paket DONE (100%). Q customer prospect motivasyonu ile **FEAT
 
 ### FEAT-INMA-PIPELINE-V2 (Backlog beklemede)
 
-C2/C3/C4 INMA contract bekliyor (BLOCKED). FEAT-VFB durdurmuyor — INMA contract gelince paralel devam.
+C2 ✅ DONE+DEPLOYED+VERIFY-LIVE 2026-06-13 (ab2e644e). C3 (flow trigger) SIRADAKİ + C4 (Set Customer Status) PENDING. FEAT-VFB durdurmuyor — paralel devam.
 
 ### Devam Protokolu
 

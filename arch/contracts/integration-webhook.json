@@ -4,6 +4,7 @@
   "title": "Integration Webhook Event Contract",
   "description": "GR-1.9: Main App -> InvektoServis webhook event format. Main App sends this payload via POST /api/v1/webhook/event with Bearer JWT token.",
   "version": "1.0",
+  "dual_purpose_note": "POST /api/v1/webhook/event is DUAL-PURPOSE since FEAT-INMA-PIPELINE-V2 C2 (2026-06-13): (1) THIS contract = Main App inbound messages + delivery acks (Bearer JWT or IP-whitelist); (2) INMA SIGNED system events, discriminated by ROOT field type=='customer.selection_changed' (HMAC-SHA256, NOT JWT) — see arch/contracts/inma-customer-status-webhook.json. The handler evaluates the 'type' branch BEFORE the messages/ack discrimination.",
 
   "endpoint": {
     "method": "POST",
