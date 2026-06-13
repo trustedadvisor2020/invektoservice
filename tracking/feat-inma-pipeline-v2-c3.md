@@ -92,7 +92,7 @@ C3a backend trigger borusunu **görünür + kurulabilir** yaptı. SPA `customer_
 
 **Files (16):** Shared DTOs/client/cache + ErrorCodes; Backend Program.cs (DI + jwt prefix + 2 endpoint); SPA flow.ts/graph-validator/node-metadata/NodePalette/nodes-index/CustomerStatusTriggerNode.tsx/flow-store/api.ts/NodePropertyPanel; arch errors.md + contract. **No migration.** Additive Shared → diğer 10 servis inert.
 
-**Deploy:** PENDING (Q-gated; Backend yeniden deploy + SPA bundle). **Smoke (AC10):** 5050 hand-seed customer_status_changed flow (SQL) + uçtan uca tetik doğrula; Medipol secret'a dokunma (Q kararı).
+**Deploy:** ✅ DONE 2026-06-13 ~22:38 (Backend-only — Shared additive; 10/10 HEALTHY, config-restore'lu, SPA `index-E1nc-dJ3.js`; GET+`/cache-invalidate` 401-gated doğrulandı). **Smoke (AC10):** endpoint+bundle deploy doğrulandı; **kalan canlı uçtan uca** = 5050'de INMA panelinden gerçek durum değişikliği → flow tetik (Q/INMA aksiyonu) + isteğe bağlı server-side cxapi catalog curl (5050 secret) ile dropdown wire-teyit (DTO shape PDF'ten, canlı doğrulanmadı). Medipol secret'a dokunulmadı.
 
 ## Sıradaki
 
