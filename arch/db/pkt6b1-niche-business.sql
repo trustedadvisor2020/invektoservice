@@ -41,8 +41,8 @@ CREATE INDEX IF NOT EXISTS idx_return_deflections_followup
     ON return_deflections(tenant_id, follow_up_at)
     WHERE follow_up_sent = FALSE AND follow_up_at IS NOT NULL;
 
-GRANT ALL ON return_deflections TO invekto_app;
-GRANT USAGE, SELECT ON SEQUENCE return_deflections_id_seq TO invekto_app;
+GRANT ALL ON return_deflections TO invekto;
+GRANT USAGE, SELECT ON SEQUENCE return_deflections_id_seq TO invekto;
 
 -- ============================================================
 -- GR-3.16: Negatif Yorum Kurtarma (review_alerts)
@@ -89,8 +89,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_review_alerts_external
     ON review_alerts(tenant_id, provider, external_review_id)
     WHERE external_review_id IS NOT NULL;
 
-GRANT ALL ON review_alerts TO invekto_app;
-GRANT USAGE, SELECT ON SEQUENCE review_alerts_id_seq TO invekto_app;
+GRANT ALL ON review_alerts TO invekto;
+GRANT USAGE, SELECT ON SEQUENCE review_alerts_id_seq TO invekto;
 
 -- ============================================================
 -- GR-3.13: Lead Management v2 (leads + lead_activities)
@@ -190,8 +190,8 @@ CREATE INDEX IF NOT EXISTS idx_leads_hot
 CREATE UNIQUE INDEX IF NOT EXISTS uq_leads_tenant_phone
     ON leads(tenant_id, phone);
 
-GRANT ALL ON leads TO invekto_app;
-GRANT USAGE, SELECT ON SEQUENCE leads_id_seq TO invekto_app;
+GRANT ALL ON leads TO invekto;
+GRANT USAGE, SELECT ON SEQUENCE leads_id_seq TO invekto;
 
 -- ============================================================
 -- FEAT-PHOTO (migration 034-photo-request-flow.sql): photo inbound idempotency.
@@ -237,8 +237,8 @@ CREATE INDEX IF NOT EXISTS idx_lead_activities_lead
 CREATE INDEX IF NOT EXISTS idx_lead_activities_tenant
     ON lead_activities(tenant_id, created_at DESC);
 
-GRANT ALL ON lead_activities TO invekto_app;
-GRANT USAGE, SELECT ON SEQUENCE lead_activities_id_seq TO invekto_app;
+GRANT ALL ON lead_activities TO invekto;
+GRANT USAGE, SELECT ON SEQUENCE lead_activities_id_seq TO invekto;
 
 -- ============================================================
 -- service_pricing genişletme (GR-3.13 service_catalog ihtiyacı)

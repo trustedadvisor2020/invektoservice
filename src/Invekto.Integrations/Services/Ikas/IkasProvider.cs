@@ -258,6 +258,25 @@ public sealed class IkasProvider : IEcommerceProvider
 
                 orders.Add(order);
             }
+
+            // Audit Int-4 (detector): FetchOrdersAsync currently requests only
+            // pagination.limit=50 and does NOT page through results, so orders beyond the
+            // first page are silently dropped. Surface that truncation so a partial sync is
+            // observable in logs instead of disappearing without a signal. The full
+            // pagination loop is a separate scoped task (pending live ikas PaginationInput
+            // contract confirmation) — this detector is behavior-preserving.
+            var hasNext = listOrder.TryGetProperty("hasNext", out var hn) &&
+                          hn.ValueKind == JsonValueKind.True;
+            int? reportedCount = listOrder.TryGetProperty("count", out var cnt) &&
+                                 cnt.ValueKind == JsonValueKind.Number && cnt.TryGetInt32(out var c)
+                ? c : null;
+            if (hasNext || (reportedCount.HasValue && reportedCount.Value > orders.Count))
+            {
+                _logger.SystemWarn(
+                    $"[{ErrorCodes.IntegrationsEcomGraphQlFailed}] ikas order sync PARTIAL: fetched {orders.Count}, " +
+                    $"hasNext={hasNext}, reportedCount={(reportedCount.HasValue ? reportedCount.Value.ToString() : "n/a")} " +
+                    "— orders beyond the first page are not synced yet (pagination loop pending, audit Int-4).");
+            }
         }
         catch (JsonException ex)
         {
