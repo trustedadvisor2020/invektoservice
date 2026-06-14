@@ -12,13 +12,13 @@ _Güncel: 2026-06-14 — **AKTİF İŞ: Refactor Audit batch'leri** (aşağıda;
 **Çalışma kuralı (HER batch):** master'dan yeni `work/` branch → auto+Codex PASS → **commit'te DUR** (deploy YOK, master'a merge YOK) → auth/Shared değişikliğinde **MUST-ASK**. Branch'leri master'a merge + deploy kararı Q'da.
 
 **Batch durumu:**
-- ✅ **Batch 1** — GetInt32-on-bigint `::int` cast: `work/20260614-getint32-bigint-cast-fix` (`ad7efb63`), remote push'lu, merge YOK
+- ✅ **Batch 1** — GetInt32-on-bigint `::int` cast: `work/20260614-getint32-bigint-cast-fix` (`ad7efb63`), remote push'lu, merge YOK. (NOT: Knowledge `TemplateExtractorService.cs:334` COUNT(*) GetInt32 crash'i de KAPSADI.)
 - ✅ **Batch 2** — INV-BE errorcode collision (6 çakışma → 134-139): `work/20260614-errorcode-collision-fix` (`0c3c3a4a`), push'lu, merge YOK
 - ✅ **Batch 3** — fail-closed auth (ChatAnalysis+WAA startup-throw): `work/20260614-failclosed-auth-fix` (`82424043`), push'lu, merge YOK. **DEPLOY PREREQ:** prod'da `Benchmark:OpsKey` + `Microservice:InternalApiKey` set et.
-- ⏳ **Batch 4 (SIRADAKİ)** — VoiceAI path crash+traversal: `VoiceTranscriptionService.cs:42` TraceIdentifier + filename sanitize
-- ⏳ **Batch 5** — Outbound internal-endpoint (önce FALSE-POZİTİF teyit et)
-- ⏳ **Batch 8** — tenant-scoping: wa_intents `ReadIntentDistributionAsync` + `ReadFaqClustersAsync` + tenantId threading
-- ⏳ **Batch 6/7** — büyük sweep'ler (broad catch + null-forgiving, ~150 medium/low, çok-paket)
+- ✅ **Batch 4** — VoiceAI path crash+traversal (`VoiceTranscriptionService.cs:42` `:`-crash + CWE-22 traversal → sanitize + containment guard): `work/20260614-voiceai-path-crash-traversal-fix` (`c23c9831`), push'lu, merge YOK. Codex PASS iter0 (MEDIUM).
+- ✅ **Batch 5** — Outbound internal-endpoint: **GERÇEK bug teyit edildi** (opt-out + outbox-drain FEAT-J2'den beri 401-kırık; Backend JWT mint etmiyor). Fix A (Q onaylı): `Program.cs:301` JWT exclusion `/api/v1/internal/`. `work/20260614-outbound-internal-jwt-exclusion-fix` (`fff607fd`), push'lu, merge YOK. Codex PASS iter0 (HIGH). **DEPLOY PREREQ:** Backend+Outbound prod `InternalServices:SharedSecret` set+eşit.
+- ⏭️ **Batch 8 — ATLANDI (FALSE-POZİTİF, Q kararı 2026-06-14).** wa_intents/wa_faq_clusters tenant-scoping bir izolasyon açığı DEĞİL: endpoint superadmin-only + `analysis_id` FK→`wa_analyses` tek-tenant'a bağlar + catalog global-by-design + audit "ZERO isolation". Bu metotlardaki tek gerçek bug = GetInt32 crash, o da Batch 1'de kapandı. tenantId threading redundant (aynı satırlar). Kod değişikliği YOK.
+- ⏳ **Batch 6/7 (SIRADAKİ)** — büyük sweep'ler (broad catch + null-forgiving, ~150 medium/low, çok-paket). İNCREMENTAL: servis-servis / endpoint-grubu bazında, rewrite DEĞİL. Çoğu diagnostic/behavior-preserving. Giriş: iki raporun §4 Quick Wins + §7. ⚠️ Büyük → yeni session/`/clear` önerilir.
 
 ## Platform & Gate
 
