@@ -345,7 +345,7 @@ public class LeadRepository
         int tenantId, CancellationToken ct = default)
     {
         const string sql = @"
-            SELECT pipeline_status, COUNT(*) as cnt
+            SELECT pipeline_status, COUNT(*)::int as cnt
             FROM leads
             WHERE tenant_id = @tid
             GROUP BY pipeline_status";

@@ -673,7 +673,7 @@ public class AppointmentsRepository
                        (SELECT COUNT(*) FROM appointments a
                         WHERE a.slot_id = s.id AND a.appointment_date = @date AND a.status = 'confirmed'),
                        0
-                   ) AS current_bookings
+                   )::int AS current_bookings
             FROM appointment_slots s
             WHERE s.tenant_id = @tid AND s.day_of_week = @dow AND s.is_active = TRUE
               AND (@docId IS NULL OR s.doctor_id = @docId)

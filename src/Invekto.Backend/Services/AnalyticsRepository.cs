@@ -82,24 +82,24 @@ public class AnalyticsRepository
         {
             cmd.CommandText = @"
                 SELECT
-                    COALESCE(SUM(total_replies), 0),
-                    COALESCE(SUM(deflected_count), 0),
-                    COALESCE(SUM(handoff_count), 0),
-                    COALESCE(SUM(faq_count), 0),
-                    COALESCE(SUM(intent_count), 0),
-                    COALESCE(SUM(menu_count), 0),
-                    COALESCE(SUM(off_hours_count), 0),
-                    COALESCE(SUM(welcome_count), 0),
+                    COALESCE(SUM(total_replies), 0)::int,
+                    COALESCE(SUM(deflected_count), 0)::int,
+                    COALESCE(SUM(handoff_count), 0)::int,
+                    COALESCE(SUM(faq_count), 0)::int,
+                    COALESCE(SUM(intent_count), 0)::int,
+                    COALESCE(SUM(menu_count), 0)::int,
+                    COALESCE(SUM(off_hours_count), 0)::int,
+                    COALESCE(SUM(welcome_count), 0)::int,
                     CASE WHEN SUM(total_replies) > 0
                         THEN SUM(avg_processing_time_ms * total_replies) / SUM(total_replies)
                         ELSE 0 END,
                     CASE WHEN SUM(total_replies) > 0
                         THEN SUM(COALESCE(avg_confidence, 0) * total_replies) / SUM(total_replies)
                         ELSE 0 END,
-                    COALESCE(SUM(active_sessions), 0),
-                    COALESCE(SUM(completed_sessions), 0),
-                    COALESCE(SUM(handed_off_sessions), 0),
-                    COALESCE(SUM(expired_sessions), 0)
+                    COALESCE(SUM(active_sessions), 0)::int,
+                    COALESCE(SUM(completed_sessions), 0)::int,
+                    COALESCE(SUM(handed_off_sessions), 0)::int,
+                    COALESCE(SUM(expired_sessions), 0)::int
                 FROM daily_metrics
                 WHERE tenant_id = @tid
                   AND metric_date >= @from_date
@@ -206,8 +206,8 @@ public class AnalyticsRepository
         cmd.CommandText = @"
             SELECT
                 intent,
-                SUM(total_count) AS total,
-                SUM(handoff_count) AS handoffs,
+                SUM(total_count)::int AS total,
+                SUM(handoff_count)::int AS handoffs,
                 CASE WHEN SUM(total_count) > 0
                     THEN SUM(COALESCE(avg_confidence, 0) * total_count) / SUM(total_count)
                     ELSE 0 END AS avg_conf,

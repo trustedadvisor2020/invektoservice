@@ -1,0 +1,124 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": "arch/reports/20260614-audit-INDEX.md (Batch 1)",
+  "spec_architectural_decisions": [
+    { "decision": "Fix is a SQL-side ::int cast on the COUNT(*)/SUM(integer) projection columns, NOT a C#-side switch from GetInt32 to GetInt64.", "reason": "The repo's own hot-lessons documents '::int cast veya GetInt64' as the sanctioned remedy. ::int keeps the reader.GetInt32 calls, accumulator types, and DTO int fields byte-identical — minimal diff, behavior-preserving. Per-tenant COUNT/SUM values (leads, review_alerts, appointments-per-slot, wa_intents-per-analysis, return_deflections, daily_metrics sums) are orders of magnitude below int.MaxValue, so the narrowing cast never overflows in practice.", "codex_note": "EXPECTED: ::int on COUNT(*)/SUM(int) is the documented repo pattern, not a lossy hack. Decimal/numeric SUM columns (SUM(value_amount), SUM(deflection_revenue)) are read via GetDecimal and were deliberately NOT cast. CASE-division columns read via GetDouble were deliberately NOT cast." },
+    { "decision": "Cross-service single commit (6 services) for one cohesive defect class (GetInt32-on-bigint), no Invekto.Shared change.", "reason": "Each edit is an independent per-service repository SQL literal; they share no symbol. Bundling the same mechanical fix in one reviewable commit is clearer than 6 near-identical commits. No Shared/contract surface is touched, so there is no cross-service coupling introduced.", "codex_note": "EXPECTED: not a microservice-isolation concern — zero new using/ProjectReference; only SQL string literals inside each service's own repository changed." }
+  ],
+  "slug": "20260614-getint32-bigint-cast-fix",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-14T10:20:00+03:00",
+  "updated_at": "2026-06-14T10:35:00+03:00",
+  "plan": {
+    "summary": "Batch 1 of the 2026-06-14 refactor audit: fix the GetInt32-on-bigint latent-crash class. PostgreSQL COUNT(*) and SUM(integer_column) return bigint (int8); reading them with Npgsql reader.GetInt32 throws InvalidCastException at runtime. 8 SQL projection sites across 7 repository files in 6 services get an explicit ::int cast so the existing GetInt32 reads are correct. Behavior-preserving (values unchanged for the realistic count/sum range), no C# logic/DTO/signature change, no migration, no Shared change.",
+    "q_intent": "Q: 'hepsini sırayla yap' — execute the audit refactor backlog in INDEX order. Batch 1 = highest-confidence mechanical class (GetInt32-on-bigint). Commit, do NOT deploy ('commit'te dur').",
+    "interview_notes": "Sites verified by reading the actual code before editing (LLM findings are not trusted blindly): (1) Backend LeadRepository.GetFunnelStatsAsync COUNT(*) col1; (2) Backend AnalyticsRepository.GetReplyAnalyticsSummaryAsync 12x SUM(int) cols 0-7,10-13 (CASE-division cols 8,9 left, GetDouble); (3) Backend AnalyticsRepository.GetIntentMetricsAsync SUM(total_count)/SUM(handoff_count) cols 1,2 (CASE cols 3,4 left, GetDouble); (4) Outbound OutboundRepository.GetCampaignRoiAsync COUNT(cv.id) col4 (SUM(value_amount) col5 left, GetDecimal); (5) Automation AutomationRepository.GetReturnDeflectionStatsAsync COUNT(*) + COUNT(*) FILTER cols 0,1 (SUM(deflection_revenue) col2 left, GetDecimal); (6) Knowledge TemplateExtractorService.ReadIntentDistributionAsync COUNT(*) col1; (7) Appointments AppointmentsRepository.GetAvailableSlotsAsync COALESCE((SELECT COUNT(*)...),0) col5; (8) Integrations IntegrationsRepository.GetReviewRecoveryStatsAsync COUNT(*) col2. These are latent (analytics/stats endpoints not exercised by the active Dent/Medipol pilot paths), which is why they have not surfaced. The repo hot-lessons already documents this exact InvalidCastException, confirming the Npgsql version throws.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "Every COUNT(*)/SUM(integer) projection column that is read via reader.GetInt32 across the 8 sites now carries an explicit ::int cast in the SQL string; the corresponding GetInt32 calls, accumulator variable types, and DTO int fields are UNCHANGED.", "verified": true },
+      { "id": "AC2", "criterion": "No SUM over a decimal/numeric column (SUM(cv.value_amount), SUM(deflection_revenue)) was cast to ::int — those remain read via GetDecimal. No CASE-division column (read via GetDouble) was cast.", "verified": true },
+      { "id": "AC3", "criterion": "Only SQL string literals changed: zero changes to C# control flow, method signatures, DTO shapes, reader call types, using directives, csproj ProjectReferences. No migration, no Invekto.Shared change.", "verified": true },
+      { "id": "AC4", "criterion": "Full-solution build PASS (0 errors). dotnet build InvektoServis.sln succeeded (0 Error(s), 44 Warning(s) pre-existing).", "verified": true },
+      { "id": "AC5", "criterion": "The cast syntax is valid PostgreSQL for each shape: COUNT(*)::int, SUM(col)::int, COUNT(*) FILTER (WHERE ...)::int (cast binds to the full aggregate-with-filter), COUNT(cv.id)::int, and COALESCE((SELECT COUNT(*) ...), 0)::int (cast binds to the COALESCE result).", "verified": true }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Data/LeadRepository.cs",
+    "src/Invekto.Backend/Services/AnalyticsRepository.cs",
+    "src/Invekto.Outbound/Data/OutboundRepository.cs",
+    "src/Invekto.Automation/Data/AutomationRepository.cs",
+    "src/Invekto.Knowledge/Services/TemplateExtractorService.cs",
+    "src/Invekto.Appointments/Data/AppointmentsRepository.cs",
+    "src/Invekto.Integrations/Data/IntegrationsRepository.cs",
+    "arch/codex-context.md",
+    "arch/plans/20260614-getint32-bigint-cast-fix.json"
+  ],
+  "files_changed": [
+    { "path": "arch/codex-context.md", "change": "Anti-false-positive guidance for Batch 1: projection-only cast does not touch tenant predicates; Appointments subquery correlated-safe; wa_intents analysis_id-scoped pre-existing (tenant-hardening tracked separately)", "is_new": false },
+    { "path": "src/Invekto.Backend/Data/LeadRepository.cs", "change": "GetFunnelStatsAsync: COUNT(*) -> COUNT(*)::int", "is_new": false },
+    { "path": "src/Invekto.Backend/Services/AnalyticsRepository.cs", "change": "GetReplyAnalyticsSummaryAsync: 12x COALESCE(SUM(int),0) -> ::int; GetIntentMetricsAsync: SUM(total_count)/SUM(handoff_count) -> ::int", "is_new": false },
+    { "path": "src/Invekto.Outbound/Data/OutboundRepository.cs", "change": "GetCampaignRoiAsync: COUNT(cv.id) -> COUNT(cv.id)::int", "is_new": false },
+    { "path": "src/Invekto.Automation/Data/AutomationRepository.cs", "change": "GetReturnDeflectionStatsAsync: COUNT(*) + COUNT(*) FILTER -> ::int", "is_new": false },
+    { "path": "src/Invekto.Knowledge/Services/TemplateExtractorService.cs", "change": "ReadIntentDistributionAsync: COUNT(*) -> COUNT(*)::int", "is_new": false },
+    { "path": "src/Invekto.Appointments/Data/AppointmentsRepository.cs", "change": "GetAvailableSlotsAsync: COALESCE((SELECT COUNT(*)...),0) -> ()::int", "is_new": false },
+    { "path": "src/Invekto.Integrations/Data/IntegrationsRepository.cs", "change": "GetReviewRecoveryStatsAsync: COUNT(*) -> COUNT(*)::int", "is_new": false }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": null,
+    "full_path": "arch/plans/diffs/20260614-getint32-bigint-cast-fix.diff",
+    "stats": { "insertions": 0, "deletions": 0, "files_count": 7 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln -v q -clp:ErrorsOnly",
+    "timestamp": "2026-06-14T10:18:00+03:00",
+    "duration_ms": 38040,
+    "output_tail": "Build succeeded. 44 Warning(s) 0 Error(s). Time Elapsed 00:00:38.04",
+    "error_summary": null,
+    "services": ["Invekto.Backend", "Invekto.Outbound", "Invekto.Automation", "Invekto.Knowledge", "Invekto.Appointments", "Invekto.Integrations"]
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "Does each ::int cast preserve the exact value the GetInt32 reader already expected — i.e. for the realistic per-tenant row/sum range (leads, review_alerts, appointments-per-slot, wa_intents-per-analysis, return_deflections, daily_metrics integer sums all << int.MaxValue) the narrowing bigint->int is lossless, and is the cast syntactically valid Postgres for COUNT(*)::int, SUM(col)::int, COUNT(*) FILTER(WHERE ...)::int, COUNT(cv.id)::int, and COALESCE((SELECT COUNT(*)...),0)::int?", "category": "Data", "codex_answer": null, "codex_result": null },
+    { "id": "Q2", "question": "Are the changes strictly SQL-string casts with ZERO C# logic/DTO/signature/reader-type changes, and was NO decimal/numeric SUM column (SUM(cv.value_amount), SUM(deflection_revenue) — read via GetDecimal) and NO CASE-division column (read via GetDouble) erroneously cast to ::int?", "category": "Data", "codex_answer": null, "codex_result": null },
+    { "id": "Q3", "question": "Is the change free of microservice-isolation and contract impact (no new using/ProjectReference, no Invekto.Shared edit, no migration), so the 6-service single commit introduces no cross-service coupling and each repository's own SQL is the only thing touched?", "category": "Process/Policy", "codex_answer": null, "codex_result": null },
+    { "id": "Q4", "question": "Does this projection-only ::int cast leave EVERY tenant-isolation predicate byte-identical (no WHERE/JOIN/tenant_id added/removed/moved), and is the Appointments current_bookings subquery correlated-safe to the tenant-scoped outer (appointment_slots s WHERE s.tenant_id=@tid; subquery anchored to s.id) so no cross-tenant count is possible? The wa_intents analysis_id-scoped read is a PRE-EXISTING pattern (shared by sibling ReadFaqClustersAsync) unchanged by this diff; tenant_id defense-in-depth filter is a tracked separate hardening batch (see arch/codex-context.md).", "category": "Auth", "codex_answer": null, "codex_result": null },
+    { "id": "Q5", "question": "Is the change purely a SQL string-literal edit with NO connection/command lifecycle change (same OpenConnectionAsync / NpgsqlCommand / ExecuteReaderAsync / await-using disposal), no new resource acquisition, no new async boundary, and no reader-ordinal shift (result shape and column order identical)?", "category": "Lifecycle", "codex_answer": null, "codex_result": null }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Any C# control-flow / DTO / method-signature change (this batch is SQL-cast only)",
+      "Invekto.Shared (no change in this batch)",
+      "arch/db/migrations/** (no migration)",
+      "Nullable-column GetInt32 sites (Outbound ExportRepository template_id) — different defect class, separate batch",
+      "WhatsAppAnalytics SUM-vs-AVG logic bug + null-forgiving COUNT — behavior-changing, separate batch",
+      "JsonElement GetInt32 (Automation FlowGraphV2) — not a DB-bigint case, separate batch"
+    ],
+    "non_goals": [
+      "Switching readers to GetInt64 (chose ::int per repo hot-lesson, minimal diff)",
+      "Refactoring the affected query methods beyond the cast",
+      "Adding tests (no test harness change in this mechanical batch; runtime-correctness asserted by ::int + build)"
+    ],
+    "intentional_exclusions": [
+      "Decimal/numeric SUM columns left as GetDecimal (correct already)",
+      "CASE-division aggregate columns left as GetDouble (correct already)",
+      "No deploy (Q: commit'te dur)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "This batch removes a latent hard failure (InvalidCastException) rather than adding error handling. The affected methods previously threw at the GetInt32 read on the COUNT/SUM column; after the ::int cast they return the same int the callers already expected. No new catch/throw is introduced; existing error handling in the callers is unchanged."
+  },
+  "aha_moments": [
+    { "category": "RELIABILITY", "user_pain": "Analytics/stats sayfaları (funnel, kampanya ROI, iade saptırma, intent dağılımı, müsait slot, yorum kurtarma) ilk açıldığında 500 atıyordu (InvalidCastException), kullanıcı 'rapor bozuk' sanıyordu.", "suggestion": "COUNT/SUM bigint kolonlarına ::int cast → mevcut GetInt32 reader doğru çalışır.", "aha_moment": "Daha önce hiç açılmamış (latent) raporlar ilk tıklamada artık veri gösterir, beyaz-ekran/500 yok." },
+    { "category": "RELIABILITY", "user_pain": "Aynı hata sınıfı 6 serviste dağınık — bir tanesini düzeltip ötekini unutmak kolay.", "suggestion": "Tek audit + tek batch'te 8 site'ı topluca cast'le; repo hot-lesson'ı kanonik remedy olarak referansla.", "aha_moment": "Tüm GetInt32-on-bigint sınıfı tek commit'te kapanır; gelecekte aynı tuzağa düşülmez." },
+    { "category": "SPEED", "user_pain": "Refactor backlog'unu körlemesine uygulamak regresyon riski taşır.", "suggestion": "Her site'ı düzeltmeden ÖNCE gerçek kodu oku + behavior-preserving ::int seç (GetInt64 yerine, DTO domino'su yok).", "aha_moment": "Sıfır C# imza/DTO değişikliği → build ilk seferde geçer, review yüzeyi minimal." },
+    { "category": "SUPPORT", "user_pain": "Bu hatalar prod log'larında InvalidCastException olarak görünür ama hangi endpoint olduğu net değildi.", "suggestion": "Kök sınıfı tek seferde temizle; gelecekte stats endpoint'lerinde InvalidCastException = yeni regresyon sinyali.", "aha_moment": "Destek, stats 500'lerini artık 'bu bilinen latent class' diye değil gerçek yeni bug diye okuyabilir." },
+    { "category": "RELIABILITY", "user_pain": "Decimal SUM (gelir) ile integer SUM/COUNT karışıp yanlış kolon cast'lenirse para değeri bozulurdu.", "suggestion": "Sadece integer COUNT/SUM kolonlarını cast'le; SUM(value_amount)/SUM(deflection_revenue) GetDecimal'de bırak.", "aha_moment": "Para/gelir kolonları dokunulmadan kalır; cast yalnız sayaç kolonlarına uygulanır." }
+  ],
+  "self_review_completed": true,
+  "self_review_findings": [
+    { "question_id": "AC_coverage", "status": "ok", "action": "na", "note": "5 AC testable; each independently checkable (read SQL diff, read reader calls, build output)." },
+    { "question_id": "scope_bounds", "status": "ok", "action": "na", "note": "allowed_files = exactly the 7 edited repos + plan; no scope creep." },
+    { "question_id": "dependencies", "status": "ok", "action": "na", "note": "No Shared/DTO/migration; per-service SQL literals only." },
+    { "question_id": "rollback", "status": "ok", "action": "na", "note": "Trivially reversible (revert ::int). No data migration." },
+    { "question_id": "risk_class", "status": "ok", "action": "na", "note": "MEDIUM: multi-service but mechanical + behavior-preserving; no auth/data-loss/cross-tenant." },
+    { "question_id": "hidden_assumptions", "status": "gap", "action": "ask_q", "note": "Assumes per-tenant COUNT/SUM << int.MaxValue (true for this scale). Flagged to Codex Q1 for confirmation." },
+    { "question_id": "verification", "status": "ok", "action": "na", "note": "Build PASS verified; runtime correctness asserted by valid Postgres ::int. No automated test for the SQL string." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_MCP",
+    "iteration": 1,
+    "blocking_issues": [],
+    "escalation_required": false,
+    "raw_text": "Codex (gpt-5.5-2026-04-23) iter1 PASS — 12/12 CQ + 5/5 CoVe, 0 blocking. iter0 FAILed on CQ9 (tenant-isolation in touched Appointments/Knowledge SQL) + Q1 UNKNOWN (int-range) + CoVe coverage gap; resolved at iter1 with NO source change via corrected-premise (projection-only cast leaves all tenant predicates byte-identical; Appointments subquery correlated-safe to tenant-scoped outer; wa_intents analysis_id-scoped pre-existing, tenant-hardening tracked as separate Batch 8) documented in arch/codex-context.md + 2 added CoVe VQ (Auth+Lifecycle). CODEX UTANSIN note: iter0->iter1, no FORCE PASS.",
+    "iter_history": [
+      { "iteration": 0, "verdict": "FAIL", "blocking": ["CQ9 tenant-isolation in touched SQL (Appointments:673 correlated-safe; Knowledge:315 pre-existing analysis-scoped)", "Q1 UNKNOWN int-range losslessness", "CoVe MEDIUM coverage missing Auth/Lifecycle"], "resolution": "NO source change; arch/codex-context.md anti-FP entry + 2 CoVe VQ (Auth/Lifecycle) + strengthened summary" }
+    ]
+  }
+}
