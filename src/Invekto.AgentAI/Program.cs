@@ -1,3 +1,4 @@
+using Npgsql;
 using Invekto.AgentAI.Data;
 using Invekto.Shared.Middleware;
 using Invekto.AgentAI.Services;
@@ -321,11 +322,12 @@ app.MapPost("/api/v1/suggest", async (
             result.DetectedLanguage,
             CancellationToken.None);
     }
-    catch (Exception ex)
+    catch (NpgsqlException ex)
     {
-        // DB log failure is non-blocking -- suggestion still returned with warning
+        // DB log failure is non-blocking -- suggestion still returned with warning.
+        // CancellationToken.None is passed above, so no OperationCanceledException can arise here.
         dbLogFailed = true;
-        jsonLogger.StepError($"Failed to log suggestion to DB: {ex.Message}", requestId);
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] Suggestion DB log error: {ex.Message}", requestId);
     }
 
     jsonLogger.StepInfo(
@@ -417,11 +419,14 @@ app.MapPost("/api/v1/feedback", async (
         jsonLogger.StepInfo(
             $"Feedback received: suggestion={feedback.SuggestionId}, action={feedback.AgentAction}", requestId);
     }
-    catch (Exception ex)
+    catch (NpgsqlException ex)
     {
-        jsonLogger.StepError($"Feedback DB update failed: {ex.Message}", requestId);
+        // DB error on feedback update -> coded 500 (was generic GeneralUnknown).
+        // CancellationToken.None is passed above, so no OperationCanceledException can arise here.
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] Feedback DB update error: {ex.Message}", requestId);
         return Results.Json(
-            ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", requestId),
+            ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed,
+                "Failed to save feedback due to a database error. Please retry.", requestId),
             statusCode: 500);
     }
 
