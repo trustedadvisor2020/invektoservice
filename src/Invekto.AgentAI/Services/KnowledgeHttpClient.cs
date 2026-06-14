@@ -54,8 +54,10 @@ public sealed class KnowledgeHttpClient
             using var request = new HttpRequestMessage(HttpMethod.Post,
                 $"api/v1/knowledge/{tenantId}/search");
 
+            // TryAddWithoutValidation: a malformed jwt must not throw FormatException past the
+            // graceful-degradation catch set below (would escape as an unhandled error).
             if (!string.IsNullOrEmpty(jwtToken))
-                request.Headers.Add("Authorization", $"Bearer {jwtToken}");
+                request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {jwtToken}");
 
             request.Content = JsonContent.Create(requestBody);
 
