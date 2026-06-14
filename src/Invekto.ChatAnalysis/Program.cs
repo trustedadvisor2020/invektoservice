@@ -22,6 +22,12 @@ if (string.IsNullOrEmpty(claudeApiKey))
 {
     throw new InvalidOperationException("FATAL: Claude:ApiKey is not configured");
 }
+if (string.IsNullOrEmpty(internalApiKey))
+{
+    // Fail-closed (audit Batch 3): an empty key previously SKIPPED the /api/v1/analyze
+    // service-to-service auth gate entirely, leaving the endpoint open.
+    throw new InvalidOperationException("FATAL: Microservice:InternalApiKey is not configured (/api/v1/analyze service-to-service auth would be open)");
+}
 
 // Configure Kestrel + HTTPS if certificate is configured
 builder.WebHost.ConfigureKestrel(options =>
@@ -88,17 +94,15 @@ app.MapPost("/api/v1/analyze", (
     CallbackService callbackService,
     ChatAnalysisRequest? request) =>
 {
-    // Internal API key validation (service-to-service auth)
-    if (!string.IsNullOrEmpty(internalApiKey))
+    // Internal API key validation (service-to-service auth).
+    // internalApiKey is guaranteed non-empty (startup throws otherwise) — the gate is unconditional.
+    var providedKey = ctx.Request.Headers["X-Internal-Api-Key"].FirstOrDefault();
+    if (providedKey != internalApiKey)
     {
-        var providedKey = ctx.Request.Headers["X-Internal-Api-Key"].FirstOrDefault();
-        if (providedKey != internalApiKey)
-        {
-            jsonLogger.SystemWarn("Rejected /api/v1/analyze: invalid or missing X-Internal-Api-Key");
-            return Results.Json(
-                ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Unauthorized", "-"),
-                statusCode: 401);
-        }
+        jsonLogger.SystemWarn("Rejected /api/v1/analyze: invalid or missing X-Internal-Api-Key");
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Unauthorized", "-"),
+            statusCode: 401);
     }
 
     // Validate request

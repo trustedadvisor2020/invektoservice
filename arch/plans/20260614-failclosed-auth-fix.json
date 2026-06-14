@@ -1,0 +1,107 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": "arch/reports/20260614-audit-INDEX.md (Batch 3)",
+  "spec_architectural_decisions": [
+    { "decision": "Fail-CLOSED via startup-throw: each service throws InvalidOperationException at startup (builder-config phase, before app.Run()) when its auth key config is empty, mirroring the EXISTING fatal-config checks (ChatAnalysis Claude:ApiKey; WhatsAppAnalytics ConnectionStrings:PostgreSQL + Jwt:SecretKey). The request-path gates are then simplified so an empty key can never be treated as 'open'.", "reason": "Previously an empty/unset auth key SILENTLY disabled the gate (ChatAnalysis /api/v1/analyze skipped the X-Internal-Api-Key check when internalApiKey was empty; WhatsAppAnalytics ValidateOpsKey returned true when Benchmark:OpsKey was empty, leaving ~25 /api/ops/* mutation endpoints open). A misconfigured production appsettings = unauthenticated endpoints. Q chose startup-throw (strongest) 2026-06-14.", "codex_note": "EXPECTED: this is a deliberate fail-open -> fail-closed security hardening. The startup throw is the SAME pattern already used for Claude:ApiKey/pgConnStr/jwtSecretKey. OPERATIONAL DEPENDENCY (not a code bug): prod appsettings MUST set Benchmark:OpsKey + Microservice:InternalApiKey before deploy or the service will not boot — deploy is HELD (Q: commit'te dur), so the commit is safe and the keys are set before the eventual deploy." }
+  ],
+  "slug": "20260614-failclosed-auth-fix",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-14T11:00:00+03:00",
+  "updated_at": "2026-06-14T11:05:00+03:00",
+  "plan": {
+    "summary": "Batch 3 of the 2026-06-14 refactor audit: close two fail-open auth defaults. (1) ChatAnalysis /api/v1/analyze only enforced X-Internal-Api-Key when Microservice:InternalApiKey was non-empty; now a startup throw guarantees the key, and the endpoint gate is unconditional. (2) WhatsAppAnalytics ValidateOpsKey returned true (open) when Benchmark:OpsKey was empty, exposing ~25 /api/ops/* endpoints; now a startup throw guarantees the key, and the open-mode branch is removed. Both throws mirror the services' existing fatal-config checks. No new error code (startup InvalidOperationException). Full-solution build PASS.",
+    "q_intent": "Q chose (2026-06-14) 'Startup-throw (fail-closed sert)' — key empty -> service won't boot; strongest. Q acknowledged prod keys must be set before deploy; deploy is held.",
+    "interview_notes": "Code verified by reading: ChatAnalysis/Program.cs:16-24 (existing Claude:ApiKey throw pattern) + :91-102 (the `if (!string.IsNullOrEmpty(internalApiKey))` open-skip); WhatsAppAnalytics/Program.cs:44-48 (existing pgConnStr/jwtSecretKey throws) + :167 (benchmarkOpsKey read) + :771-776 (`if (string.IsNullOrEmpty(benchmarkOpsKey)) return true` open branch). Both repo appsettings.json have the keys present but EMPTY (\"\") — confirming prod likely empty too, hence the explicit deploy prerequisite. benchmarkOpsKey used only at 167/773/775 (no other consumer). internalApiKey used at 18/92/95 only.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "ChatAnalysis: startup throws InvalidOperationException('FATAL: Microservice:InternalApiKey is not configured ...') when the key is empty (added next to the existing Claude:ApiKey check). The /api/v1/analyze gate is now UNCONDITIONAL — the `if (!string.IsNullOrEmpty(internalApiKey))` wrapper is removed, so an empty key can never skip the X-Internal-Api-Key check.", "verified": true },
+      { "id": "AC2", "criterion": "WhatsAppAnalytics: startup throws InvalidOperationException('FATAL: Benchmark:OpsKey is not configured ...') when the key is empty (added right after the benchmarkOpsKey read, before app build/run). ValidateOpsKey no longer has the `if (string.IsNullOrEmpty(benchmarkOpsKey)) return true` open-mode branch — every /api/ops/* endpoint now requires a matching X-Ops-Key.", "verified": true },
+      { "id": "AC3", "criterion": "No fail-open path remains: grep confirms neither service has a code path that treats an empty auth key as 'open' (no `return true` on empty key, no `if (!string.IsNullOrEmpty(internalApiKey))` skip).", "verified": true },
+      { "id": "AC4", "criterion": "Full-solution build PASS (0 errors). No new error code (startup InvalidOperationException, like the existing Claude/pgConn/jwt checks). No Invekto.Shared change.", "verified": true },
+      { "id": "AC5", "criterion": "OPERATIONAL: documented that prod appsettings must set Benchmark:OpsKey (WhatsAppAnalytics) + Microservice:InternalApiKey (ChatAnalysis) BEFORE deploy or the service won't boot. Both are currently empty in the repo template. Deploy is held (Q: commit'te dur), so commit is safe; keys must be set at deploy time.", "verified": true }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.ChatAnalysis/Program.cs",
+    "src/Invekto.WhatsAppAnalytics/Program.cs",
+    "arch/plans/20260614-failclosed-auth-fix.json"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.ChatAnalysis/Program.cs", "change": "Startup throw if Microservice:InternalApiKey empty + unconditional /api/v1/analyze gate (removed open-when-empty skip)", "is_new": false },
+    { "path": "src/Invekto.WhatsAppAnalytics/Program.cs", "change": "Startup throw if Benchmark:OpsKey empty + ValidateOpsKey open-mode branch removed", "is_new": false }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": null,
+    "full_path": "arch/plans/diffs/20260614-failclosed-auth-fix.diff",
+    "stats": { "insertions": 0, "deletions": 0, "files_count": 2 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln -v q -clp:ErrorsOnly",
+    "timestamp": "2026-06-14T10:58:00+03:00",
+    "duration_ms": 10470,
+    "output_tail": "Build succeeded. 44 Warning(s) 0 Error(s). Time Elapsed 00:00:10.47",
+    "error_summary": null,
+    "services": ["Invekto.ChatAnalysis", "Invekto.WhatsAppAnalytics"]
+  },
+  "verification_questions": [
+    { "id": "Q1", "category": "Auth", "question": "Does the change make BOTH auth gates fail-CLOSED — ChatAnalysis /api/v1/analyze now ALWAYS validates X-Internal-Api-Key (no `if (!string.IsNullOrEmpty(internalApiKey))` skip), and WhatsAppAnalytics ValidateOpsKey no longer returns true on an empty key — so an unset/empty key can never leave an endpoint open?", "codex_answer": null, "codex_result": null },
+    { "id": "Q2", "category": "Auth", "question": "Is each startup throw consistent with the service's EXISTING fatal-config pattern (ChatAnalysis Claude:ApiKey throw; WhatsAppAnalytics pgConnStr + jwtSecretKey throws) and placed in the builder-config phase before app.Run(), so a missing key aborts boot cleanly rather than running insecurely?", "codex_answer": null, "codex_result": null },
+    { "id": "Q3", "category": "Lifecycle", "question": "Does the startup throw occur before the app is built/run (no half-initialized DI/host state), introduce no new resource or async boundary, and leave all other request handling unchanged (only the auth-skip branches removed)?", "codex_answer": null, "codex_result": null },
+    { "id": "Q4", "category": "Process/Policy", "question": "Is it correct that NO new INV error code is needed (the empty-key case is a fatal startup InvalidOperationException like the existing config checks, not a request-time coded response), and that the only operational impact is the documented prod-config prerequisite (set keys before deploy; deploy is held)?", "codex_answer": null, "codex_result": null }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Request-time response contracts other than removing the open-skip (no new endpoint behavior beyond enforcing the existing 401)",
+      "Any Invekto.Shared change",
+      "appsettings.json / appsettings.Production.json (config is set at deploy time by Q, not in source)",
+      "Other services' auth gates (only ChatAnalysis + WhatsAppAnalytics in this batch)"
+    ],
+    "non_goals": [
+      "Adding a request-time INV error code for the empty-key case (startup throw is the chosen mechanism)",
+      "Rotating/generating keys, or auto-generating a dev key",
+      "Auditing other services for similar fail-open patterns (separate sweep if needed)"
+    ],
+    "intentional_exclusions": [
+      "No deploy (Q: commit'te dur) — and prod keys must be set before the eventual deploy",
+      "ChatAnalysis Callback:Token left as-is (not in audit scope; separate concern)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [
+      "ChatAnalysis /api/v1/analyze: 401 Unauthorized (INV AuthUnauthorized) now ALWAYS enforced on bad/missing X-Internal-Api-Key",
+      "WhatsAppAnalytics /api/ops/*: 401 (existing) now ALWAYS enforced on bad/missing X-Ops-Key"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "This batch REMOVES a silent fail-open (empty key silently disabling auth). The new startup throw is loud and fatal (mirrors existing Claude:ApiKey/pgConnStr/jwtSecretKey FATAL throws); the request gates now deterministically reject. No silent path is introduced."
+  },
+  "aha_moments": [
+    { "category": "RELIABILITY", "user_pain": "Yanlış-konfigli (key boş) bir prod instance, ~25 /api/ops/* mutation endpoint'ini ve /analyze'ı sessizce HERKESE açık bırakıyordu — kimse fark etmezdi.", "suggestion": "Key boşsa startup'ta FATAL throw (mevcut Claude/pg/jwt deseni) — açık çalışmaktansa hiç çalışma.", "aha_moment": "Güvensiz bir instance artık AYAĞA KALKAMAZ; 'açık kapı' sessizce prod'da yaşayamaz." },
+    { "category": "SUPPORT", "user_pain": "Boot başarısız olursa operatör nedenini bilemez.", "suggestion": "FATAL mesajına net sebep yaz ('Benchmark:OpsKey is not configured (/api/ops/* would be OPEN)').", "aha_moment": "Operatör boot log'unda tam olarak hangi key'i set edeceğini okur." },
+    { "category": "RELIABILITY", "user_pain": "Endpoint guard'ında `if (key boş değilse kontrol et` kalıbı, gelecekte birinin 'key opsiyonel' sanmasına yol açar.", "suggestion": "Guard'ı koşulsuz yap; boşluk garantisi startup'ta verilsin.", "aha_moment": "Guard'ı okuyan herkes auth'un her zaman zorunlu olduğunu görür; 'opsiyonel auth' yanılgısı imkânsız." },
+    { "category": "SPEED", "user_pain": "Bu sınıf bug (fail-open default) sessiz olduğu için pen-test/audit'e kadar yakalanmaz.", "suggestion": "Fail-closed'u startup invariant'ı yap; bir daha asla regresyona uğramaz.", "aha_moment": "Audit bir kez yakaladı; startup-throw ile kalıcı invariant oldu, tekrar açılamaz." },
+    { "category": "SUPPORT", "user_pain": "Deploy'da key set edilmezse servis düşer ve panik olur.", "suggestion": "Plan + commit mesajında 'deploy öncesi prod key set et' ön-koşulunu açıkça belgele.", "aha_moment": "Deploy eden kişi sürprizle karşılaşmaz; prereq önceden bilinir." }
+  ],
+  "self_review_completed": true,
+  "self_review_findings": [
+    { "question_id": "AC_coverage", "status": "ok", "action": "na", "note": "5 AC, grep/build verifiable; AC5 captures the operational prereq." },
+    { "question_id": "scope_bounds", "status": "ok", "action": "na", "note": "allowed_files = 2 Program.cs + plan." },
+    { "question_id": "dependencies", "status": "gap", "action": "ask_q", "note": "Behavior change: services won't boot without prod keys. Surfaced to Q (chose startup-throw) + documented AC5 + commit message + deploy held." },
+    { "question_id": "rollback", "status": "ok", "action": "na", "note": "Revert restores prior (fail-open) behavior; trivial." },
+    { "question_id": "risk_class", "status": "ok", "action": "na", "note": "MEDIUM: auth hardening, localized, well-understood semantics; Q-approved." },
+    { "question_id": "hidden_assumptions", "status": "ok", "action": "na", "note": "Assumed startup-config phase placement aborts boot before serving — verified (throws are pre-app.Run, like existing checks)." },
+    { "question_id": "verification", "status": "ok", "action": "na", "note": "Build PASS + grep no-open-path. Runtime boot-fail-on-empty asserted by mirroring existing throw pattern." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_MCP",
+    "iteration": 0,
+    "blocking_issues": [],
+    "escalation_required": false,
+    "raw_text": "Codex (gpt-5.5-2026-04-23) iter0 PASS — 12/12 CQ + 4/4 CoVe, 0 blocking. CODEX UTANSIN: iteration=0. Both fail-open auth defaults closed via startup-throw (mirroring existing fatal-config checks) + unconditional request gates. DEPLOY PREREQUISITE: prod must set Benchmark:OpsKey + Microservice:InternalApiKey before deploy or service won't boot (deploy held)."
+  }
+}
