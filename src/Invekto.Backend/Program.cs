@@ -3397,15 +3397,31 @@ app.MapGet("/api/v1/settings/instances", async (HttpContext ctx, JsonLinesLogger
         var wapcrm = await tenantRepo.GetWapCrmSettingsAsync(tenant.TenantId);
         if (wapcrm != null && !string.IsNullOrWhiteSpace(wapcrm.SecretKey))
         {
+            // Best-effort warm-up: a WapCRM/DB failure here must NOT fail the GET — the endpoint
+            // still returns whatever is cached below. Sanctioned optional-step degradation boundary
+            // (see arch/codex-context.md). Each expected failure type degrades-and-continues; any
+            // unexpected type propagates to TrafficLoggingMiddleware.
             try
             {
                 var fetched = await FetchWapCrmInstances(wapcrm.SecretKey, jsonLog, requestId);
                 if (fetched.Count > 0)
                     await instanceRepo.UpsertInstancesAsync(tenant.TenantId, fetched);
             }
-            catch (Exception ex)
+            catch (HttpRequestException ex)
             {
-                jsonLog.StepWarn($"Instance auto-fetch from WapCRM failed: {ex.Message}", requestId);
+                jsonLog.StepWarn($"Instance auto-fetch transport error (serving cached): {ex.Message}", requestId);
+            }
+            catch (TaskCanceledException ex)
+            {
+                jsonLog.StepWarn($"Instance auto-fetch timed out (serving cached): {ex.Message}", requestId);
+            }
+            catch (JsonException ex)
+            {
+                jsonLog.StepWarn($"Instance auto-fetch malformed response (serving cached): {ex.Message}", requestId);
+            }
+            catch (NpgsqlException ex)
+            {
+                jsonLog.StepWarn($"Instance auto-fetch DB error (serving cached): {ex.Message}", requestId);
             }
         }
     }
@@ -3442,10 +3458,31 @@ app.MapPost("/api/v1/settings/instances/refresh", async (HttpContext ctx, JsonLi
         var instances = await instanceRepo.ListInstancesAsync(tenant.TenantId);
         return Results.Ok(new { instances, refreshed = true });
     }
-    catch (Exception ex)
+    catch (HttpRequestException ex)
     {
-        jsonLog.StepWarn($"WapCRM instance refresh failed: {ex.Message}", requestId);
-        return Results.Json(new { error = ErrorCodes.BackendInstanceFetchFailed, message = $"WapCRM baglanti hatasi: {ex.Message}" }, statusCode: 502);
+        // WapCRM transport / non-2xx (EnsureSuccessStatusCode). ex.Message is logged only — never
+        // returned to the SPA (it can carry internal host/URL detail).
+        jsonLog.StepWarn($"WapCRM instance refresh transport error: {ex.Message}", requestId);
+        return Results.Json(new { error = ErrorCodes.BackendInstanceFetchFailed, message = "WapCRM baglantisi kurulamadi. Lutfen daha sonra tekrar deneyin." }, statusCode: 502);
+    }
+    catch (TaskCanceledException ex)
+    {
+        // FetchWapCrmInstances wires NO CancellationToken, so the only OCE reachable here is its
+        // HttpClient 10s timeout (a transport timeout, not a caller-cancel) -> coded 504.
+        jsonLog.StepWarn($"WapCRM instance refresh timed out: {ex.Message}", requestId);
+        return Results.Json(new { error = ErrorCodes.BackendInstanceFetchFailed, message = "WapCRM baglantisi zaman asimina ugradi. Lutfen tekrar deneyin." }, statusCode: 504);
+    }
+    catch (JsonException ex)
+    {
+        // Malformed WapCRM /api/Instances envelope.
+        jsonLog.StepWarn($"WapCRM instance refresh malformed response: {ex.Message}", requestId);
+        return Results.Json(new { error = ErrorCodes.BackendInstanceFetchFailed, message = "WapCRM gecersiz yanit dondurdu." }, statusCode: 502);
+    }
+    catch (NpgsqlException ex)
+    {
+        // UpsertInstancesAsync / ListInstancesAsync DB failure.
+        jsonLog.StepWarn($"WapCRM instance refresh DB error: {ex.Message}", requestId);
+        return Results.Json(new { error = ErrorCodes.BackendInstanceFetchFailed, message = "Instance kayitlari guncellenemedi (veritabani hatasi)." }, statusCode: 503);
     }
 });
 
@@ -3567,8 +3604,11 @@ app.MapPut("/api/v1/settings/instances/{instanceId}/toggle", async (HttpContext 
     {
         body = await ctx.Request.ReadFromJsonAsync<JsonElement>();
     }
-    catch (Exception)
+    catch (JsonException)
     {
+        // Only a malformed body is a client error. A client-disconnect (OperationCanceledException)
+        // or a transport IOException must NOT masquerade as "Invalid JSON" — let them propagate.
+        // Mirrors the sibling PUT /api/v1/settings/working-hours (catch(JsonException)).
         return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "Invalid JSON body" });
     }
 
