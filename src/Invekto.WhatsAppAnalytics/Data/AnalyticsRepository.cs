@@ -38,7 +38,11 @@ public sealed class AnalyticsRepository
             await cmd.ExecuteScalarAsync(ct);
             return true;
         }
-        catch (Exception ex)
+        catch (OperationCanceledException)
+        {
+            throw; // shutdown/caller cancellation must propagate, not be reported as unhealthy
+        }
+        catch (NpgsqlException ex)
         {
             _logger.SystemWarn($"[AnalyticsRepository] Health check failed: {ex.Message}");
             return false;
@@ -62,7 +66,9 @@ public sealed class AnalyticsRepository
         cmd.Parameters.AddWithValue("cfg", (object?)configJson ?? DBNull.Value);
 
         var result = await cmd.ExecuteScalarAsync(ct);
-        return (int)result!;
+        if (result is not int id)
+            throw new InvalidOperationException("CreateAnalysisAsync: INSERT wa_analyses RETURNING id produced no value");
+        return id;
     }
 
     public async Task<AnalysisJob?> GetAnalysisAsync(int tenantId, int analysisId, CancellationToken ct = default)
@@ -91,7 +97,8 @@ public sealed class AnalyticsRepository
         await using var countCmd = conn.CreateCommand();
         countCmd.CommandText = "SELECT COUNT(*) FROM wa_analyses WHERE tenant_id = @tid";
         countCmd.Parameters.AddWithValue("tid", tenantId);
-        var total = (int)(long)(await countCmd.ExecuteScalarAsync(ct))!;
+        var rawCount = await countCmd.ExecuteScalarAsync(ct);
+        var total = rawCount is long l ? (int)l : 0;
 
         // List
         await using var listCmd = conn.CreateCommand();

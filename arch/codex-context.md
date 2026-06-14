@@ -124,6 +124,33 @@ These are hard codebase conventions. Violations = automatic FAIL:
 - **`/payment/callback` broad catches are a SANCTIONED public bank-return-URL resilience boundary — intentionally LEFT broad, not in this diff.** The bank's 3D page redirects the USER'S BROWSER (form POST) to this OkUrl/FailUrl; the handler MUST always redirect the user gracefully (to `/app/#/licenses?payment_result=...`) and never surface a 500 on the payment-return path. The three `catch(Exception)` blocks (ReadFormAsync parse, ParseCallback, best-effort DB UPDATE) are the same class as the sanctioned "webhook always-2xx" rule. `vpos.ParseCallback` is itself pure (null-safe dictionary reads, cannot throw). Narrowing these would let an unexpected type break the user's return redirect for zero benefit. Do NOT flag the callback broad catches — they are out of scope by design.
 - **`/payment/history` is a pure DB read endpoint** (ops-auth) → `catch(Exception)` narrowed to `catch(NpgsqlException)`. No HTTP/JSON path.
 - All three converted sites keep their existing error codes (`GeneralUnknown`, `BackendPaymentInitFailed`, `BackendPaymentHistoryFailed`) and static user messages — no `ex.Message` is returned to callers (logged only). Shared/errors.md untouched; no new usings.
+## SANCTIONED BROAD-CATCH BOUNDARIES (WhatsAppAnalytics error-handling sweep, 2026-06-14)
+
+The WhatsAppAnalytics broad-catch sweep converted request-path DB handlers to typed catches
+(`catch(OperationCanceledException)` → 499, `catch(NpgsqlException)` → `WADatabaseError`, then propagate).
+A handful of handlers KEEP a documented `catch(Exception)` because they are genuine degradation
+boundaries, not single-statement DB calls. Do NOT FAIL these for "bare catch(Exception)" — every one
+catches `OperationCanceledException` FIRST (so cancellation is never masked) and no longer leaks
+`ex.Message` to the client (the raw message goes to the server log only):
+
+- **Compute/mining orchestration (POST /api/ops/insights/compute/*, /api/ops/templates/mine, mine-all):**
+  these span the customer **MSSQL** source read (Microsoft.Data.SqlClient — so `SqlException`, not only
+  `NpgsqlException`, is reachable) + PG writes + NLP. Any failure surfaces as a coded
+  `WAInsightComputeFailed` 500 rather than a bare 500. Narrowing to `NpgsqlException` only would let
+  `SqlException` fall through to an uncoded 500.
+- **Upload handler (POST .../upload):** writes a file THEN a DB row. `NpgsqlException` is split out to
+  `WADatabaseError`; the remaining `catch(Exception)` → `WAStorageError` is the genuine file/IO boundary.
+  Its inner best-effort `File.Delete` cleanup keeps a broad catch so a cleanup failure never masks the
+  original error response.
+- **Request-body-parse boundary (POST .../import-mssql, template create/update):** a malformed or
+  missing-field body (`JsonException`, missing JSON property, etc.) is a client error → 400/coded-500,
+  not an uncoded 500. Mixed parse+DB write operations keep the operation-coded boundary.
+- **Dashboard / onboarding aggregators (.../ri/dashboard, .../ri/onboarding) and `InsightSafeGet`:**
+  fan-out reads where an individual panel degrades to empty (`InsightSafeGet.RunAsync` returns null,
+  but rethrows `OperationCanceledException`); the outer handler boundary returns a coded failure.
+- **BulkOrchestrationService per-sector loop:** one sector's mining failure is recorded and the sweep
+  continues; `OperationCanceledException` is rethrown (not recorded as a sector error).
+- **`/ready` health endpoint:** reports unhealthy (503) on any failure by design — out of sweep scope.
 
 ## FAIL CONDITIONS (ANY = automatic FAIL)
 - Tenant/auth/security regression risk
