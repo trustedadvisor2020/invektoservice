@@ -55,7 +55,8 @@ public sealed class TranslationHopClient
                     TargetLanguage = targetLocale
                 })
             };
-            request.Headers.Add("Authorization", $"Bearer {_jwtGenerator.GenerateServiceToken(tenantId)}");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(
+                "Bearer", _jwtGenerator.GenerateServiceToken(tenantId));
 
             using var response = await _httpClient.SendAsync(request, cts.Token);
             if (!response.IsSuccessStatusCode)

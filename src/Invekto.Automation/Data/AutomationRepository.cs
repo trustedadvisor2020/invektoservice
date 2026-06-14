@@ -613,38 +613,33 @@ public sealed class AutomationRepository
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var tx = await conn.BeginTransactionAsync(ct);
 
-        try
+        // Clear old assignments for this flow
+        await using (var clearCmd = new NpgsqlCommand(
+            "UPDATE tenant_instances SET flow_id = NULL WHERE tenant_id = @tid AND flow_id = @fid", conn, tx))
         {
-            // Clear old assignments for this flow
-            await using (var clearCmd = new NpgsqlCommand(
-                "UPDATE tenant_instances SET flow_id = NULL WHERE tenant_id = @tid AND flow_id = @fid", conn, tx))
-            {
-                clearCmd.Parameters.AddWithValue("tid", tenantId);
-                clearCmd.Parameters.AddWithValue("fid", flowId);
-                await clearCmd.ExecuteNonQueryAsync(ct);
-            }
-
-            // Assign new instances to this flow
-            if (instanceIds.Count > 0)
-            {
-                await using var assignCmd = new NpgsqlCommand(@"
-                    UPDATE tenant_instances
-                    SET flow_id = @fid
-                    WHERE tenant_id = @tid AND instance_id = ANY(@ids)
-                      AND is_enabled = true", conn, tx);
-                assignCmd.Parameters.AddWithValue("tid", tenantId);
-                assignCmd.Parameters.AddWithValue("fid", flowId);
-                assignCmd.Parameters.AddWithValue("ids", NpgsqlDbType.Array | NpgsqlDbType.Varchar, instanceIds.ToArray());
-                await assignCmd.ExecuteNonQueryAsync(ct);
-            }
-
-            await tx.CommitAsync(ct);
+            clearCmd.Parameters.AddWithValue("tid", tenantId);
+            clearCmd.Parameters.AddWithValue("fid", flowId);
+            await clearCmd.ExecuteNonQueryAsync(ct);
         }
-        catch (Exception)
+
+        // Assign new instances to this flow
+        if (instanceIds.Count > 0)
         {
-            await tx.RollbackAsync(ct);
-            throw;
+            await using var assignCmd = new NpgsqlCommand(@"
+                UPDATE tenant_instances
+                SET flow_id = @fid
+                WHERE tenant_id = @tid AND instance_id = ANY(@ids)
+                  AND is_enabled = true", conn, tx);
+            assignCmd.Parameters.AddWithValue("tid", tenantId);
+            assignCmd.Parameters.AddWithValue("fid", flowId);
+            assignCmd.Parameters.AddWithValue("ids", NpgsqlDbType.Array | NpgsqlDbType.Varchar, instanceIds.ToArray());
+            await assignCmd.ExecuteNonQueryAsync(ct);
         }
+
+        // `await using var tx` auto-rolls-back on dispose if CommitAsync is not reached (any
+        // exception), so the previous explicit catch+rollback+rethrow was redundant — and an
+        // explicit RollbackAsync that itself threw would have masked the original exception.
+        await tx.CommitAsync(ct);
     }
 
     // ============================================================

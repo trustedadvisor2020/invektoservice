@@ -141,8 +141,11 @@ public sealed class FlowEngineV2
             }
             catch (Exception ex)
             {
-                // IMP-5: Error recovery — node error → session=error + handoff
-                _logger.SystemWarn($"[{ErrorCodes.AutomationNodeExecutionFailed}] Node {currentNodeId} ({node.Type}) execution failed: {ex.Message}");
+                // IMP-5: Error recovery — SANCTIONED node-dispatch resilience boundary (codex-context.md):
+                // node handlers (AI / HTTP / JSON / API-call / message) have an unbounded throw surface;
+                // ANY handler failure degrades to a coded handoff so one bad node never crashes the flow
+                // engine. Cancellation is already rethrown above. Logged with full type+detail.
+                _logger.SystemWarn($"[{ErrorCodes.AutomationNodeExecutionFailed}] Node {currentNodeId} ({node.Type}) execution failed: {ex.GetType().Name}: {ex.Message}");
                 state.Status = "error";
                 return new EngineStepResult
                 {
