@@ -216,7 +216,11 @@ public sealed class ExportService
 
             var totalCount = await _repo.CountRecipientsAsync(tenantId, jobId, ct);
             var sums = await _repo.SummarizeRecipientsAsync(tenantId, jobId, job.BroadcastIds, ct);
-            var templateName = await _repo.GetTemplateNameAsync(tenantId, job.TemplateId, ct);
+            // template_id is null for HSM/inline jobs — skip the lookup (audit Outbound-5);
+            // passing 0 would have silently resolved the wrong template's name.
+            var templateName = job.TemplateId.HasValue
+                ? await _repo.GetTemplateNameAsync(tenantId, job.TemplateId.Value, ct)
+                : null;
 
             var limit = _options.PdfRecipientTableLimit;
             var recipients = new List<SendRecipientRow>(Math.Min(totalCount, limit));

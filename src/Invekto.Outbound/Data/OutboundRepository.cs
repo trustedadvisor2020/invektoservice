@@ -350,7 +350,8 @@ public class OutboundRepository
         await using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("bid", broadcastId);
 
-        var count = (long)(await cmd.ExecuteScalarAsync(ct))!;
+        var raw = await cmd.ExecuteScalarAsync(ct);
+        var count = raw is null ? 0L : (long)raw;
         return count == 0;
     }
 

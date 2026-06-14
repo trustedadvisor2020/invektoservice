@@ -109,7 +109,8 @@ public sealed class SendJobSummary
     [JsonPropertyName("id")] public long Id { get; set; }
     [JsonPropertyName("campaign_id")] public string CampaignId { get; set; } = "";
     [JsonPropertyName("status")] public string Status { get; set; } = "";
-    [JsonPropertyName("template_id")] public int TemplateId { get; set; }
+    // Nullable: NULL for HSM (wa_template_id) and inline-text jobs (chk_bulk_message_source XOR).
+    [JsonPropertyName("template_id")] public int? TemplateId { get; set; }
     [JsonPropertyName("total_recipients")] public int TotalRecipients { get; set; }
     [JsonPropertyName("created_at")] public DateTime CreatedAt { get; set; }
     [JsonPropertyName("completed_at")] public DateTime? CompletedAt { get; set; }
@@ -143,7 +144,9 @@ public sealed class SendReportData
 /// <summary>Campaign rollup for the PDF summary card.</summary>
 public sealed class SendReportSummary
 {
-    [JsonPropertyName("template_id")] public int TemplateId { get; set; }
+    // Nullable: NULL for HSM (wa_template_id) and inline-text jobs (chk_bulk_message_source XOR);
+    // TemplateName is then null too. Sourced from JobExportMeta.TemplateId (audit Outbound-5).
+    [JsonPropertyName("template_id")] public int? TemplateId { get; set; }
     [JsonPropertyName("template_name")] public string? TemplateName { get; set; }
     [JsonPropertyName("lang")] public string? Lang { get; set; }
     [JsonPropertyName("status")] public string Status { get; set; } = "";
