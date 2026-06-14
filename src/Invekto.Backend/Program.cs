@@ -9479,8 +9479,10 @@ app.MapPost("/api/v1/payment/initiate", async (HttpContext ctx, QnbVPosService v
 
     PaymentInitRequest? request;
     try { request = await ctx.Request.ReadFromJsonAsync<PaymentInitRequest>(); }
-    catch (Exception ex)
+    catch (JsonException ex)
     {
+        // Only a malformed body is a client 400. A client-disconnect (OperationCanceledException)
+        // or transport IOException must NOT masquerade as a bad body — let them propagate.
         jsonLog.SystemWarn($"Payment initiate body parse failed: {ex.Message}");
         return Results.Json(new { error = ErrorCodes.GeneralUnknown, message = "Geçersiz istek gövdesi." }, statusCode: 400);
     }
@@ -9514,8 +9516,12 @@ app.MapPost("/api/v1/payment/initiate", async (HttpContext ctx, QnbVPosService v
 
         return Results.Ok(new { order_id = result.OrderId, redirect_html = result.RedirectHtml });
     }
-    catch (Exception ex)
+    catch (NpgsqlException ex)
     {
+        // The only throwing operation in the try is the pending-row INSERT. vpos.InitiatePayment is
+        // pure string-building (it returns the bank's auto-submit HTML for the CLIENT browser to POST —
+        // it makes NO server-side HTTP call), so there is no transport exception to catch here. Any
+        // unexpected non-DB error (e.g. the defensive "OrderId null" guard) propagates by design.
         jsonLog.SystemWarn($"Payment initiate failed ({ErrorCodes.BackendPaymentInitFailed}): tenant={tenantId}, {ex.Message}");
         return Results.Json(new { error = ErrorCodes.BackendPaymentInitFailed, message = "Ödeme başlatılamadı." }, statusCode: 500);
     }
@@ -9634,8 +9640,9 @@ app.MapGet("/api/v1/payment/history", async (HttpContext ctx, JsonLinesLogger js
 
         return Results.Ok(new { payments, count = payments.Count });
     }
-    catch (Exception ex)
+    catch (NpgsqlException ex)
     {
+        // Pure DB read endpoint — the only throwing operations are the connection open + reader.
         jsonLog.SystemWarn($"Payment history failed ({ErrorCodes.BackendPaymentHistoryFailed}): {ex.Message}");
         return Results.Json(new { error = ErrorCodes.BackendPaymentHistoryFailed, message = "Ödeme geçmişi yüklenemedi." }, statusCode: 500);
     }
