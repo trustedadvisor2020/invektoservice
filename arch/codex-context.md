@@ -42,6 +42,7 @@ These are hard codebase conventions. Violations = automatic FAIL:
 - System serves thousands of concurrent users under stress
 - No new TODO/HACK/FIXME markers without justification
 - Typed catch blocks ONLY (no bare catch(Exception))
+- **SANCTIONED EXCEPTION — degradation / resilience boundaries:** a `catch (Exception)` is allowed ONLY when it is a deliberate graceful-degradation or worker-resilience boundary AND it handles cancellation first — a `catch (OperationCanceledException)` block (which `throw;`s, or `break;`s/`return;`s out of a worker loop so the host shuts down cleanly) IMMEDIATELY preceding the broad catch — AND it logs. Two precedents in prod: (1) **optional-step degradation boundary** — an optional step that falls back on any failure (e.g. semantic search → keyword search; best-effort startup recovery), here cancellation is rethrown; (2) **per-job worker-loop resilience boundary** — an `IHostedService`/`BackgroundService` loop where a single job's failure must not kill the loop, here cancellation `break`s the loop (rethrowing would fault the host). These must carry an inline comment pointing here. AgentAI ReplyGenerator/RetrievalService and DocumentProcessingService are precedents. Do NOT FAIL these — a typed-only catch would break the intended fallback/loop resilience. Everywhere else: typed catches only.
 - No null-forgiving operator (!.) - use ?. and ?? instead
 - IDisposable = using/await using block, no exceptions
 

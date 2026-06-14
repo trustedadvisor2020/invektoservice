@@ -70,7 +70,7 @@ public sealed class EmbeddingService
             try
             {
                 using var request = new HttpRequestMessage(HttpMethod.Post, OpenAIEmbeddingsUrl);
-                request.Headers.Add("Authorization", $"Bearer {_apiKey}");
+                request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {_apiKey}");
                 request.Content = JsonContent.Create(new
                 {
                     model = _model,
