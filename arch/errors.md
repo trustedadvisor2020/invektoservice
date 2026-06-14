@@ -186,8 +186,8 @@ errors:
   - code: INV-BE-099
     description: Source not in cf1..cf10 range
     user_message: INMA kaynağı cf1..cf10 olmalı.
-  - code: INV-BE-110
-    description: tenant_settings.field_mapping DB read/write fail (TFM-specific, distinguish from generic INV-BE-001)
+  - code: INV-BE-139
+    description: tenant_settings.field_mapping DB read/write fail (TFM-specific, distinguish from generic INV-BE-001). Renumbered 2026-06-14 (audit Batch 2) from INV-BE-110 which collided with LIW LeadIntakeInternalAuthInvalid (INV-BE-110, wa-direct internal auth).
     user_message: Alan tanımları geçici olarak okunamıyor/kaydedilemiyor; birkaç saniye sonra tekrar deneyin.
 
   # FEAT-TFM MVP: explicit forbidden-cross-tenant write code (INV-AUTH-010)
@@ -489,20 +489,20 @@ errors:
     description: TriggerWelcomeFlowJob lifecycle welcome-sent HTTP hop to Backend /api/internal/lifecycle/welcome-sent failed (HttpRequestException transient, OperationCanceledException timeout, or non-2xx response). Welcome message already delivered to user; Zoho "1. Mesaj Atildi" transition dispatch missed. Best-effort silent non-critical — next inbound engagement triggers its own lifecycle events. Distinct from INV-AT-071 (flow dispatch infra) and INV-INT-* (Zoho transport).
     user_message: Hosgeldin mesaji gonderildi; CRM transition guncellemesi gecici olarak gecikebilir.
 
-  # HFM-2: Backend Translation Warmup ops endpoint
-  - code: INV-BE-090
+  # HFM-2: Backend Translation Warmup ops endpoint (INV-BE-134..138; renumbered 2026-06-14 audit Batch 2 from INV-BE-090..094 which collided with Backend Translation INV-BE-090..095)
+  - code: INV-BE-134
     description: /ops/translation/warmup body invalid (tenantId/texts/locales missing or empty).
     user_message: Gecersiz parametreler; tenantId, texts, locales zorunlu.
-  - code: INV-BE-091
+  - code: INV-BE-135
     description: /ops/translation/warmup body contains an unsupported or malformed locale code.
     user_message: Gecersiz dil kodu.
-  - code: INV-BE-092
+  - code: INV-BE-136
     description: /ops/translation/warmup failed for a locale due to upstream HTTP error (Gemma/Claude unreachable or 5xx).
     user_message: Ceviri servisi gecici olarak kullanilamiyor.
-  - code: INV-BE-093
+  - code: INV-BE-137
     description: /ops/translation/warmup failed for a locale due to empty/invalid translation response.
     user_message: Ceviri sonucu okunamadi.
-  - code: INV-BE-094
+  - code: INV-BE-138
     description: /ops/translation/warmup cancelled mid-batch (client disconnected or timeout).
     user_message: Isletim iptal edildi.
 

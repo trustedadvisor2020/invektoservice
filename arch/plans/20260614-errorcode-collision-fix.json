@@ -1,0 +1,103 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": "arch/reports/20260614-audit-INDEX.md (Batch 2)",
+  "spec_architectural_decisions": [
+    { "decision": "Resolve each colliding wire value by RENUMBERING the duplicate side to free codes INV-BE-134..139, keeping the established side at its original value. Constant NAMES are unchanged, so every emit/usage site automatically gets the new value — zero usage-site edits.", "reason": "Six INV-BE values were each assigned to two different constants (090..094: BackendTranslationWarmup* vs BackendTranslation*; 110: FieldMappingDbUnavailable vs LeadIntakeInternalAuthInvalid). A client switching on the wire code could not distinguish two unrelated failures. Renumbering the duplicate side (Warmup 090-094 -> 134-138; FieldMappingDbUnavailable 110 -> 139) restores uniqueness while keeping the Translation 090-095 block and the LIW wa-direct internal-auth 110 at their values. Q decision 2026-06-14.", "codex_note": "EXPECTED: value-only renumber, NOT a breaking API change. Constant identifiers (BackendTranslationWarmupInvalidPayload, FieldMappingDbUnavailable, ...) are byte-identical; consumers reference the constant, not the literal. Full-solution build PASS. SPA does not switch on these literals (grep-verified empty)." }
+  ],
+  "slug": "20260614-errorcode-collision-fix",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-14T10:45:00+03:00",
+  "updated_at": "2026-06-14T10:50:00+03:00",
+  "plan": {
+    "summary": "Batch 2 of the 2026-06-14 refactor audit: fix the ErrorCodes.cs wire-value collisions. INV-BE-090..094 were each assigned to TWO constants (BackendTranslationWarmup* AND BackendTranslation*), and INV-BE-110 to TWO (FieldMappingDbUnavailable AND LeadIntakeInternalAuthInvalid). Renumber the duplicate side to free codes 134..139 (Warmup InvalidPayload/InvalidLocale/HttpFailure/InvalidState/Cancelled 090-094 -> 134-138; FieldMappingDbUnavailable 110 -> 139), keeping Translation 090-095 + LIW wa-direct 110. Constant names unchanged (zero usage-site edits). arch/errors.md synchronized in the same commit. Full-solution build PASS; post-edit grep confirms zero remaining duplicate INV values and no stray literals.",
+    "q_intent": "Q approved (2026-06-14): 'Duplicate'leri 134+'a taşı' — keep the established side, renumber the duplicate side; SPA does not use these codes so frontend impact is zero.",
+    "interview_notes": "Collisions identified by reading ErrorCodes.cs (lines 67-71 Warmup=090-094, 689-693 Translation=090-094; line 86 LIW=110, line 701 TFM=110) and arch/errors.md (156-174 Translation block KEEP, 492-507 Warmup block RENUMBER; 542-544 LIW-110 KEEP, 189-191 TFM-110 RENUMBER). Free range = INV-BE-134+ (max used was 133). Backend usage counts: Warmup constants 2 each, FieldMappingDbUnavailable 5, LeadIntakeInternalAuthInvalid 15 — but usage count is irrelevant to the edit because only the string VALUE in ErrorCodes.cs changes, not the constant name. SPA grep for the literals = empty -> zero frontend switch-on dependency. No stray literal usage of the old codes anywhere in src/.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "Each previously-colliding INV-BE value is now unique: BackendTranslationWarmup{InvalidPayload,InvalidLocale,HttpFailure,InvalidState,Cancelled} = INV-BE-134..138; FieldMappingDbUnavailable = INV-BE-139. BackendTranslation{Failed,DetectFailed,CacheError,UnsupportedLang,BatchTooLarge,InvalidText} stay 090-095; LeadIntakeInternalAuthInvalid stays 110. grep 'INV-...' | sort | uniq -d on ErrorCodes.cs returns EMPTY (no remaining duplicate value anywhere).", "verified": true },
+      { "id": "AC2", "criterion": "Constant NAMES are unchanged -> zero usage-site edits; all ~12 microservice consumers recompile. Full-solution build PASS (0 errors).", "verified": true },
+      { "id": "AC3", "criterion": "arch/errors.md is synchronized in the SAME commit: the HFM-2 Warmup block re-coded to 134-138 and the TFM field_mapping entry re-coded to 139; the Translation block (090-095) and LIW wa-direct (110) entries are untouched. No orphan code/doc.", "verified": true },
+      { "id": "AC4", "criterion": "No stray literal 'INV-BE-090'..'094'/'INV-BE-110' remains in any .cs (outside ErrorCodes.cs) or in the Dashboard SPA — every reference is via the constant name (grep-verified empty).", "verified": true },
+      { "id": "AC5", "criterion": "New codes 134-139 are used ONLY by the 6 renumbered constants (no new collision); grep '\"INV-BE-13[4-9]\"' returns exactly those 6 lines in ErrorCodes.cs.", "verified": true }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "arch/errors.md",
+    "arch/plans/20260614-errorcode-collision-fix.json"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "change": "Renumber duplicate wire values: BackendTranslationWarmup* 090-094 -> 134-138; FieldMappingDbUnavailable 110 -> 139 (constant names unchanged)", "is_new": false },
+    { "path": "arch/errors.md", "change": "Sync HFM-2 Warmup block to 134-138 + TFM field_mapping entry to 139 (Translation 090-095 + LIW 110 untouched)", "is_new": false }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": null,
+    "full_path": "arch/plans/diffs/20260614-errorcode-collision-fix.diff",
+    "stats": { "insertions": 0, "deletions": 0, "files_count": 2 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln -v q -clp:ErrorsOnly",
+    "timestamp": "2026-06-14T10:43:00+03:00",
+    "duration_ms": 25570,
+    "output_tail": "Build succeeded. 44 Warning(s) 0 Error(s). Time Elapsed 00:00:25.57",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "ALL (full solution — Shared change)"]
+  },
+  "verification_questions": [
+    { "id": "Q1", "category": "Data", "question": "Is the renumber correct and complete — the established side (BackendTranslation 090-095, LeadIntakeInternalAuthInvalid 110) keeps its value while the duplicate side (BackendTranslationWarmup* -> 134-138, FieldMappingDbUnavailable -> 139) moves to FREE codes (max prior INV-BE was 133), with NO INV value now assigned twice anywhere in ErrorCodes.cs (uniq -d empty)?", "codex_answer": null, "codex_result": null },
+    { "id": "Q2", "category": "Process/Policy", "question": "Are the constant NAMES byte-identical so this is a value-only change with NO usage-site edits and NO breaking API change (consumers reference ErrorCodes.<Name>, not the literal), confirmed by full-solution build PASS across all ~12 services?", "codex_answer": null, "codex_result": null },
+    { "id": "Q3", "category": "Auth", "question": "Does the security-relevant LIW wa-direct internal-auth code (LeadIntakeInternalAuthInvalid) KEEP INV-BE-110 so the service-to-service auth error contract is unchanged, while only the TFM storage-failure code moves to 139 — i.e. no auth gate's emitted error code is silently altered in a way a caller's auth-handling could depend on?", "codex_answer": null, "codex_result": null },
+    { "id": "Q4", "category": "Lifecycle", "question": "Are ErrorCodes.cs (code) and arch/errors.md (doc registry) changed in the SAME commit so there is no code/doc drift (CQ12), and does the SPA have no literal dependency on the moved codes (grep-verified empty) so no client lifecycle breaks?", "codex_answer": null, "codex_result": null }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Any constant NAME change (names must stay identical to avoid usage-site churn)",
+      "Translation block INV-BE-090..095 values (established side, KEEP)",
+      "LeadIntakeInternalAuthInvalid INV-BE-110 value (established auth side, KEEP)",
+      "Any other INV namespace (only INV-BE collisions in scope)"
+    ],
+    "non_goals": [
+      "Refactoring the error-code structure / introducing an enum",
+      "Touching the emit sites or user_message strings (only the code value + doc sync)"
+    ],
+    "intentional_exclusions": [
+      "No deploy (Q: commit'te dur)",
+      "Historical collision comments (ErrorCodes.cs ~109, errors.md ~571) left as-is (describe a different, already-resolved LIW-draft collision)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "This batch removes an observability/contract defect (two distinct failures emitting the same wire code) — it adds no error handling. user_message strings are unchanged; only the machine-readable code value for 6 conditions is made unique. No catch/throw added."
+  },
+  "aha_moments": [
+    { "category": "SUPPORT", "user_pain": "Destek/log'da iki tamamen farklı hata (ör. 'çeviri warmup geçersiz payload' vs 'çeviri API patladı') AYNI INV-BE-090 kodunu döndürüyordu → hangisi olduğu ayırt edilemiyordu.", "suggestion": "Çakışan duplicate'i 134+'a taşı, her wire kodu tek bir koşula düşsün.", "aha_moment": "Bir INV kodu gören kişi artık TEK bir kök nedeni bilir; log triage belirsizlikten kurtulur." },
+    { "category": "RELIABILITY", "user_pain": "INV-BE-110 hem servisler-arası auth fail'ini hem TFM DB fail'ini gösteriyordu → bir client 110'a göre dal kursa iki ayrı durumu karıştırırdı.", "suggestion": "Auth tarafını (110) koru, TFM storage'ı 139'a al.", "aha_moment": "Auth hata kontratı sabit kalır; TFM storage outage'ı kendi koduyla izlenir." },
+    { "category": "SPEED", "user_pain": "Renumber genelde tüm kullanım yerlerini elle değiştirmeyi gerektirir sanılır (riskli + yavaş).", "suggestion": "Sabit İSMİ koru, sadece string VALUE'yu değiştir → tüm emit yerleri otomatik yeni kodu alır.", "aha_moment": "12 servis tek satır değişiklikle hizalanır; build ilk seferde geçer, sıfır usage-site edit." },
+    { "category": "RELIABILITY", "user_pain": "Başka gizli collision'lar da olabilir endişesi.", "suggestion": "Fix sonrası `sort | uniq -d` ile TÜM ErrorCodes.cs değerlerini tara.", "aha_moment": "uniq -d boş → kanıtlı: tüm INV kod uzayında artık tek bir duplicate bile yok." },
+    { "category": "SUPPORT", "user_pain": "İleride biri yine 090/110'u 'boş sanıp' tekrar kullanabilir.", "suggestion": "ErrorCodes.cs + errors.md'ye renumber gerekçesini yorum olarak yaz (collided with X, audit Batch 2).", "aha_moment": "Bir sonraki geliştirici neden 134-139'a atlandığını kodun yanında okur; collision tekrar etmez." }
+  ],
+  "self_review_completed": true,
+  "self_review_findings": [
+    { "question_id": "AC_coverage", "status": "ok", "action": "na", "note": "5 AC, each grep/build-verifiable." },
+    { "question_id": "scope_bounds", "status": "ok", "action": "na", "note": "allowed_files = ErrorCodes.cs + errors.md + plan; nothing else." },
+    { "question_id": "dependencies", "status": "ok", "action": "na", "note": "Shared change -> full build PASS; constant names unchanged so no consumer breaks." },
+    { "question_id": "rollback", "status": "ok", "action": "na", "note": "Trivially reversible (revert values); no migration/data." },
+    { "question_id": "risk_class", "status": "ok", "action": "na", "note": "MEDIUM: Shared contract value change, but value-only + no client switch-on + Q-approved." },
+    { "question_id": "hidden_assumptions", "status": "ok", "action": "na", "note": "Assumed SPA/no external client switches on these literals — grep-verified empty." },
+    { "question_id": "verification", "status": "ok", "action": "na", "note": "Build PASS + uniq -d empty + stray-literal grep empty + new-code uniqueness grep." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_MCP",
+    "iteration": 0,
+    "blocking_issues": [],
+    "escalation_required": false,
+    "raw_text": "Codex (gpt-5.5-2026-04-23) iter0 PASS — 12/12 CQ + 4/4 CoVe, 0 blocking. CODEX UTANSIN: iteration=0. Value-only renumber, constant names unchanged, Translation 090-095 + LIW wa-direct 110 preserved, FieldMappingDbUnavailable->139 + Warmup->134-138, errors.md synced same commit, no usage-site/SPA literal dependency."
+  }
+}

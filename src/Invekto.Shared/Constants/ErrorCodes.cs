@@ -63,12 +63,12 @@ public static class ErrorCodes
     public const string BackendPaymentHistoryFailed = "INV-BE-088";    // Payment history query failed
     public const string BackendPaymentAmountInvalid = "INV-BE-089";    // Amount <= 0
 
-    // Backend Translation Warmup (INV-BE-090+) — HFM-2
-    public const string BackendTranslationWarmupInvalidPayload = "INV-BE-090";   // tenantId/texts/locales missing
-    public const string BackendTranslationWarmupInvalidLocale = "INV-BE-091";    // Unsupported/unknown locale in body
-    public const string BackendTranslationWarmupHttpFailure = "INV-BE-092";      // Gemma/Claude HTTP failure mid-batch
-    public const string BackendTranslationWarmupInvalidState = "INV-BE-093";     // Translation service returned empty/invalid
-    public const string BackendTranslationWarmupCancelled = "INV-BE-094";        // Client cancelled the warmup
+    // Backend Translation Warmup (INV-BE-134..138) — HFM-2. Renumbered 2026-06-14 (audit Batch 2) from INV-BE-090..094 which COLLIDED with Backend Translation (INV-BE-090..095, below). Constant names unchanged; only wire values moved.
+    public const string BackendTranslationWarmupInvalidPayload = "INV-BE-134";   // tenantId/texts/locales missing
+    public const string BackendTranslationWarmupInvalidLocale = "INV-BE-135";    // Unsupported/unknown locale in body
+    public const string BackendTranslationWarmupHttpFailure = "INV-BE-136";      // Gemma/Claude HTTP failure mid-batch
+    public const string BackendTranslationWarmupInvalidState = "INV-BE-137";     // Translation service returned empty/invalid
+    public const string BackendTranslationWarmupCancelled = "INV-BE-138";        // Client cancelled the warmup
 
     // FEAT-LIW: Lead Intake Webhook (INV-BE-100+) — Chunk A
     public const string LeadIntakeApiKeyInvalid = "INV-BE-100";         // X-Invekto-Api-Key missing or not recognized
@@ -693,12 +693,12 @@ public static class ErrorCodes
     public const string BackendTranslationBatchTooLarge = "INV-BE-094";     // Batch size exceeds limit (max 50)
     public const string BackendTranslationInvalidText = "INV-BE-095";       // Empty or invalid source text
 
-    // FEAT-TFM MVP: Tenant Field Mapping (INV-BE-096..099 + INV-BE-110)
+    // FEAT-TFM MVP: Tenant Field Mapping (INV-BE-096..099 + INV-BE-139)
     public const string FieldMappingInvalid = "INV-BE-096";              // Type/regex/source format invalid
     public const string FieldMappingReservedSemanticName = "INV-BE-097"; // Semantic name conflicts with InmaDynamicFieldKeys.Allowlist or leads core columns
     public const string FieldMappingEnumValueMissing = "INV-BE-098";     // Type=enum but enum_values null/empty
     public const string FieldMappingSourceOutOfRange = "INV-BE-099";     // Source not in cf1..cf10
-    public const string FieldMappingDbUnavailable = "INV-BE-110";        // tenant_settings.field_mapping read/write DB fail (TFM-specific, distinguish from generic INV-BE-001)
+    public const string FieldMappingDbUnavailable = "INV-BE-139";        // tenant_settings.field_mapping read/write DB fail (TFM-specific). Renumbered 2026-06-14 (audit Batch 2) from INV-BE-110 which COLLIDED with LIW LeadIntakeInternalAuthInvalid (INV-BE-110). Constant name unchanged; only wire value moved.
 
     // WebChat errors (INV-WC-xxx)
     public const string WebChatInvalidVisitor = "INV-WC-001";
