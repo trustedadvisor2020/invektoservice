@@ -165,6 +165,10 @@ var claudeSonnetModel = builder.Configuration["ClaudeSonnet:Model"] ?? "claude-s
 
 // Benchmark configuration
 var benchmarkOpsKey = builder.Configuration["Benchmark:OpsKey"] ?? "";
+if (string.IsNullOrEmpty(benchmarkOpsKey))
+    // Fail-closed (audit Batch 3): an empty key previously made ValidateOpsKey return true,
+    // leaving every /api/ops/* benchmark endpoint (MSSQL reads, PG writes, label mutation) open.
+    throw new InvalidOperationException("FATAL: Benchmark:OpsKey is not configured (/api/ops/* benchmark endpoints would be OPEN without auth)");
 var benchmarkDelay = builder.Configuration.GetValue<int>("Benchmark:DelayBetweenCallsMs", 500);
 var benchmarkMaxTextLen = builder.Configuration.GetValue<int>("Benchmark:MaxThreadTextLength", 4000);
 var benchmarkDefaultSample = builder.Configuration.GetValue<int>("Benchmark:DefaultSampleSize", 200);
@@ -770,7 +774,7 @@ app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}/nlp-summary", as
 // Helper: validate ops key
 bool ValidateOpsKey(HttpContext ctx)
 {
-    if (string.IsNullOrEmpty(benchmarkOpsKey)) return true; // No key = open (dev mode)
+    // benchmarkOpsKey is guaranteed non-empty (startup throws otherwise) — never open by default.
     var key = ctx.Request.Headers["X-Ops-Key"].FirstOrDefault();
     return key == benchmarkOpsKey;
 }
