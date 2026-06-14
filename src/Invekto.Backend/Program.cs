@@ -4794,8 +4794,14 @@ app.MapPost("/api/v1/flow-builder/auth/login", async (HttpContext ctx, JsonLines
         using var bodyDoc = await System.Text.Json.JsonDocument.ParseAsync(ctx.Request.Body);
         var root = bodyDoc.RootElement;
 
-        var tenantId = root.TryGetProperty("tenant_id", out var tid) ? tid.GetInt32() : 0;
-        var apiKey = root.TryGetProperty("api_key", out var ak) ? ak.GetString() : null;
+        var tenantId = root.TryGetProperty("tenant_id", out var tid)
+            && tid.ValueKind == System.Text.Json.JsonValueKind.Number
+            && tid.TryGetInt32(out var parsedTid)
+            ? parsedTid
+            : 0;
+        var apiKey = root.TryGetProperty("api_key", out var ak) && ak.ValueKind == System.Text.Json.JsonValueKind.String
+            ? ak.GetString()
+            : null;
 
         if (tenantId <= 0 || string.IsNullOrEmpty(apiKey))
         {
@@ -4868,6 +4874,16 @@ app.MapPost("/api/v1/flow-builder/auth/login", async (HttpContext ctx, JsonLines
             ErrorResponse.Create(ErrorCodes.GeneralValidation, "Invalid JSON body", requestId),
             statusCode: 400);
     }
+    catch (NpgsqlException ex)
+    {
+        jsonLogger.StepError($"FlowBuilder login DB error: {ex.Message}", requestId);
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Login failed due to a database error. Please retry.", requestId),
+            statusCode: 500);
+    }
+    // Sanctioned auth-resilience boundary: login must never crash uncontrolled to
+    // middleware. ex.Message is log-only (not in body) so no detail leaks to clients.
+    // See arch/codex-context.md "auth-endpoint resilience boundary".
     catch (Exception ex)
     {
         jsonLogger.StepError($"FlowBuilder login error: {ex.Message}", requestId);

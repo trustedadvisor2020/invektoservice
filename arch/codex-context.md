@@ -45,6 +45,9 @@ These are hard codebase conventions. Violations = automatic FAIL:
 - No null-forgiving operator (!.) - use ?. and ?? instead
 - IDisposable = using/await using block, no exceptions
 
+#### SANCTIONED broad-catch — auth-endpoint resilience boundary
+- An unauthenticated public auth endpoint (e.g. `POST /api/v1/flow-builder/auth/login`) is a SANCTIONED "must always return a controlled response, never crash uncontrolled to middleware" boundary. After the specific typed catches (`JsonException` → 400, `NpgsqlException` → `DatabaseConnectionFailed` 500), a trailing `catch (Exception ex)` is RETAINED to guarantee a static, code-bearing 500 (`GeneralUnknown`, "Login failed") for any genuinely-unexpected failure (e.g. JWT generation). `ex.Message` is **log-only** (`jsonLogger.StepError`), never placed in the response body → no detail leak. Do NOT FAIL this trailing broad-catch for CQ "typed catch ONLY"; narrowing it would expose the auth path to an uncontrolled middleware 500 with a divergent message/log. Same class as the `/payment/callback` always-graceful boundary.
+
 ### Shared Component Rule
 - Invekto.Shared changes affect ALL microservices
 - Backend proxy changes must be verified against target service API
