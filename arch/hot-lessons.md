@@ -32,6 +32,7 @@
 - NSSM "Running" ≠ healthy + değişmeyen Backend.dll latent regression gizler → port-listen + `/health` curl + canlı asset-hash doğrula; prod-down sorusunda MCP server-status'a değil `nssm status`'a güven.
 - server-deploy MCP enum tüm servisleri içermez (VoiceRuntime/VoiceAI eksik) → yanlış dizine deploy riski; yeni servis DLL'i Shared.dll ile PAIR deploy (TypeLoadException guard).
 - İki paralel Claude session aynı repo'da deploy edebilir → `git fetch`/working-tree + bundle-hash re-verify.
+- Fail-closed gate / shared-secret içeren branch'i deploy ETMEDEN ÖNCE prod-config'i CANLI doğrula: her servis TEK spesifik key gate'ler (branch kodundan oku, "ikisi de" varsayma). `Production.json` bir key'i içermezse sessizce base `appsettings.json` default'una düşer → "present" ≠ "Production'da set"; kaynak dosyayı da kontrol et + paylaşılan secret'lerin iki uçta EŞİT olduğunu sha8 ile doğrula (Outbound SharedSecret 36-char default ≠ Backend 64-char prod = sessiz 401). Eksikse deploy = servis DOWN / auth-broken.
 
 ## DB & concurrency
 - Catch `NpgsqlException` (base), sadece `PostgresException` değil → TÜM DB hatasını INV koduna map et.
