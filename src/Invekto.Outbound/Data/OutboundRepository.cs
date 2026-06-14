@@ -1600,7 +1600,7 @@ public class OutboundRepository
             SELECT c.id, c.name,
                    COALESCE((c.stats_json->>'sent')::int, 0),
                    COALESCE((c.stats_json->>'delivered')::int, 0),
-                   COUNT(cv.id),
+                   COUNT(cv.id)::int,
                    COALESCE(SUM(cv.value_amount), 0)
             FROM outbound_campaigns c
             LEFT JOIN outbound_conversions cv ON cv.campaign_id = c.id AND cv.tenant_id = c.tenant_id

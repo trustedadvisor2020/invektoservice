@@ -1280,8 +1280,8 @@ public sealed class AutomationRepository
     {
         const string sql = @"
             SELECT
-                COUNT(*) AS total,
-                COUNT(*) FILTER (WHERE was_deflected = TRUE) AS deflected,
+                COUNT(*)::int AS total,
+                COUNT(*) FILTER (WHERE was_deflected = TRUE)::int AS deflected,
                 COALESCE(SUM(deflection_revenue) FILTER (WHERE was_deflected = TRUE), 0) AS revenue_saved,
                 reason_category,
                 action_taken
