@@ -568,7 +568,10 @@ app.MapPost("/api/v1/webhook/event", async (
             }
             catch (Exception ex)
             {
-                jsonLogger.StepError($"Background processing exception: {ex.Message}", requestId);
+                // SANCTIONED fire-and-forget background boundary (codex-context.md): no caller to surface
+                // the fault to; logged with full type+detail so the failure is observable for ops triage,
+                // then a controlled error callback is sent. No response surface → no client leak.
+                jsonLogger.StepError($"Background processing exception: {ex.GetType().Name}: {ex.Message}", requestId);
                 await SendErrorCallbackAsync(callbackClient, requestId, tenantContext.TenantId, chatId, currentMsg.Time,
                     $"Background processing error: {ex.Message}", null, jsonLogger);
             }
@@ -659,9 +662,25 @@ app.MapGet("/api/v1/flows/{tenantId:int}", async (int tenantId, HttpContext ctx,
                     healthScore = 0;
                     healthIssues = new[] { "Config parse hatasi — saglik skoru hesaplanamadi" };
                 }
+                catch (InvalidOperationException valEx)
+                {
+                    jsonLogger.StepWarn($"Health score skipped for flow {f.FlowId}: graph build error — {valEx.Message}", "-");
+                    healthScore = 0;
+                    healthIssues = new[] { "Saglik skoru hesaplanamadi" };
+                }
+                catch (ArgumentException valEx)
+                {
+                    jsonLogger.StepWarn($"Health score skipped for flow {f.FlowId}: argument error — {valEx.Message}", "-");
+                    healthScore = 0;
+                    healthIssues = new[] { "Saglik skoru hesaplanamadi" };
+                }
                 catch (Exception ex)
                 {
-                    jsonLogger.StepWarn($"Health score failed for flow {f.FlowId}: {ex.Message}", "-");
+                    // SANCTIONED per-item degradation boundary (codex-context.md, optional-step class):
+                    // this runs inside a lazy .Select() projection over the flow list — a genuinely-unexpected
+                    // failure computing ONE flow's health score must NOT 500 the entire list. Degrade to score=0
+                    // for that row; logged with full type+detail for triage.
+                    jsonLogger.StepWarn($"Health score failed for flow {f.FlowId}: {ex.GetType().Name}: {ex.Message}", "-");
                     healthScore = 0;
                     healthIssues = new[] { "Saglik skoru hesaplanamadi" };
                 }
@@ -681,7 +700,7 @@ app.MapGet("/api/v1/flows/{tenantId:int}", async (int tenantId, HttpContext ctx,
                         flowDescription = desc.GetString();
                     }
                 }
-                catch { /* ignore parse errors for description extraction */ }
+                catch (System.Text.Json.JsonException) { /* ignore — cosmetic description extraction, best-effort */ }
             }
 
             return new
@@ -702,10 +721,10 @@ app.MapGet("/api/v1/flows/{tenantId:int}", async (int tenantId, HttpContext ctx,
             };
         }));
     }
-    catch (Exception ex)
+    catch (Npgsql.NpgsqlException ex)
     {
-        jsonLogger.StepError($"Flow list failed: {ex.Message}", "-");
-        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", "-"), statusCode: 500);
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] Flow list DB error: {ex.Message}", "-");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Veritabani hatasi", "-"), statusCode: 500);
     }
 }).RequireCors("VoicePocCors"); // FEAT-VFB F0.5 Chunk E (AD-35): Voice Test browser dropdown fetch.
 
@@ -806,10 +825,10 @@ app.MapPost("/api/v1/flows/{tenantId:int}", async (int tenantId, HttpContext ctx
     {
         return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationInvalidFlowConfig, "Invalid JSON body", requestId), statusCode: 400);
     }
-    catch (Exception ex)
+    catch (Npgsql.NpgsqlException ex)
     {
-        jsonLogger.StepError($"Flow POST failed: {ex.Message}", requestId);
-        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", requestId), statusCode: 500);
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] Flow POST DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Veritabani hatasi", requestId), statusCode: 500);
     }
 });
 
@@ -847,7 +866,7 @@ app.MapPut("/api/v1/flows/{tenantId:int}/{flowId:int}", async (int tenantId, int
         int newVersion = 0;
         try
         {
-            newVersion = await repo.CreateFlowVersionAsync(tenantId, flowId, flowConfig!, "user");
+            newVersion = await repo.CreateFlowVersionAsync(tenantId, flowId, flowConfig, "user");
             jsonLogger.StepInfo($"Flow version created for flow {flowId}: v{newVersion}", requestId);
         }
         catch (Npgsql.NpgsqlException versionEx)
@@ -862,7 +881,7 @@ app.MapPut("/api/v1/flows/{tenantId:int}/{flowId:int}", async (int tenantId, int
         int healthWarnings = 0;
         try
         {
-            var health = validator.CalculateHealthScore(flowConfig!);
+            var health = validator.CalculateHealthScore(flowConfig);
             healthScore = health.Score;
             healthIssues = health.Issues.ToArray();
             healthErrors = health.ErrorCount;
@@ -888,7 +907,7 @@ app.MapPut("/api/v1/flows/{tenantId:int}/{flowId:int}", async (int tenantId, int
         // Sync instance-flow mapping from trigger_start node (non-fatal)
         try
         {
-            using var cfgDoc = JsonDocument.Parse(flowConfig!);
+            using var cfgDoc = JsonDocument.Parse(flowConfig);
             if (cfgDoc.RootElement.TryGetProperty("nodes", out var nodes) && nodes.ValueKind == JsonValueKind.Array)
             {
                 foreach (var node in nodes.EnumerateArray())
@@ -937,10 +956,10 @@ app.MapPut("/api/v1/flows/{tenantId:int}/{flowId:int}", async (int tenantId, int
     {
         return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationInvalidFlowConfig, "Invalid JSON body", requestId), statusCode: 400);
     }
-    catch (Exception ex)
+    catch (Npgsql.NpgsqlException ex)
     {
-        jsonLogger.StepError($"Flow PUT failed: {ex.Message}", requestId);
-        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", requestId), statusCode: 500);
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] Flow PUT DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Veritabani hatasi", requestId), statusCode: 500);
     }
 });
 
@@ -966,10 +985,10 @@ app.MapDelete("/api/v1/flows/{tenantId:int}/{flowId:int}", async (int tenantId, 
         jsonLogger.StepInfo($"Flow deleted for tenant {tenantId}: flow_id={flowId}", requestId);
         return Results.Ok(new { flow_id = flowId, tenant_id = tenantId, status = "deleted" });
     }
-    catch (Exception ex)
+    catch (Npgsql.NpgsqlException ex)
     {
-        jsonLogger.StepError($"Flow DELETE failed: {ex.Message}", requestId);
-        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", requestId), statusCode: 500);
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] Flow DELETE DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Veritabani hatasi", requestId), statusCode: 500);
     }
 });
 
@@ -1017,10 +1036,10 @@ app.MapPost("/api/v1/flows/{tenantId:int}/{flowId:int}/activate", async (int ten
             warnings = validation.Warnings
         });
     }
-    catch (Exception ex)
+    catch (Npgsql.NpgsqlException ex)
     {
-        jsonLogger.StepError($"Flow activate failed: {ex.Message}", requestId);
-        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", requestId), statusCode: 500);
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] Flow activate DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Veritabani hatasi", requestId), statusCode: 500);
     }
 });
 
@@ -1042,10 +1061,10 @@ app.MapPost("/api/v1/flows/{tenantId:int}/{flowId:int}/deactivate", async (int t
         jsonLogger.StepInfo($"Flow deactivated for tenant {tenantId}: flow_id={flowId}", requestId);
         return Results.Ok(new { flow_id = flowId, tenant_id = tenantId, status = "deactivated" });
     }
-    catch (Exception ex)
+    catch (Npgsql.NpgsqlException ex)
     {
-        jsonLogger.StepError($"Flow deactivate failed: {ex.Message}", requestId);
-        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", requestId), statusCode: 500);
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] Flow deactivate DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Veritabani hatasi", requestId), statusCode: 500);
     }
 });
 
@@ -1199,10 +1218,10 @@ app.MapPost("/api/v1/flows/validate", async (HttpContext ctx, FlowValidator vali
     {
         return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationInvalidFlowConfig, "Invalid JSON body", requestId), statusCode: 400);
     }
-    catch (Exception ex)
+    catch (Npgsql.NpgsqlException ex)
     {
-        jsonLogger.StepError($"Flow validation failed: {ex.Message}", requestId);
-        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", requestId), statusCode: 500);
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] Flow validation DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Veritabani hatasi", requestId), statusCode: 500);
     }
 });
 
@@ -1246,10 +1265,10 @@ app.MapPost("/api/v1/flows/{tenantId:int}/{flowId:int}/migrate-v1", async (int t
             flow_config_v2 = JsonSerializer.Deserialize<JsonElement>(migrationResult.V2ConfigJson)
         });
     }
-    catch (Exception ex)
+    catch (Npgsql.NpgsqlException ex)
     {
-        jsonLogger.StepError($"migrate-v1 failed: {ex.Message}", requestId);
-        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", requestId), statusCode: 500);
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] migrate-v1 DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Veritabani hatasi", requestId), statusCode: 500);
     }
 });
 
@@ -1442,10 +1461,15 @@ app.MapPost("/api/v1/simulation/start", async (HttpContext ctx, SimulationEngine
     {
         return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "Invalid JSON body", requestId), statusCode: 400);
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
     {
-        jsonLogger.StepError($"Simulation start failed: {ex.Message}", requestId);
-        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", requestId), statusCode: 500);
+        // Client aborted (ctx.RequestAborted wired into StartAsync) — not a server error.
+        return Results.StatusCode(499);
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] Simulation start DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Veritabani hatasi", requestId), statusCode: 500);
     }
 });
 
@@ -1505,10 +1529,15 @@ app.MapPost("/api/v1/simulation/step", async (HttpContext ctx, SimulationEngine 
     {
         return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "Invalid JSON body", requestId), statusCode: 400);
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
     {
-        jsonLogger.StepError($"Simulation step failed: {ex.Message}", requestId);
-        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", requestId), statusCode: 500);
+        // Client aborted (ctx.RequestAborted wired into StepAsync) — not a server error.
+        return Results.StatusCode(499);
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] Simulation step DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Veritabani hatasi", requestId), statusCode: 500);
     }
 });
 
@@ -1540,10 +1569,10 @@ app.MapGet("/api/v1/faq/{tenantId:int}", async (int tenantId, HttpContext ctx, A
         var faqs = await repo.GetActiveFaqsAsync(tenantId);
         return Results.Ok(new { tenant_id = tenantId, count = faqs.Count, items = faqs });
     }
-    catch (Exception ex)
+    catch (Npgsql.NpgsqlException ex)
     {
-        jsonLogger.StepError($"FAQ GET failed: {ex.Message}", "-");
-        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", "-"), statusCode: 500);
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] FAQ GET DB error: {ex.Message}", "-");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Veritabani hatasi", "-"), statusCode: 500);
     }
 });
 
@@ -1581,10 +1610,10 @@ app.MapPost("/api/v1/faq/{tenantId:int}", async (int tenantId, HttpContext ctx, 
     {
         return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "Invalid JSON body", requestId), statusCode: 400);
     }
-    catch (Exception ex)
+    catch (Npgsql.NpgsqlException ex)
     {
-        jsonLogger.StepError($"FAQ POST failed: {ex.Message}", requestId);
-        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", requestId), statusCode: 500);
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] FAQ POST DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Veritabani hatasi", requestId), statusCode: 500);
     }
 });
 
@@ -1624,10 +1653,10 @@ app.MapPut("/api/v1/faq/{tenantId:int}/{id:int}", async (int tenantId, int id, H
     {
         return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "Invalid JSON body", requestId), statusCode: 400);
     }
-    catch (Exception ex)
+    catch (Npgsql.NpgsqlException ex)
     {
-        jsonLogger.StepError($"FAQ PUT failed: {ex.Message}", requestId);
-        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", requestId), statusCode: 500);
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] FAQ PUT DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Veritabani hatasi", requestId), statusCode: 500);
     }
 });
 
@@ -1646,10 +1675,10 @@ app.MapDelete("/api/v1/faq/{tenantId:int}/{id:int}", async (int tenantId, int id
         jsonLogger.StepInfo($"FAQ deleted for tenant {tenantId}: id={id}", "-");
         return Results.Ok(new { id, tenant_id = tenantId, status = "deleted" });
     }
-    catch (Exception ex)
+    catch (Npgsql.NpgsqlException ex)
     {
-        jsonLogger.StepError($"FAQ DELETE failed: {ex.Message}", "-");
-        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", "-"), statusCode: 500);
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] FAQ DELETE DB error: {ex.Message}", "-");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Veritabani hatasi", "-"), statusCode: 500);
     }
 });
 
@@ -1690,10 +1719,15 @@ app.MapPost("/api/v1/onboarding/{tenantId:int}/seed-intents", async (int tenantI
     {
         return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "Invalid JSON body", requestId), statusCode: 400);
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
     {
-        jsonLogger.StepError($"Onboarding seed failed: {ex.Message}", requestId);
-        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", requestId), statusCode: 500);
+        // Client aborted (ctx.RequestAborted wired into SeedTenantIntentsAsync) — not a server error.
+        return Results.StatusCode(499);
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] Onboarding seed DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Veritabani hatasi", requestId), statusCode: 500);
     }
 });
 
