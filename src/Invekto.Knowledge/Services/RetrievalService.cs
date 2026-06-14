@@ -55,8 +55,14 @@ public sealed class RetrievalService
 
                 _logger.SystemWarn("RetrievalService: Embedding generation failed, falling back to keyword search");
             }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
+                // Optional-step degradation boundary (see arch/codex-context.md): any non-cancellation
+                // failure of semantic search falls back to keyword search; cancellation is rethrown above.
                 _logger.SystemWarn($"RetrievalService: Semantic search failed ({ex.Message}), falling back to keyword search");
             }
         }

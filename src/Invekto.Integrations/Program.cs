@@ -85,17 +85,33 @@ builder.Services.AddSingleton<Invekto.Integrations.Services.Video.VideoProviderF
 // Register marketplace providers (mock implementations)
 builder.Services.AddSingleton<IMarketplaceProvider, HepsiburadaMockProvider>();
 
-// Register ikas e-commerce provider (real OAuth2 + GraphQL)
-builder.Services.AddHttpClient<Invekto.Integrations.Services.Ikas.IkasTokenManager>(client =>
+// Register ikas e-commerce provider (real OAuth2 + GraphQL).
+// IkasTokenManager/IkasGraphQlClient MUST stay singletons — the per-tenant token cache
+// + semaphores live in IkasTokenManager, so its singleton state is what makes the cache
+// effective. We register NAMED HttpClients (with the real timeouts) and build the
+// singletons from IHttpClientFactory so the configured timeouts actually apply.
+// (Audit Int-2: the old AddHttpClient<T> + AddSingleton<T>() pair made the singleton
+// resolve the default 100s-timeout client, leaving the 10s/15s timeouts as dead code.)
+const string ikasTokenHttpClient = "IkasTokenManager";
+const string ikasGraphQlHttpClient = "IkasGraphQlClient";
+builder.Services.AddHttpClient(ikasTokenHttpClient, client =>
 {
     client.Timeout = TimeSpan.FromSeconds(10);
 });
-builder.Services.AddSingleton<Invekto.Integrations.Services.Ikas.IkasTokenManager>();
-builder.Services.AddHttpClient<Invekto.Integrations.Services.Ikas.IkasGraphQlClient>(client =>
+builder.Services.AddHttpClient(ikasGraphQlHttpClient, client =>
 {
     client.Timeout = TimeSpan.FromSeconds(15);
 });
-builder.Services.AddSingleton<Invekto.Integrations.Services.Ikas.IkasGraphQlClient>();
+builder.Services.AddSingleton<Invekto.Integrations.Services.Ikas.IkasTokenManager>(sp =>
+{
+    var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient(ikasTokenHttpClient);
+    return ActivatorUtilities.CreateInstance<Invekto.Integrations.Services.Ikas.IkasTokenManager>(sp, httpClient);
+});
+builder.Services.AddSingleton<Invekto.Integrations.Services.Ikas.IkasGraphQlClient>(sp =>
+{
+    var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient(ikasGraphQlHttpClient);
+    return ActivatorUtilities.CreateInstance<Invekto.Integrations.Services.Ikas.IkasGraphQlClient>(sp, httpClient);
+});
 builder.Services.AddSingleton<Invekto.Integrations.Services.Ikas.IkasProvider>();
 builder.Services.AddSingleton<IEcommerceProvider>(sp =>
     sp.GetRequiredService<Invekto.Integrations.Services.Ikas.IkasProvider>());

@@ -1371,11 +1371,13 @@ public sealed class InsightRepository
             });
         }
 
-        // Get total count for avg
+        // Average over the fetched page (totalOverall is a running SUM here).
         var totalCount = scores.Count;
+        var avgOverall = scores.Count > 0 ? totalOverall / scores.Count : 0;
         if (totalCount == 100)
         {
-            // There are more records, get actual average from DB
+            // There are more records than the top-100 page; get the actual
+            // average and full count from the DB (overwrites the page values).
             await using var conn2 = await _db.OpenConnectionAsync(ct);
             await using var cmd2 = conn2.CreateCommand();
             cmd2.CommandText = $"SELECT AVG(overall_score)::REAL, COUNT(*)::INT FROM wa_quality_scores qs {where}";
@@ -1385,7 +1387,8 @@ public sealed class InsightRepository
             await using var rdr2 = await cmd2.ExecuteReaderAsync(ct);
             if (await rdr2.ReadAsync(ct))
             {
-                totalOverall = rdr2.IsDBNull(0) ? 0 : rdr2.GetFloat(0);
+                // AVG()::REAL is already an average — assign directly, do NOT re-divide.
+                avgOverall = rdr2.IsDBNull(0) ? 0 : rdr2.GetFloat(0);
                 totalCount = rdr2.GetInt32(1);
             }
         }
@@ -1395,7 +1398,7 @@ public sealed class InsightRepository
             TenantId = tenantId,
             InstanceId = instanceId,
             TotalScored = totalCount,
-            AvgOverallScore = scores.Count > 0 ? Math.Round(totalOverall, 1) : 0,
+            AvgOverallScore = Math.Round(avgOverall, 1),
             Scores = scores
         };
     }

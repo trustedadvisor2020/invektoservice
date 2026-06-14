@@ -54,8 +54,10 @@ public sealed class KnowledgeHttpClient
             using var request = new HttpRequestMessage(HttpMethod.Post,
                 $"api/v1/knowledge/{tenantId}/search");
 
+            // TryAddWithoutValidation: a malformed jwt must not throw FormatException past the
+            // graceful-degradation catch set below (would escape as an unhandled error).
             if (!string.IsNullOrEmpty(jwtToken))
-                request.Headers.Add("Authorization", $"Bearer {jwtToken}");
+                request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {jwtToken}");
 
             request.Content = JsonContent.Create(requestBody);
 
@@ -102,7 +104,10 @@ public sealed class KnowledgeHttpClient
     {
         var root = json.RootElement;
         var results = new List<KnowledgeSourceRef>();
+        var contextParts = new List<string>();
 
+        // Single pass over the results array builds both the structured source refs and the
+        // Claude prompt-injection context text (previously two separate enumerations).
         if (root.TryGetProperty("results", out var resultsArr))
         {
             foreach (var item in resultsArr.EnumerateArray())
@@ -120,7 +125,12 @@ public sealed class KnowledgeHttpClient
                 {
                     source.FaqId = item.TryGetProperty("faqId", out var fi) && fi.ValueKind == JsonValueKind.Number
                         ? fi.GetInt32() : null;
-                    source.Title = item.TryGetProperty("question", out var q) ? q.GetString() : null;
+                    var question = item.TryGetProperty("question", out var q) ? q.GetString() : null;
+                    source.Title = question;
+
+                    var answer = item.TryGetProperty("answer", out var ae) ? ae.GetString() : null;
+                    if (!string.IsNullOrEmpty(question) && !string.IsNullOrEmpty(answer))
+                        contextParts.Add($"FAQ: S: {question} C: {answer}");
                 }
                 else if (sourceType == "chunk")
                 {
@@ -129,34 +139,13 @@ public sealed class KnowledgeHttpClient
                     source.Title = item.TryGetProperty("documentTitle", out var dt) ? dt.GetString() : null;
                     source.PageNumber = item.TryGetProperty("pageNumber", out var pn) && pn.ValueKind == JsonValueKind.Number
                         ? pn.GetInt32() : null;
+
+                    var content = item.TryGetProperty("content", out var ce) ? ce.GetString() : null;
+                    if (!string.IsNullOrEmpty(content))
+                        contextParts.Add($"Dokuman ({source.Title}): {content}");
                 }
 
                 results.Add(source);
-            }
-        }
-
-        // Build context text for Claude prompt injection
-        var contextParts = new List<string>();
-        if (root.TryGetProperty("results", out var ra))
-        {
-            foreach (var item in ra.EnumerateArray())
-            {
-                var sourceType = item.TryGetProperty("sourceType", out var st2) ? st2.GetString() : "";
-
-                if (sourceType == "faq")
-                {
-                    var q = item.TryGetProperty("question", out var qe) ? qe.GetString() : "";
-                    var a = item.TryGetProperty("answer", out var ae) ? ae.GetString() : "";
-                    if (!string.IsNullOrEmpty(q) && !string.IsNullOrEmpty(a))
-                        contextParts.Add($"FAQ: S: {q} C: {a}");
-                }
-                else if (sourceType == "chunk")
-                {
-                    var content = item.TryGetProperty("content", out var ce) ? ce.GetString() : "";
-                    var title = item.TryGetProperty("documentTitle", out var te) ? te.GetString() : "";
-                    if (!string.IsNullOrEmpty(content))
-                        contextParts.Add($"Dokuman ({title}): {content}");
-                }
             }
         }
 

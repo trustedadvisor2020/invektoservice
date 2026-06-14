@@ -75,7 +75,8 @@ public sealed class FlowGraphV2
         var root = doc.RootElement;
 
         // Verify version = 2
-        if (!root.TryGetProperty("version", out var vProp) || vProp.GetInt32() != 2)
+        if (!root.TryGetProperty("version", out var vProp) || vProp.ValueKind != JsonValueKind.Number
+            || !vProp.TryGetInt32(out var version) || version != 2)
             return null;
 
         // Parse settings
@@ -179,12 +180,12 @@ public sealed class FlowGraphV2
             settings.OffHoursMessage = ohm.GetString();
         if (s.TryGetProperty("unknown_input_message", out var uim))
             settings.UnknownInputMessage = uim.GetString();
-        if (s.TryGetProperty("handoff_confidence_threshold", out var hct))
-            settings.HandoffConfidenceThreshold = hct.GetDouble();
-        if (s.TryGetProperty("session_timeout_minutes", out var stm))
-            settings.SessionTimeoutMinutes = stm.GetInt32();
-        if (s.TryGetProperty("max_loop_count", out var mlc))
-            settings.MaxLoopCount = mlc.GetInt32();
+        if (s.TryGetProperty("handoff_confidence_threshold", out var hct) && hct.ValueKind == JsonValueKind.Number && hct.TryGetDouble(out var hctVal))
+            settings.HandoffConfidenceThreshold = hctVal;
+        if (s.TryGetProperty("session_timeout_minutes", out var stm) && stm.ValueKind == JsonValueKind.Number && stm.TryGetInt32(out var stmVal))
+            settings.SessionTimeoutMinutes = stmVal;
+        if (s.TryGetProperty("max_loop_count", out var mlc) && mlc.ValueKind == JsonValueKind.Number && mlc.TryGetInt32(out var mlcVal))
+            settings.MaxLoopCount = mlcVal;
         if (s.TryGetProperty("reset_keywords", out var rk) && rk.ValueKind == JsonValueKind.Array)
         {
             foreach (var kw in rk.EnumerateArray())

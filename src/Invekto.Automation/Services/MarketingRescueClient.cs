@@ -92,7 +92,19 @@ public sealed class MarketingRescueClient
             return result.Risks.Count(r =>
                 r.CustomerPhone == phone && r.CreatedAt > cutoff);
         }
-        catch
+        catch (HttpRequestException ex)
+        {
+            _logger.SystemWarn(
+                $"[{ErrorCodes.AutomationRescueMarketingFailed}] Prior-risk-count fetch failed for tenant {tenantId}: {ex.Message}");
+            return 0;
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            _logger.SystemWarn(
+                $"[{ErrorCodes.AutomationRescueMarketingFailed}] Prior-risk-count response parse failed for tenant {tenantId}: {ex.Message}");
+            return 0;
+        }
+        catch (OperationCanceledException)
         {
             return 0;
         }

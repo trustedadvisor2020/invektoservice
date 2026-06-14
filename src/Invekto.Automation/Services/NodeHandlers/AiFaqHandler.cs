@@ -205,7 +205,7 @@ public sealed class AiFaqHandler : INodeHandler
         };
         if (rotationCount.HasValue && rotationCount.Value > 0)
         {
-            variables["faq_variant_index"] = rotationIndex!.Value.ToString();
+            variables["faq_variant_index"] = rotationIndex.GetValueOrDefault().ToString();
             variables["faq_variant_count"] = rotationCount.Value.ToString();
             variables["faq_rotation_group_tag"] = rotationGroupTag ?? "";
             if (rotationTemplateId.HasValue)
@@ -305,6 +305,10 @@ public sealed class AiFaqHandler : INodeHandler
     /// </summary>
     private async Task<string?> MaybeTranslateAsync(string answer, ExecutionContext ctx, CancellationToken ct)
     {
+        // Caller already guards _translationHop != null; this defensive guard removes the
+        // null-forgiving operator below. null return = "translation skipped" → caller keeps original.
+        if (_translationHop is null) return null;
+
         var targetLocale = ResolveTargetLocale(ctx.LeadPreferredLocale);
         if (targetLocale == null)
         {
@@ -322,7 +326,7 @@ public sealed class AiFaqHandler : INodeHandler
             $"AiFaq translate attempt: target={targetLocale}, leadLocale={ctx.LeadPreferredLocale ?? "(none)"}",
             ctx.RequestId);
 
-        var translated = await _translationHop!.TranslateAsync(ctx.TenantId, answer, targetLocale, ctx.RequestId, ct);
+        var translated = await _translationHop.TranslateAsync(ctx.TenantId, answer, targetLocale, ctx.RequestId, ct);
         return translated;
     }
 

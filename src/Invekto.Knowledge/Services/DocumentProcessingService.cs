@@ -62,8 +62,14 @@ public sealed class DocumentProcessingService : BackgroundService
                 _logger.SystemWarn($"[DocumentProcessingService] Re-enqueued stuck document: id={doc.Id}, status={doc.Status}, type={doc.SourceType}");
             }
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
+            // Optional-step degradation boundary (see arch/codex-context.md): startup stuck-document
+            // recovery is best-effort; a failure here must not prevent the service from starting.
             _logger.SystemWarn($"[DocumentProcessingService] Failed to recover stuck documents on startup: {ex.Message}");
         }
 
@@ -91,15 +97,22 @@ public sealed class DocumentProcessingService : BackgroundService
                 {
                     await ProcessDocumentAsync(job, stoppingToken);
                 }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
                 catch (Exception ex)
                 {
+                    // Per-job resilience boundary (see arch/codex-context.md): a single document's
+                    // failure must not kill the worker loop. Cancellation breaks the loop above.
                     _logger.SystemError($"[DocumentProcessingService] Fatal error processing document {job.DocumentId}: {ex.Message}");
                     try
                     {
+                        // Use CancellationToken.None so the error status persists even during shutdown.
                         await _repository.UpdateDocumentStatusAsync(
-                            job.TenantId, job.DocumentId, "error", 0, stoppingToken);
+                            job.TenantId, job.DocumentId, "error", 0, CancellationToken.None);
                     }
-                    catch (Exception dbEx)
+                    catch (Npgsql.NpgsqlException dbEx)
                     {
                         _logger.SystemError($"[DocumentProcessingService] Failed to set error status for document {job.DocumentId}: {dbEx.Message}");
                     }

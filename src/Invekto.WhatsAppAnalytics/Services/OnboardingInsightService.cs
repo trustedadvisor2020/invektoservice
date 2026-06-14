@@ -1,6 +1,7 @@
 using Invekto.Shared.Logging;
 using Invekto.WhatsAppAnalytics.Data;
 using Invekto.WhatsAppAnalytics.Models;
+using Npgsql;
 
 namespace Invekto.WhatsAppAnalytics.Services;
 
@@ -40,16 +41,25 @@ public sealed class OnboardingInsightService
         if (string.IsNullOrWhiteSpace(sector))
             return response;
 
-        // Load sector config
-        var config = await SafeGet(() => _sectorConfigRepo.GetByKeyAsync(sector, ct));
+        // Load sector config (lookup-by-key returns null when absent; a DB failure degrades to the
+        // sector key as display name rather than failing the whole onboarding response).
+        SectorConfig? config = null;
+        try
+        {
+            config = await _sectorConfigRepo.GetByKeyAsync(sector, ct);
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemWarn($"[InsightSafeGet] 'sectorConfig' panel unavailable: {ex.Message}");
+        }
         response.SectorDisplayName = config?.DisplayName ?? sector;
 
         // Parallel: templates + onboarding steps + tenant insights
-        var templatesTask = SafeGet(() => _templateRepo.GetAllTemplatesBySectorAsync(sector, ct));
-        var rtTask = SafeGet(() => _insightRepo.GetResponseTimeInsightAsync(tenantId, instanceId, ct));
-        var alTask = SafeGet(() => _insightRepo.GetAgentLeaderboardAsync(tenantId, instanceId, ct));
-        var qsTask = SafeGet(() => _insightRepo.GetQualityInsightAsync(tenantId, instanceId, false, ct));
-        var rvTask = SafeGet(() => _insightRepo.GetRevenueAttributionAsync(tenantId, instanceId, null, ct));
+        var templatesTask = InsightSafeGet.RunAsync(() => _templateRepo.GetAllTemplatesBySectorAsync(sector, ct), _logger, "templates");
+        var rtTask = InsightSafeGet.RunAsync(() => _insightRepo.GetResponseTimeInsightAsync(tenantId, instanceId, ct), _logger, "responseTime");
+        var alTask = InsightSafeGet.RunAsync(() => _insightRepo.GetAgentLeaderboardAsync(tenantId, instanceId, ct), _logger, "agentLeaderboard");
+        var qsTask = InsightSafeGet.RunAsync(() => _insightRepo.GetQualityInsightAsync(tenantId, instanceId, false, ct), _logger, "qualityScore");
+        var rvTask = InsightSafeGet.RunAsync(() => _insightRepo.GetRevenueAttributionAsync(tenantId, instanceId, null, ct), _logger, "revenue");
 
         await Task.WhenAll(templatesTask, rtTask, alTask, qsTask, rvTask);
 
@@ -196,17 +206,5 @@ public sealed class OnboardingInsightService
             return "Henuz aktif agent verisi yok. Ilk konusmalar islendikten sonra agent performans karsilastirmasi burada gorunecek.";
 
         return null;
-    }
-
-    private static async Task<T?> SafeGet<T>(Func<Task<T>> factory) where T : class
-    {
-        try
-        {
-            return await factory();
-        }
-        catch
-        {
-            return null;
-        }
     }
 }

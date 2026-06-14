@@ -315,7 +315,7 @@ public sealed class TemplateExtractorService
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
-            SELECT intent, COUNT(*) as cnt,
+            SELECT intent, COUNT(*)::int as cnt,
                    array_agg(DISTINCT substring(message_text for 100)) FILTER (WHERE message_text IS NOT NULL) as samples
             FROM wa_intents
             WHERE analysis_id = @aid AND intent != 'unknown'

@@ -559,7 +559,7 @@ public sealed class IntegrationsRepository
         GetReviewRecoveryStatsAsync(int tenantId, CancellationToken ct = default)
     {
         const string sql = @"
-            SELECT recovery_status, provider, COUNT(*) as cnt
+            SELECT recovery_status, provider, COUNT(*)::int as cnt
             FROM review_alerts
             WHERE tenant_id = @tid
             GROUP BY recovery_status, provider";

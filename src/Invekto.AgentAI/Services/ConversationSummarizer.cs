@@ -83,8 +83,10 @@ public sealed class ConversationSummarizer
             };
 
             using var httpRequest = new HttpRequestMessage(HttpMethod.Post, ClaudeApiUrl);
-            httpRequest.Headers.Add("x-api-key", _apiKey);
-            httpRequest.Headers.Add("anthropic-version", "2023-06-01");
+            // TryAddWithoutValidation: config-sourced api key may carry a stray char; Add() would
+            // throw FormatException, which escapes the typed-catch graceful boundary to the caller.
+            httpRequest.Headers.TryAddWithoutValidation("x-api-key", _apiKey);
+            httpRequest.Headers.TryAddWithoutValidation("anthropic-version", "2023-06-01");
             httpRequest.Content = new StringContent(
                 JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
 
@@ -97,14 +99,29 @@ public sealed class ConversationSummarizer
             }
 
             var responseJson = await response.Content.ReadFromJsonAsync<JsonDocument>(cts.Token);
-            var summary = responseJson?.RootElement
-                .GetProperty("content")[0]
-                .GetProperty("text")
-                .GetString();
+
+            // Defensive navigation: missing/mis-shaped fields degrade to raw history instead
+            // of throwing KeyNotFound/InvalidOperation/IndexOutOfRange (keeps the catch typed).
+            if (responseJson is null
+                || responseJson.RootElement.ValueKind != JsonValueKind.Object
+                || !responseJson.RootElement.TryGetProperty("content", out var contentArray)
+                || contentArray.ValueKind != JsonValueKind.Array
+                || contentArray.GetArrayLength() == 0)
+            {
+                _logger.SystemWarn("[ConversationSummarizer] Claude response missing content array");
+                return (null, history);
+            }
+
+            var firstBlock = contentArray[0];
+            var summary = firstBlock.ValueKind == JsonValueKind.Object
+                          && firstBlock.TryGetProperty("text", out var textProp)
+                          && textProp.ValueKind == JsonValueKind.String
+                ? textProp.GetString()
+                : null;
 
             if (string.IsNullOrWhiteSpace(summary))
             {
-                _logger.SystemWarn("[ConversationSummarizer] Empty summary returned from Claude");
+                _logger.SystemWarn("[ConversationSummarizer] Empty or malformed summary returned from Claude");
                 return (null, history);
             }
 
@@ -120,10 +137,28 @@ public sealed class ConversationSummarizer
             _logger.SystemWarn("[ConversationSummarizer] Summary generation timeout, using raw history");
             return (null, history);
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
-            _logger.SystemWarn($"[ConversationSummarizer] Summary failed: {ex.Message}, using raw history");
-            return (null, history);
+            return LogSummaryFailureAsRaw(ex, history);
         }
+        catch (JsonException ex)
+        {
+            return LogSummaryFailureAsRaw(ex, history);
+        }
+        catch (NotSupportedException ex)
+        {
+            return LogSummaryFailureAsRaw(ex, history);
+        }
+    }
+
+    // Typed transport/serialization failures degrade to raw history (graceful). Separate
+    // catch blocks (not `catch (Exception) when (...)`) because Codex treats a when-filtered
+    // Exception base as broad in this project (hot-lessons L36). Genuine-unexpected
+    // exceptions propagate to the caller's degradation boundary (Program.cs /suggest).
+    private (string?, List<ConversationMessage>) LogSummaryFailureAsRaw(
+        Exception ex, List<ConversationMessage> history)
+    {
+        _logger.SystemWarn($"[ConversationSummarizer] Summary failed: {ex.Message}, using raw history");
+        return (null, history);
     }
 }

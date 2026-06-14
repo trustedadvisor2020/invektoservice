@@ -305,9 +305,20 @@ public sealed class MessageSenderService : IHostedService, IDisposable
                     $"id={msg.Id}, tenant={msg.TenantId}, phone={msg.RecipientPhone}");
             }
         }
+        catch (OperationCanceledException)
+        {
+            // Graceful shutdown: propagate to ProcessQueue's OperationCanceledException handler instead of
+            // marking the message 'failed' (and re-throwing a second OCE on the recovery DB writes) under a
+            // cancelled token. The row stays 'sending' and the FEATURE C sweep re-queues it (audit Outbound-7).
+            throw;
+        }
         catch (Exception ex)
         {
-            _logger.SystemError($"SendMessage exception: id={msg.Id}, error={ex.Message}");
+            // SANCTIONED per-message dispatch resilience boundary (see arch/codex-context.md): a single poison
+            // message must be marked 'failed' here so it neither aborts the whole dispatch cycle nor is retried
+            // forever by the FEATURE C 'sending' recovery sweep. ex.Message is log-only / stored in failed_reason
+            // (internal worker, no caller-facing leak). Shutdown cancellation already re-threw above.
+            _logger.SystemError($"[{ErrorCodes.OutboundMessageSendCallbackFailed}] SendMessage exception: id={msg.Id}, error={ex.Message}");
             await _repository.UpdateMessageStatusAsync(
                 msg.Id, "failed", failedReason: $"Exception: {ex.Message}", ct: ct);
 

@@ -2905,7 +2905,8 @@ export interface SendJobSummary {
   id: number;
   campaign_id: string;
   status: string;
-  template_id: number;
+  // null for HSM (wa_template_id) and inline-text jobs.
+  template_id: number | null;
   total_recipients: number;
   created_at: string;
   completed_at: string | null;
@@ -2922,7 +2923,8 @@ export interface SendRecipientRow {
 }
 
 export interface SendReportSummary {
-  template_id: number;
+  // null for HSM (wa_template_id) and inline-text jobs; template_name is then null too.
+  template_id: number | null;
   template_name: string | null;
   lang: string | null;
   status: string;

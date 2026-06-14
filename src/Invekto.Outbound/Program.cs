@@ -297,8 +297,16 @@ app.Services.GetRequiredService<OptOutManager>()
 // Enable traffic logging middleware
 app.UseTrafficLogging();
 
-// Enable JWT auth for /api/v1/ prefixed paths
-app.UseJwtAuth(jwtValidator, logger, "/api/v1/");
+// Enable JWT auth for /api/v1/ prefixed paths.
+// EXCLUSION: /api/v1/internal/ peer-service endpoints (optout, outbox/retry-skipped)
+// authenticate via the X-Internal-Service-Token shared secret, NOT a tenant JWT — the
+// Backend proxy forwards with only that header (no Bearer). They sit under /api/v1/, so
+// without this exclusion the JWT middleware would 401 them before the handler's shared-secret
+// check runs (the endpoints were unreachable). Mirrors Backend's /api/v1/leads/intake/
+// FEAT-LIW exclusion; the handlers enforce the shared secret and fail closed when it is unset.
+var jwtRequiredPrefixes = new[] { "/api/v1/" };
+var jwtExcludedPrefixes = new[] { "/api/v1/internal/" };
+app.UseJwtAuth(jwtValidator, logger, new HashSet<string>(), jwtRequiredPrefixes, jwtExcludedPrefixes);
 
 // Faz 1: Plan-based feature guard (after JwtAuth sets TenantContext)
 var planCache = new TenantPlanCache(pgConnStr, logger);

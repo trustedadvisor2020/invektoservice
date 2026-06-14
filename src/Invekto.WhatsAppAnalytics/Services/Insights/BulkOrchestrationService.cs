@@ -60,10 +60,17 @@ public sealed class BulkOrchestrationService
                     $"{mineResult.ObjectionHandlersCreated}oh/{mineResult.FollowupTemplatesCreated}fu/" +
                     $"{mineResult.OnboardingStepsCreated}ob", rid);
             }
+            catch (OperationCanceledException)
+            {
+                throw; // honour cancellation — do not record it as a per-sector error and keep looping
+            }
             catch (Exception ex)
             {
+                // Sanctioned per-sector degradation boundary (see arch/codex-context.md): one sector's
+                // mining failure must not abort the bulk sweep; record it and continue with the rest.
+                // Raw ex.Message goes to the server log only; the returned result carries a sanitized note.
                 _logger.SystemError($"[BulkMine] Failed for sector '{sector}': {ex.Message}");
-                result.Errors.Add($"{sector}: {ex.Message}");
+                result.Errors.Add($"{sector}: mining failed (see server logs)");
             }
         }
 

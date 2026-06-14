@@ -290,10 +290,14 @@ app.MapPost("/api/v1/knowledge/{tenantId:int}/search", async (
         var response = await retrievalService.SearchAsync(tenantId, body.Query, topK, body.Lang, body.Category);
         return Results.Ok(response);
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
     {
-        jsonLogger.StepError($"[{ErrorCodes.KnowledgeSearchFailed}] Search failed: {ex.Message}", requestId);
-        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeSearchFailed, "Search failed", requestId), statusCode: 500);
+        throw;
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.KnowledgeSearchFailed}] Search DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeSearchFailed, "Knowledge search failed due to a database error. Please retry.", requestId), statusCode: 500);
     }
 });
 
@@ -306,6 +310,7 @@ app.MapGet("/api/v1/knowledge/{tenantId:int}/faqs", async (
     int tenantId,
     HttpContext ctx,
     KnowledgeRepository repo,
+    JsonLinesLogger jsonLogger,
     string? lang,
     string? category,
     int? page,
@@ -324,9 +329,14 @@ app.MapGet("/api/v1/knowledge/{tenantId:int}/faqs", async (
         var (faqs, total) = await repo.ListFaqsAsync(tenantId, lang, category, p, l);
         return Results.Ok(new { faqs, total, page = p, limit = l });
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
     {
-        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeSearchFailed, $"List failed: {ex.Message}", requestId), statusCode: 500);
+        throw;
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.KnowledgeSearchFailed}] List FAQs DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeSearchFailed, "Failed to list FAQs due to a database error. Please retry.", requestId), statusCode: 500);
     }
 });
 
@@ -387,10 +397,14 @@ app.MapPost("/api/v1/knowledge/{tenantId:int}/faqs", async (
 
         return Results.Json(faq, statusCode: 201);
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
     {
-        jsonLogger.StepError($"[{ErrorCodes.KnowledgeImportDbError}] FAQ create failed: {ex.Message}", requestId);
-        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeImportDbError, "FAQ create failed", requestId), statusCode: 500);
+        throw;
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.KnowledgeImportDbError}] FAQ create DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeImportDbError, "Failed to create FAQ due to a database error. Please retry.", requestId), statusCode: 500);
     }
 });
 
@@ -451,10 +465,14 @@ app.MapPut("/api/v1/knowledge/{tenantId:int}/faqs/{faqId:int}", async (
 
         return Results.Ok(updated);
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
     {
-        jsonLogger.StepError($"[{ErrorCodes.KnowledgeImportDbError}] FAQ update failed: {ex.Message}", requestId);
-        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeImportDbError, "FAQ update failed", requestId), statusCode: 500);
+        throw;
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.KnowledgeImportDbError}] FAQ update DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeImportDbError, "Failed to update FAQ due to a database error. Please retry.", requestId), statusCode: 500);
     }
 });
 
@@ -478,10 +496,14 @@ app.MapDelete("/api/v1/knowledge/{tenantId:int}/faqs/{faqId:int}", async (
 
         return Results.Ok(new { message = "FAQ deactivated", faqId });
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
     {
-        jsonLogger.StepError($"[{ErrorCodes.KnowledgeImportDbError}] FAQ delete failed: {ex.Message}", requestId);
-        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeImportDbError, "FAQ delete failed", requestId), statusCode: 500);
+        throw;
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.KnowledgeImportDbError}] FAQ delete DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeImportDbError, "Failed to delete FAQ due to a database error. Please retry.", requestId), statusCode: 500);
     }
 });
 
@@ -568,16 +590,32 @@ app.MapPost("/api/v1/knowledge/{tenantId:int}/documents/upload", async (
         jsonLogger.StepInfo($"Document uploaded: id={docId}, tenant={tenantId}, title={title}, size={file.Length}", requestId);
         return Results.Json(new { documentId = docId, status = "processing", title }, statusCode: 202);
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
     {
-        // Cleanup orphaned file on failure
-        if (savedPath != null && File.Exists(savedPath))
-        {
-            try { File.Delete(savedPath); }
-            catch (Exception cleanupEx) { jsonLogger.SystemWarn($"[DocumentUpload] Failed to cleanup orphaned file {savedPath}: {cleanupEx.Message}"); }
-        }
-        jsonLogger.StepError($"[{ErrorCodes.KnowledgeUploadFailed}] Upload failed: {ex.Message}", requestId);
-        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeUploadFailed, "File upload failed", requestId), statusCode: 500);
+        CleanupOrphanedUpload();
+        throw;
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        CleanupOrphanedUpload();
+        jsonLogger.StepError($"[{ErrorCodes.KnowledgeImportDbError}] Document upload DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeImportDbError, "Document upload failed due to a database error. Please retry.", requestId), statusCode: 500);
+    }
+    catch (IOException ex)
+    {
+        CleanupOrphanedUpload();
+        jsonLogger.StepError($"[{ErrorCodes.KnowledgeUploadFailed}] Document upload file error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeUploadFailed, "Document upload failed while saving the file. Please retry.", requestId), statusCode: 500);
+    }
+
+    // Best-effort cleanup of a partially-saved file when the upload fails.
+    void CleanupOrphanedUpload()
+    {
+        if (savedPath == null || !File.Exists(savedPath))
+            return;
+        try { File.Delete(savedPath); }
+        catch (IOException cleanupEx) { jsonLogger.SystemWarn($"[DocumentUpload] Failed to cleanup orphaned file {savedPath}: {cleanupEx.Message}"); }
+        catch (UnauthorizedAccessException cleanupEx) { jsonLogger.SystemWarn($"[DocumentUpload] Failed to cleanup orphaned file {savedPath}: {cleanupEx.Message}"); }
     }
 }).DisableAntiforgery();
 
@@ -666,6 +704,7 @@ app.MapGet("/api/v1/knowledge/{tenantId:int}/documents", async (
     int tenantId,
     HttpContext ctx,
     KnowledgeRepository repo,
+    JsonLinesLogger jsonLogger,
     string? status,
     int? page,
     int? limit) =>
@@ -683,9 +722,14 @@ app.MapGet("/api/v1/knowledge/{tenantId:int}/documents", async (
         var (docs, total) = await repo.ListDocumentsAsync(tenantId, status, p, l);
         return Results.Ok(new { documents = docs, total, page = p, limit = l });
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
     {
-        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeSearchFailed, $"List failed: {ex.Message}", requestId), statusCode: 500);
+        throw;
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.KnowledgeSearchFailed}] List documents DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeSearchFailed, "Failed to list documents due to a database error. Please retry.", requestId), statusCode: 500);
     }
 });
 
@@ -693,7 +737,8 @@ app.MapGet("/api/v1/knowledge/{tenantId:int}/documents", async (
 app.MapGet("/api/v1/knowledge/{tenantId:int}/documents/{docId:int}", async (
     int tenantId, int docId,
     HttpContext ctx,
-    KnowledgeRepository repo) =>
+    KnowledgeRepository repo,
+    JsonLinesLogger jsonLogger) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
     var tenant = GetValidatedTenant(ctx, tenantId);
@@ -707,9 +752,14 @@ app.MapGet("/api/v1/knowledge/{tenantId:int}/documents/{docId:int}", async (
             return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeDocumentNotFound, $"Document {docId} not found", requestId), statusCode: 404);
         return Results.Ok(doc);
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
     {
-        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeSearchFailed, $"Get failed: {ex.Message}", requestId), statusCode: 500);
+        throw;
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.KnowledgeSearchFailed}] Get document DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeSearchFailed, "Failed to load document due to a database error. Please retry.", requestId), statusCode: 500);
     }
 });
 
@@ -749,10 +799,14 @@ app.MapDelete("/api/v1/knowledge/{tenantId:int}/documents/{docId:int}", async (
         jsonLogger.StepInfo($"Document deleted: id={docId}, tenant={tenantId}", requestId);
         return Results.Ok(new { message = "Document deleted", documentId = docId });
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
     {
-        jsonLogger.StepError($"[{ErrorCodes.KnowledgeImportDbError}] Document delete failed: {ex.Message}", requestId);
-        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeImportDbError, "Document delete failed", requestId), statusCode: 500);
+        throw;
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.KnowledgeImportDbError}] Document delete DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeImportDbError, "Failed to delete document due to a database error. Please retry.", requestId), statusCode: 500);
     }
 });
 
@@ -1015,10 +1069,16 @@ app.MapPost("/api/v1/knowledge/{tenantId:int}/generate-embeddings", async (
         jsonLogger.StepInfo($"Embedding generation: {generated} generated, {failed} failed out of {total} (FAQs: {pendingFaqs.Count}, chunks: {pendingChunks.Count})", requestId);
         return Results.Ok(new { message = $"Generated {generated} embeddings", generated, failed, total });
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
     {
-        jsonLogger.StepError($"[{ErrorCodes.KnowledgeOpenAIError}] Embedding generation failed: {ex.Message}", requestId);
-        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeOpenAIError, "Embedding generation failed", requestId), statusCode: 500);
+        throw;
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        // OpenAI/HTTP failures are handled inside EmbeddingService (returns null per item),
+        // so the only exception that escapes here is a DB error from the fetch/update calls.
+        jsonLogger.StepError($"[{ErrorCodes.KnowledgeImportDbError}] Embedding generation DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeImportDbError, "Embedding generation failed due to a database error. Please retry.", requestId), statusCode: 500);
     }
 });
 
@@ -1030,6 +1090,7 @@ app.MapPost("/api/v1/knowledge/{tenantId:int}/generate-embeddings", async (
 app.MapGet("/api/v1/templates/catalog", async (
     HttpContext ctx,
     TemplateRepository repo,
+    JsonLinesLogger jsonLogger,
     string? scope, string? type, string? sector, string? lang,
     string? search, string? tags, int? page, int? limit) =>
 {
@@ -1049,26 +1110,51 @@ app.MapGet("/api/v1/templates/catalog", async (
         Limit = Math.Clamp(limit ?? 20, 1, 200)
     };
 
-    var (items, total) = await repo.ListAsync(filter);
-    return Results.Ok(new { items, total, page = filter.Page, limit = filter.Limit });
+    try
+    {
+        var (items, total) = await repo.ListAsync(filter);
+        return Results.Ok(new { items, total, page = filter.Page, limit = filter.Limit });
+    }
+    catch (OperationCanceledException)
+    {
+        throw;
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] List templates DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Failed to list templates due to a database error. Please retry.", requestId), statusCode: 500);
+    }
 });
 
 // Get template by ID
 app.MapGet("/api/v1/templates/catalog/{id:int}", async (
     int id,
     HttpContext ctx,
-    TemplateRepository repo) =>
+    TemplateRepository repo,
+    JsonLinesLogger jsonLogger) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
     if (GetSuperadmin(ctx) == null)
         return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Superadmin required", requestId), statusCode: 403);
 
-    var template = await repo.GetByIdAsync(id);
-    if (template == null)
-        return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateNotFound, $"Template {id} not found", requestId), statusCode: 404);
+    try
+    {
+        var template = await repo.GetByIdAsync(id);
+        if (template == null)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateNotFound, $"Template {id} not found", requestId), statusCode: 404);
 
-    template.Sources = await repo.GetSourcesAsync(id);
-    return Results.Ok(template);
+        template.Sources = await repo.GetSourcesAsync(id);
+        return Results.Ok(template);
+    }
+    catch (OperationCanceledException)
+    {
+        throw;
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] Get template DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Failed to load template due to a database error. Please retry.", requestId), statusCode: 500);
+    }
 });
 
 // Bulk create templates (2026-04-18: Dashboard bulk import + pilot seed support).
@@ -1147,6 +1233,15 @@ app.MapPost("/api/v1/templates/catalog", async (
     {
         return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateSlugConflict, "Slug already exists", requestId), statusCode: 409);
     }
+    catch (OperationCanceledException)
+    {
+        throw;
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] Template create DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Template create failed due to a database error. Please retry.", requestId), statusCode: 500);
+    }
 });
 
 // Update template
@@ -1169,13 +1264,25 @@ app.MapPut("/api/v1/templates/catalog/{id:int}", async (
     if (body == null)
         return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "Request body required", requestId), statusCode: 400);
 
-    var success = await repo.UpdateAsync(id, body);
-    if (!success)
-        return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateNotFound, $"Template {id} not found", requestId), statusCode: 404);
+    try
+    {
+        var success = await repo.UpdateAsync(id, body);
+        if (!success)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateNotFound, $"Template {id} not found", requestId), statusCode: 404);
 
-    resolution.InvalidateCache();
-    var result = await repo.GetByIdAsync(id);
-    return Results.Ok(result);
+        resolution.InvalidateCache();
+        var result = await repo.GetByIdAsync(id);
+        return Results.Ok(result);
+    }
+    catch (OperationCanceledException)
+    {
+        throw;
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] Update template DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Failed to update template due to a database error. Please retry.", requestId), statusCode: 500);
+    }
 });
 
 // Delete template (soft)
@@ -1190,12 +1297,24 @@ app.MapDelete("/api/v1/templates/catalog/{id:int}", async (
     if (GetSuperadmin(ctx) == null)
         return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Superadmin required", requestId), statusCode: 403);
 
-    var deleted = await repo.SoftDeleteAsync(id);
-    if (!deleted)
-        return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateNotFound, $"Template {id} not found", requestId), statusCode: 404);
+    try
+    {
+        var deleted = await repo.SoftDeleteAsync(id);
+        if (!deleted)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateNotFound, $"Template {id} not found", requestId), statusCode: 404);
 
-    resolution.InvalidateCache();
-    return Results.Ok(new { message = "Template deactivated", id });
+        resolution.InvalidateCache();
+        return Results.Ok(new { message = "Template deactivated", id });
+    }
+    catch (OperationCanceledException)
+    {
+        throw;
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] Delete template DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Failed to delete template due to a database error. Please retry.", requestId), statusCode: 500);
+    }
 });
 
 // Publish template
@@ -1203,32 +1322,58 @@ app.MapPost("/api/v1/templates/catalog/{id:int}/publish", async (
     int id,
     HttpContext ctx,
     TemplateRepository repo,
-    TemplateResolutionService resolution) =>
+    TemplateResolutionService resolution,
+    JsonLinesLogger jsonLogger) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
     if (GetSuperadmin(ctx) == null)
         return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Superadmin required", requestId), statusCode: 403);
 
-    var published = await repo.PublishAsync(id);
-    if (!published)
-        return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateNotFound, $"Template {id} not found or already published", requestId), statusCode: 404);
+    try
+    {
+        var published = await repo.PublishAsync(id);
+        if (!published)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateNotFound, $"Template {id} not found or already published", requestId), statusCode: 404);
 
-    resolution.InvalidateCache();
-    return Results.Ok(new { message = "Template published", id });
+        resolution.InvalidateCache();
+        return Results.Ok(new { message = "Template published", id });
+    }
+    catch (OperationCanceledException)
+    {
+        throw;
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] Publish template DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Failed to publish template due to a database error. Please retry.", requestId), statusCode: 500);
+    }
 });
 
 // Get version history
 app.MapGet("/api/v1/templates/catalog/{id:int}/versions", async (
     int id,
     HttpContext ctx,
-    TemplateRepository repo) =>
+    TemplateRepository repo,
+    JsonLinesLogger jsonLogger) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
     if (GetSuperadmin(ctx) == null)
         return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Superadmin required", requestId), statusCode: 403);
 
-    var versions = await repo.GetVersionHistoryAsync(id);
-    return Results.Ok(new { versions, count = versions.Count });
+    try
+    {
+        var versions = await repo.GetVersionHistoryAsync(id);
+        return Results.Ok(new { versions, count = versions.Count });
+    }
+    catch (OperationCanceledException)
+    {
+        throw;
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] Version history DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Failed to load version history due to a database error. Please retry.", requestId), statusCode: 500);
+    }
 });
 
 // ============================================================
@@ -1239,6 +1384,7 @@ app.MapGet("/api/v1/templates/catalog/{id:int}/versions", async (
 app.MapGet("/api/v1/templates/suggestions", async (
     HttpContext ctx,
     TemplateRepository repo,
+    JsonLinesLogger jsonLogger,
     int? analysis_id, string? status, int? page, int? limit) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
@@ -1248,25 +1394,50 @@ app.MapGet("/api/v1/templates/suggestions", async (
     var p = Math.Max(page ?? 1, 1);
     var l = Math.Clamp(limit ?? 20, 1, 200);
 
-    var (items, total) = await repo.ListSuggestionsAsync(analysis_id, status, p, l);
-    return Results.Ok(new { items, total, page = p, limit = l });
+    try
+    {
+        var (items, total) = await repo.ListSuggestionsAsync(analysis_id, status, p, l);
+        return Results.Ok(new { items, total, page = p, limit = l });
+    }
+    catch (OperationCanceledException)
+    {
+        throw;
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] List suggestions DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Failed to list suggestions due to a database error. Please retry.", requestId), statusCode: 500);
+    }
 });
 
 // Get suggestion by ID
 app.MapGet("/api/v1/templates/suggestions/{id:int}", async (
     int id,
     HttpContext ctx,
-    TemplateRepository repo) =>
+    TemplateRepository repo,
+    JsonLinesLogger jsonLogger) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
     if (GetSuperadmin(ctx) == null)
         return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Superadmin required", requestId), statusCode: 403);
 
-    var suggestion = await repo.GetSuggestionByIdAsync(id);
-    if (suggestion == null)
-        return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateSuggestionNotFound, $"Suggestion {id} not found", requestId), statusCode: 404);
+    try
+    {
+        var suggestion = await repo.GetSuggestionByIdAsync(id);
+        if (suggestion == null)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateSuggestionNotFound, $"Suggestion {id} not found", requestId), statusCode: 404);
 
-    return Results.Ok(suggestion);
+        return Results.Ok(suggestion);
+    }
+    catch (OperationCanceledException)
+    {
+        throw;
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] Get suggestion DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Failed to load suggestion due to a database error. Please retry.", requestId), statusCode: 500);
+    }
 });
 
 // Review suggestion (approve/reject)
@@ -1611,15 +1782,28 @@ app.MapPost("/api/v1/templates/{tenantId:int}/onboard", async (
 app.MapGet("/api/v1/templates/{tenantId:int}/adoptions", async (
     int tenantId,
     HttpContext ctx,
-    TemplateRepository repo) =>
+    TemplateRepository repo,
+    JsonLinesLogger jsonLogger) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
     var tenant = ctx.Items["TenantContext"] as TenantContext;
     if (tenant == null || (tenant.TenantId != 0 && tenant.TenantId != tenantId))
         return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Unauthorized", requestId), statusCode: 403);
 
-    var items = await repo.ListAdoptionsAsync(tenantId);
-    return Results.Ok(new { items, count = items.Count });
+    try
+    {
+        var items = await repo.ListAdoptionsAsync(tenantId);
+        return Results.Ok(new { items, count = items.Count });
+    }
+    catch (OperationCanceledException)
+    {
+        throw;
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] List adoptions DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Failed to list adoptions due to a database error. Please retry.", requestId), statusCode: 500);
+    }
 });
 
 // ============================================================
