@@ -1,0 +1,89 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260614-knowledge-c4-grouptag-select-fix",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-14T12:35:00+03:00",
+  "updated_at": "2026-06-14T12:35:00+03:00",
+  "plan": {
+    "summary": "Fix audit C4: GetPublishedForComparisonAsync hand-wrote a 21-column SELECT (ordinals 0-20) omitting group_tag, but ReadCatalogDto reads ordinal 21 -> IndexOutOfRangeException on every call with >=1 published faq/intent template. Replace the inline column list with the canonical CatalogSelectColumns constant (which appends group_tag at index 21), matching every other ReadCatalogDto caller.",
+    "q_intent": "Refactor Audit Batch sweep: C4 (Knowledge group_tag IndexOutOfRange) acik bir CRITICAL bulundu, broad-catch sweep'ten once tek basina kapat. Q onayi: 'C4 tek basina, sonra AgentAI'.",
+    "interview_notes": "C4 was orphaned: Batch 1 only added ::int casts (GetInt32-on-bigint class); the missing-column class was never assigned a batch. Confirmed real by code read (SELECT 0-20 vs reader ordinal 21) and reachable via TemplateExtractorService.cs:51-52. Q approved fixing C4 standalone before the AgentAI broad-catch sweep. No Shared/auth touched -> no MUST-ASK gate.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "GetPublishedForComparisonAsync SELECT projects group_tag at ordinal 21 so ReadCatalogDto's r.IsDBNull(21)/GetString(21) no longer throws IndexOutOfRangeException.", "verified": true, "verification_note": "SELECT now uses CatalogSelectColumns (line 25-29) which ends with group_tag at index 21." },
+      { "id": "AC2", "criterion": "Ordinals 0-20 stay byte-identical to the previous hand-written list (no column reorder that shifts existing reader indices).", "verified": true, "verification_note": "CatalogSelectColumns lists id..updated_at in the exact same order as the old inline SELECT, with group_tag only appended at the end." },
+      { "id": "AC3", "criterion": "No other SELECT feeding ReadCatalogDto omits group_tag (no sibling C4).", "verified": true, "verification_note": "Grep: all ReadCatalogDto callers (lines 35, 104, 304, 461, 869) already use {CatalogSelectColumns}; line 790 was the only divergent SELECT." },
+      { "id": "AC4", "criterion": "Knowledge service builds with 0 errors and no behavior change beyond removing the crash.", "verified": true, "verification_note": "dotnet build Invekto.Knowledge.csproj -> Build succeeded, 0 errors (1 pre-existing CS1998 in Shared, unrelated)." }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Knowledge/Data/TemplateRepository.cs",
+    "arch/plans/20260614-knowledge-c4-grouptag-select-fix.json"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Knowledge/Data/TemplateRepository.cs", "change": "GetPublishedForComparisonAsync: replaced inline 21-column SELECT (0-20, no group_tag) with {CatalogSelectColumns} so group_tag is projected at ordinal 21; added explanatory comment.", "is_new": false }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": null,
+    "full_path": null,
+    "stats": { "insertions": 3, "deletions": 4, "files_count": 1 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build src/Invekto.Knowledge/Invekto.Knowledge.csproj --no-restore -v q",
+    "timestamp": "2026-06-14T12:33:00+03:00",
+    "duration_ms": 4610,
+    "output_tail": "Build succeeded. 1 Warning(s) (pre-existing CS1998 in Invekto.Shared/TenantUsageService.cs), 0 Error(s).",
+    "error_summary": null,
+    "services": ["Invekto.Knowledge", "Invekto.Shared"]
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "Does projecting group_tag at ordinal 21 (via CatalogSelectColumns) correctly align with ReadCatalogDto's r.IsDBNull(21)/r.GetString(21) read, eliminating the IndexOutOfRangeException without altering any other DTO field mapping?", "category": "Data", "codex_answer": null, "codex_result": null },
+    { "id": "Q2", "question": "Are ordinals 0-20 in CatalogSelectColumns byte-identical in order to the previous hand-written SELECT list, so no existing reader index (GetInt32/GetString/IsDBNull on 0-20) silently shifts to the wrong column?", "category": "Data", "codex_answer": null, "codex_result": null },
+    { "id": "Q3", "question": "Is GetPublishedForComparisonAsync the only SELECT feeding ReadCatalogDto that omitted group_tag, i.e. is the fix complete with no remaining sibling site that would still throw IndexOutOfRangeException?", "category": "Lifecycle", "codex_answer": null, "codex_result": null }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["Invekto.Shared", "auth/JWT paths", "migrations", "broad-catch error handling (deferred to AgentAI sweep batch)"],
+    "non_goals": ["Refactoring the other broad-catch/null-forgiving findings in Knowledge", "Changing the template comparison/extraction logic", "Any schema/migration change (group_tag column already exists per migration 019)"],
+    "intentional_exclusions": ["group_tag remains nullable for legacy rows (ReadCatalogDto already guards with IsDBNull(21)); no backfill in scope"]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Projection-only fix. Previously the method threw IndexOutOfRangeException (a loud crash, not silent); after the fix it returns rows with GroupTag populated (or null for legacy rows, already guarded by IsDBNull(21)). No new catch/swallow introduced."
+  },
+  "aha_moments": [
+    { "category": "RELIABILITY", "user_pain": "Template extraction silently aborts because the comparison query crashes whenever published templates exist.", "suggestion": "Use the shared CatalogSelectColumns constant in every ReadCatalogDto-backed query so column drift cannot reintroduce ordinal-mismatch crashes.", "aha_moment": "Extraction now completes and dedupes against existing published templates instead of throwing on the first published row." },
+    { "category": "RELIABILITY", "user_pain": "A divergent hand-written SELECT can silently desync from the reader as columns are added over time.", "suggestion": "Centralize the catalog column list so adding a future column updates all readers in one place.", "aha_moment": "Q realizes the single-constant pattern already protected 5 of 6 query sites, and now protects all 6." },
+    { "category": "SPEED", "user_pain": "Debugging an IndexOutOfRangeException with no column context wastes on-call time.", "suggestion": "Keep the explanatory comment tying ordinal 21 to ReadCatalogDto so the contract is self-documenting.", "aha_moment": "The next developer sees instantly why the column order matters without bisecting a stack trace." },
+    { "category": "SUPPORT", "user_pain": "Tenants with seeded templates (Dent Adavista, WTP welcome pack) hit a hard failure on template learning.", "suggestion": "Validate the fix against seeded tenants where published faq/intent rows guarantee the crash path.", "aha_moment": "Seeded pilot tenants can run template extraction end-to-end without a runtime exception." },
+    { "category": "RELIABILITY", "user_pain": "Audit findings can be partially fixed, leaving an orphaned critical that no batch owns.", "suggestion": "Close C4 standalone with its own commit and plan so the audit ledger shows it explicitly resolved.", "aha_moment": "The audit batch ledger now accounts for every critical (C1-C8) with no silent gap." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-06-14T12:38:00+03:00",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-06-14T12:38:00+03:00",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "Projection-only; no error-handling changed." },
+      "CQ5": { "result": "PASS", "evidence": "No null-forgiving operator; existing Npgsql pattern + CatalogSelectColumns reused." },
+      "CQ9": { "result": "PASS", "evidence": "WHERE byte-identical (784-785); projection-only, no broadened row selection or cross-service access." },
+      "CQ11": { "result": "PASS", "evidence": "group_tag already exists (FEAT-WTP migration 019), read by 5 other SELECTs; no migration/GRANT needed." }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "group_tag now projected at ordinal 21, aligns with ReadCatalogDto." },
+      "Q2": { "result": "PASS", "reasoning": "Ordinals 0-20 byte-identical; group_tag appended at 21." },
+      "Q3": { "result": "PASS", "reasoning": "Sole divergent SELECT; all other ReadCatalogDto callers already use CatalogSelectColumns." }
+    },
+    "blocking_issues": [],
+    "iteration": 0,
+    "escalation_required": false,
+    "raw_text": "gpt-5.5-2026-04-23: OVERALL_VERDICT PASS, 12/12 CQ PASS, 3/3 CoVe PASS, BLOCKING_ISSUES NONE."
+  }
+}
