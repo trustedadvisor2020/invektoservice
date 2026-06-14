@@ -72,8 +72,10 @@ public sealed class ReplyGenerator
             };
 
             using var httpRequest = new HttpRequestMessage(HttpMethod.Post, ClaudeApiUrl);
-            httpRequest.Headers.Add("x-api-key", _apiKey);
-            httpRequest.Headers.Add("anthropic-version", "2023-06-01");
+            // TryAddWithoutValidation: config-sourced api key may carry a stray char; Add() would
+            // throw FormatException, which escapes the typed-catch graceful boundary as a 500.
+            httpRequest.Headers.TryAddWithoutValidation("x-api-key", _apiKey);
+            httpRequest.Headers.TryAddWithoutValidation("anthropic-version", "2023-06-01");
             httpRequest.Content = JsonContent.Create(requestBody);
 
             using var response = await _httpClient.SendAsync(httpRequest, cts.Token);

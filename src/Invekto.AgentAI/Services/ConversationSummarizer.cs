@@ -83,8 +83,10 @@ public sealed class ConversationSummarizer
             };
 
             using var httpRequest = new HttpRequestMessage(HttpMethod.Post, ClaudeApiUrl);
-            httpRequest.Headers.Add("x-api-key", _apiKey);
-            httpRequest.Headers.Add("anthropic-version", "2023-06-01");
+            // TryAddWithoutValidation: config-sourced api key may carry a stray char; Add() would
+            // throw FormatException, which escapes the typed-catch graceful boundary to the caller.
+            httpRequest.Headers.TryAddWithoutValidation("x-api-key", _apiKey);
+            httpRequest.Headers.TryAddWithoutValidation("anthropic-version", "2023-06-01");
             httpRequest.Content = new StringContent(
                 JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
 
