@@ -1,0 +1,203 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260614-voiceai-path-crash-traversal-fix",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-14T08:13:38Z",
+  "updated_at": "2026-06-14T08:18:12Z",
+  "plan": {
+    "summary": "VoiceAI temp dosya yolu hardening (audit C5): TraceIdentifier ':' her transcription'i crashliyordu + client fileName path-traversal (CWE-22) vektoruydu. Her ikisi de yalniz on-disk temp path icin sanitize edildi + containment guard eklendi.",
+    "q_intent": "Refactor audit Batch 4 — VoiceAI path crash + traversal (VoiceTranscriptionService.cs:42 TraceIdentifier + filename sanitize). Master'dan work branch + auto+Codex PASS + commit'te dur (deploy yok).",
+    "interview_notes": "requestId=ctx.TraceIdentifier (Program.cs:144, Kestrel '{connId}:{n}' -> ':' Windows path'inde gecersiz -> FileStream her istekte throw; endpoint yalniz HttpRequestException/TaskCanceledException catch ediyor -> uncaught 500). fileName=file.FileName (Program.cs:187, ham upload adi). Endpoint format'i ProcessAsync ONCESI dogruluyor (IsSupportedFormat) ama ProcessAsync self-protecting olmali (public method). Whisper fileName'i yalniz multipart alani (WhisperApiService:46) olarak kullanir, disk path DEGIL; DB log parametreli. Yani tek vektor temp path. Mevcut INV-VA error codes 001-006 (Shared) reuse edildi; yeni kod eklemek Shared MUST-ASK olurdu -> kacinildi.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "TraceIdentifier'daki ':' artik FileStream'i crashlemiyor — requestId SanitizeTempSegment ile temizlenip temp path'e giriyor; her transcription crash'i giderildi.",
+        "verified": true,
+        "verification_note": "SanitizeTempSegment ':'yi Path.GetInvalidFileNameChars() uzerinden '_' ile degistirir (Windows'ta ':' invalid sette). Build PASS."
+      },
+      {
+        "id": "AC2",
+        "criterion": "Client fileName ile path traversal (CWE-22) imkansiz — Path.GetFileName dizin bilesenlerini soyuyor + invalid karakterler '_' ile degisiyor + sabit 'voiceai_' prefix '..'yi notr kiliyor + GetFullPath containment guard temp root disini reddediyor.",
+        "verified": true,
+        "verification_note": "GetFileName('..\\\\..\\\\x')='x'; separator'siz tek segment Path.Combine ile temp altinda kalir; guard ikinci katman."
+      },
+      {
+        "id": "AC3",
+        "criterion": "Orijinal davranis korunuyor — fileName hala Whisper multipart alanina ve DB log'a (parametreli) degismeden gidiyor; yalniz on-disk temp path sertlestirildi.",
+        "verified": true,
+        "verification_note": "Diff: yalniz tempPath hesaplamasi + yeni private helper. Whisper cagrisi (fs, fileName) ve LogTranscriptionAsync(fileName) imzalari degismedi."
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.VoiceAI/Services/VoiceTranscriptionService.cs"
+  ],
+  "files_changed": [
+    {
+      "path": "src/Invekto.VoiceAI/Services/VoiceTranscriptionService.cs",
+      "change": "tempPath hesaplamasi sanitize edildi (requestId + GetFileName(fileName) -> SanitizeTempSegment) + GetFullPath containment guard; yeni private static SanitizeTempSegment helper.",
+      "is_new": false,
+      "deleted": false
+    }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "be7f72de556059d5ba8e25810680cf7f12970b5e3f5267b7d5fa2c081ce12763",
+    "full_path": "arch/plans/diffs/20260614-voiceai-path-crash-traversal-fix.diff",
+    "stats": {
+      "insertions": 38,
+      "deletions": 1,
+      "files_count": 1
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build src/Invekto.VoiceAI/Invekto.VoiceAI.csproj --no-restore -v q",
+    "timestamp": "2026-06-14T08:13:38Z",
+    "duration_ms": 2960,
+    "output_tail": "Build succeeded. 1 Warning(s) [pre-existing Invekto.Shared/TenantUsageService.cs CS1998, unrelated]. 0 Error(s).",
+    "error_summary": null,
+    "services": ["Invekto.VoiceAI"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Sanitize edilen segment '..' / bos girdi / ADS ('a.mp3:evil') gibi uc durumlar dahil hicbir input temp dizininin disina yazamaz mi? GetFileName + invalid-char replace + sabit prefix + GetFullPath containment guard birlikte CWE-22'yi tam kapatiyor mu?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Davranis korunuyor mu — orijinal fileName hala Whisper multipart alanina ve DB log'a (parametreli) degismeden gidiyor mu; yalniz on-disk temp path mi degisti, baska bir callsite etkilenmedi mi?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Containment guard throw'u try blogundan ONCE (henuz temp dosya yokken) tetiklenir; finally cleanup'i (File.Delete) bozmaz mi? requestId/fileName tum cagri yollarinda gecerli mi (endpoint TraceIdentifier + file.FileName)?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "Degisiklik auth/tenant izolasyonunu etkilemiyor mu — tempPath hesaplamasi tenant'tan bagimsiz, endpoint auth/TenantId resolution ve ChatAnalysis INTERNAL api-key akisi degismedi mi? Microservice izolasyonu (yalniz Invekto.Shared) korundu mu?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "spec_architectural_decisions": [
+    {
+      "decision": "Containment guard (GetFullPath StartsWith tempRoot) sanitize sonrasi teknik olarak unreachable ama bilincli defense-in-depth olarak birakildi (CWE-22 fail-loud).",
+      "reason": "Path-traversal remediation'da sanitize + canonical-path containment kanonik iki katman; ProcessAsync public, ileride dogrulanmamis cagri gelirse loud-fail saglar.",
+      "codex_note": "EXPECTED: containment guard'i 'dead/unreachable code' olarak FLAG ETME — bilincli ikinci katman."
+    },
+    {
+      "decision": "fileName temp path'ten tamamen cikarilmadi (GUID degil), sanitize edildi — audit C5 prescription'ina ('filename sanitize') uyum.",
+      "reason": "Sanitize de CWE-22'yi kapatir + audit prescription'ini + temp dosya korelasyonunu korur.",
+      "codex_note": "EXPECTED: 'fileName'i GUID ile degistir' bir alternatif; sanitize yaklasimi da gecerli ve istenen cozumdur."
+    },
+    {
+      "decision": "Guard InvalidOperationException firlatir; endpoint catch'i (HttpRequestException/TaskCanceledException) disinda -> 500.",
+      "reason": "Unreachable defensive path; disari yazmaktansa fail-loud (500) tercih edildi. Yeni INV error code = Shared MUST-ASK oldugu icin INV-VA-003 log'da reuse edildi.",
+      "codex_note": "EXPECTED: 500 davranisi bilincli; yeni error code eklenmedi (Shared'a dokunma kurali)."
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Shared/** (yeni error code eklenmedi — INV-VA-003 reuse, MUST-ASK kacinildi)",
+      "src/Invekto.VoiceAI/Program.cs (endpoint dokunulmadi)",
+      "src/Invekto.VoiceAI/Services/WhisperApiService.cs",
+      "auth / middleware / TenantId resolution"
+    ],
+    "non_goals": [
+      "Yeni error code / Shared degisikligi",
+      "fileName'i GUID ile tamamen degistirme",
+      "Temp cleanup-failure log'una requestId/path ekleme (out-of-scope iyilestirme)",
+      "Unit test ekleme (proje kurali: istenmedikce test yok)"
+    ],
+    "intentional_exclusions": [
+      "Whisper multipart fileName degismedi (framework Content-Disposition encode eder)",
+      "DB log fileName ham birakildi (parametreli AddWithValue, injection yok, audit/display icin orijinal ad)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "VoiceTranscriptionService.cs ProcessAsync try/finally (FileStream + Whisper; finally File.Delete IOException catch) — pre-existing",
+      "VoiceTranscriptionService.cs ForwardToChatAnalysis HttpRequestException/TaskCanceledException — pre-existing",
+      "VoiceTranscriptionService.cs LogTranscription NpgsqlException — pre-existing",
+      "Yeni: containment guard try ONCESI throw (catch degil, fail-loud)"
+    ],
+    "user_facing_errors": [
+      "Guard tetiklenirse InvalidOperationException -> 500 (unreachable defensive; INV-VA-003 log'lanir, kullaniciya genel 500)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Guard fail-loud (throw + SystemWarn log). Sanitize on-disk dosya adini sessizce degistirir ama bu beklenen/zararsiz davranis (orijinal ad Whisper+DB'de korunur). Crash ve traversal artik sessizce gerceklesemez — eskiden ':' uncaught 500, traversal sessiz arbitrary-write idi."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Ses transkripsiyon ozelligi her istekte 500 veriyordu (TraceIdentifier ':' FileStream crash) — ozellik fiilen oluydu.",
+      "suggestion": "Fix sonrasi gercek bir ses dosyasiyla /api/v1/voice/transcribe smoke: 200 + transcript+intent don.",
+      "aha_moment": "Kullanici sesli mesaj gonderdiginde transkript + niyet ilk kez gercekten doner — ozellik canli."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Kotu niyetli upload adi ('..\\..\\') sunucuda temp disina rastgele dosya yazabilirdi (CWE-22).",
+      "suggestion": "GetFileName + invalid-char sanitize + canonical containment guard ile path-traversal tamamen kapatildi.",
+      "aha_moment": "Guvenlik ekibi audit C5'i kapanmis gorur — sunucu dosya sistemi artik upload adiyla manipule edilemez."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Temp cleanup basarisiz olursa log requestId/path icermiyor — ops %TEMP%'te oksuz dosyayi iliskilendiremiyor.",
+      "suggestion": "Cleanup-failure log satirina (satir 123) requestId + tempPath ekle (ayri kucuk iyilestirme).",
+      "aha_moment": "Ops disk dolma incident'inde oksuz voiceai_ dosyasini dogru istege baglar."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Es zamanli transkripsiyonlarda temp dosya adi cakismasi gonderimi bozabilir.",
+      "suggestion": "TraceIdentifier istek-basina benzersiz oldugu icin sanitize sonrasi temp adi cakisma-guvenli kalir.",
+      "aha_moment": "Yuksek yukte paralel ses istekleri birbirinin temp dosyasini ezmez."
+    },
+    {
+      "category": "UX",
+      "user_pain": "Desteklenmeyen/bozuk ses yuklemesinde kullanici net hata gormeyebilir.",
+      "suggestion": "Endpoint zaten 415/413/400 donuyor; gelecekte transkripsiyon-basarisiz durumunda daha acik TR mesaj eklenebilir.",
+      "aha_moment": "Kullanici neden yukleyemedigini aninda anlar, destek bileti acmaz."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-06-14T08:18:12Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-06-14T08:18:12Z",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "Fail-loud containment guard logs INV-VA-003 + throws; no silent catch added." },
+      "CQ2": { "result": "PASS", "evidence": "No swallowed exceptions / unlogged early returns introduced." },
+      "CQ3": { "result": "PASS", "evidence": "Only allowed file changed; scope = sanitize + containment + private helper." },
+      "CQ4": { "result": "PASS", "evidence": "SanitizeTempSegment private, VoiceAI-local; no shared duplicate." },
+      "CQ5": { "result": "PASS", "evidence": "Path APIs (not string concat); existing ErrorCodes constant reused." },
+      "CQ6": { "result": "PASS", "evidence": "Linear pass + small array lookup; no N+1/leak/concurrency state." },
+      "CQ7": { "result": "PASS", "evidence": "No TODO/HACK/FIXME; comment is security context." },
+      "CQ8": { "result": "PASS", "evidence": "No public API/DTO/route/ctor change; only private static helper." }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "Sanitize + null/empty->'x' + GetFullPath containment guard kapatir CWE-22 (edge: '..'/empty/ADS)." },
+      "Q2": { "result": "PASS", "reasoning": "fileName reassign edilmedi; yalniz safeFileName tempPath icin; Whisper+DB orijinal ad korunur." },
+      "Q3": { "result": "PASS", "reasoning": "Guard try ONCESI throw -> temp dosya yok -> cleanup bozulmaz; null/empty handled." },
+      "Q4": { "result": "PASS", "reasoning": "Yalniz tempPath + private helper; auth/tenant/api-key/cross-service degismedi." }
+    },
+    "blocking_issues": [],
+    "iteration": 0,
+    "escalation_required": false,
+    "raw_text": "Codex gpt-5.5 (gpt-5.5-2026-04-23) iter0: CQ1-12 PASS, CoVe Q1-Q4 PASS, BLOCKING_ISSUES: NONE. OVERALL_VERDICT: PASS."
+  }
+}

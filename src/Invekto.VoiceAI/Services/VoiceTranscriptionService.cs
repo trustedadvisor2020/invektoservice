@@ -39,7 +39,25 @@ public sealed class VoiceTranscriptionService
     public async Task<VoiceTranscriptionResponse> ProcessAsync(
         Stream audioStream, string fileName, int tenantId, string requestId, CancellationToken ct)
     {
-        var tempPath = Path.Combine(Path.GetTempPath(), $"voiceai_{requestId}_{fileName}");
+        // SECURITY (path crash + traversal hardening — audit C5):
+        // requestId is the Kestrel TraceIdentifier (e.g. "0HN...:00000001"); its ':' is invalid in
+        // Windows paths and threw on every FileStream create (each transcription crashed). fileName
+        // is the raw client-supplied upload name (CWE-22 path-traversal vector, e.g. "..\\..\\evil").
+        // Both are sanitized for the on-disk temp path ONLY — the original fileName still flows to
+        // Whisper (multipart field) and the DB log (parameterized) unchanged.
+        var safeRequestId = SanitizeTempSegment(requestId);
+        var safeFileName = SanitizeTempSegment(Path.GetFileName(fileName));
+        var tempPath = Path.Combine(Path.GetTempPath(), $"voiceai_{safeRequestId}_{safeFileName}");
+
+        // Defense in depth: the sanitized, separator-free segment cannot escape, but verify the
+        // canonical path stays under the temp root before any filesystem write (fail loud).
+        var tempRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(Path.GetTempPath()));
+        if (!Path.GetFullPath(tempPath).StartsWith(tempRoot + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+        {
+            _logger.SystemWarn($"[{ErrorCodes.VoiceAITranscriptionFailed}] Temp path escaped temp root for request {requestId}");
+            throw new InvalidOperationException("Resolved temp path escaped the temp directory.");
+        }
+
         try
         {
             // Save to temp file (Whisper needs seekable stream for multipart)
@@ -123,6 +141,25 @@ public sealed class VoiceTranscriptionService
                 _logger.SystemWarn($"[{ErrorCodes.VoiceAITranscriptionFailed}] Temp file cleanup failed: {ex.Message}");
             }
         }
+    }
+
+    /// <summary>
+    /// Sanitizes a single path segment for safe use in a temp file name: replaces every character
+    /// that is invalid in a file name on the current platform (incl. ':' and directory separators
+    /// on Windows) with '_'. Returns a non-empty placeholder for null/empty input. Replacement
+    /// preserves length, so non-empty input always yields non-empty output.
+    /// </summary>
+    private static string SanitizeTempSegment(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return "x";
+
+        var invalid = Path.GetInvalidFileNameChars();
+        var buffer = new StringBuilder(value.Length);
+        foreach (var ch in value)
+            buffer.Append(Array.IndexOf(invalid, ch) >= 0 ? '_' : ch);
+
+        return buffer.ToString();
     }
 
     private async Task<(string label, double confidence, string summary)?> ForwardToChatAnalysisAsync(
