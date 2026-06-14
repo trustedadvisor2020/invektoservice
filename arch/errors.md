@@ -734,6 +734,11 @@ errors:
     description: Dual-write reconciliation detected divergence (outbox unsent > threshold)
     user_message: Mesaj senkronizasyonu kontrol ediliyor.
 
+  # WebChat operator push notifications (Expo)
+  - code: INV-WC-026
+    description: Operator push notification delivery failed
+    user_message: Bildirim gönderilemedi.
+
   # ── VA — VoiceAI (PKT-11) ──
   - code: INV-VA-001
     description: No audio file in request

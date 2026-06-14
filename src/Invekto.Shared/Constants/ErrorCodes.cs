@@ -715,6 +715,8 @@ public static class ErrorCodes
     // WebChat Automation Webhook (INV-WC-011+)
     public const string WebChatWebhookFailed = "INV-WC-011";
     public const string WebChatWebhookTimeout = "INV-WC-012";
+    // Note: INV-WC-013..025 are reserved for the WebChat-as-INMA-Channel feature (see arch/errors.md).
+    public const string WebChatPushNotificationFailed = "INV-WC-026";
 
     // VoiceAI errors (INV-VA-xxx) -- PKT-11
     public const string VoiceAINoAudioFile = "INV-VA-001";               // No audio file in request

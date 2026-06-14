@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using Invekto.Shared.Constants;
 using Invekto.Shared.Logging;
 
 namespace Invekto.WebChat.Services;
@@ -92,15 +93,22 @@ public sealed class AIReplyService
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.SystemError($"Claude API error: {response.StatusCode} - {responseBody}");
+                _logger.SystemError($"[{ErrorCodes.WebChatAIReplyFailed}] Claude API error: {response.StatusCode} - {responseBody}");
                 return null;
             }
 
             using var doc = JsonDocument.Parse(responseBody);
-            var content = doc.RootElement
-                .GetProperty("content")[0]
-                .GetProperty("text")
-                .GetString();
+            // Defensive navigation: keep the catch set narrowed to IO/serialization types
+            // instead of relying on it to absorb KeyNotFound/IndexOutOfRange on a shape change.
+            if (!doc.RootElement.TryGetProperty("content", out var contentArr)
+                || contentArr.ValueKind != JsonValueKind.Array
+                || contentArr.GetArrayLength() == 0
+                || !contentArr[0].TryGetProperty("text", out var textEl))
+            {
+                _logger.SystemError($"[{ErrorCodes.WebChatAIReplyFailed}] Claude response missing content[0].text");
+                return null;
+            }
+            var content = textEl.GetString();
 
             sw.Stop();
             _logger.SystemInfo($"AI reply generated in {sw.ElapsedMilliseconds}ms");
@@ -109,12 +117,24 @@ public sealed class AIReplyService
         }
         catch (OperationCanceledException)
         {
-            _logger.SystemError($"AI reply timeout after {sw.ElapsedMilliseconds}ms");
+            _logger.SystemError($"[{ErrorCodes.WebChatAIReplyTimeout}] AI reply timeout after {sw.ElapsedMilliseconds}ms");
+            return null;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.SystemError($"[{ErrorCodes.WebChatAIReplyFailed}] Claude API HTTP failure: {ex.Message}");
+            return null;
+        }
+        catch (JsonException ex)
+        {
+            _logger.SystemError($"[{ErrorCodes.WebChatAIReplyFailed}] Claude response parse failure: {ex.Message}");
             return null;
         }
         catch (Exception ex)
         {
-            _logger.SystemError($"AI reply failed: {ex.Message}");
+            // Sanctioned optional-step degradation boundary (see arch/codex-context.md): AI auto-reply
+            // is best-effort; on any genuinely-unexpected fault, degrade to null (operator path unaffected).
+            _logger.SystemError($"[{ErrorCodes.WebChatAIReplyFailed}] AI reply unexpected ({ex.GetType().Name}): {ex}");
             return null;
         }
     }
