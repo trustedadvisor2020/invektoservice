@@ -503,7 +503,7 @@ public sealed class AiIntentHandler : INodeHandler
                 var intents = doc.RootElement.EnumerateArray()
                     .Select(e => e.GetString())
                     .Where(s => !string.IsNullOrWhiteSpace(s))
-                    .Select(s => s!)
+                    .OfType<string>()
                     .ToArray();
                 if (intents.Length > 0)
                     return intents;

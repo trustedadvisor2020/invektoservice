@@ -518,9 +518,22 @@ public sealed class AutomationOrchestrator
 
             tenantConfidenceThreshold = ExtractConfidenceThreshold(settingsJson);
         }
-        catch (Exception ex)
+        catch (OperationCanceledException)
         {
-            _logger.SystemWarn($"[{ErrorCodes.AutomationKnowledgeIntentFetchFailed}] Pre-flow enrichment failed for tenant {tenantId}: {ex.Message}");
+            throw; // cancellation must propagate, not degrade to a best-effort warning
+        }
+        catch (System.Net.Http.HttpRequestException ex)
+        {
+            // Optional-step degradation: flow proceeds with null intents + default threshold.
+            _logger.SystemWarn($"[{ErrorCodes.AutomationKnowledgeIntentFetchFailed}] Pre-flow enrichment (Knowledge intents) failed for tenant {tenantId}: {ex.Message}");
+        }
+        catch (Npgsql.NpgsqlException ex)
+        {
+            _logger.SystemWarn($"[{ErrorCodes.AutomationKnowledgeIntentFetchFailed}] Pre-flow enrichment (settings DB) failed for tenant {tenantId}: {ex.Message}");
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            _logger.SystemWarn($"[{ErrorCodes.AutomationKnowledgeIntentFetchFailed}] Pre-flow enrichment (settings parse) failed for tenant {tenantId}: {ex.Message}");
         }
 
         // 4b. Execute pure engine (no streaming — messages sent in order after execution)
@@ -1114,7 +1127,7 @@ public sealed class AutomationOrchestrator
 
             string contactKey;
             if (!string.IsNullOrEmpty(row.ChatId)) contactKey = row.ChatId;
-            else if (!string.IsNullOrEmpty(row.Phone)) contactKey = row.Phone!;
+            else if (!string.IsNullOrEmpty(row.Phone)) contactKey = row.Phone;
             else contactKey = $"flow:{row.FlowId}";
 
             // HFM-2: resume path also respects lead.preferred_locale (read-only lookup,
@@ -1149,7 +1162,7 @@ public sealed class AutomationOrchestrator
             else if (result.NeedsAssignGroup && !string.IsNullOrWhiteSpace(result.AssignGroupId))
             {
                 await SendAssignGroupAsync(requestId, row.TenantId, row.ChatId, sequenceId,
-                    result.AssignGroupId!, result.AssignGroupSummary ?? "Grup atamasi",
+                    result.AssignGroupId, result.AssignGroupSummary ?? "Grup atamasi",
                     sw.ElapsedMilliseconds, row.CallbackUrl, ct);
             }
 
