@@ -784,11 +784,10 @@ public class TemplateRepository
         else
             where += " AND scope = 'platform'";
 
+        // FEAT-WTP fix (audit C4): use CatalogSelectColumns so group_tag (index 21) is
+        // projected — ReadCatalogDto reads ordinal 21, otherwise IndexOutOfRangeException.
         cmd.CommandText = $@"
-            SELECT id, template_type, scope, sector, tenant_id, parent_template_id,
-                   slug, name, description, lang, tags, content_json, version,
-                   is_active, is_published, usage_count, confidence_score, source_count,
-                   created_by, created_at, updated_at
+            SELECT {CatalogSelectColumns}
             FROM template_catalog {where}
             ORDER BY usage_count DESC";
         cmd.Parameters.AddWithValue("ttype", templateType);
