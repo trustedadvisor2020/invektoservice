@@ -220,7 +220,10 @@ public class ExportRepository
             Id = reader.GetInt64(0),
             CampaignId = reader.GetString(1),
             BroadcastIds = reader.IsDBNull(2) ? Array.Empty<Guid>() : (Guid[])reader.GetValue(2),
-            TemplateId = reader.GetInt32(3),
+            // template_id is nullable (inline broadcasts persist no template). 0 = "no
+            // template" sentinel: outbound_templates.id is SERIAL (>= 1), so 0 never
+            // collides with a real id. Guard prevents InvalidCastException on null reads.
+            TemplateId = reader.IsDBNull(3) ? 0 : reader.GetInt32(3),
             Lang = S(reader, 4),
             Status = reader.GetString(5),
             TotalSkippedOptout = reader.GetInt32(6),
@@ -373,7 +376,10 @@ public class ExportRepository
                 Id = reader.GetInt64(0),
                 CampaignId = reader.GetString(1),
                 Status = reader.GetString(2),
-                TemplateId = reader.GetInt32(3),
+                // template_id is nullable (inline broadcasts persist no template). 0 = "no
+                // template" sentinel: outbound_templates.id is SERIAL (>= 1), so 0 never
+                // collides with a real id. Guard prevents InvalidCastException on null reads.
+                TemplateId = reader.IsDBNull(3) ? 0 : reader.GetInt32(3),
                 TotalRecipients = reader.GetInt32(4),
                 CreatedAt = reader.GetDateTime(5),
                 CompletedAt = reader.IsDBNull(6) ? null : reader.GetDateTime(6)
