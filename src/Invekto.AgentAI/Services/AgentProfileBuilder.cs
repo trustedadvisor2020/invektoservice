@@ -1,5 +1,7 @@
 using System.Text;
+using Npgsql;
 using Invekto.AgentAI.Data;
+using Invekto.Shared.Constants;
 using Invekto.Shared.Logging;
 
 namespace Invekto.AgentAI.Services;
@@ -29,9 +31,15 @@ public sealed class AgentProfileBuilder
         {
             records = await _repository.GetRecentFeedbackAsync(tenantId, agentId, _maxHistory, ct);
         }
-        catch (Exception ex)
+        catch (OperationCanceledException)
         {
-            _logger.StepError($"Failed to fetch agent feedback history: {ex.Message}", "-");
+            throw; // app/request cancellation must propagate, not degrade to a null profile
+        }
+        catch (NpgsqlException ex)
+        {
+            // DB error -> graceful degradation (suggest continues without an agent profile),
+            // but the DB failure class is now visible with an INV code instead of being masked.
+            _logger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] Feedback history DB error: {ex.Message}", "-");
             return null;
         }
 

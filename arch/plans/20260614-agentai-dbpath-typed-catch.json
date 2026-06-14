@@ -1,0 +1,90 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260614-agentai-dbpath-typed-catch",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-14T12:50:00+03:00",
+  "updated_at": "2026-06-14T12:52:00+03:00",
+  "plan": {
+    "summary": "Refactor-audit AgentAI broad-catch sweep, DB-path slice (AI-1, AI-2, AI-3). Replace three broad catch(Exception) blocks wrapping DB calls with typed catch(NpgsqlException) mapped to ErrorCodes.DatabaseConnectionFailed (INV-DB-001), satisfying the repo's #1 hard-fail rule (no broad catch) while preserving each site's existing graceful/non-blocking behavior for the realistic DB-failure case. AI-1 additionally gets an OperationCanceledException { throw; } guard (it receives a real CancellationToken).",
+    "q_intent": "Refactor Audit Batch 6/7 broad-catch sweep, ilk servis AgentAI. Q kapsam karari: 'Sadece DB-path (AI-1,2,3) once' (en dar + en behavior-preserving; AI-reply/summarizer 4-7 ayri sonraki batch).",
+    "interview_notes": "Q chose the most conservative scope: DB-path broad-catches only (AI-1,2,3), deferring the AI-generation-path ones (AI-4,5,6,7) to a follow-up. Behavior approach (Q-confirmed implicitly via the conservative pick): typed-catch the realistic exception class (NpgsqlException) so graceful degradation is preserved; only truly-unexpected (non-DB) exceptions now propagate to middleware. Error-code decision: the audit's suggested ErrorCodes.DatabaseQueryFailed does NOT exist; reuse the existing canonical ErrorCodes.DatabaseConnectionFailed (INV-DB-001) to keep the batch service-local (NO Invekto.Shared/ErrorCodes change, no full-solution build, no MUST-ASK gate). OCE guard added only at AI-1 (real ct); AI-2/AI-3 pass CancellationToken.None so cancellation is impossible there (no dead-code guard).",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "All three DB-path broad catch(Exception) blocks are replaced with typed catch(NpgsqlException); no broad catch(Exception) remains at AI-1/AI-2/AI-3.", "verified": true, "verification_note": "Diff shows catch(Exception)->catch(NpgsqlException) at AgentProfileBuilder.cs:~34, Program.cs:~322 (/suggest log), Program.cs:~419 (/feedback update)." },
+      { "id": "AC2", "criterion": "Graceful/non-blocking behavior is preserved for the realistic DB-failure case: AI-1 returns null, AI-2 sets dbLogFailed (suggestion still 200 with warning), AI-3 returns 500 — same as before, now DB-coded.", "verified": true, "verification_note": "return null / dbLogFailed=true / Results.Json(...,500) bodies unchanged except the error code is now INV-DB-001." },
+      { "id": "AC3", "criterion": "Cancellation is handled correctly: AI-1 (real ct) rethrows OperationCanceledException; AI-2/AI-3 (CancellationToken.None) need no guard.", "verified": true, "verification_note": "AI-1 has catch(OperationCanceledException){throw;} before the NpgsqlException catch; AI-2/AI-3 pass CancellationToken.None so OCE cannot arise." },
+      { "id": "AC4", "criterion": "No Invekto.Shared / ErrorCodes / migration touched; AgentAI builds 0 errors.", "verified": true, "verification_note": "Only AgentAI files changed; reused existing INV-DB-001. dotnet build Invekto.AgentAI.csproj -> Build succeeded, 0 warnings, 0 errors." }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.AgentAI/Services/AgentProfileBuilder.cs",
+    "src/Invekto.AgentAI/Program.cs",
+    "arch/plans/20260614-agentai-dbpath-typed-catch.json"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.AgentAI/Services/AgentProfileBuilder.cs", "change": "BuildProfileAsync: broad catch(Exception)->catch(OperationCanceledException){throw;} + catch(NpgsqlException) logging INV-DB-001 and returning null (graceful). Added using Npgsql + using Invekto.Shared.Constants.", "is_new": false },
+    { "path": "src/Invekto.AgentAI/Program.cs", "change": "/suggest DB-log catch and /feedback DB-update catch: broad catch(Exception)->catch(NpgsqlException) logging INV-DB-001 (feedback also returns INV-DB-001 instead of GeneralUnknown, still 500). Added using Npgsql.", "is_new": false }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": null,
+    "full_path": null,
+    "stats": { "insertions": 20, "deletions": 8, "files_count": 2 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build src/Invekto.AgentAI/Invekto.AgentAI.csproj --no-restore -v q",
+    "timestamp": "2026-06-14T12:51:00+03:00",
+    "duration_ms": 2390,
+    "output_tail": "Build succeeded. 0 Warning(s), 0 Error(s).",
+    "error_summary": null,
+    "services": ["Invekto.AgentAI"]
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "Does mapping NpgsqlException to ErrorCodes.DatabaseConnectionFailed (INV-DB-001) at all three sites preserve the existing graceful/non-blocking behavior for the realistic DB-failure case (AI-1 returns null, AI-2 sets dbLogFailed and still returns the suggestion, AI-3 returns 500), with the only behavior change being that truly-unexpected non-DB exceptions now propagate to middleware instead of being masked?", "category": "Data", "codex_answer": null, "codex_result": null },
+    { "id": "Q2", "question": "Is the OperationCanceledException { throw; } guard correct and necessary at AI-1 (AgentProfileBuilder receives a real CancellationToken so cancellation must propagate, not degrade to null), and is its ABSENCE at AI-2/AI-3 correct because those calls pass CancellationToken.None (cancellation is impossible, so an OCE guard would be unreachable dead code)?", "category": "Lifecycle", "codex_answer": null, "codex_result": null },
+    { "id": "Q3", "question": "Is reusing the existing ErrorCodes.DatabaseConnectionFailed (INV-DB-001) the right choice here — given the audit's suggested ErrorCodes.DatabaseQueryFailed does not exist in the codebase and the batch intentionally avoids modifying Invekto.Shared/ErrorCodes — rather than introducing a new Shared error code (which would trigger a full-solution build + arch/errors.md sync)?", "category": "Process/Policy", "codex_answer": null, "codex_result": null }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["Invekto.Shared", "ErrorCodes.cs", "auth/JWT paths", "migrations", "AI-generation-path catches (AI-4,5,6,7 - deferred follow-up batch)", "AI-8 perf-dup", "AI-9 header method"],
+    "non_goals": ["Refactoring ReplyGenerator/ConversationSummarizer broad-catches", "Adding a new INV-DB error code", "Changing status codes or response envelopes beyond the error code value", "Changing the graceful-degradation policy itself"],
+    "intentional_exclusions": ["No OCE guard at AI-2/AI-3 (CancellationToken.None makes it dead code)", "Status code at AI-3 kept at 500 (behavior-preserving; not changed to 503 despite Kanban DB-error precedent)"]
+  },
+  "error_handling": {
+    "try_catch_locations": ["src/Invekto.AgentAI/Services/AgentProfileBuilder.cs:~28-43", "src/Invekto.AgentAI/Program.cs:~310-330 (/suggest DB log)", "src/Invekto.AgentAI/Program.cs:~401-426 (/feedback update)"],
+    "user_facing_errors": ["/feedback NpgsqlException -> 500 ErrorResponse INV-DB-001 'Internal server error' (was INV-GEN-001)", "/suggest DB-log failure -> 200 with warning 'Oneri kaydedilemedi, feedback takibi kullanilamayacak' (unchanged)"],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "The change REDUCES silent failure: DB errors that were masked under broad catch are now logged with a distinct INV-DB-001 code. Graceful degradation (return null / non-blocking log) is intentional and preserved for the DB-failure class; non-DB unexpected exceptions, previously swallowed, now surface via middleware (loud, not silent). No new swallow introduced."
+  },
+  "aha_moments": [
+    { "category": "RELIABILITY", "user_pain": "On-call sees a generic error string and cannot tell a DB outage from an app bug in the agent-assist path.", "suggestion": "Tag DB-path failures with INV-DB-001 so logs disambiguate database outages from logic errors.", "aha_moment": "A DB outage now shows INV-DB-001 in logs, pointing on-call straight at PostgreSQL instead of a code bisect." },
+    { "category": "RELIABILITY", "user_pain": "A non-DB bug hidden inside a broad catch would silently degrade agent suggestions with no trace.", "suggestion": "Let truly-unexpected exceptions propagate to middleware instead of being swallowed.", "aha_moment": "Unexpected failures now produce a real stack trace, so latent bugs become visible instead of silently degrading quality." },
+    { "category": "SUPPORT", "user_pain": "An agent gets a suggestion but feedback silently never persists, breaking learning loops.", "suggestion": "Surface the DB-coded warning when suggestion logging fails so support can correlate missing feedback to DB incidents.", "aha_moment": "Support links 'feedback not tracked' reports to INV-DB-001 windows instead of guessing." },
+    { "category": "SPEED", "user_pain": "Debugging a cancelled request that mysteriously returned a degraded profile wastes time.", "suggestion": "Rethrow OperationCanceledException so cancellation is not misreported as a DB/degradation event.", "aha_moment": "A cancelled /suggest no longer logs a misleading 'feedback history failed' line." },
+    { "category": "RELIABILITY", "user_pain": "Reusing the wrong or nonexistent error code spreads inconsistency across services.", "suggestion": "Reuse the canonical existing INV-DB-001 rather than inventing a parallel DB code.", "aha_moment": "AgentAI DB errors now read identically to other services' DB errors, simplifying cross-service triage." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-06-14T12:58:00+03:00",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-06-14T12:58:00+03:00",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "iter0 FAIL (generic /feedback msg) -> iter1 fixed: specific actionable 'Failed to save feedback due to a database error. Please retry.'" },
+      "CQ2": { "result": "PASS", "evidence": "Reduces silent failure; graceful degradation preserved for DB class; non-DB now propagates." },
+      "CQ12": { "result": "PASS", "evidence": "iter0 FAIL -> iter1 PASS: actionable INV-DB-001 message; broad catches removed." }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "Graceful/non-blocking behavior preserved for realistic DB case; non-DB propagates." },
+      "Q2": { "result": "PASS", "reasoning": "OCE throw guard at AI-1 (real ct); absent at AI-2/AI-3 (CancellationToken.None)." },
+      "Q3": { "result": "PASS", "reasoning": "/feedback message specific+actionable, INV-DB-001, 500." }
+    },
+    "blocking_issues": [],
+    "iteration": 1,
+    "escalation_required": false,
+    "raw_text": "gpt-5.5-2026-04-23: iter0 FAIL (CQ1+CQ12 generic /feedback message) -> iter1 PASS, 12/12 CQ + 3/3 CoVe, BLOCKING NONE."
+  }
+}
