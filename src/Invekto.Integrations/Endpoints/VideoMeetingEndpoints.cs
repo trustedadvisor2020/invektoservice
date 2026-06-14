@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Invekto.Integrations.Services.Video;
 using Invekto.Shared.Contracts.Video;
 using Invekto.Shared.Logging;
@@ -142,11 +144,18 @@ public static class VideoMeetingEndpoints
 
         private static bool SlowEquals(string? a, string b)
         {
+            // Preserve the original null contract: a missing value never matches.
             if (a is null) return false;
-            if (a.Length != b.Length) return false;
-            int diff = 0;
-            for (int i = 0; i < a.Length; i++) diff |= a[i] ^ b[i];
-            return diff == 0;
+            // Audit Int-6: the old `a.Length != b.Length` early-exit leaked the secret length
+            // via timing. FixedTimeEquals alone does NOT fix that — it short-circuits on length
+            // mismatch. So hash both sides to a fixed 32-byte SHA-256 digest first, then compare
+            // the equal-length digests in constant time. The comparison is now length-independent
+            // (no length side-channel) and the auth decision is unchanged (equal->true, else false).
+            Span<byte> hashA = stackalloc byte[32];
+            Span<byte> hashB = stackalloc byte[32];
+            SHA256.HashData(Encoding.UTF8.GetBytes(a), hashA);
+            SHA256.HashData(Encoding.UTF8.GetBytes(b), hashB);
+            return CryptographicOperations.FixedTimeEquals(hashA, hashB);
         }
     }
 }

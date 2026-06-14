@@ -68,7 +68,22 @@ public sealed class IkasGraphQlClient
             request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
 
             using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
-            var body = await ReadBoundedResponseAsync(response, ct);
+            var (body, truncated) = await ReadBoundedResponseAsync(response, ct);
+
+            // Audit Int-5: a response that fills the 256KB cap is truncated, so the body is
+            // unreliable for BOTH the HTTP-error snippet and JSON parsing (the latter would throw
+            // a JsonException masquerading as a generic parse error). Handle truncation first,
+            // before the status/parse branches, and surface it as an explicit coded failure.
+            // (No raw body logged — only the byte cap and the HTTP status.)
+            if (truncated)
+            {
+                _logger.SystemWarn(
+                    $"[{ErrorCodes.IntegrationsEcomGraphQlFailed}] ikas GraphQL response truncated at {MaxResponseBytes} bytes " +
+                    $"(HTTP {(int)response.StatusCode}) — response too large.");
+                return IkasGraphQlResponse.Fail(
+                    ErrorCodes.IntegrationsEcomGraphQlFailed,
+                    $"Response too large (truncated at {MaxResponseBytes / 1024}KB)");
+            }
 
             if (!response.IsSuccessStatusCode)
             {
@@ -134,7 +149,7 @@ public sealed class IkasGraphQlClient
         }
     }
 
-    private static async Task<string> ReadBoundedResponseAsync(HttpResponseMessage response, CancellationToken ct)
+    private static async Task<(string Body, bool Truncated)> ReadBoundedResponseAsync(HttpResponseMessage response, CancellationToken ct)
     {
         using var stream = await response.Content.ReadAsStreamAsync(ct);
         var buffer = new byte[MaxResponseBytes];
@@ -147,7 +162,9 @@ public sealed class IkasGraphQlClient
             totalRead += bytesRead;
         }
 
-        return Encoding.UTF8.GetString(buffer, 0, totalRead);
+        // Buffer filled to the cap → there may be unread bytes on the wire; treat as truncated.
+        var truncated = totalRead >= MaxResponseBytes;
+        return (Encoding.UTF8.GetString(buffer, 0, totalRead), truncated);
     }
 
     private static string Truncate(string s, int maxLength) =>
