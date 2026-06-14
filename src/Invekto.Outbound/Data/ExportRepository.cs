@@ -58,7 +58,10 @@ public class ExportRepository
         public long Id { get; init; }
         public string CampaignId { get; init; } = "";
         public Guid[] BroadcastIds { get; init; } = Array.Empty<Guid>();
-        public int TemplateId { get; init; }
+        // Nullable: bulk_send_jobs.template_id is NULL for HSM (wa_template_id) and inline-text jobs
+        // (chk_bulk_message_source 3-way XOR, arch/db/outbound.sql). Reading it with GetInt32
+        // unconditionally threw InvalidCastException on those job kinds (audit Outbound-5).
+        public int? TemplateId { get; init; }
         public string? Lang { get; init; }
         public string Status { get; init; } = "";
         public int TotalSkippedOptout { get; init; }
@@ -220,7 +223,7 @@ public class ExportRepository
             Id = reader.GetInt64(0),
             CampaignId = reader.GetString(1),
             BroadcastIds = reader.IsDBNull(2) ? Array.Empty<Guid>() : (Guid[])reader.GetValue(2),
-            TemplateId = reader.GetInt32(3),
+            TemplateId = reader.IsDBNull(3) ? (int?)null : reader.GetInt32(3),
             Lang = S(reader, 4),
             Status = reader.GetString(5),
             TotalSkippedOptout = reader.GetInt32(6),
@@ -373,7 +376,8 @@ public class ExportRepository
                 Id = reader.GetInt64(0),
                 CampaignId = reader.GetString(1),
                 Status = reader.GetString(2),
-                TemplateId = reader.GetInt32(3),
+                // Nullable for HSM/inline jobs (see SendJobSummary.TemplateId, audit Outbound-6).
+                TemplateId = reader.IsDBNull(3) ? (int?)null : reader.GetInt32(3),
                 TotalRecipients = reader.GetInt32(4),
                 CreatedAt = reader.GetDateTime(5),
                 CompletedAt = reader.IsDBNull(6) ? null : reader.GetDateTime(6)
