@@ -42,6 +42,7 @@ These are hard codebase conventions. Violations = automatic FAIL:
 - System serves thousands of concurrent users under stress
 - No new TODO/HACK/FIXME markers without justification
 - Typed catch blocks ONLY (no bare catch(Exception))
+- **SANCTIONED EXCEPTION — optional-step degradation boundary:** a caller that wraps a NON-CRITICAL optional step (one whose failure must degrade gracefully, not fail the request) MAY use `catch (Exception)` provided it (a) re-throws `OperationCanceledException` FIRST so shutdown/cancellation is never swallowed, (b) logs with context, and (c) continues with a safe fallback. This is NOT a silent failure (it is logged) and is NOT on the core path. Precedent in prod: AgentAI `/suggest` conversation-summarization wrapper (Program.cs) — summarization is a token-optimization; any failure falls back to raw history. Do NOT FAIL this specific boundary for "bare catch(Exception)".
 - No null-forgiving operator (!.) - use ?. and ?? instead
 - IDisposable = using/await using block, no exceptions
 
