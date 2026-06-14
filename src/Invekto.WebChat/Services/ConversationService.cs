@@ -1,8 +1,10 @@
 using System.Collections.Concurrent;
+using Invekto.Shared.Constants;
 using Invekto.Shared.Logging;
 using Invekto.WebChat.Data;
 using Invekto.WebChat.Hubs;
 using Microsoft.AspNetCore.SignalR;
+using Npgsql;
 
 namespace Invekto.WebChat.Services;
 
@@ -63,10 +65,13 @@ public sealed class ConversationService
         // Fire-and-forget: notify Automation webhook
         if (!string.IsNullOrEmpty(widgetId))
         {
+            // Fire-and-forget outlives the request: the request CT (ctx.RequestAborted)
+            // is cancelled when the HTTP response completes, which would abort the webhook
+            // before its 5s timeout. Use CancellationToken.None; HttpClient.Timeout bounds it.
             _ = FireWebhookForWidgetAsync(widgetId, wc =>
                 _webhookClient.NotifyConversationCreatedAsync(
                     wc.TenantId, wc.FlowConversationCreated,
-                    conversationId, visitorId, name, email, pageUrl, ct));
+                    conversationId, visitorId, name, email, pageUrl, CancellationToken.None));
         }
 
         return conversationId;
@@ -105,10 +110,11 @@ public sealed class ConversationService
         // Fire-and-forget: notify Automation webhook
         if (!string.IsNullOrEmpty(conversation.WidgetId))
         {
+            // Fire-and-forget outlives the request → CancellationToken.None (see StartConversationAsync).
             _ = FireWebhookForWidgetAsync(conversation.WidgetId, wc =>
                 _webhookClient.NotifyVisitorMessageAsync(
                     wc.TenantId, wc.FlowVisitorMessage,
-                    conversationId, visitorId, content, ct));
+                    conversationId, visitorId, content, CancellationToken.None));
         }
 
         // Trigger AI reply if operator not online
@@ -172,10 +178,11 @@ public sealed class ConversationService
             // Fire-and-forget: notify Automation webhook
             if (!string.IsNullOrEmpty(widgetId))
             {
+                // Fire-and-forget outlives the request → CancellationToken.None (see StartConversationAsync).
                 _ = FireWebhookForWidgetAsync(widgetId, wc =>
                     _webhookClient.NotifyConversationClosedAsync(
                         wc.TenantId, wc.FlowConversationClosed,
-                        conversationId, ct));
+                        conversationId, CancellationToken.None));
             }
         }
         return closed;
@@ -191,9 +198,19 @@ public sealed class ConversationService
             if (wc != null)
                 await action(wc);
         }
+        catch (OperationCanceledException)
+        {
+            // App shutdown — nothing to recover, fire-and-forget has no caller to notify.
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"[{ErrorCodes.DatabaseConnectionFailed}] Widget config fetch failed for widget {widgetId}: {ex.Message}");
+        }
         catch (Exception ex)
         {
-            _logger.SystemError($"Webhook fire failed for widget {widgetId}: {ex.Message}");
+            // Sanctioned fire-and-forget boundary (see arch/codex-context.md): an unobserved-task
+            // exception has no caller to surface to; log full type+detail so ops can triage.
+            _logger.SystemError($"[{ErrorCodes.WebChatWebhookFailed}] Webhook fire unexpected ({ex.GetType().Name}) for widget {widgetId}: {ex}");
         }
     }
 
@@ -288,9 +305,19 @@ public sealed class ConversationService
 
             _logger.SystemInfo($"AI reply sent for conv {conversationId}");
         }
+        catch (OperationCanceledException)
+        {
+            // App shutdown — timer fire is best-effort, nothing to recover.
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"[{ErrorCodes.DatabaseConnectionFailed}] AI reply DB failure for conv {conversationId}: {ex.Message}");
+        }
         catch (Exception ex)
         {
-            _logger.SystemError($"AI reply failed for conv {conversationId}: {ex.Message}");
+            // Sanctioned fire-and-forget boundary (see arch/codex-context.md): timer/Task.Run
+            // callback has no caller; log full type+detail so ops can triage SignalR/unexpected faults.
+            _logger.SystemError($"[{ErrorCodes.WebChatAIReplyFailed}] AI reply unexpected ({ex.GetType().Name}) for conv {conversationId}: {ex}");
         }
         finally
         {

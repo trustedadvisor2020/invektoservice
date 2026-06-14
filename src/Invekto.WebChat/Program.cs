@@ -182,12 +182,12 @@ app.MapGet("/ready", async (PostgresConnectionFactory db) =>
 // Auth endpoint (operator login)
 // ============================================================
 
-app.MapPost("/api/v1/auth/login", (HttpContext ctx) =>
+app.MapPost("/api/v1/auth/login", async (HttpContext ctx) =>
 {
     var requestId = GetRequestId(ctx);
     try
     {
-        using var bodyDoc = JsonDocument.Parse(ctx.Request.Body);
+        using var bodyDoc = await JsonDocument.ParseAsync(ctx.Request.Body);
         var root = bodyDoc.RootElement;
         var email = root.TryGetProperty("email", out var e) ? e.GetString() : null;
         var password = root.TryGetProperty("password", out var p) ? p.GetString() : null;

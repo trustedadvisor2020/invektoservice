@@ -111,8 +111,12 @@ public sealed class AutomationWebhookClient
         }
         catch (Exception ex)
         {
+            // Sanctioned fire-and-forget boundary (see arch/codex-context.md): after the typed
+            // TaskCanceledException/HttpRequestException catches, a poison serialization/dispose fault
+            // must not escape this fire-and-forget call. Log full type+detail to distinguish it from
+            // the HTTP-level WebhookFailed signal above.
             _logger.SystemError(
-                $"[{ErrorCodes.WebChatWebhookFailed}] Webhook unexpected error for flow {flowId}: {ex.Message}");
+                $"[{ErrorCodes.WebChatWebhookFailed}] Webhook unexpected ({ex.GetType().Name}) for flow {flowId}: {ex}");
         }
     }
 }

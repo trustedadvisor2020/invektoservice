@@ -1,7 +1,9 @@
 using System.Text;
 using System.Text.Json;
+using Invekto.Shared.Constants;
 using Invekto.Shared.Logging;
 using Invekto.WebChat.Data;
+using Npgsql;
 
 namespace Invekto.WebChat.Services;
 
@@ -76,9 +78,29 @@ public sealed class PushNotificationService
 
             _logger.SystemInfo($"Push notification sent to {tokens.Count} device(s) for conv {conversationId}");
         }
+        catch (TaskCanceledException)
+        {
+            // No caller token is wired (invoked via Task.Run with ct=default), so the only
+            // reachable cancellation is the HttpClient transport timeout — log it as such.
+            _logger.SystemError($"[{ErrorCodes.WebChatPushNotificationFailed}] Expo push timed out for conv {conversationId}");
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.SystemError($"[{ErrorCodes.WebChatPushNotificationFailed}] Expo push HTTP failure: {ex.Message}");
+        }
+        catch (JsonException ex)
+        {
+            _logger.SystemError($"[{ErrorCodes.WebChatPushNotificationFailed}] Expo push response parse failure: {ex.Message}");
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"[{ErrorCodes.DatabaseConnectionFailed}] Invalid push token cleanup failed: {ex.Message}");
+        }
         catch (Exception ex)
         {
-            _logger.SystemError($"Push notification failed: {ex.Message}");
+            // Sanctioned fire-and-forget boundary (see arch/codex-context.md): invoked via Task.Run,
+            // no caller to surface to; log full type+detail so ops can triage.
+            _logger.SystemError($"[{ErrorCodes.WebChatPushNotificationFailed}] Push notification unexpected ({ex.GetType().Name}): {ex}");
         }
     }
 }
