@@ -38,13 +38,13 @@ public sealed class RiDashboardService
         var response = new RiDashboardResponse { TenantId = tenantId, Sector = sector };
 
         // Fire all insight reads in parallel
-        var rtTask = SafeGet(() => _insightRepo.GetResponseTimeInsightAsync(tenantId, instanceId, ct));
-        var alTask = SafeGet(() => _insightRepo.GetAgentLeaderboardAsync(tenantId, instanceId, ct));
-        var omTask = SafeGet(() => _insightRepo.GetObjectionMapAsync(tenantId, instanceId, ct));
-        var rcTask = SafeGet(() => _insightRepo.GetRescueCandidatesAsync(tenantId, instanceId, ct));
-        var qsTask = SafeGet(() => _insightRepo.GetQualityInsightAsync(tenantId, instanceId, false, ct));
-        var dhTask = SafeGet(() => _insightRepo.GetDemandHeatmapAsync(tenantId, instanceId, ct));
-        var rvTask = SafeGet(() => _insightRepo.GetRevenueAttributionAsync(tenantId, instanceId, null, ct));
+        var rtTask = InsightSafeGet.RunAsync(() => _insightRepo.GetResponseTimeInsightAsync(tenantId, instanceId, ct), _logger, "responseTime");
+        var alTask = InsightSafeGet.RunAsync(() => _insightRepo.GetAgentLeaderboardAsync(tenantId, instanceId, ct), _logger, "agentLeaderboard");
+        var omTask = InsightSafeGet.RunAsync(() => _insightRepo.GetObjectionMapAsync(tenantId, instanceId, ct), _logger, "objectionMap");
+        var rcTask = InsightSafeGet.RunAsync(() => _insightRepo.GetRescueCandidatesAsync(tenantId, instanceId, ct), _logger, "rescueCandidates");
+        var qsTask = InsightSafeGet.RunAsync(() => _insightRepo.GetQualityInsightAsync(tenantId, instanceId, false, ct), _logger, "qualityScore");
+        var dhTask = InsightSafeGet.RunAsync(() => _insightRepo.GetDemandHeatmapAsync(tenantId, instanceId, ct), _logger, "demandHeatmap");
+        var rvTask = InsightSafeGet.RunAsync(() => _insightRepo.GetRevenueAttributionAsync(tenantId, instanceId, null, ct), _logger, "revenue");
 
         await Task.WhenAll(rtTask, alTask, omTask, rcTask, qsTask, dhTask, rvTask);
 
@@ -59,8 +59,8 @@ public sealed class RiDashboardService
         // Include sector templates and benchmarks if sector is provided
         if (!string.IsNullOrWhiteSpace(sector))
         {
-            var templatesTask = SafeGet(() => _templateRepo.GetAllTemplatesBySectorAsync(sector, ct));
-            var benchTask = SafeGet(() => GetBenchmarksAsync(sector, ct));
+            var templatesTask = InsightSafeGet.RunAsync(() => _templateRepo.GetAllTemplatesBySectorAsync(sector, ct), _logger, "templates");
+            var benchTask = InsightSafeGet.RunAsync(() => GetBenchmarksAsync(sector, ct), _logger, "benchmarks");
             await Task.WhenAll(templatesTask, benchTask);
             response.Templates = templatesTask.Result;
             response.Benchmarks = benchTask.Result;
@@ -87,21 +87,5 @@ public sealed class RiDashboardService
             FaqCount = templates.Faqs.Count,
             FlowCount = templates.Flows.Count
         };
-    }
-
-    /// <summary>
-    /// Safe wrapper that returns null instead of throwing for missing data.
-    /// Insight data may not exist if compute hasn't been run for a tenant.
-    /// </summary>
-    private static async Task<T?> SafeGet<T>(Func<Task<T>> factory) where T : class
-    {
-        try
-        {
-            return await factory();
-        }
-        catch
-        {
-            return null;
-        }
     }
 }

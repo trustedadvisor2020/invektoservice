@@ -14,6 +14,7 @@ using Invekto.WhatsAppAnalytics.Services.Benchmark;
 using Invekto.WhatsAppAnalytics.Services.Insights;
 using Microsoft.AspNetCore.Mvc;
 using Invekto.WhatsAppAnalytics.Services.Pipeline;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -430,16 +431,35 @@ app.MapPost("/api/v1/wa/{tenantId:int}/upload", async (
         jsonLogger.StepInfo($"Analysis uploaded: id={analysisId}, tenant={tenantId}, file={file.FileName}, size={file.Length}", requestId);
         return Results.Json(new { analysisId, status = "pending", fileName = file.FileName }, statusCode: 202);
     }
+    catch (OperationCanceledException)
+    {
+        CleanupOrphanedFile();
+        return Results.StatusCode(499);
+    }
+    catch (NpgsqlException ex)
+    {
+        CleanupOrphanedFile();
+        jsonLogger.StepError($"[{ErrorCodes.WADatabaseError}] Upload DB write failed: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError, "Failed to save the upload due to a database error. Please retry.", requestId), statusCode: 500);
+    }
     catch (Exception ex)
     {
-        // Cleanup orphaned file on failure
+        // Sanctioned storage boundary (arch/codex-context.md): the upload writes a file then a DB row;
+        // genuine file/IO failures surface as a coded storage error (DB + cancellation handled above).
+        CleanupOrphanedFile();
+        jsonLogger.StepError($"[{ErrorCodes.WAStorageError}] Upload failed: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAStorageError, "File upload failed. Please retry.", requestId), statusCode: 500);
+    }
+
+    // Best-effort orphaned-file cleanup (sanctioned broad catch — arch/codex-context.md):
+    // a cleanup failure must never mask the original error response.
+    void CleanupOrphanedFile()
+    {
         if (savedPath != null && File.Exists(savedPath))
         {
             try { File.Delete(savedPath); }
             catch (Exception cleanupEx) { jsonLogger.SystemWarn($"[Upload] Failed to cleanup orphaned file {savedPath}: {cleanupEx.Message}"); }
         }
-        jsonLogger.StepError($"[{ErrorCodes.WAStorageError}] Upload failed: {ex.Message}", requestId);
-        return Results.Json(ErrorResponse.Create(ErrorCodes.WAStorageError, "File upload failed", requestId), statusCode: 500);
     }
 }).DisableAntiforgery();
 
@@ -474,9 +494,15 @@ app.MapPost("/api/v1/wa/{tenantId:int}/import-mssql", async (
         if (string.IsNullOrWhiteSpace(database))
             return Results.Json(ErrorResponse.Create(ErrorCodes.WACsvParseError, "database is required", requestId), statusCode: 400);
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
     {
-        return Results.Json(ErrorResponse.Create(ErrorCodes.WACsvParseError, $"Invalid request body: {ex.Message}", requestId), statusCode: 400);
+        return Results.StatusCode(499);
+    }
+    catch (Exception)
+    {
+        // Sanctioned request-body-parse boundary (arch/codex-context.md): a malformed or missing-field
+        // body (JsonException, missing property, etc.) is a client error → 400, not a 500.
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WACsvParseError, "Invalid request body. Provide a JSON object with 'database' and 'instanceId'.", requestId), statusCode: 400);
     }
 
     // Build config JSON
@@ -516,6 +542,7 @@ app.MapGet("/api/v1/wa/{tenantId:int}/analyses", async (
     int tenantId,
     HttpContext ctx,
     [FromServices] AnalyticsRepository repo,
+    [FromServices] JsonLinesLogger jsonLogger,
     int? page,
     int? limit) =>
 {
@@ -532,9 +559,14 @@ app.MapGet("/api/v1/wa/{tenantId:int}/analyses", async (
         var (items, total) = await repo.ListAnalysesAsync(tenantId, p, l);
         return Results.Ok(new { analyses = items, total, page = p, limit = l });
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
     {
-        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError, $"List failed: {ex.Message}", requestId), statusCode: 500);
+        return Results.StatusCode(499);
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLogger.SystemError($"[{ErrorCodes.WADatabaseError}] List analyses failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError, "Failed to list analyses due to a database error. Please retry.", requestId), statusCode: 500);
     }
 });
 
@@ -542,7 +574,8 @@ app.MapGet("/api/v1/wa/{tenantId:int}/analyses", async (
 app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}", async (
     int tenantId, int analysisId,
     HttpContext ctx,
-    [FromServices] AnalyticsRepository repo) =>
+    [FromServices] AnalyticsRepository repo,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
     var tenant = GetValidatedTenant(ctx, tenantId);
@@ -557,9 +590,14 @@ app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}", async (
 
         return Results.Ok(analysis);
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
     {
-        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError, $"Get failed: {ex.Message}", requestId), statusCode: 500);
+        return Results.StatusCode(499);
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLogger.SystemError($"[{ErrorCodes.WADatabaseError}] Get analysis failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError, "Failed to read the analysis due to a database error. Please retry.", requestId), statusCode: 500);
     }
 });
 
@@ -584,10 +622,14 @@ app.MapDelete("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}", async (
         jsonLogger.StepInfo($"Analysis deleted: id={analysisId}, tenant={tenantId}", requestId);
         return Results.Ok(new { message = "Analysis deleted", analysisId });
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
     {
-        jsonLogger.StepError($"[{ErrorCodes.WAAnalysisDeleteFailed}] Delete failed: {ex.Message}", requestId);
-        return Results.Json(ErrorResponse.Create(ErrorCodes.WAAnalysisDeleteFailed, "Analysis delete failed", requestId), statusCode: 500);
+        return Results.StatusCode(499);
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.WADatabaseError}] Delete failed: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError, "Failed to delete the analysis due to a database error. Please retry.", requestId), statusCode: 500);
     }
 });
 
@@ -598,7 +640,8 @@ app.MapDelete("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}", async (
 app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}/metadata", async (
     int tenantId, int analysisId,
     HttpContext ctx,
-    [FromServices] AnalyticsRepository repo) =>
+    [FromServices] AnalyticsRepository repo,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
     var tenant = GetValidatedTenant(ctx, tenantId);
@@ -614,9 +657,14 @@ app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}/metadata", async
         // Return raw JSON
         return Results.Text(metadataJson, "application/json");
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
     {
-        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError, $"Metadata query failed: {ex.Message}", requestId), statusCode: 500);
+        return Results.StatusCode(499);
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLogger.SystemError($"[{ErrorCodes.WADatabaseError}] Metadata read failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError, "Failed to read metadata due to a database error. Please retry.", requestId), statusCode: 500);
     }
 });
 
@@ -1075,10 +1123,16 @@ app.MapPost("/api/ops/insights/compute/response-time", async (
     {
         return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNoOutcomes, ex.Message, requestId), statusCode: 404);
     }
+    catch (OperationCanceledException)
+    {
+        return Results.StatusCode(499);
+    }
     catch (Exception ex)
     {
+        // Sanctioned compute-orchestration boundary (arch/codex-context.md): MSSQL source read + PG
+        // writes; any failure surfaces as a coded compute-failure rather than a bare 500.
         jsonLogger.SystemError($"[Insight] Response time compute failed: {ex.Message}");
-        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Compute failed", requestId, ex.Message), statusCode: 500);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Response time compute failed. Verify source data exists, then retry.", requestId), statusCode: 500);
     }
 });
 
@@ -1086,7 +1140,8 @@ app.MapPost("/api/ops/insights/compute/response-time", async (
 app.MapGet("/api/ops/insights/response-time/{tenantId:int}", async (
     int tenantId,
     HttpContext ctx,
-    [FromServices] InsightRepository insightRepo) =>
+    [FromServices] InsightRepository insightRepo,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     if (!ValidateOpsKey(ctx))
@@ -1105,10 +1160,15 @@ app.MapGet("/api/ops/insights/response-time/{tenantId:int}", async (
 
         return Results.Ok(new { requestId, insight });
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
     {
-        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
-            "Failed to read insight data", requestId, ex.Message), statusCode: 500);
+        return Results.StatusCode(499);
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLogger.SystemError($"[{ErrorCodes.WADatabaseError}] Response time read failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError,
+            "Failed to read response time insight due to a database error. Please retry.", requestId), statusCode: 500);
     }
 });
 
@@ -1140,10 +1200,16 @@ app.MapPost("/api/ops/insights/compute/agent-leaderboard", async (
         var result = await alService.ComputeAsync(request);
         return Results.Ok(new { requestId, result });
     }
+    catch (OperationCanceledException)
+    {
+        return Results.StatusCode(499);
+    }
     catch (Exception ex)
     {
+        // Sanctioned compute-orchestration boundary (arch/codex-context.md): MSSQL source read + PG
+        // writes; any failure surfaces as a coded compute-failure rather than a bare 500.
         jsonLogger.SystemError($"[Insight] Agent leaderboard compute failed: {ex.Message}");
-        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Compute failed", requestId, ex.Message), statusCode: 500);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Agent leaderboard compute failed. Verify source data exists, then retry.", requestId), statusCode: 500);
     }
 });
 
@@ -1151,7 +1217,8 @@ app.MapPost("/api/ops/insights/compute/agent-leaderboard", async (
 app.MapGet("/api/ops/insights/agent-leaderboard/{tenantId:int}", async (
     int tenantId,
     HttpContext ctx,
-    [FromServices] InsightRepository insightRepo) =>
+    [FromServices] InsightRepository insightRepo,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     if (!ValidateOpsKey(ctx))
@@ -1170,10 +1237,15 @@ app.MapGet("/api/ops/insights/agent-leaderboard/{tenantId:int}", async (
 
         return Results.Ok(new { requestId, insight });
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
     {
-        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
-            "Failed to read agent leaderboard data", requestId, ex.Message), statusCode: 500);
+        return Results.StatusCode(499);
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLogger.SystemError($"[{ErrorCodes.WADatabaseError}] Agent leaderboard read failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError,
+            "Failed to read agent leaderboard due to a database error. Please retry.", requestId), statusCode: 500);
     }
 });
 
@@ -1205,10 +1277,16 @@ app.MapPost("/api/ops/insights/compute/rescue", async (
         var result = await rescueService.ComputeAsync(request);
         return Results.Ok(new { requestId, result });
     }
+    catch (OperationCanceledException)
+    {
+        return Results.StatusCode(499);
+    }
     catch (Exception ex)
     {
+        // Sanctioned compute-orchestration boundary (arch/codex-context.md): MSSQL source read + PG
+        // writes; any failure surfaces as a coded compute-failure rather than a bare 500.
         jsonLogger.SystemError($"[Insight] Rescue compute failed: {ex.Message}");
-        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Compute failed", requestId, ex.Message), statusCode: 500);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Rescue compute failed. Verify source data exists, then retry.", requestId), statusCode: 500);
     }
 });
 
@@ -1216,7 +1294,8 @@ app.MapPost("/api/ops/insights/compute/rescue", async (
 app.MapGet("/api/ops/insights/rescue/{tenantId:int}", async (
     int tenantId,
     HttpContext ctx,
-    [FromServices] InsightRepository insightRepo) =>
+    [FromServices] InsightRepository insightRepo,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     if (!ValidateOpsKey(ctx))
@@ -1235,10 +1314,15 @@ app.MapGet("/api/ops/insights/rescue/{tenantId:int}", async (
 
         return Results.Ok(new { requestId, insight });
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
     {
-        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
-            "Failed to read rescue candidate data", requestId, ex.Message), statusCode: 500);
+        return Results.StatusCode(499);
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLogger.SystemError($"[{ErrorCodes.WADatabaseError}] Rescue candidates read failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError,
+            "Failed to read rescue candidates due to a database error. Please retry.", requestId), statusCode: 500);
     }
 });
 
@@ -1274,10 +1358,16 @@ app.MapPost("/api/ops/insights/compute/demand-heatmap", async (
     {
         return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNoOutcomes, ex.Message, requestId), statusCode: 404);
     }
+    catch (OperationCanceledException)
+    {
+        return Results.StatusCode(499);
+    }
     catch (Exception ex)
     {
+        // Sanctioned compute-orchestration boundary (arch/codex-context.md): MSSQL source read + PG
+        // writes; any failure surfaces as a coded compute-failure rather than a bare 500.
         jsonLogger.SystemError($"[Insight] Demand heatmap compute failed: {ex.Message}");
-        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Compute failed", requestId, ex.Message), statusCode: 500);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Demand heatmap compute failed. Verify source data exists, then retry.", requestId), statusCode: 500);
     }
 });
 
@@ -1285,7 +1375,8 @@ app.MapPost("/api/ops/insights/compute/demand-heatmap", async (
 app.MapGet("/api/ops/insights/demand-heatmap/{tenantId:int}", async (
     int tenantId,
     HttpContext ctx,
-    [FromServices] InsightRepository insightRepo) =>
+    [FromServices] InsightRepository insightRepo,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     if (!ValidateOpsKey(ctx))
@@ -1304,10 +1395,15 @@ app.MapGet("/api/ops/insights/demand-heatmap/{tenantId:int}", async (
 
         return Results.Ok(new { requestId, insight });
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
     {
-        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
-            "Failed to read demand heatmap data", requestId, ex.Message), statusCode: 500);
+        return Results.StatusCode(499);
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLogger.SystemError($"[{ErrorCodes.WADatabaseError}] Demand heatmap read failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError,
+            "Failed to read demand heatmap due to a database error. Please retry.", requestId), statusCode: 500);
     }
 });
 
@@ -1343,10 +1439,16 @@ app.MapPost("/api/ops/insights/compute/revenue-attribution", async (
     {
         return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNoOutcomes, ex.Message, requestId), statusCode: 404);
     }
+    catch (OperationCanceledException)
+    {
+        return Results.StatusCode(499);
+    }
     catch (Exception ex)
     {
+        // Sanctioned compute-orchestration boundary (arch/codex-context.md): MSSQL source read + PG
+        // writes; any failure surfaces as a coded compute-failure rather than a bare 500.
         jsonLogger.SystemError($"[Insight] Revenue attribution compute failed: {ex.Message}");
-        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Compute failed", requestId, ex.Message), statusCode: 500);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Revenue attribution compute failed. Verify source data exists, then retry.", requestId), statusCode: 500);
     }
 });
 
@@ -1354,7 +1456,8 @@ app.MapPost("/api/ops/insights/compute/revenue-attribution", async (
 app.MapGet("/api/ops/insights/revenue-attribution/{tenantId:int}", async (
     int tenantId,
     HttpContext ctx,
-    [FromServices] InsightRepository insightRepo) =>
+    [FromServices] InsightRepository insightRepo,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     if (!ValidateOpsKey(ctx))
@@ -1377,10 +1480,15 @@ app.MapGet("/api/ops/insights/revenue-attribution/{tenantId:int}", async (
 
         return Results.Ok(new { requestId, insight });
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
     {
-        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
-            "Failed to read revenue attribution data", requestId, ex.Message), statusCode: 500);
+        return Results.StatusCode(499);
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLogger.SystemError($"[{ErrorCodes.WADatabaseError}] Revenue attribution read failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError,
+            "Failed to read revenue attribution due to a database error. Please retry.", requestId), statusCode: 500);
     }
 });
 
@@ -1412,10 +1520,15 @@ app.MapPost("/api/ops/insights/compute/objection-map", async (
         var result = await objService.ComputeAsync(request);
         return Results.Ok(new { requestId, result });
     }
+    catch (OperationCanceledException)
+    {
+        return Results.StatusCode(499);
+    }
     catch (Exception ex)
     {
+        // Sanctioned compute-orchestration boundary (arch/codex-context.md): coded compute-failure, not bare 500.
         jsonLogger.SystemError($"[Insight] Objection map compute failed: {ex.Message}");
-        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Objection map compute failed — check PG offer_lost outcomes exist", requestId, ex.Message), statusCode: 500);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Objection map compute failed. Verify PG offer_lost outcomes exist, then retry.", requestId), statusCode: 500);
     }
 });
 
@@ -1423,7 +1536,8 @@ app.MapPost("/api/ops/insights/compute/objection-map", async (
 app.MapGet("/api/ops/insights/objection-map/{tenantId:int}", async (
     int tenantId,
     HttpContext ctx,
-    [FromServices] InsightRepository insightRepo) =>
+    [FromServices] InsightRepository insightRepo,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     if (!ValidateOpsKey(ctx))
@@ -1442,10 +1556,15 @@ app.MapGet("/api/ops/insights/objection-map/{tenantId:int}", async (
 
         return Results.Ok(new { requestId, insight });
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
     {
-        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
-            "Failed to read objection map — wa_objection_map query error", requestId, ex.Message), statusCode: 500);
+        return Results.StatusCode(499);
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLogger.SystemError($"[{ErrorCodes.WADatabaseError}] Objection map read failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError,
+            "Failed to read objection map due to a database error. Please retry.", requestId), statusCode: 500);
     }
 });
 
@@ -1481,10 +1600,15 @@ app.MapPost("/api/ops/insights/compute/quality-score", async (
     {
         return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNoOutcomes, ex.Message, requestId), statusCode: 404);
     }
+    catch (OperationCanceledException)
+    {
+        return Results.StatusCode(499);
+    }
     catch (Exception ex)
     {
+        // Sanctioned compute-orchestration boundary (arch/codex-context.md): coded compute-failure, not bare 500.
         jsonLogger.SystemError($"[Insight] Quality score compute failed: {ex.Message}");
-        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Quality score compute failed — check PG outcomes + response times exist", requestId, ex.Message), statusCode: 500);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Quality score compute failed. Verify PG outcomes + response times exist, then retry.", requestId), statusCode: 500);
     }
 });
 
@@ -1492,7 +1616,8 @@ app.MapPost("/api/ops/insights/compute/quality-score", async (
 app.MapGet("/api/ops/insights/quality-score/{tenantId:int}", async (
     int tenantId,
     HttpContext ctx,
-    [FromServices] InsightRepository insightRepo) =>
+    [FromServices] InsightRepository insightRepo,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     if (!ValidateOpsKey(ctx))
@@ -1513,10 +1638,15 @@ app.MapGet("/api/ops/insights/quality-score/{tenantId:int}", async (
 
         return Results.Ok(new { requestId, insight });
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
     {
-        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
-            "Failed to read quality scores — wa_quality_scores query error", requestId, ex.Message), statusCode: 500);
+        return Results.StatusCode(499);
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLogger.SystemError($"[{ErrorCodes.WADatabaseError}] Quality scores read failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError,
+            "Failed to read quality scores due to a database error. Please retry.", requestId), statusCode: 500);
     }
 });
 
@@ -1556,11 +1686,16 @@ app.MapPost("/api/ops/templates/mine", async (
         var result = await miningService.MineAsync(request.Sector);
         return Results.Ok(new { requestId, result });
     }
+    catch (OperationCanceledException)
+    {
+        return Results.StatusCode(499);
+    }
     catch (Exception ex)
     {
+        // Sanctioned mining-orchestration boundary (arch/codex-context.md): coded failure, not bare 500.
         jsonLogger.SystemError($"[TemplateMining] Mine failed for sector '{request.Sector}': {ex.Message}");
         return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
-            $"Template mining failed for sector '{request.Sector}' — check PG template tables exist", requestId, ex.Message), statusCode: 500);
+            $"Template mining failed for sector '{request.Sector}'. Verify PG template tables exist, then retry.", requestId), statusCode: 500);
     }
 });
 
@@ -1588,11 +1723,15 @@ app.MapGet("/api/ops/templates/{sector}", async (
 
         return Results.Ok(new { requestId, templates });
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
+    {
+        return Results.StatusCode(499);
+    }
+    catch (NpgsqlException ex)
     {
         jsonLogger.SystemError($"[TemplateMining] Get templates failed for sector '{sector}': {ex.Message}");
-        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
-            $"Failed to read templates for sector '{sector}' — check PG connection", requestId, ex.Message), statusCode: 500);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError,
+            $"Failed to read templates for sector '{sector}' due to a database error. Please retry.", requestId), statusCode: 500);
     }
 });
 
@@ -1625,11 +1764,16 @@ app.MapPost("/api/ops/templates/mine-all", async (
         var result = await bulkService.MineAllSectorsAsync(request?.Sectors);
         return Results.Ok(new { requestId, result });
     }
+    catch (OperationCanceledException)
+    {
+        return Results.StatusCode(499);
+    }
     catch (Exception ex)
     {
+        // Sanctioned mining-orchestration boundary (arch/codex-context.md): coded failure, not bare 500.
         jsonLogger.SystemError($"[BulkMine] Bulk mine failed: {ex.Message}");
         return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
-            "Bulk template mining failed", requestId, ex.Message), statusCode: 500);
+            "Bulk template mining failed. Please retry.", requestId), statusCode: 500);
     }
 });
 
@@ -1648,11 +1792,15 @@ app.MapGet("/api/ops/templates/profiles", async (
         var profiles = await bulkService.GetSectorProfilesAsync();
         return Results.Ok(new { requestId, totalSectors = profiles.Count, profiles });
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
+    {
+        return Results.StatusCode(499);
+    }
+    catch (NpgsqlException ex)
     {
         jsonLogger.SystemError($"[BulkMine] Sector profiles failed: {ex.Message}");
-        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
-            "Failed to load sector profiles", requestId, ex.Message), statusCode: 500);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError,
+            "Failed to load sector profiles due to a database error. Please retry.", requestId), statusCode: 500);
     }
 });
 
@@ -1684,11 +1832,16 @@ app.MapGet("/api/v1/wa/{tenantId:int}/ri/dashboard", async (
         var dashboard = await dashboardService.GetDashboardAsync(tenantId, sector, instanceId);
         return Results.Ok(new { requestId, dashboard });
     }
+    catch (OperationCanceledException)
+    {
+        return Results.StatusCode(499);
+    }
     catch (Exception ex)
     {
+        // Sanctioned dashboard-aggregation boundary (arch/codex-context.md): coded failure, not bare 500.
         jsonLogger.SystemError($"[RiDashboard] Dashboard failed for tenant {tenantId}: {ex.Message}");
         return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
-            "Dashboard aggregation failed", requestId, ex.Message), statusCode: 500);
+            "Dashboard aggregation failed. Please retry.", requestId), statusCode: 500);
     }
 });
 
@@ -1715,11 +1868,15 @@ app.MapGet("/api/v1/wa/{tenantId:int}/ri/revenue", async (
         var data = await insightRepo.GetRevenueAttributionAsync(tenantId, instanceId, dimension);
         return Results.Ok(new { requestId, data });
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
+    {
+        return Results.StatusCode(499);
+    }
+    catch (NpgsqlException ex)
     {
         jsonLogger.SystemError($"[RiDashboard] Revenue failed for tenant {tenantId}: {ex.Message}");
-        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
-            "No revenue data found. Run insight compute first.", requestId), statusCode: 404);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError,
+            "Failed to read revenue data due to a database error. Please retry.", requestId), statusCode: 500);
     }
 });
 
@@ -1942,11 +2099,16 @@ app.MapPost("/api/v1/wa/{tenantId:int}/ri/templates/{type}", async (
         jsonLogger.StepInfo($"[RiTemplates] Created {type} id={id} by tenant {tenantId}", requestId);
         return Results.Json(new { requestId, type, id }, statusCode: 201);
     }
+    catch (OperationCanceledException)
+    {
+        return Results.StatusCode(499);
+    }
     catch (Exception ex)
     {
+        // Sanctioned write-operation boundary (arch/codex-context.md): body parse + DB insert; coded failure, not bare 500.
         jsonLogger.SystemError($"[RiTemplates] {ErrorCodes.WATemplateCreateFailed} Create {type} failed: {ex.Message}");
         return Results.Json(ErrorResponse.Create(ErrorCodes.WATemplateCreateFailed,
-            $"Template create failed: {ex.Message}", requestId), statusCode: 500);
+            "Template create failed. Verify the request body, then retry.", requestId), statusCode: 500);
     }
 });
 
@@ -2030,11 +2192,16 @@ app.MapPut("/api/v1/wa/{tenantId:int}/ri/templates/{type}/{id:long}", async (
         jsonLogger.StepInfo($"[RiTemplates] Updated {type}/{id} by tenant {tenantId}", requestId);
         return Results.Ok(new { requestId, type, id });
     }
+    catch (OperationCanceledException)
+    {
+        return Results.StatusCode(499);
+    }
     catch (Exception ex)
     {
+        // Sanctioned write-operation boundary (arch/codex-context.md): body parse + DB update/toggle; coded failure, not bare 500.
         jsonLogger.SystemError($"[RiTemplates] {ErrorCodes.WATemplateUpdateFailed} Update {type}/{id} failed: {ex.Message}");
         return Results.Json(ErrorResponse.Create(ErrorCodes.WATemplateUpdateFailed,
-            $"Template update failed: {ex.Message}", requestId), statusCode: 500);
+            "Template update failed. Verify the request body, then retry.", requestId), statusCode: 500);
     }
 });
 
@@ -2064,11 +2231,15 @@ app.MapDelete("/api/v1/wa/{tenantId:int}/ri/templates/{type}/{id:long}", async (
         return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
             ex.Message, requestId), statusCode: 404);
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
     {
-        jsonLogger.SystemError($"[RiTemplates] {ErrorCodes.WATemplateUpdateFailed} Delete {type}/{id} failed: {ex.Message}");
-        return Results.Json(ErrorResponse.Create(ErrorCodes.WATemplateUpdateFailed,
-            $"Template delete failed: {ex.Message}", requestId), statusCode: 500);
+        return Results.StatusCode(499);
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLogger.SystemError($"[RiTemplates] {ErrorCodes.WADatabaseError} Delete {type}/{id} failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError,
+            "Failed to delete the template due to a database error. Please retry.", requestId), statusCode: 500);
     }
 });
 
@@ -2113,11 +2284,15 @@ app.MapPut("/api/v1/wa/{tenantId:int}/ri/rescue/{conversationId}/status", async 
         jsonLogger.StepInfo($"[Rescue] Status updated: tenant={tenantId}, conv={conversationId}, status={status}", requestId);
         return Results.Ok(new { requestId, conversationId, status });
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
     {
-        jsonLogger.SystemError($"[Rescue] {ErrorCodes.WARescueStatusUpdateFailed} Status update failed: {ex.Message}");
-        return Results.Json(ErrorResponse.Create(ErrorCodes.WARescueStatusUpdateFailed,
-            "Rescue status update failed", requestId), statusCode: 500);
+        return Results.StatusCode(499);
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLogger.SystemError($"[Rescue] {ErrorCodes.WADatabaseError} Status update failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError,
+            "Failed to update rescue status due to a database error. Please retry.", requestId), statusCode: 500);
     }
 });
 
@@ -2155,11 +2330,15 @@ app.MapPost("/api/v1/wa/{tenantId:int}/ri/feedback", async (
         jsonLogger.StepInfo($"[RiDashboard] Feedback: tenant={tenantId} conv={request.ConversationId} agree={request.IsAgree}", requestId);
         return Results.Ok(new { requestId, saved = true });
     }
-    catch (Exception ex)
+    catch (OperationCanceledException)
+    {
+        return Results.StatusCode(499);
+    }
+    catch (NpgsqlException ex)
     {
         jsonLogger.SystemError($"[RiDashboard] Feedback save failed: {ex.Message}");
-        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
-            "Feedback save failed", requestId, ex.Message), statusCode: 500);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError,
+            "Failed to save feedback due to a database error. Please retry.", requestId), statusCode: 500);
     }
 });
 
@@ -2207,11 +2386,16 @@ app.MapGet("/api/v1/wa/{tenantId:int}/ri/onboarding", async (
         var data = await onboardingService.GetOnboardingAsync(tenantId, sector, instanceId);
         return Results.Ok(new { requestId, data });
     }
+    catch (OperationCanceledException)
+    {
+        return Results.StatusCode(499);
+    }
     catch (Exception ex)
     {
+        // Sanctioned aggregation boundary (arch/codex-context.md): coded failure, not bare 500.
         jsonLogger.SystemError($"[RiOnboarding] Onboarding insight failed for tenant {tenantId}: {ex.Message}");
         return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
-            "Onboarding insight failed", requestId, ex.Message), statusCode: 500);
+            "Onboarding insight failed. Please retry.", requestId), statusCode: 500);
     }
 });
 

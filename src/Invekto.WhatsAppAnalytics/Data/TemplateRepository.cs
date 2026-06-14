@@ -48,7 +48,7 @@ public sealed class TemplateRepository
                 VALUES ");
 
             var pIdx = 0;
-            var cmd = conn.CreateCommand();
+            await using var cmd = conn.CreateCommand();
 
             for (var i = 0; i < batch.Length; i++)
             {
@@ -83,7 +83,6 @@ public sealed class TemplateRepository
 
             cmd.CommandText = sb.ToString();
             await cmd.ExecuteNonQueryAsync(ct);
-            await cmd.DisposeAsync();
         }
     }
 
@@ -148,7 +147,7 @@ public sealed class TemplateRepository
                 VALUES ");
 
             var pIdx = 0;
-            var cmd = conn.CreateCommand();
+            await using var cmd = conn.CreateCommand();
 
             for (var i = 0; i < batch.Length; i++)
             {
@@ -169,7 +168,6 @@ public sealed class TemplateRepository
             // FAQs don't have unique constraint on question, just insert
             cmd.CommandText = sb.ToString();
             await cmd.ExecuteNonQueryAsync(ct);
-            await cmd.DisposeAsync();
         }
     }
 
@@ -231,7 +229,7 @@ public sealed class TemplateRepository
                 VALUES ");
 
             var pIdx = 0;
-            var cmd = conn.CreateCommand();
+            await using var cmd = conn.CreateCommand();
 
             for (var i = 0; i < batch.Length; i++)
             {
@@ -262,7 +260,6 @@ public sealed class TemplateRepository
 
             cmd.CommandText = sb.ToString();
             await cmd.ExecuteNonQueryAsync(ct);
-            await cmd.DisposeAsync();
         }
     }
 
@@ -325,7 +322,7 @@ public sealed class TemplateRepository
                 VALUES ");
 
             var pIdx = 0;
-            var cmd = conn.CreateCommand();
+            await using var cmd = conn.CreateCommand();
 
             for (var i = 0; i < batch.Length; i++)
             {
@@ -352,7 +349,6 @@ public sealed class TemplateRepository
 
             cmd.CommandText = sb.ToString();
             await cmd.ExecuteNonQueryAsync(ct);
-            await cmd.DisposeAsync();
         }
     }
 
@@ -414,7 +410,7 @@ public sealed class TemplateRepository
                 VALUES ");
 
             var pIdx = 0;
-            var cmd = conn.CreateCommand();
+            await using var cmd = conn.CreateCommand();
 
             for (var i = 0; i < batch.Length; i++)
             {
@@ -443,7 +439,6 @@ public sealed class TemplateRepository
 
             cmd.CommandText = sb.ToString();
             await cmd.ExecuteNonQueryAsync(ct);
-            await cmd.DisposeAsync();
         }
     }
 
@@ -506,7 +501,7 @@ public sealed class TemplateRepository
                 VALUES ");
 
             var pIdx = 0;
-            var cmd = conn.CreateCommand();
+            await using var cmd = conn.CreateCommand();
 
             for (var i = 0; i < batch.Length; i++)
             {
@@ -533,7 +528,6 @@ public sealed class TemplateRepository
 
             cmd.CommandText = sb.ToString();
             await cmd.ExecuteNonQueryAsync(ct);
-            await cmd.DisposeAsync();
         }
     }
 
