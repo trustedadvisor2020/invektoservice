@@ -10,6 +10,12 @@
 
 ---
 
+## Cast/projection-only diff'te Codex CQ9 pre-existing tenant-pattern'i diff'e atfeder (2026-06-14, audit Batch 1)
+
+**Baglam:** GetInt32-on-bigint `::int` cast batch'i (SADECE SELECT projeksiyonu degisti) Codex iter0'da CQ9 FAIL aldi — dokunulan iki sorgunun (Appointments korelasyonlu COUNT subquery + Knowledge `analysis_id`-scoped read) tenant_id predicate'i "eksik" dendi. Ama diff hicbir WHERE/JOIN'e dokunmadi; predicate'ler PRE-EXISTING. Ayrica Q1 UNKNOWN (int-range sema kanitlanamaz) + CoVe MEDIUM coverage Auth/Lifecycle span etmiyordu.
+
+**Ders:** Mekanik/projection-only bir diff, cevresinde pre-existing tenant-scoping pattern'i olan bir satira dokununca Codex CQ9 onu diff'e atfeder (hot-lessons: "precedent-in-summary TEK BASINA yetmez"). Cozum KOD DEGISTIRMEDEN, scope creep YOK: (1) `arch/codex-context.md` FEATURE-SPECIFIC INTENT'e anti-FP entry yaz (projection-only predicate'leri byte-identical birakir; Appointments subquery korelasyonlu-safe `s.tenant_id=@tid`'e bagli; Knowledge analysis_id-scoped pre-existing, sibling `ReadFaqClustersAsync` ayni) + entry'i DIFF'E DAHIL ET; (2) summary'de corrected-premise; (3) MEDIUM icin CoVe'yi Auth+Lifecycle VQ ile genislet. iter0 FAIL→iter1 PASS. **Tenant-fix'i mekanik cast batch'ine BUNDLE ETME** — tenantId threading = imza degisikligi + sibling sorgular; ayri "tenant-scoping hardening" batch'ine TRACK et (durustluk; gercek gap'i gizleme). **Why:** Codex sadece diff delta'sini guvenilir degerlendirir; in-diff sanctioned-exception dokumani CQ9 false-positive'i kapatir.
+
 ## Codex review: diff-disi garanti kodunu doc-comment'te alintila (2026-06-13, FEATURE C)
 
 **Baglam:** FEATURE C (cxapi 'sending' recovery sweep) Codex iter0 FAIL — CQ9/Q1/Q2 "age-only reset bir in-flight gonderimle yarisip cift gonderim yapabilir" dedi. Gercekte duplicate-safety, gonderim yolundaki **posting CAS**'i (`SetMessagePostingAsync`, reset olmus satirda POST'u atlar) tarafindan garanti ediliyordu — ama o kod diff'te DEGILDI, Codex goremedi → false-positive FAIL.
