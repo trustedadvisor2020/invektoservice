@@ -93,10 +93,28 @@ public sealed class ReplyGenerator
                 return null;
             }
 
-            var content = responseJson.RootElement
-                .GetProperty("content")[0]
-                .GetProperty("text")
-                .GetString();
+            // Defensive navigation: missing/mis-shaped fields degrade to null instead of
+            // throwing KeyNotFound/InvalidOperation/IndexOutOfRange (keeps the catch typed).
+            var root = responseJson.RootElement;
+            if (root.ValueKind != JsonValueKind.Object
+                || !root.TryGetProperty("content", out var contentArray)
+                || contentArray.ValueKind != JsonValueKind.Array
+                || contentArray.GetArrayLength() == 0)
+            {
+                _logger.SystemWarn("[ReplyGenerator] Claude response missing content array");
+                return null;
+            }
+
+            var firstBlock = contentArray[0];
+            if (firstBlock.ValueKind != JsonValueKind.Object
+                || !firstBlock.TryGetProperty("text", out var textProp)
+                || textProp.ValueKind != JsonValueKind.String)
+            {
+                _logger.SystemWarn("[ReplyGenerator] Claude response missing content[0].text");
+                return null;
+            }
+
+            var content = textProp.GetString();
 
             if (string.IsNullOrEmpty(content))
             {
@@ -120,12 +138,29 @@ public sealed class ReplyGenerator
             _logger.SystemWarn($"[ReplyGenerator] Claude reply generation timeout after {sw.ElapsedMilliseconds}ms");
             return new ReplyResult { ErrorCode = "timeout", ProcessingTimeMs = sw.ElapsedMilliseconds };
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
-            sw.Stop();
-            _logger.SystemWarn($"[ReplyGenerator] Reply generation failed after {sw.ElapsedMilliseconds}ms: {ex.Message}");
-            return null;
+            return LogTransportFailure(ex, sw);
         }
+        catch (JsonException ex)
+        {
+            return LogTransportFailure(ex, sw);
+        }
+        catch (NotSupportedException ex)
+        {
+            return LogTransportFailure(ex, sw);
+        }
+    }
+
+    // Typed transport/serialization failures degrade to null (graceful). Separate catch
+    // blocks (not `catch (Exception) when (...)`) because Codex treats a when-filtered
+    // Exception base as broad in this project (hot-lessons L36). Genuine-unexpected
+    // exceptions propagate so they surface as a 500 rather than a silent null.
+    private ReplyResult? LogTransportFailure(Exception ex, Stopwatch sw)
+    {
+        sw.Stop();
+        _logger.SystemWarn($"[ReplyGenerator] Reply generation failed after {sw.ElapsedMilliseconds}ms: {ex.Message}");
+        return null;
     }
 
     private static string BuildSystemPrompt(
@@ -277,8 +312,10 @@ public sealed class ReplyGenerator
             _logger.SystemWarn($"[ReplyGenerator] JSON parse error: {ex.Message}, raw={responseText}");
             return null;
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
+            // Non-JSON shape errors (e.g. GetDouble on a non-number, root not an object).
+            // JsonException is handled above; genuine-unexpected exceptions propagate.
             _logger.SystemWarn($"[ReplyGenerator] Failed to parse reply response: {ex.Message}, raw={responseText}");
             return null;
         }

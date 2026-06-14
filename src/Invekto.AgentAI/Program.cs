@@ -260,9 +260,17 @@ app.MapPost("/api/v1/suggest", async (
         conversationSummary = summary;
         recentHistory = recent;
     }
+    catch (OperationCanceledException)
+    {
+        throw; // Propagate app-shutdown / caller cancellation -- never swallow it
+    }
     catch (Exception ex)
     {
-        jsonLogger.StepWarn($"Conversation summarization failed: {ex.Message}", requestId);
+        // Summarization is a non-critical optimization: any unexpected failure degrades to
+        // raw history rather than failing the /suggest endpoint. App-shutdown OCE is rethrown
+        // above; this logs and continues. Sanctioned broad-catch boundary -> arch/codex-context.md
+        // (optional-step degradation boundary).
+        jsonLogger.StepWarn($"Conversation summarization failed, using raw history: {ex.Message}", requestId);
     }
 
     // Update request with trimmed history for ReplyGenerator
