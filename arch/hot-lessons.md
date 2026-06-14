@@ -51,5 +51,7 @@
 
 ## Tooling (PowerShell/Bash)
 - Bash tool'da commit mesajı için PowerShell here-string `@'...'@` KULLANMA → subject'e `@ ` sızar; `Out-File -Encoding utf8` git-diff redirect'i mojibake → Codex'e ASLA PowerShell redirect diff verme; `$ProgressPreference='SilentlyContinue'` ile server-exec CLIXML stderr şişmesini önle.
+- POST-body prod smoke'unda (server-exec PowerShell) `curl.exe -d '{"k":"v"}'` → PowerShell native-arg passing embedded `"`'leri STRIP eder → curl invalid JSON gönderir → endpoint JsonException→**400** döner = YANILTICI (gerçek 401/200'ü maskeler, "deploy bozuk" paniği). Fix: JSON'u `… | Out-File -Encoding ascii -NoNewline $f` ile dosyaya yaz + `curl.exe --data-binary "@$f"`. (WebChat-6 deploy smoke'unda login validJSON 400 sandım → file-based ile 401 INV-WC-007 çıktı = fix doğru.)
+- Git guardrail hook'u `git commit -F ... && git push`'u `push -f` sanıp BLOCK eder (false-positive: aynı satırda "push" + "-F"/"-f") → commit ve push'u AYRI Bash call'a böl.
 
 <!-- hot-lessons sonu -->
