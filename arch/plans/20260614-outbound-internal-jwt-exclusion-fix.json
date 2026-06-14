@@ -1,0 +1,200 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260614-outbound-internal-jwt-exclusion-fix",
+  "risk": "HIGH",
+  "status": "DONE",
+  "created_at": "2026-06-14T08:29:49Z",
+  "updated_at": "2026-06-14T08:31:30Z",
+  "plan": {
+    "summary": "Outbound /api/v1/internal/ peer-service endpoint'leri (optout + outbox/retry-skipped) JWT middleware tarafindan 401'leniyordu cunku Backend proxy yalniz X-Internal-Service-Token gonderiyor (Bearer JWT yok), endpoint'ler ise /api/v1/ altinda JWT-required prefix'te. UseJwtAuth exclusion overload'ina gecilip /api/v1/internal/ JWT'den haric tutuldu (FEAT-LIW /api/v1/leads/intake/ pattern'i). Handler'in shared-secret check'i artik calisir.",
+    "q_intent": "Refactor audit Batch 5 — Outbound internal-endpoint erisimi (C8). 'Once FALSE-POZITIF mi teyit et; gercekse internal auth path.' Teyit: GERCEK bug (false-positive degil). Q karari (AskUserQuestion): Fix A = Outbound JWT exclusion. Auth-path -> MUST-ASK alindi.",
+    "interview_notes": "TEYIT ZINCIRI: (1) JwtAuthMiddleware.InvokeAsync RequiresAuth(path)=true ise gecerli Bearer JWT yoksa 401 doner (satir 69-77). (2) Outbound Program.cs:301 UseJwtAuth(jwtValidator, logger, '/api/v1/') params-only overload -> authExcludedPrefixes BOS. /api/v1/internal/optout + /api/v1/internal/outbox/retry-skipped '/api/v1/' ile baslar -> JWT required. (3) Backend Program.cs:9422-9425 + 9449-9453: httpClientFactory.CreateClient() taze client + yalniz X-Internal-Service-Token header (Authorization YOK, JWT mint YOK). FEAT-LIW (Automation->Backend) JWT mint ediyor ama FEAT-J2 (Backend->Outbound) ETMIYOR -> false-positive kosulu saglanmiyor -> GERCEK bug. FIX dogrulamasi: JWT skip -> TenantContext null -> FeatureGuardMiddleware.cs:57-62 null-context pass-through -> handler shared-secret check calisir. Sadece bu iki endpoint /api/v1/internal/ altinda, ikisi de shared-secret-gated + secret bos iken fail-closed.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Backend->Outbound /api/v1/internal/optout ve /api/v1/internal/outbox/retry-skipped cagrilarinda JWT middleware artik 401 vermez — /api/v1/internal/ JWT exclusion'a alindi; handler'in X-Internal-Service-Token check'i calisir.",
+        "verified": true,
+        "verification_note": "UseJwtAuth exclusion overload (authExcludedPrefixes=['/api/v1/internal/']); RequiresAuth exclusion'i inclusion'dan once kontrol eder -> /api/v1/internal/* JWT-skip. Build PASS."
+      },
+      {
+        "id": "AC2",
+        "criterion": "FeatureGuard de blocklamaz — JWT skip edildiginden TenantContext null; FeatureGuardMiddleware null-context'te pass-through yapar (satir 57-62) -> request handler'a ulasir.",
+        "verified": true,
+        "verification_note": "FeatureGuardMiddleware.cs:57-62 okundu: tenantCtx==null -> await _next(context); return. Internal endpoint plan-feature gate'ine takilmaz."
+      },
+      {
+        "id": "AC3",
+        "criterion": "Guvenlik zayiflamadi — yalniz /api/v1/internal/ altindaki iki endpoint (ikisi de shared-secret-gated + fail-closed) haric; baska /api/v1/ path'i etkilenmedi; webhook IP whitelist (Outbound'da bos) korundu.",
+        "verified": true,
+        "verification_note": "Grep: Outbound'da /api/v1/internal yalniz 1378+1429 (ikisi de InternalServices:SharedSecret check + secret bos -> 401). Required prefix '/api/v1/' korundu; IP set new HashSet<string>() (eski no-IP davranis aynen)."
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Outbound/Program.cs"
+  ],
+  "files_changed": [
+    {
+      "path": "src/Invekto.Outbound/Program.cs",
+      "change": "UseJwtAuth params-only overload -> exclusion overload; jwtRequiredPrefixes=['/api/v1/'] + jwtExcludedPrefixes=['/api/v1/internal/'] + new HashSet<string>() IP set (no-IP korundu).",
+      "is_new": false,
+      "deleted": false
+    }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "5865bcd86085a1dc6fbbbdff98d22645507bf838555c06651751d6b235a0d8c4",
+    "full_path": "arch/plans/diffs/20260614-outbound-internal-jwt-exclusion-fix.diff",
+    "stats": {
+      "insertions": 10,
+      "deletions": 2,
+      "files_count": 1
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build src/Invekto.Outbound/Invekto.Outbound.csproj --no-restore -v q",
+    "timestamp": "2026-06-14T08:29:49Z",
+    "duration_ms": 2660,
+    "output_tail": "Build succeeded. 0 Warning(s). 0 Error(s).",
+    "error_summary": null,
+    "services": ["Invekto.Outbound"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Exclusion yalniz amaclanan iki internal endpoint'i kapsiyor mu — /api/v1/internal/ altinda JWT-korunmasi-gereken baska endpoint yok mu? Iki endpoint de X-Internal-Service-Token + InternalServices:SharedSecret ile gated ve secret bos iken fail-closed (401) mi?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "JWT skip edilince TenantContext null kalir; FeatureGuard (UseFeatureGuard '/api/v1/' -> 'Outbound') bu durumda request'i blocklar mi yoksa pass-through mu yapar? Middleware sirasi (JWT exclusion -> FeatureGuard null-context bypass -> handler shared-secret) dogru mu?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Davranis korunuyor mu: baska /api/v1/ endpoint'leri (templates, projects, broadcasts...) hala JWT-gated mi — required prefix '/api/v1/' korundu, yalniz exclusion mi eklendi? webhook IP whitelist davranisi (Outbound'da bos HashSet) degismedi mi?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "tenant_id trust boundary: internal endpoint payload.tenant_id otoritatif (caller shared-secret ile authenticated + Backend proxy /api/v1/optout JWT-bound tenant'i resolve edip forward ediyor) — bu trust model exclusion sonrasi hala gecerli mi, cross-tenant yazma riski olusmuyor mu?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "spec_architectural_decisions": [
+    {
+      "decision": "Fix Outbound tarafinda (JWT exclusion); Backend service-JWT mint ETMIYOR — Q karari Fix A (AskUserQuestion).",
+      "reason": "FEAT-LIW /api/v1/leads/intake/ exclusion pattern'inin aynisi. Outbound handler JWT tenant-claim'i kullanmiyor; shared-secret peer-trust yeterli + Backend proxy zaten JWT-bound tenant'i validate edip forward ediyor.",
+      "codex_note": "EXPECTED: 'neden Backend JWT mint etmiyor / neden Fix B degil' diye FLAG ETME — Q karari Fix A; shared-secret peer-trust model bu repo'da kanonik (FEAT-LIW + IntakeInternalAuth)."
+    },
+    {
+      "decision": "FeatureGuard null-TenantContext'te pass-through yapar (FeatureGuardMiddleware.cs:57-62) -> exclusion sonrasi internal endpoint'ler context'siz gecer.",
+      "reason": "JWT skip -> context yok -> FeatureGuard bypass -> handler shared-secret check. Internal endpoint plan-feature'a tabi degil.",
+      "codex_note": "EXPECTED: FeatureGuard'in context'siz request'i gecirmesi tasarim (fail-open by design, satir 57-62) — bunu 'auth bypass' olarak FLAG ETME; handler shared-secret zorunlu."
+    },
+    {
+      "decision": "DEPLOY PREREQ: Backend+Outbound prod config'de InternalServices:SharedSecret set + esit olmali.",
+      "reason": "Shared-secret yoksa/eslesmiyorsa handler 401 doner (guvenli fail-closed ama feature calismaz). Bu kod degil deploy/config konusu.",
+      "codex_note": "EXPECTED: config prereq notu; diff'te config yok."
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Shared/Middleware/JwtAuthMiddleware.cs (degismedi — mevcut exclusion overload kullanildi)",
+      "src/Invekto.Shared/Middleware/FeatureGuardMiddleware.cs (degismedi)",
+      "src/Invekto.Backend/Program.cs (Fix Outbound tarafinda; Backend caller degismedi)",
+      "Outbound internal endpoint handler'lari (1378/1429 — shared-secret check zaten var)"
+    ],
+    "non_goals": [
+      "Backend service-JWT mint (Fix B reddedildi, Q=Fix A)",
+      "Handler shared-secret compare'i constant-time yapma (ayri/opsiyonel sertlestirme)",
+      "Yeni endpoint / error code / config anahtari"
+    ],
+    "intentional_exclusions": [
+      "Yalniz '/api/v1/internal/' prefix exclude edildi — daha dar (endpoint-bazli) veya daha genis degil",
+      "webhook IP whitelist Outbound'da bos birakildi (eski davranis aynen)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "Yok — yalniz middleware registration (UseJwtAuth) degisikligi. Internal endpoint handler'larindaki 401 shared-secret check'leri (Program.cs:1386-1391, 1437-1442) pre-existing."
+    ],
+    "user_facing_errors": [
+      "Internal endpoint'e yanlis/bos shared-secret -> 401 INV-AUTH (handler, pre-existing)",
+      "Baska /api/v1/ endpoint'leri JWT yoksa hala 401 (JWT middleware, degismedi)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Fail-closed korundu: secret unset/yanlis -> handler 401. Exclusion sonrasi internal endpoint'ler ARTIK ulasilabilir (eskiden herkese 401 idi, legit caller dahil) ama yalniz dogru shared-secret ile gecer. FeatureGuard null-context pass-through bilincli (handler shared-secret zorunlu kapi). Sessiz basarisizlik yok; aksine eskiden sessizce kirik olan ozellik artik calisir."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Dashboard'dan manuel opt-out/opt-in FEAT-J2'den beri hep 401 — KVKK/STOP uyumu icin kritik bir akis fiilen kirikti.",
+      "suggestion": "Fix + deploy sonrasi gercek smoke: tenant JWT ile Backend /api/v1/optout -> 200 + Outbound'da opt-out kaydi.",
+      "aha_moment": "Admin bir numarayi opt-out yapinca gercekten islenir — KVKK talebi manuel SQL'siz yerine gelir."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "SuperAdmin Mode NoOp->Http gecisinden sonra 'skipped_noop' outbox satirlari drain edilemiyordu (retry-skipped 401).",
+      "suggestion": "Drain smoke: /api/ops/outbox/retry-skipped -> Outbound 200 + affected_rows.",
+      "aha_moment": "Mode flip sonrasi bekleyen mesajlar tek aksiyonla yeniden kuyruga alinir."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "401 sebebi log'da net degildi (JWT middleware generic 'Bearer token required' — handler'a ulasilamadigi icin shared-secret mismatch hic gorunmuyordu).",
+      "suggestion": "Handler artik ulasilabilir -> shared-secret mismatch net loglanir; ops config-mismatch'i hizla teshis eder.",
+      "aha_moment": "Ops 'neden 401' sorusunu log'dan dogrudan cozer."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Genis bir exclusion yanlislikla internal-olmayan endpoint'leri JWT'siz birakabilirdi.",
+      "suggestion": "Prefix dar tutuldu ('/api/v1/internal/'), grep ile yalniz 2 shared-secret-gated endpoint dogrulandi.",
+      "aha_moment": "Guvenlik ekibi internal endpoint'lerin hala shared-secret + fail-closed arkasinda oldugunu gorur."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Opt-out kirik oldugu icin acil durumlarda manuel prod SQL ile yapiliyordu (yavas + riskli).",
+      "suggestion": "Dashboard akisi calisinca manuel DB mudahalesi gereksiz.",
+      "aha_moment": "Opt-out saniyeler icinde, prod'a elle dokunmadan."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-06-14T08:31:30Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-06-14T08:31:30Z",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "Yalniz JWT middleware config + comment; yeni handler/error path yok." },
+      "CQ2": { "result": "PASS", "evidence": "Exclusion request'i shared-secret check'e ulastirir; yeni swallow yok." },
+      "CQ3": { "result": "PASS", "evidence": "Yalniz Outbound/Program.cs:297-312 degisti." },
+      "CQ4": { "result": "PASS", "evidence": "Mevcut required/excluded-prefix pattern; duplicate yok." },
+      "CQ5": { "result": "PASS", "evidence": "Service-local config; '/api/v1/' JWT-required korundu + dar internal exclusion." },
+      "CQ6": { "result": "PASS", "evidence": "Startup-only kucuk in-memory prefix array; request-path etkisi yok." },
+      "CQ7": { "result": "PASS", "evidence": "TODO/HACK/FIXME yok; yalniz aciklama comment." },
+      "CQ8": { "result": "PASS", "evidence": "Required prefix '/api/v1/' ayni; yalniz '/api/v1/internal/' exclusion; contract degismedi." }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "Yalniz '/api/v1/internal/' exclude; required '/api/v1/' korundu; 2 endpoint shared-secret-gated + fail-closed." },
+      "Q2": { "result": "PASS", "reasoning": "Sira: TrafficLogging -> JWT -> FeatureGuard; null-context'te FeatureGuard pass-through (57-62) -> handler shared-secret." },
+      "Q3": { "result": "PASS", "reasoning": "Diger /api/v1/ JWT-gated kalir; IP set bos HashSet (no-IP davranis korundu)." },
+      "Q4": { "result": "PASS", "reasoning": "Payload/tenant_id write logic degismedi; exclusion yalniz internal; diger tenant-facing /api/v1/ JWT-gated." }
+    },
+    "blocking_issues": [],
+    "iteration": 0,
+    "escalation_required": false,
+    "raw_text": "Codex gpt-5.5 (gpt-5.5-2026-04-23) iter0 (HIGH): CQ1-12 PASS, CoVe Q1-Q4 PASS, BLOCKING_ISSUES: NONE. OVERALL_VERDICT: PASS."
+  }
+}
