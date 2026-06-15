@@ -17,10 +17,13 @@ namespace Invekto.Automation.Services;
 /// the tenant; Layer 2: the shared <c>X-Internal-Service-Token</c> header so a leaked tenant JWT alone
 /// cannot reach the write path. The WapCRM secret never travels on this hop.
 ///
-/// NO auto-retry (unlike <see cref="BackendIntakeClient"/>): this is a CRM mutation and a timeout is an
-/// UNKNOWN outcome (the write may already have applied), so a blind retry risks a duplicate write. The flow
-/// author branches on the node 'error' output handle instead. The write is value-idempotent (full-list
-/// replace) and the ClientRequestID is stable, so a deliberate author-driven retry is safe.
+/// BOUNDED TRANSIENT RETRY (C3 HARDENING): unlike a blind retry, this is SAFE here because the write is
+/// value-idempotent (full-list replace) and the ClientRequestID is STABLE — re-applying the same selection
+/// (even after an unknown-outcome timeout) yields the same end state, and cxapi dedupes on the
+/// ClientRequestID. Retries are TRANSIENT-ONLY (timeout / transport / HTTP 5xx) with a short awaited backoff
+/// (500ms, then 1500ms; max 2 retries); business/auth outcomes (4xx, vendor 903/920-923 parsed from the body)
+/// go STRAIGHT to the 'error' output handle with no retry. The method still never throws (except caller
+/// cancellation), so a single status node can never fault the whole flow run.
 /// </summary>
 public sealed class BackendCustomerStatusClient
 {
@@ -31,6 +34,10 @@ public sealed class BackendCustomerStatusClient
     {
         PropertyNameCaseInsensitive = true
     };
+
+    // C3 HARDENING: awaited backoff schedule for TRANSIENT failures (timeout / transport / HTTP 5xx).
+    // Length == max retries (2). Stable ClientRequestID + full-list-replace make each retry value-idempotent.
+    private static readonly int[] TransientBackoffMs = { 500, 1500 };
 
     private readonly HttpClient _http;
     private readonly string _sharedSecret;
@@ -65,49 +72,83 @@ public sealed class BackendCustomerStatusClient
                 "Servisler arası yetki yapılandırılmamış (InternalServices:SharedSecret).");
         }
 
-        try
+        // C3 HARDENING: bounded transient retry. Each attempt rebuilds the request (a sent HttpRequestMessage
+        // cannot be reused); the ClientRequestID inside `request` is unchanged across attempts (stable +
+        // value-idempotent). The loop returns/throws on every path — max TransientBackoffMs.Length + 1 attempts.
+        for (var attempt = 0; ; attempt++)
         {
-            using var msg = new HttpRequestMessage(HttpMethod.Post, EndpointPath);
-            var serviceJwt = _jwt.GenerateServiceToken(request.TenantId);
-            msg.Headers.Authorization = new AuthenticationHeaderValue("Bearer", serviceJwt);
-            msg.Headers.TryAddWithoutValidation(TokenHeaderName, _sharedSecret);
-            msg.Headers.TryAddWithoutValidation("X-Request-Id", requestId);
-            msg.Content = JsonContent.Create(request);
+            try
+            {
+                using var msg = new HttpRequestMessage(HttpMethod.Post, EndpointPath);
+                var serviceJwt = _jwt.GenerateServiceToken(request.TenantId);
+                msg.Headers.Authorization = new AuthenticationHeaderValue("Bearer", serviceJwt);
+                msg.Headers.TryAddWithoutValidation(TokenHeaderName, _sharedSecret);
+                msg.Headers.TryAddWithoutValidation("X-Request-Id", requestId);
+                msg.Content = JsonContent.Create(request);
 
-            using var response = await _http.SendAsync(msg, HttpCompletionOption.ResponseHeadersRead, ct);
+                using var response = await _http.SendAsync(msg, HttpCompletionOption.ResponseHeadersRead, ct);
 
-            if (response.IsSuccessStatusCode)
-                return BackendCustomerStatusOutcome.Ok();
+                if (response.IsSuccessStatusCode)
+                    return BackendCustomerStatusOutcome.Ok();
 
-            // Non-2xx: parse the coded body best-effort so the node error handle surfaces an actionable reason.
-            var (code, message) = await TryReadErrorAsync(response, ct);
-            _logger.SystemWarn(
-                $"[{ErrorCodes.SetCustomerStatusActionFailed}] BackendCustomerStatusClient: Backend HTTP {(int)response.StatusCode} " +
-                $"(tenant={request.TenantId}, code={code ?? "-"}, requestId={requestId})");
-            // Pattern-bind the message (avoid the null-forgiving operator).
-            var failMessage = message is { } m && !string.IsNullOrWhiteSpace(m) ? m : "Durum güncellenemedi.";
-            return BackendCustomerStatusOutcome.Fail(code ?? ErrorCodes.SetCustomerStatusActionFailed, failMessage);
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw; // caller cancellation / shutdown — propagate
-        }
-        catch (OperationCanceledException)
-        {
-            // HttpClient timeout — UNKNOWN outcome; do NOT retry (route to error handle).
-            _logger.SystemWarn(
-                $"[{ErrorCodes.SetCustomerStatusActionFailed}] BackendCustomerStatusClient: timeout (unknown outcome) " +
-                $"(tenant={request.TenantId}, requestId={requestId})");
-            return BackendCustomerStatusOutcome.Fail(ErrorCodes.CustomerStatusUpdateUpstreamFailed,
-                "Durum servisi zaman aşımına uğradı (sonuç belirsiz).");
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.SystemWarn(
-                $"[{ErrorCodes.SetCustomerStatusActionFailed}] BackendCustomerStatusClient: transport error " +
-                $"(tenant={request.TenantId}, requestId={requestId}): {ex.Message}");
-            return BackendCustomerStatusOutcome.Fail(ErrorCodes.CustomerStatusUpdateUpstreamFailed,
-                "Durum servisine ulaşılamadı.");
+                // HTTP 5xx = transient server error → retry (value-idempotent). 4xx = business/auth → no retry.
+                if ((int)response.StatusCode >= 500 && attempt < TransientBackoffMs.Length)
+                {
+                    _logger.SystemWarn(
+                        $"[{ErrorCodes.SetCustomerStatusActionFailed}] BackendCustomerStatusClient: Backend HTTP {(int)response.StatusCode} " +
+                        $"transient, retry {attempt + 1}/{TransientBackoffMs.Length} (tenant={request.TenantId}, requestId={requestId})");
+                    await Task.Delay(TransientBackoffMs[attempt], ct);
+                    continue;
+                }
+
+                // Non-2xx terminal (4xx, or 5xx with retries exhausted): parse the coded body so the node error
+                // handle surfaces an actionable reason.
+                var (code, message) = await TryReadErrorAsync(response, ct);
+                _logger.SystemWarn(
+                    $"[{ErrorCodes.SetCustomerStatusActionFailed}] BackendCustomerStatusClient: Backend HTTP {(int)response.StatusCode} " +
+                    $"(tenant={request.TenantId}, code={code ?? "-"}, requestId={requestId})");
+                // Pattern-bind the message (avoid the null-forgiving operator).
+                var failMessage = message is { } m && !string.IsNullOrWhiteSpace(m) ? m : "Durum güncellenemedi.";
+                return BackendCustomerStatusOutcome.Fail(code ?? ErrorCodes.SetCustomerStatusActionFailed, failMessage);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw; // caller cancellation / shutdown — propagate
+            }
+            catch (OperationCanceledException)
+            {
+                // HttpClient timeout — UNKNOWN outcome, but value-idempotent (stable ClientRequestID), so a
+                // bounded retry is safe. Exhausted → route to the error handle.
+                if (attempt < TransientBackoffMs.Length)
+                {
+                    _logger.SystemWarn(
+                        $"[{ErrorCodes.SetCustomerStatusActionFailed}] BackendCustomerStatusClient: timeout, retry " +
+                        $"{attempt + 1}/{TransientBackoffMs.Length} (tenant={request.TenantId}, requestId={requestId})");
+                    await Task.Delay(TransientBackoffMs[attempt], ct);
+                    continue;
+                }
+                _logger.SystemWarn(
+                    $"[{ErrorCodes.SetCustomerStatusActionFailed}] BackendCustomerStatusClient: timeout exhausted (unknown outcome) " +
+                    $"(tenant={request.TenantId}, requestId={requestId})");
+                return BackendCustomerStatusOutcome.Fail(ErrorCodes.CustomerStatusUpdateUpstreamFailed,
+                    "Durum servisi zaman aşımına uğradı (sonuç belirsiz).");
+            }
+            catch (HttpRequestException ex)
+            {
+                if (attempt < TransientBackoffMs.Length)
+                {
+                    _logger.SystemWarn(
+                        $"[{ErrorCodes.SetCustomerStatusActionFailed}] BackendCustomerStatusClient: transport error, retry " +
+                        $"{attempt + 1}/{TransientBackoffMs.Length} (tenant={request.TenantId}, requestId={requestId}): {ex.Message}");
+                    await Task.Delay(TransientBackoffMs[attempt], ct);
+                    continue;
+                }
+                _logger.SystemWarn(
+                    $"[{ErrorCodes.SetCustomerStatusActionFailed}] BackendCustomerStatusClient: transport error exhausted " +
+                    $"(tenant={request.TenantId}, requestId={requestId}): {ex.Message}");
+                return BackendCustomerStatusOutcome.Fail(ErrorCodes.CustomerStatusUpdateUpstreamFailed,
+                    "Durum servisine ulaşılamadı.");
+            }
         }
     }
 

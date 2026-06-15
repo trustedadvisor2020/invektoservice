@@ -899,8 +899,11 @@ errors:
     description: Request body exceeds the configured size cap before JSON parse (DoS guard on the shared signed/unsigned webhook URL). 413.
     user_message: (internal; request body too large)
   - code: INV-INM-008
-    description: FEAT-INMA-PIPELINE-V2 C3a — customer_status_changed flow-trigger Hangfire enqueue failed (BackgroundJobClientException / NpgsqlException / InvalidOperationException) AFTER the C2 persist already committed. WARN, best-effort: the automation may be missed (AutomaticRetry=0; replay dedupe is upstream in C2 so no duplicate vector); the status is NOT re-applied and the webhook still returns 200 (a non-2xx would make INMA retry and re-apply).
-    user_message: (internal; flow-trigger enqueue failed — automation best-effort)
+    description: FEAT-INMA-PIPELINE-V2 C3 HARDENING — CustomerStatusFlowOutboxDrainJob failed to enqueue TriggerCustomerStatusFlowJob (BackgroundJobClientException / NpgsqlException) for a claimed customer_status_flow_outbox row. WARN, transient: the row is bounced back to 'pending' (attempts < MaxAttempts) and retried on the next drain tick — the trigger is NOT lost (it survives in the durable outbox). Replaces the removed C2->C3a inline post-commit enqueue (which could silently lose a trigger on a crash between commit and enqueue).
+    user_message: (internal; outbox drain enqueue transient failure — retried)
+  - code: INV-INM-009
+    description: FEAT-INMA-PIPELINE-V2 C3 HARDENING — a customer_status_flow_outbox row's enqueue retries hit MaxAttempts; status flips to 'failed' (ops repair signal, not silent). The opaque leads.customer_status was already applied in C2; only the flow-trigger dispatch is stuck. Re-drive by resetting the row to 'pending'. Distinct from INV-INM-008 (transient, still retrying) so ops can tell "still bouncing" from "given up".
+    user_message: (internal; outbox drain enqueue exhausted — ops repair)
 
   # ── OB — Outbound (GR-1.3) ──
   - code: INV-OB-001

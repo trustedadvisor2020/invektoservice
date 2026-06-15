@@ -21,14 +21,16 @@ namespace Invekto.Automation.Services.Jobs;
 /// (empty feature_group_id) flows run; (3) seeds the change context (group / old / new / changedBy) into
 /// session Variables for <see cref="CustomerStatusChangedTriggerHandler"/> to surface as flow variables.
 ///
-/// Queue: <c>automation</c>. AutomaticRetry=0 (matches the welcome/cron flow-dispatch posture): a failed
-/// dispatch logs INV-AT-088 rather than retry-storming a misconfigured flow. Replay double-fire is
-/// already prevented UPSTREAM by C2's dedupe(tenant_id,event_id), so no retry => no duplicate vector.
-/// Synthetic chat_id range starts at -4_000_000 (clear of welcome -3M, cron -2M, webhook -1M) so an
-/// operator can identify the origin from the id sign + magnitude alone.
+/// Queue: <c>automation</c>. C3 HARDENING: AutomaticRetry=2 — the PREFLIGHT (flow lookup) now THROWS
+/// NpgsqlException so a transient DB blip retries instead of silently dropping the automation; the EXECUTION
+/// phase still swallows its own infra exceptions (no whole-job retry) so a mid-flow failure can never re-send
+/// WhatsApp messages. Exactly-once is enforced by the outbox claim (ClaimCustomerStatusOutboxAsync flips the
+/// row 'processing'->'done' BEFORE any side effect; a re-enqueue after stale recovery finds 0 rows and skips),
+/// NOT by AutomaticRetry. Synthetic chat_id range starts at -4_000_000 (clear of welcome -3M, cron -2M,
+/// webhook -1M) so an operator can identify the origin from the id sign + magnitude alone.
 /// </summary>
 [Queue("automation")]
-[AutomaticRetry(Attempts = 0)]
+[AutomaticRetry(Attempts = 2)]
 public sealed class TriggerCustomerStatusFlowJob
 {
     private const string TriggerNodeType = "customer_status_changed";
@@ -49,6 +51,7 @@ public sealed class TriggerCustomerStatusFlowJob
 
     public async Task ExecuteAsync(
         int tenantId,
+        string eventId,
         int leadId,
         string? newStatus,
         string? oldStatus,
@@ -68,16 +71,31 @@ public sealed class TriggerCustomerStatusFlowJob
         }
         catch (NpgsqlException ex)
         {
+            // C3 HARDENING: PREFLIGHT (no side effect yet) — rethrow so Hangfire's AutomaticRetry re-runs the
+            // lookup on a transient DB blip instead of silently dropping the automation. The outbox row stays
+            // 'processing' (we never claimed it), so a later attempt re-runs cleanly.
             _logger.SystemError(
                 $"[{ErrorCodes.AutomationCustomerStatusFlowDispatchFailed}] TriggerCustomerStatusFlowJob: " +
-                $"flow lookup DB error tenant={tenantId} lead={leadId}: {ex.Message}");
-            return;
+                $"flow lookup DB error tenant={tenantId} lead={leadId} (rethrow for retry): {ex.Message}");
+            throw;
         }
         catch (OperationCanceledException)
         {
             _logger.SystemWarn(
                 $"[{ErrorCodes.AutomationCustomerStatusFlowDispatchFailed}] TriggerCustomerStatusFlowJob: " +
                 $"cancelled during flow lookup tenant={tenantId} lead={leadId}");
+            return;
+        }
+
+        // C3 HARDENING: atomic exactly-once claim. The drain set this outbox row to 'processing' before
+        // enqueuing us; flip it to 'done' BEFORE any side effect. 0 rows => a re-enqueue (stale recovery) or a
+        // racing worker already handled it => skip, so the flow (and its WhatsApp sends) never double-fire. A
+        // NpgsqlException here propagates so Hangfire retries (the claim is idempotent on (tenant,event,lead)).
+        if (!await _repo.ClaimCustomerStatusOutboxAsync(tenantId, eventId, leadId, ct))
+        {
+            _logger.SystemInfo(
+                $"TriggerCustomerStatusFlowJob: outbox row already processed (duplicate enqueue) " +
+                $"tenant={tenantId} event={eventId} lead={leadId} — skip");
             return;
         }
 

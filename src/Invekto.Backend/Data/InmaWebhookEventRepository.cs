@@ -22,10 +22,18 @@ public sealed class InmaWebhookEventRepository
     /// Insert the event (dedupe on tenant_id,event_id) and, if newly inserted, apply customer_status
     /// to matching leads under an occurredAt monotonic guard. Throws <see cref="NpgsqlException"/> on
     /// DB failure (caller maps to INV-INM-004 / HTTP 500 so INMA retries).
+    ///
+    /// C3 HARDENING (FEAT-INMA-PIPELINE-V2): when the apply lands (StoredApplied) AND the caller's
+    /// event-level <paramref name="dispatch"/> decision is <c>Allowed</c> (suppression == Fire), this also
+    /// INSERTs one customer_status_flow_outbox row per CHANGED lead (OldStatus != NewStatus) IN THE SAME
+    /// TRANSACTION. That closes the old commit-before-enqueue hole: the dispatch intent is now durable with
+    /// the status apply, drained out-of-band by CustomerStatusFlowOutboxDrainJob. A suppressed / stale /
+    /// unmatched event produces NO outbox row.
     /// </summary>
     public async Task<InmaWebhookPersistResult> PersistAndApplyAsync(
         InmaWebhookEventRow row,
         IReadOnlyList<string> normalizedPhones,
+        CustomerStatusFlowDispatch dispatch,
         CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -177,6 +185,39 @@ public sealed class InmaWebhookEventRepository
             await countCmd.ExecuteNonQueryAsync(ct);
         }
 
+        // C3 HARDENING: transactional outbox. Same tx as the apply, so a crash before commit rolls BOTH the
+        // status apply and the dispatch intent back (the at-least-once redelivery re-runs cleanly); a crash
+        // after commit leaves a durable 'pending' row the drain still picks up. One row per CHANGED lead
+        // (string.Equals(Ordinal) gives the same null-safe IS DISTINCT FROM gate the inline C3a dispatcher
+        // used), only when the event-level suppression decision was Fire.
+        if (outcome == InmaWebhookPersistOutcome.StoredApplied && dispatch.Allowed)
+        {
+            const string outboxSql = @"
+                INSERT INTO customer_status_flow_outbox
+                    (tenant_id, event_id, lead_id, new_status, old_status,
+                     feature_group_id, feature_group_name, changed_by, customer_id, phone)
+                VALUES
+                    (@tid, @eid, @lid, @new, @old,
+                     @fgid, @fgname, @changedby, @cid, @phone)
+                ON CONFLICT (tenant_id, event_id, lead_id) DO NOTHING";
+            foreach (var lead in appliedLeads)
+            {
+                if (string.Equals(lead.OldStatus, lead.NewStatus, StringComparison.Ordinal)) continue;
+                await using var outboxCmd = new NpgsqlCommand(outboxSql, conn, (NpgsqlTransaction)tx);
+                outboxCmd.Parameters.AddWithValue("tid", row.TenantId);
+                outboxCmd.Parameters.AddWithValue("eid", row.EventId);
+                outboxCmd.Parameters.AddWithValue("lid", lead.LeadId);
+                outboxCmd.Parameters.AddWithValue("new", (object?)lead.NewStatus ?? DBNull.Value);
+                outboxCmd.Parameters.AddWithValue("old", (object?)lead.OldStatus ?? DBNull.Value);
+                outboxCmd.Parameters.AddWithValue("fgid", (object?)row.FeatureGroupId ?? DBNull.Value);
+                outboxCmd.Parameters.AddWithValue("fgname", (object?)dispatch.FeatureGroupName ?? DBNull.Value);
+                outboxCmd.Parameters.AddWithValue("changedby", (object?)dispatch.ChangedBy ?? DBNull.Value);
+                outboxCmd.Parameters.AddWithValue("cid", (object?)row.CustomerId ?? DBNull.Value);
+                outboxCmd.Parameters.AddWithValue("phone", (object?)dispatch.Phone ?? DBNull.Value);
+                await outboxCmd.ExecuteNonQueryAsync(ct);
+            }
+        }
+
         await tx.CommitAsync(ct);
         return new InmaWebhookPersistResult(outcome, updated, appliedLeads);
     }
@@ -223,3 +264,16 @@ public readonly record struct InmaWebhookPersistResult(
 /// The C3 dispatcher fires a flow trigger only when <c>OldStatus</c> IS DISTINCT FROM <c>NewStatus</c>.
 /// </summary>
 public sealed record AppliedLead(int LeadId, string? OldStatus, string? NewStatus);
+
+/// <summary>
+/// FEAT-INMA-PIPELINE-V2 C3 HARDENING — the caller's event-level flow-trigger dispatch decision, passed
+/// into <see cref="InmaWebhookEventRepository.PersistAndApplyAsync"/> so the transactional outbox INSERT
+/// (one row per changed lead) happens in the SAME tx as the status apply. <see cref="Allowed"/> is the
+/// suppression verdict (CustomerStatusFlowSuppression.Evaluate == Fire); the rest are the per-event job
+/// args not already carried on <see cref="InmaWebhookEventRow"/> (feature_group_id / customer_id are).
+/// </summary>
+public sealed record CustomerStatusFlowDispatch(
+    bool Allowed,
+    string? FeatureGroupName,
+    string? ChangedBy,
+    string? Phone);

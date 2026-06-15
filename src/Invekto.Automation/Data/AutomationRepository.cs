@@ -321,6 +321,35 @@ public sealed class AutomationRepository
     }
 
     /// <summary>
+    /// FEAT-INMA-PIPELINE-V2 C3 HARDENING — atomic exactly-once claim of a customer_status_flow_outbox row.
+    /// The Backend drain set the row to 'processing' before enqueuing this job; flip it to 'done' iff it is
+    /// STILL 'processing', so only ONE worker can win — a re-enqueue (after the drain's stale recovery) or a
+    /// racing instance gets 0 rows. Returns true when this caller won the claim and must run the flow; false
+    /// when the row was already handled (skip → prevents a duplicate flow run / duplicate WhatsApp send).
+    ///
+    /// Cross-service shared-table write: customer_status_flow_outbox is created + written by Backend (the C2
+    /// tx), drained by Backend, and terminally claimed here by Automation — all over the SHARED Postgres
+    /// (data access, NOT an Invekto.&lt;Service&gt; code reference, so microservice isolation holds; precedent:
+    /// many services read/write leads + chat_sessions). Sanctioned in arch/codex-context.md.
+    /// </summary>
+    public async Task<bool> ClaimCustomerStatusOutboxAsync(int tenantId, string eventId, int leadId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE customer_status_flow_outbox
+            SET status = 'done', processed_at = NOW()
+            WHERE tenant_id = @tid AND event_id = @eid AND lead_id = @lid AND status = 'processing'
+            RETURNING id";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("eid", eventId);
+        cmd.Parameters.AddWithValue("lid", leadId);
+        var claimedId = await cmd.ExecuteScalarAsync(ct);
+        return claimedId is not null;
+    }
+
+    /// <summary>
     /// Create a new flow for a tenant. Returns the new flow_id.
     /// New flows start as inactive (draft).
     /// </summary>

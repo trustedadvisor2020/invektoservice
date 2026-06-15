@@ -1,0 +1,166 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "slug": "20260615-feat-inma-pipeline-v2-c3-hardening",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-15T18:35:00Z",
+  "updated_at": "2026-06-15T19:10:00Z",
+  "plan": {
+    "summary": "Close the FEAT-INMA-PIPELINE-V2 C2->C3a durability hole with a transactional outbox (customer_status_flow_outbox, migration 066) drained by a Backend timer worker, make the trigger exactly-once via a job-side atomic claim, make the flow-lookup preflight retryable, and add bounded transient retry to the C4 cxapi write-back.",
+    "q_intent": "C3 hardening (go-live prereq): bounded-retry + idempotency-table + outbox (AutomaticRetry=0 lossy). Scope locked via interview: C2->C3a + C4 retry; idempotency folded into outbox UNIQUE(tenant_id,event_id); outbox-only drain.",
+    "interview_notes": "Q interview (3 answers): (1) Scope = C2->C3a inbound dispatch + C4 write-back retry. (2) Idempotency = folded into outbox UNIQUE constraint, no separate table. (3) Dispatch = outbox-only drain (accept drain-interval latency). REFINEMENT surfaced to Q + accepted: UNIQUE key needs lead_id (event fans out to N leads via phones[]) -> UNIQUE(tenant_id,event_id,lead_id). Pre-impl codex_consult(critique) run: surfaced (a) naive outbox->Hangfire is at-least-once not exactly-once (FlowEngine sends WhatsApp mid-flow, not idempotent) -> added job-side atomic claim; (b) preflight NpgsqlException swallow = silent loss -> made preflight throw + AutomaticRetry=2. Codex cross-event-ordering concern already closed by C2 occurredAt monotonic guard + StoredStaleSkipped (InmaWebhookEventRepository.cs:93-127). Suppression fail-closed (actor=='user' only) preserved verbatim.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "A new customer_status_flow_outbox table (migration 066) exists with UNIQUE(tenant_id,event_id,lead_id), status CHECK(pending|processing|done|failed), attempts, last_error, timestamps, a partial pending index, GRANT ALL TO invekto, and a canonical mirror in the Backend DDL file.",
+        "verified": false
+      },
+      {
+        "id": "AC2",
+        "criterion": "The outbox INSERT happens INSIDE the C2 transaction (InmaWebhookEventRepository.PersistAndApplyAsync) only on the StoredApplied path, only for changed leads (old IS DISTINCT FROM new), and only when the event-level suppression decision == Fire; ON CONFLICT(tenant_id,event_id,lead_id) DO NOTHING. The old inline post-commit DispatchCustomerStatusFlowTriggers enqueue is removed.",
+        "verified": false
+      },
+      {
+        "id": "AC3",
+        "criterion": "A Backend timer IHostedService (CustomerStatusFlowOutboxDrainJob) mirrors InmaOptOutSyncJob: startup stale-processing recovery, FOR UPDATE SKIP LOCKED claim (pending->processing, attempts++), enqueues TriggerCustomerStatusFlowJob to the automation queue, and on enqueue exception bounces to pending (<max, INV-INM-008) or failed (>=max, INV-INM-009). Cross-tenant fetch is a sanctioned background-sweep exception noted in codex-context.md.",
+        "verified": false
+      },
+      {
+        "id": "AC4",
+        "criterion": "TriggerCustomerStatusFlowJob is exactly-once: as its first durable step after a now-RETRYABLE preflight flow-lookup (NpgsqlException THROWS, [AutomaticRetry(Attempts=2)]), it atomically claims the outbox row (processing->done WHERE status='processing' RETURNING id); 0 rows => already processed => skip. Execution-phase exceptions stay swallowed so a mid-flow crash never re-runs (at-most-once execution, no duplicate WhatsApp send).",
+        "verified": false
+      },
+      {
+        "id": "AC5",
+        "criterion": "The C4 BackendCustomerStatusClient.UpdateAsync adds bounded transient retry (max 2 attempts total, 500ms/1500ms awaited backoff with ct) for transient classes only (timeout/transport/5xx); business/auth codes (4xx, vendor 903/920-923) route straight to the error handle with no retry. Same stable ClientRequestID is reused across attempts (value-idempotent full-list replace).",
+        "verified": false
+      },
+      {
+        "id": "AC6",
+        "criterion": "Build passes (dotnet build InvektoServis.sln 0 errors). No new Shared DTO/cross-service code reference introduced (Backend already references TriggerCustomerStatusFlowJob via PrivateAssets=all; Automation->outbox is a shared-Postgres table write, not a code ref). errors.md + ErrorCodes.cs updated in the SAME commit (INV-INM-008 repurposed description + INV-INM-009 added).",
+        "verified": false
+      }
+    ]
+  },
+  "allowed_files": [
+    "arch/db/migrations/066-customer-status-flow-outbox.sql",
+    "src/Invekto.Backend/Data/InmaWebhookEventRepository.cs",
+    "src/Invekto.Backend/Data/CustomerStatusFlowOutboxRepository.cs",
+    "src/Invekto.Backend/Services/CustomerStatusFlowOutboxDrainJob.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Automation/Services/Jobs/TriggerCustomerStatusFlowJob.cs",
+    "src/Invekto.Automation/Data/AutomationRepository.cs",
+    "src/Invekto.Automation/Services/BackendCustomerStatusClient.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "arch/errors.md",
+    "arch/codex-context.md",
+    "tracking/feat-inma-pipeline-v2-c3-hardening.md",
+    "arch/plans/20260615-feat-inma-pipeline-v2-c3-hardening.json"
+  ],
+  "files_changed": [],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": null,
+    "full_path": "arch/plans/diffs/20260615-feat-inma-pipeline-v2-c3-hardening.diff",
+    "stats": { "insertions": 0, "deletions": 0, "files_count": 0 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q",
+    "services": ["Invekto.Shared", "Invekto.Backend", "Invekto.Automation", "(full solution)"],
+    "error_summary": null
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does the outbox INSERT execute within the SAME NpgsqlTransaction as the leads.customer_status UPDATE (atomic), and only on the StoredApplied path for leads where old IS DISTINCT FROM new AND the event-level suppression decision was Fire — so a stale-skipped, suppressed, or unmatched event produces NO outbox row?",
+      "category": "Data"
+    },
+    {
+      "id": "Q2",
+      "question": "Is the trigger exactly-once-at-start: after a re-enqueue (drain stale-recovery), can two TriggerCustomerStatusFlowJob instances both execute the flow, or does the atomic claim (UPDATE ... SET status='done' WHERE status='processing' RETURNING id) guarantee only one winner runs while the loser skips (0 rows) — preventing duplicate WhatsApp sends?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q3",
+      "question": "Is the drain's cross-tenant pending-row fetch a tenant-isolation violation, or a sanctioned background-sweep exception (request-path != background sweep, precedent FetchPendingOutboxBatchAsync) explicitly recorded in arch/codex-context.md, with every claimed row still carrying its own tenant_id for the per-tenant enqueue?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q4",
+      "question": "Does the C4 bounded retry reuse the same stable ClientRequestID across attempts (so a retry after an unknown-outcome timeout is value-idempotent on cxapi's full-list-replace, not a duplicate write), and does it retry ONLY transient classes (timeout/transport/5xx) while business/auth codes go straight to the error handle?",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q5",
+      "question": "Is preflight (flow lookup) now retryable (NpgsqlException throws, AutomaticRetry=2) WITHOUT making execution-phase failures retry — i.e., can a NpgsqlException AFTER the first WhatsApp message has been sent ever trigger a whole-job Hangfire retry and re-send?",
+      "category": "Lifecycle"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "InmaWebhookSignatureValidator / HMAC verification (untouched)",
+      "CustomerStatusFlowSuppression.Evaluate logic (preserved verbatim, only its call site moves earlier)",
+      "C2 occurredAt monotonic guard / StoredStaleSkipped (untouched — already closes cross-event ordering)",
+      "leads.customer_status derivation / CustomerStatusMapping (untouched)",
+      "inma_optout_outbox / InmaOptOutSyncJob (precedent only, not modified)"
+    ],
+    "non_goals": [
+      "Live e2e smoke (Q/INMA action + Medipol webhook_secret) — out of scope, this is code hardening",
+      "Making FlowEngineV2 execution itself idempotent (message-level dedup) — at-most-once trigger boundary is the chosen guarantee",
+      "C3 dashboard/UI changes",
+      "Redesigning the suppression trust boundary (originRequestId is system-generated; fail-closed actor=='user' already mitigates)"
+    ],
+    "intentional_exclusions": [
+      "No separate idempotency table — folded into outbox UNIQUE(tenant_id,event_id,lead_id) per Q decision",
+      "No new Shared DTO — Hangfire job args are primitives, Backend already references the job type",
+      "No feature flag — pipeline is inert (zero live traffic), outbox replaces inline enqueue directly",
+      "No new INV-AT code for C4 retry — reuses existing CustomerStatusUpdateUpstreamFailed"
+    ]
+  },
+  "error_handling": {
+    "silent_failure_risk": true,
+    "silent_failure_explanation": "The pre-hardening code HAD a silent-failure risk (lost flow trigger on commit-before-enqueue crash, swallowed preflight NpgsqlException). This package REMOVES both: the outbox makes dispatch durable (failed enqueue retries, then surfaces as INV-INM-009 'failed' for ops), and the preflight now throws so a DB blip retries via Hangfire instead of being swallowed. The remaining accepted boundary (documented, not silent): a flow that crashes AFTER claiming (status='done') mid-execution is not re-run (at-most-once), to avoid duplicate WhatsApp sends — logged at execution phase."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "A customer changes their status in INMA but the automation silently never fires because the trigger enqueue was lost in a crash window — no error, no recovery.",
+      "suggestion": "Transactional outbox writes the dispatch intent in the same DB tx as the status apply; a drain worker guarantees it reaches Hangfire even across a restart.",
+      "aha_moment": "Ops sees every status change produce either a fired flow or a visible 'failed' outbox row — never a silent gap."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "A lead receives the SAME welcome/status WhatsApp message twice because a re-delivered or re-enqueued trigger double-fired the flow.",
+      "suggestion": "Job-side atomic claim (processing->done) ensures only one job instance ever executes a given (tenant,event,lead) trigger.",
+      "aha_moment": "Even under retry storms or stale-recovery, the customer gets exactly one message — the duplicate job quietly no-ops."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "A transient Postgres blip during flow lookup permanently dropped a status-change automation with only a log line.",
+      "suggestion": "Make the side-effect-free preflight throw so Hangfire retries it (bounded), while keeping execution-phase failures non-retryable.",
+      "aha_moment": "A 200ms DB hiccup self-heals on the next Hangfire attempt instead of becoming a lost automation."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "A one-second cxapi blip flips the 'Set Customer Status' flow node to its error branch, so the lead's INMA status silently stays wrong.",
+      "suggestion": "Bounded transient retry (2 attempts, short backoff) with the stable ClientRequestID makes a blip recover before the flow branches to error.",
+      "aha_moment": "Operators stop seeing spurious 'status update failed' branches caused by momentary network noise."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "When an automation does not fire, support cannot tell whether it was suppressed (echo loop), stale, unmatched, or genuinely lost.",
+      "suggestion": "The outbox row + existing inma_webhook_events audit (actor_type, origin_request_id, matched_lead_count, derived_status) make each outcome distinguishable without code archaeology.",
+      "aha_moment": "Support answers 'why didn't this fire?' from two table rows instead of guessing."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "iteration": 0,
+    "blocking_issues": [],
+    "escalation_required": false
+  }
+}

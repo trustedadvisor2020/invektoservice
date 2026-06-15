@@ -463,6 +463,16 @@ var inmaConnectionString = builder.Configuration.GetConnectionString("InmaManage
     builder.Configuration.GetSection(Invekto.Backend.Services.Inma.InmaWebhookOptions.SectionName).Bind(inmaWebhookOptions);
     builder.Services.AddSingleton(inmaWebhookOptions);
 
+    // FEAT-INMA-PIPELINE-V2 C3 HARDENING: durable customer_status_changed flow-trigger outbox + drain. The
+    // outbox INSERT is written inside the C2 persist tx (InmaWebhookEventRepository); this timer worker drains
+    // it and enqueues TriggerCustomerStatusFlowJob (Automation queue), replacing the old lossy inline enqueue
+    // that could drop a trigger on a crash between the C2 commit and the Hangfire enqueue.
+    builder.Services.AddSingleton<CustomerStatusFlowOutboxRepository>();
+    var flowOutboxOptions = new Invekto.Backend.Services.CustomerStatusFlowOutboxDrainOptions();
+    builder.Configuration.GetSection("InmaWebhook:FlowOutbox").Bind(flowOutboxOptions);
+    builder.Services.AddSingleton(flowOutboxOptions);
+    builder.Services.AddHostedService<Invekto.Backend.Services.CustomerStatusFlowOutboxDrainJob>();
+
     // FEAT-VFB F-VR-B: voice_tenant_profile read (VoiceRuntime reads it over HTTP via /api/ops/tenants/{id}/voice-profile).
     builder.Services.AddSingleton<VoiceTenantProfileRepository>();
 
@@ -2464,6 +2474,28 @@ app.MapPost("/api/v1/webhook/event", async (HttpContext ctx, JsonLinesLogger jso
         // (4) Derive opaque status + normalized phones; persist + apply in one tx.
         var derived = CustomerStatusMapping.Derive(evt.Data.SelectionMode, evt.Data.After);
         var normalizedPhones = NormalizePhones(evt.Data);
+
+        // C3 HARDENING: compute the event-level flow-trigger dispatch decision HERE and carry it into the
+        // persist, so the transactional outbox INSERT (one row per CHANGED lead) lands in the SAME tx as the
+        // status apply. Mirrors the prior inline C3a guard: fail-closed suppression (actor=='user' only; the
+        // 'invekto-' origin echo loop kill) + the per-lead change-gate (now done inside the repo from the
+        // RETURNING old/new). The origin-echo anomaly warn is preserved verbatim.
+        var actorType = evt.Actor?.Type;
+        var originRequestId = evt.Data.OriginRequestId;
+        if (!string.IsNullOrEmpty(originRequestId)
+            && originRequestId.StartsWith(CustomerStatusFlowSuppression.OriginRequestIdPrefix, StringComparison.Ordinal)
+            && !string.Equals(actorType?.Trim(), "api", StringComparison.OrdinalIgnoreCase))
+        {
+            jsonLogger.SystemWarn($"C3 origin-echo anomaly: invekto- originRequestId with actor='{actorType ?? "-"}' (expected 'api') tenant={tenantContext.TenantId} eventId={evt.Id}");
+        }
+        var suppression = CustomerStatusFlowSuppression.Evaluate(actorType, originRequestId);
+        var actorName = evt.Actor?.Name;
+        var dispatch = new CustomerStatusFlowDispatch(
+            Allowed: suppression == FlowSuppressionDecision.Fire,
+            FeatureGroupName: evt.Data.FeatureGroupName,
+            ChangedBy: string.IsNullOrWhiteSpace(actorName) ? actorType : actorName,
+            Phone: evt.Data.Phone);
+
         var row = new InmaWebhookEventRow(
             tenantContext.TenantId,
             eventId,
@@ -2482,7 +2514,7 @@ app.MapPost("/api/v1/webhook/event", async (HttpContext ctx, JsonLinesLogger jso
         InmaWebhookPersistResult result;
         try
         {
-            result = await eventRepo.PersistAndApplyAsync(row, normalizedPhones, ctx.RequestAborted);
+            result = await eventRepo.PersistAndApplyAsync(row, normalizedPhones, dispatch, ctx.RequestAborted);
         }
         catch (Npgsql.NpgsqlException ex)
         {
@@ -2494,9 +2526,11 @@ app.MapPost("/api/v1/webhook/event", async (HttpContext ctx, JsonLinesLogger jso
         {
             case InmaWebhookPersistOutcome.StoredApplied:
                 jsonLogger.SystemInfo($"C2 customer_status applied tenant={tenantContext.TenantId} eventId={evt.Id} fg={evt.Data.FeatureGroupId} mode={evt.Data.SelectionMode} leads={result.MatchedLeadCount} sigEnc={matchedEncoding}");
-                // C3a (FEAT-INMA-PIPELINE-V2): fire the customer_status_changed flow trigger (fail-closed
-                // loop guard + change-gate, fire-and-forget per changed lead). Never throws / never 4xx-5xx.
-                DispatchCustomerStatusFlowTriggers(evt, result);
+                // C3 HARDENING: the customer_status_changed flow trigger is now DURABLE — the outbox rows (one
+                // per changed lead) were INSERTed inside the persist tx above when dispatch.Allowed, and
+                // CustomerStatusFlowOutboxDrainJob enqueues TriggerCustomerStatusFlowJob from them. No inline
+                // enqueue (that lost the trigger on a crash between the commit and the enqueue).
+                jsonLogger.SystemInfo($"C3 flow-trigger {(dispatch.Allowed ? "queued-to-outbox" : $"suppressed ({suppression})")} tenant={tenantContext.TenantId} eventId={evt.Id} applied={result.MatchedLeadCount}");
                 break;
             case InmaWebhookPersistOutcome.StoredStaleSkipped:
                 jsonLogger.SystemInfo($"C2 customer_status stale-skipped (older occurredAt) tenant={tenantContext.TenantId} eventId={evt.Id}");
@@ -2515,84 +2549,11 @@ app.MapPost("/api/v1/webhook/event", async (HttpContext ctx, JsonLinesLogger jso
         return Results.Json(new { status = "accepted", request_id = requestId, outcome = result.Outcome.ToString(), matched_leads = result.MatchedLeadCount }, statusCode: 200);
     }
 
-    // C3a (FEAT-INMA-PIPELINE-V2): customer_status_changed flow-trigger dispatch. Best-effort,
-    // fire-and-forget. A fail-closed loop guard + a per-lead change-gate decide whether to enqueue one
-    // Automation Hangfire job per CHANGED lead (G7 cross-service enqueue, same pattern as
-    // TriggerWelcomeFlowJob). This NEVER throws and NEVER alters the HTTP 200 — a dispatch failure must
-    // not make INMA retry the webhook and re-apply the status (the C2 persist already committed).
-    void DispatchCustomerStatusFlowTriggers(CustomerSelectionChangedEvent ev, InmaWebhookPersistResult res)
-    {
-        var actorType = ev.Actor?.Type;
-        var originRequestId = ev.Data?.OriginRequestId;
-
-        // Anomaly: our own write-back echo SHOULD carry actor 'api'. An 'invekto-' origin with a non-api
-        // actor means INMA's echo wiring drifted — surface it (the event is still suppressed below).
-        if (!string.IsNullOrEmpty(originRequestId)
-            && originRequestId.StartsWith(CustomerStatusFlowSuppression.OriginRequestIdPrefix, StringComparison.Ordinal)
-            && !string.Equals(actorType?.Trim(), "api", StringComparison.OrdinalIgnoreCase))
-        {
-            jsonLogger.SystemWarn($"C3 origin-echo anomaly: invekto- originRequestId with actor='{actorType ?? "-"}' (expected 'api') tenant={tenantContext.TenantId} eventId={ev.Id}");
-        }
-
-        var decision = CustomerStatusFlowSuppression.Evaluate(actorType, originRequestId);
-        if (decision != FlowSuppressionDecision.Fire)
-        {
-            jsonLogger.SystemInfo($"C3 flow-trigger suppressed ({decision}) tenant={tenantContext.TenantId} eventId={ev.Id} actor='{actorType ?? "-"}'");
-            return;
-        }
-
-        // Change-gate: only leads whose opaque status actually transitioned. A re-selection to the SAME
-        // status advances customer_status_occurred_at but must NOT fire a fake customer_status_changed.
-        var changed = res.AppliedLeads
-            .Where(l => !string.Equals(l.OldStatus, l.NewStatus, StringComparison.Ordinal))
-            .ToList();
-        if (changed.Count == 0)
-        {
-            jsonLogger.SystemInfo($"C3 flow-trigger no-op (no status transition) tenant={tenantContext.TenantId} eventId={ev.Id} applied={res.MatchedLeadCount}");
-            return;
-        }
-
-        var jobs = ctx.RequestServices.GetService<Hangfire.IBackgroundJobClient>();
-        if (jobs == null)
-        {
-            jsonLogger.SystemWarn($"[{ErrorCodes.InmaWebhookFlowEnqueueFailed}] C3 IBackgroundJobClient not configured tenant={tenantContext.TenantId} eventId={ev.Id}");
-            return;
-        }
-
-        var actorName = ev.Actor?.Name;
-        var changedBy = string.IsNullOrWhiteSpace(actorName) ? actorType : actorName;
-        var featureGroupId = ev.Data?.FeatureGroupId;
-        var featureGroupName = ev.Data?.FeatureGroupName;
-        // C4: carry the INMA customer identity (event-level: one customer per event) so a downstream
-        // 'Set Customer Status' action can write back via CustomerID (preferred) or Phone (fallback).
-        var inmaCustomerId = ev.Data?.CustomerId;
-        var inmaPhone = ev.Data?.Phone;
-
-        var enqueued = 0;
-        foreach (var lead in changed)
-        {
-            try
-            {
-                jobs.Enqueue<Invekto.Automation.Services.Jobs.TriggerCustomerStatusFlowJob>(
-                    j => j.ExecuteAsync(tenantContext.TenantId, lead.LeadId, lead.NewStatus, lead.OldStatus,
-                        featureGroupId, featureGroupName, changedBy, inmaCustomerId, inmaPhone, CancellationToken.None));
-                enqueued++;
-            }
-            catch (Hangfire.BackgroundJobClientException ex)
-            {
-                jsonLogger.SystemWarn($"[{ErrorCodes.InmaWebhookFlowEnqueueFailed}] C3 enqueue failed (hangfire) tenant={tenantContext.TenantId} eventId={ev.Id} lead={lead.LeadId}: {ex.Message}");
-            }
-            catch (Npgsql.NpgsqlException ex)
-            {
-                jsonLogger.SystemWarn($"[{ErrorCodes.InmaWebhookFlowEnqueueFailed}] C3 enqueue failed (db) tenant={tenantContext.TenantId} eventId={ev.Id} lead={lead.LeadId}: {ex.Message}");
-            }
-            catch (InvalidOperationException ex)
-            {
-                jsonLogger.SystemWarn($"[{ErrorCodes.InmaWebhookFlowEnqueueFailed}] C3 enqueue failed (config) tenant={tenantContext.TenantId} eventId={ev.Id} lead={lead.LeadId}: {ex.Message}");
-            }
-        }
-        jsonLogger.SystemInfo($"C3 flow-trigger dispatched tenant={tenantContext.TenantId} eventId={ev.Id} changed={changed.Count} enqueued={enqueued} fg={featureGroupId}");
-    }
+    // C3 HARDENING: the inline DispatchCustomerStatusFlowTriggers method was REMOVED. Its loop-guard
+    // suppression + origin-echo anomaly warn moved INTO HandleCustomerSelectionChangedAsync (computed before
+    // the persist), and its per-lead change-gate + enqueue moved into the transactional outbox
+    // (InmaWebhookEventRepository INSERT inside the C2 tx + CustomerStatusFlowOutboxDrainJob). This closes the
+    // commit-before-enqueue durability hole the inline path had.
 
     // Digit-only normalization across phones[] + the single phone fallback (INMA does NOT guarantee a
     // country code). Distinct, non-empty digit strings only.
