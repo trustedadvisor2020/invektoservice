@@ -94,11 +94,13 @@ C3a backend trigger borusunu **görünür + kurulabilir** yaptı. SPA `customer_
 
 **Deploy:** ✅ DONE 2026-06-13 ~22:38 (Backend-only — Shared additive; 10/10 HEALTHY, config-restore'lu, SPA `index-E1nc-dJ3.js`; GET+`/cache-invalidate` 401-gated doğrulandı). **Smoke (AC10):** endpoint+bundle deploy doğrulandı; **kalan canlı uçtan uca** = 5050'de INMA panelinden gerçek durum değişikliği → flow tetik (Q/INMA aksiyonu) + isteğe bağlı server-side cxapi catalog curl (5050 secret) ile dropdown wire-teyit (DTO shape PDF'ten, canlı doğrulanmadı). Medipol secret'a dokunulmadı.
 
-## C4 — `Set Customer Status` write-back action ✅ DONE (build PASS; Codex pending)
+## C4 — `Set Customer Status` write-back action ✅ DONE+DEPLOYED+SMOKED
 
-> **Slug:** `20260615-feat-inma-pipeline-v2-c4-set-customer-status` | **Risk:** MEDIUM
+> **Slug:** `20260615-feat-inma-pipeline-v2-c4-set-customer-status` | **Risk:** MEDIUM | **Commit:** `20e8a1c5` (master, push'lu)
+> **Codex:** iter0 FAIL → iter1 FAIL → **iter2 PASS** (CQ1-12 + CoVe 4/4, 0 blocker, gpt-5.5). codex_consult pre-impl critique uygulandı.
 > **Plan:** `arch/plans/20260615-feat-inma-pipeline-v2-c4-set-customer-status.json` | **Contract:** `inma-customer-status-webhook.json` (`set_customer_status_action.c4_implementation`)
-> **Build:** full-solution .NET exit 0 + SPA tsc/vite exit 0 (bundle `index-BYKMIDLi.js`). No migration.
+> **Build:** full-solution .NET 0 error + SPA tsc/vite 0 error (bundle `index-BYKMIDLi.js`) + 8/8 test. No migration.
+> **Deploy:** ✅ 2026-06-15 ~14:07 UTC — Backend + Automation `server-deploy` (Shared additive → diğer 9 servis inert), config-restore'lu. **10/10 HEALTHY.** Smoke: endpoint `/api/internal/customer-feature-groups/update` no-auth → **401** (JWT gate); SPA node `action_set_customer_status` deployed flow chunk'larında (`flow-CQCFl854.js` + `FlowEditorPage-emm2tiIl.js`); yeni Shared.dll iki serviste de (17:04:54). **CANLI ama inert** — henüz node'u kullanan flow yok. **Kalan canlı e2e** (flow durum yazar → cxapi → INMA → C3a echo-suppress): Q/INMA aksiyonu + Medipol (100000001) `webhook_secret` (inbound-echo yarısı için).
 
 Yeni flow ACTION node `action_set_customer_status` — bir lead'in INMA durumunu (feature-group seçimini) cxapi `/customer-feature-groups/update` ile geri yazar. Handler `ApiCallHandler`/`EcommerceHandler` desenini birebir aynalar (`Action=Continue` + `success`/`error` handle + `ctx.IsSimulation` mock).
 
