@@ -44,7 +44,8 @@ public sealed class FlowValidator
         ["outbound_trigger"] = new[] { "label" },
         ["schedule_trigger"] = new[] { "label", "cron_expression" },
         ["customer_status_changed"] = new[] { "label" }, // FEAT-INMA-PIPELINE-V2 C3a — feature_group_id optional (empty = match any group)
-        ["action_call_flow"] = new[] { "label", "flow_id" }
+        ["action_call_flow"] = new[] { "label", "flow_id" },
+        ["action_set_customer_status"] = new[] { "label", "feature_group_id" } // FEAT-INMA-PIPELINE-V2 C4 — feature_ids optional (empty = clear group); not terminal, has success/error handles
     };
 
     /// <summary>
@@ -273,6 +274,20 @@ public sealed class FlowValidator
                 {
                     var handleLabel = handle == "success" ? "Basarili" : "Hata";
                     warnings.Add($"API dali '{handleLabel}' ({handle}) baglantisiz — node '{node.GetData("label", node.Id)}' ({node.Id})");
+                }
+            }
+        }
+
+        // 11c. action_set_customer_status handle consistency (success / error) — FEAT-INMA-PIPELINE-V2 C4
+        foreach (var node in graph.AllNodes.Where(n => n.Type == "action_set_customer_status"))
+        {
+            foreach (var handle in new[] { "success", "error" })
+            {
+                var edges = graph.GetOutgoingEdges(node.Id, handle);
+                if (edges.Count == 0)
+                {
+                    var handleLabel = handle == "success" ? "Basarili" : "Hata";
+                    warnings.Add($"Durum atama dali '{handleLabel}' ({handle}) baglantisiz — node '{node.GetData("label", node.Id)}' ({node.Id})");
                 }
             }
         }

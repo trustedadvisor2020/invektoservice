@@ -22,6 +22,7 @@ import type {
   WebhookTriggerData,
   ScheduleTriggerData,
   CustomerStatusChangedData,
+  SetCustomerStatusData,
   ActionApiCallData,
   ActionDelayData,
   ActionHandoffData,
@@ -141,6 +142,9 @@ export function NodePropertyPanel() {
         )}
         {nodeType === 'customer_status_changed' && (
           <CustomerStatusChangedProps data={selectedNode.data as CustomerStatusChangedData} onChange={update} />
+        )}
+        {nodeType === 'action_set_customer_status' && (
+          <SetCustomerStatusActionProps data={selectedNode.data as SetCustomerStatusData} onChange={update} />
         )}
         {nodeType === 'action_call_flow' && (
           <CallFlowProps data={selectedNode.data as ActionCallFlowData} onChange={update} />
@@ -530,6 +534,169 @@ function CustomerStatusChangedProps({ data, onChange }: { data: Record<string, u
           {' '}<code className="text-navy-400">{'{{new_customer_status}}'}</code> ile dallanabilirsiniz.
         </p>
       ))}
+    </div>
+  );
+}
+
+// FEAT-INMA-PIPELINE-V2 C4: 'Set Customer Status' action config — a group picker (cached cxapi catalog) +
+// a feature picker (single=radio, multi=checkbox). FULL-LIST replace semantics: the picked set is the
+// group's COMPLETE new selection — for multi-select groups, unpicked features are REMOVED (an explicit
+// warning is shown). Empty selection clears the group. Text-mode (selectionMode===3) groups are disabled
+// (the vendor /update has no text-write payload). No WapCRM secret => info note (the node cannot be configured).
+function SetCustomerStatusActionProps({ data, onChange }: { data: Record<string, unknown>; onChange: (d: Record<string, unknown>) => void }) {
+  const [groups, setGroups] = useState<CustomerFeatureGroup[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [notConfigured, setNotConfigured] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const rawFg = data.feature_group_id;
+  const currentFg = typeof rawFg === 'number'
+    ? String(rawFg)
+    : (typeof rawFg === 'string' ? rawFg.trim() : '');
+
+  const rawIds = data.feature_ids;
+  const currentIds = (typeof rawIds === 'string' ? rawIds : '')
+    .split(',')
+    .map((s) => parseInt(s.trim(), 10))
+    .filter((n) => Number.isInteger(n) && n > 0);
+
+  const loadGroups = useCallback(async () => {
+    setLoading(true);
+    setNotConfigured(false);
+    setFetchError(false);
+    try {
+      const result = await api.getCustomerFeatureGroups();
+      setGroups(result.data ?? []);
+    } catch (err: unknown) {
+      // 422 INV-BE-132 = tenant has no WapCRM secret (distinct from a transient fetch failure).
+      if (err instanceof ApiClientError && err.status === 422) {
+        setNotConfigured(true);
+      } else {
+        setFetchError(true);
+        console.warn('[SetCustomerStatusActionProps] catalog fetch failed:', err instanceof Error ? err.message : err);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadGroups(); }, [loadGroups]);
+
+  const refresh = async () => {
+    setRefreshing(true);
+    try {
+      await api.invalidateCustomerFeatureGroupsCache();
+    } catch (err: unknown) {
+      console.warn('[SetCustomerStatusActionProps] cache invalidate failed:', err instanceof Error ? err.message : err);
+    } finally {
+      setRefreshing(false);
+    }
+    await loadGroups();
+  };
+
+  const selectedGroup = currentFg !== '' ? groups.find((g) => String(g.id) === currentFg) : undefined;
+
+  const handleSelectGroup = (value: string) => {
+    if (value === '') { onChange({ feature_group_id: '', feature_ids: '' }); return; }
+    const grp = groups.find((g) => String(g.id) === value);
+    // Hard-guard: text-mode (selectionMode===3) groups cannot be written by the vendor /update API.
+    if (!grp || grp.selectionMode === 3) return;
+    // Changing the group invalidates any previously-picked features.
+    onChange({ feature_group_id: value, feature_ids: '' });
+  };
+
+  const writeIds = (ids: number[]) => onChange({ feature_ids: ids.join(',') });
+  const selectSingle = (id: number) => writeIds([id]);
+  const toggleMulti = (id: number) =>
+    writeIds(currentIds.includes(id) ? currentIds.filter((x) => x !== id) : [...currentIds, id]);
+
+  return (
+    <div className="space-y-3">
+      {notConfigured ? (
+        <p className="text-sm text-navy-300">
+          WapCRM bağlantısı yok — bu adım <strong>çalışamaz</strong>.
+          <span className="block mt-1 text-navy-200">
+            Müşteri durumu yazabilmek için Ayarlar &gt; Entegrasyon bölümünden WapCRM bağlantısını tamamlayın.
+          </span>
+        </p>
+      ) : (
+        <>
+          <FieldGroup label="Durum Grubu">
+            {loading ? (
+              <p className="text-sm text-navy-300">Yükleniyor...</p>
+            ) : (
+              <>
+                <select
+                  value={currentFg}
+                  onChange={(e) => handleSelectGroup(e.target.value)}
+                  className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
+                >
+                  <option value="">Grup seçin...</option>
+                  {groups.map((g) => (
+                    <option key={g.id} value={String(g.id)} disabled={g.selectionMode === 3}>
+                      {g.name}{g.selectionMode === 3 ? ' (metin — yazılamaz)' : ''}
+                    </option>
+                  ))}
+                </select>
+                {fetchError && (
+                  <p className="text-sm text-amber-600 mt-1">Gruplar yüklenemedi — Yenile ile tekrar deneyin.</p>
+                )}
+                <button
+                  type="button"
+                  onClick={refresh}
+                  disabled={refreshing}
+                  className="text-xs text-brand-600 hover:text-brand-700 mt-1.5 disabled:opacity-50"
+                >
+                  {refreshing ? 'Yenileniyor...' : 'Kataloğu yenile'}
+                </button>
+              </>
+            )}
+          </FieldGroup>
+
+          {selectedGroup && (
+            <FieldGroup label={selectedGroup.selectionMode === 1 ? 'Durumlar (çoklu)' : 'Durum (tek)'}>
+              {selectedGroup.selectionMode === 1 && (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 mb-2">
+                  ⚠️ Bu çoklu-seçim grubunun <strong>TÜM seçimini</strong> aşağıdakiyle değiştirir —
+                  işaretlemedikleriniz müşteriden <strong>kaldırılır</strong>.
+                </p>
+              )}
+              {selectedGroup.features.length === 0 ? (
+                <p className="text-sm text-navy-300">Bu grupta seçilebilir durum yok.</p>
+              ) : (
+                <div className="space-y-1">
+                  {selectedGroup.features.map((f) => (
+                    <label key={f.id} className="flex items-center gap-2 text-sm text-navy-700 cursor-pointer">
+                      <input
+                        type={selectedGroup.selectionMode === 1 ? 'checkbox' : 'radio'}
+                        name={`scs_${selectedGroup.id}`}
+                        checked={currentIds.includes(f.id)}
+                        onChange={() => (selectedGroup.selectionMode === 1 ? toggleMulti(f.id) : selectSingle(f.id))}
+                      />
+                      {f.name}
+                    </label>
+                  ))}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => writeIds([])}
+                className="text-xs text-navy-400 hover:text-navy-600 mt-2"
+              >
+                Seçimi temizle (grubu boşalt)
+              </button>
+            </FieldGroup>
+          )}
+
+          {!selectedGroup && !loading && (
+            <p className="text-xs text-navy-300">
+              Bir grup seçin, ardından atanacak durum(lar)ı işaretleyin. Sonuç{' '}
+              <code className="text-navy-400">success</code> / <code className="text-navy-400">error</code> dallarına göre devam eder.
+            </p>
+          )}
+        </>
+      )}
     </div>
   );
 }

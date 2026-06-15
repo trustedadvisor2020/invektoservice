@@ -20,6 +20,7 @@ import { UtilitySetVariableNode } from './UtilitySetVariableNode';
 import { UtilityNoteNode } from './UtilityNoteNode';
 import { CallFlowNode } from './CallFlowNode';
 import { ActionEcommerceNode } from './ActionEcommerceNode';
+import { SetCustomerStatusNode } from './SetCustomerStatusNode';
 
 export const nodeTypes: NodeTypes = {
   trigger_start: TriggerStartNode,
@@ -43,4 +44,5 @@ export const nodeTypes: NodeTypes = {
   utility_note: UtilityNoteNode,
   action_call_flow: CallFlowNode,
   action_ecommerce: ActionEcommerceNode,
+  action_set_customer_status: SetCustomerStatusNode,
 };

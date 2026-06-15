@@ -55,6 +55,8 @@ public sealed class TriggerCustomerStatusFlowJob
         int? featureGroupId,
         string? featureGroupName,
         string? changedBy,
+        int? customerId,
+        string? phone,
         CancellationToken ct = default)
     {
         // Resolve the tenant's customer_status_changed flows. NpgsqlException is INFRA (INV-AT-088);
@@ -141,12 +143,12 @@ public sealed class TriggerCustomerStatusFlowJob
         var seedVars = BuildSeedVariables(newStatus, oldStatus, featureGroupId, featureGroupName, changedBy);
         foreach (var candidate in toRun)
         {
-            await ExecuteFlowAsync(tenantId, leadId, candidate, seedVars, ct);
+            await ExecuteFlowAsync(tenantId, leadId, candidate, seedVars, customerId, phone, ct);
         }
     }
 
     private async Task ExecuteFlowAsync(int tenantId, int leadId, FlowCandidate candidate,
-        IReadOnlyDictionary<string, string> seedVars, CancellationToken ct)
+        IReadOnlyDictionary<string, string> seedVars, int? customerId, string? phone, CancellationToken ct)
     {
         var syntheticChatId = $"custstatus_{Interlocked.Decrement(ref _chatCounter)}";
         var sessionId = -1;
@@ -164,7 +166,10 @@ public sealed class TriggerCustomerStatusFlowJob
                 Variables = new Dictionary<string, string>(seedVars, StringComparer.Ordinal)
             };
 
-            var result = await _engine.ExecuteAsync(candidate.Graph, state, ct, tenantId: tenantId);
+            // C4: thread the INMA customer identity so a 'Set Customer Status' action in this flow can
+            // write back (customerId preferred, phone fallback).
+            var result = await _engine.ExecuteAsync(candidate.Graph, state, ct, tenantId: tenantId,
+                customerId: customerId, phone: phone);
 
             var finalStatus = result.IsTerminal
                 ? (result.NeedsHandoff ? "handed_off" : (result.ErrorCode != null ? "error" : "completed"))

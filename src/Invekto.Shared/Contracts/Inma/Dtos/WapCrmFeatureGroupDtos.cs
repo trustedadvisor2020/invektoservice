@@ -88,3 +88,98 @@ public sealed class WapCrmFeatureGroupCatalogOptions
     /// <summary>FINITE HttpClient.Timeout hard backstop (ms) = <see cref="TimeoutMs"/> + buffer (buffer floored at 1s) — never Infinite.</summary>
     public int HttpClientBackstopMs => TimeoutMs + Math.Max(HttpClientBackstopBufferMs, 1_000);
 }
+
+/// <summary>
+/// FEAT-INMA-PIPELINE-V2 C4 — the Automation -> Backend INTERNAL proxy request for the
+/// 'Set Customer Status' flow action (POST /api/internal/customer-feature-groups/update).
+/// Lives in Shared so Automation (sender) and Backend (receiver) share one contract without a
+/// cross-service project reference. <see cref="TenantId"/> is cross-checked against the caller's
+/// signed service-JWT claim by Backend (it is NOT trusted on its own). Carries NO secret — Backend
+/// resolves the tenant WapCRM secret itself. One of <see cref="CustomerId"/> / <see cref="Phone"/>
+/// must be present (the handler guards both-empty before calling).
+/// </summary>
+public sealed class SetCustomerStatusProxyRequest
+{
+    [JsonPropertyName("tenantId")] public int TenantId { get; init; }
+    [JsonPropertyName("customerId")] public int? CustomerId { get; init; }
+    [JsonPropertyName("phone")] public string? Phone { get; init; }
+    [JsonPropertyName("featureGroupId")] public int FeatureGroupId { get; init; }
+    [JsonPropertyName("featureIds")] public IReadOnlyList<int> FeatureIds { get; init; } = Array.Empty<int>();
+    [JsonPropertyName("clientRequestId")] public string? ClientRequestId { get; init; }
+}
+
+// ============================================================================
+// FEAT-INMA-PIPELINE-V2 C4 — cxapi customer-feature-groups UPDATE (WRITE).
+// Wire DTOs for POST https://cxapi.wapcrm.net/api/customer-feature-groups/update
+// (WapCRM PDF §6.3). The 'Set Customer Status' flow action's write payload, proxied
+// through the Backend internal endpoint. FULL-LIST semantics: FeatureIDs[] is the new
+// COMPLETE selection for the group (the backend computes add/remove + audits Source='api');
+// [] clears the group. Single + Multi only — §6.3 documents NO text-mode (selectionMode=3)
+// write, so text groups are disabled in the picker. Request keys are PascalCase per the
+// vendor doc examples ({ "CustomerID": 17, "FeatureGroupID": 1, "FeatureIDs": [19] }).
+// ============================================================================
+
+/// <summary>
+/// Write payload sent to cxapi <c>api/customer-feature-groups/update</c>. Lookup: CustomerID first,
+/// Phone fallback (one MUST be non-null; the handler guards both-empty before calling). ClientRequestID
+/// echoes back as the webhook event's <c>data.originRequestId</c> (loop-suppress correlation; carries the
+/// <c>invekto-</c> prefix). Serialized with explicit PascalCase names so the wire shape is independent of
+/// server JsonOptions.
+/// </summary>
+public sealed class WapCrmFeatureGroupUpdateRequest
+{
+    [JsonPropertyName("CustomerID")] public int? CustomerId { get; init; }
+    [JsonPropertyName("Phone")] public string? Phone { get; init; }
+    [JsonPropertyName("FeatureGroupID")] public int FeatureGroupId { get; init; }
+    [JsonPropertyName("FeatureIDs")] public IReadOnlyList<int> FeatureIds { get; init; } = Array.Empty<int>();
+    [JsonPropertyName("ClientRequestID")] public string? ClientRequestId { get; init; }
+}
+
+/// <summary>How the cxapi update round-trip resolved (the client only RETURNS these "vendor answered" cases;
+/// it THROWS <see cref="Invekto.Shared.Contracts.Inma.WapCrmFeatureGroupUpdateException"/> for transport /
+/// timeout / 5xx / malformed / rate-limit / unknown-outcome).</summary>
+public enum WapCrmFeatureGroupUpdateOutcome
+{
+    /// <summary>Provider envelope status=true — the selection was applied.</summary>
+    Success,
+    /// <summary>Deterministic business rejection (provider statusCode 920/921/922/923/903). NOT retry-safe.</summary>
+    BusinessError,
+    /// <summary>Auth rejected (HTTP/provider 401/403 — invalid/expired secret). Config class, NOT retry-safe.</summary>
+    AuthRejected
+}
+
+/// <summary>Result of a cxapi customer-feature-groups update. Never carries the secret.</summary>
+public sealed class WapCrmFeatureGroupUpdateResult
+{
+    public required WapCrmFeatureGroupUpdateOutcome Outcome { get; init; }
+    /// <summary>Provider payload statusCode (e.g. "920", "903", "200"); null if the envelope omitted it.</summary>
+    public string? ProviderStatusCode { get; init; }
+    /// <summary>Provider-supplied message (sanitized vendor text; never a secret). For logging/operator display.</summary>
+    public string? ProviderMessage { get; init; }
+    /// <summary>HTTP status of the round-trip (for diagnostics).</summary>
+    public int HttpStatusCode { get; init; }
+}
+
+/// <summary>
+/// Tuning for <see cref="Invekto.Shared.Contracts.Inma.WapCrmFeatureGroupUpdateClient"/>. Bound from the
+/// optional "WapCrmFeatureGroupUpdate" config section; safe defaults apply when absent. Carries NO secrets.
+/// <see cref="BaseUrl"/> is a FIXED server-side value — the tenant's own <c>WapCrmSettings.ApiUrl</c> is
+/// NEVER used as the egress target (SSRF / secret-exfiltration mitigation), mirroring
+/// <see cref="WapCrmFeatureGroupCatalogOptions"/>.
+/// </summary>
+public sealed class WapCrmFeatureGroupUpdateOptions
+{
+    public const string SectionName = "WapCrmFeatureGroupUpdate";
+
+    /// <summary>cxapi base URL. The client posts to <c>api/customer-feature-groups/update</c> relative to this.</summary>
+    public string BaseUrl { get; set; } = "https://cxapi.wapcrm.net/";
+
+    /// <summary>Per-attempt timeout (ms), enforced by a per-attempt linked CTS inside the client.</summary>
+    public int TimeoutMs { get; set; } = 8_000;
+
+    /// <summary>Buffer (ms) added to <see cref="TimeoutMs"/> to derive the FINITE HttpClient.Timeout backstop (floored at 1s).</summary>
+    public int HttpClientBackstopBufferMs { get; set; } = 5_000;
+
+    /// <summary>FINITE HttpClient.Timeout hard backstop (ms) = <see cref="TimeoutMs"/> + buffer (buffer floored at 1s) — never Infinite.</summary>
+    public int HttpClientBackstopMs => TimeoutMs + Math.Max(HttpClientBackstopBufferMs, 1_000);
+}

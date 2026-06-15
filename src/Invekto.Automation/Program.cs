@@ -161,6 +161,7 @@ builder.Services.AddSingleton<INodeHandler, CallFlowHandler>();
 builder.Services.AddSingleton<INodeHandler, LogicWorkingHoursHandler>();
 builder.Services.AddSingleton<INodeHandler, ActionAssignGroupHandler>();
 builder.Services.AddSingleton<INodeHandler, EcommerceHandler>();
+builder.Services.AddSingleton<INodeHandler, ActionSetCustomerStatusHandler>(); // FEAT-INMA-PIPELINE-V2 C4 — 'Set Customer Status' write action
 // G6: Long-wait node (persistent, restart-safe, separate from action_delay)
 builder.Services.AddSingleton<INodeHandler, ActionWaitUntilHandler>();
 
@@ -259,6 +260,25 @@ builder.Services.AddSingleton<BackendIntakeClient>(sp =>
     return new BackendIntakeClient(
         factory.CreateClient(nameof(BackendIntakeClient)),
         backendIntakeSharedSecret,
+        sp.GetRequiredService<JwtGenerator>(),
+        sp.GetRequiredService<JsonLinesLogger>());
+});
+
+// FEAT-INMA-PIPELINE-V2 C4: BackendCustomerStatusClient — the 'Set Customer Status' action's write hop to
+// Backend's /api/internal/customer-feature-groups/update. Same dual-auth as BackendIntakeClient (per-call
+// service JWT + cluster-wide InternalServices:SharedSecret). The WapCRM secret stays in Backend; this hop
+// only carries the desired selection. NO auto-retry (write — a timeout is an unknown outcome).
+builder.Services.AddHttpClient(nameof(BackendCustomerStatusClient), client =>
+{
+    client.BaseAddress = new Uri(backendBaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(12);
+});
+builder.Services.AddSingleton<BackendCustomerStatusClient>(sp =>
+{
+    var factory = sp.GetRequiredService<IHttpClientFactory>();
+    return new BackendCustomerStatusClient(
+        factory.CreateClient(nameof(BackendCustomerStatusClient)),
+        backendIntakeSharedSecret /* same InternalServices:SharedSecret across the cluster */,
         sp.GetRequiredService<JwtGenerator>(),
         sp.GetRequiredService<JsonLinesLogger>());
 });

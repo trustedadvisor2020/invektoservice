@@ -94,6 +94,24 @@ C3a backend trigger borusunu **görünür + kurulabilir** yaptı. SPA `customer_
 
 **Deploy:** ✅ DONE 2026-06-13 ~22:38 (Backend-only — Shared additive; 10/10 HEALTHY, config-restore'lu, SPA `index-E1nc-dJ3.js`; GET+`/cache-invalidate` 401-gated doğrulandı). **Smoke (AC10):** endpoint+bundle deploy doğrulandı; **kalan canlı uçtan uca** = 5050'de INMA panelinden gerçek durum değişikliği → flow tetik (Q/INMA aksiyonu) + isteğe bağlı server-side cxapi catalog curl (5050 secret) ile dropdown wire-teyit (DTO shape PDF'ten, canlı doğrulanmadı). Medipol secret'a dokunulmadı.
 
-## Sıradaki
+## C4 — `Set Customer Status` write-back action ✅ DONE (build PASS; Codex pending)
 
-**C4** `Set Customer Status` action (INMA `customer-feature-groups/update` endpoint + `invekto-{flowRunUuid}` ClientRequestID loop-guard, `CustomerStatusFlowSuppression.OriginRequestIdPrefix` const'ını reuse eder).
+> **Slug:** `20260615-feat-inma-pipeline-v2-c4-set-customer-status` | **Risk:** MEDIUM
+> **Plan:** `arch/plans/20260615-feat-inma-pipeline-v2-c4-set-customer-status.json` | **Contract:** `inma-customer-status-webhook.json` (`set_customer_status_action.c4_implementation`)
+> **Build:** full-solution .NET exit 0 + SPA tsc/vite exit 0 (bundle `index-BYKMIDLi.js`). No migration.
+
+Yeni flow ACTION node `action_set_customer_status` — bir lead'in INMA durumunu (feature-group seçimini) cxapi `/customer-feature-groups/update` ile geri yazar. Handler `ApiCallHandler`/`EcommerceHandler` desenini birebir aynalar (`Action=Continue` + `success`/`error` handle + `ctx.IsSimulation` mock).
+
+**Interview kararları (Q):** (1) çağrı yeri = **Backend-proxy** (C3b'nin kanıtlı secret çözümü + cxapi egress'i reuse); (2) kimlik = **INMA customerId (varsa) + phone fallback**; (3) kapsam = **single + multi** (text-mode picker'da disabled — vendor `/update` text-write payload'ı YOK, `temp/wapcrm-doc.txt` §6.3 doğrulandı).
+
+**Codex pre-impl critique (codex_consult, gpt-5.5) → benimsenenler:** stabil `ClientRequestID` (GUID değil); multi-select için açık **TAM-LİSTE değiştirir** uyarısı (sessiz veri kaybı footgun'u); provider-code bazlı hata taksonomisi (auth 401/403 ayrı → INV-BE-143); katmanlı timeout + auto-retry YOK. **Reddedilenler (gerekçeli):** ayrı `AllowExternalSideEffects` guard (ApiCall/Ecommerce precedent'i sadece `IsSimulation`); outbound audit/dedupe tablosu (= ertelenen C3 hardening backlog).
+
+**Mimari:** Automation `ActionSetCustomerStatusHandler` → `BackendCustomerStatusClient` (X-Internal-Service-Token + per-call service JWT, `BackendIntakeClient` aynası) → Backend internal `POST /api/internal/customer-feature-groups/update` (body tenantId == JWT claim, `IntakeInternalAuth`) → Shared `WapCrmFeatureGroupUpdateClient` (write sibling of C3b catalog client; per-request X-CIB-SecretKey, SSRF-fixed base, AllowAutoRedirect=false) → cxapi. WapCRM secret SADECE Backend'de çözülür.
+
+**Loop-safety (yeni suppress tablosu YOK):** C3a **fail-closed actor guard** (write-back `actor=='api'` → suppress) + `invekto-` prefix echo + INMA natural full-list idempotency = üç bağımsız döngü-kesici.
+
+**Error codes:** INV-AT-089 (handler/proxy fail) · INV-AT-090 (kimlik yok) · INV-BE-140 (secret yok) · INV-BE-141 (upstream/timeout/unknown) · INV-BE-142 (vendor business 920/921/922/923/903) · INV-BE-143 (auth 401/403). `arch/errors.md` + `ErrorCodes.cs`.
+
+**Files (~16):** Shared `WapCrmFeatureGroupUpdateClient.cs` + DTOs (`WapCrmFeatureGroupUpdateRequest`/`Result`/`Options` + `SetCustomerStatusProxyRequest`) + ErrorCodes; Backend `Program.cs` (DI + internal endpoint + dispatch customerId/phone threading); Automation `BackendCustomerStatusClient.cs` + `ActionSetCustomerStatusHandler.cs` + `INodeHandler.cs` (ExecutionContext += CustomerId/Phone) + `FlowEngineV2.cs` (thread params) + `FlowValidator.cs` (register) + `Program.cs` (DI) + `AutomationOrchestrator.cs` (phone) + `TriggerCustomerStatusFlowJob.cs` (customerId/phone); SPA `types/flow.ts` + `node-metadata.ts` + `graph-validator.ts` + `NodePalette.tsx` + `SetCustomerStatusNode.tsx` + `nodes/index.ts` + `NodePropertyPanel.tsx`; arch `errors.md` + `codex-context.md` (C4 sanctioned section) + contract; test `ActionSetCustomerStatusHandlerTests.cs`. **No migration.**
+
+**Known boundary:** welcome/cron synthetic jobs `phone:null` taşır (hot-path'te ekstra DB lookup'tan kaçınılır) → o bağlamlardaki Set Customer Status node'u görünür INV-AT-090 error handle'ına düşer (sessiz değil). Inbound + customer_status_changed-tetikli akışlar kimlik taşır.

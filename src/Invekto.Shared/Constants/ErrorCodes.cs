@@ -137,6 +137,15 @@ public static class ErrorCodes
     public const string FeatureGroupsCatalogNotConfigured = "INV-BE-132"; // No tenant WapCRM settings / empty secret_key in tenant_registry.settings_json->'wapcrm', OR a MALFORMED secret (control chars caught from the client contract-guard) -> 422. The Flow Builder customer_status_changed trigger still works as catch-all; the tenant must finish/repair the WapCRM connection to use the group picker.
     public const string FeatureGroupsCatalogUpstreamFailed = "INV-BE-133"; // cxapi POST /api/customer-feature-groups/catalog round-trip failed (timeout / transport / malformed envelope / provider status=false / 301-302 rate-limit) -> 503. Read-only -> retry-safe; the cache does NOT cache failures. Raw provider message logged internally (length-capped), never returned to the SPA.
 
+    // FEAT-INMA-PIPELINE-V2 C4: cxapi customer-feature-groups UPDATE proxy (INV-BE-140..143).
+    // Backend internal endpoint POST /api/internal/customer-feature-groups/update (X-Internal-Api-Key gated; the
+    // 'Set Customer Status' flow action's write path). Mapping keys on the PROVIDER payload statusCode, not HTTP.
+    public const string CustomerStatusUpdateNotConfigured = "INV-BE-140"; // No tenant WapCRM settings / empty secret in tenant_registry.settings_json->'wapcrm' (or a malformed secret caught by the client contract-guard) -> 422. The tenant must finish/repair the WapCRM connection before a flow can write a status back.
+    public const string CustomerStatusUpdateUpstreamFailed = "INV-BE-141"; // cxapi POST /api/customer-feature-groups/update transport failure: timeout / connect / HTTP 5xx / malformed envelope / 301-302 rate-limit / unknown-outcome-after-dispatch -> 503. Retry is the flow author's call via the node 'error' handle (we never auto-retry). Provider message logged internally (length-capped), secret never logged.
+    public const string CustomerStatusUpdateVendorRejected = "INV-BE-142"; // cxapi returned a deterministic business rejection (provider statusCode 920 group-not-found/passive, 921 feature-not-found/passive, 922 single-selection-group-given-multiple, 923 feature-not-in-group, 903 customer-not-found) -> 422 with providerCode echoed. NOT retry-safe (config/selection is wrong); the flow author fixes the node or the lead identity.
+    public const string CustomerStatusUpdateAuthRejected = "INV-BE-143"; // cxapi rejected the tenant secret (HTTP/provider 401/403 — invalid or expired X-CIB-SecretKey) -> 422 config class (distinct from 141 transport so support fixes the WapCRM key, not retries). Secret never logged.
+    public const string CustomerStatusUpdateBadRequest = "INV-BE-144"; // LOCAL request-contract violation on the internal update proxy (empty body, OR neither CustomerId nor Phone) -> 400. Distinct from INV-BE-142 (which is reserved for a cxapi PROVIDER business rejection 920/921/922/923/903) — these are caller-side validation failures, no cxapi call is made. Defensive: the Automation handler already guards identity (INV-AT-090) before calling, so this indicates a peer-service contract bug.
+
     // ChatAnalysis errors (INV-CA-xxx)
     public const string ChatAnalysisInvalidPayload = "INV-CA-001";
     public const string ChatAnalysisProcessingFailed = "INV-CA-002";
@@ -322,6 +331,10 @@ public static class ErrorCodes
 
     // FEAT-INMA-PIPELINE-V2 C3a: customer_status_changed flow trigger dispatch (Automation Hangfire job)
     public const string AutomationCustomerStatusFlowDispatchFailed = "INV-AT-088"; // TriggerCustomerStatusFlowJob execution-time failure: NpgsqlException (flow lookup/session DB error), FlowGraphV2.Build null (malformed/wrong-version flow_config), OperationCanceledException (graceful shutdown race), or InvalidOperationException during FlowEngineV2.ExecuteAsync. AutomaticRetry=0 — no retry; synthetic session closed 'error'. Distinct from the benign "no customer_status_changed flow configured for tenant" info no-op (NOT an error).
+
+    // FEAT-INMA-PIPELINE-V2 C4: 'Set Customer Status' flow action (ActionSetCustomerStatusHandler -> Backend proxy -> cxapi update)
+    public const string SetCustomerStatusActionFailed = "INV-AT-089";   // ActionSetCustomerStatusHandler could not apply the write: the Backend proxy call (BackendCustomerStatusClient) failed transport/timeout/non-2xx, OR Backend returned a coded error (INV-BE-140/141/142/143). Node returns Action=Continue via the 'error' output handle (the flow author branches); set_status_error carries an actionable message. NO auto-retry. Simulation never reaches this path.
+    public const string SetCustomerStatusNoIdentity = "INV-AT-090";     // ActionSetCustomerStatusHandler had neither an INMA customerId nor a phone in the flow execution context, so there is no customer to update. No cxapi call is made; the node routes to the 'error' handle. Indicates a flow wired in a context that carries no contact identity (e.g. a path that did not populate ExecutionContext.CustomerId/Phone).
 
     // FEAT-PILOT-KANBAN: SuperAdmin pilot tracking board (Migration 035, 2026-04-28) — INV-KB-xxx
     public const string KanbanStatusUnknown   = "INV-KB-001";                  // KanbanStatusExtensions.ToDbValue defensive guard; enum dışı değer (sistem hatası — PATCH endpoint TryParse zaten INV-KB-003 ile reddediyor). Internal serialization/refactor bug indikatoru.

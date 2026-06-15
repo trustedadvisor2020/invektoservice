@@ -47,6 +47,20 @@ public sealed class ExecutionContext
     /// Null/empty → fallback chain ('en' default → raw text) applied by handlers.
     /// </summary>
     public string? LeadPreferredLocale { get; init; }
+
+    /// <summary>
+    /// FEAT-INMA-PIPELINE-V2 C4: INMA customer id for the current contact (preferred write key for the
+    /// 'Set Customer Status' action). Populated from the triggering customer.selection_changed event when
+    /// the flow was status-triggered; null in other paths (the action falls back to <see cref="Phone"/>).
+    /// </summary>
+    public int? CustomerId { get; init; }
+
+    /// <summary>
+    /// FEAT-INMA-PIPELINE-V2 C4: the current contact's phone (digits) — the 'Set Customer Status' action's
+    /// fallback write key when <see cref="CustomerId"/> is absent. Populated by the inbound orchestrator
+    /// (sender phone), the status-trigger job (event phone), and welcome/cron (lead phone) where available.
+    /// </summary>
+    public string? Phone { get; init; }
 }
 
 /// <summary>

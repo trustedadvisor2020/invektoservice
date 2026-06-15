@@ -1,0 +1,130 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "slug": "20260615-feat-inma-pipeline-v2-c4-set-customer-status",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-06-15T13:10:00Z",
+  "updated_at": "2026-06-15T15:05:00Z",
+  "plan": {
+    "summary": "FEAT-INMA-PIPELINE-V2 C4: a 'Set Customer Status' flow ACTION node that writes a customer's INMA feature-group selection back via cxapi POST /api/customer-feature-groups/update. The handler mirrors ApiCallHandler/EcommerceHandler (Continue + success/error handles, ctx.IsSimulation mock); the real cxapi call is proxied through a new Backend internal endpoint (reuses C3b's proven secret resolution + whitelisted cxapi egress).",
+    "q_intent": "FEAT-INMA-PIPELINE-V2 C4 'Set Customer Status' action node. Q interview: (1) call-site = Backend-proxy (reuse C3b), (2) identity = INMA customerId when available + phone fallback, (3) selectionMode = single+multi only (text disabled in picker — vendor /update has no documented text write).",
+    "interview_notes": "Architecture pivot from the contract's naive 'handler calls update directly': INodeHandler doc says 'pure' but ApiCallHandler/EcommerceHandler already do real mid-flow I/O (Action=Continue, success/error handles, IsSimulation guard) — that is C4's precedent, so NO orchestrator side-effect-drain is needed and the action works across ALL flow paths automatically. Q chose Backend-proxy (Automation handler -> X-Internal-Api-Key Backend endpoint -> Shared write client -> cxapi) over Automation-direct to avoid duplicating WapCRM secret resolution. customerId threaded from the triggering customer.selection_changed event when present (C3a already has it), phone otherwise. VERIFIED against vendor doc temp/wapcrm-doc.txt SS6.3: /update is 'Single + Multi' only, body {CustomerID|Phone, FeatureGroupID, FeatureIDs[]}, no TextValue field -> text-mode write is NOT vendor-supported; Q approved dropping it (text-mode groups disabled in picker, C3b trigger-picker parity). ClientRequestID=invekto-{Guid:N} generated fresh in handler (ctx.RequestId is a hardcoded '-' placeholder; the fail-closed C3a actor guard already kills the loop, so the uuid is belt-and-suspenders, no engine threading needed). Vendor error codes: 920 group/passive, 921 feature/passive, 922 single-group-given-multi, 923 feature-not-in-group, 903 customer-not-found, 401 both ids empty. CODEX CRITIQUE (codex_consult critique gpt-5.5, pre-impl stress-test) RESOLVED: (1) ClientRequestID = STABLE invekto-{tenantId}-{featureGroupId}-{nodeId}-{hash8(identity)} (NOT fresh Guid) — real correctness = full-list-replace value-idempotency; stable id maximizes dedup + deterministic loop-suppress. (2) Multi-select full-list-replace is a data-loss footgun (setting one feature wipes others) -> UI MUST say 'bu grubun TUM secimini degistirir (digerleri silinir)' + warning, never hide behind 'Set Status'. (3) Error mapping keys on the PROVIDER payload statusCode, not HTTP status; provider auth-reject (bad/expired secret) -> distinct INV-BE-143 (NOT collapsed into 141 transport); Backend response carries providerCode + an unknownOutcome/classification so a post-dispatch timeout is distinguishable; layered finite timeouts (cxapi client < Automation client < node budget); handler NEVER auto-retries (routes to error handle, flow author branches). (4) Phone fallback prefers customerId, sends normalized phone, structured-logs best-effort; cross-tenant mismatch impossible (secret is tenant-scoped). DECLINED w/ reason: AllowExternalSideEffects flag (ApiCall/Ecommerce precedent guards on ctx.IsSimulation ONLY; SimulationEngine is the sole verified non-prod path; a divergent one-node guard is itself a review smell — documented in codex-context); outbound audit/dedupe table (= the agreed-deferred C3 reliability-hardening backlog; replaced by stable id + structured sanitized logging).",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "New Shared WapCrmFeatureGroupUpdateClient (write sibling of WapCrmFeatureGroupCatalogClient): POST api/customer-feature-groups/update; per-request X-CIB-SecretKey via TryAddWithoutValidation with a control-char guard (never DefaultRequestHeaders, never logged); FIXED base URL from options (SSRF — never tenant ApiUrl); AllowAutoRedirect=false (cxapi 301/302=rate-limit); finite per-attempt timeout. Returns a typed result distinguishing Success / VendorBusinessError(providerCode 920|921|922|923|903|401) / transport-timeout (typed exception). Sends {CustomerID?, Phone?, FeatureGroupID, FeatureIDs[], ClientRequestID}.", "verified": false },
+      { "id": "AC2", "criterion": "Backend internal endpoint POST /api/internal/customer-feature-groups/update, gated by X-Internal-Api-Key (NOT in jwtRequiredPrefixes; not externally routable — same posture as existing /api/internal/leads/intake/wa-direct); body {tenantId, customerId?, phone?, featureGroupId, featureIds[], clientRequestId}; resolves the tenant secret via tenantRepo.GetWapCrmSettingsAsync (tenant-scoped). Mapping keys on the PROVIDER payload statusCode (not HTTP): secret-not-configured -> 422 INV-BE-140; cxapi transport/timeout/HTTP-5xx/unknown-outcome -> 503 INV-BE-141; vendor business error (920/921/922/923/903) -> 422 INV-BE-142 with providerCode; cxapi auth-rejected (invalid/expired secret, provider/HTTP 401/403) -> 422 INV-BE-143 (distinct config class). Success -> 200 with {providerCode}. Tenant trusted from body = service-level trust (the internal key authenticates the calling SERVICE, documented as such — not tenant-level authz); Automation never sends secret or vendor host. Secret never logged; structured sanitized log of every attempt (tenantId, target-kind, featureGroupId, desired-set hash, clientRequestId, outcome, providerCode).", "verified": false },
+      { "id": "AC3", "criterion": "Automation BackendCustomerStatusClient (sibling client mirroring BackendIntakeClient/LifecycleBackendClient: X-Internal-Api-Key header, fixed Backend base URL, finite timeout) calls the AC2 endpoint and maps its coded responses to a typed outcome (success / configured-error / transport-fail).", "verified": false },
+      { "id": "AC4", "criterion": "Automation ActionSetCustomerStatusHandler : INodeHandler (NodeType 'action_set_customer_status') mirrors ApiCallHandler/EcommerceHandler: ctx.IsSimulation -> mock success (NO real call); reads feature_group_id + feature_ids (+ selection_mode) from node.data with ctx.Evaluator placeholder substitution; resolves customer identity from ctx (CustomerId first, then Phone); ClientRequestID = STABLE invekto-{tenantId}-{featureGroupId}-{nodeId}-{hash8(identity)} (deterministic, GUID-free, <=128 chars) so retries/replays of the same logical write reuse one id; Action=Continue with OutputHandle success/error; sets result vars set_status_code + set_status_error; typed catches (OperationCanceledException caller-cancel rethrow, else timeout/transport -> error handle); NO auto-retry (flow author branches on the error handle). INV-AT-089 (proxy/exec fail) + INV-AT-090 (no customer identity in context -> error handle, no call).", "verified": false },
+      { "id": "AC5", "criterion": "ExecutionContext gains CustomerId (int?) + Phone (string?); FlowEngineV2.ExecuteAsync threads them via new optional params (default null). Populated by: AutomationOrchestrator main path (inbound phone), TriggerCustomerStatusFlowJob (event customerId+phone — added to Backend dispatch + job args + seed), TriggerWelcomeFlowJob + CronSchedulerJob (lead phone when available). SimulationEngine passes null (handler short-circuits on IsSimulation before identity is used).", "verified": false },
+      { "id": "AC6", "criterion": "FlowValidator registers action_set_customer_status: RequiredFields=[label, feature_group_id]; NOT in TerminalTypes, NOT in NoOutputTypes; success/error output-handle consistency check added (mirrors the action_api_call check). Handler registered in Automation Program.cs DI; Backend DI registers the update HttpClient (fixed base, AllowAutoRedirect=false, finite timeout) + WapCrmFeatureGroupUpdateClient + options.", "verified": false },
+      { "id": "AC7", "criterion": "SPA: new action node 'action_set_customer_status' — NodePalette (action category) + SetCustomerStatusNode.tsx (input + success/error output handles) + nodes/index.ts + node-metadata.ts + types/flow.ts (SetCustomerStatusData) + graph-validator.ts; NodePropertyPanel group dropdown REUSES the C3b catalog (GET /api/v1/customer-feature-groups via existing api.ts getter) + a feature picker (single=radio/one, multi=checkbox/many, keyed off selectionMode); text-mode (selectionMode=3) groups disabled + inline note (C3b trigger-picker parity); empty-catalog/no-WapCRM (422) info note. REPLACE-SEMANTICS HONESTY (Codex): for multi-select groups the panel MUST state 'Bu grubun TUM secimini asagidakiyle DEGISTIRIR (secilmeyenler kaldirilir)' with a visible warning — never present multi-select as additive 'Set status'; node label/help conveys full-group replace.", "verified": false },
+      { "id": "AC8", "criterion": "Loop-safety proven without a new suppress table: a Set Customer Status action inside a customer_status_changed flow cannot loop because (a) ClientRequestID carries the invekto- prefix that echoes as data.originRequestId -> C3a SuppressLoop, (b) C3a is fail-closed (only actor.type=='user' fires; our write-back is actor 'api' -> SuppressActor) and (c) INMA natural idempotency (same final set -> no-op -> no event). CustomerStatusFlowSuppression.OriginRequestIdPrefix const is reused (no drift).", "verified": false },
+      { "id": "AC9", "criterion": "Full-solution build PASS (0 errors): Shared change -> dotnet build InvektoServis.sln. SPA tsc + vite build PASS. No DB migration (additive Shared + new handler + new endpoint only).", "verified": false },
+      { "id": "AC10", "criterion": "Smoke (deploy-time): Backend internal endpoint returns 401 without X-Internal-Api-Key (auth gate); SPA bundle contains the new node; node mock-path works in simulation (no real cxapi call). Live e2e (flow sets status -> cxapi update -> INMA reflects + originRequestId echo -> C3a SuppressLoop) deferred to deploy + Q/INMA action (5050 usable; Medipol 100000001 webhook_secret unset blocks only the inbound-echo verification, not the write).", "verified": false }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/Contracts/Inma/WapCrmFeatureGroupUpdateClient.cs",
+    "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmFeatureGroupDtos.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Data/InmaWebhookEventRepository.cs",
+    "src/Invekto.Automation/Services/NodeHandlers/ActionSetCustomerStatusHandler.cs",
+    "src/Invekto.Automation/Services/BackendCustomerStatusClient.cs",
+    "src/Invekto.Automation/Services/FlowEngineV2.cs",
+    "src/Invekto.Automation/Services/NodeHandlers/INodeHandler.cs",
+    "src/Invekto.Automation/Services/FlowValidator.cs",
+    "src/Invekto.Automation/Services/AutomationOrchestrator.cs",
+    "src/Invekto.Automation/Services/Jobs/TriggerCustomerStatusFlowJob.cs",
+    "src/Invekto.Automation/Services/Jobs/TriggerWelcomeFlowJob.cs",
+    "src/Invekto.Automation/Services/Jobs/CronSchedulerJob.cs",
+    "src/Invekto.Automation/Services/SimulationEngine.cs",
+    "src/Invekto.Automation/Data/AutomationRepository.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Backend/Dashboard/src/types/flow.ts",
+    "src/Invekto.Backend/Dashboard/src/lib/node-metadata.ts",
+    "src/Invekto.Backend/Dashboard/src/lib/graph-validator.ts",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/NodePalette.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/nodes/SetCustomerStatusNode.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/nodes/index.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/panels/NodePropertyPanel.tsx",
+    "arch/errors.md",
+    "arch/codex-context.md",
+    "arch/contracts/inma-customer-status-webhook.json",
+    "tracking/feat-inma-pipeline-v2-c3.md",
+    "arch/plans/20260615-feat-inma-pipeline-v2-c4-set-customer-status.json",
+    "arch/plans/diffs/20260615-feat-inma-pipeline-v2-c4-set-customer-status.diff",
+    "tests/InvektoServis.Tests/Automation/ActionSetCustomerStatusHandlerTests.cs"
+  ],
+  "files_changed": [],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": null,
+    "full_path": "arch/plans/diffs/20260615-feat-inma-pipeline-v2-c4-set-customer-status.diff",
+    "stats": { "insertions": 0, "deletions": 0, "files_count": 0 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-06-15T15:00:00Z",
+    "services": ["Invekto.Shared", "Invekto.Backend", "Invekto.Automation"],
+    "output_tail": "Build succeeded. 0 Error(s). SPA tsc+vite exit 0 (bundle index-BYKMIDLi.js). Tests 8/8 PASS."
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "Is the Backend internal update endpoint safe to trust tenantId from the request body, and is the WapCRM secret confined to Backend and never logged on any path (success or failure)?", "category": "Auth" },
+    { "id": "Q2", "question": "Does the write use correct full-list semantics (FeatureIDs[] replaces the whole group selection; empty = clear) and are single-vs-multi mismatches and missing customers surfaced (vendor 922/903) rather than silently succeeding?", "category": "Data" },
+    { "id": "Q3", "question": "Can a Set Customer Status action inside a customer_status_changed flow create a C2->C3->C4->C2 loop, and is double-application prevented under Hangfire retry semantics?", "category": "Lifecycle" },
+    { "id": "Q4", "question": "Does the design preserve microservice isolation (Automation->Backend via shared internal key; Backend->cxapi via the existing whitelisted egress; no direct service-to-service reference) and route every failure to the node error handle without swallowing?", "category": "Process/Policy" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "C2 inbound webhook handler + HMAC verification (untouched)",
+      "C3b catalog READ client/cache (WapCrmFeatureGroupCatalogClient/Cache — reused, not modified)",
+      "arch/db/migrations/ (no migration in C4)",
+      "Outbound send path / cxapi send engine (FEAT-PROJELER)",
+      "appsettings.Production.json secrets (config audit only at deploy)"
+    ],
+    "non_goals": [
+      "Text-mode (selectionMode=3) write — vendor /update has no documented text payload; disabled in picker",
+      "Reliability hardening (bounded-retry, idempotency dedupe-table, transactional outbox) — C3 backlog",
+      "Medipol (100000001) webhook_secret provisioning — live inbound-echo test prereq, Q/ops",
+      "customer-selections read fallback (ordering recipe step c) — out of C4 scope"
+    ],
+    "intentional_exclusions": [
+      "No new flow-run-uuid suppress table — fail-closed actor guard + invekto- prefix + INMA idempotency suffice",
+      "No pre-validation of single-vs-multi feature count in our code — vendor is authoritative (922)",
+      "No separate AllowExternalSideEffects guard (Codex-declined) — ctx.IsSimulation matches the ApiCallHandler/EcommerceHandler precedent; SimulationEngine is the sole verified non-prod execution path; documented in arch/codex-context.md",
+      "No outbound audit/dedupe table (Codex-declined/deferred) — = the agreed C3 reliability-hardening backlog; replaced by stable ClientRequestID + structured sanitized logging"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "WapCrmFeatureGroupUpdateClient.UpdateAsync (timeout/transport/JSON typed catches; OperationCanceledException caller-cancel rethrow)",
+      "Backend /api/internal/customer-feature-groups/update endpoint (typed client-exception backstop -> coded 422/503)",
+      "BackendCustomerStatusClient (HttpRequestException/timeout -> typed transport-fail outcome)",
+      "ActionSetCustomerStatusHandler.ExecuteAsync (caller-cancel rethrow; proxy/transport -> error handle + INV-AT-089; missing identity -> error handle + INV-AT-090)"
+    ],
+    "user_facing_errors": [
+      "Flow node 'error' output handle + set_status_error variable carry a Turkish, actionable message",
+      "Backend coded responses INV-BE-140/141/142/143 (secret-not-configured / upstream-fail / vendor-business / auth-rejected)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Every failure path is observable: the handler routes to the node 'error' output handle and logs INV-AT-089/090; the Backend endpoint returns coded INV-BE-140/141/142 and logs (secret never included); vendor business errors (920/921/922/923/903/401) are surfaced via providerCode, not swallowed into a success. Simulation never makes a real call. The only 'silent' branch is INMA natural idempotency (re-applying the same set is intentionally a no-op), which is correct and audited on INMA's side (Source='api')."
+  },
+  "aha_moments": [
+    { "category": "UX", "user_pain": "Operators wire a status-change trigger (C3) but cannot make the bot itself advance a lead's CRM stage, so they still hand-update INMA.", "suggestion": "The Set Customer Status node's group dropdown reuses the live C3b catalog and renders features as radio (single) or checkboxes (multi) so the author picks real, current options — never raw IDs.", "aha_moment": "The author selects 'Lead Aşaması -> Randevu', saves, and a test lead's INMA stage flips automatically — the bot now drives the pipeline." },
+    { "category": "RELIABILITY", "user_pain": "A status-set action inside a status-change flow looks like it could ping-pong forever.", "suggestion": "Three independent loop kills (invekto- ClientRequestID echo, C3a fail-closed actor guard, INMA same-set idempotency) with a one-line canvas note explaining why it is safe.", "aha_moment": "The author chains 'status changed -> set another status' and sees exactly one downstream event, never a storm." },
+    { "category": "SUPPORT", "user_pain": "When a status write fails, support cannot tell a config mistake from an outage from a vendor rule rejection.", "suggestion": "Distinct codes — INV-BE-140 (not configured), INV-BE-141 (cxapi unreachable), INV-BE-142 (vendor rejected, with providerCode 920/921/922/923/903) — plus the node error handle for flow-author branching.", "aha_moment": "Support reads one log line and immediately knows whether to fix the WapCRM key, retry, or correct the group/feature selection." },
+    { "category": "SPEED", "user_pain": "Building a status-set node from scratch risks a slow, divergent implementation.", "suggestion": "Mirror the proven ApiCallHandler/EcommerceHandler shape (Continue + success/error + IsSimulation) and the C3b SPA node, so behavior and review burden are already known.", "aha_moment": "The node behaves exactly like the API-call node operators already trust — zero new mental model." },
+    { "category": "SALES", "user_pain": "Prospects ask whether the bot can keep their existing INMA pipeline in sync, not just read it.", "suggestion": "C4 closes the loop: read (C2/C3) and write (C4) of the same INMA feature-groups, demoable on 5050 end-to-end.", "aha_moment": "In a demo the bot moves a lead through INMA stages live, proving Invekto is the automation layer on top of their CRM." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "iteration": 2,
+    "blocking_issues": [],
+    "raw_text": "Codex (gpt-5.5) review arc: iter0 FAIL (4 blockers: CQ1/CQ9/CQ12 provider-code classification — dead BusinessCodes set + auth-code mislabeled as business; CQ3 allowed_files gap) -> iter1 FAIL (1 blocker: CQ12 INV-BE-142 reused for local 400 validation) -> iter2 PASS (CQ1-12 all PASS + CoVe 4/4 PASS, 0 blockers). Fixes: AuthCodes/BusinessCodes classification + INV-BE-coded client logs + allowed_files complete + new INV-BE-144 for local request validation."
+  }
+}

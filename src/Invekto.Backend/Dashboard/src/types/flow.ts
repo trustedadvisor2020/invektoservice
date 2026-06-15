@@ -60,7 +60,8 @@ export type FlowNodeType =
   | 'action_call_flow'
   | 'action_assign_group'
   | 'action_ecommerce'
-  | 'customer_status_changed';
+  | 'customer_status_changed'
+  | 'action_set_customer_status';
 
 // Union type for all node data shapes
 export type NodeData =
@@ -84,7 +85,8 @@ export type NodeData =
   | ActionCallFlowData
   | ActionAssignGroupData
   | ActionEcommerceData
-  | CustomerStatusChangedData;
+  | CustomerStatusChangedData
+  | SetCustomerStatusData;
 
 /** Base interface with index signature for React Flow compatibility */
 interface BaseNodeData {
@@ -125,6 +127,22 @@ export interface ScheduleTriggerData extends BaseNodeData {
 export interface CustomerStatusChangedData extends BaseNodeData {
   label: string;
   feature_group_id?: string;
+}
+
+/**
+ * FEAT-INMA-PIPELINE-V2 C4: 'Set Customer Status' ACTION node — writes a lead's INMA feature-group
+ * selection back via cxapi. Both fields serialize as STRINGS (read by the Automation handler via
+ * GetData):
+ *   - `feature_group_id`: REQUIRED numeric string (the catalog group id).
+ *   - `feature_ids`: comma-separated feature ids forming the COMPLETE new selection for the group;
+ *     '' or absent => CLEAR the group's selection. FULL-LIST semantics (the array replaces the whole
+ *     group — for multi-select groups this REMOVES any unlisted features). Single + Multi only; text-mode
+ *     (selectionMode===3) groups are disabled in the picker (the vendor /update has no text-write payload).
+ */
+export interface SetCustomerStatusData extends BaseNodeData {
+  label: string;
+  feature_group_id?: string;
+  feature_ids?: string;
 }
 
 export interface AiSentimentData extends BaseNodeData {
@@ -439,6 +457,16 @@ export const NODE_TYPE_REGISTRY: NodeTypeInfo[] = [
     description: 'E-ticaret işlemleri (sipariş, ürün, müşteri)',
     color: '#ef4444',
     defaultData: { label: 'E-Ticaret', provider: 'ikas', operation: 'list_orders', response_variable: 'ecom_result' } as ActionEcommerceData,
+  },
+  {
+    // FEAT-INMA-PIPELINE-V2 C4: writes the lead's INMA customer status (feature-group selection) back via cxapi.
+    type: 'action_set_customer_status',
+    category: 'action',
+    label: 'Müşteri Durumu Ata',
+    description: 'INMA müşteri durumunu (feature grubu) güncelle',
+    color: '#ef4444',
+    // Fresh node carries only label → invalid until a group is picked (feature_group_id is required).
+    defaultData: { label: 'Müşteri Durumu Ata' } as SetCustomerStatusData,
   },
   {
     type: 'utility_set_variable',

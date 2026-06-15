@@ -625,6 +625,21 @@ errors:
   - code: INV-BE-133
     description: "FEAT-INMA-PIPELINE-V2 C3b — cxapi POST /api/customer-feature-groups/catalog round-trip failed (transport/connection error, unparseable envelope, provider envelope status=false, per-attempt linked-CTS timeout, or a provider-documented 301/302 rate-limit) -> 503. Read-only: no side-effect, safe to retry; the 1h-TTL cache does NOT cache failures. The raw provider message is logged internally (length-capped; the X-CIB-SecretKey is a header so it can never appear) and is NEVER returned to the SPA. Distinct from INV-BE-127 (templates) + INV-BE-001 so dashboards isolate catalog-fetch outages."
     user_message: Durum grupları şu anda alınamıyor; birkaç saniye sonra tekrar deneyin.
+  - code: INV-BE-140
+    description: "FEAT-INMA-PIPELINE-V2 C4 — the Backend internal customer-feature-groups UPDATE proxy (POST /api/internal/customer-feature-groups/update, the 'Set Customer Status' action's write hop) found no tenant WapCRM secret (tenant_registry.settings_json->'wapcrm' empty), OR the WapCrmFeatureGroupUpdateClient contract-guard rejected a malformed stored secret (control chars / unattachable X-CIB-SecretKey header) -> 422. The tenant must complete/repair the WapCRM connection before a flow can write a customer status back. Distinct from INV-BE-132 (catalog read) so dashboards separate the read vs write config gaps."
+    user_message: WapCRM bağlantısı gerekli — müşteri durumu yazılamadı. Ayarlar > Entegrasyon bölümünden bağlantınızı tamamlayın.
+  - code: INV-BE-141
+    description: "FEAT-INMA-PIPELINE-V2 C4 — cxapi POST /api/customer-feature-groups/update transport failure: connection error, per-attempt linked-CTS timeout (UNKNOWN outcome — the write may or may not have applied), HTTP 5xx, unparseable envelope, a provider non-success WITHOUT a usable provider code, or a 301/302 rate-limit -> 503. We NEVER auto-retry (a write is not blindly retry-safe); the flow author branches on the node 'error' handle. The raw provider message is logged internally (length-capped; secret is a header, never logged). Distinct from INV-BE-142 (deterministic vendor rejection) + INV-BE-143 (auth)."
+    user_message: Durum servisi şu an ulaşılamıyor; lütfen daha sonra tekrar deneyin.
+  - code: INV-BE-142
+    description: "FEAT-INMA-PIPELINE-V2 C4 — cxapi /update returned a DETERMINISTIC business rejection (provider statusCode 920 group-not-found/passive, 921 feature-not-found/passive, 922 single-selection-group-given-multiple, 923 feature-not-in-group, 903 customer-not-found) -> 422 with the providerCode echoed (the SPA/flow author can branch). NOT retry-safe: the node configuration (group/feature) or the lead identity is wrong. Mapping keys on the PROVIDER payload statusCode, not HTTP. Distinct from INV-BE-141 (transport/unknown) + INV-BE-143 (auth)."
+    user_message: Durum güncellenemedi — grup/özellik seçimini veya müşteri eşleşmesini kontrol edin.
+  - code: INV-BE-143
+    description: "FEAT-INMA-PIPELINE-V2 C4 — cxapi /update rejected the tenant secret (HTTP/provider 401/403 — invalid or expired X-CIB-SecretKey) -> 422 config class. Kept distinct from INV-BE-141 (transport) so support fixes the WapCRM key rather than retrying. Secret never logged."
+    user_message: WapCRM API anahtarı geçersiz veya yetkisiz. Ayarlar > Entegrasyon bölümünden bağlantınızı kontrol edin.
+  - code: INV-BE-144
+    description: "FEAT-INMA-PIPELINE-V2 C4 — LOCAL request-contract violation on the internal update proxy (POST /api/internal/customer-feature-groups/update): an empty body, or neither CustomerId nor Phone -> 400. NO cxapi call is made. Kept DISTINCT from INV-BE-142 (a deterministic cxapi PROVIDER business rejection 920/921/922/923/903) because these are caller-side validation failures, not vendor rejections. Defensive: the Automation handler already guards identity (INV-AT-090) before calling, so reaching this is a peer-service contract bug."
+    user_message: Geçersiz istek — müşteri kimliği (CustomerId veya Phone) gerekli.
 
   # ── AA — AgentAI ──
   - code: INV-AA-001
@@ -1713,6 +1728,12 @@ errors:
   - code: INV-AT-088
     description: FEAT-INMA-PIPELINE-V2 C3a — TriggerCustomerStatusFlowJob execution-time failure. NpgsqlException (flow lookup veya synthetic session DB hatasi), FlowGraphV2.Build null (bozuk/yanlis-versiyon flow_config), OperationCanceledException (graceful-shutdown race) VEYA InvalidOperationException (FlowEngineV2.ExecuteAsync). AutomaticRetry=0 — retry YOK; synthetic session 'error' ile kapatilir. "tenant'ta customer_status_changed flow YOK" benign info no-op'tan (hata DEGIL) ayridir.
     user_message: (yok — automation audit only; user-facing not surfaced)
+  - code: INV-AT-089
+    description: FEAT-INMA-PIPELINE-V2 C4 — ActionSetCustomerStatusHandler ('Set Customer Status' action) bir lead'in INMA durumunu yazamadi. Backend proxy cagrisi (BackendCustomerStatusClient -> /api/internal/customer-feature-groups/update) transport/timeout/non-2xx ile basarisiz oldu VEYA Backend coded hata dondurdu (INV-BE-140/141/142/143). Node Action=Continue ile 'error' cikis handle'ina yonlenir (flow yazari dallanir); set_status_error degiskeni aksiyon-alinabilir mesaji tasir. Auto-retry YOK (timeout = belirsiz sonuc). Simulation bu yola hic girmez (mock success).
+    user_message: (yok — flow 'error' dali + set_status_error degiskeni ile yuzeye cikar)
+  - code: INV-AT-090
+    description: FEAT-INMA-PIPELINE-V2 C4 — ActionSetCustomerStatusHandler'in akis baglaminda ne INMA customerId ne de telefon vardi, dolayisiyla guncellenecek musteri yok. cxapi cagrisi YAPILMAZ; node 'error' handle'ina yonlenir. Genellikle telefon/kimlik tasimayan bir baglamda (orn. karsilama/cron synthetic job'lari phone:null ile calisir) Set Customer Status node'u kullanildiginda gorulur. Inbound konusma akislari + customer_status_changed-tetikli akislar kimlik tasir.
+    user_message: (yok — flow 'error' dali + set_status_error degiskeni ile yuzeye cikar)
   - code: INV-AP-021
     description: FEAT-PHOTO wire-up patch (2026-04-28, iter 2) — Backend /api/v1/appointments/book proxy hop'unda Appointments servisine cagri HttpRequestException (transport error) VEYA TaskCanceledException (timeout). 503/504 user-facing; SPA caller'a actionable INV code doner. Distinct from INV-AP-010 AppointmentOutboundUnavailable (Appointments tarafindan outbound).
     user_message: Appointments servisi gecici olarak kullanilamiyor; birkac saniye sonra tekrar deneyin.

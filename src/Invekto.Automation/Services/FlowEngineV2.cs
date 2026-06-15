@@ -40,7 +40,8 @@ public sealed class FlowEngineV2
         bool isSimulation = false, int tenantId = 0,
         string[]? tenantIntents = null, double tenantConfidenceThreshold = 0.5,
         Action<string>? onMessage = null, string? contactKey = null,
-        string? leadPreferredLocale = null)
+        string? leadPreferredLocale = null,
+        int? customerId = null, string? phone = null)
     {
         var messages = new List<string>();
         var currentNodeId = state.CurrentNodeId;
@@ -131,7 +132,9 @@ public sealed class FlowEngineV2
                     TenantIntents = tenantIntents,
                     TenantConfidenceThreshold = tenantConfidenceThreshold,
                     ContactKey = contactKey,
-                    LeadPreferredLocale = leadPreferredLocale
+                    LeadPreferredLocale = leadPreferredLocale,
+                    CustomerId = customerId,
+                    Phone = phone
                 };
                 result = await handler.ExecuteAsync(node, ctx, ct);
             }

@@ -158,6 +158,13 @@ const NODE_ICONS: Record<FlowNodeType, (color: string) => ReactNode> = {
       <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
     </svg>
   ),
+  action_set_customer_status: (c) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+      <path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+      <line x1="7" y1="7" x2="7.01" y2="7" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  ),
 
   // Utility
   utility_note: (c) => (

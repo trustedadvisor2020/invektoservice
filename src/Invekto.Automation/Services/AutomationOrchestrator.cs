@@ -553,7 +553,7 @@ public sealed class AutomationOrchestrator
 
         var result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
             tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
-            onMessage: null, contactKey: contactKey, leadPreferredLocale: leadPreferredLocale);
+            onMessage: null, contactKey: contactKey, leadPreferredLocale: leadPreferredLocale, phone: phone);
 
         // Sub-flow dispatch loop: handle CallSubFlow and sub-flow completion
         const int maxSubFlowDepth = 5;
@@ -590,7 +590,7 @@ public sealed class AutomationOrchestrator
                     state.Variables["__sub_flow_completed"] = "true";
                     result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
                         tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
-                        onMessage: null, contactKey: contactKey, leadPreferredLocale: leadPreferredLocale);
+                        onMessage: null, contactKey: contactKey, leadPreferredLocale: leadPreferredLocale, phone: phone);
                     continue;
                 }
 
@@ -603,7 +603,7 @@ public sealed class AutomationOrchestrator
                     state.Variables["__sub_flow_completed"] = "true";
                     result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
                         tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
-                        onMessage: null, contactKey: contactKey, leadPreferredLocale: leadPreferredLocale);
+                        onMessage: null, contactKey: contactKey, leadPreferredLocale: leadPreferredLocale, phone: phone);
                     continue;
                 }
 
@@ -615,7 +615,7 @@ public sealed class AutomationOrchestrator
                     state.Variables["__sub_flow_completed"] = "true";
                     result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
                         tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
-                        onMessage: null, contactKey: contactKey, leadPreferredLocale: leadPreferredLocale);
+                        onMessage: null, contactKey: contactKey, leadPreferredLocale: leadPreferredLocale, phone: phone);
                     continue;
                 }
 
@@ -660,7 +660,7 @@ public sealed class AutomationOrchestrator
 
                 result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
                     tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
-                    onMessage: null, contactKey: contactKey, leadPreferredLocale: leadPreferredLocale);
+                    onMessage: null, contactKey: contactKey, leadPreferredLocale: leadPreferredLocale, phone: phone);
                 continue;
             }
 
@@ -731,7 +731,7 @@ public sealed class AutomationOrchestrator
 
                 result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
                     tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
-                    onMessage: null, contactKey: contactKey, leadPreferredLocale: leadPreferredLocale);
+                    onMessage: null, contactKey: contactKey, leadPreferredLocale: leadPreferredLocale, phone: phone);
                 continue;
             }
 
@@ -1136,7 +1136,7 @@ public sealed class AutomationOrchestrator
 
             var result = await _flowEngineV2.ExecuteAsync(graph, state, ct,
                 tenantId: row.TenantId, tenantIntents: null, tenantConfidenceThreshold: 0.5,
-                onMessage: null, contactKey: contactKey, leadPreferredLocale: resumeLocale);
+                onMessage: null, contactKey: contactKey, leadPreferredLocale: resumeLocale, phone: row.Phone);
 
             sw.Stop();
 

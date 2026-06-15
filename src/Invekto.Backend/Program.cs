@@ -217,6 +217,30 @@ builder.Services.AddSingleton(sp => new Invekto.Shared.Contracts.Inma.WapCrmFeat
     sp.GetRequiredService<JsonLinesLogger>()));
 builder.Services.AddSingleton<Invekto.Shared.Services.WapCrmFeatureGroupCatalogCache>();
 
+// FEAT-INMA-PIPELINE-V2 C4: cxapi customer-feature-groups UPDATE client (WRITE — 'Set Customer Status'
+// flow action). Same posture as the C3b catalog client: per-request X-CIB-SecretKey (never
+// DefaultRequestHeaders); FIXED cxapi BaseUrl from WapCrmFeatureGroupUpdateOptions (never the tenant
+// ApiUrl — SSRF); AllowAutoRedirect=false (cxapi 301/302 = rate-limit); FINITE backstop timeout.
+var wapCrmFeatureGroupUpdateOptions = new WapCrmFeatureGroupUpdateOptions();
+builder.Configuration.GetSection(WapCrmFeatureGroupUpdateOptions.SectionName).Bind(wapCrmFeatureGroupUpdateOptions);
+builder.Services.AddSingleton(wapCrmFeatureGroupUpdateOptions);
+builder.Services.AddHttpClient("wapcrm_featuregroupupdate")
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        AllowAutoRedirect = false,
+        UseCookies = false
+    })
+    .ConfigureHttpClient((sp, client) =>
+    {
+        var opts = sp.GetRequiredService<WapCrmFeatureGroupUpdateOptions>();
+        client.BaseAddress = new Uri(opts.BaseUrl.TrimEnd('/') + "/");
+        client.Timeout = TimeSpan.FromMilliseconds(opts.HttpClientBackstopMs);
+    });
+builder.Services.AddSingleton(sp => new Invekto.Shared.Contracts.Inma.WapCrmFeatureGroupUpdateClient(
+    sp.GetRequiredService<IHttpClientFactory>().CreateClient("wapcrm_featuregroupupdate"),
+    sp.GetRequiredService<WapCrmFeatureGroupUpdateOptions>(),
+    sp.GetRequiredService<JsonLinesLogger>()));
+
 // Configure Knowledge HTTP client (30s timeout for PDF uploads)
 builder.Services.AddHttpClient<KnowledgeClient>(client =>
 {
@@ -2539,6 +2563,10 @@ app.MapPost("/api/v1/webhook/event", async (HttpContext ctx, JsonLinesLogger jso
         var changedBy = string.IsNullOrWhiteSpace(actorName) ? actorType : actorName;
         var featureGroupId = ev.Data?.FeatureGroupId;
         var featureGroupName = ev.Data?.FeatureGroupName;
+        // C4: carry the INMA customer identity (event-level: one customer per event) so a downstream
+        // 'Set Customer Status' action can write back via CustomerID (preferred) or Phone (fallback).
+        var inmaCustomerId = ev.Data?.CustomerId;
+        var inmaPhone = ev.Data?.Phone;
 
         var enqueued = 0;
         foreach (var lead in changed)
@@ -2547,7 +2575,7 @@ app.MapPost("/api/v1/webhook/event", async (HttpContext ctx, JsonLinesLogger jso
             {
                 jobs.Enqueue<Invekto.Automation.Services.Jobs.TriggerCustomerStatusFlowJob>(
                     j => j.ExecuteAsync(tenantContext.TenantId, lead.LeadId, lead.NewStatus, lead.OldStatus,
-                        featureGroupId, featureGroupName, changedBy, CancellationToken.None));
+                        featureGroupId, featureGroupName, changedBy, inmaCustomerId, inmaPhone, CancellationToken.None));
                 enqueued++;
             }
             catch (Hangfire.BackgroundJobClientException ex)
@@ -6526,6 +6554,136 @@ app.MapPost("/api/internal/leads/intake/wa-direct", async (
         return Results.Json(outcome.Success, statusCode: outcome.StatusCode);
 
     return Results.Json(outcome.Error, statusCode: outcome.StatusCode);
+});
+
+// ============================================
+// FEAT-INMA-PIPELINE-V2 C4: cxapi customer-feature-groups UPDATE proxy (WRITE — 'Set Customer Status' action)
+// ============================================
+// Internal service-to-service WRITE, consumed by Automation's ActionSetCustomerStatusHandler. Two-layer
+// auth identical to wa-direct above: (1) the standard JWT middleware on /api/internal/ sets TenantContext
+// from the signed service-JWT tenant_id claim; (2) IntakeInternalAuth cross-checks X-Internal-Service-Token
+// against InternalServices:SharedSecret (proves a peer Invekto service). The body tenantId MUST equal the
+// JWT claim — no cross-tenant write. The tenant WapCRM secret is resolved HERE (Automation never holds or
+// sends it) and never logged; cxapi egress reuses the C3b whitelisted path. Outcome mapping keys on the
+// PROVIDER payload statusCode (not HTTP): vendor business rejection (920/921/922/923/903) -> 422 INV-BE-142
+// (no retry), auth-reject -> 422 INV-BE-143, transport/timeout/5xx/unknown -> 503 INV-BE-141, no secret -> 422 INV-BE-140.
+app.MapPost("/api/internal/customer-feature-groups/update", async (
+    SetCustomerStatusProxyRequest? request,
+    HttpContext ctx,
+    IConfiguration config,
+    JsonLinesLogger jsonLog,
+    [FromServices] Invekto.Shared.Contracts.Inma.WapCrmFeatureGroupUpdateClient updateClient,
+    [FromServices] TenantRegistryRepository tenantRepo) =>
+{
+    var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    const string standardizedAuthMessage = "Servisler arasi yetki gecersiz veya yapilandirilmamis.";
+
+    var auth = Invekto.Backend.Services.Internal.IntakeInternalAuth.Validate(ctx, config);
+    if (!auth.Ok)
+    {
+        jsonLog.SystemWarn(
+            $"[{ErrorCodes.CustomerStatusUpdateAuthRejected}] /api/internal/customer-feature-groups/update: " +
+            $"internal-auth failed (status={auth.StatusCode}, reason='{auth.Reason}', requestId={rid})");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.CustomerStatusUpdateAuthRejected, standardizedAuthMessage, rid), statusCode: auth.StatusCode);
+    }
+
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+    {
+        jsonLog.SystemError(
+            $"[{ErrorCodes.CustomerStatusUpdateAuthRejected}] /api/internal/customer-feature-groups/update: " +
+            $"TenantContext missing despite JWT-required prefix (requestId={rid})");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.CustomerStatusUpdateAuthRejected, standardizedAuthMessage, rid), statusCode: 401);
+    }
+
+    if (request == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.CustomerStatusUpdateBadRequest, "İstek gövdesi boş.", rid), statusCode: 400);
+
+    if (request.TenantId != tenantContext.TenantId)
+    {
+        jsonLog.SystemWarn(
+            $"[{ErrorCodes.CustomerStatusUpdateAuthRejected}] /api/internal/customer-feature-groups/update: " +
+            $"tenant_id mismatch payload={request.TenantId} jwt_claim={tenantContext.TenantId} requestId={rid}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.CustomerStatusUpdateAuthRejected, standardizedAuthMessage, rid), statusCode: 403);
+    }
+
+    var tenantId = tenantContext.TenantId;
+    var hasCustomerId = request.CustomerId is > 0;
+    // Pattern-bind the phone (avoid the null-forgiving operator); null when absent/blank.
+    var normalizedPhone = request.Phone is { } rawPhone && !string.IsNullOrWhiteSpace(rawPhone) ? rawPhone.Trim() : null;
+    if (!hasCustomerId && normalizedPhone is null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.CustomerStatusUpdateBadRequest, "Müşteri kimliği gerekli: CustomerId veya Phone gönderin.", rid), statusCode: 400);
+
+    var wapcrm = await tenantRepo.GetWapCrmSettingsAsync(tenantId, ctx.RequestAborted);
+    if (wapcrm == null || string.IsNullOrWhiteSpace(wapcrm.SecretKey))
+    {
+        jsonLog.StepWarn($"[{ErrorCodes.CustomerStatusUpdateNotConfigured}] /api/internal/customer-feature-groups/update: no WapCRM secret for tenant {tenantId}", rid);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.CustomerStatusUpdateNotConfigured, "WapCRM API anahtarı yapılandırılmamış. Ayarlar > Entegrasyon bölümünden bağlantınızı tamamlayın.", rid), statusCode: 422);
+    }
+
+    var featureIds = request.FeatureIds ?? Array.Empty<int>();
+    var updateReq = new Invekto.Shared.Contracts.Inma.Dtos.WapCrmFeatureGroupUpdateRequest
+    {
+        CustomerId = hasCustomerId ? request.CustomerId : null,
+        Phone = normalizedPhone,
+        FeatureGroupId = request.FeatureGroupId,
+        FeatureIds = featureIds,
+        ClientRequestId = request.ClientRequestId
+    };
+
+    // Structured, secret-free attempt log: the desired set is logged as a sorted id list (correlation
+    // without leaking anything sensitive), the secret is NEVER part of any log line.
+    var setLog = string.Join(",", featureIds.OrderBy(x => x));
+    var targetKind = hasCustomerId ? "customerId" : "phone";
+
+    try
+    {
+        var result = await updateClient.UpdateAsync(tenantId, wapcrm.SecretKey, updateReq, ctx.RequestAborted);
+        switch (result.Outcome)
+        {
+            case Invekto.Shared.Contracts.Inma.Dtos.WapCrmFeatureGroupUpdateOutcome.Success:
+                jsonLog.SystemInfo(
+                    $"C4 set-customer-status applied tenant={tenantId} target={targetKind} fg={request.FeatureGroupId} " +
+                    $"ids=[{setLog}] crid={request.ClientRequestId ?? "-"} providerCode={result.ProviderStatusCode ?? "-"}");
+                return Results.Json(new { status = "ok", providerCode = result.ProviderStatusCode }, statusCode: 200);
+
+            case Invekto.Shared.Contracts.Inma.Dtos.WapCrmFeatureGroupUpdateOutcome.AuthRejected:
+                jsonLog.SystemWarn(
+                    $"[{ErrorCodes.CustomerStatusUpdateAuthRejected}] C4 cxapi auth rejected tenant={tenantId} fg={request.FeatureGroupId} http={result.HttpStatusCode}");
+                return Results.Json(ErrorResponse.Create(ErrorCodes.CustomerStatusUpdateAuthRejected, "WapCRM API anahtarı geçersiz veya yetkisiz. Ayarlar > Entegrasyon bölümünden bağlantınızı kontrol edin.", rid), statusCode: 422);
+
+            case Invekto.Shared.Contracts.Inma.Dtos.WapCrmFeatureGroupUpdateOutcome.BusinessError:
+            default:
+                jsonLog.SystemWarn(
+                    $"[{ErrorCodes.CustomerStatusUpdateVendorRejected}] C4 cxapi vendor-rejected tenant={tenantId} target={targetKind} fg={request.FeatureGroupId} providerCode={result.ProviderStatusCode ?? "-"}");
+                return Results.Json(new
+                {
+                    error = ErrorCodes.CustomerStatusUpdateVendorRejected,
+                    message = "Durum güncellenemedi (sağlayıcı reddetti). Grup/özellik seçimini veya müşteri eşleşmesini kontrol edin.",
+                    providerCode = result.ProviderStatusCode,
+                    requestId = rid
+                }, statusCode: 422);
+        }
+    }
+    catch (Invekto.Shared.Contracts.Inma.WapCrmFeatureGroupUpdateException ex)
+    {
+        jsonLog.SystemWarn(
+            $"[{ErrorCodes.CustomerStatusUpdateUpstreamFailed}] C4 cxapi upstream fail tenant={tenantId} fg={request.FeatureGroupId} " +
+            $"http={ex.HttpStatusCode?.ToString() ?? "-"}: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.CustomerStatusUpdateUpstreamFailed, "Durum servisi şu an ulaşılamıyor; lütfen daha sonra tekrar deneyin.", rid), statusCode: 503);
+    }
+    catch (ArgumentException ex)
+    {
+        // Client contract-guard throw (malformed stored secret / unattachable header / empty identity) -> config-invalid 422.
+        // Separate typed catches (not catch(Exception) when ...) so caller-cancel OperationCanceledException propagates.
+        jsonLog.StepWarn($"[{ErrorCodes.CustomerStatusUpdateNotConfigured}] C4 invalid WapCRM config tenant={tenantId}: {ex.GetType().Name}", rid);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.CustomerStatusUpdateNotConfigured, "WapCRM API anahtarı geçersiz veya yapılandırılmamış. Ayarlar > Entegrasyon bölümünden bağlantınızı kontrol edin.", rid), statusCode: 422);
+    }
+    catch (InvalidOperationException ex)
+    {
+        jsonLog.StepWarn($"[{ErrorCodes.CustomerStatusUpdateNotConfigured}] C4 invalid WapCRM config tenant={tenantId}: {ex.GetType().Name}", rid);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.CustomerStatusUpdateNotConfigured, "WapCRM API anahtarı geçersiz veya yapılandırılmamış. Ayarlar > Entegrasyon bölümünden bağlantınızı kontrol edin.", rid), statusCode: 422);
+    }
 });
 
 // ============================================

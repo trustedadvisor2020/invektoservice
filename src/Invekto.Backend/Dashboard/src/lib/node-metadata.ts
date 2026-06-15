@@ -336,6 +336,22 @@ export const NODE_GUIDES: Record<FlowNodeType, NodeGuide> = {
       '- Metin tipli grupları seçmeyin — onlar otomasyon tetikleyemez (bilgi notu gösterilir)\n' +
       '- WapCRM bağlantısı yoksa grup listesi gelmez; akış yine de "her değişiklikte" çalışır',
   },
+  action_set_customer_status: {
+    summary: 'Bir müşterinin INMA durumunu (feature grubu seçimini) akış içinden günceller. Örneğin müşteri randevu alınca durumunu otomatik "Randevu" yapabilirsiniz.',
+    detail:
+      'Müşteri Durumu Ata node\'u, seçtiğiniz INMA feature grubunun seçimini cxapi üzerinden günceller (audit kaydında Source="api").\n\n' +
+      'DİKKAT — TAM LİSTE mantığı: gönderdiğiniz özellikler o grubun YENİ TAM seçimidir. Çoklu-seçim gruplarında seçmediğiniz özellikler grupta KALDIRILIR (üzerine yazma). Tek-seçim gruplarında tek değer atanır. Hiç özellik seçmezseniz grup seçimi TEMİZLENİR.\n\n' +
+      'Müşteri kimliği akış bağlamından gelir: varsa INMA müşteri kimliği (öncelikli), yoksa telefon. Bağlam kimlik taşımıyorsa node "error" dalına düşer (yazma yapılmaz). Başarılı güncelleme "success", hata "error" dalına yönlenir. Metin tipli (selectionMode=3) gruplar desteklenmez (sağlayıcı yazma API\'si metin almıyor) — picker\'da pasiftir.',
+    scenarios:
+      '- Pipeline ilerletme: Müşteri randevu onaylayınca → durumu "Randevu" yap\n' +
+      '- Otomatik etiketleme: Belirli bir cevaptan sonra → "İlgileniyor" durumunu ata\n' +
+      '- Temizleme: Süreç bitince → grubun seçimini temizle (özellik seçmeyin)',
+    antiPatterns:
+      '- Çoklu-seçim grubunda "tek durum ekle" sanmayın — TÜM grup seçimi değiştirilir, seçmedikleriniz silinir\n' +
+      '- "error" dalını bağlantısız bırakmayın — yazma başarısız olursa akış sessiz kalmasın\n' +
+      '- Metin tipli grupları kullanmaya çalışmayın — sağlayıcı desteklemiyor\n' +
+      '- Karşılama/cron gibi telefon taşımayan bağlamlarda beklemeyin — kimlik yoksa "error" dalına düşer',
+  },
 };
 
 // ============================================================
@@ -398,6 +414,10 @@ export const NODE_OUTPUT_VARS: Partial<Record<FlowNodeType, NodeOutputVar[]>> = 
     { name: 'old_customer_status', description: 'Önceki durum' },
     { name: 'new_customer_status', description: 'Yeni durum' },
     { name: 'customer_status_changed_by', description: 'Değişikliği yapan kişi' },
+  ],
+  action_set_customer_status: [
+    { name: 'set_status_code', description: 'Sonuç kodu (başarıda 200)' },
+    { name: 'set_status_error', description: 'Hata mesajı (başarıda boş)' },
   ],
 };
 

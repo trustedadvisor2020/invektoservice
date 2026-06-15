@@ -17,6 +17,7 @@ import type {
   UtilitySetVariableData,
   ActionCallFlowData,
   ActionEcommerceData,
+  SetCustomerStatusData,
 } from '../types/flow';
 
 // --- Types ---
@@ -180,6 +181,13 @@ function checkEmptyField(node: Node): ValidationError | null {
       const ag = data as ActionAssignGroupData;
       if (!ag.group_id || ag.group_id.trim() === '') {
         return { type: 'empty_field', severity: 'error', message: 'Grup ID boş' };
+      }
+      break;
+    }
+    case 'action_set_customer_status': {
+      const scs = data as SetCustomerStatusData;
+      if (!scs.feature_group_id || scs.feature_group_id.trim() === '') {
+        return { type: 'empty_field', severity: 'error', message: 'Durum grubu seçilmedi' };
       }
       break;
     }
