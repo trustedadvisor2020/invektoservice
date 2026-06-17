@@ -1024,17 +1024,20 @@ export default function ProjectsPage() {
     setReportStatusPulling(true);
     setReportPullNote(null);
     setReportError(null);
-    setReportReloadTick((t) => t + 1); // DB re-fetch of the current recipient page — always
     try {
+      // 1) Best-effort live status pull FIRST, so the DB carries the latest statuses before we re-read.
       try {
         const res = await api.projectRefreshReportStatus(reportProject.id, reportCampaign || undefined);
         setReportPullNote(`${res.updated.toLocaleString('tr-TR')} / ${res.checked.toLocaleString('tr-TR')} kayıt güncellendi.`);
       } catch (e) {
-        // Not allowlisted for the live pull is expected, not an error: the DB re-fetch above already
-        // refreshed the table. Surface any OTHER failure (network / server).
+        // Not allowlisted for the live pull is expected, not an error: the DB re-fetch below still
+        // refreshes the table. Surface any OTHER failure (network / server).
         if (!(e instanceof ApiClientError && e.errorCode === 'INV-OB-094'))
           setReportError(errText(e, 'Canlı durum sorgulanamadı'));
       }
+      // 2) THEN re-fetch the recipient page so the table reflects the pulled statuses. This runs regardless
+      //    of the pull outcome, so a non-allowlisted tenant (403) still gets a plain DB refresh.
+      setReportReloadTick((t) => t + 1);
       // Secondary refreshes — a failure here must not mask the result above.
       try { setReportRuns(await api.getProjectReportRuns(reportProject.id)); }
       catch (e) { console.warn('[rapor] yenileme sonrası gönderimler yenilenemedi:', errText(e, 'runs refresh failed')); }
