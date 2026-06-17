@@ -1186,7 +1186,7 @@ public class ProjectsRepository
                 SET queued    = b.queued + 1,
                     failed    = GREATEST(b.failed    - (CASE WHEN upd.old_status = 'failed'    THEN 1 ELSE 0 END), 0),
                     ambiguous = GREATEST(b.ambiguous - (CASE WHEN upd.old_status = 'ambiguous' THEN 1 ELSE 0 END), 0),
-                    status    = CASE WHEN b.status = 'completed' THEN 'sending' ELSE b.status END,
+                    status    = CASE WHEN b.status = 'completed' THEN 'queued' ELSE b.status END,
                     completed_at = CASE WHEN b.status = 'completed' THEN NULL ELSE b.completed_at END
                 FROM upd WHERE b.id = upd.broadcast_id AND b.tenant_id = @tid
                 RETURNING b.id
@@ -1242,7 +1242,7 @@ public class ProjectsRepository
                 SET queued    = b.queued + agg.requeued,
                     failed    = GREATEST(b.failed    - agg.failed_dec,    0),
                     ambiguous = GREATEST(b.ambiguous - agg.ambiguous_dec, 0),
-                    status    = CASE WHEN b.status = 'completed' THEN 'sending' ELSE b.status END,
+                    status    = CASE WHEN b.status = 'completed' THEN 'queued' ELSE b.status END,
                     completed_at = CASE WHEN b.status = 'completed' THEN NULL ELSE b.completed_at END
                 FROM agg WHERE b.id = agg.broadcast_id AND b.tenant_id = @tid
                 RETURNING b.id
