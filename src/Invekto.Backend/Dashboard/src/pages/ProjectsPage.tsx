@@ -1088,7 +1088,13 @@ export default function ProjectsPage() {
     let cancelled = false;
     api.getProjectFailureBreakdown(reportProject.id, reportCampaign || undefined)
       .then((b) => { if (!cancelled) setFailureBuckets(b); })
-      .catch(() => { if (!cancelled) setFailureBuckets([]); });
+      .catch((e) => {
+        if (!cancelled) {
+          // Fail-silent (an extra over the table) but observable — log so a broken endpoint isn't invisible.
+          console.warn('[rapor] başarısızlık kırılımı alınamadı:', errText(e, 'breakdown failed'));
+          setFailureBuckets([]);
+        }
+      });
     return () => { cancelled = true; };
   }, [reportProject, reportCampaign, reportReloadTick]);
 
@@ -1351,7 +1357,8 @@ export default function ProjectsPage() {
     const id = window.setInterval(() => {
       if (document.visibilityState !== 'visible' || !reportProject) return;
       setReportReloadTick(t => t + 1);
-      void api.getProjectReportRuns(reportProject.id).then(setReportRuns).catch(() => {});
+      void api.getProjectReportRuns(reportProject.id).then(setReportRuns)
+        .catch((e) => console.warn('[rapor] otomatik gönderim sayaçları yenilenemedi:', errText(e, 'runs refresh failed')));
     }, 8000);
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps

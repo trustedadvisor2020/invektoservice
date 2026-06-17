@@ -974,7 +974,7 @@ app.MapGet("/api/v1/projects/{id:long}/report/runs", async (HttpContext ctx, [Fr
 
 app.MapGet("/api/v1/projects/{id:long}/report/recipients", async (
     HttpContext ctx, [FromServices] ProjectsService svc, long id,
-    string? campaignId, string? search, string? status, int page, int pageSize, string? sort, string? dir) =>
+    string? campaignId, string? search, string? status, string? failCode, int page, int pageSize, string? sort, string? dir) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
     var tenantContext = ctx.Items["TenantContext"] as TenantContext;
@@ -982,10 +982,25 @@ app.MapGet("/api/v1/projects/{id:long}/report/recipients", async (
         return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
 
     var (pageData, errorCode, message) = await svc.GetReportRecipientsAsync(
-        tenantContext.TenantId, id, campaignId, search, status, page < 1 ? 1 : page, pageSize < 1 ? 50 : pageSize, sort, dir, ctx.RequestAborted);
+        tenantContext.TenantId, id, campaignId, search, status, failCode, page < 1 ? 1 : page, pageSize < 1 ? 50 : pageSize, sort, dir, ctx.RequestAborted);
     if (pageData == null)
         return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "Rapor okunamadı.", requestId), statusCode: ProjectSendStatus(errorCode));
     return Results.Ok(pageData);
+});
+
+// Failure-reason breakdown for the report drawer (failed/ambiguous grouped by Meta code; optional run scope).
+app.MapGet("/api/v1/projects/{id:long}/report/failure-breakdown", async (
+    HttpContext ctx, [FromServices] ProjectsService svc, long id, string? campaignId) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (buckets, errorCode, message) = await svc.GetFailureBreakdownAsync(tenantContext.TenantId, id, campaignId, ctx.RequestAborted);
+    if (buckets == null)
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, message ?? "Rapor okunamadı.", requestId), statusCode: ProjectSendStatus(errorCode));
+    return Results.Ok(buckets);
 });
 
 app.MapPost("/api/v1/projects/{id:long}/report/resend", async (HttpContext ctx, [FromServices] ProjectsService svc, long id, ProjectResendRequest? request) =>

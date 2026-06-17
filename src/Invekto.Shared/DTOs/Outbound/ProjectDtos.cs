@@ -85,6 +85,14 @@ public sealed class ProjectSummary
     /// <summary>Operator-cancelled messages across this project's runs (SS-D, migration 061). 0 until a run is cancelled.</summary>
     [JsonPropertyName("cancelled_count")] public int CancelledCount { get; set; }
 
+    /// <summary>
+    /// Still-in-flight messages across this project's runs — SUM(outbound_broadcasts.queued) over the project's
+    /// jobs (computed live, not stored). Includes 'queued'/'sending'/'posting' and 'paused' (pause leaves the
+    /// broadcast.queued counter untouched). Drives the list-view progress bar for an active run: processed =
+    /// sent+delivered+read+failed+ambiguous+cancelled, total = processed + queued_count (0 once a run drains).
+    /// </summary>
+    [JsonPropertyName("queued_count")] public int QueuedCount { get; set; }
+
     [JsonPropertyName("created_at")] public DateTime CreatedAt { get; set; }
     [JsonPropertyName("updated_at")] public DateTime UpdatedAt { get; set; }
     [JsonPropertyName("started_at")] public DateTime? StartedAt { get; set; }
@@ -313,4 +321,18 @@ public sealed class ProjectStatusPullRequest
 public sealed class ProjectResendBulkResultDto
 {
     [JsonPropertyName("requeued")] public int Requeued { get; set; }
+}
+
+/// <summary>
+/// One bucket of GET .../report/failure-breakdown — failed/ambiguous recipients of a project (optionally one
+/// run) grouped by their WhatsApp/Meta error code. <see cref="Code"/> is the numeric Meta code as a string
+/// (null = the reason carried no "(NNNNN)" code, e.g. our own Turkish "numara filtrelendi" lines).
+/// <see cref="SampleError"/> is a representative raw reason so the UI can resolve a Turkish title (it re-runs
+/// resolveWaError on it). The list is ordered most-frequent first. Click a bucket → recipients filter by Code.
+/// </summary>
+public sealed class ProjectFailureBucketDto
+{
+    [JsonPropertyName("code")] public string? Code { get; set; }
+    [JsonPropertyName("sample_error")] public string SampleError { get; set; } = "";
+    [JsonPropertyName("count")] public int Count { get; set; }
 }

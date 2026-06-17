@@ -4365,6 +4365,9 @@ app.MapGet("/api/v1/outbound/projects/{id:long}/report/runs", async (HttpContext
 app.MapGet("/api/v1/outbound/projects/{id:long}/report/recipients", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
     await OutboundProxyGet(ctx, obClient, jsonLog, $"/api/v1/projects/{id}/report/recipients{ctx.Request.QueryString.Value}"));
 
+app.MapGet("/api/v1/outbound/projects/{id:long}/report/failure-breakdown", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
+    await OutboundProxyGet(ctx, obClient, jsonLog, $"/api/v1/projects/{id}/report/failure-breakdown{ctx.Request.QueryString.Value}"));
+
 app.MapPost("/api/v1/outbound/projects/{id:long}/report/resend", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, long id) =>
     await OutboundProxyPost(ctx, obClient, jsonLog, $"/api/v1/projects/{id}/report/resend"));
 
