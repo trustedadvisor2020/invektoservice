@@ -85,7 +85,10 @@ public class ProjectsRepository
                    p.created_at, p.updated_at, p.started_at, p.completed_at,
                    p.instance_id, p.template_kind, p.wa_template_id, p.template_language, p.param_mapping,
                    p.content_mode, p.outbound_template_id, p.plain_text_body,
-                   p.cancelled_count
+                   p.cancelled_count,
+                   (SELECT COALESCE(SUM(dl.sendable_count), 0) FROM project_targets pt
+                      JOIN data_lists dl ON dl.tenant_id = pt.tenant_id AND dl.id = pt.data_list_id
+                      WHERE pt.tenant_id = p.tenant_id AND pt.project_id = p.id)::int AS recipients_total
             FROM projects p
             WHERE p.tenant_id = @tid AND (@includeArchived OR p.archived_at IS NULL)
             ORDER BY p.created_at DESC";
@@ -129,7 +132,10 @@ public class ProjectsRepository
                    p.created_at, p.updated_at, p.started_at, p.completed_at,
                    p.instance_id, p.template_kind, p.wa_template_id, p.template_language, p.param_mapping,
                    p.content_mode, p.outbound_template_id, p.plain_text_body,
-                   p.cancelled_count
+                   p.cancelled_count,
+                   (SELECT COALESCE(SUM(dl.sendable_count), 0) FROM project_targets pt
+                      JOIN data_lists dl ON dl.tenant_id = pt.tenant_id AND dl.id = pt.data_list_id
+                      WHERE pt.tenant_id = p.tenant_id AND pt.project_id = p.id)::int AS recipients_total
             FROM projects p
             WHERE p.tenant_id = @tid AND p.id = @pid AND p.archived_at IS NULL", conn, tx))
         {
@@ -433,6 +439,91 @@ public class ProjectsRepository
         await using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("tid", tenantId);
         cmd.Parameters.AddWithValue("pid", projectId);
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    /// <summary>
+    /// Set-based sibling of <see cref="RecomputeRollupAsync"/>: refresh the roll-up counters + lifecycle
+    /// status of ALL of a tenant's run-managed projects (draft/running/completed) from their broadcasts in
+    /// ONE statement. Called on the LIST read so a fire-and-forget run (operator closed the send modal) is
+    /// reflected without waiting for a status/lifecycle endpoint to recompute it — the bug where a fully
+    /// drained run stayed frozen at the MarkRunning snapshot (status='running', counters 0).
+    ///
+    /// Semantics are IDENTICAL to the per-project recompute (status from live queue depth; completed_at
+    /// stamped once on first drain, cleared if a new run re-queues; only run-managed states transitioned —
+    /// archived/paused/cancelled are left to the SS-D lifecycle ops). A CHANGE-GUARD in the WHERE limits the
+    /// write to rows whose computed snapshot actually differs, so a steady-state list load updates 0 rows
+    /// (no updated_at churn, no needless lock contention with the worker). Tenant-scoped (no cross-tenant write).
+    /// </summary>
+    public virtual async Task RecomputeTenantRollupsAsync(int tenantId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            WITH jobs AS (
+                SELECT project_id, id AS job_id, broadcast_ids
+                FROM bulk_send_jobs
+                WHERE tenant_id = @tid AND project_id IS NOT NULL
+            ),
+            runs AS (
+                SELECT project_id, COUNT(*)::int AS run_count
+                FROM jobs GROUP BY project_id
+            ),
+            bcasts AS (
+                SELECT DISTINCT j.project_id, b.id,
+                       b.sent, b.delivered, b.read, b.failed, b.ambiguous, b.cancelled, b.queued, b.total_recipients
+                FROM jobs j
+                JOIN outbound_broadcasts b ON b.tenant_id = @tid AND b.id = ANY(j.broadcast_ids)
+            ),
+            agg AS (
+                SELECT project_id,
+                       COALESCE(SUM(sent),0)::int             AS sent,
+                       COALESCE(SUM(delivered),0)::int        AS delivered,
+                       COALESCE(SUM(read),0)::int             AS read,
+                       COALESCE(SUM(failed),0)::int           AS failed,
+                       COALESCE(SUM(ambiguous),0)::int        AS ambiguous,
+                       COALESCE(SUM(cancelled),0)::int        AS cancelled,
+                       COALESCE(SUM(queued),0)::int           AS queued,
+                       COALESCE(SUM(total_recipients),0)::int AS total_targets
+                FROM bcasts GROUP BY project_id
+            )
+            UPDATE projects p SET
+                run_count       = r.run_count,
+                total_targets   = a.total_targets,
+                sent_count      = a.sent,
+                delivered_count = a.delivered,
+                read_count      = a.read,
+                failed_count    = a.failed,
+                ambiguous_count = a.ambiguous,
+                cancelled_count = a.cancelled,
+                status = CASE WHEN a.queued > 0 THEN 'running' ELSE 'completed' END,
+                completed_at = CASE
+                    WHEN p.status IN ('running','completed') AND a.queued = 0 AND p.completed_at IS NULL THEN NOW()
+                    WHEN a.queued > 0 THEN NULL
+                    ELSE p.completed_at
+                END,
+                updated_at = NOW()
+            FROM runs r
+            JOIN agg a ON a.project_id = r.project_id
+            WHERE p.tenant_id = @tid
+              AND p.id = r.project_id
+              AND p.archived_at IS NULL
+              AND p.status IN ('draft','running','completed')
+              AND r.run_count > 0
+              AND (
+                    p.run_count       <> r.run_count
+                 OR p.total_targets   <> a.total_targets
+                 OR p.sent_count      <> a.sent
+                 OR p.delivered_count <> a.delivered
+                 OR p.read_count      <> a.read
+                 OR p.failed_count    <> a.failed
+                 OR p.ambiguous_count <> a.ambiguous
+                 OR p.cancelled_count <> a.cancelled
+                 OR p.status          <> (CASE WHEN a.queued > 0 THEN 'running' ELSE 'completed' END)
+                 OR (p.status IN ('running','completed') AND a.queued = 0 AND p.completed_at IS NULL)
+                 OR (a.queued > 0 AND p.completed_at IS NOT NULL)
+              )";
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
         await cmd.ExecuteNonQueryAsync(ct);
     }
 
@@ -814,7 +905,8 @@ public class ProjectsRepository
         ContentMode = reader.IsDBNull(21) ? null : reader.GetString(21),
         OutboundTemplateId = reader.IsDBNull(22) ? null : reader.GetInt32(22),
         PlainTextBody = reader.IsDBNull(23) ? null : reader.GetString(23),
-        CancelledCount = reader.GetInt32(24)
+        CancelledCount = reader.GetInt32(24),
+        RecipientsTotal = reader.GetInt32(25)
     };
 
     // ------------------------------------------------------------------
@@ -1002,6 +1094,45 @@ public class ProjectsRepository
             rows.Add((reader.GetInt64(0), wamid, instanceId));
         }
         return rows;
+    }
+
+    /// <summary>
+    /// Automatic status-pull (ProjectStatusPullJob): the tenant's RECENT run-managed projects that still have
+    /// at least one wamid-bearing, non-terminal recipient (status IN ('sent','delivered','ambiguous')) — i.e.
+    /// projects whose delivery/read status is worth re-pulling from cxapi. Bounded to runs newer than
+    /// <paramref name="maxRunAgeDays"/> so an old run whose receipts never arrive (e.g. a partner ack gap) is
+    /// not pulled forever. Tenant-scoped; returns DISTINCT project ids (the per-project pull walks all its runs).
+    /// </summary>
+    public virtual async Task<List<long>> GetProjectIdsNeedingStatusPullAsync(
+        int tenantId, int maxRunAgeDays, CancellationToken ct = default)
+    {
+        if (maxRunAgeDays < 1) maxRunAgeDays = 1;
+        const string sql = @"
+            SELECT DISTINCT j.project_id
+            FROM bulk_send_jobs j
+            JOIN projects p ON p.tenant_id = j.tenant_id AND p.id = j.project_id
+            WHERE j.tenant_id = @tid
+              AND p.archived_at IS NULL
+              AND p.status IN ('running','completed','paused')
+              AND j.created_at >= NOW() - make_interval(days => @maxAge)
+              AND EXISTS (
+                  SELECT 1 FROM outbound_messages m
+                  WHERE m.tenant_id = @tid
+                    AND m.broadcast_id = ANY(j.broadcast_ids)
+                    AND m.external_message_id IS NOT NULL
+                    AND m.status IN ('sent','delivered','ambiguous')
+              )
+            ORDER BY j.project_id";
+
+        var ids = new List<long>();
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("maxAge", maxRunAgeDays);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+            ids.Add(reader.GetInt64(0));
+        return ids;
     }
 
     /// <summary>

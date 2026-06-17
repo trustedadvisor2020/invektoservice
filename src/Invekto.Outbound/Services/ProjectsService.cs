@@ -77,7 +77,15 @@ public sealed class ProjectsService
         int tenantId, CancellationToken ct, bool includeArchived = false)
     {
         if (!Allowed(tenantId)) return (null, ErrorCodes.ProjectDisabled);
-        try { return (await _repo.ListAsync(tenantId, ct, includeArchived), null); }
+        try
+        {
+            // Refresh the denormalized roll-up (counters + lifecycle status) from the live broadcasts BEFORE
+            // reading, so a fire-and-forget run (operator closed the send modal) is reflected here — without it
+            // the list shows the frozen MarkRunning snapshot (status='running', counters 0) until some other
+            // endpoint recomputes. Set-based + change-guarded: a steady-state load updates 0 rows.
+            await _repo.RecomputeTenantRollupsAsync(tenantId, ct);
+            return (await _repo.ListAsync(tenantId, ct, includeArchived), null);
+        }
         catch (NpgsqlException ex)
         {
             _logger.SystemError($"projects list failed (tenant={tenantId}): {ex.Message}");

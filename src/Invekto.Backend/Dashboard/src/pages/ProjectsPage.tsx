@@ -1302,7 +1302,7 @@ export default function ProjectsPage() {
               <tr>
                 <th className="text-left font-medium px-4 py-2">Proje</th>
                 <th className="text-left font-medium px-4 py-2">Durum</th>
-                <th className="text-right font-medium px-4 py-2">Liste</th>
+                <th className="text-right font-medium px-4 py-2" title="Hedef liste(ler)deki toplam gönderilebilir telefon adedi (opt-out / geçersiz numaralar hariç)">Alıcı</th>
                 <th className="text-right font-medium px-4 py-2" title="Şu an 'gönderildi' durumunda bekleyen mesaj sayısı (iletilen/okunan ayrı kolonlarda)">Gönderildi</th>
                 <th className="text-right font-medium px-4 py-2" title="Şu an 'iletildi' durumundaki mesaj sayısı (henüz okunmamış)">İletildi</th>
                 <th className="text-right font-medium px-4 py-2" title="Okundu olarak işaretlenen mesaj sayısı">Okundu</th>
@@ -1346,7 +1346,7 @@ export default function ProjectsPage() {
                       <div className="text-[11px] text-navy-400 mt-0.5 tabular-nums">{p.cancelled_count.toLocaleString('tr-TR')} iptal</div>
                     )}
                   </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums">{p.target_count.toLocaleString('tr-TR')}</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums" title={`${p.target_count.toLocaleString('tr-TR')} liste`}>{p.recipients_total.toLocaleString('tr-TR')}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums">{p.sent_count.toLocaleString('tr-TR')}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums">{p.delivered_count.toLocaleString('tr-TR')}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums text-green-600">{p.read_count.toLocaleString('tr-TR')}</td>
@@ -1355,43 +1355,51 @@ export default function ProjectsPage() {
                     {p.status === 'archived' ? (
                       <div className="text-right text-xs text-navy-300">arşivli</div>
                     ) : (
-                    <div className="flex items-center justify-end gap-1.5">
-                      {/* SS-D status-aware run controls: running -> Duraklat; paused -> Devam Et; either -> İptal */}
+                    // Borderless icon actions (Q 2026-06-17): ghost + icon-only + tooltip — the labelled
+                    // buttons overflowed the row. SS-D status-aware run controls: running -> Duraklat;
+                    // paused -> Devam Et; either -> İptal.
+                    <div className="flex items-center justify-end gap-0.5">
                       {p.status === 'running' && (
                         <Button
                           size="sm"
-                          variant="secondary"
+                          variant="ghost"
+                          className="px-2"
                           disabled={lifecycleBusyId === p.id}
                           title="Gönderimi duraklat"
+                          aria-label="Gönderimi duraklat"
                           onClick={() => runLifecycle(p, 'pause', 'Gönderim duraklatılamadı')}
                         >
                           {lifecycleBusyId === p.id
-                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            : <Pause className="w-3.5 h-3.5" />} Duraklat
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : <Pause className="w-4 h-4 text-amber-600" />}
                         </Button>
                       )}
                       {p.status === 'paused' && (
                         <Button
                           size="sm"
-                          variant="primary"
+                          variant="ghost"
+                          className="px-2"
                           disabled={lifecycleBusyId === p.id}
                           title="Gönderimi sürdür"
+                          aria-label="Gönderimi sürdür"
                           onClick={() => runLifecycle(p, 'resume', 'Gönderim sürdürülemedi')}
                         >
                           {lifecycleBusyId === p.id
-                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            : <Play className="w-3.5 h-3.5" />} Devam Et
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : <Play className="w-4 h-4 text-brand-600" />}
                         </Button>
                       )}
                       {(p.status === 'running' || p.status === 'paused') && (
                         <Button
                           size="sm"
                           variant="ghost"
+                          className="px-2"
                           disabled={lifecycleBusyId === p.id}
                           title="Gönderimi iptal et"
+                          aria-label="Gönderimi iptal et"
                           onClick={() => setCancelTarget(p)}
                         >
-                          <Ban className="w-3.5 h-3.5 text-red-500" /> İptal
+                          <Ban className="w-4 h-4 text-red-500" />
                         </Button>
                       )}
                       {(() => {
@@ -1399,31 +1407,35 @@ export default function ProjectsPage() {
                         return (
                           <Button
                             size="sm"
-                            variant="primary"
+                            variant="ghost"
+                            className="px-2"
                             disabled={reason !== null}
                             title={reason ?? 'Bu projeyi gönder'}
+                            aria-label="Bu projeyi gönder"
                             onClick={() => openSend(p)}
                           >
-                            <Send className="w-3.5 h-3.5" /> Gönder
+                            <Send className="w-4 h-4 text-brand-600" />
                           </Button>
                         );
                       })()}
-                      <Button size="sm" variant="secondary" onClick={() => openReport(p)} title="Gönderim raporu (kişi bazlı durum)">
-                        <BarChart3 className="w-3.5 h-3.5" /> Rapor
+                      <Button size="sm" variant="ghost" className="px-2" onClick={() => openReport(p)} title="Gönderim raporu (kişi bazlı durum)" aria-label="Gönderim raporu">
+                        <BarChart3 className="w-4 h-4 text-navy-500" />
                       </Button>
-                      <Button size="sm" variant="secondary" onClick={() => openEdit(p)}>
-                        <Pencil className="w-3.5 h-3.5" /> Düzenle
+                      <Button size="sm" variant="ghost" className="px-2" onClick={() => openEdit(p)} title="Projeyi düzenle" aria-label="Projeyi düzenle">
+                        <Pencil className="w-4 h-4 text-navy-500" />
                       </Button>
                       <Button
                         size="sm"
                         variant="ghost"
+                        className="px-2"
                         disabled={archivingId === p.id}
                         onClick={() => archive(p)}
                         title="Arşivle"
+                        aria-label="Arşivle"
                       >
                         {archivingId === p.id
-                          ? <Loader2 className="w-3.5 h-3.5 animate-spin text-navy-400" />
-                          : <Archive className="w-3.5 h-3.5 text-navy-400" />}
+                          ? <Loader2 className="w-4 h-4 animate-spin text-navy-400" />
+                          : <Archive className="w-4 h-4 text-navy-400" />}
                       </Button>
                     </div>
                     )}

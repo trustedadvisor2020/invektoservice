@@ -286,6 +286,16 @@ builder.Services.AddHttpClient<WapCrmWebhookSettingsClient>()
 builder.Services.AddSingleton<CxapiWebhookReconcileJob>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<CxapiWebhookReconcileJob>());
 
+// ─── FEATURE B — automatic project status-pull (ProjectStatusPullJob) ───
+// Background sweep that auto-runs the "Durumu Yenile" cxapi message-status PULL so delivered/read surface
+// in the projects list without an operator clicking. Production-safe default OFF; vendor calls stay gated
+// by the CxapiSend allowlist (no second list). Reuses ProjectsService.RefreshRunStatusAsync (singleton).
+var projectStatusPullOptions = new ProjectStatusPullOptions();
+builder.Configuration.GetSection(ProjectStatusPullOptions.SectionName).Bind(projectStatusPullOptions);
+builder.Services.AddSingleton(projectStatusPullOptions);
+builder.Services.AddSingleton<ProjectStatusPullJob>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<ProjectStatusPullJob>());
+
 builder.Services.AddAuthorization();
 
 var app = builder.Build();

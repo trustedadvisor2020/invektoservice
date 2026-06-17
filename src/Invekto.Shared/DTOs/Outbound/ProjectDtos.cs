@@ -65,6 +65,14 @@ public sealed class ProjectSummary
     /// <summary>Number of data_lists this project currently targets (computed live, not stored).</summary>
     [JsonPropertyName("target_count")] public int TargetCount { get; set; }
 
+    /// <summary>
+    /// Total SENDABLE phone numbers across this project's target lists — SUM(data_lists.sendable_count)
+    /// over the project's targets (computed live, not stored). This is the "kaç numaraya gidecek" figure
+    /// the list view shows in place of the raw list count. NOT cross-list deduplicated: a number present
+    /// in two targeted lists is counted twice (exact for the common single-list project).
+    /// </summary>
+    [JsonPropertyName("recipients_total")] public int RecipientsTotal { get; set; }
+
     // Denormalized run roll-up counters. INERT 0 until runs attach in PR-4 — surfaced
     // now so the list contract is stable when PR-4 starts populating them.
     [JsonPropertyName("run_count")] public int RunCount { get; set; }

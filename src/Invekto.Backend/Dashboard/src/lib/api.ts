@@ -2747,6 +2747,9 @@ export interface ProjectSummary {
   description: string | null;
   status: ProjectStatus;
   target_count: number;
+  // Total SENDABLE phone numbers across the project's target lists (SUM of data_lists.sendable_count).
+  // Shown in the list view in place of the raw list count. Not cross-list deduplicated.
+  recipients_total: number;
   run_count: number;
   total_targets: number;
   sent_count: number;
