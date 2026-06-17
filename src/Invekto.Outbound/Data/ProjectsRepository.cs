@@ -971,7 +971,7 @@ public class ProjectsRepository
     /// fully parameterized (ILIKE arg passed as a value, no string interpolation).
     /// </summary>
     public virtual async Task<ProjectRecipientsPage> GetRecipientsAsync(
-        int tenantId, long projectId, string? campaignId, string? search,
+        int tenantId, long projectId, string? campaignId, string? search, string? status,
         int page, int pageSize, CancellationToken ct = default)
     {
         if (page < 1) page = 1;
@@ -979,6 +979,9 @@ public class ProjectsRepository
         if (pageSize > 5000) pageSize = 5000; // headroom for the export-all-filtered CSV
         var offset = (page - 1) * pageSize;
         var searchArg = string.IsNullOrWhiteSpace(search) ? null : "%" + search.Trim() + "%";
+        // Status filter: a comma-separated set of message statuses (one logical group, e.g. "sending,posting"
+        // collapses to "Gönderiliyor"). The set is matched value-bound via string_to_array + ANY — no interpolation.
+        var statusArg = string.IsNullOrWhiteSpace(status) ? null : status.Trim();
 
         // The project's broadcasts (+ each broadcast's run campaign_id), built once and reused for both
         // the count and the page. A broadcast maps to exactly one job, so campaign_id is unambiguous.
@@ -997,7 +1000,8 @@ public class ProjectsRepository
             JOIN proj p ON p.bid = m.broadcast_id
             WHERE m.tenant_id = @tid
               AND (@campaign::text IS NULL OR p.campaign_id = @campaign::text)
-              AND (@search::text IS NULL OR m.recipient_phone ILIKE @search::text)";
+              AND (@search::text IS NULL OR m.recipient_phone ILIKE @search::text)
+              AND (@status::text IS NULL OR m.status = ANY(string_to_array(@status::text, ',')))";
 
         await using var conn = await _db.OpenConnectionAsync(ct);
 
@@ -1008,6 +1012,7 @@ public class ProjectsRepository
             countCmd.Parameters.AddWithValue("pid", projectId);
             countCmd.Parameters.AddWithValue("campaign", (object?)campaignId ?? DBNull.Value);
             countCmd.Parameters.AddWithValue("search", (object?)searchArg ?? DBNull.Value);
+            countCmd.Parameters.AddWithValue("status", (object?)statusArg ?? DBNull.Value);
             total = (await countCmd.ExecuteScalarAsync(ct)) is int n ? n : 0; // COUNT(*)::int is never null; defensive cast (no null-forgiving)
         }
 
@@ -1034,6 +1039,7 @@ public class ProjectsRepository
             cmd.Parameters.AddWithValue("pid", projectId);
             cmd.Parameters.AddWithValue("campaign", (object?)campaignId ?? DBNull.Value);
             cmd.Parameters.AddWithValue("search", (object?)searchArg ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("status", (object?)statusArg ?? DBNull.Value);
             cmd.Parameters.AddWithValue("limit", pageSize);
             cmd.Parameters.AddWithValue("offset", offset);
             await using var reader = await cmd.ExecuteReaderAsync(ct);

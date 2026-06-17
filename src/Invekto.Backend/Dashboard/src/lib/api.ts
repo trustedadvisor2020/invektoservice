@@ -2483,11 +2483,12 @@ class OpsApiClient {
 
   async getProjectReportRecipients(
     projectId: number,
-    opts: { campaignId?: string; search?: string; page?: number; pageSize?: number } = {},
+    opts: { campaignId?: string; search?: string; status?: string; page?: number; pageSize?: number } = {},
   ): Promise<ProjectRecipientsPage> {
     const qs = new URLSearchParams();
     if (opts.campaignId) qs.set('campaignId', opts.campaignId);
     if (opts.search) qs.set('search', opts.search);
+    if (opts.status) qs.set('status', opts.status);
     qs.set('page', String(opts.page ?? 1));
     qs.set('pageSize', String(opts.pageSize ?? 50));
     return this.request<ProjectRecipientsPage>(`/api/v1/outbound/projects/${projectId}/report/recipients?${qs.toString()}`);

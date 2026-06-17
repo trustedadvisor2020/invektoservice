@@ -68,6 +68,21 @@ function MsgStatusBadge({ status }: { status: string }) {
   return <span className={cn('inline-block px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap', meta.cls)}>{meta.label}</span>;
 }
 
+// Rapor 'Durum' dropdown filter (server-side). Each value is a comma-separated set of message statuses so a
+// collapsed label (Gönderiliyor = sending+posting) maps to one option; '' = all statuses.
+const REPORT_STATUS_OPTIONS: { v: string; label: string }[] = [
+  { v: '', label: 'Tüm durumlar' },
+  { v: 'queued', label: 'Kuyrukta' },
+  { v: 'paused', label: 'Duraklatıldı' },
+  { v: 'sending,posting', label: 'Gönderiliyor' },
+  { v: 'sent', label: 'Gönderildi' },
+  { v: 'delivered', label: 'İletildi' },
+  { v: 'read', label: 'Okundu' },
+  { v: 'failed', label: 'Başarısız' },
+  { v: 'ambiguous', label: 'Belirsiz' },
+  { v: 'cancelled', label: 'İptal' },
+];
+
 // Structured WhatsApp-style preview of an approved (HSM) template — header / body / footer / buttons.
 // Pure (takes a WaTemplate); shared by the Gönder modal content block and the table hover card.
 function WaTemplatePreview({ t, className }: { t: WaTemplate; className?: string }) {
@@ -93,11 +108,12 @@ function WaTemplatePreview({ t, className }: { t: WaTemplate; className?: string
 
 function fmtDateTime(iso: string | null): string {
   if (!iso) return '—';
-  try { return new Date(iso).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' }); }
+  // 2-digit year (Q 2026-06-17): "17.06.26 16:30" — explicit parts instead of dateStyle:'short' (4-digit year).
+  try { return new Date(iso).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }); }
   catch { return iso; }
 }
 
-// One run dropdown label: "12.06.2026 09:47 · 8 alıcı".
+// One run dropdown label: "12.06.26 09:47 · 8 alıcı".
 function runLabel(r: ProjectRun): string {
   return `${fmtDateTime(r.created_at)} · ${r.total.toLocaleString('tr-TR')} alıcı`;
 }
@@ -308,6 +324,7 @@ export default function ProjectsPage() {
   const [reportCampaign, setReportCampaign] = useState<string>(''); // '' = Tümü (all runs)
   const [reportSearch, setReportSearch] = useState('');
   const [reportSearchDraft, setReportSearchDraft] = useState('');
+  const [reportStatus, setReportStatus] = useState(''); // '' = all; otherwise a REPORT_STATUS_OPTIONS value (CSV of statuses)
   const [reportPage, setReportPage] = useState(1);
   const [reportData, setReportData] = useState<ProjectRecipientsPage | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
@@ -931,6 +948,7 @@ export default function ProjectsPage() {
     setReportCampaign('');
     setReportSearch('');
     setReportSearchDraft('');
+    setReportStatus('');
     setReportPage(1);
     setReportData(null);
     setReportError(null);
@@ -950,6 +968,7 @@ export default function ProjectsPage() {
     setReportData(null);
     setReportError(null);
     setReportPullNote(null);
+    setReportStatus('');
     setBulkResendConfirm(false);
   }
 
@@ -990,6 +1009,7 @@ export default function ProjectsPage() {
     api.getProjectReportRecipients(reportProject.id, {
       campaignId: reportCampaign || undefined,
       search: reportSearch || undefined,
+      status: reportStatus || undefined,
       page: reportPage,
       pageSize: REPORT_PAGE_SIZE,
     })
@@ -997,7 +1017,7 @@ export default function ProjectsPage() {
       .catch((e) => { if (!cancelled) setReportError(errText(e, 'Rapor yüklenemedi')); })
       .finally(() => { if (!cancelled) setReportLoading(false); });
     return () => { cancelled = true; };
-  }, [reportProject, reportCampaign, reportSearch, reportPage, reportReloadTick]);
+  }, [reportProject, reportCampaign, reportSearch, reportStatus, reportPage, reportReloadTick]);
 
   // Resend ONE undelivered (failed/ambiguous) recipient; refresh runs + recipients + the project table.
   async function doResend(messageId: number) {
@@ -1061,6 +1081,7 @@ export default function ProjectsPage() {
       const all = await api.getProjectReportRecipients(reportProject.id, {
         campaignId: reportCampaign || undefined,
         search: reportSearch || undefined,
+        status: reportStatus || undefined,
         page: 1,
         pageSize: 5000,
       });
@@ -2056,12 +2077,8 @@ export default function ProjectsPage() {
 
       {/* ---- Rapor (delivery report) right drawer: run dropdown + searchable status table + resend + CSV ---- */}
       {reportProject && (
-        <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true">
-          <div
-            className="absolute inset-0 bg-navy-900/30"
-            onMouseDown={(e) => { if (e.target === e.currentTarget) closeReport(); }}
-          />
-          <div className="relative w-full max-w-4xl h-full bg-white shadow-2xl flex flex-col">
+        <div className="fixed inset-0 z-50 flex" role="dialog" aria-modal="true">
+          <div className="relative w-full h-full bg-white shadow-2xl flex flex-col">
             {/* header */}
             <div className="px-5 py-4 border-b border-navy-50 flex items-center justify-between">
               <div className="min-w-0">
@@ -2084,6 +2101,16 @@ export default function ProjectsPage() {
                 <option value="">Tüm gönderimler ({reportRuns.length})</option>
                 {reportRuns.map((r) => (
                   <option key={r.campaign_id} value={r.campaign_id}>{runLabel(r)}</option>
+                ))}
+              </select>
+              <select
+                className="border border-navy-100 rounded-lg px-2.5 py-1.5 text-sm text-navy-700 bg-white"
+                value={reportStatus}
+                onChange={(e) => { setReportStatus(e.target.value); setReportPage(1); }}
+                title="Duruma göre filtrele"
+              >
+                {REPORT_STATUS_OPTIONS.map((o) => (
+                  <option key={o.v} value={o.v}>{o.label}</option>
                 ))}
               </select>
               <div className="relative flex-1 min-w-[160px]">
@@ -2182,7 +2209,7 @@ export default function ProjectsPage() {
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-navy-50/90 backdrop-blur text-navy-500 text-xs">
                     <tr>
-                      <th className="px-4 py-2 text-left font-medium">Numara</th>
+                      <th className="px-4 py-2 text-left font-medium sticky left-0 z-20 bg-navy-50">Numara</th>
                       <th className="px-4 py-2 text-left font-medium">Durum</th>
                       <th className="px-4 py-2 text-left font-medium whitespace-nowrap">Gönderim</th>
                       <th className="px-4 py-2 text-left font-medium whitespace-nowrap">İletildi</th>
@@ -2193,8 +2220,8 @@ export default function ProjectsPage() {
                   </thead>
                   <tbody className="divide-y divide-navy-50">
                     {reportData.items.map((r) => (
-                      <tr key={r.message_id} className="hover:bg-navy-50/40">
-                        <td className="px-4 py-2 text-navy-800 tabular-nums whitespace-nowrap">{r.phone}</td>
+                      <tr key={r.message_id} className="group hover:bg-navy-50/40">
+                        <td className="px-4 py-2 text-navy-800 tabular-nums whitespace-nowrap sticky left-0 z-10 bg-white group-hover:bg-navy-50">{r.phone}</td>
                         <td className="px-4 py-2"><MsgStatusBadge status={r.status} /></td>
                         <td className="px-4 py-2 text-xs text-navy-500 tabular-nums whitespace-nowrap">{fmtDateTime(r.sent_at)}</td>
                         <td className="px-4 py-2 text-xs text-navy-500 tabular-nums whitespace-nowrap">{fmtDateTime(r.delivered_at)}</td>
