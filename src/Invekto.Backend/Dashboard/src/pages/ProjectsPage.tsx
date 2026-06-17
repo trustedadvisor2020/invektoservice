@@ -1024,24 +1024,34 @@ export default function ProjectsPage() {
     setReportStatusPulling(true);
     setReportPullNote(null);
     setReportError(null);
+    let pullHardFailed = false;
     try {
       // 1) Best-effort live status pull FIRST, so the DB carries the latest statuses before we re-read.
       try {
         const res = await api.projectRefreshReportStatus(reportProject.id, reportCampaign || undefined);
         setReportPullNote(`${res.updated.toLocaleString('tr-TR')} / ${res.checked.toLocaleString('tr-TR')} kayıt güncellendi.`);
       } catch (e) {
-        // Not allowlisted for the live pull is expected, not an error: the DB re-fetch below still
-        // refreshes the table. Surface any OTHER failure (network / server).
-        if (!(e instanceof ApiClientError && e.errorCode === 'INV-OB-094'))
+        if (e instanceof ApiClientError && e.errorCode === 'INV-OB-094') {
+          // Not allowlisted for the live pull — expected, not an error: fall through to the plain DB
+          // re-fetch below so this tenant still gets a refresh.
+        } else {
+          // A real live-pull failure (network / server). Log it AND show a DURABLE error: skip the
+          // recipient reload below so the recipients effect (which clears reportError on each load) does
+          // not immediately erase this message. The DB is unchanged by a failed pull, so nothing is lost.
+          console.warn('[rapor] canlı durum sorgulanamadı:', errText(e, 'status pull failed'));
           setReportError(errText(e, 'Canlı durum sorgulanamadı'));
+          pullHardFailed = true;
+        }
       }
-      // 2) THEN re-fetch the recipient page so the table reflects the pulled statuses. This runs regardless
-      //    of the pull outcome, so a non-allowlisted tenant (403) still gets a plain DB refresh.
-      setReportReloadTick((t) => t + 1);
-      // Secondary refreshes — a failure here must not mask the result above.
-      try { setReportRuns(await api.getProjectReportRuns(reportProject.id)); }
-      catch (e) { console.warn('[rapor] yenileme sonrası gönderimler yenilenemedi:', errText(e, 'runs refresh failed')); }
-      void loadProjects();
+      // 2) THEN re-fetch the recipient page so the table reflects the pulled statuses (success) or simply
+      //    refreshes (403 not-allowlisted). Skipped on a hard pull failure to keep the error visible.
+      if (!pullHardFailed) {
+        setReportReloadTick((t) => t + 1);
+        // Secondary refreshes — a failure here must not mask the result above.
+        try { setReportRuns(await api.getProjectReportRuns(reportProject.id)); }
+        catch (e) { console.warn('[rapor] yenileme sonrası gönderimler yenilenemedi:', errText(e, 'runs refresh failed')); }
+        void loadProjects();
+      }
     } finally {
       setReportStatusPulling(false);
     }
