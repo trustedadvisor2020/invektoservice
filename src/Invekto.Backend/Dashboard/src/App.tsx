@@ -1,5 +1,5 @@
-import { Routes, Route, Navigate, Outlet, useNavigate, useParams } from 'react-router-dom';
-import { lazy, Suspense, useEffect } from 'react';
+import { Routes, Route, Navigate, Outlet, useNavigate, useParams, useLocation } from 'react-router-dom';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { inmaBridge, inmaBootstrap, INMA_ERRORS } from './inma';
 import { inmaErrorMessage } from './inma/inmaErrors';
 import { api } from './lib/api';
@@ -123,6 +123,47 @@ function LeadDetailRoute() {
   return <LeadDetailPage leadId={leadId} />;
 }
 
+// Refresh-stay-on-page (Q): INMA portal'i F5'lendiginde iframe'i kendi varsayilan
+// src'siyle (/app/ = ana sayfa) yeniden olusturur, boylece SPA'nin ic route'u kaybolur.
+// INMA'ya dokunmadan client tarafindan duzeltiyoruz: gezilen son route'u localStorage'a
+// yaz (sessionStorage iframe yeniden olusturulunca silinir -> kullanma), boot kokte
+// olursa oraya geri don. localStorage origin-bazli kalici -> iframe recreation'i asar.
+const LAST_ROUTE_KEY = 'inse:lastRoute';
+
+function RouteRestore() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  // Kaydedilen route'u render'dan ONCE senkron yakala — asagidaki persist effect
+  // boot aninda '/' yazip uzerine gecmeden once eski degeri elimizde tutalim.
+  const [savedPath] = useState<string | null>(() => {
+    try { return localStorage.getItem(LAST_ROUTE_KEY); } catch { return null; }
+  });
+  const restoredRef = useRef(false);
+
+  // One-shot restore: iframe kokte (/) boot ettiyse ve elimizde derin bir route varsa
+  // oraya geri don. Yalniz authenticated isek — aksi halde ProtectedRoute zaten /login'e atar.
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    if (!api.isAuthenticated()) return;
+    if (location.pathname === '/' && savedPath && savedPath !== '/') {
+      navigate(savedPath, { replace: true });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist current route (login haric) — bir sonraki reload buraya donebilsin.
+  useEffect(() => {
+    if (location.pathname === '/login') return;
+    if (!api.isAuthenticated()) return;
+    try {
+      localStorage.setItem(LAST_ROUTE_KEY, location.pathname + location.search);
+    } catch { /* storage unavailable — non-fatal */ }
+  }, [location.pathname, location.search]);
+
+  return null;
+}
+
 export default function App() {
   const navigate = useNavigate();
   useEffect(() => {
@@ -145,6 +186,8 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
+    <>
+    <RouteRestore />
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route element={<ProtectedRoute />}>
@@ -210,5 +253,6 @@ export default function App() {
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   );
 }
