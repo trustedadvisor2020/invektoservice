@@ -8,6 +8,7 @@ import {
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { cn } from '../lib/utils';
+import { WaErrorPopover } from '../components/WaErrorPopover';
 import {
   api, ApiClientError,
   type ProjectSummary, type ProjectStatus, type DataListSummary,
@@ -360,7 +361,7 @@ export default function ProjectsPage() {
   // testResult.ok: true=delivered (green), false=failed (red), null=pending/inconclusive (neutral).
   const [testPhone, setTestPhone] = useState('');
   const [testSending, setTestSending] = useState(false);
-  const [testResult, setTestResult] = useState<{ ok: boolean | null; text: string } | null>(null);
+  const [testResult, setTestResult] = useState<{ ok: boolean | null; text: string; reason?: string | null } | null>(null);
 
   // Only real WABA lines are valid send channels. cxapi gives instanceType=1 to BOTH WABA and
   // QR-Code lines, so connectionType is the discriminator. null connectionType (pre-063 cache row)
@@ -676,9 +677,12 @@ export default function ProjectsPage() {
           continue; // tek yoklama hatası akışı bozmasın — sonraki tura geç
         }
         if (st.failed > 0) {
+          // Keep the headline short; the provider reason (with its Meta code) gets a
+          // rich Turkish explanation via WaErrorPopover in the banner below.
           setTestResult({
             ok: false,
-            text: `Test mesajı GÖNDERİLEMEDİ${st.failed_reason_sample ? ` — ${st.failed_reason_sample}` : ''}.`,
+            text: 'Test mesajı GÖNDERİLEMEDİ.',
+            reason: st.failed_reason_sample ?? null,
           });
           return;
         }
@@ -1892,12 +1896,13 @@ export default function ProjectsPage() {
                         </Button>
                       </div>
                       {testResult && (
-                        <p className={cn(
-                          'text-xs',
+                        <div className={cn(
+                          'text-xs flex flex-wrap items-center gap-x-1.5 gap-y-1',
                           testResult.ok === true ? 'text-green-600' : testResult.ok === false ? 'text-red-600' : 'text-navy-500',
                         )}>
-                          {testResult.text}
-                        </p>
+                          <span>{testResult.text}</span>
+                          {testResult.reason && <WaErrorPopover raw={testResult.reason} />}
+                        </div>
                       )}
                     </div>
                   )}
@@ -2226,10 +2231,8 @@ export default function ProjectsPage() {
                         <td className="px-4 py-2 text-xs text-navy-500 tabular-nums whitespace-nowrap">{fmtDateTime(r.sent_at)}</td>
                         <td className="px-4 py-2 text-xs text-navy-500 tabular-nums whitespace-nowrap">{fmtDateTime(r.delivered_at)}</td>
                         <td className="px-4 py-2 text-xs text-green-600 tabular-nums whitespace-nowrap">{fmtDateTime(r.read_at)}</td>
-                        <td className="px-4 py-2 text-xs text-navy-500 max-w-xs truncate">
-                          {r.error
-                            ? <span className="text-red-600" title={r.error}>{r.error}</span>
-                            : '—'}
+                        <td className="px-4 py-2 text-xs text-navy-500 max-w-xs">
+                          <WaErrorPopover raw={r.error} />
                         </td>
                         <td className="px-4 py-2 text-right">
                           {r.can_resend && (
