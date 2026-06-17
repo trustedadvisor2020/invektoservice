@@ -9,6 +9,7 @@ _Önceki: **FEAT-INMA-PIPELINE-V2 C3 HARDENING = DONE+DEPLOYED+SMOKED 2026-06-15
 
 ## Recently Completed (max 10)
 
+- **projeler-resend-503-hotfix** (2026-06-17) — Rapor "Yeniden gönder" HER denemede 503 (Q canlı console paylaştı). Kök: resend SQL `completed` broadcast'ı `status='sending'` ile reopen ediyordu ama `chk_broadcast_status` yalnız queued|processing|completed|failed kabul eder ('sending'=outbound_MESSAGES sözlüğü) → PG **23514** → ProjectDbError → 503. Tüm 31 broadcast 'completed' → resend %100 kırık (tek+bulk). Fix `'sending'`→`'queued'` (RequeueForResend + RequeueAllForResend). Commit **130d4e85**, Codex iter0 PASS, Outbound deploy HEALTHY, post-restart 0 fail. Gerçek hata `C:\Invekto\Outbound\logs\{date}.jsonl`'de (MCP stdout/stderr default path boş görünüyordu). Lesson kaydedildi.
 - **projeler-bugfix-pack** (2026-06-17) — Projeler list: live rollup recompute-on-list (C/D stuck-running+0-counters) + "Alıcı" sendable column (B) + auto status-pull job ProjectStatusPullJob (E, default-OFF, prod-enabled [5050,100000001]) + borderless icon actions (A) + report "Hata" real-reason not 'Success' echo. Commits `9c964487`+`a66918c5`, Codex iter0 PASS both, Outbound+Backend deploy HEALTHY, status-pull first tick checked=144/updated=110 (Medipol receipts pulled live).
 - **feat-inma-pipeline-v2-c3-hardening** (2026-06-15) — Flow-trigger transactional outbox (migration 066) + exactly-once job-claim + preflight retry + C4 bounded transient retry; commit `c7f26673`; Codex iter0 PASS. Pre-impl codex_consult iter0'ı kurtardı.
 - **feat-inma-pipeline-v2-c4-set-customer-status** (2026-06-15) — Flow ACTION node cxapi write-back; commit `20e8a1c5`; Codex iter2 PASS. Kalan e2e: Q/INMA + Medipol webhook_secret.
@@ -36,7 +37,8 @@ _Önceki: **FEAT-INMA-PIPELINE-V2 C3 HARDENING = DONE+DEPLOYED+SMOKED 2026-06-15
 
 ## Execution Queue (açık/pending — master: tracking/pilot-launch-roadmap.md)
 
-- **Projeler "26" hata kodu (Q gözlemi 2026-06-17):** mesaj verisinde HİÇBİR YERDE yok (iki tenant + tüm error kolonu taranı) → muhtemelen cache'li ekran (sayfa sert-yenile) VEYA tek-numaralık gerçek WhatsApp undeliverable kodu. Q sert-yenile sonrası hâlâ görürse proje/numara iste → o kodu çöz. Düşük öncelik.
+- **Projeler "26" (Q gözlemi 2026-06-17) — MUHTEMELEN ÇÖZÜLDÜ:** "26" = proje 7'nin (Medipol) **failed/ambiguous resendable mesaj sayısı** (error kodu DEĞİL); Q bunları "Yeniden gönder" ile yeniden göndermeye çalışıyordu → 503 (resend hotfix 130d4e85 ile fix). Eğer Q yine "26" görür + resend artık 200 dönerse kapat. Düşük öncelik.
+- **Outbound `template_id is null` 500 (2026-06-17 bulundu, fix EDİLMEDİ):** `System.InvalidCastException: Column 'template_id' is null` = NULL kolonu non-nullable okuma (IsDBNull guard'sız `GetFieldValue<T>`), Outbound bir read-path'inde UNHANDLED 500 (resend 503'ten AYRI). stdout'ta tekrarlı. Okuma site'ini bul (report recipients / templates list — `template_id` adlı kolon; `ProjectsRepository`'de DEĞİL — orada wa_template_id/outbound_template_id guard'lı) → IsDBNull guard ekle. Düşük-orta öncelik.
 - **FEAT-IYS-INTEGRATION:** DRAFT-RESEARCH, build BLOCKED — İYS A.Ş. Faz 0 statü cevabı bekliyor. `tracking/feat-iys-integration.md`.
 - **FEAT-INMA-PIPELINE-V2:** C4 + C3 hardening DONE+DEPLOYED. Kalan: canlı e2e smoke (5050 durum-değişikliği flow + action_set_customer_status node) = Q/INMA aksiyonu; Medipol (100000001) `webhook_secret` set değil (inbound-echo yarısı).
 - **UP0.3** Tenant lifecycle handler: PENDING. **UP0.5** IInmaSendClient: PENDING.
