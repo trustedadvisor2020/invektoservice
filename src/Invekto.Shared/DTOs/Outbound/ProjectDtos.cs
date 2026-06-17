@@ -322,17 +322,3 @@ public sealed class ProjectResendBulkResultDto
 {
     [JsonPropertyName("requeued")] public int Requeued { get; set; }
 }
-
-/// <summary>
-/// One bucket of GET .../report/failure-breakdown — failed/ambiguous recipients of a project (optionally one
-/// run) grouped by their WhatsApp/Meta error code. <see cref="Code"/> is the numeric Meta code as a string
-/// (null = the reason carried no "(NNNNN)" code, e.g. our own Turkish "numara filtrelendi" lines).
-/// <see cref="SampleError"/> is a representative raw reason so the UI can resolve a Turkish title (it re-runs
-/// resolveWaError on it). The list is ordered most-frequent first. Click a bucket → recipients filter by Code.
-/// </summary>
-public sealed class ProjectFailureBucketDto
-{
-    [JsonPropertyName("code")] public string? Code { get; set; }
-    [JsonPropertyName("sample_error")] public string SampleError { get; set; } = "";
-    [JsonPropertyName("count")] public int Count { get; set; }
-}

@@ -970,25 +970,15 @@ public class ProjectsRepository
         return runs;
     }
 
-    // The report 'Hata' text + its embedded Meta code, written ONCE so the recipients click-filter and the
-    // failure-breakdown grouping agree on what a row's reason/code is (a clicked bucket then returns exactly
-    // the rows it counted). CONSTANT SQL — no interpolated user input — safe to compose into the queries.
-    private const string ErrTextSql =
-        "COALESCE(m.failed_reason, NULLIF(m.provider_error_message, 'Success'), 'İletilemedi (sağlayıcı neden bildirmedi).')";
-    // First "(NNNNN)" parenthesised number in the reason, or NULL when the reason carries no Meta code.
-    private const string ErrCodeSql = "substring(" + ErrTextSql + " FROM '\\((\\d+)\\)')";
-
     /// <summary>
     /// Server-paged per-recipient report for a project, newest message first. Joins the project's runs'
-    /// broadcasts to outbound_messages; optional campaign_id + phone-substring filters. The error column
-    /// prefers failed_reason then provider_error_message; can_resend is true only for failed/ambiguous.
-    /// <paramref name="failCode"/> (from a failure-breakdown bucket click) narrows to FAILED/AMBIGUOUS rows with
-    /// that Meta code — or the literal "none" for failed/ambiguous rows carrying no code — so the result matches
-    /// exactly the rows the clicked bucket counted. Returns the page + the full filtered total (drives pagination +
-    /// the export-all CSV). Tenant-scoped; fully parameterized (no interpolation).
+    /// broadcasts to outbound_messages; optional campaign_id + phone-substring + status filters. The error
+    /// column prefers failed_reason then provider_error_message; can_resend is true only for failed/ambiguous.
+    /// Returns the page + the full filtered total (drives pagination + the export-all CSV). Tenant-scoped;
+    /// fully parameterized (no interpolation).
     /// </summary>
     public virtual async Task<ProjectRecipientsPage> GetRecipientsAsync(
-        int tenantId, long projectId, string? campaignId, string? search, string? status, string? failCode,
+        int tenantId, long projectId, string? campaignId, string? search, string? status,
         int page, int pageSize, string? sort, string? dir, CancellationToken ct = default)
     {
         if (page < 1) page = 1;
@@ -999,9 +989,6 @@ public class ProjectsRepository
         // Status filter: a comma-separated set of message statuses (one logical group, e.g. "sending,posting"
         // collapses to "Gönderiliyor"). The set is matched value-bound via string_to_array + ANY — no interpolation.
         var statusArg = string.IsNullOrWhiteSpace(status) ? null : status.Trim();
-        // Failure-breakdown click-filter: a Meta code string (e.g. "131049") or the literal "none" (no-code
-        // failed/ambiguous rows). Value-bound below; ErrCodeSql is constant SQL, so no interpolation risk.
-        var failCodeArg = string.IsNullOrWhiteSpace(failCode) ? null : failCode.Trim();
 
         // Sort (report table column headers). SQL-injection safe (Codex CQ5): the UI sends a column KEY, never
         // raw SQL. The key is matched against this fixed whitelist; only constant ORDER BY fragments ever reach
@@ -1040,11 +1027,7 @@ public class ProjectsRepository
             WHERE m.tenant_id = @tid
               AND (@campaign::text IS NULL OR p.campaign_id = @campaign::text)
               AND (@search::text IS NULL OR m.recipient_phone ILIKE @search::text)
-              AND (@status::text IS NULL OR m.status = ANY(string_to_array(@status::text, ',')))
-              AND (@failCode::text IS NULL
-                   OR (m.status IN ('failed','ambiguous') AND (
-                         (@failCode::text = 'none' AND " + ErrCodeSql + @" IS NULL)
-                         OR " + ErrCodeSql + @" = @failCode::text)))";
+              AND (@status::text IS NULL OR m.status = ANY(string_to_array(@status::text, ',')))";
 
         await using var conn = await _db.OpenConnectionAsync(ct);
 
@@ -1056,7 +1039,6 @@ public class ProjectsRepository
             countCmd.Parameters.AddWithValue("campaign", (object?)campaignId ?? DBNull.Value);
             countCmd.Parameters.AddWithValue("search", (object?)searchArg ?? DBNull.Value);
             countCmd.Parameters.AddWithValue("status", (object?)statusArg ?? DBNull.Value);
-            countCmd.Parameters.AddWithValue("failCode", (object?)failCodeArg ?? DBNull.Value);
             total = (await countCmd.ExecuteScalarAsync(ct)) is int n ? n : 0; // COUNT(*)::int is never null; defensive cast (no null-forgiving)
         }
 
@@ -1083,7 +1065,6 @@ public class ProjectsRepository
             cmd.Parameters.AddWithValue("campaign", (object?)campaignId ?? DBNull.Value);
             cmd.Parameters.AddWithValue("search", (object?)searchArg ?? DBNull.Value);
             cmd.Parameters.AddWithValue("status", (object?)statusArg ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("failCode", (object?)failCodeArg ?? DBNull.Value);
             cmd.Parameters.AddWithValue("limit", pageSize);
             cmd.Parameters.AddWithValue("offset", offset);
             await using var reader = await cmd.ExecuteReaderAsync(ct);
@@ -1106,60 +1087,6 @@ public class ProjectsRepository
         }
 
         return new ProjectRecipientsPage { Items = items, Total = total, Page = page, PageSize = pageSize };
-    }
-
-    /// <summary>
-    /// Failure-reason breakdown: the project's failed/ambiguous recipients grouped by their embedded Meta error
-    /// code, most-frequent first (optional run/campaign scope). Drives the report drawer's "neden gitmedi" chips;
-    /// each bucket's <c>code</c> feeds <see cref="GetRecipientsAsync"/>'s failCode (same <see cref="ErrCodeSql"/>),
-    /// so clicking a bucket returns exactly the rows it counted. <c>code</c> is null + sampled raw text for
-    /// reasons without a Meta code. Tenant + project scoped; fully parameterized; capped at 50 buckets.
-    /// </summary>
-    public virtual async Task<List<ProjectFailureBucketDto>> GetFailureBreakdownAsync(
-        int tenantId, long projectId, string? campaignId, CancellationToken ct = default)
-    {
-        const string sql = @"
-            WITH proj AS (
-                SELECT DISTINCT bb.bid, j.campaign_id
-                FROM bulk_send_jobs j
-                CROSS JOIN LATERAL unnest(j.broadcast_ids) AS bb(bid)
-                WHERE j.tenant_id = @tid AND j.project_id = @pid
-            ),
-            errs AS (
-                SELECT " + ErrCodeSql + @" AS code, " + ErrTextSql + @" AS errtext
-                FROM outbound_messages m
-                JOIN proj p ON p.bid = m.broadcast_id
-                WHERE m.tenant_id = @tid
-                  AND m.status IN ('failed','ambiguous')
-                  AND (@campaign::text IS NULL OR p.campaign_id = @campaign::text)
-            )
-            -- min(errtext) = an O(1)-memory representative reason per group (all rows in a code group carry the
-            -- same Meta code, so any sample resolves to the same Turkish title); avoids array_agg buffering every
-            -- reason per group just to keep one. COUNT drives the bucket size; capped at 50 buckets.
-            SELECT code, min(errtext) AS sample_error, COUNT(*)::int AS cnt
-            FROM errs
-            GROUP BY code
-            ORDER BY cnt DESC, code NULLS LAST
-            LIMIT 50";
-
-        await using var conn = await _db.OpenConnectionAsync(ct);
-        await using var cmd = new NpgsqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("tid", tenantId);
-        cmd.Parameters.AddWithValue("pid", projectId);
-        cmd.Parameters.AddWithValue("campaign", (object?)campaignId ?? DBNull.Value);
-
-        var buckets = new List<ProjectFailureBucketDto>();
-        await using var reader = await cmd.ExecuteReaderAsync(ct);
-        while (await reader.ReadAsync(ct))
-        {
-            buckets.Add(new ProjectFailureBucketDto
-            {
-                Code = reader.IsDBNull(0) ? null : reader.GetString(0),
-                SampleError = reader.IsDBNull(1) ? "" : reader.GetString(1),
-                Count = reader.GetInt32(2)
-            });
-        }
-        return buckets;
     }
 
     /// <summary>

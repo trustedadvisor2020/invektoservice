@@ -17,9 +17,8 @@ import {
   type ProjectContentMode, type OutboundTemplateDto,
   type BulkSendPreviewResponse, type BulkSendStatusResponse,
   type DataListPreviewSample, type ListRecord, type ProjectTestSendRequest,
-  type ProjectRun, type ProjectRecipient, type ProjectRecipientsPage, type ProjectFailureBucket,
+  type ProjectRun, type ProjectRecipient, type ProjectRecipientsPage,
 } from '../lib/api';
-import { resolveWaError } from '../lib/wa-error-codes';
 
 // =============================================================
 // FEAT-PROJELER PKT-14 — ProjectsPage (Projeler)
@@ -339,10 +338,6 @@ export default function ProjectsPage() {
   const [reportSearch, setReportSearch] = useState('');
   const [reportSearchDraft, setReportSearchDraft] = useState('');
   const [reportStatus, setReportStatus] = useState(''); // '' = all; otherwise a REPORT_STATUS_OPTIONS value (CSV of statuses)
-  // #4 failure-reason breakdown: the active bucket filter (a Meta code or 'none' for no-code rows; '' = off)
-  // and the buckets themselves (failed/ambiguous grouped by code for the open project/run).
-  const [reportFailCode, setReportFailCode] = useState('');
-  const [failureBuckets, setFailureBuckets] = useState<ProjectFailureBucket[]>([]);
   const [reportSort, setReportSort] = useState<ReportSortKey | null>(null); // null = server default (id DESC)
   const [reportDir, setReportDir] = useState<ReportSortDir>('desc');
   const [reportPage, setReportPage] = useState(1);
@@ -981,8 +976,6 @@ export default function ProjectsPage() {
     setReportSearch('');
     setReportSearchDraft('');
     setReportStatus('');
-    setReportFailCode('');
-    setFailureBuckets([]);
     setReportSort(null);
     setReportDir('desc');
     setReportPage(1);
@@ -1005,8 +998,6 @@ export default function ProjectsPage() {
     setReportError(null);
     setReportPullNote(null);
     setReportStatus('');
-    setReportFailCode('');
-    setFailureBuckets([]);
     setBulkResendConfirm(false);
   }
 
@@ -1069,7 +1060,6 @@ export default function ProjectsPage() {
       campaignId: reportCampaign || undefined,
       search: reportSearch || undefined,
       status: reportStatus || undefined,
-      failCode: reportFailCode || undefined,
       sort: reportSort ?? undefined,
       dir: reportSort ? reportDir : undefined,
       page: reportPage,
@@ -1079,24 +1069,7 @@ export default function ProjectsPage() {
       .catch((e) => { if (!cancelled) setReportError(errText(e, 'Rapor yüklenemedi')); })
       .finally(() => { if (!cancelled) setReportLoading(false); });
     return () => { cancelled = true; };
-  }, [reportProject, reportCampaign, reportSearch, reportStatus, reportFailCode, reportSort, reportDir, reportPage, reportReloadTick]);
-
-  // #4 Failure-reason breakdown fetch: failed/ambiguous grouped by Meta code for the open project/run. Re-runs
-  // on run change + refresh tick (tracks live sends + resends). Fail-silent — an extra over the recipient table.
-  useEffect(() => {
-    if (!reportProject) { setFailureBuckets([]); return; }
-    let cancelled = false;
-    api.getProjectFailureBreakdown(reportProject.id, reportCampaign || undefined)
-      .then((b) => { if (!cancelled) setFailureBuckets(b); })
-      .catch((e) => {
-        if (!cancelled) {
-          // Fail-silent (an extra over the table) but observable — log so a broken endpoint isn't invisible.
-          console.warn('[rapor] başarısızlık kırılımı alınamadı:', errText(e, 'breakdown failed'));
-          setFailureBuckets([]);
-        }
-      });
-    return () => { cancelled = true; };
-  }, [reportProject, reportCampaign, reportReloadTick]);
+  }, [reportProject, reportCampaign, reportSearch, reportStatus, reportSort, reportDir, reportPage, reportReloadTick]);
 
   // Column-header click: toggle direction on the active column, else switch to the new column (newest-first
   // default). Resets to page 1 so the operator sees the top of the re-sorted set.
@@ -1169,7 +1142,6 @@ export default function ProjectsPage() {
         campaignId: reportCampaign || undefined,
         search: reportSearch || undefined,
         status: reportStatus || undefined,
-        failCode: reportFailCode || undefined,
         page: 1,
         pageSize: 5000,
       });
@@ -2256,7 +2228,7 @@ export default function ProjectsPage() {
               <select
                 className="border border-navy-100 rounded-lg px-2.5 py-1.5 text-sm text-navy-700 bg-white max-w-[260px]"
                 value={reportCampaign}
-                onChange={(e) => { setReportCampaign(e.target.value); setReportFailCode(''); setReportPage(1); setReportPullNote(null); }}
+                onChange={(e) => { setReportCampaign(e.target.value); setReportPage(1); setReportPullNote(null); }}
                 title="Gönderim seç"
               >
                 <option value="">Tüm gönderimler ({reportRuns.length})</option>
@@ -2267,7 +2239,7 @@ export default function ProjectsPage() {
               <select
                 className="border border-navy-100 rounded-lg px-2.5 py-1.5 text-sm text-navy-700 bg-white"
                 value={reportStatus}
-                onChange={(e) => { setReportStatus(e.target.value); setReportFailCode(''); setReportPage(1); }}
+                onChange={(e) => { setReportStatus(e.target.value); setReportPage(1); }}
                 title="Duruma göre filtrele"
               >
                 {REPORT_STATUS_OPTIONS.map((o) => (
@@ -2362,7 +2334,7 @@ export default function ProjectsPage() {
                       <button
                         key={c.v || 'all'}
                         type="button"
-                        onClick={() => { setReportStatus(active && c.v !== '' ? '' : c.v); setReportFailCode(''); setReportPage(1); }}
+                        onClick={() => { setReportStatus(active && c.v !== '' ? '' : c.v); setReportPage(1); }}
                         className={cn(
                           'inline-flex items-center gap-1 px-2 py-0.5 rounded-md border transition-colors',
                           active ? 'border-brand-300 bg-brand-50 text-navy-700' : 'border-transparent text-navy-500 hover:bg-navy-50',
@@ -2377,46 +2349,6 @@ export default function ProjectsPage() {
                 </div>
               );
             })()}
-
-            {/* #4 failure-reason breakdown — failed/ambiguous grouped by Meta error code. Click a bucket to filter
-                the table to exactly that reason (clears the status filter); click again to clear. The label comes
-                from resolveWaError on a sampled raw reason, so codeless reasons show their own text. */}
-            {failureBuckets.length > 0 && (
-              <div className="px-5 py-2 border-b border-navy-50 bg-red-50/30">
-                <div className="text-[11px] font-medium text-navy-400 mb-1">Başarısızlık nedenleri — filtrelemek için tıklayın</div>
-                <div className="flex flex-wrap gap-1.5 text-xs">
-                  {failureBuckets.map((b) => {
-                    const key = b.code ?? 'none';
-                    const active = reportFailCode === key;
-                    const resolved = resolveWaError(b.sample_error);
-                    const label = resolved.info?.title
-                      ?? (b.sample_error.length > 44 ? `${b.sample_error.slice(0, 44)}…` : b.sample_error)
-                      ?? 'Bilinmeyen neden';
-                    return (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => {
-                          setReportFailCode(active ? '' : key);
-                          if (!active) setReportStatus('');
-                          setReportPage(1);
-                        }}
-                        className={cn(
-                          'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border transition-colors max-w-full',
-                          active ? 'border-red-300 bg-red-100 text-red-700' : 'border-red-100 bg-white text-navy-600 hover:bg-red-50',
-                        )}
-                        title={b.code ? `Meta kodu ${b.code}${resolved.info?.title ? ` — ${resolved.info.title}` : ''}` : b.sample_error}
-                        aria-pressed={active}
-                      >
-                        {b.code && <span className="font-semibold tabular-nums text-red-600">{b.code}</span>}
-                        <span className="truncate max-w-[220px]">{label}</span>
-                        <b className="tabular-nums text-red-700">{b.count.toLocaleString('tr-TR')}</b>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
 
             {reportPullNote && (
               <div className="px-5 py-1.5 bg-green-50/70 text-green-700 text-xs flex items-center gap-1.5">
@@ -2464,14 +2396,16 @@ export default function ProjectsPage() {
                           {r.can_resend && (
                             <Button
                               size="sm"
-                              variant="secondary"
+                              variant="ghost"
+                              className="px-2"
                               disabled={resendingId === r.message_id}
                               onClick={() => doResend(r.message_id)}
                               title="Bu numaraya projenin içeriğiyle yeniden gönder"
+                              aria-label="Tekrar gönder"
                             >
                               {resendingId === r.message_id
-                                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                : <Reply className="w-3.5 h-3.5" />} Tekrar Gönder
+                                ? <Loader2 className="w-4 h-4 animate-spin text-navy-400" />
+                                : <Reply className="w-4 h-4 text-brand-600" />}
                             </Button>
                           )}
                         </td>

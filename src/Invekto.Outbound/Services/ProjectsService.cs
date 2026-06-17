@@ -637,38 +637,19 @@ public sealed class ProjectsService
     /// <summary>Report recipient table: server-paged status rows, optional run (campaign_id) + phone-substring filters
     /// + optional column sort (sort key + dir, whitelisted in the repository).</summary>
     public async Task<(ProjectRecipientsPage? page, string? errorCode, string? message)> GetReportRecipientsAsync(
-        int tenantId, long projectId, string? campaignId, string? search, string? status, string? failCode,
-        int page, int pageSize, string? sort, string? dir, CancellationToken ct)
+        int tenantId, long projectId, string? campaignId, string? search, string? status, int page, int pageSize,
+        string? sort, string? dir, CancellationToken ct)
     {
         if (!Allowed(tenantId)) return (null, ErrorCodes.ProjectDisabled, "Projeler bu hesap için etkin değil.");
         try
         {
             var detail = await _repo.GetAsync(tenantId, projectId, ct); // 404 ownership probe
             if (detail == null) return (null, ErrorCodes.ProjectNotFound, $"Proje {projectId} bulunamadı.");
-            return (await _repo.GetRecipientsAsync(tenantId, projectId, campaignId, search, status, failCode, page, pageSize, sort, dir, ct), null, null);
+            return (await _repo.GetRecipientsAsync(tenantId, projectId, campaignId, search, status, page, pageSize, sort, dir, ct), null, null);
         }
         catch (NpgsqlException ex)
         {
             _logger.SystemError($"project report recipients failed (tenant={tenantId}, project={projectId}): {ex.Message}");
-            return (null, ErrorCodes.ProjectDbError, "Veritabanı hatası; lütfen tekrar deneyin.");
-        }
-    }
-
-    /// <summary>Failure-reason breakdown for the report drawer: failed/ambiguous recipients grouped by Meta
-    /// error code (optional run scope). Read path — gated + 404-ownership-probed like the other report calls.</summary>
-    public async Task<(List<ProjectFailureBucketDto>? buckets, string? errorCode, string? message)> GetFailureBreakdownAsync(
-        int tenantId, long projectId, string? campaignId, CancellationToken ct)
-    {
-        if (!Allowed(tenantId)) return (null, ErrorCodes.ProjectDisabled, "Projeler bu hesap için etkin değil.");
-        try
-        {
-            var detail = await _repo.GetAsync(tenantId, projectId, ct); // 404 ownership probe
-            if (detail == null) return (null, ErrorCodes.ProjectNotFound, $"Proje {projectId} bulunamadı.");
-            return (await _repo.GetFailureBreakdownAsync(tenantId, projectId, campaignId, ct), null, null);
-        }
-        catch (NpgsqlException ex)
-        {
-            _logger.SystemError($"project failure breakdown failed (tenant={tenantId}, project={projectId}): {ex.Message}");
             return (null, ErrorCodes.ProjectDbError, "Veritabanı hatası; lütfen tekrar deneyin.");
         }
     }

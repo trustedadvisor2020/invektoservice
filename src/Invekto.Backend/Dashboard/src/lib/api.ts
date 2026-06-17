@@ -2512,27 +2512,17 @@ class OpsApiClient {
 
   async getProjectReportRecipients(
     projectId: number,
-    opts: { campaignId?: string; search?: string; status?: string; failCode?: string; sort?: string; dir?: string; page?: number; pageSize?: number } = {},
+    opts: { campaignId?: string; search?: string; status?: string; sort?: string; dir?: string; page?: number; pageSize?: number } = {},
   ): Promise<ProjectRecipientsPage> {
     const qs = new URLSearchParams();
     if (opts.campaignId) qs.set('campaignId', opts.campaignId);
     if (opts.search) qs.set('search', opts.search);
     if (opts.status) qs.set('status', opts.status);
-    if (opts.failCode) qs.set('failCode', opts.failCode);
     if (opts.sort) qs.set('sort', opts.sort);
     if (opts.dir) qs.set('dir', opts.dir);
     qs.set('page', String(opts.page ?? 1));
     qs.set('pageSize', String(opts.pageSize ?? 50));
     return this.request<ProjectRecipientsPage>(`/api/v1/outbound/projects/${projectId}/report/recipients?${qs.toString()}`);
-  }
-
-  // Failure-reason breakdown for the report drawer: failed/ambiguous recipients grouped by Meta error code
-  // (optional run scope). Each bucket's `code` feeds getProjectReportRecipients({ failCode }).
-  async getProjectFailureBreakdown(projectId: number, campaignId?: string): Promise<ProjectFailureBucket[]> {
-    const qs = new URLSearchParams();
-    if (campaignId) qs.set('campaignId', campaignId);
-    const suffix = qs.toString() ? `?${qs.toString()}` : '';
-    return this.request<ProjectFailureBucket[]>(`/api/v1/outbound/projects/${projectId}/report/failure-breakdown${suffix}`);
   }
 
   // Resend ONE undelivered (failed/ambiguous) recipient; returns the fresh project detail.
@@ -2899,15 +2889,6 @@ export interface ProjectStatusPullResult {
 // Bulk resend result: how many failed/ambiguous recipients were re-queued (0 = nothing was eligible).
 export interface ProjectResendBulkResult {
   requeued: number;
-}
-
-// One failure-reason bucket in the report drawer: failed/ambiguous recipients grouped by Meta error code.
-// code = the numeric Meta code as a string, or null when the reason carries no "(NNNNN)" code. sample_error
-// is a representative raw reason (the UI runs resolveWaError on it for a Turkish title). count is the bucket size.
-export interface ProjectFailureBucket {
-  code: string | null;
-  sample_error: string;
-  count: number;
 }
 
 // Send-config fields are OPTIONAL. template_kind is the DRIVER: when set, the whole config block
