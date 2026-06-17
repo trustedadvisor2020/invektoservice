@@ -52,7 +52,7 @@ C:\CRMs\InvektoServices    ->     C:\Invekto\{Service}\current\
 ## Deploy Steps (ORDER MATTERS)
 
 1. **Migration ÖNCE:** `arch/db/migrations/` altındaki bekleyen SQL'leri production DB'de çalıştır
-2. **(Backend special)** Dashboard SPA build: `cd src/Invekto.Backend/wwwroot && npx vite build` (output: `wwwroot/app/`). FlowBuilder Dashboard'a merge edildi (2026-02-22), tek build yeterli
+2. **(Backend special)** Dashboard SPA build: `cd src/Invekto.Backend/Dashboard && npm run build` (= `tsc && vite build`; vite.config `base:'/app/'` + `outDir:'../wwwroot/app'` → çıktı `wwwroot/app/`). FlowBuilder Dashboard'a merge edildi (2026-02-22), tek build yeterli. **Frontend-ONLY değişiklikte** (.cs YOK): dotnet publish/restart **GEREKMEZ** — `wwwroot/app`'i zip'le → `server-upload` → server-exec backup-swap extract (`Expand-Archive`→`app_new`, `Rename app→app_bak_<ts>`, `Rename app_new→app`) = **zero-downtime static swap** + anında rollback (`app_bak_<ts>`)
 3. `dotnet publish -c Release` target service(s)
 4. `mcp__invekto-ops__server-upload` → `C:\Invekto\{Service}\current\`
 5. `mcp__invekto-ops__server-exec` → `C:\Invekto\nssm.exe restart Invekto{Service}` (DASHSIZ; NOT `Restart-Service` — sib process kill sorunu)
