@@ -354,6 +354,19 @@ public sealed class PhoneHistoryMessageRow
     /// <summary>Campaign id — populated for bulk-send rows only; null for project/legacy single sends.</summary>
     [JsonPropertyName("campaign_id")] public string? CampaignId { get; set; }
 
+    /// <summary>Human campaign (project) name from the row's bulk-send job project_id; null for project-less /
+    /// legacy sends. The SPA's Kampanya column shows this (falls back to '—'); CSV/PDF fall back to campaign_id.</summary>
+    [JsonPropertyName("campaign_name")] public string? CampaignName { get; set; }
+
+    /// <summary>cxapi approved-template id (outbound_messages.template_ref) for HSM rows — same value as the
+    /// "[WAPCRM_TEMPLATE] {id}" body marker and as WaTemplate.templateId. The SPA resolves it to the template
+    /// name + structured preview via the existing per-channel template list. Null for plain-text/gallery rows.</summary>
+    [JsonPropertyName("wa_template_id")] public string? WaTemplateId { get; set; }
+
+    /// <summary>cxapi channel (outbound_messages.instance_id) the HSM message was sent through — the key the SPA
+    /// uses to fetch that channel's approved-template list for name/preview resolution. Null for bridge/plain rows.</summary>
+    [JsonPropertyName("instance_id")] public int? InstanceId { get; set; }
+
     [JsonPropertyName("message_kind")] public string MessageKind { get; set; } = "";
 
     /// <summary>The sent message body (message_text). Personal data — tenant-scoped + audited on export.</summary>

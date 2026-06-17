@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Download, FileSpreadsheet, FileText, Loader2, ListPlus,
   Filter as FilterIcon, Database, X, AlertTriangle, Info, RotateCw, History,
@@ -8,10 +9,12 @@ import { Button } from '../components/ui/Button';
 import { Select } from '../components/ui/Select';
 import { Input } from '../components/ui/Input';
 import { WaErrorPopover } from '../components/WaErrorPopover';
+import { WaTemplatePreview } from '../components/WaTemplatePreview';
 import {
   api, ApiClientError,
   type ExportFilter, type ExportFilterOptions, type FilteredCount,
-  type ExportLogEntry, type PhoneHistoryResult,
+  type ExportLogEntry, type PhoneHistoryResult, type PhoneHistoryMessageRow,
+  type WaTemplate,
 } from '../lib/api';
 
 // =============================================================
@@ -74,6 +77,76 @@ function fmtDate(s: string | null | undefined): string {
 
 const EMPTY_FILTER: ExportFilter = {};
 
+// Faz 2.1 — Mesaj cell. For a resolved HSM (WAPCRM) template the cell shows a one-line body preview
+// with a rich hover popup (the full WhatsApp-style card: header/body/footer/buttons). Plain-text and
+// unresolved rows render the stored body as before. The popup is portalled to <body> so it escapes
+// the table's horizontal overflow clipping (same pattern as WaErrorPopover).
+function PhoneMsgCell({ tpl, text }: { tpl: WaTemplate | null; text: string }) {
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  const ref = useRef<HTMLButtonElement>(null);
+
+  if (!tpl) {
+    return <span className="whitespace-pre-wrap break-words">{text}</span>;
+  }
+
+  const preview =
+    tpl.preview?.body?.trim() ||
+    (tpl.preview?.header?.type === 'TEXT' ? tpl.preview?.header?.text?.trim() : '') ||
+    tpl.preview?.footer?.trim() ||
+    '(önizleme yok)';
+
+  const show = () => setRect(ref.current?.getBoundingClientRect() ?? null);
+  const hide = () => setRect(null);
+
+  // Height-aware placement: pin below the trigger, flip above when there's more room; clamp to viewport.
+  const POPOVER_W = 360, GAP = 6, EDGE = 8;
+  let style: CSSProperties | undefined;
+  if (rect) {
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const width = Math.min(POPOVER_W, vw - 2 * EDGE);
+    const spaceBelow = vh - rect.bottom - GAP - EDGE;
+    const spaceAbove = rect.top - GAP - EDGE;
+    const below = spaceBelow >= spaceAbove;
+    style = {
+      position: 'fixed',
+      width,
+      left: Math.max(EDGE, Math.min(rect.left, vw - width - EDGE)),
+      maxHeight: Math.max(0, Math.floor(below ? spaceBelow : spaceAbove)),
+      ...(below ? { top: rect.bottom + GAP } : { bottom: vh - rect.top + GAP }),
+    };
+  }
+
+  return (
+    <>
+      <button
+        ref={ref}
+        type="button"
+        onMouseEnter={show}
+        onMouseLeave={hide}
+        onFocus={show}
+        onBlur={hide}
+        title="Gönderilen şablon önizlemesi"
+        className="inline-block max-w-md truncate text-left align-bottom border-b border-dotted border-navy-300 text-navy-600 hover:text-navy-900 cursor-help"
+      >
+        {preview}
+      </button>
+      {rect && createPortal(
+        <div
+          role="tooltip"
+          style={style}
+          className="z-[70] overflow-auto rounded-xl bg-white border border-navy-100 shadow-soft p-2"
+        >
+          <div className="text-[11px] font-medium uppercase tracking-wide text-navy-400 mb-1 px-1">
+            {tpl.name ?? 'Şablon'}{tpl.language ? ` · ${tpl.language}` : ''}
+          </div>
+          <WaTemplatePreview t={tpl} />
+        </div>,
+        document.body,
+      )}
+    </>
+  );
+}
+
 export function ExportManagerPage() {
   const [options, setOptions] = useState<ExportFilterOptions | null>(null);
   const [filter, setFilter] = useState<ExportFilter>(EMPTY_FILTER);
@@ -98,6 +171,12 @@ export function ExportManagerPage() {
   const [phoneLoading, setPhoneLoading] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [phoneBusy, setPhoneBusy] = useState<string | null>(null); // 'csv' | 'pdf'
+
+  // Faz 2.1 — approved-template (HSM/WAPCRM) name+preview resolution, cached per cxapi channel
+  // (instance_id). 'error' = that channel's template fetch failed → the row degrades to the raw
+  // template id. Best-effort enrichment: it never blocks or errors the phone lookup itself.
+  const [tplByInstance, setTplByInstance] = useState<Record<number, WaTemplate[] | 'error'>>({});
+  const tplFetchedRef = useRef<Set<number>>(new Set());
 
   function failMessage(e: unknown): string {
     if (e instanceof ApiClientError) {
@@ -159,6 +238,32 @@ export function ExportManagerPage() {
     return () => { cancelled = true; clearTimeout(handle); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterKey, loading, featureDisabled]);
+
+  // Faz 2.1 — when a result lands, fetch the approved-template list for each cxapi channel present in
+  // the HSM rows (once per instance_id). Per-channel failures are isolated as 'error' (row keeps the
+  // raw id). Non-blocking: the table renders immediately and names/previews fill in when fetched.
+  useEffect(() => {
+    if (!phoneResult) return;
+    const instances = Array.from(new Set(
+      phoneResult.rows
+        .filter((r) => r.wa_template_id && r.instance_id != null)
+        .map((r) => r.instance_id as number),
+    )).filter((id) => !tplFetchedRef.current.has(id));
+    if (instances.length === 0) return;
+    instances.forEach((id) => tplFetchedRef.current.add(id));
+    let cancelled = false;
+    instances.forEach((id) => {
+      api.getWaTemplates(id)
+        .then((res) => { if (!cancelled) setTplByInstance((m) => ({ ...m, [id]: res.templates })); })
+        .catch((e) => {
+          // Best-effort enrichment: the row degrades to the raw template id, so this must not surface as a
+          // page error — but it isn't fully silent either (same console.warn contract as refreshHistory).
+          console.warn(`Şablon listesi yüklenemedi (kanal ${id}) — ham şablon id'sine düşülüyor:`, e);
+          if (!cancelled) setTplByInstance((m) => ({ ...m, [id]: 'error' }));
+        });
+    });
+    return () => { cancelled = true; };
+  }, [phoneResult]);
 
   const refreshHistory = useCallback(async () => {
     // Non-blocking: the export/create already succeeded; a stale history list must not surface as a
@@ -267,7 +372,8 @@ export function ExportManagerPage() {
           tr(fmtDate(r.created_at)),
           tr(r.status_label),
           tr(r.template_name ?? '—'),
-          tr(r.campaign_id ?? '—'),
+          // Kampanya: project name when present; else campaign_id so the PDF evidence keeps the identity.
+          tr(r.campaign_name ?? r.campaign_id ?? '—'),
           tr(r.error ?? ''),
           tr(r.message_text),
         ]),
@@ -310,6 +416,18 @@ export function ExportManagerPage() {
     [{ value: '', label: allLabel }, ...(items ?? []).map((i) => ({ value: String(i.id), label: i.label || `#${i.id}` }))];
 
   const actionsDisabled = busy !== null || countLoading || (count?.total_count ?? 0) === 0;
+
+  // Resolve a row's HSM template (id + channel) to the fetched WaTemplate; null for plain/gallery/unresolved.
+  const resolveTpl = (r: PhoneHistoryMessageRow): WaTemplate | null => {
+    if (!r.wa_template_id || r.instance_id == null) return null;
+    const list = tplByInstance[r.instance_id];
+    if (!list || list === 'error') return null;
+    return list.find((t) => t.templateId === r.wa_template_id) ?? null;
+  };
+
+  // Şablon column label: resolved HSM name → gallery template_name → raw HSM id → '—'.
+  const templateLabel = (r: PhoneHistoryMessageRow): string =>
+    resolveTpl(r)?.name || r.template_name || r.wa_template_id || '—';
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-4">
@@ -419,10 +537,10 @@ export function ExportManagerPage() {
                           <tr key={r.id} className="border-t border-navy-50 align-top">
                             <td className="px-3 py-2 text-navy-500 whitespace-nowrap">{fmtDate(r.created_at)}</td>
                             <td className="px-3 py-2 text-navy-700 whitespace-nowrap">{r.status_label}</td>
-                            <td className="px-3 py-2 text-navy-500">{r.template_name ?? '—'}</td>
-                            <td className="px-3 py-2 text-navy-500">{r.campaign_id ?? '—'}</td>
+                            <td className="px-3 py-2 text-navy-500">{templateLabel(r)}</td>
+                            <td className="px-3 py-2 text-navy-500">{r.campaign_name ?? '—'}</td>
                             <td className="px-3 py-2">{r.error ? <WaErrorPopover raw={r.error} /> : <span className="text-navy-300">—</span>}</td>
-                            <td className="px-3 py-2 text-navy-600 max-w-md whitespace-pre-wrap break-words">{r.message_text}</td>
+                            <td className="px-3 py-2 text-navy-600 max-w-md"><PhoneMsgCell tpl={resolveTpl(r)} text={r.message_text} /></td>
                           </tr>
                         ))}
                       </tbody>

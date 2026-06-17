@@ -1,4 +1,4 @@
-<!-- Status: PLANNING (interview DONE, Q onaylı) | 2026-06-17 -->
+<!-- Status: Faz 2 DONE+DEPLOYED+SMOKED (5761ebbd) | Faz 2.1 DONE+Codex PASS iter1, DEPLOY BEKLİYOR (2026-06-18) -->
 
 # FEAT-OBI Faz 2 — Telefon Numarası Ara (Tek Numara Geçmişi)
 
@@ -151,3 +151,23 @@ Yeni read query büyük `outbound_messages` tablosunda (yeni index ile) + **PII 
 | Çok kayıtlı numara (binlerce mesaj) | Yavaş/UI şişme | Defensive LIMIT + index + stream |
 | PII sızıntısı (mesaj gövdesi log/export) | KVKK | tenant-scope her tabloda + PII log YASAK + export_logs audit |
 | Index full-table build (büyük tablo) | Migration süresi | `IF NOT EXISTS`; gerekiyorsa `CONCURRENTLY` değerlendir (tek shared Postgres) |
+
+---
+
+## 9. Faz 2.1 — Geçmiş Tablosu İsimlendirme (2026-06-18, Codex /rev PASS iter1, DEPLOY BEKLİYOR)
+
+**Q isteği:** "kampanyanın adını yaz, ID'ye gerek yok; mesaj olarak gönderilen şablonun adını yaz, hover ile zengin popup preview göster."
+
+**Interview kararları (AskUserQuestion):** (1) Kolon yerleşimi = **Şablon=ad, Mesaj=önizleme** (Şablon kolonu şablon adını, Mesaj kolonu gövde önizleme + hover zengin popup; tekrar yok). (2) Kampanya fallback = proje yoksa **`—`** (UUID gösterilmez). (3) Şablon adı/preview = **ekran-only** (CSV/PDF'e WAPCRM şablon adı eklenmez; proje adı SQL'den ücretsiz CSV/PDF'e gider).
+
+**Değişiklikler:**
+- **Kampanya** = `projects.name` (`bulk_send_jobs.project_id` LEFT JOIN). Ekranda proje yoksa `—`; CSV/PDF'te `name ?? campaign_id` (audit izlenebilirliği — bilinçli ekran/export ayrışması).
+- **Şablon** = WAPCRM onaylı şablon ADI. Galeri→`template_name`; HSM→SPA-side `getWaTemplates(instanceId)` çözümü (`om.template_ref` === `WaTemplate.templateId`); çözülemezse ham id; hiçbiri yoksa `—`.
+- **Mesaj** = HSM satırda şablon gövde önizleme (tek satır) + hover/focus zengin WhatsApp-stili popup (header/body/footer/buttons, portal); plain-text satır eskisi gibi `message_text`.
+- **Backend:** `ReadPhoneHistoryAsync` SQL +`projects` LEFT JOIN (campaign_name) + `om.template_ref` + `om.instance_id` (hepsi tenant_id-scoped, READ-only); `PhoneHistoryMessageRow` +3 additive nullable alan (campaign_name/wa_template_id/instance_id) + TS interface. **Şema değişikliği YOK** (kolonlar zaten var → migration yok). Backend proxy transparent passthrough (C# değişiklik yok).
+- **Frontend:** `ExportManagerPage` per-instance `getWaTemplates` cache + non-blocking fetch (console.warn fallback) + `PhoneMsgCell` hover popup. **DRY:** `WaTemplatePreview` ProjectsPage'den ortak `components/WaTemplatePreview.tsx`'e taşındı (Projeler + Export Manager paylaşır).
+- **Codex /rev:** iter0 FAIL (CQ2 logsuz catch [→console.warn] + CQ11/Q2 evidence-gap [→diff'e read-only schema/contract eki]) → **iter1 PASS** (12/12 CQ + 4/4 CoVe).
+
+**Kalan:** DEPLOY (SPA bundle + Backend/Outbound publish — migration yok). Plan: `arch/plans/20260617-obi-phone-history-names.json`.
+
+**Not (parallel session):** `Program.cs` failure-breakdown proxy route'u başka session'ın işi → bu commit'e DAHİL EDİLMEDİ (selective add).

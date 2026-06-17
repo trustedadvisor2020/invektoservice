@@ -9,6 +9,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { cn } from '../lib/utils';
 import { WaErrorPopover } from '../components/WaErrorPopover';
+import { WaTemplatePreview } from '../components/WaTemplatePreview';
 import {
   api, ApiClientError,
   type ProjectSummary, type ProjectStatus, type DataListSummary,
@@ -16,8 +17,9 @@ import {
   type ProjectContentMode, type OutboundTemplateDto,
   type BulkSendPreviewResponse, type BulkSendStatusResponse,
   type DataListPreviewSample, type ListRecord, type ProjectTestSendRequest,
-  type ProjectRun, type ProjectRecipient, type ProjectRecipientsPage,
+  type ProjectRun, type ProjectRecipient, type ProjectRecipientsPage, type ProjectFailureBucket,
 } from '../lib/api';
+import { resolveWaError } from '../lib/wa-error-codes';
 
 // =============================================================
 // FEAT-PROJELER PKT-14 — ProjectsPage (Projeler)
@@ -117,29 +119,6 @@ const REPORT_STATUS_OPTIONS: { v: string; label: string }[] = [
   { v: 'ambiguous', label: 'Belirsiz' },
   { v: 'cancelled', label: 'İptal' },
 ];
-
-// Structured WhatsApp-style preview of an approved (HSM) template — header / body / footer / buttons.
-// Pure (takes a WaTemplate); shared by the Gönder modal content block and the table hover card.
-function WaTemplatePreview({ t, className }: { t: WaTemplate; className?: string }) {
-  const h = t.preview?.header;
-  const btns = (t.preview?.buttons ?? []).map(b => b?.text?.trim()).filter((x): x is string => !!x);
-  const empty = !h?.text && !h?.type && !t.preview?.body && !t.preview?.footer && btns.length === 0;
-  return (
-    <div className={cn('rounded-lg bg-[#f6faf2] border border-green-100 px-3 py-2 text-sm text-navy-800 space-y-1.5', className)}>
-      {h?.text
-        ? <div className="font-semibold whitespace-pre-wrap break-words">{h.text}</div>
-        : h?.type ? <div className="text-xs italic text-navy-400">[{h.type} başlık]</div> : null}
-      {t.preview?.body && <div className="whitespace-pre-wrap break-words leading-relaxed">{t.preview.body}</div>}
-      {t.preview?.footer && <div className="text-xs text-navy-400 whitespace-pre-wrap break-words">{t.preview.footer}</div>}
-      {btns.length > 0 && (
-        <div className="flex flex-wrap gap-x-3 gap-y-1 pt-1.5 border-t border-green-100">
-          {btns.map((b, i) => <span key={i} className="text-xs text-green-700 font-medium">▸ {b}</span>)}
-        </div>
-      )}
-      {empty && <div className="text-xs italic text-navy-400">Şablon içeriği boş</div>}
-    </div>
-  );
-}
 
 function fmtDateTime(iso: string | null): string {
   if (!iso) return '—';
@@ -360,6 +339,10 @@ export default function ProjectsPage() {
   const [reportSearch, setReportSearch] = useState('');
   const [reportSearchDraft, setReportSearchDraft] = useState('');
   const [reportStatus, setReportStatus] = useState(''); // '' = all; otherwise a REPORT_STATUS_OPTIONS value (CSV of statuses)
+  // #4 failure-reason breakdown: the active bucket filter (a Meta code or 'none' for no-code rows; '' = off)
+  // and the buckets themselves (failed/ambiguous grouped by code for the open project/run).
+  const [reportFailCode, setReportFailCode] = useState('');
+  const [failureBuckets, setFailureBuckets] = useState<ProjectFailureBucket[]>([]);
   const [reportSort, setReportSort] = useState<ReportSortKey | null>(null); // null = server default (id DESC)
   const [reportDir, setReportDir] = useState<ReportSortDir>('desc');
   const [reportPage, setReportPage] = useState(1);
@@ -435,21 +418,30 @@ export default function ProjectsPage() {
 
   const PLAIN_TEXT_BODY_MAX = 4096; // mirrors PlainTextBodyMaxLength in ProjectsService.cs
 
-  async function loadProjects() {
-    setLoading(true);
-    setLoadError(null);
+  // silent: the #1 auto-refresh poll path — skip the full-table spinner and KEEP the last good rows on a
+  // transient failure (a flicker-free background refresh while a run is in flight). The manual/initial path
+  // (silent=false) keeps the original spinner + error-surfacing behavior.
+  async function loadProjects(silent = false) {
+    if (!silent) { setLoading(true); setLoadError(null); }
     setFeatureDisabled(false);
     try {
       // includeArchived: the table fetches the FULL set once; the status chips filter client-side
       // (an archived project is the tenant's own data — the Arşivli chip is how it is reached).
-      setProjects(await api.listProjects(true));
+      const next = await api.listProjects(true);
+      setProjects(next);
+      if (silent) setLoadError(null); // a recovered poll clears a stale error banner
     } catch (e) {
+      if (silent) {
+        // Background poll failure: keep the last good table, don't clobber it or block with an error.
+        console.warn('[projects] otomatik yenileme başarısız:', errText(e, 'reload failed'));
+        return;
+      }
       setProjects([]);
       // 403 = the tenant isn't enabled for projects (ProjectsOptions gate / plan).
       if (e instanceof ApiClientError && e.status === 403) setFeatureDisabled(true);
       else setLoadError(errText(e, 'Projeler yüklenemedi'));
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
@@ -989,6 +981,8 @@ export default function ProjectsPage() {
     setReportSearch('');
     setReportSearchDraft('');
     setReportStatus('');
+    setReportFailCode('');
+    setFailureBuckets([]);
     setReportSort(null);
     setReportDir('desc');
     setReportPage(1);
@@ -1011,6 +1005,8 @@ export default function ProjectsPage() {
     setReportError(null);
     setReportPullNote(null);
     setReportStatus('');
+    setReportFailCode('');
+    setFailureBuckets([]);
     setBulkResendConfirm(false);
   }
 
@@ -1073,6 +1069,7 @@ export default function ProjectsPage() {
       campaignId: reportCampaign || undefined,
       search: reportSearch || undefined,
       status: reportStatus || undefined,
+      failCode: reportFailCode || undefined,
       sort: reportSort ?? undefined,
       dir: reportSort ? reportDir : undefined,
       page: reportPage,
@@ -1082,7 +1079,18 @@ export default function ProjectsPage() {
       .catch((e) => { if (!cancelled) setReportError(errText(e, 'Rapor yüklenemedi')); })
       .finally(() => { if (!cancelled) setReportLoading(false); });
     return () => { cancelled = true; };
-  }, [reportProject, reportCampaign, reportSearch, reportStatus, reportSort, reportDir, reportPage, reportReloadTick]);
+  }, [reportProject, reportCampaign, reportSearch, reportStatus, reportFailCode, reportSort, reportDir, reportPage, reportReloadTick]);
+
+  // #4 Failure-reason breakdown fetch: failed/ambiguous grouped by Meta code for the open project/run. Re-runs
+  // on run change + refresh tick (tracks live sends + resends). Fail-silent — an extra over the recipient table.
+  useEffect(() => {
+    if (!reportProject) { setFailureBuckets([]); return; }
+    let cancelled = false;
+    api.getProjectFailureBreakdown(reportProject.id, reportCampaign || undefined)
+      .then((b) => { if (!cancelled) setFailureBuckets(b); })
+      .catch(() => { if (!cancelled) setFailureBuckets([]); });
+    return () => { cancelled = true; };
+  }, [reportProject, reportCampaign, reportReloadTick]);
 
   // Column-header click: toggle direction on the active column, else switch to the new column (newest-first
   // default). Resets to page 1 so the operator sees the top of the re-sorted set.
@@ -1155,6 +1163,7 @@ export default function ProjectsPage() {
         campaignId: reportCampaign || undefined,
         search: reportSearch || undefined,
         status: reportStatus || undefined,
+        failCode: reportFailCode || undefined,
         page: 1,
         pageSize: 5000,
       });
@@ -1315,6 +1324,58 @@ export default function ProjectsPage() {
     setSendStatus(null);
   }
 
+  // ---- #1 Auto-refresh (table): silently reload while a run is active. Paused when the tab is hidden or the
+  // full-screen report drawer covers the table (its own poll takes over); stops when no run is active. ----
+  const anyRunActive = useMemo(
+    () => projects.some(p => p.status === 'running' || p.status === 'paused'),
+    [projects]);
+  useEffect(() => {
+    if (!anyRunActive || reportProject) return;
+    const id = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void loadProjects(true);
+    }, 8000);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anyRunActive, reportProject]);
+
+  // ---- #1 Auto-refresh (report drawer): silent recipient + counter refresh while the open run still has queued
+  // work. The recipients effect won't flash a spinner (reportData already exists); the tick also re-runs breakdown. ----
+  const reportRunActive = useMemo(() => {
+    if (!reportProject || reportRuns.length === 0) return false;
+    return reportCampaign
+      ? reportRuns.some(r => r.campaign_id === reportCampaign && r.queued > 0)
+      : reportRuns.some(r => r.queued > 0);
+  }, [reportProject, reportRuns, reportCampaign]);
+  useEffect(() => {
+    if (!reportRunActive) return;
+    const id = window.setInterval(() => {
+      if (document.visibilityState !== 'visible' || !reportProject) return;
+      setReportReloadTick(t => t + 1);
+      void api.getProjectReportRuns(reportProject.id).then(setReportRuns).catch(() => {});
+    }, 8000);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportRunActive, reportProject]);
+
+  // ---- #5 Esc-to-close: dismiss the TOP-most open layer. A latest-ref keeps the handler's closures (closeModal's
+  // dirty-guard, the busy flags) fresh without re-subscribing per render. A pinned WaErrorPopover is portalled with
+  // focus inside it and runs its OWN Esc handler — bail so Esc dismisses the card, not the whole drawer. ----
+  const escRef = useRef<() => void>(() => {});
+  escRef.current = () => {
+    const ae = document.activeElement;
+    if (ae instanceof HTMLElement && ae.closest('[aria-label^="WhatsApp hata"]')) return;
+    if (bulkResendConfirm) { if (!bulkResending) setBulkResendConfirm(false); return; }
+    if (cancelTarget) { if (lifecycleBusyId !== cancelTarget.id) setCancelTarget(null); return; }
+    if (sendProject) { closeSend(); return; }
+    if (reportProject) { closeReport(); return; }
+    if (modalOpen) { closeModal(); return; }
+  };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') escRef.current(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
+
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
@@ -1436,6 +1497,25 @@ export default function ProjectsPage() {
                   </td>
                   <td className="px-4 py-2.5">
                     <StatusBadge status={p.status} />
+                    {/* #2 progress bar — only for an active run. processed = terminal-status counts; total =
+                        processed + still-queued, so the bar reaches 100% exactly when the run drains. */}
+                    {(p.status === 'running' || p.status === 'paused') && (() => {
+                      const processed = p.sent_count + p.delivered_count + p.read_count + p.failed_count + p.ambiguous_count + p.cancelled_count;
+                      const totalRun = processed + p.queued_count;
+                      if (totalRun <= 0) return null;
+                      const pct = Math.min(100, Math.round((processed / totalRun) * 100));
+                      return (
+                        <div className="mt-1 w-28" title={`${processed.toLocaleString('tr-TR')} / ${totalRun.toLocaleString('tr-TR')} işlendi (%${pct})`}>
+                          <div className="h-1.5 rounded-full bg-navy-100 overflow-hidden">
+                            <div
+                              className={cn('h-full rounded-full transition-all duration-500', p.status === 'paused' ? 'bg-amber-400' : 'bg-brand-500')}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <div className="text-[10px] text-navy-400 mt-0.5 tabular-nums">{processed.toLocaleString('tr-TR')} / {totalRun.toLocaleString('tr-TR')}</div>
+                        </div>
+                      );
+                    })()}
                     {p.cancelled_count > 0 && (
                       <div className="text-[11px] text-navy-400 mt-0.5 tabular-nums">{p.cancelled_count.toLocaleString('tr-TR')} iptal</div>
                     )}
@@ -2169,7 +2249,7 @@ export default function ProjectsPage() {
               <select
                 className="border border-navy-100 rounded-lg px-2.5 py-1.5 text-sm text-navy-700 bg-white max-w-[260px]"
                 value={reportCampaign}
-                onChange={(e) => { setReportCampaign(e.target.value); setReportPage(1); setReportPullNote(null); }}
+                onChange={(e) => { setReportCampaign(e.target.value); setReportFailCode(''); setReportPage(1); setReportPullNote(null); }}
                 title="Gönderim seç"
               >
                 <option value="">Tüm gönderimler ({reportRuns.length})</option>
@@ -2180,7 +2260,7 @@ export default function ProjectsPage() {
               <select
                 className="border border-navy-100 rounded-lg px-2.5 py-1.5 text-sm text-navy-700 bg-white"
                 value={reportStatus}
-                onChange={(e) => { setReportStatus(e.target.value); setReportPage(1); }}
+                onChange={(e) => { setReportStatus(e.target.value); setReportFailCode(''); setReportPage(1); }}
                 title="Duruma göre filtrele"
               >
                 {REPORT_STATUS_OPTIONS.map((o) => (
@@ -2275,7 +2355,7 @@ export default function ProjectsPage() {
                       <button
                         key={c.v || 'all'}
                         type="button"
-                        onClick={() => { setReportStatus(active && c.v !== '' ? '' : c.v); setReportPage(1); }}
+                        onClick={() => { setReportStatus(active && c.v !== '' ? '' : c.v); setReportFailCode(''); setReportPage(1); }}
                         className={cn(
                           'inline-flex items-center gap-1 px-2 py-0.5 rounded-md border transition-colors',
                           active ? 'border-brand-300 bg-brand-50 text-navy-700' : 'border-transparent text-navy-500 hover:bg-navy-50',
@@ -2290,6 +2370,46 @@ export default function ProjectsPage() {
                 </div>
               );
             })()}
+
+            {/* #4 failure-reason breakdown — failed/ambiguous grouped by Meta error code. Click a bucket to filter
+                the table to exactly that reason (clears the status filter); click again to clear. The label comes
+                from resolveWaError on a sampled raw reason, so codeless reasons show their own text. */}
+            {failureBuckets.length > 0 && (
+              <div className="px-5 py-2 border-b border-navy-50 bg-red-50/30">
+                <div className="text-[11px] font-medium text-navy-400 mb-1">Başarısızlık nedenleri — filtrelemek için tıklayın</div>
+                <div className="flex flex-wrap gap-1.5 text-xs">
+                  {failureBuckets.map((b) => {
+                    const key = b.code ?? 'none';
+                    const active = reportFailCode === key;
+                    const resolved = resolveWaError(b.sample_error);
+                    const label = resolved.info?.title
+                      ?? (b.sample_error.length > 44 ? `${b.sample_error.slice(0, 44)}…` : b.sample_error)
+                      ?? 'Bilinmeyen neden';
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => {
+                          setReportFailCode(active ? '' : key);
+                          if (!active) setReportStatus('');
+                          setReportPage(1);
+                        }}
+                        className={cn(
+                          'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border transition-colors max-w-full',
+                          active ? 'border-red-300 bg-red-100 text-red-700' : 'border-red-100 bg-white text-navy-600 hover:bg-red-50',
+                        )}
+                        title={b.code ? `Meta kodu ${b.code}${resolved.info?.title ? ` — ${resolved.info.title}` : ''}` : b.sample_error}
+                        aria-pressed={active}
+                      >
+                        {b.code && <span className="font-semibold tabular-nums text-red-600">{b.code}</span>}
+                        <span className="truncate max-w-[220px]">{label}</span>
+                        <b className="tabular-nums text-red-700">{b.count.toLocaleString('tr-TR')}</b>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {reportPullNote && (
               <div className="px-5 py-1.5 bg-green-50/70 text-green-700 text-xs flex items-center gap-1.5">

@@ -528,7 +528,13 @@ public class ExportRepository
     /// can extract any "(NNNNN)" WhatsApp code. Served by the new
     /// idx_outbound_messages_tenant_phone_created (migration 067). limit caps the screen read.
     /// EVERY nullable column is IsDBNull-guarded (lesson 2026-06-17: a nullable read crashed the
-    /// campaign read-path). tenant_id is on om AND the lateral job AND the template join — isolation.
+    /// campaign read-path). tenant_id is on om AND the lateral job AND the template/projects joins — isolation.
+    ///
+    /// Display enrichment (Faz 2.1): the campaign (project) NAME is resolved from the lateral job's
+    /// project_id (LEFT JOIN projects — null for project-less/legacy sends). For HSM rows the cxapi
+    /// approved-template id (template_ref) + channel (instance_id) are returned RAW from om so the SPA
+    /// can resolve the template NAME + structured preview client-side via the existing per-channel
+    /// template list (no live cxapi fetch is added to this read/export path).
     /// </summary>
     public virtual async IAsyncEnumerable<PhoneHistoryMessageRow> ReadPhoneHistoryAsync(
         int tenantId, string normalizedPhone, int? limit, [EnumeratorCancellation] CancellationToken ct = default)
@@ -541,10 +547,13 @@ public class ExportRepository
                    om.message_kind, om.message_text,
                    COALESCE(om.failed_reason, NULLIF(om.provider_error_message, 'Success')) AS error_text,
                    t.name AS template_name,
-                   j.campaign_id
+                   j.campaign_id,
+                   p.name AS campaign_name,
+                   om.template_ref,
+                   om.instance_id
             FROM outbound_messages om
             LEFT JOIN LATERAL (
-                SELECT jj.campaign_id, jj.template_id
+                SELECT jj.campaign_id, jj.template_id, jj.project_id
                 FROM bulk_send_jobs jj
                 WHERE jj.tenant_id = @tid AND om.broadcast_id = ANY(jj.broadcast_ids)
                 ORDER BY jj.created_at DESC, jj.id DESC
@@ -552,6 +561,8 @@ public class ExportRepository
             ) j ON TRUE
             LEFT JOIN outbound_templates t
                 ON t.tenant_id = @tid AND t.id = COALESCE(om.template_id, j.template_id)
+            LEFT JOIN projects p
+                ON p.tenant_id = @tid AND p.id = j.project_id
             WHERE om.tenant_id = @tid AND om.recipient_phone = @phone
             ORDER BY om.created_at DESC, om.id DESC
             LIMIT @lim::int";
@@ -579,7 +590,10 @@ public class ExportRepository
                 MessageText = reader.GetString(7),
                 Error = S(reader, 8),
                 TemplateName = S(reader, 9),
-                CampaignId = S(reader, 10)
+                CampaignId = S(reader, 10),
+                CampaignName = S(reader, 11),
+                WaTemplateId = S(reader, 12),
+                InstanceId = reader.IsDBNull(13) ? (int?)null : reader.GetInt32(13)
             };
         }
     }

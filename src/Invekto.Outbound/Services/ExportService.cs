@@ -589,7 +589,9 @@ public sealed class ExportService
 
     private static string[] PhoneHistoryCells(PhoneHistoryMessageRow r) => new[]
     {
-        Ts(r.CreatedAt), Sanitize(r.StatusLabel), Sanitize(r.TemplateName), Sanitize(r.CampaignId),
+        // Kampanya: friendly project name when the send came from a project; else the campaign_id so the
+        // audit/evidence export never loses the campaign identity (the on-screen table shows name-or-'—').
+        Ts(r.CreatedAt), Sanitize(r.StatusLabel), Sanitize(r.TemplateName), Sanitize(r.CampaignName ?? r.CampaignId),
         Sanitize(r.MessageText), Ts(r.SentAt), Ts(r.DeliveredAt), Ts(r.ReadAt), Sanitize(r.Error)
     };
 

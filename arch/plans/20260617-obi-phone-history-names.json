@@ -1,0 +1,105 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260617-obi-phone-history-names",
+  "risk": "MEDIUM",
+  "status": "REVIEW",
+  "created_at": "2026-06-17T20:40:00Z",
+  "updated_at": "2026-06-17T20:40:00Z",
+  "plan": {
+    "summary": "FEAT-OBI Faz 2.1 — 'Telefon Numarası Ara' tablosunda Kampanya sütununda UUID yerine proje (kampanya) ADI, Şablon sütununda WAPCRM onaylı şablonun ADI, Mesaj sütununda gönderilen şablonun gövde önizlemesi + hover'da zengin WhatsApp-stili popup (header/body/footer/buttons) gösterilir. Şablon adı/preview mevcut getWaTemplates endpoint'i ile SPA tarafında çözülür (export yoluna cxapi bağımlılığı eklenmez).",
+    "q_intent": "kampanyanın adını yaz. ID ye gerek yok. mesaj olarak da gönderilen şablonun adını yaz, hover ile zengin popup da preview olarak göster.",
+    "interview_notes": "Q 2026-06-17 onayları: (1) Kolon yerleşimi = 'Şablon=ad, Mesaj=önizleme' (Şablon sütunu şablon adını, Mesaj sütunu gövde önizleme + hover zengin popup gösterir; tekrar yok). (2) Kampanya fallback = proje yoksa '—' (campaign_id UUID gösterilmez). (3) Şablon adı+preview SADECE ekranda (CSV/PDF'e cxapi şablon adı eklenmez); proje adı zaten SQL'den ücretsiz CSV/PDF'e de gider.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "Kampanya sütunu, gönderim bir Projeler projesinden geldiyse projenin adını (projects.name via bulk_send_jobs.project_id) gösterir; proje yoksa (saf bulk/legacy) '—' gösterir — UUID campaign_id ekranda görünmez.", "verified": true },
+      { "id": "AC2", "criterion": "Şablon sütunu HSM (WAPCRM) gönderimlerde şablonun ADINI gösterir (getWaTemplates ile om.template_ref → WaTemplate.name çözümü); galeri şablonlarda template_name; çözülemezse ham wa_template_id; hiçbiri yoksa '—'. Diğer tenant'ın verisi ASLA görünmez.", "verified": true },
+      { "id": "AC3", "criterion": "Mesaj sütunu HSM satırlarda '[WAPCRM_TEMPLATE] id' yerine şablon gövde önizlemesini (tek satır) gösterir ve hover/focus ile zengin popup (header/body/footer/buttons, portal ile tablo overflow'unu aşar) açar; plain-text satırlar message_text'i eskisi gibi gösterir.", "verified": true },
+      { "id": "AC4", "criterion": "Şablon listesi çözümü best-effort + non-blocking: tablo hemen render olur, isim/preview çekilince dolar; bir cxapi kanalının (instance_id) fetch'i hata verirse o kanal 'error' işaretlenir ve satır ham id'ye düşer — phone lookup'ın kendisi asla bloklanmaz/hata vermez.", "verified": true },
+      { "id": "AC5", "criterion": "CSV ve PDF export Kampanya hücresi proje adını gösterir, proje yoksa campaign_id'ye düşer (audit izlenebilirliği korunur); şablon adı/preview export'a EKLENMEZ (Q kararı: ekran-only). outbound_messages/bulk_send_*/projects yalnız READ edilir.", "verified": true },
+      { "id": "AC6", "criterion": "WaTemplatePreview render bileşeni ProjectsPage'den ortak components/WaTemplatePreview.tsx'e taşınır ve hem Projeler hem Export Manager tarafından kullanılır (tek kaynak, duplication yok); ProjectsPage davranışı değişmez.", "verified": true }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/DTOs/Outbound/ExportDtos.cs",
+    "src/Invekto.Outbound/Data/ExportRepository.cs",
+    "src/Invekto.Outbound/Services/ExportService.cs",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/ExportManagerPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/WaTemplatePreview.tsx",
+    "tracking/feat-obi-phone-history.md"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Backend/Dashboard/src/components/WaTemplatePreview.tsx", "change": "YENİ — ProjectsPage'deki WaTemplatePreview pure bileşeni ortak komponente taşındı (header/body/footer/buttons WhatsApp-stili kart).", "is_new": true },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/ProjectsPage.tsx", "change": "Lokal WaTemplatePreview fonksiyonu silindi, ortak komponent import edildi (davranış aynı).", "is_new": false },
+    { "path": "src/Invekto.Shared/DTOs/Outbound/ExportDtos.cs", "change": "PhoneHistoryMessageRow'a campaign_name, wa_template_id, instance_id (hepsi nullable, additive) eklendi.", "is_new": false },
+    { "path": "src/Invekto.Outbound/Data/ExportRepository.cs", "change": "ReadPhoneHistoryAsync SQL'ine projects LEFT JOIN (campaign_name) + om.template_ref + om.instance_id select eklendi; reader 3 yeni kolonu okur (IsDBNull-guarded).", "is_new": false },
+    { "path": "src/Invekto.Outbound/Services/ExportService.cs", "change": "CSV Kampanya hücresi campaign_name ?? campaign_id (audit fallback).", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "change": "PhoneHistoryMessageRow TS arayüzüne campaign_name/wa_template_id/instance_id eklendi.", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/ExportManagerPage.tsx", "change": "Şablon=ad, Kampanya=proje adı ?? '—', Mesaj=önizleme+hover popup (PhoneMsgCell); per-instance getWaTemplates cache + non-blocking fetch effect; PDF Kampanya hücresi name ?? id.", "is_new": false }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": null,
+    "full_path": "arch/plans/diffs/20260617-obi-phone-history-names.diff",
+    "stats": { "insertions": 157, "deletions": 34, "files_count": 7 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q  +  (Dashboard) npm run build (tsc && vite build)",
+    "timestamp": "2026-06-17T20:38:00Z",
+    "services": ["Invekto.Shared", "Invekto.Outbound", "Invekto.Backend", "Dashboard SPA"]
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "ReadPhoneHistoryAsync'e eklenen projects LEFT JOIN ve om.template_ref/om.instance_id select'leri tüm SQL predicate'lerinde tenant_id'yi (om, lateral bulk_send_jobs, outbound_templates, projects) koruyor mu; bir tenant başka tenant'ın proje adını veya şablon kanalını HİÇBİR yoldan göremiyor mu?", "category": "Auth" },
+    { "id": "Q2", "question": "om.template_ref değeri ('[WAPCRM_TEMPLATE] {id}' gövde markörü ile aynı, BatchInsertHsmMessagesAsync'te yazılan) ile getWaTemplates'in döndürdüğü WaTemplate.templateId birebir eşleşiyor mu; instance_id doğru cxapi kanalı mı (yanlış kanal listesi → şablon bulunamaz → sessiz yanlış isim riski)?", "category": "Data" },
+    { "id": "Q3", "question": "Şablon listesi fetch'i (getWaTemplates) 422/timeout/rate-limit verdiğinde satır ham wa_template_id'ye düşüyor, phone lookup hatasız tamamlanıyor ve per-instance 'error' izolasyonu diğer kanalları/satırları etkilemiyor mu (kısmi başarısızlık sessiz-bozulma değil, görünür fallback)?", "category": "Lifecycle" },
+    { "id": "Q4", "question": "Şablon adı/preview SADECE ekranda (Q kararı) — CSV/PDF'e WAPCRM şablon adı sızmıyor; Kampanya export hücresi name ?? campaign_id fallback'i audit izlenebilirliğini korurken ekranın name ?? '—' davranışıyla bilinçli ayrışıyor; export_logs append-only ve PII-no-leak korunuyor mu?", "category": "Process/Policy" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "outbound_messages / bulk_send_jobs / projects / outbound_templates yazma (READ-only)",
+      "Şablon adı/preview'i CSV/PDF export'a ekleme (Q kararı: ekran-only)",
+      "ProjectsPage send/preview davranışını değiştirme (sadece WaTemplatePreview import refactor)",
+      "Backend proxy / Outbound endpoint imzalarını değiştirme (alanlar additive, transparent passthrough)"
+    ],
+    "non_goals": [
+      "Export yoluna server-side cxapi şablon çözümü ekleme",
+      "Şablon listesini DB'ye cache'leme / yeni endpoint",
+      "Tek-numara için yeni filtre/aksiyon"
+    ],
+    "intentional_exclusions": [
+      "HSM satırlarında çözülemeyen şablon için ham '[WAPCRM_TEMPLATE] id' fallback (cxapi yoksa kaçınılmaz)",
+      "CSV/PDF Mesaj hücresi HSM'de ham message_text kalır (preview ekran-only)",
+      "Başarısız ('error') kanal için aynı session'da retry yok (sayfa reload retry eder)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "ExportManagerPage.tsx getWaTemplates fetch effect (.catch → 'error' işaretle, satır ham id'ye düşer)"
+    ],
+    "user_facing_errors": [
+      "Şablon çözülemezse Şablon=ham id, Mesaj=ham message_text (sessiz değil, görünür fallback)",
+      "Kampanya proje yoksa ekranda '—'"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "En büyük risk om.template_ref ile WaTemplate.templateId / instance_id eşleşme uyumsuzluğu (yanlış kanal → yanlış/eksik isim). Azaltma: ikisi de send-anında BatchInsertHsmMessagesAsync ile aynı kaynaktan (hsmTemplateId) yazılır; eşleşme yoksa find() null → ham id fallback (yanlış isim göstermez, ham id gösterir). Fetch hatası best-effort 'error' ile görünür biçimde fallback'e düşer, lookup'ı bozmaz."
+  },
+  "aha_moments": [
+    { "category": "SUPPORT", "user_pain": "Operatör Kampanya sütununda '7e83c15c-08b6-...' UUID görüyor, hangi kampanya olduğunu anlamıyor.", "suggestion": "UUID yerine proje adını göster.", "aha_moment": "Operatör 'Haziran Saç Ekimi Hatırlatma' yazısını görünce hangi kampanya olduğunu anında anlar." },
+    { "category": "UX", "user_pain": "Mesaj sütununda '[WAPCRM_TEMPLATE] 1668560744357782' görünüyor — ne gönderildiği belirsiz.", "suggestion": "Şablon adı + hover'da zengin önizleme.", "aha_moment": "Operatör fareyle üzerine gelince gönderilen mesajın tam WhatsApp görünümünü (başlık/gövde/butonlar) görür." },
+    { "category": "SALES", "user_pain": "Klinik 'bu hastaya tam olarak ne yazdık' kanıtı isteyince ham şablon id'si işe yaramıyor.", "suggestion": "Önizleme + isim ile okunabilir kanıt.", "aha_moment": "Klinik sahibi mesaj içeriğini insan-okunur görünce 'işte tam bu' der." },
+    { "category": "RELIABILITY", "user_pain": "Aynı şablonun farklı dillerdeki sürümleri ham id ile karışıyor.", "suggestion": "Hover başlığında şablon adı + dil etiketi.", "aha_moment": "Operatör 'randevu_hatirlatma · tr' görünce doğru dil sürümünü teyit eder." },
+    { "category": "SPEED", "user_pain": "Şablon adını bulmak için ayrı Projeler ekranına gidip eşleştirmek gerekiyordu.", "suggestion": "Tek ekranda otomatik isim çözümü.", "aha_moment": "Operatör numarayı arayınca isim+önizleme aynı tabloda kendiliğinden dolar." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "iteration": 1,
+    "escalation_required": false,
+    "blocking_issues": [],
+    "raw_text": "iter0 FAIL (CQ2 unlogged catch + CQ11/Q2 evidence-gap) → fix console.warn + diff'e read-only DB/contract evidence eki → iter1 PASS: CQ1-CQ12 hepsi PASS, CoVe Q1-Q4 hepsi PASS, blocking yok. model: gpt-5.5"
+  }
+}
