@@ -215,6 +215,11 @@ public sealed class WapCrmMessageStatusEntry
 
     /// <summary>Provider message status int (0=Pending,1=Sent,2=Delivered,3=Viewed/read,4=NotSent/failed,5=Deleted); null when not found.</summary>
     public int? MessageStatus { get; init; }
+
+    /// <summary>Provider's NotSent detail (cxapi <c>reasonDetailForNotSent</c>) — populated only for status 4
+    /// (e.g. WhatsApp 131049 "healthy ecosystem engagement" marketing throttle). Null otherwise; the caller
+    /// stores it as the failure reason so the report shows WHY a message did not arrive.</summary>
+    public string? ReasonDetailForNotSent { get; init; }
 }
 
 /// <summary>

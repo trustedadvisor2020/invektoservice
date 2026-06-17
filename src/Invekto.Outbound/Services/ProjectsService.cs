@@ -721,6 +721,26 @@ public sealed class ProjectsService
     private const int MessageStatusBatchSize = 100;
 
     /// <summary>
+    /// Collapse cxapi's multi-line <c>reasonDetailForNotSent</c> into ONE operator-facing line for the report
+    /// 'Hata' column: trim per line, drop blanks + exact duplicates, prefer the line carrying the provider code
+    /// "(NNNNN)" (most informative, e.g. WhatsApp "(131049)"), else the first line; truncate to the failed_reason
+    /// column cap. The raw provider text is English (Meta-sourced) — kept verbatim so the operator sees the real cause.
+    /// </summary>
+    private static string CleanNotSentReason(string raw)
+    {
+        var lines = raw
+            .Split('\n')
+            .Select(l => l.Trim())
+            .Where(l => l.Length > 0)
+            .Distinct()
+            .ToList();
+        var best = lines.FirstOrDefault(l => System.Text.RegularExpressions.Regex.IsMatch(l, @"\(\d{3,}\)"))
+                   ?? lines.FirstOrDefault()
+                   ?? raw.Trim();
+        return WapCrmAckMapping.TruncateFailedReason(best) ?? best;
+    }
+
+    /// <summary>
     /// FEATURE B (status-pull): for up to <see cref="StatusPullCap"/> of a project's wamid-bearing, non-terminal
     /// recipients (optionally scoped to one run), pull the LIVE cxapi message-status, map it via
     /// <c>WapCrmAckMapping.MapStatus</c>, and apply it through the idempotent, monotonic
@@ -799,14 +819,16 @@ public sealed class ProjectsService
                     var mapped = WapCrmAckMapping.MapStatus(rawStatus);
                     if (mapped == null) continue; // 0=Pending / 5=Deleted / unknown → ignore (same as the ack path)
 
-                    // The batch /api/message-status response carries ONLY the numeric status (4=NotSent) — no
-                    // reason text (unlike the webhook ack's ReasonDetailForNotSent). So a pull-marked failure
-                    // would otherwise land with failed_reason=NULL and the report's "Hata" column would fall back
-                    // to the stale provider_error_message ("Success" from the original send-accept). Stamp a clear,
-                    // honest reason so the operator SEES why it did not arrive ("neden gitmedi").
-                    var failedReason = mapped == "failed"
-                        ? "Sağlayıcı mesajı iletemedi (gönderilmedi / NotSent)."
-                        : (string?)null;
+                    // The batch /api/message-status response DOES carry reasonDetailForNotSent for status 4
+                    // (e.g. WhatsApp 131049 marketing "healthy ecosystem engagement" throttle) — capture the
+                    // REAL provider detail so the report shows WHY it did not arrive, instead of falling back to
+                    // the stale provider_error_message ("Success" send-accept echo). Generic line only when the
+                    // provider sent no detail. (Q 2026-06-17: the detail was arriving; we just weren't storing it.)
+                    string? failedReason = null;
+                    if (mapped == "failed")
+                        failedReason = !string.IsNullOrWhiteSpace(entry.ReasonDetailForNotSent)
+                            ? CleanNotSentReason(entry.ReasonDetailForNotSent)
+                            : "Sağlayıcı mesajı iletemedi (gönderilmedi / NotSent).";
 
                     try
                     {

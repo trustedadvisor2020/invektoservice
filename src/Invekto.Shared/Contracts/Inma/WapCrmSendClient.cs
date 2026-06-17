@@ -366,7 +366,8 @@ public sealed class WapCrmSendClient
                 {
                     MessageId = m.MessageId,
                     Found = m.Found,
-                    MessageStatus = m.Found ? m.MessageStatus : null
+                    MessageStatus = m.Found ? m.MessageStatus : null,
+                    ReasonDetailForNotSent = m.Found ? m.ReasonDetailForNotSent : null
                 });
             }
 
@@ -708,6 +709,7 @@ public sealed class WapCrmSendClient
         [JsonPropertyName("messageID")] public string? MessageId { get; init; }
         [JsonPropertyName("found")] public bool Found { get; init; }
         [JsonPropertyName("messageStatus")] public int? MessageStatus { get; init; }
+        [JsonPropertyName("reasonDetailForNotSent")] public string? ReasonDetailForNotSent { get; init; }
     }
 
     /// <summary>cxapi /chatoperation approved-template wire body (PR-4). NO language field — language is embedded in the templateId slug (INMA 2026-06-08).</summary>
