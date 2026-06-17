@@ -799,9 +799,18 @@ public sealed class ProjectsService
                     var mapped = WapCrmAckMapping.MapStatus(rawStatus);
                     if (mapped == null) continue; // 0=Pending / 5=Deleted / unknown → ignore (same as the ack path)
 
+                    // The batch /api/message-status response carries ONLY the numeric status (4=NotSent) — no
+                    // reason text (unlike the webhook ack's ReasonDetailForNotSent). So a pull-marked failure
+                    // would otherwise land with failed_reason=NULL and the report's "Hata" column would fall back
+                    // to the stale provider_error_message ("Success" from the original send-accept). Stamp a clear,
+                    // honest reason so the operator SEES why it did not arrive ("neden gitmedi").
+                    var failedReason = mapped == "failed"
+                        ? "Sağlayıcı mesajı iletemedi (gönderilmedi / NotSent)."
+                        : (string?)null;
+
                     try
                     {
-                        var apply = await _outboundRepo.ApplyDeliveryStatusAsync(tenantId, entry.MessageId, mapped, failedReason: null, ct: ct);
+                        var apply = await _outboundRepo.ApplyDeliveryStatusAsync(tenantId, entry.MessageId, mapped, failedReason, ct: ct);
                         if (apply.Applied) updated++;
                     }
                     catch (NpgsqlException ex)

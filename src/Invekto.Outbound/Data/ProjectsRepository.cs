@@ -1014,7 +1014,16 @@ public class ProjectsRepository
         var items = new List<ProjectRecipientDto>();
         var pageSql = cte + @"
             SELECT m.id, p.campaign_id, m.recipient_phone, m.status,
-                   COALESCE(m.failed_reason, m.provider_error_message) AS error,
+                   -- Why a message did not arrive (report 'Hata' column). Prefer the captured failed_reason;
+                   -- never surface a non-error provider_error_message ('Success' is the send-accept echo, NOT a
+                   -- failure) — NULLIF drops it; finally, a failed/ambiguous row with no captured reason gets a
+                   -- generic line so the operator still sees that it did not go (covers status-pull NotSent rows
+                   -- stamped before the reason was captured). Non-failed rows stay NULL ('—' in the UI).
+                   COALESCE(
+                       m.failed_reason,
+                       NULLIF(m.provider_error_message, 'Success'),
+                       CASE WHEN m.status IN ('failed','ambiguous') THEN 'İletilemedi (sağlayıcı neden bildirmedi).' END
+                   ) AS error,
                    m.sent_at, m.delivered_at, m.read_at, m.last_attempt_at,
                    (m.status IN ('failed','ambiguous')) AS can_resend" + filter + @"
             ORDER BY m.id DESC
