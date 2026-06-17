@@ -1555,7 +1555,12 @@ public class OutboundRepository
             Id = reader.GetInt32(0),
             Name = reader.GetString(1),
             TriggerType = reader.GetString(2),
-            TemplateId = reader.GetInt32(3),
+            // outbound_campaigns.template_id is nullable (INTEGER REFERENCES outbound_templates(id),
+            // arch/db/outbound.sql) — a campaign can carry no INSE template. Reading it unconditionally
+            // with GetInt32 threw InvalidCastException ("Column 'template_id' is null") -> unhandled 500
+            // on GetCampaignAsync/ListCampaignsAsync. CampaignResponse.TemplateId is a non-nullable int
+            // whose 0 already means "no/unset INSE template" (BroadcastDtos convention), so NULL maps to 0.
+            TemplateId = reader.IsDBNull(3) ? 0 : reader.GetInt32(3),
             AbTemplateId = reader.IsDBNull(4) ? null : reader.GetInt32(4),
             AbSplitPct = reader.GetInt32(5),
             Status = reader.GetString(6),
