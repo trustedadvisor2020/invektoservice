@@ -36,6 +36,13 @@ public sealed class ExportOptions
     /// </summary>
     public int PdfRecipientTableLimit { get; set; } = 2_000;
 
+    /// <summary>
+    /// FEAT-OBI Phase 2: cap on the on-screen "Telefon Numarası Ara" history table. The screen
+    /// shows the most recent N rows with a visible "truncated → use CSV" marker; the CSV/PDF
+    /// download exports the full set (a single number's history is naturally bounded).
+    /// </summary>
+    public int PhoneHistoryScreenLimit { get; set; } = 1_000;
+
     public bool IsTenantAllowed(int tenantId) =>
         Enabled && (AllowAllTenants || AllowedTenantIds.Contains(tenantId));
 }

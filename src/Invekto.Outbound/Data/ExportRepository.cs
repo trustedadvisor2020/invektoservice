@@ -513,6 +513,77 @@ public class ExportRepository
         }
     }
 
+    // ==================================================================
+    // FEAT-OBI Phase 2 — Telefon Numarası Ara (single-number history)
+    // ==================================================================
+    /// <summary>
+    /// Stream a single number's FULL outbound history (newest-first) for THIS tenant: every
+    /// outbound_messages row sent to <paramref name="normalizedPhone"/> — bulk + project + legacy
+    /// broadcast alike, since the match is purely on (tenant_id, recipient_phone). Campaign/template
+    /// are resolved best-effort: the campaign id from the row's broadcast's job (deterministic
+    /// ORDER BY because a broadcast id is unique per job, but ordered anyway so a defensive duplicate
+    /// is stable), the template name from the message's own template_id OR that job's template_id
+    /// (covers gallery/INSE/bulk; null for inline free-text). The 'error' text mirrors the Projeler
+    /// report (failed_reason, else a non-'Success' provider_error_message) so the SPA WaErrorPopover
+    /// can extract any "(NNNNN)" WhatsApp code. Served by the new
+    /// idx_outbound_messages_tenant_phone_created (migration 067). limit caps the screen read.
+    /// EVERY nullable column is IsDBNull-guarded (lesson 2026-06-17: a nullable read crashed the
+    /// campaign read-path). tenant_id is on om AND the lateral job AND the template join — isolation.
+    /// </summary>
+    public virtual async IAsyncEnumerable<PhoneHistoryMessageRow> ReadPhoneHistoryAsync(
+        int tenantId, string normalizedPhone, int? limit, [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        // Static SQL (no string concatenation): the optional cap is a parameter cast to int —
+        // a NULL @lim makes "LIMIT NULL" = LIMIT ALL (the full CSV/PDF export passes limit=null),
+        // matching the @x::int parameter-cast style used by the filtered-recipients query above.
+        const string sql = @"
+            SELECT om.id, om.created_at, om.status, om.sent_at, om.delivered_at, om.read_at,
+                   om.message_kind, om.message_text,
+                   COALESCE(om.failed_reason, NULLIF(om.provider_error_message, 'Success')) AS error_text,
+                   t.name AS template_name,
+                   j.campaign_id
+            FROM outbound_messages om
+            LEFT JOIN LATERAL (
+                SELECT jj.campaign_id, jj.template_id
+                FROM bulk_send_jobs jj
+                WHERE jj.tenant_id = @tid AND om.broadcast_id = ANY(jj.broadcast_ids)
+                ORDER BY jj.created_at DESC, jj.id DESC
+                LIMIT 1
+            ) j ON TRUE
+            LEFT JOIN outbound_templates t
+                ON t.tenant_id = @tid AND t.id = COALESCE(om.template_id, j.template_id)
+            WHERE om.tenant_id = @tid AND om.recipient_phone = @phone
+            ORDER BY om.created_at DESC, om.id DESC
+            LIMIT @lim::int";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("phone", normalizedPhone);
+        cmd.Parameters.AddWithValue("lim", (object?)limit ?? DBNull.Value);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            var status = reader.GetString(2);
+            yield return new PhoneHistoryMessageRow
+            {
+                Id = reader.GetInt64(0),
+                CreatedAt = reader.GetDateTime(1),
+                Status = status,
+                StatusLabel = SendDeliveryStatus.Label(status),
+                SentAt = reader.IsDBNull(3) ? null : reader.GetDateTime(3),
+                DeliveredAt = reader.IsDBNull(4) ? null : reader.GetDateTime(4),
+                ReadAt = reader.IsDBNull(5) ? null : reader.GetDateTime(5),
+                MessageKind = reader.GetString(6),
+                MessageText = reader.GetString(7),
+                Error = S(reader, 8),
+                TemplateName = S(reader, 9),
+                CampaignId = S(reader, 10)
+            };
+        }
+    }
+
     /// <summary>Outcome of the transactional "Liste Oluştur".</summary>
     public enum CreateListOutcome { Ok, NameConflict, Empty }
 

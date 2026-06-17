@@ -1049,6 +1049,7 @@ static int ExportStatus(string? code) => code switch
     ErrorCodes.ExportListNameConflict => 409,   // Phase 1B
     ErrorCodes.ExportListEmpty => 422,          // Phase 1B
     ErrorCodes.ExportFilterInvalid => 400,      // Phase 1B
+    ErrorCodes.PhoneHistoryInvalidNumber => 422, // Phase 2
     _ => 400 // ExportValidationError + fallback
 };
 
@@ -1064,6 +1065,7 @@ static string ExportMessage(string? code) => code switch
     ErrorCodes.ExportListNameConflict => "Bu isimde bir liste zaten var. Farklı bir ad girin.",
     ErrorCodes.ExportListEmpty => "Filtreye uyan gönderilebilir numara yok; liste oluşturulamadı.",
     ErrorCodes.ExportFilterInvalid => "Filtre geçersiz. Tarih aralığını ve seçimleri kontrol edin.",
+    ErrorCodes.PhoneHistoryInvalidNumber => "Geçerli bir telefon numarası girin.",
     _ => "Dışa aktarma başarısız oldu."
 };
 
@@ -1231,6 +1233,55 @@ app.MapGet("/api/v1/exports/history", async (HttpContext ctx, ExportService svc)
     if (err != null)
         return Results.Json(ErrorResponse.Create(err, ExportMessage(err), requestId), statusCode: ExportStatus(err));
     return Results.Ok(entries);
+});
+
+// ------------------------------------------------------------
+// FEAT-OBI Phase 2 — Telefon Numarası Ara (single-number history)
+// POST (not GET): the phone number is PII and must not land in access/proxy/APM logs
+// as a querystring. Tenant comes ONLY from the JWT-derived TenantContext.
+// ------------------------------------------------------------
+
+// POST /api/v1/exports/phone-history  {phone}  — on-screen history (capped, NOT audited: a view).
+app.MapPost("/api/v1/exports/phone-history", async (HttpContext ctx, ExportService svc, PhoneHistoryRequest? request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (request == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.PhoneHistoryInvalidNumber, ExportMessage(ErrorCodes.PhoneHistoryInvalidNumber), requestId), statusCode: ExportStatus(ErrorCodes.PhoneHistoryInvalidNumber));
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (err, result) = await svc.GetPhoneHistoryAsync(tenantContext.TenantId, request.Phone, ctx.RequestAborted);
+    if (err != null)
+        return Results.Json(ErrorResponse.Create(err, ExportMessage(err), requestId), statusCode: ExportStatus(err));
+    ExportFileHeaders(ctx); // no-store: PII in the body must not be cached
+    return Results.Ok(result);
+});
+
+// POST /api/v1/exports/phone-history/download  {phone, format}  — full export (audited).
+//   format=csv → streamed bytes;  format=pdf → full-rows JSON the browser renders (jsPDF).
+app.MapPost("/api/v1/exports/phone-history/download", async (HttpContext ctx, ExportService svc, PhoneHistoryRequest? request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (request == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.PhoneHistoryInvalidNumber, ExportMessage(ErrorCodes.PhoneHistoryInvalidNumber), requestId), statusCode: ExportStatus(ErrorCodes.PhoneHistoryInvalidNumber));
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var fmt = (request.Format ?? ExportFormats.Csv).ToLowerInvariant();
+    var requestedBy = tenantContext.UserId.ToString();
+    if (fmt == ExportFormats.Pdf)
+    {
+        var (err, data) = await svc.BuildPhoneHistoryPdfDataAsync(tenantContext.TenantId, request.Phone, requestedBy, ctx.RequestAborted);
+        if (err != null)
+            return Results.Json(ErrorResponse.Create(err, ExportMessage(err), requestId), statusCode: ExportStatus(err));
+        ExportFileHeaders(ctx);
+        return Results.Ok(data);
+    }
+
+    var file = await svc.ExportPhoneHistoryCsvAsync(tenantContext.TenantId, request.Phone, requestedBy, ctx.RequestAborted);
+    return ExportFileResult(ctx, file, requestId);
 });
 
 // ============================================================

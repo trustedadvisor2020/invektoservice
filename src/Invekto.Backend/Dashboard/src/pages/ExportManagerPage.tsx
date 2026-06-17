@@ -2,14 +2,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Download, FileSpreadsheet, FileText, Loader2, ListPlus,
   Filter as FilterIcon, Database, X, AlertTriangle, Info, RotateCw, History,
+  Search, Phone as PhoneIcon,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Select } from '../components/ui/Select';
 import { Input } from '../components/ui/Input';
+import { WaErrorPopover } from '../components/WaErrorPopover';
 import {
   api, ApiClientError,
   type ExportFilter, type ExportFilterOptions, type FilteredCount,
-  type ExportLogEntry,
+  type ExportLogEntry, type PhoneHistoryResult,
 } from '../lib/api';
 
 // =============================================================
@@ -41,7 +43,17 @@ const EXPORT_TYPE_LABELS: Record<string, string> = {
   send_summary: 'Kampanya raporu (PDF)',
   filtered_recipients: 'Filtreli dışa aktarma',
   list_from_export: 'Liste oluşturma',
+  phone_history: 'Numara geçmişi',
 };
+
+// jsPDF core fonts are Latin-1 only — fold Turkish diacritics to ASCII so the PDF is legible
+// (the on-screen table + CSV keep the original text; only the PDF render is transliterated).
+const TR_ASCII: Record<string, string> = {
+  ş: 's', Ş: 'S', ğ: 'g', Ğ: 'G', ı: 'i', İ: 'I', ç: 'c', Ç: 'C', ö: 'o', Ö: 'O', ü: 'u', Ü: 'U',
+};
+function tr(s: string | null | undefined): string {
+  return (s ?? '').replace(/[şŞğĞıİçÇöÖüÜ]/g, (c) => TR_ASCII[c] ?? c);
+}
 
 function saveBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -80,6 +92,13 @@ export function ExportManagerPage() {
   const [listName, setListName] = useState('');
   const [modalError, setModalError] = useState<string | null>(null);
 
+  // FEAT-OBI Phase 2 — Telefon Numarası Ara (single-number history)
+  const [phoneInput, setPhoneInput] = useState('');
+  const [phoneResult, setPhoneResult] = useState<PhoneHistoryResult | null>(null);
+  const [phoneLoading, setPhoneLoading] = useState(false);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [phoneBusy, setPhoneBusy] = useState<string | null>(null); // 'csv' | 'pdf'
+
   function failMessage(e: unknown): string {
     if (e instanceof ApiClientError) {
       if (e.errorCode === FEATURE_DISABLED) return 'Dışa aktarma bu hesap için aktif değil.';
@@ -87,6 +106,7 @@ export function ExportManagerPage() {
       if (e.errorCode === 'INV-OB-059') return 'Bu isimde bir liste zaten var. Farklı bir ad girin.';
       if (e.errorCode === 'INV-OB-060') return 'Filtre geçersiz. Tarih aralığını kontrol edin.';
       if (e.errorCode === 'INV-OB-061') return 'Filtreye uyan gönderilebilir numara yok; liste oluşturulamadı.';
+      if (e.errorCode === 'INV-OB-097') return 'Geçerli bir telefon numarası girin.';
       return e.message;
     }
     return 'İşlem başarısız oldu.';
@@ -192,6 +212,78 @@ export function ExportManagerPage() {
     }
   }
 
+  // FEAT-OBI Phase 2 — Telefon Numarası Ara handlers.
+  async function doPhoneSearch() {
+    const phone = phoneInput.trim();
+    if (!phone) { setPhoneError('Telefon numarası girin.'); setPhoneResult(null); return; }
+    setPhoneLoading(true);
+    setPhoneError(null);
+    try {
+      const result = await api.getPhoneHistory(phone);
+      setPhoneResult(result);
+    } catch (e) {
+      setPhoneResult(null);
+      setPhoneError(failMessage(e));
+    } finally {
+      setPhoneLoading(false);
+    }
+  }
+
+  async function downloadPhoneCsv() {
+    const phone = phoneInput.trim();
+    if (!phone) return;
+    setPhoneBusy('csv');
+    setPhoneError(null);
+    try {
+      const { blob, filename } = await api.downloadPhoneHistoryCsv(phone);
+      saveBlob(blob, filename);
+      await refreshHistory();
+    } catch (e) {
+      setPhoneError(failMessage(e));
+    } finally {
+      setPhoneBusy(null);
+    }
+  }
+
+  async function downloadPhonePdf() {
+    const phone = phoneInput.trim();
+    if (!phone) return;
+    setPhoneBusy('pdf');
+    setPhoneError(null);
+    try {
+      // Server returns the FULL rows as JSON (and writes the KVKK audit row); render the PDF client-side.
+      const data = await api.getPhoneHistoryPdfData(phone);
+      const { default: JsPdf } = await import('jspdf');
+      const { default: autoTable } = await import('jspdf-autotable');
+      const doc = new JsPdf();
+      doc.setFontSize(13);
+      doc.text(tr(`Numara Gecmisi — ${data.normalized_phone}`), 14, 16);
+      doc.setFontSize(9);
+      doc.text(tr(`${data.rows.length} mesaj · ${new Date().toLocaleString('tr-TR')}`), 14, 22);
+      autoTable(doc, {
+        startY: 28,
+        head: [['Tarih', 'Durum', 'Sablon', 'Kampanya', 'Hata', 'Mesaj']],
+        body: data.rows.map((r) => [
+          tr(fmtDate(r.created_at)),
+          tr(r.status_label),
+          tr(r.template_name ?? '—'),
+          tr(r.campaign_id ?? '—'),
+          tr(r.error ?? ''),
+          tr(r.message_text),
+        ]),
+        styles: { fontSize: 7, cellWidth: 'wrap', overflow: 'linebreak' },
+        columnStyles: { 5: { cellWidth: 60 } },
+        headStyles: { fillColor: [30, 41, 59] },
+      });
+      doc.save(`numara_gecmis_${data.normalized_phone.replace(/[^0-9]/g, '')}.pdf`);
+      await refreshHistory();
+    } catch (e) {
+      setPhoneError(failMessage(e));
+    } finally {
+      setPhoneBusy(null);
+    }
+  }
+
   // Active-filter chips (label resolution from the loaded options).
   const chips = useMemo(() => {
     const c: { key: string; label: string; clear: () => void }[] = [];
@@ -253,6 +345,94 @@ export function ExportManagerPage() {
 
       {!loading && !featureDisabled && (
         <>
+          {/* ── Telefon Numarası Ara (tek numara geçmişi) ── */}
+          <section className="bg-white border border-navy-100 rounded-xl shadow-soft p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <PhoneIcon className="w-4 h-4 text-brand-500" />
+              <h2 className="text-sm font-medium text-navy-700">Telefon Numarası Ara</h2>
+            </div>
+            <p className="text-xs text-navy-400">
+              Bir numaranın bu hesaptan gönderilen tüm mesaj geçmişini (şablon, kampanya, durum, hata, içerik) görün.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+              <div className="flex-1">
+                <Input
+                  label="Telefon numarası"
+                  placeholder="Örn: 0532 123 45 67 veya +905321234567"
+                  value={phoneInput}
+                  onChange={(e) => { setPhoneInput(e.target.value); setPhoneError(null); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') doPhoneSearch(); }}
+                />
+              </div>
+              <Button variant="primary" disabled={phoneLoading || !phoneInput.trim()} onClick={doPhoneSearch}>
+                {phoneLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />} Ara
+              </Button>
+            </div>
+
+            {phoneError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-700 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0" /> {phoneError}
+              </div>
+            )}
+
+            {phoneResult && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="text-xs text-navy-500">
+                    <span className="font-medium text-navy-700">{phoneResult.normalized_phone}</span>
+                    {' · '}{phoneResult.rows.length.toLocaleString('tr-TR')} mesaj
+                    {phoneResult.truncated && (
+                      <span className="text-amber-600"> · en yeni {phoneResult.limit.toLocaleString('tr-TR')} gösteriliyor — tümü için indirin</span>
+                    )}
+                  </div>
+                  {phoneResult.rows.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <Button variant="secondary" disabled={phoneBusy !== null} onClick={downloadPhoneCsv}>
+                        {phoneBusy === 'csv' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />} CSV
+                      </Button>
+                      <Button variant="secondary" disabled={phoneBusy !== null} onClick={downloadPhonePdf}>
+                        {phoneBusy === 'pdf' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />} PDF
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {phoneResult.rows.length === 0 ? (
+                  <div className="px-4 py-8 text-center text-navy-400 text-sm border border-navy-50 rounded-lg">
+                    Bu numaraya gönderim bulunamadı.
+                  </div>
+                ) : (
+                  <div className="border border-navy-50 rounded-lg overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-navy-50/50 text-navy-500 text-xs">
+                        <tr>
+                          <th className="text-left font-medium px-3 py-2 whitespace-nowrap">Tarih</th>
+                          <th className="text-left font-medium px-3 py-2">Durum</th>
+                          <th className="text-left font-medium px-3 py-2">Şablon</th>
+                          <th className="text-left font-medium px-3 py-2">Kampanya</th>
+                          <th className="text-left font-medium px-3 py-2">Hata</th>
+                          <th className="text-left font-medium px-3 py-2">Mesaj</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {phoneResult.rows.map((r) => (
+                          <tr key={r.id} className="border-t border-navy-50 align-top">
+                            <td className="px-3 py-2 text-navy-500 whitespace-nowrap">{fmtDate(r.created_at)}</td>
+                            <td className="px-3 py-2 text-navy-700 whitespace-nowrap">{r.status_label}</td>
+                            <td className="px-3 py-2 text-navy-500">{r.template_name ?? '—'}</td>
+                            <td className="px-3 py-2 text-navy-500">{r.campaign_id ?? '—'}</td>
+                            <td className="px-3 py-2">{r.error ? <WaErrorPopover raw={r.error} /> : <span className="text-navy-300">—</span>}</td>
+                            <td className="px-3 py-2 text-navy-600 max-w-md whitespace-pre-wrap break-words">{r.message_text}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+
           {/* ── Filtreler ── */}
           <section className="bg-white border border-navy-100 rounded-xl shadow-soft p-4 space-y-4">
             <div className="flex items-center gap-2">

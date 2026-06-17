@@ -138,6 +138,29 @@ public sealed class OutboundClient
         return await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
     }
 
+    /// <summary>
+    /// Streaming POST proxy (FEAT-OBI Phase 2 phone-history download). Same body-not-buffered
+    /// contract as <see cref="ProxyStreamGetAsync"/>, but the lookup key (a PII phone number) travels
+    /// in the POST body, never a querystring. Forwards whatever Outbound returns — CSV bytes OR the
+    /// PDF-data JSON — straight through (the caller passes the upstream Content-Type to the client).
+    /// The request (with its body) is already sent by the time headers are read, so disposing it here
+    /// does not affect the response body stream (the response owns the connection). Caller MUST dispose
+    /// the returned message. Throws on transport failure — the caller maps it.
+    /// </summary>
+    public async Task<HttpResponseMessage> ProxyStreamPostAsync(
+        string path, string requestBody, string? authHeader, string? requestId, CancellationToken ct = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, path)
+        {
+            Content = new StringContent(requestBody, Encoding.UTF8, "application/json")
+        };
+        if (!string.IsNullOrEmpty(authHeader))
+            request.Headers.TryAddWithoutValidation("Authorization", authHeader);
+        if (!string.IsNullOrEmpty(requestId))
+            request.Headers.TryAddWithoutValidation("X-Request-Id", requestId);
+        return await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+    }
+
     private async Task<(int StatusCode, string? Body)> ProxyRequestAsync(
         HttpMethod method, string path, string? requestBody, string? authHeader, string? requestId,
         CancellationToken ct)

@@ -1268,6 +1268,35 @@ class OpsApiClient {
     return { blob, filename };
   }
 
+  // POST variant of requestBlob (FEAT-OBI Phase 2): the lookup key (a PII phone number) goes in
+  // the body, never a querystring. Same error envelope + Content-Disposition filename handling.
+  private async requestBlobPost(endpoint: string, body: unknown): Promise<{ blob: Blob; filename: string }> {
+    const response = await this.executeWithRefresh(() =>
+      fetch(endpoint, {
+        method: 'POST',
+        headers: { ...this.buildHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+    );
+
+    if (!response.ok) {
+      let errBody: { error_code?: string; errorCode?: string; message?: string; requestId?: string; request_id?: string } | null = null;
+      try { errBody = await response.json(); } catch (_e) { /* non-JSON */ }
+      throw new ApiClientError(
+        response.status,
+        errBody?.error_code ?? errBody?.errorCode ?? 'UNKNOWN',
+        errBody?.message ?? `HTTP ${response.status}`,
+        errBody?.request_id ?? errBody?.requestId,
+      );
+    }
+
+    const cd = response.headers.get('Content-Disposition') ?? '';
+    const match = /filename="?([^";]+)"?/i.exec(cd);
+    const filename = match ? match[1] : 'export';
+    const blob = await response.blob();
+    return { blob, filename };
+  }
+
   private async requestUpload<T>(endpoint: string, file: File, title?: string): Promise<T> {
     const formData = new FormData();
     formData.append('file', file);
@@ -2604,6 +2633,29 @@ class OpsApiClient {
   async listExportHistory(): Promise<ExportLogEntry[]> {
     return this.request<ExportLogEntry[]>('/api/v1/outbound/exports/history');
   }
+
+  // --- FEAT-OBI Phase 2: Telefon Numarası Ara (single-number history) ---
+  // Phone travels in the POST body (PII — never a querystring).
+  async getPhoneHistory(phone: string): Promise<PhoneHistoryResult> {
+    return this.request<PhoneHistoryResult>('/api/v1/outbound/exports/phone-history', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone }),
+    });
+  }
+
+  async downloadPhoneHistoryCsv(phone: string): Promise<{ blob: Blob; filename: string }> {
+    return this.requestBlobPost('/api/v1/outbound/exports/phone-history/download', { phone, format: 'csv' });
+  }
+
+  // PDF path returns the FULL rows as JSON (audited server-side); the SPA renders the PDF with jsPDF.
+  async getPhoneHistoryPdfData(phone: string): Promise<PhoneHistoryResult> {
+    return this.request<PhoneHistoryResult>('/api/v1/outbound/exports/phone-history/download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, format: 'pdf' }),
+    });
+  }
 }
 
 // FEAT-OBI Phase 1A: contact-list + list->bulk-send DTOs (mirror Invekto.Shared
@@ -3002,6 +3054,30 @@ export interface ExportLogEntry {
   requested_by: string | null;
   error_code: string | null;
   created_at: string;
+}
+
+// FEAT-OBI Phase 2: Telefon Numarası Ara (single-number history). snake_case mirrors
+// the server PhoneHistoryResult/PhoneHistoryMessageRow JSON (request<T> does no transform).
+export interface PhoneHistoryMessageRow {
+  id: number;
+  created_at: string;
+  status: string;
+  status_label: string;
+  sent_at: string | null;
+  delivered_at: string | null;
+  read_at: string | null;
+  template_name: string | null;
+  campaign_id: string | null;
+  message_kind: string;
+  message_text: string;
+  error: string | null; // failure text; WaErrorPopover extracts any "(NNNNN)" WA code
+}
+
+export interface PhoneHistoryResult {
+  normalized_phone: string;
+  rows: PhoneHistoryMessageRow[];
+  truncated: boolean;
+  limit: number;
 }
 
 export interface ImportRowDto {

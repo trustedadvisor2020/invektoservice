@@ -620,6 +620,9 @@ public static class ErrorCodes
     // FEATURE C — cxapi stranded-'sending' periodic recovery (MessageSenderService.TryRecoverStrandedAsync, migration 064)
     public const string CxapiSendingRecoveryFailed = "INV-OB-096";         // Periodic 'sending'->'queued' recovery sweep hit an NpgsqlException. Non-fatal: row stays safely 'sending' (pre-POST, never duplicated), retried next interval. Distinct from INV-OB-065 (posting/ambiguous). Internal/log.
 
+    // FEAT-OBI Phase 2 — Telefon Numarası Ara (single-number history, INV-OB-097+)
+    public const string PhoneHistoryInvalidNumber = "INV-OB-097";          // Phone-history lookup/export: phone empty or not normalizable to a valid E.164 number (PhoneNormalizer returned null). No query runs. 422.
+
     // Lead Management errors (INV-LD-xxx) -- GR-3.13
     public const string LeadInvalidPayload = "INV-LD-001";
     public const string LeadNotFound = "INV-LD-002";

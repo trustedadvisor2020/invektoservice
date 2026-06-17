@@ -31,12 +31,14 @@ public sealed class ExportService
     private readonly ExportRepository _repo;
     private readonly ExportOptions _options;
     private readonly JsonLinesLogger _logger;
+    private readonly PhoneNormalizer _phones;
 
-    public ExportService(ExportRepository repo, ExportOptions options, JsonLinesLogger logger)
+    public ExportService(ExportRepository repo, ExportOptions options, JsonLinesLogger logger, PhoneNormalizer phones)
     {
         _repo = repo;
         _options = options;
         _logger = logger;
+        _phones = phones;
     }
 
     public ExportOptions Options => _options;
@@ -467,6 +469,145 @@ public sealed class ExportService
         Sanitize(r.Phone), Sanitize(r.StatusLabel), Sanitize(r.CampaignId), Sanitize(r.TemplateName),
         Ts(r.SentAt), Ts(r.DeliveredAt), Ts(r.ReadAt), Ts(r.CampaignDate)
     };
+
+    // ==================================================================
+    // FEAT-OBI Phase 2 — Telefon Numarası Ara (single-number history)
+    // ==================================================================
+    // The screen LOOKUP is NOT audited (it is an authenticated operator viewing their own
+    // tenant's data, like the Projeler report drawer). A DOWNLOAD (CSV bytes OR the client-PDF
+    // data) IS audited (export_logs 'phone_history') — that is the PII-egress event. Phone is
+    // normalized with the SAME PhoneNormalizer used at send time; a null result = INV-OB-097.
+    private static readonly string[] PhoneHistoryHeaders =
+    {
+        "Tarih", "Durum", "Sablon", "Kampanya", "Mesaj", "Gonderildi", "Teslim Edildi", "Okundu", "Hata"
+    };
+
+    /// <summary>
+    /// On-screen lookup: the number's most-recent history (capped at PhoneHistoryScreenLimit, with a
+    /// truncation marker). Reads limit+1 to detect "more exists". NOT audited (view, not egress).
+    /// </summary>
+    public async Task<(string? err, PhoneHistoryResult? result)> GetPhoneHistoryAsync(
+        int tenantId, string? rawPhone, CancellationToken ct)
+    {
+        if (!IsTenantAllowed(tenantId)) return (ErrorCodes.ExportFeatureDisabled, null);
+        var phone = _phones.Normalize(rawPhone);
+        if (phone == null) return (ErrorCodes.PhoneHistoryInvalidNumber, null);
+
+        try
+        {
+            var limit = _options.PhoneHistoryScreenLimit;
+            var rows = new List<PhoneHistoryMessageRow>(Math.Min(limit, 256));
+            var truncated = false;
+            await foreach (var r in _repo.ReadPhoneHistoryAsync(tenantId, phone, limit + 1, ct))
+            {
+                if (rows.Count >= limit) { truncated = true; break; }
+                rows.Add(r);
+            }
+            return (null, new PhoneHistoryResult { NormalizedPhone = phone, Rows = rows, Truncated = truncated, Limit = limit });
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"Phone-history lookup DB failure: tenant={tenantId}, msg={ex.Message}");
+            return (ErrorCodes.ExportDbError, null);
+        }
+    }
+
+    /// <summary>
+    /// CSV download of the number's FULL history (uncapped, like the other CSV paths). Built
+    /// in-memory; the export_logs row is written BEFORE the bytes return (audit-before-serve);
+    /// every failure path writes a best-effort status=failed audit row.
+    /// </summary>
+    public async Task<ExportFile> ExportPhoneHistoryCsvAsync(
+        int tenantId, string? rawPhone, string? requestedBy, CancellationToken ct)
+    {
+        async Task<ExportFile> FailAsync(string code)
+        {
+            await _repo.TryInsertFailureLogAsync(tenantId, ExportTypes.PhoneHistory, null, PhoneSnapshot(rawPhone),
+                ExportFormats.Csv, ExportDeliveryModes.ServerStream, requestedBy, code, ct);
+            return new ExportFile { ErrorCode = code };
+        }
+
+        if (!IsTenantAllowed(tenantId)) return await FailAsync(ErrorCodes.ExportFeatureDisabled);
+        var phone = _phones.Normalize(rawPhone);
+        if (phone == null) return await FailAsync(ErrorCodes.PhoneHistoryInvalidNumber);
+
+        try
+        {
+            var rows = new List<string[]>();
+            await foreach (var r in _repo.ReadPhoneHistoryAsync(tenantId, phone, null, ct))
+                rows.Add(PhoneHistoryCells(r));
+
+            var bytes = BuildCsv(PhoneHistoryHeaders, rows);
+            // AUDIT BEFORE SERVE — throws if it cannot be written; then no bytes are returned.
+            // source_name is the MASKED number (last-4), never the full PII phone (export_logs is the
+            // audit store, not a PII store) — consistent with the failure path + PhoneSnapshot's contract.
+            await _repo.InsertLogAsync(tenantId, ExportTypes.PhoneHistory, null, PhoneSnapshot(phone),
+                ExportFormats.Csv, ExportDeliveryModes.ServerStream, rows.Count, "completed", requestedBy, null, ct);
+
+            return new ExportFile { Bytes = bytes, ContentType = CsvContentType, FileName = PhoneFileName(phone, "csv") };
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"Phone-history CSV export DB failure: tenant={tenantId}, msg={ex.Message}");
+            return await FailAsync(ErrorCodes.ExportDbError);
+        }
+    }
+
+    /// <summary>
+    /// Full history data for the in-browser PDF (jsPDF). Writes an export_logs row (format=pdf,
+    /// delivery_mode=client_render) BEFORE returning — so a client-rendered PDF of the message
+    /// bodies (PII) is audited just like the CSV. Mirrors BuildSendReportDataAsync.
+    /// </summary>
+    public async Task<(string? err, PhoneHistoryResult? data)> BuildPhoneHistoryPdfDataAsync(
+        int tenantId, string? rawPhone, string? requestedBy, CancellationToken ct)
+    {
+        if (!IsTenantAllowed(tenantId)) return (ErrorCodes.ExportFeatureDisabled, null);
+        var phone = _phones.Normalize(rawPhone);
+        if (phone == null) return (ErrorCodes.PhoneHistoryInvalidNumber, null);
+
+        try
+        {
+            var rows = new List<PhoneHistoryMessageRow>();
+            await foreach (var r in _repo.ReadPhoneHistoryAsync(tenantId, phone, null, ct))
+                rows.Add(r);
+
+            // AUDIT BEFORE SERVE — a client-rendered PDF of PII is an egress event. source_name is the
+            // MASKED number (last-4), never the full PII phone (see CSV path note).
+            await _repo.InsertLogAsync(tenantId, ExportTypes.PhoneHistory, null, PhoneSnapshot(phone),
+                ExportFormats.Pdf, ExportDeliveryModes.ClientRender, rows.Count, "completed", requestedBy, null, ct);
+
+            return (null, new PhoneHistoryResult { NormalizedPhone = phone, Rows = rows, Truncated = false, Limit = rows.Count });
+        }
+        catch (NpgsqlException ex)
+        {
+            _logger.SystemError($"Phone-history PDF-data DB failure: tenant={tenantId}, msg={ex.Message}");
+            await _repo.TryInsertFailureLogAsync(tenantId, ExportTypes.PhoneHistory, null, PhoneSnapshot(rawPhone),
+                ExportFormats.Pdf, ExportDeliveryModes.ClientRender, requestedBy, ErrorCodes.ExportDbError, ct);
+            return (ErrorCodes.ExportDbError, null);
+        }
+    }
+
+    private static string[] PhoneHistoryCells(PhoneHistoryMessageRow r) => new[]
+    {
+        Ts(r.CreatedAt), Sanitize(r.StatusLabel), Sanitize(r.TemplateName), Sanitize(r.CampaignId),
+        Sanitize(r.MessageText), Ts(r.SentAt), Ts(r.DeliveredAt), Ts(r.ReadAt), Sanitize(r.Error)
+    };
+
+    private static string Ts(DateTime dt) => dt.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+
+    // export_logs forensic column: never the full number (PII). Last-4 only.
+    private static string PhoneSnapshot(string? raw)
+    {
+        var digits = new string((raw ?? "").Where(char.IsDigit).ToArray());
+        return digits.Length >= 4 ? "no=***" + digits[^4..] : "no=***";
+    }
+
+    private static string PhoneFileName(string normalizedPhone, string ext)
+    {
+        var slug = new string(normalizedPhone.Where(char.IsLetterOrDigit).ToArray());
+        if (slug.Length == 0) slug = "numara";
+        return $"numara_gecmis_{slug}.{ext}";
+    }
 
     // Compact, ascii-safe snapshot of the active filter for the export_logs forensic column.
     private static string FilterSnapshot(ExportFilter f)

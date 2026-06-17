@@ -564,7 +564,8 @@ CREATE TABLE IF NOT EXISTS export_logs (
     created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT chk_export_log_type
         CHECK (export_type IN ('contact_list','send_recipients','send_summary',
-                               'filtered_recipients','list_from_export')),  -- 'filtered_*'/'list_from_export' added migration 054 (Phase 1B)
+                               'filtered_recipients','list_from_export',
+                               'phone_history')),  -- 'filtered_*'/'list_from_export' migration 054 (Phase 1B); 'phone_history' migration 067 (Phase 2)
     CONSTRAINT chk_export_log_format
         CHECK (format IN ('csv','xlsx','pdf','list')),  -- 'list' added migration 054 (list_from_export audit)
     CONSTRAINT chk_export_log_delivery
@@ -579,6 +580,12 @@ CREATE INDEX IF NOT EXISTS idx_export_logs_tenant_created
 -- Additive: per-recipient send-results join (tenant_id, broadcast_id, recipient_phone).
 CREATE INDEX IF NOT EXISTS idx_outbound_messages_tenant_broadcast_phone
     ON outbound_messages (tenant_id, broadcast_id, recipient_phone);
+
+-- FEAT-OBI Phase 2 (migration 067): single-number history — phone lookup + newest-first
+-- ordering in one index (the broadcast-phone index above has broadcast_id mid-column, so it
+-- cannot serve a phone-only lookup).
+CREATE INDEX IF NOT EXISTS idx_outbound_messages_tenant_phone_created
+    ON outbound_messages (tenant_id, recipient_phone, created_at DESC, id DESC);
 
 GRANT ALL ON export_logs TO invekto;
 GRANT ALL ON SEQUENCE export_logs_id_seq TO invekto;

@@ -38,6 +38,9 @@ public static class ExportTypes
     // FEAT-OBI Phase 1B (Export Manager v2): filter-driven recipients surface.
     public const string FilteredRecipients = "filtered_recipients"; // a filtered CSV/XLSX export across all campaigns
     public const string ListFromExport = "list_from_export";        // "Liste Oluştur" — a new data_list built from the filter
+
+    // FEAT-OBI Phase 2 (Telefon Numarası Ara): a single phone number's full outbound history export.
+    public const string PhoneHistory = "phone_history";
 }
 
 /// <summary>export_logs.delivery_mode values (audit honesty — see migration 053).</summary>
@@ -95,6 +98,12 @@ public static class SendDeliveryStatus
         "queued"    => "Sırada",
         "failed"    => "Başarısız",
         "blocked"   => "Engellendi (opt-out)",
+        // FEAT-PROJELER / cxapi statuses that appear on project sends (migration 056/061);
+        // labelled here so the phone-history surface (and v2) show them instead of "Bilinmiyor".
+        "posting"   => "Gönderiliyor",
+        "ambiguous" => "Belirsiz",
+        "paused"    => "Duraklatıldı",
+        "cancelled" => "İptal edildi",
         NotSent     => "Gönderilmedi",
         _           => "Bilinmiyor"
     };
@@ -288,4 +297,72 @@ public sealed class ExportLogEntry
     [JsonPropertyName("requested_by")] public string? RequestedBy { get; set; }
     [JsonPropertyName("error_code")] public string? ErrorCode { get; set; }
     [JsonPropertyName("created_at")] public DateTime CreatedAt { get; set; }
+}
+
+// =============================================================
+// FEAT-OBI Phase 2 — Telefon Numarası Ara (single-number history)
+// Operator enters a phone -> the tenant's FULL outbound history to that number
+// (bulk + project + legacy broadcast), newest-first, with metadata + message body.
+// Read-only; tenant resolved from JWT only. Screen is capped (rows + truncated
+// marker); CSV/PDF export the full set. Audit: export_logs (type 'phone_history').
+// =============================================================
+
+/// <summary>POST /api/v1/exports/phone-history (and /download) body. Phone is the raw operator
+/// input; the server normalizes it with the SAME PhoneNormalizer used at send time. Carried in a
+/// POST body (not the querystring) because a phone number is PII and must not leak to access logs.</summary>
+public sealed class PhoneHistoryRequest
+{
+    [JsonPropertyName("phone")] public string Phone { get; set; } = "";
+
+    /// <summary>Download only: 'csv' for the streamed export. Ignored by the screen lookup endpoint.</summary>
+    [JsonPropertyName("format")] public string? Format { get; set; }
+}
+
+/// <summary>POST /api/v1/exports/phone-history response — the on-screen lookup result.</summary>
+public sealed class PhoneHistoryResult
+{
+    /// <summary>The normalized (E.164 '+...') phone the history was queried for.</summary>
+    [JsonPropertyName("normalized_phone")] public string NormalizedPhone { get; set; } = "";
+
+    /// <summary>Rows returned (capped to <see cref="Limit"/>); newest-first.</summary>
+    [JsonPropertyName("rows")] public List<PhoneHistoryMessageRow> Rows { get; set; } = new();
+
+    /// <summary>True when more rows exist than the screen cap — operator should use CSV for the full set.</summary>
+    [JsonPropertyName("truncated")] public bool Truncated { get; set; }
+
+    /// <summary>Screen-cap applied to <see cref="Rows"/>.</summary>
+    [JsonPropertyName("limit")] public int Limit { get; set; }
+}
+
+/// <summary>
+/// One outbound_messages row in a single number's history. Every column here is read from a
+/// nullable DB column EXCEPT status/created_at/message_kind — all reads are IsDBNull-guarded.
+/// </summary>
+public sealed class PhoneHistoryMessageRow
+{
+    [JsonPropertyName("id")] public long Id { get; set; }
+    [JsonPropertyName("created_at")] public DateTime CreatedAt { get; set; }
+    [JsonPropertyName("status")] public string Status { get; set; } = "";
+    [JsonPropertyName("status_label")] public string StatusLabel { get; set; } = "";
+    [JsonPropertyName("sent_at")] public DateTime? SentAt { get; set; }
+    [JsonPropertyName("delivered_at")] public DateTime? DeliveredAt { get; set; }
+    [JsonPropertyName("read_at")] public DateTime? ReadAt { get; set; }
+
+    /// <summary>Template name (gallery/INSE) when resolvable; null for inline/free-text sends.</summary>
+    [JsonPropertyName("template_name")] public string? TemplateName { get; set; }
+
+    /// <summary>Campaign id — populated for bulk-send rows only; null for project/legacy single sends.</summary>
+    [JsonPropertyName("campaign_id")] public string? CampaignId { get; set; }
+
+    [JsonPropertyName("message_kind")] public string MessageKind { get; set; } = "";
+
+    /// <summary>The sent message body (message_text). Personal data — tenant-scoped + audited on export.</summary>
+    [JsonPropertyName("message_text")] public string MessageText { get; set; } = "";
+
+    /// <summary>
+    /// Not-sent/failure reason text (COALESCE(failed_reason, NULLIF(provider_error_message,'Success'))),
+    /// null when the message did not fail. The SPA's WaErrorPopover extracts any "(NNNNN)" WhatsApp code
+    /// from this string — same field shape the Projeler report feeds the popover.
+    /// </summary>
+    [JsonPropertyName("error")] public string? Error { get; set; }
 }

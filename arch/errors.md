@@ -1201,6 +1201,9 @@ errors:
   - code: INV-OB-096
     description: "FEATURE C (migration 064) — cxapi stranded-'sending' periodic recovery: an NpgsqlException in MessageSenderService.TryRecoverStrandedAsync's SweepStrandedSendingAsync call (resets cxapi 'sending'->'queued' for rows claimed but never POSTed, staleness-gated on claimed_at by StaleSendingMinutes). Non-fatal: the row stays safely 'sending' (strictly pre-POST, never duplicated) and recovery retries next interval. Distinct marker from INV-OB-065 (posting/ambiguous) so the two recovery domains never mask each other. Internal/log only."
     user_message: ""
+  - code: INV-OB-097
+    description: "FEAT-OBI Phase 2 — Telefon Numarası Ara (single-number history): the supplied phone is empty or cannot be normalized to a valid E.164 number (PhoneNormalizer.Normalize returned null — too few/many digits, or an Excel scientific-notation artifact). No DB query runs. (422)"
+    user_message: Geçerli bir telefon numarası girin.
 
   # ── IG — Integrations (GR-3.4/3.6) ──
   - code: INV-IG-001

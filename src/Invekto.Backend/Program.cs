@@ -4109,6 +4109,62 @@ async Task<IResult> OutboundProxyStreamGet(HttpContext ctx, OutboundClient obCli
     }
 }
 
+// Streaming POST proxy (FEAT-OBI Phase 2 phone-history download): forwards the POST body
+// (a PII phone number — POST so it never lands in a querystring/access log) and streams the
+// upstream body straight to the client, preserving status + Content-Type/Content-Disposition
+// + no-store/nosniff. Transparently carries CSV bytes OR the PDF-data JSON.
+async Task<IResult> OutboundProxyStreamPost(HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, string targetPath)
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+
+    string requestBody;
+    using (var reader = new StreamReader(ctx.Request.Body))
+        requestBody = await reader.ReadToEndAsync();
+
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    try
+    {
+        using var upstream = await obClient.ProxyStreamPostAsync(targetPath, requestBody, authHeader, requestId, ctx.RequestAborted);
+        sw.Stop();
+        jsonLog.StepInfo($"Outbound stream POST {targetPath}: status={(int)upstream.StatusCode}, time={sw.ElapsedMilliseconds}ms", requestId);
+
+        ctx.Response.StatusCode = (int)upstream.StatusCode;
+        if (upstream.Content.Headers.ContentType != null)
+            ctx.Response.ContentType = upstream.Content.Headers.ContentType.ToString();
+        if (upstream.Content.Headers.ContentDisposition != null)
+            ctx.Response.Headers["Content-Disposition"] = upstream.Content.Headers.ContentDisposition.ToString();
+        if (upstream.Headers.TryGetValues("Cache-Control", out var cc))
+            ctx.Response.Headers["Cache-Control"] = string.Join(", ", cc);
+        if (upstream.Headers.TryGetValues("X-Content-Type-Options", out var nosniff))
+            ctx.Response.Headers["X-Content-Type-Options"] = string.Join(", ", nosniff);
+
+        await using var bodyStream = await upstream.Content.ReadAsStreamAsync(ctx.RequestAborted);
+        await bodyStream.CopyToAsync(ctx.Response.Body, ctx.RequestAborted);
+        return Results.Empty;
+    }
+    catch (OperationCanceledException) when (ctx.RequestAborted.IsCancellationRequested)
+    {
+        return Results.Empty; // client disconnected mid-download
+    }
+    catch (OperationCanceledException)
+    {
+        sw.Stop();
+        jsonLog.StepError($"Outbound stream POST {targetPath} timed out", requestId);
+        if (!ctx.Response.HasStarted)
+            return Results.Json(new { error_code = "INV-BE-002", message = "Outbound service timeout" }, statusCode: 504);
+        return Results.Empty;
+    }
+    catch (HttpRequestException ex)
+    {
+        sw.Stop();
+        jsonLog.StepError($"Outbound stream POST {targetPath} failed: {ex.Message}", requestId);
+        if (!ctx.Response.HasStarted)
+            return Results.Json(new { error_code = "INV-BE-001", message = "Outbound service unavailable" }, statusCode: 502);
+        return Results.Empty;
+    }
+}
+
 async Task<IResult> OutboundProxyDelete(HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, string targetPath)
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
@@ -4234,6 +4290,16 @@ app.MapPost("/api/v1/outbound/exports/recipients/create-list", async (HttpContex
 
 app.MapGet("/api/v1/outbound/exports/history", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
     await OutboundProxyGet(ctx, obClient, jsonLog, "/api/v1/exports/history"));
+
+// FEAT-OBI Phase 2 — Telefon Numarası Ara (single-number history). POST (not GET): the phone is
+// PII and must not appear in a querystring/access log. Tenant is resolved in Outbound from the JWT.
+//   lookup    = JSON screen result (capped);
+//   download  = stream proxy (CSV bytes OR PDF-data JSON), audited in Outbound.
+app.MapPost("/api/v1/outbound/exports/phone-history", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, "/api/v1/exports/phone-history"));
+
+app.MapPost("/api/v1/outbound/exports/phone-history/download", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyStreamPost(ctx, obClient, jsonLog, "/api/v1/exports/phone-history/download"));
 
 // List -> bulk send wiring (preview-from-list snapshot, then the shared confirm/status path).
 app.MapPost("/api/v1/outbound/bulk-send/preview-from-list", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>

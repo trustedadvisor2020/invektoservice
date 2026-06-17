@@ -1,0 +1,96 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260617-feat-obi-phone-history",
+  "risk": "MEDIUM",
+  "status": "REVIEW",
+  "created_at": "2026-06-17T16:30:00Z",
+  "updated_at": "2026-06-17T17:30:00Z",
+  "plan": {
+    "summary": "FEAT-OBI Faz 2 — Export Manager'a 'Telefon Numarası Ara' bölümü: operatör bir numara girer, o numaraya BİZİM gönderdiğimiz tüm outbound_messages geçmişini (şablon/kampanya/durum/zaman/WA hata kodu/mesaj metni) zaman-sıralı görür ve CSV/PDF indirir. Read-only, tenant-scoped, INMA'ya bağlanmaz.",
+    "q_intent": "obi faz2 yi planla (FEAT-OBI Faz 2: telefon tek-numara geçmiş arama — Export Manager v2'den Faz 2'ye ertelenen 'Telefon Numarası Ara' özelliği)",
+    "interview_notes": "Q 2026-06-17 onayları: (1) Veri kaynağı = SADECE bizim outbound geçmişi (outbound_messages), INMA messagelistforphone YOK. (2) UI = ExportManagerPage'e yeni bölüm/sekme (ayrı sayfa değil). (3) Export = CSV/PDF indir (sadece ekran değil). (4) İçerik = metadata + mesaj metni (message_text gövdesi dahil; KVKK için tenant-scope + export_logs audit).",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "Operatör Export Manager'daki 'Telefon Numarası Ara' bölümüne bir numara girip aradığında, o tenant'ın o numaraya gönderdiği TÜM outbound_messages satırları (bulk + projeler + legacy broadcast) zaman-sıralı (en yeni üstte) listelenir; başka tenant'ın verisi ASLA görünmez.", "verified": false },
+      { "id": "AC2", "criterion": "Her satır metadata + mesaj metnini gösterir: tarih, şablon adı (varsa), kampanya id (varsa), teslim durumu rozeti, WhatsApp hata kodu (varsa WaErrorPopover ile), gönderilen message_text gövdesi.", "verified": false },
+      { "id": "AC3", "criterion": "Arama input'u gönderim-anındaki ile AYNI PhoneNormalizer.Normalize ile normalize edilir; geçersiz/boş/normalize-edilemez numara INV-OB-097 (400/422) döner; eşleşme yoksa hata değil boş-durum mesajı gösterilir.", "verified": false },
+      { "id": "AC4", "criterion": "Sonuç CSV ve PDF olarak indirilebilir; CSV server-side stream + export_logs('phone_history') audit kaydı yazar (KVKK izlenebilirlik); mevcut sanitize/BOM/jsPDF altyapısı reuse edilir.", "verified": false },
+      { "id": "AC5", "criterion": "Mevcut Export Manager v2 filtre yüzeyi + Kampanya Raporu (PDF) bölümü davranışı bozulmadan korunur (yeni bölüm additive); outbound_messages/bulk_send_* yalnız READ edilir (yazma yok).", "verified": false }
+    ]
+  },
+  "allowed_files": [
+    "arch/db/migrations/067-obi-phone-history.sql",
+    "arch/db/outbound.sql",
+    "arch/errors.md",
+    "src/Invekto.Shared/DTOs/Outbound/ExportDtos.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Outbound/Data/ExportRepository.cs",
+    "src/Invekto.Outbound/Services/ExportService.cs",
+    "src/Invekto.Outbound/Program.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Services/OutboundClient.cs",
+    "src/Invekto.Backend/Dashboard/src/pages/ExportManagerPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "tracking/feat-obi-phone-history.md"
+  ],
+  "files_changed": [],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": null,
+    "full_path": "arch/plans/diffs/20260617-feat-obi-phone-history.diff",
+    "stats": { "insertions": 0, "deletions": 0, "files_count": 0 }
+  },
+  "build": {
+    "status": null,
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": null,
+    "services": ["Invekto.Shared", "Invekto.Outbound", "Invekto.Backend"]
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "outbound_messages.recipient_phone gönderim-anında hangi formatta saklanıyor (E.164 mı, ham mı, path'e göre değişir mi) ve arama input'unu PhoneNormalizer.Normalize ile normalize etmek tüm gönderim yollarındaki (bulk/projeler/legacy broadcast) satırlarla DOĞRU eşleşmeyi garanti ediyor mu, yoksa eksik geçmiş riski var mı?", "category": "Data" },
+    { "id": "Q2", "question": "Yeni phone-history endpoint'leri ve Backend proxy route'ları, TenantContext.TenantId ile tüm SQL predicate'lerinde (om, bulk_send_jobs, outbound_templates) tenant-scope uyguluyor mu; bir tenant başka tenant'ın numara geçmişini (mesaj gövdesi dahil) HİÇBİR yoldan göremiyor mu?", "category": "Auth" },
+    { "id": "Q3", "question": "Mesaj gövdesi (PII/sağlık verisi) içeren CSV export'u export_logs('phone_history') ile audit ediliyor mu, PII hiçbir uygulama log'una/hata mesajına sızmıyor mu, ve export_logs append-only (UPDATE/DELETE yok) kuralı korunuyor mu?", "category": "Process/Policy" },
+    { "id": "Q4", "question": "Çok kayıtlı bir numara (binlerce mesaj) sorgulandığında yeni idx_outbound_messages_tenant_phone index'i lookup'ı besliyor mu, defensive LIMIT + stream uygulanıyor mu, ve migration 067 index build'i tek shared Postgres'te diğer tenant trafiğini kilitlemiyor mu?", "category": "Lifecycle" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "outbound_messages / bulk_send_jobs / bulk_send_recipients yazma (READ-only)",
+      "MessageSenderService ve INMA bridge (MainAppCallbackClient) dokunma",
+      "export_logs UPDATE/DELETE (append-only)",
+      "Export Manager v2 filtre yüzeyi + Kampanya Raporu PDF davranışını değiştirme (additive bölüm)"
+    ],
+    "non_goals": [
+      "INMA messagelistforphone / WhatsApp inbound konuşma geçmişi",
+      "Numara bazında aksiyon (resend/iptal) — yüzey read-only",
+      "Zamanlanmış export / e-posta gönderimi"
+    ],
+    "intentional_exclusions": [
+      "Inbound mesajlar (sistemde outbound dışı mesaj yok)",
+      "Tek-numara için gelişmiş filtre (tarih/şablon) — v1'de yalın tam-geçmiş; gerekirse sonraki iterasyon"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [
+      "INV-OB-097 geçersiz/boş/normalize-edilemez telefon (400/422)",
+      "Boş sonuç = hata değil, 'Bu numaraya gönderim bulunamadı' boş-durum"
+    ],
+    "silent_failure_risk": true,
+    "silent_failure_explanation": "Telefon-normalize uyumsuzluğu en büyük sessiz-başarısızlık riski: input normalize edilmiş ama saklanan recipient_phone farklı formattaysa sorgu 0/eksik döner ve operatör 'geçmiş yok' sanır (yanlış-negatif). Azaltma: gönderim-anı normalize ile birebir aynı normalize + Medipol gerçek numara smoke (Q1 verification)."
+  },
+  "aha_moments": [
+    { "category": "SUPPORT", "user_pain": "Hasta 'bana mesaj gelmedi' diye arıyor, operatör hangi kampanyada ne gönderildiğini bulmak için tüm kampanyaları tek tek tarıyor.", "suggestion": "Numara gir → tüm gönderim geçmişi tek ekranda zaman-sıralı.", "aha_moment": "Operatör numarayı yapıştırıp Ara'ya basınca 'işte 3 gün önce şu şablonu gönderdik, delivered ama read değil' cevabını 5 saniyede görür." },
+    { "category": "UX", "user_pain": "Teslim edilemeyen mesajın WhatsApp hata kodu ham '(131049)' olarak görünüyor, ne demek belli değil.", "suggestion": "Hata kodu hücresinde yeni WaErrorPopover'ı reuse et.", "aha_moment": "Operatör hata koduna tıklayınca 'pazarlama-etkileşim limiti, kullanıcı son zamanda etkileşmemiş' Türkçe açıklamayı görür — neden gitmediğini anlar." },
+    { "category": "RELIABILITY", "user_pain": "Aynı numaraya mükerrer/çakışan gönderim yapılıp yapılmadığı görünmez.", "suggestion": "Tam zaman-sıralı geçmiş mükerrerleri gözle yakalatır.", "aha_moment": "Operatör 'bu numaraya aynı gün 2 kez gitmiş' deyip mükerrer kampanya hatasını fark eder." },
+    { "category": "SALES", "user_pain": "Klinik 'biz bu hastaya ne zaman ne yazdık' kanıtı isteyince elde döküman yok.", "suggestion": "CSV/PDF indir → tarih+metin+durum kanıt belgesi.", "aha_moment": "Klinik sahibi PDF'i görünce 'tam da bunu istiyordum, hasta iletişim kaydı' der." },
+    { "category": "SPEED", "user_pain": "Tek numara için bile tüm export'u indirip Excel'de filtrelemek gerekiyordu.", "suggestion": "Numara-bazlı doğrudan sorgu + index.", "aha_moment": "Binlerce kayıtlık tenant'ta bile tek numara geçmişi anında gelir." }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "iteration": 1,
+    "escalation_required": false,
+    "blocking_issues": []
+  }
+}
