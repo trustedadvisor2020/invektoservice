@@ -972,7 +972,7 @@ public class ProjectsRepository
     /// </summary>
     public virtual async Task<ProjectRecipientsPage> GetRecipientsAsync(
         int tenantId, long projectId, string? campaignId, string? search, string? status,
-        int page, int pageSize, CancellationToken ct = default)
+        int page, int pageSize, string? sort, string? dir, CancellationToken ct = default)
     {
         if (page < 1) page = 1;
         if (pageSize < 1) pageSize = 50;
@@ -982,6 +982,25 @@ public class ProjectsRepository
         // Status filter: a comma-separated set of message statuses (one logical group, e.g. "sending,posting"
         // collapses to "Gönderiliyor"). The set is matched value-bound via string_to_array + ANY — no interpolation.
         var statusArg = string.IsNullOrWhiteSpace(status) ? null : status.Trim();
+
+        // Sort (report table column headers). SQL-injection safe (Codex CQ5): the UI sends a column KEY, never
+        // raw SQL. The key is matched against this fixed whitelist; only constant ORDER BY fragments ever reach
+        // the query — an unknown/empty key falls back to the default newest-first order. NULLS LAST keeps
+        // un-sent / un-delivered / un-read rows (null timestamp) at the bottom in BOTH directions, and the
+        // m.id DESC tiebreaker makes paging deterministic when the primary key ties.
+        var sortCol = (sort?.Trim().ToLowerInvariant()) switch
+        {
+            "phone"     => "m.recipient_phone",
+            "status"    => "m.status",
+            "sent"      => "m.sent_at",
+            "delivered" => "m.delivered_at",
+            "read"      => "m.read_at",
+            _           => null,
+        };
+        var sortDir = string.Equals(dir?.Trim(), "asc", StringComparison.OrdinalIgnoreCase) ? "ASC" : "DESC";
+        var orderBy = sortCol == null
+            ? "ORDER BY m.id DESC"
+            : $"ORDER BY {sortCol} {sortDir} NULLS LAST, m.id DESC";
 
         // The project's broadcasts (+ each broadcast's run campaign_id), built once and reused for both
         // the count and the page. A broadcast maps to exactly one job, so campaign_id is unambiguous.
@@ -1030,8 +1049,7 @@ public class ProjectsRepository
                        CASE WHEN m.status IN ('failed','ambiguous') THEN 'İletilemedi (sağlayıcı neden bildirmedi).' END
                    ) AS error,
                    m.sent_at, m.delivered_at, m.read_at, m.last_attempt_at,
-                   (m.status IN ('failed','ambiguous')) AS can_resend" + filter + @"
-            ORDER BY m.id DESC
+                   (m.status IN ('failed','ambiguous')) AS can_resend" + filter + "\n            " + orderBy + @"
             LIMIT @limit OFFSET @offset";
         await using (var cmd = new NpgsqlCommand(pageSql, conn))
         {

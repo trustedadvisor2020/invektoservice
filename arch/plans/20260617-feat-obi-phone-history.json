@@ -5,9 +5,9 @@
   "spec_ref": null,
   "slug": "20260617-feat-obi-phone-history",
   "risk": "MEDIUM",
-  "status": "REVIEW",
+  "status": "DONE",
   "created_at": "2026-06-17T16:30:00Z",
-  "updated_at": "2026-06-17T17:30:00Z",
+  "updated_at": "2026-06-17T20:10:00Z",
   "plan": {
     "summary": "FEAT-OBI Faz 2 — Export Manager'a 'Telefon Numarası Ara' bölümü: operatör bir numara girer, o numaraya BİZİM gönderdiğimiz tüm outbound_messages geçmişini (şablon/kampanya/durum/zaman/WA hata kodu/mesaj metni) zaman-sıralı görür ve CSV/PDF indirir. Read-only, tenant-scoped, INMA'ya bağlanmaz.",
     "q_intent": "obi faz2 yi planla (FEAT-OBI Faz 2: telefon tek-numara geçmiş arama — Export Manager v2'den Faz 2'ye ertelenen 'Telefon Numarası Ara' özelliği)",

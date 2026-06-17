@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   Briefcase, X, Plus, Pencil, Archive, Loader2, Info, ListChecks, FileText, Send, Users, CheckCircle2,
   ExternalLink, Phone, Reply, Image as ImageIcon, Pause, Play, Ban, AlertTriangle, RefreshCw,
-  Search, Download, BarChart3, Activity,
+  Search, Download, BarChart3, ArrowUp, ArrowDown, ChevronsUpDown,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -67,6 +67,40 @@ const MSG_STATUS_META: Record<string, { label: string; cls: string }> = {
 function MsgStatusBadge({ status }: { status: string }) {
   const meta = MSG_STATUS_META[status] ?? { label: status, cls: 'bg-navy-50 text-navy-500' };
   return <span className={cn('inline-block px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap', meta.cls)}>{meta.label}</span>;
+}
+
+// Report recipient-table sort. The key is sent to the server (whitelisted ORDER BY in ProjectsRepository);
+// null sort = server default (newest message id first).
+type ReportSortKey = 'phone' | 'status' | 'sent' | 'delivered' | 'read';
+type ReportSortDir = 'asc' | 'desc';
+
+// A clickable column header for the report table. Shows the active sort direction (▲/▼) and a faint
+// hover affordance (⇅) on the inactive ones. aria-sort lives on the <th> for assistive tech.
+function ReportSortHeader({
+  label, sortKey, activeSort, dir, onSort, className,
+}: {
+  label: string; sortKey: ReportSortKey; activeSort: ReportSortKey | null; dir: ReportSortDir;
+  onSort: (key: ReportSortKey) => void; className?: string;
+}) {
+  const active = activeSort === sortKey;
+  return (
+    <th
+      className={cn('px-4 py-2 text-left font-medium', className)}
+      aria-sort={active ? (dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+    >
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className={cn('group/sort inline-flex items-center gap-1 hover:text-navy-700', active && 'text-navy-700')}
+        title={`${label} sütununa göre sırala`}
+      >
+        {label}
+        {active
+          ? (dir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)
+          : <ChevronsUpDown className="w-3 h-3 opacity-0 group-hover/sort:opacity-40 transition-opacity" />}
+      </button>
+    </th>
+  );
 }
 
 // Rapor 'Durum' dropdown filter (server-side). Each value is a comma-separated set of message statuses so a
@@ -326,6 +360,8 @@ export default function ProjectsPage() {
   const [reportSearch, setReportSearch] = useState('');
   const [reportSearchDraft, setReportSearchDraft] = useState('');
   const [reportStatus, setReportStatus] = useState(''); // '' = all; otherwise a REPORT_STATUS_OPTIONS value (CSV of statuses)
+  const [reportSort, setReportSort] = useState<ReportSortKey | null>(null); // null = server default (id DESC)
+  const [reportDir, setReportDir] = useState<ReportSortDir>('desc');
   const [reportPage, setReportPage] = useState(1);
   const [reportData, setReportData] = useState<ProjectRecipientsPage | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
@@ -953,6 +989,8 @@ export default function ProjectsPage() {
     setReportSearch('');
     setReportSearchDraft('');
     setReportStatus('');
+    setReportSort(null);
+    setReportDir('desc');
     setReportPage(1);
     setReportData(null);
     setReportError(null);
@@ -976,23 +1014,31 @@ export default function ProjectsPage() {
     setBulkResendConfirm(false);
   }
 
-  // FEATURE B (status-pull): pull live cxapi message-status for the current run's pending recipients,
-  // then reload runs + the recipient page + the project table so advanced statuses surface immediately.
-  async function refreshReportStatus() {
+  // Single "Yenile" action (merged from the old DB-reload + "Durumu Yenile" pair): re-read the recipient
+  // page from the DB AND best-effort pull live cxapi message-status for pending recipients, then refresh
+  // runs + the project table. The DB re-fetch runs UNCONDITIONALLY (works for every tenant); the live pull
+  // is gated by the CxapiSend allowlist, so a non-allowlisted tenant (INV-OB-094) silently skips it instead
+  // of seeing an error — the table still refreshed.
+  async function refreshReport() {
     if (!reportProject) return;
     setReportStatusPulling(true);
     setReportPullNote(null);
     setReportError(null);
+    setReportReloadTick((t) => t + 1); // DB re-fetch of the current recipient page — always
     try {
-      const res = await api.projectRefreshReportStatus(reportProject.id, reportCampaign || undefined);
-      setReportPullNote(`${res.updated.toLocaleString('tr-TR')} / ${res.checked.toLocaleString('tr-TR')} kayıt güncellendi.`);
-      // Secondary refreshes — a failure here must not mask the successful pull.
+      try {
+        const res = await api.projectRefreshReportStatus(reportProject.id, reportCampaign || undefined);
+        setReportPullNote(`${res.updated.toLocaleString('tr-TR')} / ${res.checked.toLocaleString('tr-TR')} kayıt güncellendi.`);
+      } catch (e) {
+        // Not allowlisted for the live pull is expected, not an error: the DB re-fetch above already
+        // refreshed the table. Surface any OTHER failure (network / server).
+        if (!(e instanceof ApiClientError && e.errorCode === 'INV-OB-094'))
+          setReportError(errText(e, 'Canlı durum sorgulanamadı'));
+      }
+      // Secondary refreshes — a failure here must not mask the result above.
       try { setReportRuns(await api.getProjectReportRuns(reportProject.id)); }
-      catch (e) { console.warn('[rapor] status-pull sonrası gönderimler yenilenemedi:', errText(e, 'runs refresh failed')); }
-      setReportReloadTick((t) => t + 1);
+      catch (e) { console.warn('[rapor] yenileme sonrası gönderimler yenilenemedi:', errText(e, 'runs refresh failed')); }
       void loadProjects();
-    } catch (e) {
-      setReportError(errText(e, 'Canlı durum sorgulanamadı'));
     } finally {
       setReportStatusPulling(false);
     }
@@ -1014,6 +1060,8 @@ export default function ProjectsPage() {
       campaignId: reportCampaign || undefined,
       search: reportSearch || undefined,
       status: reportStatus || undefined,
+      sort: reportSort ?? undefined,
+      dir: reportSort ? reportDir : undefined,
       page: reportPage,
       pageSize: REPORT_PAGE_SIZE,
     })
@@ -1021,7 +1069,15 @@ export default function ProjectsPage() {
       .catch((e) => { if (!cancelled) setReportError(errText(e, 'Rapor yüklenemedi')); })
       .finally(() => { if (!cancelled) setReportLoading(false); });
     return () => { cancelled = true; };
-  }, [reportProject, reportCampaign, reportSearch, reportStatus, reportPage, reportReloadTick]);
+  }, [reportProject, reportCampaign, reportSearch, reportStatus, reportSort, reportDir, reportPage, reportReloadTick]);
+
+  // Column-header click: toggle direction on the active column, else switch to the new column (newest-first
+  // default). Resets to page 1 so the operator sees the top of the re-sorted set.
+  function onReportSort(key: ReportSortKey) {
+    setReportPage(1);
+    if (reportSort === key) setReportDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setReportSort(key); setReportDir('desc'); }
+  }
 
   // Resend ONE undelivered (failed/ambiguous) recipient; refresh runs + recipients + the project table.
   async function doResend(messageId: number) {
@@ -2127,17 +2183,17 @@ export default function ProjectsPage() {
                   onChange={(e) => setReportSearchDraft(e.target.value)}
                 />
               </div>
-              <Button variant="secondary" size="sm" onClick={() => setReportReloadTick((t) => t + 1)} title="Tabloyu veritabanından yenile" disabled={reportLoading}>
-                <RefreshCw className={cn('w-3.5 h-3.5', reportLoading && 'animate-spin')} /> Yenile
-              </Button>
+              {/* Tek "Yenile" ikon butonu: tabloyu DB'den tazeler + (yetkiliyse) sağlayıcıdan canlı durum çeker */}
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={refreshReportStatus}
+                className="px-2"
+                onClick={refreshReport}
                 disabled={reportStatusPulling || reportLoading}
-                title="Bekleyen kayıtların iletim/okundu durumunu sağlayıcıdan canlı sorgula"
+                title="Yenile — tabloyu veritabanından tazele ve bekleyen kayıtların durumunu sağlayıcıdan canlı sorgula"
+                aria-label="Yenile"
               >
-                {reportStatusPulling ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Activity className="w-3.5 h-3.5" />} Durumu Yenile
+                <RefreshCw className={cn('w-3.5 h-3.5', (reportStatusPulling || reportLoading) && 'animate-spin')} />
               </Button>
               <Button
                 variant="secondary"
@@ -2150,27 +2206,37 @@ export default function ProjectsPage() {
               </Button>
               {(() => {
                 // Bulk resend scope is the WHOLE project (Q kararı), so the eligible count is failed+ambiguous
-                // summed across ALL runs — independent of the selected run / phone filter.
+                // summed across ALL runs — independent of the selected run / phone filter. Icon-only button with
+                // the eligible count as a red badge (Q 2026-06-17: ikon + rozet, metin yok).
                 const bulkEligible = reportRuns.reduce((a, r) => a + r.failed + r.ambiguous, 0);
                 return (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="ml-auto text-red-600 border-red-200 hover:bg-red-50"
-                    onClick={() => { setReportError(null); setBulkResendConfirm(true); }}
-                    disabled={bulkResending || reportLoading || bulkEligible === 0}
-                    title={bulkEligible === 0
-                      ? 'Yeniden gönderilecek hatalı kayıt yok'
-                      : 'Projedeki tüm başarısız/belirsiz kayıtları tek seferde yeniden gönder'}
-                  >
-                    {bulkResending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Reply className="w-3.5 h-3.5" />}
-                    {bulkEligible > 0 ? `Hataları Tekrar Gönder (${bulkEligible.toLocaleString('tr-TR')})` : 'Hataları Tekrar Gönder'}
-                  </Button>
+                  <div className="ml-auto relative">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="px-2 text-red-600 border-red-200 hover:bg-red-50"
+                      onClick={() => { setReportError(null); setBulkResendConfirm(true); }}
+                      disabled={bulkResending || reportLoading || bulkEligible === 0}
+                      title={bulkEligible === 0
+                        ? 'Yeniden gönderilecek hatalı kayıt yok'
+                        : `Projedeki ${bulkEligible.toLocaleString('tr-TR')} başarısız/belirsiz kaydı tek seferde yeniden gönder`}
+                      aria-label={bulkEligible > 0 ? `Hataları tekrar gönder (${bulkEligible})` : 'Hataları tekrar gönder'}
+                    >
+                      {bulkResending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Reply className="w-3.5 h-3.5" />}
+                    </Button>
+                    {bulkEligible > 0 && !bulkResending && (
+                      <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-semibold leading-[18px] text-center tabular-nums pointer-events-none">
+                        {bulkEligible > 99 ? '99+' : bulkEligible}
+                      </span>
+                    )}
+                  </div>
                 );
               })()}
             </div>
 
-            {/* summary chips for the selected run (or all runs) */}
+            {/* summary chips for the selected run (or all runs) — clickable status filters (Q 2026-06-17).
+                Each chip writes reportStatus (same state the dropdown drives, so they stay in sync); the
+                active chip is highlighted and clicking it again clears the filter. "Toplam" = all (''). */}
             {(() => {
               const sel = reportCampaign ? reportRuns.find((r) => r.campaign_id === reportCampaign) : null;
               const agg = sel ?? reportRuns.reduce(
@@ -2180,14 +2246,34 @@ export default function ProjectsPage() {
                 }),
                 { total: 0, sent: 0, delivered: 0, read: 0, failed: 0, ambiguous: 0 },
               );
+              const chips: { v: string; label: string; value: number; cls: string }[] = [
+                { v: '',          label: 'Toplam',     value: agg.total,     cls: 'text-navy-800' },
+                { v: 'sent',      label: 'Gönderildi', value: agg.sent,      cls: 'text-indigo-600' },
+                { v: 'delivered', label: 'İletildi',   value: agg.delivered, cls: 'text-blue-600' },
+                { v: 'read',      label: 'Okundu',     value: agg.read,      cls: 'text-green-600' },
+                { v: 'failed',    label: 'Başarısız',  value: agg.failed,    cls: 'text-red-600' },
+                { v: 'ambiguous', label: 'Belirsiz',   value: agg.ambiguous, cls: 'text-amber-600' },
+              ];
               return (
-                <div className="px-5 py-2 border-b border-navy-50 flex flex-wrap gap-x-4 gap-y-1 text-xs text-navy-500 tabular-nums">
-                  <span>Toplam <b className="text-navy-800">{agg.total.toLocaleString('tr-TR')}</b></span>
-                  <span>Gönderildi <b className="text-indigo-600">{agg.sent.toLocaleString('tr-TR')}</b></span>
-                  <span>İletildi <b className="text-blue-600">{agg.delivered.toLocaleString('tr-TR')}</b></span>
-                  <span>Okundu <b className="text-green-600">{agg.read.toLocaleString('tr-TR')}</b></span>
-                  <span>Başarısız <b className="text-red-600">{agg.failed.toLocaleString('tr-TR')}</b></span>
-                  <span>Belirsiz <b className="text-amber-600">{agg.ambiguous.toLocaleString('tr-TR')}</b></span>
+                <div className="px-5 py-2 border-b border-navy-50 flex flex-wrap gap-1.5 text-xs tabular-nums">
+                  {chips.map((c) => {
+                    const active = reportStatus === c.v;
+                    return (
+                      <button
+                        key={c.v || 'all'}
+                        type="button"
+                        onClick={() => { setReportStatus(active && c.v !== '' ? '' : c.v); setReportPage(1); }}
+                        className={cn(
+                          'inline-flex items-center gap-1 px-2 py-0.5 rounded-md border transition-colors',
+                          active ? 'border-brand-300 bg-brand-50 text-navy-700' : 'border-transparent text-navy-500 hover:bg-navy-50',
+                        )}
+                        title={c.v === '' ? 'Tüm durumları göster' : `Sadece "${c.label}" olanları göster`}
+                        aria-pressed={active}
+                      >
+                        {c.label} <b className={c.cls}>{c.value.toLocaleString('tr-TR')}</b>
+                      </button>
+                    );
+                  })}
                 </div>
               );
             })()}
@@ -2214,11 +2300,11 @@ export default function ProjectsPage() {
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-navy-50/90 backdrop-blur text-navy-500 text-xs">
                     <tr>
-                      <th className="px-4 py-2 text-left font-medium sticky left-0 z-20 bg-navy-50">Numara</th>
-                      <th className="px-4 py-2 text-left font-medium">Durum</th>
-                      <th className="px-4 py-2 text-left font-medium whitespace-nowrap">Gönderim</th>
-                      <th className="px-4 py-2 text-left font-medium whitespace-nowrap">İletildi</th>
-                      <th className="px-4 py-2 text-left font-medium whitespace-nowrap">Okundu</th>
+                      <ReportSortHeader label="Numara" sortKey="phone" activeSort={reportSort} dir={reportDir} onSort={onReportSort} className="sticky left-0 z-20 bg-navy-50" />
+                      <ReportSortHeader label="Durum" sortKey="status" activeSort={reportSort} dir={reportDir} onSort={onReportSort} />
+                      <ReportSortHeader label="Gönderim" sortKey="sent" activeSort={reportSort} dir={reportDir} onSort={onReportSort} className="whitespace-nowrap" />
+                      <ReportSortHeader label="İletildi" sortKey="delivered" activeSort={reportSort} dir={reportDir} onSort={onReportSort} className="whitespace-nowrap" />
+                      <ReportSortHeader label="Okundu" sortKey="read" activeSort={reportSort} dir={reportDir} onSort={onReportSort} className="whitespace-nowrap" />
                       <th className="px-4 py-2 text-left font-medium">Hata</th>
                       <th className="px-4 py-2 text-right font-medium">İşlem</th>
                     </tr>

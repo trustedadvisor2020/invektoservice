@@ -634,16 +634,18 @@ public sealed class ProjectsService
         }
     }
 
-    /// <summary>Report recipient table: server-paged status rows, optional run (campaign_id) + phone-substring filters.</summary>
+    /// <summary>Report recipient table: server-paged status rows, optional run (campaign_id) + phone-substring filters
+    /// + optional column sort (sort key + dir, whitelisted in the repository).</summary>
     public async Task<(ProjectRecipientsPage? page, string? errorCode, string? message)> GetReportRecipientsAsync(
-        int tenantId, long projectId, string? campaignId, string? search, string? status, int page, int pageSize, CancellationToken ct)
+        int tenantId, long projectId, string? campaignId, string? search, string? status, int page, int pageSize,
+        string? sort, string? dir, CancellationToken ct)
     {
         if (!Allowed(tenantId)) return (null, ErrorCodes.ProjectDisabled, "Projeler bu hesap için etkin değil.");
         try
         {
             var detail = await _repo.GetAsync(tenantId, projectId, ct); // 404 ownership probe
             if (detail == null) return (null, ErrorCodes.ProjectNotFound, $"Proje {projectId} bulunamadı.");
-            return (await _repo.GetRecipientsAsync(tenantId, projectId, campaignId, search, status, page, pageSize, ct), null, null);
+            return (await _repo.GetRecipientsAsync(tenantId, projectId, campaignId, search, status, page, pageSize, sort, dir, ct), null, null);
         }
         catch (NpgsqlException ex)
         {
