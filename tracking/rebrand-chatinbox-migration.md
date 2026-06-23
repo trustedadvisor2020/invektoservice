@@ -148,7 +148,43 @@ Bunlar partner/wire/üçüncü-taraf kimlikleri; "tüm domainleri/invektoları d
 ### Faz B0 — Prerequisites (cutover'dan günler önce)
 1. **Backup:** Prod `invekto` DB → `pg_dump -Fc` timestamped (rollback artifact, ZORUNLU). VM snapshot varsa al.
 2. Yeni wildcard SSL cert `*.chatinbox.net` (.pfx) edin → sunucuda stage (`C:\Chatinbox\certs\`). **Eski `*.invekto.com` cert cutover bitene kadar yerinde KALSIN** (dual-domain pencere).
-3. `chatinbox.net` + subdomain DNS kayıtları hazırla (henüz cutover değil). Eski invekto.com resolve etmeye devam etsin.
+3. **DNS kayıtları** (canlı DNS'ten doğrulanan IP'lerle; henüz cutover değil, eski invekto.com resolve etmeye devam etsin):
+
+   **invekto.com topolojisi (2026-06-24 doğrulandı — İKİ IP):**
+   | invekto subdomain | IP | Kim |
+   |---|---|---|
+   | services / chat / ai / super / voice .invekto.com | `213.238.172.214` | **BİZİM prod sunucu** (`C:\Invekto`, Backend/WebChat/voice) |
+   | app.invekto.com + apex invekto.com | `91.151.84.3` | **INMA** (91.151.84.x range; tenant legacy login) |
+   | MX | `invekto-com.mail.protection.outlook.com` | **Microsoft 365** |
+
+   **chatinbox.net A kayıtları → BİZİM sunucu `213.238.172.214`. Önerilen wildcard:**
+   ```
+   chatinbox.net.        A   213.238.172.214      # apex (veya landing)
+   *.chatinbox.net.      A   213.238.172.214      # services/chat/ai/super/voice tek kayıt
+   ```
+   (Açık alternatif: services/chat/ai/super/voice/voiceruntime.chatinbox.net ayrı A → 213.238.172.214.)
+
+   **SSL cert doğrulaması (wildcard = DNS-01 zorunlu):**
+   ```
+   _acme-challenge.chatinbox.net.   TXT   "<CA-token>"   # geçici/ACME
+   ```
+
+   **Mail — `destek@chatinbox.net` (invekto M365'te → M365 mirror; mailbox canlı olunca):**
+   ```
+   chatinbox.net.               MX     0  chatinbox-net.mail.protection.outlook.com
+   chatinbox.net.               TXT    "v=spf1 include:spf.protection.outlook.com -all"
+   autodiscover.chatinbox.net.  CNAME  autodiscover.outlook.com
+   selector1._domainkey.chatinbox.net.  CNAME  <M365 DKIM>
+   selector2._domainkey.chatinbox.net.  CNAME  <M365 DKIM>
+   _dmarc.chatinbox.net.        TXT    "v=DMARC1; p=quarantine; ..."
+   chatinbox.net.               TXT    "MS=ms########"   # M365 domain doğrulama (geçici)
+   ```
+   > Mail bu hafta zorunlu DEĞİL (`destek@` şu an sadece WebChat operator login identity; gerçek inbox kurulana kadar A kayıtları yeter).
+
+   **Opsiyonel — CAA:** `chatinbox.net. CAA 0 issue "letsencrypt.org"` (mis-issuance koruması).
+
+   **AÇIK KARARLAR (Q):** (a) `app.chatinbox.net`+apex → bizim box (213.238.172.214) mu yoksa apex=landing + `app.` INMA-fazına ertele mi? (invekto'da app/apex INMA'da). (b) wildcard mı açık-liste mi (öneri: **wildcard**, tek A+tek cert).
+   > **INMA-ertelenmiş paralel-domain (Q kısıtı "bu hafta INMA'ya dokunamam"):** chatinbox.net ayağa kalkar (DNS+cert+Kestrel SNI iki host), invekto.com **birincil** kalır, **PublicBaseUrl=services.invekto.com DEĞİŞMEZ** → webhook'lar invekto.com'da, reconcile partner-yazması yapmaz, INMA dokunuşu SIFIR. Webhook re-point + INMA iframe src = sonraki faz (INMA müsait olunca).
 4. `destek@chatinbox.net` mailbox oluştur (WebChat operator login identity).
 5. MCP control-plane (`server-ops/index.mjs`): SSH_HOST/SERVER_BASE=`C:\Chatinbox`/SERVICES map yeni NSSM adları/`chatinbox-ops` — cutover'ı sürebilmek için ÖNCE.
 
