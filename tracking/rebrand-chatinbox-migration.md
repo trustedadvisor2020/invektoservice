@@ -6,7 +6,7 @@
 
 ## Execution Log
 
-- **2026-06-24 — Track A Faz A1-A3 ✅ (branch `rebrand/chatinbox`, COMMIT EDİLMEDİ):**
+- **2026-06-24 — Track A Faz A1-A3 ✅ COMMIT `d33a4c42` (branch `rebrand/chatinbox`, Codex /rev PASS iter1):**
   - git mv: 14 src + 3 test klasörü/csproj + `InvektoServis.sln`→`Chatinbox.sln` + postman.
   - Kod kimliği rename: 581/582 dosya, case-sensitive dot-anchored `Invekto.`→`Chatinbox.` + `InvektoServis.{Tests,sln,postman}` selektif.
   - **Korundu (doğrulandı):** `"InvektoServis"` JWT issuer literal (B6'ya donuk), lowercase `invekto`/DB/domain (Track B), `/api/invekto/welcome` (2), `invekto-` wire prefix (4).
