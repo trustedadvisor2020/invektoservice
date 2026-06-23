@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Chatinbox.Outbound</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.1" />
+    <!-- FEAT-OBI Phase 1A Plan B: server-side XLSX export. Pure-managed (no native dep),
+         MIT-licensed (avoids EPPlus' Polyform-NonCommercial trap). -->
+    <PackageReference Include="ClosedXML" Version="0.104.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Chatinbox.Shared\Chatinbox.Shared.csproj" />
+  </ItemGroup>
+</Project>

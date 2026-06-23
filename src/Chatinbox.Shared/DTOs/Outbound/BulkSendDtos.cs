@@ -1,0 +1,198 @@
+using System.Text.Json.Serialization;
+
+namespace Chatinbox.Shared.DTOs.Outbound;
+
+// =============================================================
+// FEAT-OBI Phase 0 — Bulk Send (CSV source)
+// Parent-job layer over the existing /broadcast/send engine.
+// Flow: preview (parse+dedup+snapshot) -> confirm (chunked send) -> status.
+// =============================================================
+
+/// <summary>
+/// POST /api/v1/bulk-send/preview request.
+/// Operator supplies a recipient list as raw CSV/pasted text (Phase 0 source is CSV only).
+/// No message is sent — this only parses, normalizes, dedups and snapshots.
+/// </summary>
+public sealed class BulkSendPreviewRequest
+{
+    /// <summary>Client-supplied idempotency key (Codex §5). Unique per tenant.</summary>
+    [JsonPropertyName("campaign_id")]
+    public string CampaignId { get; set; } = "";
+
+    [JsonPropertyName("template_id")]
+    public int TemplateId { get; set; }
+
+    [JsonPropertyName("lang")]
+    public string? Lang { get; set; }
+
+    /// <summary>
+    /// Raw CSV/pasted text. One recipient per line. First column = phone.
+    /// Optional extra columns map to template variables via <see cref="VariableColumns"/>.
+    /// Required (Phase 0 source is CSV only).
+    /// </summary>
+    [JsonPropertyName("csv_text")]
+    public string? CsvText { get; set; }
+
+    /// <summary>
+    /// Header names for CSV columns 2..N (column 1 is always phone).
+    /// e.g. ["name","city"] -> variables {name, city}. Empty = phone-only.
+    /// </summary>
+    [JsonPropertyName("variable_columns")]
+    public List<string>? VariableColumns { get; set; }
+
+    // ---------------------------------------------------------
+    // FEAT-PROJELER / cxapi (PR-1, migration 055) — reserved, NO-OP.
+    // Accepted on the wire so the cxapi send path (PR-3/PR-4) can populate
+    // them, but the bulk orchestrator IGNORES them in PR-1. Existing requests
+    // omit these (all nullable) and remain valid.
+    // ---------------------------------------------------------
+
+    /// <summary>WapCRM instance the send targets. Reserved (PR-3); unused in PR-1.</summary>
+    [JsonPropertyName("instance_id")]
+    public int? InstanceId { get; set; }
+
+    /// <summary>Send kind: <c>plain_text</c> | <c>wapcrm_template</c>. Reserved (PR-4); unused in PR-1.</summary>
+    [JsonPropertyName("template_kind")]
+    public string? TemplateKind { get; set; }
+
+    /// <summary>WhatsApp approved-template (HSM) id. Reserved (PR-4); unused in PR-1.</summary>
+    [JsonPropertyName("wa_template_id")]
+    public string? WaTemplateId { get; set; }
+
+    /// <summary>Approved-template language (ISO 639-1). Reserved (PR-4); unused in PR-1.</summary>
+    [JsonPropertyName("template_language")]
+    public string? TemplateLanguage { get; set; }
+
+    /// <summary>Maps approved-template params to list/CSV columns. Reserved (PR-4); unused in PR-1.</summary>
+    [JsonPropertyName("param_mapping")]
+    public List<TemplateParamMapping>? ParamMapping { get; set; }
+}
+
+/// <summary>
+/// FEAT-PROJELER / cxapi (PR-1): one approved-template parameter → source-column
+/// binding. Reserved wire shape; resolved per-recipient in PR-4. Unused in PR-1.
+/// </summary>
+public sealed class TemplateParamMapping
+{
+    /// <summary>Approved-template parameter key (e.g. positional "1" or a named slot).</summary>
+    [JsonPropertyName("param_key")]
+    public string ParamKey { get; set; } = "";
+
+    /// <summary>Source list/CSV column whose value fills <see cref="ParamKey"/>.</summary>
+    [JsonPropertyName("list_column")]
+    public string ListColumn { get; set; } = "";
+}
+
+/// <summary>
+/// POST /api/v1/bulk-send/preview response. Operator reviews this before confirm.
+/// </summary>
+public sealed class BulkSendPreviewResponse
+{
+    [JsonPropertyName("campaign_id")]
+    public string CampaignId { get; set; } = "";
+
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = "";
+
+    [JsonPropertyName("hard_cap")]
+    public int HardCap { get; set; }
+
+    [JsonPropertyName("total_input")]
+    public int TotalInput { get; set; }
+
+    [JsonPropertyName("total_valid")]
+    public int TotalValid { get; set; }
+
+    [JsonPropertyName("total_duplicate")]
+    public int TotalDuplicate { get; set; }
+
+    [JsonPropertyName("total_invalid")]
+    public int TotalInvalid { get; set; }
+
+    /// <summary>First N normalized phones for eyeball verification (Codex §1 preview).</summary>
+    [JsonPropertyName("sample")]
+    public List<string> Sample { get; set; } = new();
+
+    /// <summary>Raw values that failed normalization, for operator correction (capped).</summary>
+    [JsonPropertyName("invalid_samples")]
+    public List<string> InvalidSamples { get; set; } = new();
+
+    /// <summary>
+    /// PR-4 (HSM project runs only): recipients EXCLUDED at preview because a required template
+    /// param resolved empty/NULL from its mapped list column. Null for plain runs / zero skips —
+    /// existing consumers are unaffected. The full capped audit (incl. masked samples) persists
+    /// in bulk_send_jobs.preview_skipped_params.
+    /// </summary>
+    [JsonPropertyName("skipped_params")]
+    public BulkSkippedParamsInfo? SkippedParams { get; set; }
+}
+
+/// <summary>PR-4: preview-time skip summary for HSM runs ("N alıcı atlanacak" + per-param breakdown).</summary>
+public sealed class BulkSkippedParamsInfo
+{
+    [JsonPropertyName("count")]
+    public int Count { get; set; }
+
+    /// <summary>paramKey -> number of recipients whose mapped column was empty for it.</summary>
+    [JsonPropertyName("by_param")]
+    public Dictionary<string, int>? ByParam { get; set; }
+}
+
+/// <summary>
+/// POST /api/v1/bulk-send/confirm request. Sends the snapshot built at preview.
+/// Idempotent on campaign_id: a second confirm returns the existing job.
+/// </summary>
+public sealed class BulkSendConfirmRequest
+{
+    [JsonPropertyName("campaign_id")]
+    public string CampaignId { get; set; } = "";
+}
+
+/// <summary>
+/// Confirm + status response. Aggregates the parent job over its child broadcasts.
+/// </summary>
+public sealed class BulkSendStatusResponse
+{
+    [JsonPropertyName("campaign_id")]
+    public string CampaignId { get; set; } = "";
+
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = "";
+
+    [JsonPropertyName("total_valid")]
+    public int TotalValid { get; set; }
+
+    [JsonPropertyName("total_queued")]
+    public int TotalQueued { get; set; }
+
+    [JsonPropertyName("total_skipped_optout")]
+    public int TotalSkippedOptout { get; set; }
+
+    [JsonPropertyName("total_skipped_consent")]
+    public int TotalSkippedConsent { get; set; }
+
+    // Aggregated delivery counters across all child broadcasts
+    [JsonPropertyName("sent")]
+    public int Sent { get; set; }
+
+    [JsonPropertyName("delivered")]
+    public int Delivered { get; set; }
+
+    [JsonPropertyName("read")]
+    public int Read { get; set; }
+
+    [JsonPropertyName("failed")]
+    public int Failed { get; set; }
+
+    [JsonPropertyName("broadcast_count")]
+    public int BroadcastCount { get; set; }
+
+    [JsonPropertyName("created_at")]
+    public DateTime CreatedAt { get; set; }
+
+    [JsonPropertyName("confirmed_at")]
+    public DateTime? ConfirmedAt { get; set; }
+
+    [JsonPropertyName("completed_at")]
+    public DateTime? CompletedAt { get; set; }
+}
