@@ -9,7 +9,7 @@
 const VALID_NICHES = ['ecommerce', 'health', 'dental', 'aesthetic', 'hotel', 'beauty', 'education', 'mobile', 'universal', 'crossSector'];
 const VALID_ROLES = ['system', 'bot', 'user', 'ai', 'agent'];
 
-// Real Invekto Automation v2 node types
+// Real Chatinbox Automation v2 node types
 const NODE_TYPES = {
     trigger_start:        { label: 'Tetikleyici',       color: 'amber',   icon: 'Zap' },
     message_text:         { label: 'Mesaj Gonder',      color: 'green',   icon: 'MessageSquare' },
@@ -403,7 +403,7 @@ export function generateSuggestions(scenario, analysis) {
 
     // Overview services
     if (scenario.overview?.services?.length < 3) {
-        suggestions.push({ priority: 'medium', category: 'icerik', text: 'Kullanilan servis sayisi az. Hangi Invekto servisleri (Backend, Knowledge, AgentAI, Outbound, vb.) devrede oldugunu belirtin.' });
+        suggestions.push({ priority: 'medium', category: 'icerik', text: 'Kullanilan servis sayisi az. Hangi Chatinbox servisleri (Backend, Knowledge, AgentAI, Outbound, vb.) devrede oldugunu belirtin.' });
     }
 
     // Tech config

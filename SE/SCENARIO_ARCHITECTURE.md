@@ -1,6 +1,6 @@
-# Invekto Senaryo Mimari ve Tasarim Kilavuzu
+# Chatinbox Senaryo Mimari ve Tasarim Kilavuzu
 
-Bu dokuman, Invekto hizmet senaryolarinin (S1-S12 gelir, E01-M07 saha) dokumantasyon sayfalarini olustururken uyulmasi gereken mimari, icerik, tasarim ve CSS kurallarini belirler.
+Bu dokuman, Chatinbox hizmet senaryolarinin (S1-S12 gelir, E01-M07 saha) dokumantasyon sayfalarini olustururken uyulmasi gereken mimari, icerik, tasarim ve CSS kurallarini belirler.
 
 ---
 
@@ -326,7 +326,7 @@ grid grid-cols-1 md:grid-cols-2 gap-8
   - Ikon: `MessageCircle size={20} text-emerald-600 mt-0.5`
   - Metin: `text-base text-gray-800 italic` → `"{customerMessage}"`
 
-- **Invekto Cozumu (FlatCard):** `icon={Zap}` `title="Invekto Cozumu"`
+- **Chatinbox Cozumu (FlatCard):** `icon={Zap}` `title="Chatinbox Cozumu"`
   - Balon: `bg-brand-50 rounded-xl p-5 flex items-start gap-3`
   - Ikon: `ArrowRight size={20} text-brand-600 mt-0.5`
   - Metin: `text-base text-brand-900`

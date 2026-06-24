@@ -23,7 +23,7 @@ const Sidebar = () => {
                 <div className="w-12 h-12 bg-gradient-to-br from-brand-500 to-brand-700 rounded-xl flex items-center justify-center shadow-md">
                     <Home color="white" size={24} />
                 </div>
-                <h2 className="text-2xl font-bold text-t-primary tracking-tight">Invekto</h2>
+                <h2 className="text-2xl font-bold text-t-primary tracking-tight">Chatinbox</h2>
             </NavLink>
 
             {/* Health Check Link */}

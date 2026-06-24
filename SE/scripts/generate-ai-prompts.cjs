@@ -1,6 +1,6 @@
 /**
  * Generate AI Flow Designer prompts for all scenario JSON files.
- * Maps SE scenario steps to real Invekto Flow Designer node types.
+ * Maps SE scenario steps to real Chatinbox Flow Designer node types.
  *
  * Real node types: trigger_start, webhook_trigger, outbound_trigger, schedule_trigger,
  * message_text, message_menu, logic_condition, logic_switch, logic_working_hours,

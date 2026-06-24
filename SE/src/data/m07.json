@@ -5,7 +5,7 @@
   "phase": "Phase 7",
   "category": "MOBIL UYGULAMA",
   "niche": "mobile",
-  "description": "Saha calisani internet erisimi olmayan bolgelerde calisiyor. Invekto Mobil ile onceki mesajlar cevrimdisi okunabilir, cevap taslaklari kaydedilir ve internet baglantisi geldiginde otomatik olarak gonderilir. Proaktif senkronizasyon sistemi.",
+  "description": "Saha calisani internet erisimi olmayan bolgelerde calisiyor. Chatinbox Mobil ile onceki mesajlar cevrimdisi okunabilir, cevap taslaklari kaydedilir ve internet baglantisi geldiginde otomatik olarak gonderilir. Proaktif senkronizasyon sistemi.",
   "overview": {
     "audience": [
       {
@@ -105,7 +105,7 @@
             "priority": "required",
             "effort": "easy",
             "capability": "C1",
-            "hint": "Saha calisanlarinin mobil cihazlarina Invekto uygulamasini yukleyin"
+            "hint": "Saha calisanlarinin mobil cihazlarina Chatinbox uygulamasini yukleyin"
           },
           {
             "text": "Cevrimdisi mod aktivasyonu",

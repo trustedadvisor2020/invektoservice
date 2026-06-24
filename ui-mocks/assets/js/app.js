@@ -13,5 +13,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Optional: Add basic click ripples or interactivity here
-    console.log("Invekto UI Mocks Loaded - Premium UX initialized.");
+    console.log("Chatinbox UI Mocks Loaded - Premium UX initialized.");
 });

@@ -114,7 +114,7 @@ const Landing = () => {
                     <Badge color="purple">{stats.sectors} Sektor</Badge>
                 </div>
                 <h1 className="text-5xl font-extrabold text-t-primary mb-4 tracking-tight">
-                    Invekto Senaryo Explorer
+                    Chatinbox Senaryo Explorer
                 </h1>
                 <p className="text-2xl text-t-secondary max-w-4xl font-light leading-relaxed">
                     {stats.totalScenarios} senaryo, {stats.sectors} sektor.

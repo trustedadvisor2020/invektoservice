@@ -59,7 +59,7 @@ const Capabilities = () => {
                     Platform Yetenekleri (Capabilities)
                 </h1>
                 <p className="text-2xl text-t-secondary max-w-4xl font-light leading-relaxed">
-                    Invekto platformunun C1-C13 temel yetenekleri. Her senaryo bu yeteneklerin bir kombinasyonunu kullanir.
+                    Chatinbox platformunun C1-C13 temel yetenekleri. Her senaryo bu yeteneklerin bir kombinasyonunu kullanir.
                 </p>
             </div>
 

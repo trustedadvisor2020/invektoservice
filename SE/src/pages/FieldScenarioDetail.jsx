@@ -58,9 +58,9 @@ const FieldScenarioDetail = () => {
                     </FlatCard>
                 )}
 
-                {/* Invekto Solution */}
+                {/* Chatinbox Solution */}
                 {solution && (
-                    <FlatCard title="Invekto Cozumu" icon={Zap}>
+                    <FlatCard title="Chatinbox Cozumu" icon={Zap}>
                         <div className="bg-brand-50 rounded-xl p-5 flex items-start gap-3">
                             <ArrowRight size={20} className="text-brand-600 mt-0.5 flex-shrink-0" />
                             <span className="text-base text-brand-900 leading-relaxed">{solution}</span>

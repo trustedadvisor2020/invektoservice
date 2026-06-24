@@ -1,4 +1,4 @@
-// Invekto Voice PoC — F0.5 browser controller
+// Chatinbox Voice PoC — F0.5 browser controller
 // Pipeline (F0 unchanged): getUserMedia (48k mono) → AudioWorklet (PCM16 LE 20ms frames)
 //   → WS binary → /ws/voice/microphone?tenant_id=X&flow_id=Y → VoiceRuntime → OpenAI Realtime
 //   ← WS binary (PCM16 LE 48k 20ms bot voice) → AudioBufferSourceNode playback queue

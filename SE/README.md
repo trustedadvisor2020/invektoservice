@@ -1,6 +1,6 @@
-# Invekto Scenarios App
+# Chatinbox Scenarios App
 
-Bu uygulama Invekto'nun roadmap senaryolarını görselleştirmek ve detaylandırmak için oluşturulmuştur.
+Bu uygulama Chatinbox'un roadmap senaryolarını görselleştirmek ve detaylandırmak için oluşturulmuştur.
 
 ## Nasıl Çalıştırılır
 

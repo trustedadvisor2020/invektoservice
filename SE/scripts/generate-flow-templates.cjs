@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 
 const DATA_DIR = path.join(__dirname, '..', 'src', 'data');
-const OUT_FILE = path.join(__dirname, '..', '..', 'src', 'Invekto.Backend', 'Dashboard', 'src', 'data', 'flow-templates.ts');
+const OUT_FILE = path.join(__dirname, '..', '..', 'src', 'Chatinbox.Backend', 'Dashboard', 'src', 'data', 'flow-templates.ts');
 
 // ── Helpers (reused from generate-ai-prompts.cjs) ──
 
