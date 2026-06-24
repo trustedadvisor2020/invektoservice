@@ -19,7 +19,7 @@ interface ServiceTests {
 }
 
 const serviceTestConfigs: Record<string, { name: string; tests: { name: string; endpoint: string; method: 'GET' | 'POST'; expectedStatus?: number; useProxy?: boolean }[] }> = {
-  'Invekto.Backend': {
+  'Chatinbox.Backend': {
     name: 'Backend',
     tests: [
       { name: 'Health Check', endpoint: '/health', method: 'GET', expectedStatus: 200 },
@@ -28,63 +28,63 @@ const serviceTestConfigs: Record<string, { name: string; tests: { name: string; 
       { name: 'Error Stats', endpoint: '/api/ops/stats/errors?hours=1', method: 'GET', expectedStatus: 200 },
     ],
   },
-  'Invekto.ChatAnalysis': {
+  'Chatinbox.ChatAnalysis': {
     name: 'ChatAnalysis',
     tests: [
       { name: 'Health Check', endpoint: '/api/ops/test/chatanalysis/health', method: 'GET', expectedStatus: 200, useProxy: true },
       { name: 'Ready Check', endpoint: '/api/ops/test/chatanalysis/ready', method: 'GET', expectedStatus: 200, useProxy: true },
     ],
   },
-  'Invekto.Automation': {
+  'Chatinbox.Automation': {
     name: 'Automation',
     tests: [
       { name: 'Health Check', endpoint: '/api/ops/test/automation/health', method: 'GET', expectedStatus: 200, useProxy: true },
       { name: 'Ready Check', endpoint: '/api/ops/test/automation/ready', method: 'GET', expectedStatus: 200, useProxy: true },
     ],
   },
-  'Invekto.AgentAI': {
+  'Chatinbox.AgentAI': {
     name: 'AgentAI',
     tests: [
       { name: 'Health Check', endpoint: '/api/ops/test/agentai/health', method: 'GET', expectedStatus: 200, useProxy: true },
       { name: 'Ready Check', endpoint: '/api/ops/test/agentai/ready', method: 'GET', expectedStatus: 200, useProxy: true },
     ],
   },
-  'Invekto.Outbound': {
+  'Chatinbox.Outbound': {
     name: 'Outbound',
     tests: [
       { name: 'Health Check', endpoint: '/api/ops/test/outbound/health', method: 'GET', expectedStatus: 200, useProxy: true },
       { name: 'Ready Check', endpoint: '/api/ops/test/outbound/ready', method: 'GET', expectedStatus: 200, useProxy: true },
     ],
   },
-  'Invekto.Knowledge': {
+  'Chatinbox.Knowledge': {
     name: 'Knowledge',
     tests: [
       { name: 'Health Check', endpoint: '/api/ops/test/knowledge/health', method: 'GET', expectedStatus: 200, useProxy: true },
       { name: 'Ready Check', endpoint: '/api/ops/test/knowledge/ready', method: 'GET', expectedStatus: 200, useProxy: true },
     ],
   },
-  'Invekto.Appointments': {
+  'Chatinbox.Appointments': {
     name: 'Appointments',
     tests: [
       { name: 'Health Check', endpoint: '/api/ops/test/appointments/health', method: 'GET', expectedStatus: 200, useProxy: true },
       { name: 'Ready Check', endpoint: '/api/ops/test/appointments/ready', method: 'GET', expectedStatus: 200, useProxy: true },
     ],
   },
-  'Invekto.Integrations': {
+  'Chatinbox.Integrations': {
     name: 'Integrations',
     tests: [
       { name: 'Health Check', endpoint: '/api/ops/test/integrations/health', method: 'GET', expectedStatus: 200, useProxy: true },
       { name: 'Ready Check', endpoint: '/api/ops/test/integrations/ready', method: 'GET', expectedStatus: 200, useProxy: true },
     ],
   },
-  'Invekto.WhatsAppAnalytics': {
+  'Chatinbox.WhatsAppAnalytics': {
     name: 'WA Analytics',
     tests: [
       { name: 'Health Check', endpoint: '/api/ops/test/whatsappanalytics/health', method: 'GET', expectedStatus: 200, useProxy: true },
       { name: 'Ready Check', endpoint: '/api/ops/test/whatsappanalytics/ready', method: 'GET', expectedStatus: 200, useProxy: true },
     ],
   },
-  'Invekto.Marketing': {
+  'Chatinbox.Marketing': {
     name: 'Marketing',
     tests: [
       { name: 'Health Check', endpoint: '/api/ops/test/marketing/health', method: 'GET', expectedStatus: 200, useProxy: true },

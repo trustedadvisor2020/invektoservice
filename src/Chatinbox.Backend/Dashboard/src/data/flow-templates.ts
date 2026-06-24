@@ -24181,7 +24181,7 @@ export const FLOW_TEMPLATES: FlowTemplate[] = [
   {
     "id": "m07",
     "title": "Cevrimdisi Mod (Offline Drafting)",
-    "description": "Saha calisani internet erisimi olmayan bolgelerde calisiyor. Invekto Mobil ile onceki mesajlar cevrimdisi okunabilir, cevap taslaklari kaydedilir ve internet baglantisi geldiginde otomatik olarak gonderilir. Proaktif senkronizasyon sistemi.",
+    "description": "Saha calisani internet erisimi olmayan bolgelerde calisiyor. Chatinbox Mobil ile onceki mesajlar cevrimdisi okunabilir, cevap taslaklari kaydedilir ve internet baglantisi geldiginde otomatik olarak gonderilir. Proaktif senkronizasyon sistemi.",
     "category": "MOBIL UYGULAMA",
     "niche": "mobile",
     "flowConfig": {
@@ -24618,7 +24618,7 @@ export const FLOW_TEMPLATES: FlowTemplate[] = [
   {
     "id": "m01",
     "title": "Sahada / Evde Mesaj Yonetimi",
-    "description": "Masabasinda degilken VIP lead veya acil mesaj geldiginde Invekto Mobil push bildirimi gonderir, AI cevap onerisi sunar ve tek dokunusta cevaplama imkani saglar. Sahada veya evde olan temsilciler hicbir firsati kacirmaz.",
+    "description": "Masabasinda degilken VIP lead veya acil mesaj geldiginde Chatinbox Mobil push bildirimi gonderir, AI cevap onerisi sunar ve tek dokunusta cevaplama imkani saglar. Sahada veya evde olan temsilciler hicbir firsati kacirmaz.",
     "category": "MOBIL UYGULAMA",
     "niche": "mobile",
     "flowConfig": {

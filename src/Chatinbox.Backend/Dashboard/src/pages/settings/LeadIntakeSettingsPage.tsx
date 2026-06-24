@@ -34,7 +34,7 @@ function extractError(err: unknown, fallback: string): { code: string; message: 
 }
 
 export function LeadIntakeSettingsPage() {
-  useEffect(() => { document.title = 'Invekto AI - Lead Kaynakları'; }, []);
+  useEffect(() => { document.title = 'Chatinbox AI - Lead Kaynakları'; }, []);
 
   const [settings, setSettings] = useState<TenantLandingSettingsDto | null>(null);
   const [auditEntries, setAuditEntries] = useState<LiwAuditEntryDto[]>([]);

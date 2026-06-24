@@ -1,4 +1,4 @@
-// FEAT-LIW Chunk C: TypeScript mirrors of Invekto.Shared.Contracts.Leads DTOs
+// FEAT-LIW Chunk C: TypeScript mirrors of Chatinbox.Shared.Contracts.Leads DTOs
 // consumed by LeadIntakeSettingsPage + its child components. Keep in sync with
 // the C# DTOs + the FieldMapValidator allowlist; the contract docs live at
 // arch/contracts/lead-intake.json (dashboard_endpoints section).
@@ -82,7 +82,7 @@ export interface AuditListResponse {
 
 /**
  * Canonical field allowlist (mirror of FieldMapValidator.AllowedCanonicals).
- * Keep in sync with Invekto.Backend.Services.FieldMapValidator.
+ * Keep in sync with Chatinbox.Backend.Services.FieldMapValidator.
  */
 export const CANONICAL_FIELDS: readonly string[] = [
   'name',

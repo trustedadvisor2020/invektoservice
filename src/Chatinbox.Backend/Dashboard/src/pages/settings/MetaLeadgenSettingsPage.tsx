@@ -351,7 +351,7 @@ export function MetaLeadgenSettingsPage() {
       <section style={{ marginBottom: '2rem' }}>
         <h2>4. Field ID Map</h2>
         <p style={{ color: '#666', fontSize: 14 }}>
-          Meta Lead Form sorularını Invekto kanonik alanlarına eşleyin. phone kanonik alanı zorunludur; eksikse intake reddedilir.
+          Meta Lead Form sorularını Chatinbox kanonik alanlarına eşleyin. phone kanonik alanı zorunludur; eksikse intake reddedilir.
         </p>
 
         <div style={{ display: 'flex', gap: 8, marginBottom: '0.75rem' }}>

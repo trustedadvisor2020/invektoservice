@@ -201,7 +201,7 @@ export function FieldMapEditorCard({ settings, onSave, busy, onDraftChange }: Fi
       </div>
 
       <p className="text-sm text-navy-500 mb-4 leading-relaxed">
-        Landing form alanlarınızı (kaynak) Invekto canonical alanlarına eşleştirin. Zorunlu:{' '}
+        Landing form alanlarınızı (kaynak) Chatinbox canonical alanlarına eşleştirin. Zorunlu:{' '}
         <code className="bg-navy-50 px-1 rounded">phone</code> ve{' '}
         <code className="bg-navy-50 px-1 rounded">consent</code> canonical alanları için en az birer satır olmalı.
       </p>
@@ -211,7 +211,7 @@ export function FieldMapEditorCard({ settings, onSave, busy, onDraftChange }: Fi
           <thead>
             <tr className="text-left text-navy-500 border-b border-navy-200">
               <th className="py-2 pr-3 font-medium">Kaynak Alan (Landing Form)</th>
-              <th className="py-2 pr-3 font-medium">Invekto Canonical</th>
+              <th className="py-2 pr-3 font-medium">Chatinbox Canonical</th>
               <th className="py-2 w-10" />
             </tr>
           </thead>

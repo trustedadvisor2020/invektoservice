@@ -1,6 +1,6 @@
 // FEAT-TFM-UI: DTO types for Dashboard field-mapping editor.
 // Wire format mirrors backend /api/v1/tenant-settings/field-mapping envelope
-// (Invekto.Shared/Contracts/TenantFieldMapping/Dtos/TenantFieldMappingEntry.cs)
+// (Chatinbox.Shared/Contracts/TenantFieldMapping/Dtos/TenantFieldMappingEntry.cs)
 // with snake_case JsonPropertyName. Backend uses PropertyNamingPolicy.SnakeCaseLower.
 
 import type { TenantFieldType } from '../constants/tenantFieldMappingReserved';

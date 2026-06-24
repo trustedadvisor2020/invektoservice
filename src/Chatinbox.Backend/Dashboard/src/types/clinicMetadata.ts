@@ -1,5 +1,5 @@
 // FEAT-CLINIC-METADATA — Dashboard wire types.
-// Mirror Invekto.Shared/Contracts/ClinicMetadata/* with snake_case JsonPropertyName,
+// Mirror Chatinbox.Shared/Contracts/ClinicMetadata/* with snake_case JsonPropertyName,
 // because Backend's ClinicMetadataEndpoints round-trip the snake-cased shape unchanged
 // through the SPA-facing { data: ... } envelope.
 

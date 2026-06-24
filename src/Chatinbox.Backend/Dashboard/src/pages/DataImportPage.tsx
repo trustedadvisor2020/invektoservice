@@ -85,7 +85,7 @@ interface ImportSummary {
 }
 
 // ---- Phone normalizer (PREVIEW ONLY) ----
-// Mirrors Invekto.Outbound PhoneNormalizer (intl-safe). The server re-normalizes
+// Mirrors Chatinbox.Outbound PhoneNormalizer (intl-safe). The server re-normalizes
 // authoritatively on import; this only drives the operator-facing preview counts.
 
 // Scientific-notation artifact ("9.05332E+11"): Excel DISPLAY text whose digits
@@ -755,7 +755,7 @@ export function DataImportPage() {
             <div className="px-4 py-10 text-center text-navy-500 text-sm flex flex-col items-center gap-2">
               <Info className="w-5 h-5 text-navy-400" />
               <div className="font-medium">Bu özellik hesabınızda henüz etkin değil.</div>
-              <div className="text-xs text-navy-400">Etkinleştirmek için Invekto ekibiyle iletişime geçin.</div>
+              <div className="text-xs text-navy-400">Etkinleştirmek için Chatinbox ekibiyle iletişime geçin.</div>
             </div>
           )}
           {!featureDisabled && listsError && <div className="px-4 py-3 text-sm text-red-600">{listsError}</div>}

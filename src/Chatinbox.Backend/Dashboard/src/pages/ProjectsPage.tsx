@@ -1412,7 +1412,7 @@ export default function ProjectsPage() {
           <div className="px-4 py-10 text-center text-navy-500 text-sm flex flex-col items-center gap-2">
             <Info className="w-5 h-5 text-navy-400" />
             <div className="font-medium">Bu özellik hesabınızda henüz etkin değil.</div>
-            <div className="text-xs text-navy-400">Etkinleştirmek için Invekto ekibiyle iletişime geçin.</div>
+            <div className="text-xs text-navy-400">Etkinleştirmek için Chatinbox ekibiyle iletişime geçin.</div>
           </div>
         )}
 

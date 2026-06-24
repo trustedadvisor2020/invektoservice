@@ -3,14 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
-import { InvektoLogo } from '../components/ui/InvektoLogo';
+import { ChatinboxLogo } from '../components/ui/ChatinboxLogo';
 
 type LoginMode = 'inma' | 'ops';
 
 function getLoginMode(): { mode: LoginMode; locked: boolean; superHost: boolean } {
   const host = window.location.hostname;
-  if (host === 'super.invekto.com') return { mode: 'ops', locked: true, superHost: true };
-  if (host === 'ai.invekto.com') return { mode: 'inma', locked: true, superHost: false };
+  // Dual-domain: hem *.invekto.com (canli) hem *.chatinbox.net (cutover) taninir.
+  if (host === 'super.invekto.com' || host === 'super.chatinbox.net') return { mode: 'ops', locked: true, superHost: true };
+  if (host === 'ai.invekto.com' || host === 'ai.chatinbox.net') return { mode: 'inma', locked: true, superHost: false };
   // localhost / dev → her iki mod acik (toggle gosterilir)
   return { mode: 'inma', locked: false, superHost: false };
 }
@@ -43,17 +44,17 @@ export function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-navy-50">
       <div className="w-full max-w-sm">
-        {/* Logo — marka: yatay kirmizi ikon + wordmark; super.invekto.com mevcut dikey logoyu korur */}
+        {/* Logo — marka: yatay kirmizi ikon + wordmark; super host mevcut dikey logoyu korur */}
         <div className="flex flex-col items-center mb-8">
           {hostConfig.superHost ? (
             <>
-              <img src="/app/logo.png" alt="Invekto" className="w-14 h-14 mb-3" />
-              <InvektoLogo size="lg" className="mb-2" />
+              <img src="/app/logo.png" alt="Chatinbox" className="w-14 h-14 mb-3" />
+              <ChatinboxLogo size="lg" className="mb-2" />
             </>
           ) : (
             <div className="flex items-center gap-2.5 mb-2">
-              <img src="/app/logo.png" alt="Invekto" className="w-10 h-10" />
-              <InvektoLogo size="md" variant="none" color="#E54C4C" />
+              <img src="/app/logo.png" alt="Chatinbox" className="w-10 h-10" />
+              <ChatinboxLogo size="md" variant="none" color="#E54C4C" />
             </div>
           )}
           <p className="text-sm text-navy-300 mt-1">

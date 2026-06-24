@@ -73,7 +73,7 @@ export const WA_ERROR_CODES: Record<number, WaErrorInfo> = {
     code: 0,
     title: 'Kimlik doğrulanamadı',
     neden: 'Meta erişim jetonu (access token) geçersiz veya kullanıcı doğrulanamadı.',
-    neYapmali: ['Sağlayıcı bağlantısının (cxapi/WABA) jetonunu yenileyin.', 'Sorun sürerse Invekto destek ile entegrasyonu kontrol edin.'],
+    neYapmali: ['Sağlayıcı bağlantısının (cxapi/WABA) jetonunu yenileyin.', 'Sorun sürerse Chatinbox destek ile entegrasyonu kontrol edin.'],
     severity: 'config',
   },
   1: {

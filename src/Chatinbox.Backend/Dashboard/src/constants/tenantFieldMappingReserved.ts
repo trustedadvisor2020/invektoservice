@@ -1,7 +1,7 @@
-// FEAT-TFM-UI: reserved semantic name set mirrored from Invekto.Shared.Services.TenantFieldMappingValidator.
+// FEAT-TFM-UI: reserved semantic name set mirrored from Chatinbox.Shared.Services.TenantFieldMappingValidator.
 // Kept in sync MANUALLY with:
-//   - Invekto.Shared/Constants/InmaDynamicFieldKeys.cs (Allowlist: 15 keys)
-//   - Invekto.Shared/Services/TenantFieldMappingValidator.cs (LeadsCoreColumns: 8 keys)
+//   - Chatinbox.Shared/Constants/InmaDynamicFieldKeys.cs (Allowlist: 15 keys)
+//   - Chatinbox.Shared/Services/TenantFieldMappingValidator.cs (LeadsCoreColumns: 8 keys)
 // Drift check: if backend adds/removes reserved keys, bump this file + lessons-learned entry.
 // Rationale: live FE validation (P3 AC4) avoids a round-trip to surface INV-BE-097 reserved
 // name violations — backend still enforces as source of truth.

@@ -1619,7 +1619,7 @@ class OpsApiClient {
     });
   }
 
-  // SuperAdmin: Tenant license info (Invekto PG + INMA MSSQL readonly)
+  // SuperAdmin: Tenant license info (Chatinbox PG + INMA MSSQL readonly)
   async getTenantLicense(tenantId: number): Promise<TenantLicenseInfo> {
     return this.request<TenantLicenseInfo>(`/api/ops/tenants/${tenantId}/license`);
   }
@@ -2660,7 +2660,7 @@ class OpsApiClient {
   }
 }
 
-// FEAT-OBI Phase 1A: contact-list + list->bulk-send DTOs (mirror Invekto.Shared
+// FEAT-OBI Phase 1A: contact-list + list->bulk-send DTOs (mirror Chatinbox.Shared
 // DTOs/Outbound/DataListDtos.cs + BulkSendDtos.cs). Inline — the surface is one SPA page.
 export type ImportScenario = 'new_only' | 'recall_all' | 'update_info' | 'custom';
 
@@ -2738,7 +2738,7 @@ export interface DataListSummary {
 }
 
 // --- FEAT-PROJELER PKT-14 S4: Projeler (projects) ---
-// Mirrors Invekto.Shared/DTOs/Outbound/ProjectDtos.cs (snake_case JSON). The counters +
+// Mirrors Chatinbox.Shared/DTOs/Outbound/ProjectDtos.cs (snake_case JSON). The counters +
 // lifecycle timestamps are read-only (run-driven, populated in PR-4); S4 writes only
 // name/description/target_list_ids.
 export type ProjectStatus = 'draft' | 'running' | 'paused' | 'completed' | 'cancelled' | 'archived';
@@ -2961,7 +2961,7 @@ export interface ImportCustomFlags {
   update_duplicate_fields: boolean;
 }
 
-// FEAT-OBI Phase 1A Plan B: Export Manager DTOs (mirror Invekto.Shared ExportDtos.cs).
+// FEAT-OBI Phase 1A Plan B: Export Manager DTOs (mirror Chatinbox.Shared ExportDtos.cs).
 export interface SendJobSummary {
   id: number;
   campaign_id: string;
@@ -3695,7 +3695,7 @@ export interface InmaLicenseInfo {
   histories: InmaLicenseHistory[];
 }
 
-export interface InvektoLicenseInfo {
+export interface ChatinboxLicenseInfo {
   plan_tier: string;
   tier_display_name: string;
   has_override: boolean;
@@ -3713,7 +3713,7 @@ export interface InvektoLicenseInfo {
 
 export interface TenantLicenseInfo {
   tenant_id: number;
-  invekto: InvektoLicenseInfo;
+  invekto: ChatinboxLicenseInfo;
   inma: InmaLicenseInfo | null;
 }
 

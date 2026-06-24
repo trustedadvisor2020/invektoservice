@@ -29,7 +29,7 @@ import {
   Briefcase,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { InvektoLogo } from './ui/InvektoLogo';
+import { ChatinboxLogo } from './ui/ChatinboxLogo';
 
 const SIDEBAR_KEY = 'inse-sidebar-collapsed';
 
@@ -232,13 +232,13 @@ export function Layout({ children }: LayoutProps) {
                 className="w-10 h-10 mx-auto flex items-center justify-center rounded-xl hover:bg-slate-50 transition-all duration-200"
                 title="Menüyü aç"
               >
-                <img src={`${import.meta.env.BASE_URL}logo.png`} alt="Invekto" className="w-8 h-8 rounded-xl" />
+                <img src={`${import.meta.env.BASE_URL}logo.png`} alt="Chatinbox" className="w-8 h-8 rounded-xl" />
               </button>
             ) : (
               <>
                 <img src={`${import.meta.env.BASE_URL}logo.png`} alt="" className="w-10 h-10 flex-shrink-0 rounded-xl" />
                 <div className="min-w-0 ml-3 flex-1">
-                  <InvektoLogo size="sm" className="block leading-tight" />
+                  <ChatinboxLogo size="sm" className="block leading-tight" />
                   {session?.companyCode && (
                     <span className="text-[10px] text-slate-400 truncate block leading-tight mt-0.5 font-medium uppercase tracking-widest">
                       {session.companyCode}

@@ -70,7 +70,7 @@ export function DependencyMap({ services }: DependencyMapProps) {
             const x = gridStartX + col * (nodeW + gapX);
             const y = gridStartY + row * (nodeH + gapY);
             const color = getStatusColor(svc.status);
-            const shortName = svc.name.replace('Invekto.', '');
+            const shortName = svc.name.replace('Chatinbox.', '');
             const port = svc.name.includes('ChatAnalysis') ? 7101
               : svc.name.includes('Appointments') ? 7102
               : svc.name.includes('Knowledge') ? 7104

@@ -38,7 +38,7 @@ export function LicensesPage() {
   const [plans, setPlans] = useState<PlanDefinition[]>([]);
   const [search, setSearch] = useState('');
 
-  // Edit state (Invekto side)
+  // Edit state (Chatinbox side)
   const [editTier, setEditTier] = useState('');
   const [editFeatJson, setEditFeatJson] = useState('');
   const [featJsonError, setFeatJsonError] = useState('');
@@ -353,13 +353,13 @@ export function LicensesPage() {
               )}
             </div>
 
-            {/* Invekto Section */}
+            {/* Chatinbox Section */}
             <div className="bg-white rounded-xl border border-navy-100 p-4 space-y-4">
               <div className="flex items-center gap-2 mb-1">
                 <div className="w-6 h-6 bg-brand-100 rounded-md flex items-center justify-center">
                   <Zap className="w-3.5 h-3.5 text-brand-600" />
                 </div>
-                <span className="text-sm font-semibold text-navy-700">Invekto Planı</span>
+                <span className="text-sm font-semibold text-navy-700">Chatinbox Planı</span>
               </div>
 
               {/* Plan Tier Selector */}

@@ -1,5 +1,5 @@
 // FEAT-MCC Multi-City Campaign — Dashboard wire types.
-// Mirror Invekto.Shared/Contracts/Campaigns/Dtos/* with snake_case JsonPropertyName,
+// Mirror Chatinbox.Shared/Contracts/Campaigns/Dtos/* with snake_case JsonPropertyName,
 // because Backend's TenantCampaignConfigEndpoints round-trip the snake-cased shape
 // unchanged through the SPA-facing { data: ... } envelope.
 

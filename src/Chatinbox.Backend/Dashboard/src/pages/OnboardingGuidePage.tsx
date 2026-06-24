@@ -222,7 +222,7 @@ interface ActionItem {
 const ACTIONS: ActionItem[] = [
   // Onboarding Hazırlık
   { id: 'a1', category: 'Onboarding Hazırlık', text: 'Sektör bazlı hazır flow template\u0027leri oluştur', detail: 'En az 3 sektör: restoran, klinik, e-ticaret. Her biri çalışan, test edilmiş flow olmalı.', priority: 'high' },
-  { id: 'a2', category: 'Onboarding Hazırlık', text: 'Her sektör için 1 sayfa "Invekto sizin için ne yapar" dokümanı yaz', detail: 'A4, Türkçe, teknik terim yok. Sorun-çözüm formatı. PDF veya görselle destekle.', priority: 'high' },
+  { id: 'a2', category: 'Onboarding Hazırlık', text: 'Her sektör için 1 sayfa "Chatinbox sizin için ne yapar" dokümanı yaz', detail: 'A4, Türkçe, teknik terim yok. Sorun-çözüm formatı. PDF veya görselle destekle.', priority: 'high' },
   { id: 'a3', category: 'Onboarding Hazırlık', text: '3 temel özellik için ekran kaydı videosu çek', detail: 'Flow oluşturma, FAQ ekleme, kampanya gönderme. Her biri max 60 saniye.', priority: 'high' },
   { id: 'a4', category: 'Onboarding Hazırlık', text: 'Yeni tenant için varsayılan feature flag setini belirle', detail: 'İlk hafta: FlowBuilder + Knowledge. 2. hafta: Analytics + Outbound. 3. hafta: Marketing + Integrations.', priority: 'medium' },
 
@@ -380,10 +380,10 @@ function OverviewTab() {
   return (
     <div className="space-y-6">
       <div>
-        <SectionTitle icon={BookOpen}>Invekto Nedir — Tek Cümle</SectionTitle>
+        <SectionTitle icon={BookOpen}>Chatinbox Nedir — Tek Cümle</SectionTitle>
         <Card className="p-4">
           <p className="text-sm text-navy-700 leading-relaxed">
-            Invekto, işletmelerin WhatsApp üzerinden gelen müşteri mesajlarını <strong>otomatik olarak yanıtması</strong>,
+            Chatinbox, işletmelerin WhatsApp üzerinden gelen müşteri mesajlarını <strong>otomatik olarak yanıtması</strong>,
             sık sorulan soruları <strong>yapay zeka ile cevaplatması</strong> ve toplu mesaj göndermesini sağlayan bir platformdur.
             Müşteri hizmetini hızlandırır, insan ihtiyacını azaltır, hiçbir mesajı kaçırmaz.
           </p>
@@ -1040,7 +1040,7 @@ function CommunicationTab() {
             channel="whatsapp"
             content={`Merhaba [Firma Adi]!
 
-Invekto sisteminiz hazır. İlk otomatik cevabınız aktif.
+Chatinbox sisteminiz hazır. İlk otomatik cevabınız aktif.
 
 Şimdi yapmanız gereken:
 1. Telefonunuzdan [numara] numarasina "merhaba" yazin
@@ -1187,11 +1187,11 @@ Soru veya değişiklik isteği varsa yazın.`}
             label="Hoşgeldiniz — Kurulum Tamam"
             variant="info"
             channel="email"
-            content={`Konu: Invekto Sisteminiz Hazır — Giriş Bilgileriniz
+            content={`Konu: Chatinbox Sisteminiz Hazır — Giriş Bilgileriniz
 
 Merhaba [Yetkili Adi],
 
-[Firma Adı] için Invekto müşteri iletişim sisteminiz başarıyla kurulmuştur.
+[Firma Adı] için Chatinbox müşteri iletişim sisteminiz başarıyla kurulmuştur.
 
 Sistem Bilgileri:
 - Panel Adresi: [URL]
@@ -1209,7 +1209,7 @@ Herhangi bir değişiklik veya ekleme ihtiyacınız olursa benimle iletişime ge
 
 İyi çalışmalar,
 [Isim]
-Invekto Destek Ekibi
+Chatinbox Destek Ekibi
 [Telefon]`}
           />
 
@@ -1217,11 +1217,11 @@ Invekto Destek Ekibi
             label="Haftalik Performans Raporu"
             variant="info"
             channel="email"
-            content={`Konu: [Firma Adı] — Haftalık Invekto Raporu ([tarih aralığı])
+            content={`Konu: [Firma Adı] — Haftalık Chatinbox Raporu ([tarih aralığı])
 
 Merhaba [Yetkili Adi],
 
-Geçtiğimiz haftaya ait Invekto performans özetiniz:
+Geçtiğimiz haftaya ait Chatinbox performans özetiniz:
 
 MESAJ İSTATİSTİKLERİ
 - Gelen mesaj: [X]
@@ -1254,7 +1254,7 @@ Detaylı istatistikler için paneliniz: [URL]
 
 Merhaba [Yetkili Adi],
 
-[Ay] ayına ait Invekto performans raporunuz:
+[Ay] ayına ait Chatinbox performans raporunuz:
 
 GENEL BAKIŞ
 - Toplam mesaj: [X]
@@ -1291,7 +1291,7 @@ Bir sonraki görüşmemiz: [tarih/saat]
 
 İyi çalışmalar,
 [Isim]
-Invekto Destek Ekibi`}
+Chatinbox Destek Ekibi`}
           />
 
           <TemplateCard
@@ -1302,7 +1302,7 @@ Invekto Destek Ekibi`}
 
 Merhaba [Yetkili Adi],
 
-Invekto sisteminize yeni bir özellik eklendi: [Özellik Adı].
+Chatinbox sisteminize yeni bir özellik eklendi: [Özellik Adı].
 
 NE İŞE YARAR?
 [1-2 cümle: hangi sorunu çözer, ne kolaylaştırıyor]
@@ -1330,7 +1330,7 @@ Dilediğiniz zaman dönüş yapabilirsiniz — birlikte ayarlayabiliriz.
 
 Merhaba [Yetkili Adi],
 
-[Ay] dönemi için Invekto hizmet faturanız oluşturulmuştur.
+[Ay] dönemi için Chatinbox hizmet faturanız oluşturulmuştur.
 
 FATURA DETAYLARI
 - Dönem: [başlangıç] — [bitiş]
@@ -1361,7 +1361,7 @@ Sorunuz varsa dönüş yapın.
 
 Merhaba [Yetkili Adi],
 
-Invekto hizmet sözleşmenizin süresi [tarih] tarihinde dolmaktadır.
+Chatinbox hizmet sözleşmenizin süresi [tarih] tarihinde dolmaktadır.
 
 GEÇEN DÖNEM ÖZETİ
 - Toplam işlenen mesaj: [X]
@@ -1380,7 +1380,7 @@ Modül ekleme/çıkarma veya plan değişikliği için [tarih]'e kadar bize bild
 
 İyi çalışmalar,
 [Isim]
-Invekto Destek Ekibi`}
+Chatinbox Destek Ekibi`}
           />
         </div>
       </div>
@@ -1709,7 +1709,7 @@ function SaasTab() {
           </p>
           <div className="p-3 bg-brand-50 border border-brand-100 rounded-lg">
             <p className="text-sm text-brand-800 font-medium">
-              Invekto için "aha moment" = Müşterinin telefonundan gönderdiği mesaja otomatik cevap dönmesi.
+              Chatinbox için "aha moment" = Müşterinin telefonundan gönderdiği mesaja otomatik cevap dönmesi.
             </p>
           </div>
           <div className="space-y-2 text-sm text-navy-700">

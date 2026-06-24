@@ -91,7 +91,7 @@ export function TenantsPage() {
                     const url = URL.createObjectURL(blob);
                     const link = document.createElement('a');
                     link.href = url;
-                    link.download = 'InvektoServis.postman_collection.json';
+                    link.download = 'Chatinbox.postman_collection.json';
                     link.click();
                     URL.revokeObjectURL(url);
                   });

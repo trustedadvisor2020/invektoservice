@@ -77,7 +77,7 @@ function shortenRoute(route?: string): string {
 }
 
 function formatSmartSummary(group: LogGroup): { service: string; action: string; detail: string; isError: boolean } {
-  const service = group.service.replace('Invekto.', '');
+  const service = group.service.replace('Chatinbox.', '');
   const action = shortenRoute(group.route) || '-';
   const isError = group.level === 'ERROR';
 
@@ -138,7 +138,7 @@ export function LogStream({ initialFilter }: LogStreamProps) {
   const handleClearLogs = async () => {
     setIsClearing(true);
     try {
-      const svc = service ? service.replace('Invekto.', '') : undefined;
+      const svc = service ? service.replace('Chatinbox.', '') : undefined;
       await api.clearLogs(svc);
       setShowClearConfirm(false);
       setGroups([]);
@@ -218,7 +218,7 @@ export function LogStream({ initialFilter }: LogStreamProps) {
           <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm">
             <Trash2 className="w-4 h-4 text-red-500 shrink-0" />
             <span className="text-red-700">
-              {service ? `${service.replace('Invekto.', '')} loglarını` : 'Tüm logları'} silmek istediğinize emin misiniz?
+              {service ? `${service.replace('Chatinbox.', '')} loglarını` : 'Tüm logları'} silmek istediğinize emin misiniz?
             </span>
             <div className="flex gap-1 ml-auto">
               <Button size="sm" variant="secondary" onClick={() => setShowClearConfirm(false)}>
@@ -259,16 +259,16 @@ export function LogStream({ initialFilter }: LogStreamProps) {
             onChange={e => setService(e.target.value)}
             options={[
               { value: '', label: 'Tüm Servisler' },
-              { value: 'Invekto.Backend', label: 'Backend' },
-              { value: 'Invekto.ChatAnalysis', label: 'ChatAnalysis' },
-              { value: 'Invekto.Automation', label: 'Automation' },
-              { value: 'Invekto.AgentAI', label: 'AgentAI' },
-              { value: 'Invekto.Outbound', label: 'Outbound' },
-              { value: 'Invekto.Knowledge', label: 'Knowledge' },
-              { value: 'Invekto.Appointments', label: 'Appointments' },
-              { value: 'Invekto.Integrations', label: 'Integrations' },
-              { value: 'Invekto.WhatsAppAnalytics', label: 'WA Analytics' },
-              { value: 'Invekto.Marketing', label: 'Marketing' },
+              { value: 'Chatinbox.Backend', label: 'Backend' },
+              { value: 'Chatinbox.ChatAnalysis', label: 'ChatAnalysis' },
+              { value: 'Chatinbox.Automation', label: 'Automation' },
+              { value: 'Chatinbox.AgentAI', label: 'AgentAI' },
+              { value: 'Chatinbox.Outbound', label: 'Outbound' },
+              { value: 'Chatinbox.Knowledge', label: 'Knowledge' },
+              { value: 'Chatinbox.Appointments', label: 'Appointments' },
+              { value: 'Chatinbox.Integrations', label: 'Integrations' },
+              { value: 'Chatinbox.WhatsAppAnalytics', label: 'WA Analytics' },
+              { value: 'Chatinbox.Marketing', label: 'Marketing' },
             ]}
             className="w-36"
           />
@@ -341,7 +341,7 @@ export function LogStream({ initialFilter }: LogStreamProps) {
                       /* All mode: original layout */
                       <>
                         <span className="text-xs text-navy-300 shrink-0 w-24 truncate">
-                          {group.service.replace('Invekto.', '')}
+                          {group.service.replace('Chatinbox.', '')}
                         </span>
                         <span className="flex-1 truncate text-sm text-navy-700">
                           {group.summary}

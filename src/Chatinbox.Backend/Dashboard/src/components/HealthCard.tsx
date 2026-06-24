@@ -19,61 +19,61 @@ const serviceConfig: Record<string, {
   healthEndpoint: string;
   icon: typeof Server;
 }> = {
-  'Invekto.Backend': {
+  'Chatinbox.Backend': {
     port: 5000,
     host: 'localhost',
     healthEndpoint: '/health',
     icon: Server,
   },
-  'Invekto.ChatAnalysis': {
+  'Chatinbox.ChatAnalysis': {
     port: 7101,
     host: 'localhost',
     healthEndpoint: '/health',
     icon: MessageSquare,
   },
-  'Invekto.Automation': {
+  'Chatinbox.Automation': {
     port: 7108,
     host: 'localhost',
     healthEndpoint: '/health',
     icon: Bot,
   },
-  'Invekto.AgentAI': {
+  'Chatinbox.AgentAI': {
     port: 7105,
     host: 'localhost',
     healthEndpoint: '/health',
     icon: Sparkles,
   },
-  'Invekto.Outbound': {
+  'Chatinbox.Outbound': {
     port: 7107,
     host: 'localhost',
     healthEndpoint: '/health',
     icon: Send,
   },
-  'Invekto.Knowledge': {
+  'Chatinbox.Knowledge': {
     port: 7104,
     host: 'localhost',
     healthEndpoint: '/health',
     icon: BookOpen,
   },
-  'Invekto.Appointments': {
+  'Chatinbox.Appointments': {
     port: 7102,
     host: 'localhost',
     healthEndpoint: '/health',
     icon: Calendar,
   },
-  'Invekto.Integrations': {
+  'Chatinbox.Integrations': {
     port: 7106,
     host: 'localhost',
     healthEndpoint: '/health',
     icon: Plug,
   },
-  'Invekto.WhatsAppAnalytics': {
+  'Chatinbox.WhatsAppAnalytics': {
     port: 7109,
     host: 'localhost',
     healthEndpoint: '/health',
     icon: BarChart3,
   },
-  'Invekto.Marketing': {
+  'Chatinbox.Marketing': {
     port: 7112,
     host: 'localhost',
     healthEndpoint: '/health',
@@ -201,7 +201,7 @@ export function HealthCard({ service, onRestart, isRestarting }: HealthCardProps
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="font-medium text-sm text-navy-900">{service.name.replace('Invekto.', '')}</span>
+                  <span className="font-medium text-sm text-navy-900">{service.name.replace('Chatinbox.', '')}</span>
                   <div className={`w-1.5 h-1.5 rounded-full ${statusDot}`} />
                 </div>
                 <span className="text-[10px] text-navy-300">:{port}</span>
@@ -274,7 +274,7 @@ export function HealthCard({ service, onRestart, isRestarting }: HealthCardProps
                   <ServiceIcon className="w-4 h-4 text-navy-500" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-navy-900">{service.name.replace('Invekto.', '')} Endpoints</h3>
+                  <h3 className="font-semibold text-navy-900">{service.name.replace('Chatinbox.', '')} Endpoints</h3>
                   <p className="text-xs text-navy-300">{baseUrl}</p>
                 </div>
               </div>

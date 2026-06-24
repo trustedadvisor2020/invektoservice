@@ -62,7 +62,7 @@ export function DashboardPage() {
             onClick={() => {
               const link = document.createElement('a');
               link.href = '/api/ops/postman';
-              link.download = 'InvektoServis.postman_collection.json';
+              link.download = 'Chatinbox.postman_collection.json';
               fetch('/api/ops/postman', { headers: api.getAuthHeaders() })
                 .then(r => r.blob())
                 .then(blob => {

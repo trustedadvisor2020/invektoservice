@@ -118,7 +118,7 @@ function countSemanticNames(rows: FieldMappingRowDraft[]): Map<string, number> {
 }
 
 export function FieldMappingSettingsPage() {
-  useEffect(() => { document.title = 'Invekto AI - Field Mapping'; }, []);
+  useEffect(() => { document.title = 'Chatinbox AI - Field Mapping'; }, []);
 
   const [draftRows, setDraftRows] = useState<FieldMappingRowDraft[]>([]);
   const [originalSnapshot, setOriginalSnapshot] = useState<string>('{}');

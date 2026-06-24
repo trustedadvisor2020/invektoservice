@@ -1,5 +1,5 @@
 // FEAT-EFS Drip Sequence — Dashboard wire types.
-// Mirror Invekto.Shared/Contracts/Followup/* with snake_case JsonPropertyName,
+// Mirror Chatinbox.Shared/Contracts/Followup/* with snake_case JsonPropertyName,
 // because Backend's MarketingFollowupProxyClient round-trips Marketing's
 // snake-cased response unchanged through the SPA-facing { data: ... } envelope.
 

@@ -78,13 +78,13 @@ function ProtectedRoute() {
   const { isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
-    const isSuper = window.location.hostname === 'super.invekto.com';
-    document.title = isSuper ? 'Invekto Super' : 'Invekto AI';
+    const isSuper = window.location.hostname === 'super.invekto.com' || window.location.hostname === 'super.chatinbox.net';
+    document.title = isSuper ? 'Chatinbox Super' : 'Chatinbox AI';
     return <Navigate to="/login" replace />;
   }
 
-  const isSuper = window.location.hostname === 'super.invekto.com';
-  document.title = isSuper ? 'Invekto Super - OPS' : 'Invekto AI';
+  const isSuper = window.location.hostname === 'super.invekto.com' || window.location.hostname === 'super.chatinbox.net';
+  document.title = isSuper ? 'Chatinbox Super - OPS' : 'Chatinbox AI';
 
   return (
     <Layout>
