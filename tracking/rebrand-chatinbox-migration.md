@@ -149,7 +149,20 @@ Bunlar partner/wire/üçüncü-taraf kimlikleri; "tüm domainleri/invektoları d
 3. Residual grep: tracked source'ta `Invekto`/`InvektoServis` kalmadı (partner token'lar §2 hariç) doğrula.
 4. `.gitignore` line 79 `*.postman_collection.json` → renamed collection `-f` ile veya kural düzelt.
 
-> **Track A çıktısı:** Build-green, test-pass, Invekto'suz kod tabanı + ChatinboxAI.git. Production HÂLÂ Invekto altyapısında, dokunulmadı, çalışıyor.
+### Faz A5b — non-SPA tracked sweep (deferred, Q kararı 2026-06-24)
+A6 residual-grep'ten ÖNCE temizlenecek (yoksa "Invekto'suz tracked source" karşılanmaz):
+1. `SE/` — ayrı senaryo uygulaması (kaynak + `dist/` built → kendi rebuild'ini ister, elle düzenleme YASAK).
+2. `ui-mocks/*.html` — statik mockup (düz text-replace).
+3. `content/**/*.mdx` — dokümantasyon (~39 occ, düz text-replace).
+4. `voice-poc.js` (VoiceRuntime static asset, SPA build DIŞI) — `BACKEND_BASE='https://super.invekto.com'` (host = Track B, A5b'de yalnız varsa brand-wordmark; host VoiceAI cutover ile).
+
+### ⚠️ KEŞFEDİLEN SCOPE — Docs-rebrand (A5 wrap'te bulundu 2026-06-24, BÜYÜK AYRI FAZ)
+A1-A3 kod assembly rename'i (`Invekto.*`→`Chatinbox.*`) `arch/` dokümanlarını stale bıraktı: **701 dosya / 20.069 satır** `Invekto` (adversarial doc-sync verifier bulgusu). Bu **A5'in işi DEĞİL** (A5 = frontend SPA) ve **/wrap doc-sync "sessizce düzelt" kuralı buna UZANMAZ** (same-session incremental drift için; 20k-satır cross-phase mass-edit değil).
+- **Living docs** (auth-architecture, codex-context, contracts/*.json `service` metadata, errors.md service label, endpoints, microservice-guide) → planlı rebrand edilecek (`Invekto.<Service>`→`Chatinbox.<Service>`; **`InvektoServis` JWT issuer literal + `/api/invekto/welcome` + `invekto-` prefix KORU**).
+- **`arch/plans/diffs/*.diff` + `arch/lessons-learned*.md` + `arch/session-memory-archive.md`** = TARİHSEL kayıt → **mass-rewrite-history YASAK** (geçmişin neyi söylediği = kayıt; rebrand etme).
+- **A6 etkisi:** A6 step-3 "tracked source'ta Invekto kalmadı" iddiası, arch/docs rebrand'i VEYA arch/historical-snapshot'ları residual-grep'ten explicit exclude EDİLMEDEN doğru OLAMAZ. A6 öncesi Q kararı: docs-rebrand fazını A6'dan önce mi koş, yoksa A6 residual-grep kapsamını `arch/plans/diffs` + archive hariç mi tanımla.
+
+> **Track A çıktısı:** Build-green, test-pass, Invekto'suz **kod tabanı (src/tests)** + ChatinboxAI.git. Production HÂLÂ Invekto altyapısında, dokunulmadı, çalışıyor. **NOT:** arch/docs rebrand'i ayrı scope (yukarıda), "Invekto'suz" yalnız src/tests için geçerli.
 
 ---
 
