@@ -11,7 +11,18 @@
   - Kod kimliği rename: 581/582 dosya, case-sensitive dot-anchored `Invekto.`→`Chatinbox.` + `InvektoServis.{Tests,sln,postman}` selektif.
   - **Korundu (doğrulandı):** `"InvektoServis"` JWT issuer literal (B6'ya donuk), lowercase `invekto`/DB/domain (Track B), `/api/invekto/welcome` (2), `invekto-` wire prefix (4).
   - **Build gate: `Chatinbox.sln` 0 Error / 44 Warning (rename-dışı, önceden var).** Residual `Invekto.` tracked src/tests = 0.
-  - Kalan Track A: ~~A4~~ ✅DONE (b75a21cb, hook regex + PROJECT_CONFIG build-cmd, Codex PASS iter0), A5 (frontend wordmark/title/copy + postman download literal TenantsPage/DashboardPage.tsx + SPA Vite rebuild), A6 (yeni repo — PUSH onayı + D2 lock gerekir).
+  - Kalan Track A: ~~A4~~ ✅DONE (b75a21cb, hook regex + PROJECT_CONFIG build-cmd, Codex PASS iter0), ~~A5~~ ✅DONE (94c638c8, frontend rebrand + SPA rebuild, Codex PASS iter0), A6 (yeni repo — PUSH onayı + D2 lock gerekir).
+
+- **2026-06-24 — Track A Faz A5 ✅ COMMIT `94c638c8` (branch `rebrand/chatinbox`, Codex /rev PASS iter0, 12/12 CQ + 4/4 CoVe):**
+  - **Wordmark:** `InvektoLogo.tsx`→`ChatinboxLogo.tsx` (git rename); component InvektoLogo/InvektoMark→ChatinboxLogo/ChatinboxMark (InvektoMark unused, def-only); SVG `invekto`→`chatinbox` + 'i'-mark→'c'; aria-label Chatinbox. **Suffix ('AI'/'super') hardcoded suffixX→`<tspan>` flow** (9-glyph chatinbox eski sabit konumu taşardı; tspan font-agnostik=overlap imkânsız). viewBox genişlikleri **ölçülen Neon glyph metrikleriyle** (getComputedTextLength: chatinbox=143/151/216px, AI=31/47, super=122) + `extraWidth=fontSize×1.5` → **Chrome-headless screenshot ile sm/md/lg × ai/super/none doğrulandı (clip/overlap yok)**. Lockstep import: Layout.tsx + LoginPage.tsx (tek 2 import sitesi).
+  - **Titles:** index.html/App.tsx(×2)/2 settings → Chatinbox AI/Super.
+  - **Görünür copy + stale namespace comment + license type:** Invekto→Chatinbox (Onboarding e-posta/rapor şablonları+imzalar, contact copy, wa-error, canonical-field label, flow-templates 'Chatinbox Mobil', `Invekto.Shared/.Backend/.Outbound` comment→Chatinbox., `InvektoLicenseInfo`→`ChatinboxLicenseInfo`). **Wire key `invekto` KORUNDU** (Program.cs:8611).
+  - **Service-display regresyon fix:** HealthCard/LogStream/TestPanel/DependencyMap map-key + `.replace('Invekto.','')`→`Chatinbox.` (backend artık `Chatinbox.*` emit ediyor, Program.cs:1768 KODDAN doğrulandı).
+  - **Postman download literal** → `Chatinbox.postman_collection.json` (DashboardPage/TenantsPage).
+  - **Host gate ADDITIVE (Q kararı, dual-domain):** super/ai.{invekto.com VEYA chatinbox.net} login-mode+brand-variant (App.tsx ×2, LoginPage getLoginMode, ChatinboxLogo getAutoVariant). invekto.com login CANLI kalır; chatinbox.net subdomain henüz resolve etmiyor (Track B) → eklenen branch inert.
+  - **KEEPS (by design):** `InvektoCompanyCode` (INMA MSSQL kolon adı), license wire key `invekto`, `VOICE_POC_ORIGIN='voice.invekto.com:8443'` (tek postMessage target → Track B re-point), voice/app host yorumları (dual-domain canlı).
+  - **Build:** tsc+vite 0-err. **SPA Vite rebuild → `wwwroot/app`** (regenerated bundle commit'lendi, yeni `index-C4d-tDz5.js`). Residual capital Invekto SPA src = yalnız `InvektoCompanyCode` (kasıtlı). **77 dosya** (28 src + ~49 regenerated bundle asset). Codex diff = source-only (bundle deterministik output, review dışı).
+  - **A5b deferred (Q kararı, ayrı sweep):** non-SPA tracked alanlar — SE/ (ayrı app + dist), ui-mocks/*.html, content/**/*.mdx + voice-poc.js (VoiceRuntime static asset). A6 residual-grep öncesi temizlenecek.
 
 ## 0. Q Kararları (kilitli)
 
@@ -122,7 +133,7 @@ Bunlar partner/wire/üçüncü-taraf kimlikleri; "tüm domainleri/invektoları d
 6. Aktif prose: `CLAUDE.md`, `CONTEXT.md`, `/deploy`+`/deploy-info`, `tracking/README.md`, `pilot-launch-roadmap.md`, session-init banner.
 7. **EXCLUDE (history, D2):** `arch/plans/*.json` (~3000 occ), `arch/*-archive.md`, `lessons-learned-archive.md`, lessons/session-memory historical text — sweep'e path-filter ekle.
 
-### Faz A5 — Frontend rebrand + SPA rebuild
+### Faz A5 — Frontend rebrand + SPA rebuild — ✅ DONE (2026-06-24, commit `94c638c8`, Codex /rev PASS iter0)
 1. Wordmark: `InvektoLogo.tsx` SVG `<text>invekto</text>` → `chatinbox`, aria-label'lar, `InvektoMark` 'i'. Component rename opsiyonel (Layout.tsx + LoginPage.tsx import'ları lockstep).
 2. Title'lar: `index.html` `<title>Invekto One</title>` → `Chatinbox AI`, `App.tsx` dinamik title'lar, settings sayfaları document.title.
 3. Görünür copy: `OnboardingGuidePage.tsx` (tüm e-posta/rapor template'leri + "Invekto Destek Ekibi" imzaları), `DataImportPage`/`ProjectsPage` iletişim copy'si, `wa-error-codes.ts`, LeadIntake canonical-field copy, `alt="Invekto"` tag'leri.
