@@ -11,7 +11,7 @@
   - Kod kimliği rename: 581/582 dosya, case-sensitive dot-anchored `Invekto.`→`Chatinbox.` + `InvektoServis.{Tests,sln,postman}` selektif.
   - **Korundu (doğrulandı):** `"InvektoServis"` JWT issuer literal (B6'ya donuk), lowercase `invekto`/DB/domain (Track B), `/api/invekto/welcome` (2), `invekto-` wire prefix (4).
   - **Build gate: `Chatinbox.sln` 0 Error / 44 Warning (rename-dışı, önceden var).** Residual `Invekto.` tracked src/tests = 0.
-  - Kalan Track A: A4 (hook regex + PROJECT_CONFIG build-cmd), A5 (frontend wordmark/title/copy + postman download literal TenantsPage/DashboardPage.tsx + SPA Vite rebuild), A6 (yeni repo — PUSH onayı + D2 lock gerekir).
+  - Kalan Track A: ~~A4~~ ✅DONE (b75a21cb, hook regex + PROJECT_CONFIG build-cmd, Codex PASS iter0), A5 (frontend wordmark/title/copy + postman download literal TenantsPage/DashboardPage.tsx + SPA Vite rebuild), A6 (yeni repo — PUSH onayı + D2 lock gerekir).
 
 ## 0. Q Kararları (kilitli)
 
@@ -111,8 +111,9 @@ Bunlar partner/wire/üçüncü-taraf kimlikleri; "tüm domainleri/invektoları d
 - `CustomerStatusFlowSuppressionTests.cs` `OriginRequestIdPrefix=='invekto-'` → **DEĞİŞTİRME** (wire constant, §2). Test olduğu gibi kalır.
 - `TestJwtTokenHelper.cs` TestSecretKey literal: cosmetic, opsiyonel.
 
-### Faz A4 — Tooling / hooks / config (kod rename'den SONRA)
+### Faz A4 — Tooling / hooks / config (kod rename'den SONRA) — ✅ DONE (2026-06-24, commit b75a21cb, Codex /rev PASS iter0)
 > Hook regex'leri kod rename'den SONRA güncellenmeli (yoksa un-renamed kodda misfire) ama prod cutover'dan ÖNCE.
+> **Yapıldı (adım 1+2+5):** invariant-check/build-reminder/check-shared-microservice/dotnet-check.sh `Invekto\.`→`Chatinbox\.` + PROJECT_CONFIG build.command/single_service_template → `Chatinbox.sln`/`Chatinbox.{SERVICE}.csproj`. MCP server ID'leri (D6) korundu. **Ertelendi:** adım 3 (deploy-verify.ps1 = Track B path/NSSM ile), adım 4 (INVEKTO_* agent prompt rename = opsiyonel), adım 6 (aktif prose CLAUDE.md/CONTEXT.md = A4.6 prose pass). KORUNAN: INV- prefix (D5), `C:\CRMs\InvektoServices` klasör yolu, Track-B prod host/`Invekto-{Service}` NSSM, project_name + check-shared line-1.
 1. Quality-gate regex'leri: `invariant-check.ps1`, `build-reminder.ps1`, `check-shared-microservice.ps1`, `dotnet-check.sh` → `Invekto\.` → `Chatinbox\.`, `Invekto.Shared` → `Chatinbox.Shared`. (Aksi halde isolation/service ihlali sessizce tespit edilmez — fail-open.)
 2. `PROJECT_CONFIG.json`: project_name, build cmd (sln+csproj), base_prompt filename, deploy host/path/NSSM, error-prefix (D5).
 3. `deploy-verify.ps1` path/service guard regex'leri — Track B path/NSSM kararıyla eşle (timing: prod cutover ile).
