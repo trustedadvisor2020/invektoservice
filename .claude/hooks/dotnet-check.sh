@@ -42,9 +42,9 @@ fi
 
 # Determine which service csproj to build
 SERVICE=""
-if [[ "$FILE" =~ src/Invekto\.([A-Za-z]+)/ ]]; then
+if [[ "$FILE" =~ src/Chatinbox\.([A-Za-z]+)/ ]]; then
   SERVICE="${BASH_REMATCH[1]}"
-elif [[ "$FILE" =~ src\\Invekto\.([A-Za-z]+)\\ ]]; then
+elif [[ "$FILE" =~ src\\Chatinbox\.([A-Za-z]+)\\ ]]; then
   SERVICE="${BASH_REMATCH[1]}"
 fi
 
@@ -52,7 +52,7 @@ if [[ -z "$SERVICE" ]]; then
   exit 0
 fi
 
-CSPROJ="c:/CRMs/InvektoServices/src/Invekto.${SERVICE}/Invekto.${SERVICE}.csproj"
+CSPROJ="c:/CRMs/InvektoServices/src/Chatinbox.${SERVICE}/Chatinbox.${SERVICE}.csproj"
 if [[ ! -f "$CSPROJ" ]]; then
   exit 0
 fi

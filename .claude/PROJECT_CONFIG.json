@@ -4,8 +4,8 @@
   "project_code": "INV",
   "developer_name": "Q",
   "build": {
-    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
-    "single_service_template": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\src\\Invekto.{SERVICE}\\Invekto.{SERVICE}.csproj --no-restore -v q\"",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\Chatinbox.sln --no-restore -v q\"",
+    "single_service_template": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\src\\Chatinbox.{SERVICE}\\Chatinbox.{SERVICE}.csproj --no-restore -v q\"",
     "source_extensions": [".cs"]
   },
   "error_codes": {

@@ -28,12 +28,12 @@ try {
     $additionalContext = ""
 
     # === Shared kategorisi (tum servisleri etkiler) ===
-    if ($normalized -match '/Invekto\.Shared/') {
+    if ($normalized -match '/Chatinbox\.Shared/') {
         $subCategory = "Shared (genel)"
-        if ($normalized -match '/Invekto\.Shared/DTOs/') { $subCategory = "Shared/DTOs (cross-service contract)" }
-        elseif ($normalized -match '/Invekto\.Shared/Middleware/') { $subCategory = "Shared/Middleware (auth/tenant)" }
-        elseif ($normalized -match '/Invekto\.Shared/Auth/') { $subCategory = "Shared/Auth (JWT/token)" }
-        elseif ($normalized -match '/Invekto\.Shared/Constants/') { $subCategory = "Shared/Constants" }
+        if ($normalized -match '/Chatinbox\.Shared/DTOs/') { $subCategory = "Shared/DTOs (cross-service contract)" }
+        elseif ($normalized -match '/Chatinbox\.Shared/Middleware/') { $subCategory = "Shared/Middleware (auth/tenant)" }
+        elseif ($normalized -match '/Chatinbox\.Shared/Auth/') { $subCategory = "Shared/Auth (JWT/token)" }
+        elseif ($normalized -match '/Chatinbox\.Shared/Constants/') { $subCategory = "Shared/Constants" }
 
         $fileName = Split-Path $filePath -Leaf
         $additionalContext = @"
@@ -42,7 +42,7 @@ try {
 Shared dosya degistirildi: $fileName
 Kategori: $subCategory
 
-Bu dosya TUM mikro servisleri etkiler (Invekto.Backend, ChatAnalysis,
+Bu dosya TUM mikro servisleri etkiler (Chatinbox.Backend, ChatAnalysis,
 Automation, AgentAI, Appointments, Integrations, Knowledge, Marketing,
 Outbound, VoiceAI, WebChat, WhatsAppAnalytics).
 
@@ -57,22 +57,22 @@ service-isolation-checker agent'i ile dogrulama onerilir.
 "@
     }
     # === Cross-service direct reference tespiti (uyari amacli) ===
-    elseif ($normalized -match '/Invekto\.([^/]+)/') {
+    elseif ($normalized -match '/Chatinbox\.([^/]+)/') {
         $currentService = $matches[1]
         if ($currentService -ne "Shared") {
             $fileName = Split-Path $filePath -Leaf
             $additionalContext = @"
 
 === SERVIS DOSYASI DEGISTI ===
-Servis: Invekto.$currentService
+Servis: Chatinbox.$currentService
 Dosya: $fileName
 
-Hatirlatma: Bu servis sadece Invekto.Shared uzerinden diger servislerle
-iletisim kurabilir. Dogrudan 'using Invekto.<DigerServis>' YASAK.
+Hatirlatma: Bu servis sadece Chatinbox.Shared uzerinden diger servislerle
+iletisim kurabilir. Dogrudan 'using Chatinbox.<DigerServis>' YASAK.
 
 Kontrol:
-- Yeni eklenen using'ler Invekto.Shared haricinde Invekto.* icermiyor mu?
-- csproj'da yeni ProjectReference sadece Invekto.Shared'a mi?
+- Yeni eklenen using'ler Chatinbox.Shared haricinde Chatinbox.* icermiyor mu?
+- csproj'da yeni ProjectReference sadece Chatinbox.Shared'a mi?
 ==============================
 
 "@

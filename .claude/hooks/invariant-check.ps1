@@ -30,13 +30,13 @@ if ($fp -match '\.cs$') {
 # CHECK 3: C# dosyasinda baska servise dogrudan referans (isolation ihlali)
 # NOT: -match $Matches global'ini ezer, once service name'i yakala
 $currentService = $null
-if ($fp -match 'Invekto\.(\w+)[/\\]') { $currentService = $Matches[1] }
+if ($fp -match 'Chatinbox\.(\w+)[/\\]') { $currentService = $Matches[1] }
 if ($currentService -and $fp -match '\.cs$') {
     if (-not $content) { $content = Get-Content $fp -Raw 2>$null }
     $otherServices = @('Backend','Automation','AgentAI','Knowledge','Outbound','WhatsAppAnalytics') | Where-Object { $_ -ne $currentService -and $_ -ne 'Shared' }
     foreach ($svc in $otherServices) {
-        if ($content -match "using\s+Invekto\.$svc" -or $content -match "Invekto\.$svc\.") {
-            $warnings += "[ISOLATION] $currentService servisi Invekto.$svc'e dogrudan referans veriyor -> Shared uzerinden iletisim kur"
+        if ($content -match "using\s+Chatinbox\.$svc" -or $content -match "Chatinbox\.$svc\.") {
+            $warnings += "[ISOLATION] $currentService servisi Chatinbox.$svc'e dogrudan referans veriyor -> Shared uzerinden iletisim kur"
         }
     }
 }
