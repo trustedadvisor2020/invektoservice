@@ -24,6 +24,18 @@
   - **Build:** tsc+vite 0-err. **SPA Vite rebuild → `wwwroot/app`** (regenerated bundle commit'lendi, yeni `index-C4d-tDz5.js`). Residual capital Invekto SPA src = yalnız `InvektoCompanyCode` (kasıtlı). **77 dosya** (28 src + ~49 regenerated bundle asset). Codex diff = source-only (bundle deterministik output, review dışı).
   - **A5b deferred (Q kararı, ayrı sweep):** non-SPA tracked alanlar — SE/ (ayrı app + dist), ui-mocks/*.html, content/**/*.mdx + voice-poc.js (VoiceRuntime static asset). A6 residual-grep öncesi temizlenecek.
 
+- **2026-06-24 — Track A Faz A5b ✅ COMMIT `537e95a9` (Codex /rev PASS iter0, 12/12 CQ + 4/4 CoVe):**
+  - Non-SPA brand sweep: SE/ (23) + ui-mocks (11) + content/**/*.mdx (39, "Invekto One"→"Chatinbox AI") + voice-poc.js/html (title/comment only). 45 dosya, 80/80 1:1 rename. SE/dist UNTRACKED (rebuild gerekmedi).
+  - +1 correctness: `SE/scripts/generate-flow-templates.cjs` OUT_FILE `src/Invekto.Backend`→`src/Chatinbox.Backend` (A1-A3 git mv sonrası dangling'di).
+  - KEEP: `INVEKTO_VOICE_JWT` (Dashboard SPA↔voice-poc cross-doc contract), `*.invekto.com` Track-B hostlar, INV-VR kodları.
+
+- **2026-06-24 — Track A Faz A5c ✅ COMMIT `a2ffea07` (Codex /rev PASS iter0, 12/12 CQ + 4/4 CoVe) — KEŞFEDİLEN "Invekto-free src/tests" PREMISE DÜZELTMESİ:**
+  - **Kök bulgu:** A1-A3 "residual=0" YALNIZ dot-anchored `Invekto.` namespace token'ları (*.cs/csproj/sln) içindi — "Invekto yok" DEĞİL. arch/ DIŞI tracked source'ta **1.876 Invekto** kaldı (tracking 995 / src 261 / .claude 242 / DentAdavista 155 / mcp-servers 72 / tools 41 / ...).
+  - **A5c = src/tests completeness sweep** (~109 genuine missed-rename): AddInvektoHangfire→AddChatinboxHangfire (Shared + 8 call-site, build-verified); KIRIK Backend appsettings LogPath `../Invekto.X`→`../Chatinbox.X`; `Invekto.Backend.http`→`Chatinbox.Backend.http`; launchSettings profil; **customer-facing**: AI sistem promptları (VoiceRuntime/WebChat "Sen Invekto'nun"→"Chatinbox'un"), InvektoBot→ChatinboxBot UA, IcsBuilder PRODID `-//Chatinbox//`+test, onboarding metni; **internal**: Dashboard localStorage keys + DnD MIME (+SPA rebuild `index-Bj_FymPS.js`), DbBackup filename, TestSecretKey, brand-prose yorumlar. Build PASS 0-err.
+  - **A6 KEEP-LIST (kilitli, A5c'de doğrulandı — src/tests'te kalması ZORUNLU, Track-B'ye kadar flip OLAMAZ):** NSSM adları (Program.cs:1768 restart map), JWT Issuer/Audience (Faz B6), **`PublicBaseUrl=services.invekto.com` (webhook landmine — DEĞİŞTİRME)**, `C:\Invekto\Backups`, `Database=invekto`+`invekto` DB rolü (Faz B5), **`X-Invekto-*` INMA HMAC/API-key headers (WIRE — partner gönderiyor)**, /api/invekto/welcome, invekto- prefix, InvektoCompanyCode, `info.invekto` license wire-key, INVEKTO_VOICE_JWT, VOICE_POC_ORIGIN, destek@invekto.com, *.invekto.com hostlar, "Invekto Main App".
+
+- **2026-06-24 — A6 DURUM: UNBLOCKED, MEKANİK ONAYI BEKLİYOR.** src/tests A6-acceptance CLEAN (keep-list dışı capital-Invekto = 0; tek kalan `C:\Invekto\Backups` = documented keep). **ChatinboxAI.git MEVCUT + BOŞ** (`git ls-remote` exit 0, ref yok → fresh-init hazır). **Q kararları (interview 2026-06-24):** sıra = A5b→A6→docs sonra; A6 kabul = keep-list dışında sıfır; docs/tooling (tracking/.claude/DentAdavista/mcp-servers/tools/CONTEXT/CLAUDE/postman/arch + src README ≈ 2.6k occ) HEPSİ post-A6 docs-rebrand fazına DEFER. **AÇIK (Q):** A6 fresh-init mekaniği — yeni klasör `C:\CRMs\Chatinbox` (plan A6.2) vs in-place orphan; mevcut `InvektoServices` klasörünün Track-B'deki rolü; invs launcher RepoRoot.
+
 ## 0. Q Kararları (kilitli)
 
 | Karar | Seçim |
