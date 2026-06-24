@@ -9,7 +9,7 @@ namespace Chatinbox.Shared.Middleware;
 
 /// <summary>
 /// Middleware to log all HTTP request/response traffic.
-/// Shared across all Invekto microservices.
+/// Shared across all Chatinbox microservices.
 /// Configurable skip paths and extensions per service.
 /// </summary>
 public sealed class TrafficLoggingMiddleware

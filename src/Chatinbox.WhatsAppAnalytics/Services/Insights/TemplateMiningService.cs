@@ -382,7 +382,7 @@ public sealed class TemplateMiningService
     {
         "saglik" => new List<SectorOnboardingStepRecord>
         {
-            MakeStep("saglik", 1, "Agent'lari sisteme ekle", "Tum satis temsilcilerini Invekto'ya ekleyin. Her agent kendi konusmalarini gorecek.", "Agent bazli performans takibi baslar", "1-3"),
+            MakeStep("saglik", 1, "Agent'lari sisteme ekle", "Tum satis temsilcilerini Chatinbox'a ekleyin. Her agent kendi konusmalarini gorecek.", "Agent bazli performans takibi baslar", "1-3"),
             MakeStep("saglik", 2, "FAQ sablonlarini aktif et", "Hazir saglik sektoru FAQ'larini inceleyin, duzenleyin ve aktif edin. En sik sorulan sorulara hazir cevaplar.", "Cevap suresi %40 azalir", "1-7"),
             MakeStep("saglik", 3, "Ilk temas flow'unu kur", "Sac ekimi / burun / genel estetik icin ilk temas akisini FlowBuilder'da olusturun.", "Tutarli satis sureci baslar", "3-7"),
             MakeStep("saglik", 4, "Fiyat teklif sablonlarini hazirla", "Islem bazli fiyat sablonlari olusturun. Teklif gonderme hizini artirin.", "Teklif suresi %50 azalir", "3-7"),
@@ -393,7 +393,7 @@ public sealed class TemplateMiningService
         },
         "moda" => new List<SectorOnboardingStepRecord>
         {
-            MakeStep("moda", 1, "Agent'lari sisteme ekle", "Tum satis temsilcilerini Invekto'ya ekleyin.", "Agent bazli performans takibi baslar", "1-3"),
+            MakeStep("moda", 1, "Agent'lari sisteme ekle", "Tum satis temsilcilerini Chatinbox'a ekleyin.", "Agent bazli performans takibi baslar", "1-3"),
             MakeStep("moda", 2, "FAQ sablonlarini aktif et", "Stok, beden, kargo, iade sorulari icin hazir cevaplari aktif edin.", "Cevap suresi %50 azalir", "1-7"),
             MakeStep("moda", 3, "Satis akisini kur", "Urun sorgusu → bilgi → stok → siparis akisini FlowBuilder'da olusturun.", "Siparis donusum orani artar", "3-7"),
             MakeStep("moda", 4, "Follow-up otomasyonunu ac", "Begenip almayan musterilere 24 saat sonra hatirlatma mesaji ayarlayin.", "Sepet terk orani %15-20 azalir", "7-14"),
@@ -402,7 +402,7 @@ public sealed class TemplateMiningService
         },
         "gayrimenkul" => new List<SectorOnboardingStepRecord>
         {
-            MakeStep("gayrimenkul", 1, "Agent'lari sisteme ekle", "Tum emlak danismanlarini Invekto'ya ekleyin.", "Agent bazli performans takibi baslar", "1-3"),
+            MakeStep("gayrimenkul", 1, "Agent'lari sisteme ekle", "Tum emlak danismanlarini Chatinbox'a ekleyin.", "Agent bazli performans takibi baslar", "1-3"),
             MakeStep("gayrimenkul", 2, "FAQ sablonlarini aktif et", "Fiyat, konum, tapu, kredi sorulari icin hazir cevaplari aktif edin.", "Cevap suresi %40 azalir", "1-7"),
             MakeStep("gayrimenkul", 3, "Satis akisini kur", "Sorgu → eslestirme → gosterim → teklif → kaparo akisini olusturun.", "Tutarli satis sureci baslar", "3-7"),
             MakeStep("gayrimenkul", 4, "Gosterim takip flow'unu kur", "Gosterim sonrasi otomatik follow-up akisini kurun.", "Gosterim → satis donusumu artar", "7-14"),

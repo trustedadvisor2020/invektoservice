@@ -24,7 +24,7 @@ namespace Chatinbox.Outbound.Services;
 /// - Production-safe default OFF (<see cref="CxapiWebhookReconcileOptions.Enabled"/>); rollout scope
 ///   is an explicit allowlist (or AllowAllConfigured), not merely "has a secret".
 /// - NEVER touches the separate HMAC-signed /api/webhook-settings/events channel — only /messages.
-/// - A FOREIGN (non-Invekto) webhook is left UNTOUCHED and warn-logged (INV-OB-092): never clobber a
+/// - A FOREIGN (non-Chatinbox) webhook is left UNTOUCHED and warn-logged (INV-OB-092): never clobber a
 ///   customer's own integration. "Ours" is matched on host+path+companyId so a future PublicBaseUrl
 ///   migration does not self-classify the old URL as foreign.
 /// - Single-instance assumption: Outbound runs as ONE NSSM service in prod, so no cross-process
@@ -172,7 +172,7 @@ public sealed class CxapiWebhookReconcileJob : IHostedService, IDisposable
 
             // Foreign URL — do NOT clobber. Log host ONLY (the URL may carry tokens).
             _logger.SystemWarn(
-                $"[{ErrorCodes.CxapiWebhookForeignUrl}] cxapi webhook reconcile: tenant={tenant.TenantId} has a FOREIGN messages webhook (host={SafeHost(current)}) — left untouched; ACKs will not reach Invekto until an operator redirects it.");
+                $"[{ErrorCodes.CxapiWebhookForeignUrl}] cxapi webhook reconcile: tenant={tenant.TenantId} has a FOREIGN messages webhook (host={SafeHost(current)}) — left untouched; ACKs will not reach Chatinbox until an operator redirects it.");
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -226,7 +226,7 @@ public sealed class CxapiWebhookReconcileJob : IHostedService, IDisposable
     /// <summary>
     /// "Ours" iff the URL parses, its host is one of our owned hosts, its path is the ingress path,
     /// and its companyId query equals this tenant. Host-set match (not exact-string) so a later
-    /// PublicBaseUrl host change does not classify the previously-Invekto URL as foreign.
+    /// PublicBaseUrl host change does not classify the previously-Chatinbox URL as foreign.
     /// </summary>
     private bool IsOwnedWebhook(string url, int tenantId)
     {
@@ -260,7 +260,7 @@ public sealed class CxapiWebhookReconcileJob : IHostedService, IDisposable
         return false;
     }
 
-    /// <summary>The set of hosts we consider Invekto-owned. Defaults to the PublicBaseUrl host when not configured.</summary>
+    /// <summary>The set of hosts we consider Chatinbox-owned. Defaults to the PublicBaseUrl host when not configured.</summary>
     private HashSet<string> OwnedHosts()
     {
         var hosts = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -299,7 +299,7 @@ public sealed class CxapiWebhookReconcileOptions
     /// <summary>Public base URL of our delivery-ack ingress. The webhook is set to {PublicBaseUrl}/api/v1/webhook/event?companyId={tenant_id}.</summary>
     public string PublicBaseUrl { get; set; } = "https://services.invekto.com";
 
-    /// <summary>Extra hosts considered Invekto-owned (besides the PublicBaseUrl host) — e.g. to support a host migration without flagging the old URL as foreign.</summary>
+    /// <summary>Extra hosts considered Chatinbox-owned (besides the PublicBaseUrl host) — e.g. to support a host migration without flagging the old URL as foreign.</summary>
     public List<string> OwnedWebhookHosts { get; set; } = new();
 
     /// <summary>cxapi base URL for the webhook-settings calls.</summary>

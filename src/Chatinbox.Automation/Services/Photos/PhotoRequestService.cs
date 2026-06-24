@@ -41,7 +41,7 @@ public sealed class PhotoRequestService : IPhotoRequestService
     ///
     /// Variant A: sablon image URL referansi (5 ikon: on/sag/sol/ust/alt
     /// + ok). Pilotta image public host'lanir (DentAdavista CDN veya
-    /// Invekto static), URL link mesaja gomulu.
+    /// Chatinbox static), URL link mesaja gomulu.
     /// Variant B: yazili 5 aci (sablon yok); DocX 'Mesaj 2' tonu.
     /// 24h reminder: nazik hatirlatma; DocX 5 varyant icinden 1.
     /// 48h escalation: koordinator devri tonu; DocX 5 varyant icinden 1.

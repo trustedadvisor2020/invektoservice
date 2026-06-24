@@ -4,7 +4,7 @@ namespace Chatinbox.Shared.Contracts.Inma.Dtos;
 
 /// <summary>
 /// Navigation metadata served to the INMA (WapCRM) parent shell so the outer
-/// sidebar can render Turkish labels that match Invekto feature surface.
+/// sidebar can render Turkish labels that match Chatinbox feature surface.
 /// Tenant-only; ops items are excluded at the source.
 /// Icon names are lucide-react identifiers (kebab-case); the consumer maps
 /// them to its own icon library.

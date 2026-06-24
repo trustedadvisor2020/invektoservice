@@ -610,7 +610,7 @@ public static class ErrorCodes
 
     // Feature A — cxapi message-webhook reconciliation (CxapiWebhookReconcileJob, INV-OB-091+)
     public const string CxapiWebhookReconcileCallFailed = "INV-OB-091";    // Reconcile: a cxapi webhook-settings GET/POST failed (rate-limit/timeout/transport/provider/unparseable). Logged with tenant + provider requestID; the tenant is NOT marked done and is retried next tick. No throw (one tenant's failure never blocks the others).
-    public const string CxapiWebhookForeignUrl = "INV-OB-092";             // Reconcile: tenant's cxapi messages-webhook points to a NON-Invekto (foreign) URL — left UNTOUCHED (never clobber a customer's own integration). ACKs will NOT reach Invekto until an operator redirects it. Logged with tenant + foreign host ONLY (never the full URL — may carry tokens).
+    public const string CxapiWebhookForeignUrl = "INV-OB-092";             // Reconcile: tenant's cxapi messages-webhook points to a NON-Chatinbox (foreign) URL — left UNTOUCHED (never clobber a customer's own integration). ACKs will NOT reach Chatinbox until an operator redirects it. Logged with tenant + foreign host ONLY (never the full URL — may carry tokens).
     public const string CxapiWebhookIpNotWhitelisted = "INV-OB-093";       // Reconcile: cxapi returned HTTP 509 — the Outbound server IP is not whitelisted at cxapi for this tenant. Ops-actionable (whitelist the IP); distinct from a generic transport error.
 
     // FEATURE B — Rapor (delivery report) status-pull: "Durumu Yenile" pulls live cxapi message-status (INV-OB-094+)

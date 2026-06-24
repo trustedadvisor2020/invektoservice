@@ -34,7 +34,7 @@ export function FlowEditorPage() {
   const [currentVersion, setCurrentVersion] = useState(0);
   const [isToggling, setIsToggling] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(() => {
-    try { return localStorage.getItem('invekto_flow_palette_open') !== 'false'; }
+    try { return localStorage.getItem('chatinbox_flow_palette_open') !== 'false'; }
     catch { return true; }
   });
   const loadFlow = useFlowStore((s) => s.loadFlow);
@@ -103,7 +103,7 @@ export function FlowEditorPage() {
   const handleTogglePalette = useCallback(() => {
     setPaletteOpen((v) => {
       const next = !v;
-      try { localStorage.setItem('invekto_flow_palette_open', String(next)); } catch {}
+      try { localStorage.setItem('chatinbox_flow_palette_open', String(next)); } catch {}
       return next;
     });
   }, []);

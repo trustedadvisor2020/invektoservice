@@ -250,7 +250,7 @@ if (mssqlConfigured)
     builder.Configuration.GetSection("NightlyBatch").Bind(nightlyConfig);
     builder.Services.AddSingleton(nightlyConfig);
     var hangfireConnStr = Chatinbox.Shared.Hosting.HangfireSetup.ResolveConnectionString(builder.Configuration);
-    builder.Services.AddInvektoHangfire("waanalytics", hangfireConnStr, enableScheduler: false);
+    builder.Services.AddChatinboxHangfire("waanalytics", hangfireConnStr, enableScheduler: false);
     builder.Services.AddScoped<Chatinbox.WhatsAppAnalytics.Services.Jobs.NightlyBatchJob>();
 
     // Insight engines (RI Faz 3)
@@ -295,7 +295,7 @@ app.UseAuthorization();
 _ = app.Services.GetRequiredService<LogCleanupService>();
 
 // G7 Faz 5: NightlyBatch recurring job (cron derived from config.RunHour).
-// Gated on mssqlConfigured — matches AddInvektoHangfire registration above.
+// Gated on mssqlConfigured — matches AddChatinboxHangfire registration above.
 if (mssqlConfigured)
 {
     var nightlyCfg = app.Services.GetRequiredService<NightlyBatchConfig>();

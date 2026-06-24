@@ -9,10 +9,10 @@ using Microsoft.AspNetCore.Http;
 namespace Chatinbox.Shared.Middleware;
 
 /// <summary>
-/// JWT authentication middleware for Invekto API endpoints.
+/// JWT authentication middleware for Chatinbox API endpoints.
 /// Supports optional IP whitelist bypass: whitelisted IPs skip JWT and provide
 /// tenant identity via ?companyId= query parameter instead.
-/// Shared across all Invekto microservices.
+/// Shared across all Chatinbox microservices.
 /// </summary>
 public sealed class JwtAuthMiddleware
 {

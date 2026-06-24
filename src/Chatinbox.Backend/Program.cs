@@ -587,7 +587,7 @@ var hangfireConnStr = HangfireSetup.ResolveConnectionString(builder.Configuratio
 var hangfireEnabled = !string.IsNullOrEmpty(hangfireConnStr);
 if (hangfireEnabled)
 {
-    builder.Services.AddInvektoHangfire("backend", hangfireConnStr);
+    builder.Services.AddChatinboxHangfire("backend", hangfireConnStr);
     // G7 Faz 4: Backend recurring jobs (TranslationCleanup + MetricsAggregation)
     builder.Services.AddScoped<TranslationCleanupJob>();
     builder.Services.AddScoped<MetricsAggregationJob>();
@@ -749,7 +749,7 @@ if (jwtValidator != null)
         // Automation generates a per-call service JWT (JwtGenerator.GenerateServiceToken
         // with tenant_id claim) so the existing JWT middleware enforces tenant binding;
         // the endpoint additionally checks the X-Internal-Service-Token header (defense
-        // in depth — proves the caller is a peer Invekto service, not just any client
+        // in depth — proves the caller is a peer Chatinbox service, not just any client
         // that happens to know how to mint a JWT) and validates that the JWT's tenant_id
         // claim matches the payload tenant_id. Iter 2 reinforcement of CQ9.
         "/api/internal/"
@@ -5849,7 +5849,7 @@ app.MapDelete("/api/v1/appointments/slots/{id:int}", async (HttpContext ctx, App
 // -> Enqueued; without these compile-time refs Backend throws FileNotFoundException
 // "Could not resolve assembly 'Chatinbox.<service>'" at promotion-time. Worker
 // servers (Automation, Appointments, etc.) load only their own queue (queue-per-
-// service topology, AddInvektoHangfire). The G7 exception is the SINGLE documented
+// service topology, AddChatinboxHangfire). The G7 exception is the SINGLE documented
 // place where direct cross-service compile-references are allowed; CLAUDE.md's
 // "no using Chatinbox.<other>" rule has G7 as its named carve-out.
 //
@@ -6514,7 +6514,7 @@ app.MapPost("/api/v1/leads/intake/{source_slug}", async (
 // .GenerateServiceToken so each request is bound to the tenant on whose behalf
 // it is acting; (2) IntakeInternalAuth.Validate cross-checks the
 // X-Internal-Service-Token header against InternalServices:SharedSecret to
-// prove the caller is a peer Invekto service (not an arbitrary holder of a
+// prove the caller is a peer Chatinbox service (not an arbitrary holder of a
 // valid tenant JWT). The endpoint then verifies that payload.tenant_id matches
 // TenantContext.TenantId before write — closing the "caller-supplied tenant_id"
 // gap Codex flagged. Response envelope mirrors the rest of /api/v1/leads/* —
@@ -6536,7 +6536,7 @@ app.MapPost("/api/internal/leads/intake/wa-direct", async (
     // reach this handler, TenantContext is present and the tenant_id claim is
     // signature-validated. The shared-secret header makes it harder for a
     // tenant-scoped JWT (e.g. a leaked Dashboard token) to call this endpoint
-    // by accident — only Invekto services hold the secret.
+    // by accident — only Chatinbox services hold the secret.
     var auth = Chatinbox.Backend.Services.Internal.IntakeInternalAuth.Validate(ctx, config);
     if (!auth.Ok)
     {
@@ -6589,7 +6589,7 @@ app.MapPost("/api/internal/leads/intake/wa-direct", async (
 // Internal service-to-service WRITE, consumed by Automation's ActionSetCustomerStatusHandler. Two-layer
 // auth identical to wa-direct above: (1) the standard JWT middleware on /api/internal/ sets TenantContext
 // from the signed service-JWT tenant_id claim; (2) IntakeInternalAuth cross-checks X-Internal-Service-Token
-// against InternalServices:SharedSecret (proves a peer Invekto service). The body tenantId MUST equal the
+// against InternalServices:SharedSecret (proves a peer Chatinbox service). The body tenantId MUST equal the
 // JWT claim — no cross-tenant write. The tenant WapCRM secret is resolved HERE (Automation never holds or
 // sends it) and never logged; cxapi egress reuses the C3b whitelisted path. Outcome mapping keys on the
 // PROVIDER payload statusCode (not HTTP): vendor business rejection (920/921/922/923/903) -> 422 INV-BE-142
@@ -8451,7 +8451,7 @@ app.MapPost("/api/ops/plans/invalidate/{tenantId}", async (HttpContext ctx, int 
     return Results.Ok(new { invalidated = true, tenant_id = tenantId });
 });
 
-// GET /api/ops/tenants/{id}/license — Birleşik lisans bilgisi (Invekto PG + INMA MSSQL readonly)
+// GET /api/ops/tenants/{id}/license — Birleşik lisans bilgisi (Chatinbox PG + INMA MSSQL readonly)
 app.MapGet("/api/ops/tenants/{id}/license", async (HttpContext ctx, int id, JsonLinesLogger jsonLog) =>
 {
     if (!ValidateOpsAuth(ctx))
@@ -8460,7 +8460,7 @@ app.MapGet("/api/ops/tenants/{id}/license", async (HttpContext ctx, int id, Json
     if (string.IsNullOrEmpty(pgConnectionString))
         return Results.Json(new { error = ErrorCodes.BackendTenantPlanUpdateFailed, message = "PostgreSQL not configured" }, statusCode: 503);
 
-    // --- Invekto: PostgreSQL (plan + usage) ---
+    // --- Chatinbox: PostgreSQL (plan + usage) ---
     object? invektoData = null;
     try
     {
@@ -9051,7 +9051,7 @@ app.MapPost("/api/v1/inma/auth/refresh", async (HttpContext ctx, IHttpClientFact
 // INMA NAV METADATA (tenant-facing)
 // ============================================
 // Serves localized (TR) navigation metadata so the INMA/WapCRM parent shell
-// can render an outer sidebar that mirrors the Invekto feature surface.
+// can render an outer sidebar that mirrors the Chatinbox feature surface.
 // Tenant-only: ops items are intentionally excluded at the source. Feature
 // licensing filtering is deferred — this phase returns the full tenant set.
 // Icon strings are lucide-react kebab-case identifiers; consumer maps them.

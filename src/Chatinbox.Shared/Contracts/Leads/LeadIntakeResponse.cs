@@ -33,7 +33,7 @@ public sealed class LeadIntakeResponse
 
     /// <summary>
     /// Optional, additive signal channel for non-fatal operational issues the
-    /// caller can observe without reading server logs. Populated with Invekto
+    /// caller can observe without reading server logs. Populated with Chatinbox
     /// error codes when a side effect failed but the primary outcome (lead
     /// create/merge) still succeeded — e.g. INV-JOB-001 when Hangfire rejected
     /// the welcome-flow enqueue. Null/empty in the common path. Not a

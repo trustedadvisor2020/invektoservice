@@ -11,7 +11,7 @@ namespace Chatinbox.Backend.Services.Internal;
 /// AFTER the JWT middleware sets the tenant context, not in place of it.
 /// The two layers cover different risks: JWT proves the request is bound to
 /// a specific tenant_id (signed claim); this gate proves the caller is a
-/// peer Invekto service (only services hold the shared secret), so a leaked
+/// peer Chatinbox service (only services hold the shared secret), so a leaked
 /// tenant Dashboard JWT alone cannot reach this write path.
 /// </summary>
 public static class IntakeInternalAuth

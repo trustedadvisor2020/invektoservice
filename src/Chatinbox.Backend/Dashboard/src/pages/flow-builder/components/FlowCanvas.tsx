@@ -77,7 +77,7 @@ export function FlowCanvas() {
     (event: React.DragEvent<HTMLDivElement>) => {
       event.preventDefault();
 
-      const type = event.dataTransfer.getData('application/invekto-node-type') as FlowNodeType;
+      const type = event.dataTransfer.getData('application/chatinbox-node-type') as FlowNodeType;
       if (!type || !reactFlowInstance.current || !reactFlowWrapper.current) return;
 
       const bounds = reactFlowWrapper.current.getBoundingClientRect();

@@ -104,7 +104,7 @@ builder.Services.AddSingleton<IBackgroundJobEnqueuer, BackgroundJobEnqueuer>();
 
 // G7: Hangfire recurring reminder job (replaces ReminderSchedulerService IHostedService)
 var hangfireConnStr = HangfireSetup.ResolveConnectionString(builder.Configuration);
-builder.Services.AddInvektoHangfire("appointments", hangfireConnStr, enableScheduler: false);
+builder.Services.AddChatinboxHangfire("appointments", hangfireConnStr, enableScheduler: false);
 builder.Services.AddScoped<ReminderJob>();
 
 // FEAT-VCP Chunk B: per-meeting creation + reminder jobs (BackgroundJob.Schedule

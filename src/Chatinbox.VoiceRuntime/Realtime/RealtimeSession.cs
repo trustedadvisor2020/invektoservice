@@ -30,7 +30,7 @@ public sealed class RealtimeSessionFactory
         var inFmt = MapAudioFormat(config["OpenAI:InputAudioFormat"] ?? "pcm16");
         var outFmt = MapAudioFormat(config["OpenAI:OutputAudioFormat"] ?? "pcm16");
         var instructions = config["OpenAI:Instructions"]
-            ?? "Sen Invekto'nun TÜRKÇE sesli AI asistanısın. ÇOK ÖNEMLİ: HER ZAMAN ve SADECE Türkçe konuş — başka hiçbir dilde (İngilizce, Korece, Almanca, vb.) cevap verme, kullanıcı başka dilde konuşsa bile Türkçe yanıtla. Kısa, doğal, samimi konuş. Anlamadığında 'Tekrar eder misiniz?' de.";
+            ?? "Sen Chatinbox'un TÜRKÇE sesli AI asistanısın. ÇOK ÖNEMLİ: HER ZAMAN ve SADECE Türkçe konuş — başka hiçbir dilde (İngilizce, Korece, Almanca, vb.) cevap verme, kullanıcı başka dilde konuşsa bile Türkçe yanıtla. Kısa, doğal, samimi konuş. Anlamadığında 'Tekrar eder misiniz?' de.";
 
         var turnDetType = config["OpenAI:TurnDetection:Type"] ?? "semantic_vad";
         var eagerness = config["OpenAI:TurnDetection:Eagerness"];

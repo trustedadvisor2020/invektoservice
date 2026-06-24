@@ -5,7 +5,7 @@ namespace Chatinbox.Shared.Contracts.Video;
 /// Caller (Chunk B Appointments) builds this from the confirmed appointment row plus
 /// the tenant/lead/dentist attendee triple.
 /// </summary>
-/// <param name="TenantId">Invekto tenant_id; providers use it to scope mock link hashes
+/// <param name="TenantId">Chatinbox tenant_id; providers use it to scope mock link hashes
 /// and (Chunk C) select tenant-scoped OAuth credentials.</param>
 /// <param name="Title">Human-readable meeting title (e.g. "Dental Consultation — Alice Q").
 /// Factored into the mock hash so re-titling yields a new link.</param>

@@ -17,7 +17,7 @@ namespace Chatinbox.Shared.Contracts.MetaLeadgen;
 ///
 /// FieldIdMap shape:
 ///   key   = Meta question_id (stable per Lead Form; surfaced via /discover-forms)
-///   value = canonical field name from the Invekto set (LIW <see cref="LeadIntakeCanonical"/>
+///   value = canonical field name from the Chatinbox set (LIW <see cref="LeadIntakeCanonical"/>
 ///           aligned — FEAT-META-FULL-INTAKE 2026-04-29 hizalama):
 ///           { "name", "phone", "email", "custom_1".."custom_5", "consent" }
 ///   Operators edit this map in the Dashboard editor; MetaGraphApiClient.DiscoverFormsAsync

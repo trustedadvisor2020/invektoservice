@@ -124,7 +124,7 @@ if (string.IsNullOrWhiteSpace(hangfireConn))
     throw new InvalidOperationException(
         "FATAL: Marketing service requires ConnectionStrings:Hangfire (or ConnectionStrings:PostgreSQL fallback) for FEAT-EFS scheduled jobs.");
 
-builder.Services.AddInvektoHangfire(
+builder.Services.AddChatinboxHangfire(
     queueName: "marketing-followup",
     connectionString: hangfireConn,
     enableScheduler: false /* Backend remains the recurring-jobs leader; Marketing is a worker server only */);

@@ -200,7 +200,7 @@ builder.Services.AddSingleton<MockSentimentAnalyzer>();
 
 // G7: Hangfire (recurring flow-wait resumer + cron scheduler + rescue follow-up)
 var hangfireConnStr = HangfireSetup.ResolveConnectionString(builder.Configuration);
-builder.Services.AddInvektoHangfire("automation", hangfireConnStr, enableScheduler: false);
+builder.Services.AddChatinboxHangfire("automation", hangfireConnStr, enableScheduler: false);
 builder.Services.AddScoped<FlowWaitResumerJob>();
 // G7 Faz 3: CronSchedulerJob owns _lastFired state — must be Singleton across invocations
 builder.Services.AddSingleton<CronSchedulerJob>();

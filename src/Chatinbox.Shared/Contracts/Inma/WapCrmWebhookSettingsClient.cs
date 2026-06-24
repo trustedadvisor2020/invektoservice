@@ -123,7 +123,7 @@ public sealed class WapCrmWebhookSettingsClient
     /// <summary>
     /// Sets the tenant's MESSAGES webhook url + isActive=true and CLEARS customHeaders
     /// (<c>customHeaders: []</c> — the partner contract preserves on null, so an empty array is
-    /// required to guarantee a clean, Invekto-owned webhook with no stale third-party headers).
+    /// required to guarantee a clean, Chatinbox-owned webhook with no stale third-party headers).
     /// </summary>
     public async Task<WapCrmWebhookWriteResult> SetMessageWebhookAsync(string secretKey, string webhookUrl, int tenantId, CancellationToken ct = default)
     {

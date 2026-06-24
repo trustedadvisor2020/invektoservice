@@ -52,7 +52,7 @@ public static class IcsBuilder
         var sb = new StringBuilder(1024);
         AppendLine(sb, "BEGIN:VCALENDAR");
         AppendLine(sb, "VERSION:2.0");
-        AppendLine(sb, "PRODID:-//Invekto//FEAT-VCP//EN");
+        AppendLine(sb, "PRODID:-//Chatinbox//FEAT-VCP//EN");
         AppendLine(sb, "METHOD:REQUEST");
         AppendLine(sb, "CALSCALE:GREGORIAN");
 

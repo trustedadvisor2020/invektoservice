@@ -1,0 +1,6 @@
+@Chatinbox.Backend_HostAddress = http://localhost:5169
+
+GET {{Chatinbox.Backend_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -192,7 +192,7 @@ function groupByCategory(items: NodeTypeInfo[]): Map<NodeCategory, NodeTypeInfo[
 
 function PaletteItem({ info }: { info: NodeTypeInfo }) {
   const onDragStart = (event: DragEvent<HTMLDivElement>, nodeType: FlowNodeType) => {
-    event.dataTransfer.setData('application/invekto-node-type', nodeType);
+    event.dataTransfer.setData('application/chatinbox-node-type', nodeType);
     event.dataTransfer.effectAllowed = 'move';
   };
 

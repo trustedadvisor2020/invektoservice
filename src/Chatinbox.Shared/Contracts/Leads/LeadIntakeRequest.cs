@@ -4,7 +4,7 @@ namespace Chatinbox.Shared.Contracts.Leads;
 
 /// <summary>
 /// FEAT-LIW: POST /api/v1/leads/intake/{source_slug} payload.
-/// Free-form tenant-landing submission; Invekto resolves canonical fields via
+/// Free-form tenant-landing submission; Chatinbox resolves canonical fields via
 /// tenant_landing_settings.landing_field_map. Keys in <c>Fields</c> are the
 /// tenant's own field names (e.g. "ad_soyad", "telefon"); values are resolved
 /// to the canonical set (name, phone, consent, email, custom_1..10).

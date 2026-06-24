@@ -13,7 +13,7 @@ public sealed class PhoneE164Normalizer
     private static readonly PhoneNumberUtil Util = PhoneNumberUtil.GetInstance();
 
     // Default candidate regions when the tenant map omits phone.country_hint. IE first
-    // (Dent Adavista pilot = Ireland landing pages), TR second (bulk of Invekto base).
+    // (Dent Adavista pilot = Ireland landing pages), TR second (bulk of Chatinbox base).
     private static readonly string[] DefaultRegions = { "IE", "TR" };
 
     /// <summary>

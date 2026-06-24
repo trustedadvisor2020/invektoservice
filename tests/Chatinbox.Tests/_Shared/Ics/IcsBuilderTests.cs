@@ -36,7 +36,7 @@ public class IcsBuilderTests
 
         ics.Should().Contain("BEGIN:VCALENDAR\r\n");
         ics.Should().Contain("VERSION:2.0\r\n");
-        ics.Should().Contain("PRODID:-//Invekto//FEAT-VCP//EN\r\n");
+        ics.Should().Contain("PRODID:-//Chatinbox//FEAT-VCP//EN\r\n");
         ics.Should().Contain("END:VCALENDAR\r\n");
     }
 

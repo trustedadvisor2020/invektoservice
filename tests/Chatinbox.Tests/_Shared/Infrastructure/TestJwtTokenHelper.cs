@@ -11,7 +11,7 @@ namespace Chatinbox.Tests._Shared.Infrastructure;
 /// </summary>
 public static class TestJwtTokenHelper
 {
-    public const string TestSecretKey = "InvektoTestSecretKey2026ForUnitTests!!";
+    public const string TestSecretKey = "ChatinboxTestSecretKey2026ForUnitTests!!";
     public const int DefaultTenantId = 1001;
     public const int DefaultUserId = 42;
     public const string DefaultRole = "admin";

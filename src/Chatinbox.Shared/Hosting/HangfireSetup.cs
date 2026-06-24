@@ -36,7 +36,7 @@ public static class HangfireSetup
     /// future. Use for worker servers that must NOT compete for the shared
     /// <c>recurring-jobs</c> advisory lock — only the leader (Backend) schedules. See §12.
     /// </param>
-    public static IServiceCollection AddInvektoHangfire(
+    public static IServiceCollection AddChatinboxHangfire(
         this IServiceCollection services,
         string queueName,
         string connectionString,
@@ -45,7 +45,7 @@ public static class HangfireSetup
     {
         if (string.IsNullOrWhiteSpace(queueName))
             throw new InvalidOperationException(
-                "FATAL: AddInvektoHangfire called without a queue name — set Queues:Name in appsettings.json or pass explicitly (e.g. \"appointments\").");
+                "FATAL: AddChatinboxHangfire called without a queue name — set Queues:Name in appsettings.json or pass explicitly (e.g. \"appointments\").");
         if (string.IsNullOrWhiteSpace(connectionString))
             throw new InvalidOperationException(
                 $"FATAL: Hangfire connection string is empty. Set ConnectionStrings:Hangfire or ConnectionStrings:PostgreSQL in appsettings.json. Error code [{ErrorCodes.JobStorageConnectionFailed}].");

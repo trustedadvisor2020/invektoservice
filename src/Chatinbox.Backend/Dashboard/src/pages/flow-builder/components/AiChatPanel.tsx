@@ -20,8 +20,8 @@ const MIN_WIDTH = 240;
 const MAX_WIDTH = 800;
 const DEFAULT_WIDTH = 320;
 const EXPANDED_WIDTH = 600;
-const STORAGE_KEY = 'invekto_ai_chat_width';
-const EXPANDED_STORAGE_KEY = 'invekto_ai_chat_expanded';
+const STORAGE_KEY = 'chatinbox_ai_chat_width';
+const EXPANDED_STORAGE_KEY = 'chatinbox_ai_chat_expanded';
 const TEXTAREA_MIN_HEIGHT = 44; // ~2 lines
 const TEXTAREA_MAX_HEIGHT = 160; // ~7 lines
 

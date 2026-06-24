@@ -245,7 +245,7 @@ public sealed class WebScrapingService
                 {
                     var agent = line["User-agent:".Length..].Trim();
                     inRelevantAgent = agent == "*" ||
-                                     agent.Equals("InvektoBot", StringComparison.OrdinalIgnoreCase);
+                                     agent.Equals("ChatinboxBot", StringComparison.OrdinalIgnoreCase);
                 }
                 else if (inRelevantAgent && line.StartsWith("Disallow:", StringComparison.OrdinalIgnoreCase))
                 {

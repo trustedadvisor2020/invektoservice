@@ -29,7 +29,7 @@ namespace Chatinbox.Automation.Services.Jobs;
 /// </summary>
 // FEAT-PHOTO wire-up patch (2026-04-28): queue rename 'photo-request-dispatch' ->
 // 'automation' (G7 single-queue-per-service topology). Orphan queue P10 EFS bug
-// ikizinden kacinma; AddInvektoHangfire("automation", ...) zaten Automation servisinde
+// ikizinden kacinma; AddChatinboxHangfire("automation", ...) zaten Automation servisinde
 // kayitli, yeni queue eklemek yerine var olani kullaniyoruz. Plan
 // arch/plans/20260428-feat-photo-wireup-patch.json AC1.
 [Queue("automation")]

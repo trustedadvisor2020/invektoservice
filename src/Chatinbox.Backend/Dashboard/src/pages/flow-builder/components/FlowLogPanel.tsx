@@ -7,7 +7,7 @@ import { cn } from '../../../lib/utils';
 const MIN_WIDTH = 260;
 const MAX_WIDTH = 480;
 const DEFAULT_WIDTH = 320;
-const STORAGE_KEY = 'invekto_flow_log_width';
+const STORAGE_KEY = 'chatinbox_flow_log_width';
 
 function getStoredWidth(): number {
   const v = localStorage.getItem(STORAGE_KEY);

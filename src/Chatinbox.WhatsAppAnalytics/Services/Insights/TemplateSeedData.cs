@@ -323,7 +323,7 @@ internal static class TemplateSeedData
     {
         "guzellik" => new()
         {
-            S("guzellik", 1, "Agent'lari sisteme ekle", "Tum calisanlari Invekto'ya ekleyin.", "Agent bazli takip baslar", "1-3"),
+            S("guzellik", 1, "Agent'lari sisteme ekle", "Tum calisanlari Chatinbox'a ekleyin.", "Agent bazli takip baslar", "1-3"),
             S("guzellik", 2, "Hizmet listesi FAQ'larini aktif et", "Fiyat, sure, seans bilgileri icin hazir cevaplar.", "Cevap suresi %40 azalir", "1-7"),
             S("guzellik", 3, "Randevu flow'unu kur", "Hizmet sorgusu → musaitlik → randevu akisi.", "Randevu donusum orani artar", "3-7"),
             S("guzellik", 4, "Follow-up otomasyonunu ac", "Gelmeyenlere hatirlatma mesaji.", "Randevu iptali %20 azalir", "7-14"),
@@ -379,7 +379,7 @@ internal static class TemplateSeedData
         },
         "diger" => new()
         {
-            S("diger", 1, "Ekibi sisteme ekle", "Calisanlarınizi Invekto'ya ekleyin.", "Ekip takibi baslar", "1-3"),
+            S("diger", 1, "Ekibi sisteme ekle", "Calisanlarınizi Chatinbox'a ekleyin.", "Ekip takibi baslar", "1-3"),
             S("diger", 2, "Genel FAQ'lari aktif et", "Sik sorulan sorulara hazir cevaplar.", "Cevap suresi azalir", "1-7"),
             S("diger", 3, "Satis flow'unu kur", "Temel satis akisinizi olusturun.", "Satis sureci standartlasir", "3-7"),
             S("diger", 4, "Follow-up otomasyonunu ac", "Ilgilenen musterilere otomatik takip.", "Donusum orani artar", "7-14"),

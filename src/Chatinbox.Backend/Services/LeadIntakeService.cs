@@ -282,7 +282,7 @@ public sealed class LeadIntakeService
                 "Telefon numarasi eksik veya gecersiz.");
 
         // 2b. Defense-in-depth tenant existence check. The X-Internal-Service-Token
-        //     gate proves the CALLER is an Invekto service, but the tenant_id in
+        //     gate proves the CALLER is an Chatinbox service, but the tenant_id in
         //     the payload is otherwise trusted blindly — without this guard a
         //     buggy Automation routing the wrong tenant_id would silently create
         //     orphan rows under a non-existent tenant. Caller-supplied tenant_id

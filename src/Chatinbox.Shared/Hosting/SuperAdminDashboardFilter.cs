@@ -11,7 +11,7 @@ namespace Chatinbox.Shared.Hosting;
 /// Accepts EITHER a JWT with <c>tenant_id</c>=0 populated by UseJwtAuth (API-style header
 /// auth) OR a validated <c>hf_jwt</c> cookie set by the <c>/ops/hangfire-login</c> bridge
 /// endpoint (browser navigation, since HTML cannot attach Bearer headers).
-/// The cookie carries the same Invekto JWT — validation reuses <see cref="JwtValidator"/>.
+/// The cookie carries the same Chatinbox JWT — validation reuses <see cref="JwtValidator"/>.
 /// </summary>
 public sealed class SuperAdminDashboardFilter : IDashboardAuthorizationFilter
 {

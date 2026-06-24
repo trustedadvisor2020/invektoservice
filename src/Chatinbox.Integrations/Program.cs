@@ -124,7 +124,7 @@ builder.Services.AddSingleton<ICargoProvider, YurticiCargoMockProvider>();
 
 // G7 Faz 5: Hangfire (replaces OrderSyncService IHostedService)
 var hangfireConnStr = HangfireSetup.ResolveConnectionString(builder.Configuration);
-builder.Services.AddInvektoHangfire("integrations", hangfireConnStr, enableScheduler: false);
+builder.Services.AddChatinboxHangfire("integrations", hangfireConnStr, enableScheduler: false);
 builder.Services.AddScoped<OrderSyncJob>();
 
 builder.Services.AddAuthorization();

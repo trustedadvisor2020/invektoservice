@@ -126,7 +126,7 @@ var delayBetweenRequestsMs = builder.Configuration.GetValue<int>("WebScraping:De
 builder.Services.AddSingleton(sp =>
 {
     var httpClient = new HttpClient { Timeout = TimeSpan.FromMilliseconds(pageTimeoutMs * 2) };
-    httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("InvektoBot/1.0");
+    httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("ChatinboxBot/1.0");
     return new WebScrapingService(httpClient, sp.GetRequiredService<PdfChunkingService>(),
         sp.GetRequiredService<JsonLinesLogger>(), maxPages, pageTimeoutMs, delayBetweenRequestsMs);
 });

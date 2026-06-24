@@ -83,7 +83,7 @@ public sealed class DbBackupJob
             var builder = new NpgsqlConnectionStringBuilder(connectionString);
             var outputFile = Path.Combine(
                 outputDir,
-                $"invekto-{DateTime.UtcNow:yyyyMMdd-HHmm}.dump");
+                $"chatinbox-{DateTime.UtcNow:yyyyMMdd-HHmm}.dump");
 
             var started = Stopwatch.StartNew();
             await RunPgDumpAsync(pgDumpPath, builder, outputFile, timeoutMinutes, ct);
